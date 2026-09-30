@@ -362,7 +362,23 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         toast.error('הדפדפן חסם את חלון ההתחברות', {
           description: 'אפשרו חלונות קופצים עבור האתר ונסו שוב.',
         });
+        return;
       }
+      // If the user closes the OAuth popup without finishing, the spinner must
+      // reset — otherwise the button stays stuck on the loading state forever.
+      const popupWatch = window.setInterval(() => {
+        if (connectAttemptRef.current !== attemptId) {
+          window.clearInterval(popupWatch);
+          return;
+        }
+        const popup = getActiveOAuthPopup();
+        if (!popup || popup.closed) {
+          window.clearInterval(popupWatch);
+          if (connectAttemptRef.current === attemptId) {
+            cancelConnecting();
+          }
+        }
+      }, 1000);
     } catch (e: any) {
       if (connectAttemptRef.current !== attemptId) return;
       finishConnecting();
