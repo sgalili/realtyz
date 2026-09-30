@@ -844,6 +844,15 @@ Deno.serve(async (req) => {
         try { json = bodyText ? JSON.parse(bodyText) : {}; } catch { json = {}; }
         if (!resp.ok) {
           error = json?.error ?? json;
+          // Full raw Meta error payload, exactly as Graph returned it — never
+          // a flattened approximation. This is the source of truth for any
+          // code/subcode/message we summarize below.
+          console.error("[fb-recent-posts] graph raw error payload", JSON.stringify({
+            edge: edges[edgeIndex],
+            http_status: status,
+            error_object: json?.error ?? json,
+            raw_body: bodyText,
+          }));
           // Explicit, actionable logging: a permission/expiry problem must be
           // visible in the function logs instead of silently returning zero.
           console.error("[fb-recent-posts] graph error", {
@@ -861,6 +870,8 @@ Deno.serve(async (req) => {
             subcode: (error as any)?.error_subcode ?? null,
             type: (error as any)?.type ?? null,
             message: (error as any)?.message ?? null,
+            error_user_title: (error as any)?.error_user_title ?? null,
+            error_user_msg: (error as any)?.error_user_msg ?? null,
             fbtrace_id: (error as any)?.fbtrace_id ?? null,
             raw_body: bodyText.slice(0, 2000),
           });
@@ -1523,7 +1534,25 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
-    const detail = describeMetaError(e instanceof Error ? e.message : String(e), null);
+    const rawMessage = e instanceof Error ? e.message : String(e);
+    // Never swallow an unexpected failure: dump the full error (message,
+    // stack, cause chain and any attached response payload) so the root cause
+    // is inspectable in the function logs, then answer with the same detail.
+    console.error("[fb-recent-posts] unhandled failure", {
+      name: e instanceof Error ? e.name : typeof e,
+      message: rawMessage,
+      stack: e instanceof Error ? e.stack : null,
+      cause: e instanceof Error && e.cause
+        ? (e.cause instanceof Error
+          ? { name: e.cause.name, message: e.cause.message, stack: e.cause.stack }
+          : String(e.cause))
+        : null,
+      full_serialized: (() => {
+        try { return JSON.stringify(e, Object.getOwnPropertyNames(e as object)); }
+        catch { return String(e); }
+      })(),
+    });
+    const detail = describeMetaError(rawMessage, null);
     return new Response(
       JSON.stringify({
         ok: false,
