@@ -45,8 +45,6 @@ type PageStatus = {
 const STATE_PREFIX = 'facebook_page:';
 /** Emergency ceiling for the callback token exchange — spinner never outlives it. */
 const EXCHANGE_TIMEOUT_MS = 20_000;
-/** Absolute safety net: the spinner is force-cleared this long after it starts. */
-const SPINNER_SAFETY_MS = 5_000;
 /** OAuth must never leave the connect/cancel button spinning indefinitely. */
 const CONNECT_ATTEMPT_TIMEOUT_MS = 30_000;
 
@@ -204,32 +202,19 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       if (exchangingRef.current) return;
       exchangingRef.current = true;
       setConnecting(true);
-      // Emergency safety net: the spinner is released after 5s so the user can
-      // retry or use the manual token path. The request itself keeps running —
-      // if it succeeds afterwards the connected state still lands.
-      const safety = window.setTimeout(() => {
-        setConnecting(false);
-        setLoading(false);
-        setManualOpen(true);
-        toast.error('החיבור לפייסבוק לא הושלם בזמן', {
-          description: 'נסה להתחבר שוב, או חבר את העמוד ידנית באמצעות Page Access Token.',
-        });
-      }, SPINNER_SAFETY_MS);
       try {
         if (!grant.code && !grant.accessToken) {
           throw new Error('פייסבוק לא החזיר קוד אימות. נסה להתחבר שוב.');
         }
-        const res = await withTimeout(
-          callPageConnect<any>({
-            action: 'exchange',
-            code: grant.code ?? undefined,
-            user_access_token: grant.accessToken ?? undefined,
-            redirect_uri: redirectUri,
-          }),
-          EXCHANGE_TIMEOUT_MS,
-          'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
-        );
-        window.clearTimeout(safety);
+        // No arbitrary frontend timeout: the edge function caps every Graph call
+        // at 8s and always answers, so we await its real response and show the
+        // exact error it returns instead of a generic "timed out" message.
+        const res = await callPageConnect<any>({
+          action: 'exchange',
+          code: grant.code ?? undefined,
+          user_access_token: grant.accessToken ?? undefined,
+          redirect_uri: redirectUri,
+        });
         setManualOpen(false);
         if (res?.page?.id) {
           setPage({
@@ -254,7 +239,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         refreshHealth();
         await probe(false).catch(() => undefined);
       } catch (e: any) {
-        window.clearTimeout(safety);
         // ZERO-FRICTION FALLBACK: the shared platform Meta app may not have
         // advanced access for this user yet. Reopen the dialog automatically with
         // the review-free basic scopes instead of dead-ending the connection.
@@ -274,7 +258,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         setManualOpen(true);
 
       } finally {
-        window.clearTimeout(safety);
         exchangingRef.current = false;
         setConnecting(false);
         setLoading(false);

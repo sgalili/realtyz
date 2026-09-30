@@ -378,12 +378,25 @@ export default function OAuthCallback() {
             },
           });
         }
-        const { data, error: fnError } = await withTimeout(
-          inFlightExchange,
-          EXCHANGE_TIMEOUT_MS,
-          'החיבור לפייסבוק לא הושלם בזמן. נסה שוב או חבר ידנית באמצעות טוקן.',
-        );
-        if (fnError) throw new Error(String(fnError.message ?? fnError));
+        // No arbitrary frontend timeout: the edge function caps every Graph call
+        // at 8s and always answers, so we await its real response and surface the
+        // exact error body instead of a generic "timed out" message.
+        const { data, error: fnError } = await inFlightExchange;
+        if (fnError) {
+          // Non-2xx responses hide the JSON body behind error.context — read it
+          // so the screen shows Facebook's real reason, not "non-2xx status code".
+          let raw = String(fnError.message ?? fnError);
+          try {
+            const ctx: any = (fnError as any)?.context;
+            const body = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
+            if (body) {
+              const parts = [body.error, body.fb_message, body.error_detail?.message]
+                .filter((p: any) => typeof p === 'string' && p.trim());
+              if (parts.length) raw = Array.from(new Set(parts)).join(' — ');
+            }
+          } catch { /* keep transport message */ }
+          throw new Error(raw);
+        }
         const payload = (data as any) ?? {};
         if (payload.error) {
           // Surface Facebook's own wording (message / code / fbtrace_id) instead
