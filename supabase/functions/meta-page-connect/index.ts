@@ -1003,6 +1003,7 @@ async function handleRequest(req: Request): Promise<Response> {
             stage: "scope_validation",
             missing_scopes: ["pages_read_engagement"],
             granted_scopes: grantedScopes,
+            fb_message: `granted scopes: [${grantedScopes.join(", ")}] — pages_read_engagement missing`,
             retry_basic: true,
             // While the Meta app is in Development Mode the consent dialog can
             // silently drop the scope for accounts that are not app testers.
