@@ -8,12 +8,22 @@
  *  3. If both are blocked, returns `false` so the caller can render a manual
  *     "open authorization page" link.
  */
+/** Handle of the popup opened by the most recent openOAuthWindow call (null for the new-tab fallback). */
+let activeOAuthPopup: Window | null = null;
+
+/** Poll `closed` on this to detect the user abandoning the OAuth popup. */
+export function getActiveOAuthPopup(): Window | null {
+  return activeOAuthPopup;
+}
+
 export function openOAuthWindow(url: string): boolean {
   if (!url) return false;
+  activeOAuthPopup = null;
 
   try {
     const popup = window.open(url, '_blank', 'width=600,height=700,noopener=false');
     if (popup && !popup.closed) {
+      activeOAuthPopup = popup;
       try { popup.focus(); } catch { /* ignore */ }
       return true;
     }

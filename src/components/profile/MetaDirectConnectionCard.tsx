@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { openOAuthWindow, getActiveOAuthPopup } from '@/lib/openOAuthWindow';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
 import { openExternal } from '@/lib/openExternal';
