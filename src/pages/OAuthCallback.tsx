@@ -543,6 +543,7 @@ export default function OAuthCallback() {
   const showFallback = !!error;
 
   return (
+    <CallbackCrashBoundary>
     <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
       <div className="text-center space-y-4 max-w-md w-full">
         {isLoading && !showFallback && (
