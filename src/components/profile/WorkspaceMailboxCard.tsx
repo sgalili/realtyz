@@ -44,11 +44,11 @@ export function WorkspaceMailboxCard() {
         <div className="flex items-center gap-2 text-sm" dir="rtl">
           <span className={useGmail ? 'font-semibold text-destructive' : 'text-muted-foreground'}>Gmail</span>
           <Switch
-            dir="rtl"
+            dir="ltr"
             checked={useGmail}
             onCheckedChange={setProvider}
             aria-label="בחירת תיבת מייל"
-            className="data-[state=checked]:!bg-destructive data-[state=unchecked]:!bg-primary [&>span]:data-[state=checked]:!translate-x-0 [&>span]:data-[state=unchecked]:!-translate-x-5 rtl:[&>span]:data-[state=checked]:!translate-x-0"
+            className="data-[state=checked]:!bg-destructive data-[state=unchecked]:!bg-primary"
           />
           <span className={!useGmail ? 'font-semibold text-primary' : 'text-muted-foreground'}>Realtyz</span>
         </div>
