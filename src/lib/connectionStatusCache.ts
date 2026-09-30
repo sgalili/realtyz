@@ -43,10 +43,15 @@ export function rememberConnected(service: StickyService, scope?: string | null,
 }
 
 /** Called only from an explicit user-initiated disconnect. */
+export const CONN_STATUS_EVENT = 'realtyz:conn-status-changed';
+
 export function forgetConnected(service: StickyService, scope?: string | null) {
   const store = read();
   delete store[entryKey(service, scope)];
   write(store);
+  try {
+    window.dispatchEvent(new CustomEvent(CONN_STATUS_EVENT, { detail: { service, scope: scope ?? null, connected: false } }));
+  } catch { /* ignore */ }
 }
 
 export function isRememberedConnected(service: StickyService, scope?: string | null): boolean {

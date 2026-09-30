@@ -3,7 +3,7 @@ import { ChevronDown, Mail, MessageSquare, Phone, Settings2 } from 'lucide-react
 import { WorkspaceMailboxCard, useWorkspaceMailbox } from '@/components/profile/WorkspaceMailboxCard';
 import { BrandIcon } from '@/components/BrandIcon';
 import { PortalBrandGlyph } from '@/components/profile/PortalBrandGlyph';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -27,6 +27,7 @@ import {
   isRememberedConnected,
   rememberConnected,
   type StickyService,
+  CONN_STATUS_EVENT,
 } from '@/lib/connectionStatusCache';
 
 type Tone = 'ok' | 'idle';
@@ -182,6 +183,25 @@ export function ConnectionsTab() {
   const { data: fbBinding, isPending: fbBindingPending } = useMetaPageBinding();
   const { isSuperAdmin } = useUserRole();
   const { data: mailboxInfo } = useWorkspaceMailbox();
+  const qcConn = useQueryClient();
+  // Instant downgrade on manual disconnect (no reload / card expansion needed).
+  const [fbManualOff, setFbManualOff] = useState(false);
+  useEffect(() => { setFbManualOff(false); }, [activeWorkspaceId]);
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const d = (e as CustomEvent).detail as { service?: string; connected?: boolean };
+      if (d?.service !== 'facebook' || d.connected !== false) return;
+      setFbManualOff(true);
+      setMeta(null);
+      qcConn.setQueriesData({ queryKey: ['meta-page-binding'] }, () => null);
+      qcConn.invalidateQueries({ queryKey: ['meta-page-binding'] });
+      qcConn.invalidateQueries({ queryKey: ['facebook-health'] });
+    };
+    window.addEventListener(CONN_STATUS_EVENT, onChange);
+    return () => window.removeEventListener(CONN_STATUS_EVENT, onChange);
+  }, [qcConn]);
+  // A fresh verified connection clears the manual-off flag.
+  useEffect(() => { if (meta?.connected) setFbManualOff(false); }, [meta?.connected]);
 
   useEffect(() => {
     (async () => {
@@ -299,14 +319,15 @@ export function ConnectionsTab() {
   // always matches the "חבר עמוד פייסבוק" action button in the card below.
   // Facebook / Instagram are strictly workspace-scoped: never fall back to
   // another workspace's binding.
-  const fbLiveVerified = !!(fbHealth?.pageConnected || meta?.connected) && fbHealth?.needsReconnect !== true;
-  // Sticky: once verified, stays "מחובר" until the user explicitly disconnects
-  // (MetaDirectConnectionCard calls forgetConnected on manual disconnect).
+  // Real DB binding is the source of truth: no binding row => "לא מחובר".
+  const fbHasBinding = fbBindingPending ? true : !!fbBinding?.pageId;
+  const fbLiveVerified = !fbManualOff && fbHasBinding
+    && !!(fbHealth?.pageConnected || meta?.connected) && fbHealth?.needsReconnect !== true;
   useEffect(() => {
     if (fbLiveVerified) rememberConnected('facebook', activeWorkspaceId, fbHealth?.pageName ?? null);
   }, [fbLiveVerified, activeWorkspaceId, fbHealth?.pageName]);
-  const fbVerified = fbLiveVerified || isRememberedConnected('facebook', activeWorkspaceId);
-  // Header icon/photo state uses the same strict verified value.
+  const fbVerified = !fbManualOff && fbHasBinding
+    && (fbLiveVerified || isRememberedConnected('facebook', activeWorkspaceId));
   const fbConnected = fbVerified;
   const metaStatus: [string, Tone] = fbVerified
     ? ['מחובר', 'ok']
