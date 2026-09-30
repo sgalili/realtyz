@@ -911,25 +911,44 @@ async function handleRequest(req: Request): Promise<Response> {
       let userToken = suppliedToken;
       let userTokenExpiresAt: string | null = null;
       if (!userToken) {
-        const tokenRes = await graph(
-          `/oauth/access_token?${new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            redirect_uri: CANONICAL_REDIRECT_URI,
-            code,
-          })}`,
-        );
-        if (!tokenRes.ok || !tokenRes.payload?.access_token) {
-          const detail = logGraphFailure("code_exchange", tokenRes.payload);
+        // The authorization-code exchange is the most fragile call in the flow:
+        // fully wrapped so ANY failure shape (network throw, non-JSON body,
+        // non-200 status) reaches the UI verbatim instead of failing silently.
+        try {
+          const tokenRes = await graph(
+            `/oauth/access_token?${new URLSearchParams({
+              client_id: clientId,
+              client_secret: clientSecret,
+              redirect_uri: CANONICAL_REDIRECT_URI,
+              code,
+            })}`,
+          );
+          if (!tokenRes.ok || !tokenRes.payload?.access_token) {
+            const detail = logGraphFailure("code_exchange", tokenRes.payload, tokenRes.status);
+            return json({
+              error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד."),
+              error_detail: detail,
+              fb_message: detail.message,
+              // Verbatim Facebook response body (truncated) so the exact reason
+              // is always visible in the UI and the logs.
+              fb_raw: JSON.stringify(tokenRes.payload ?? null).slice(0, 1000),
+              http_status: tokenRes.status ?? null,
+              stage: "code_exchange",
+              redirect_uri_used: CANONICAL_REDIRECT_URI,
+            }, 200);
+          }
+          userToken = String(tokenRes.payload.access_token);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("[meta-page-connect] code_exchange threw unexpectedly", msg);
           return json({
-            error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד."),
-            error_detail: detail,
-            fb_message: detail.message,
-            stage: "code_exchange",
+            error: `חילוף קוד האימות מול פייסבוק נכשל: ${msg}`,
+            error_detail: { message: msg, http_status: null },
+            fb_message: msg,
+            stage: "code_exchange_exception",
             redirect_uri_used: CANONICAL_REDIRECT_URI,
           }, 200);
         }
-        userToken = String(tokenRes.payload.access_token);
       }
 
 
@@ -949,7 +968,7 @@ async function handleRequest(req: Request): Promise<Response> {
           if (Number.isFinite(expiresIn) && expiresIn > 0) {
             userTokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
           }
-        } else logGraphFailure("long_lived_token", longRes.payload);
+        } else logGraphFailure("long_lived_token", longRes.payload, longRes.status);
       }
 
 
@@ -1042,7 +1061,7 @@ async function handleRequest(req: Request): Promise<Response> {
           p.access_token = String(tokRes.payload.access_token);
           p.name = p.name ?? tokRes.payload?.name ?? null;
         } else {
-          logGraphFailure("page_token_fetch", tokRes.payload);
+          logGraphFailure("page_token_fetch", tokRes.payload, tokRes.status);
         }
       }
 
