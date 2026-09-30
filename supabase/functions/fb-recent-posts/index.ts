@@ -1467,6 +1467,20 @@ Deno.serve(async (req) => {
         dev_mode_restricted: syncErrorDetail.dev_mode_restricted,
         raw: lastError,
       }));
+      // Development Mode / unverified-business restriction (Meta code 10):
+      // this is an app-access limitation, NOT a broken Page binding or a crash
+      // condition. Log it clearly, then let the response below return ok:true
+      // with an empty posts array plus an informative message so campaign
+      // management keeps working while business verification is pending.
+      if (syncErrorDetail.dev_mode_restricted) {
+        console.error("[fb-recent-posts] development mode restriction handled gracefully", JSON.stringify({
+          owner_id: ownerId,
+          page_id: page?.pageId ?? null,
+          message_he: syncErrorDetail.message_he,
+          dev_note_he: syncErrorDetail.dev_note_he,
+          fbtrace_id: syncErrorDetail.fbtrace_id,
+        }));
+      }
     }
 
     return new Response(
@@ -1491,6 +1505,10 @@ Deno.serve(async (req) => {
         raw_error: lastError,
         graph_source: graphSource,
         permission_blocked: permissionBlocked,
+        // Top-level Development Mode flag (Meta code 10 / unverified business):
+        // the client reads this directly to show the developer note instead of
+        // treating the sync as a hard failure.
+        dev_mode_restricted: syncErrorDetail?.dev_mode_restricted === true,
         // A stored Page binding stays a live connection even when a single read
         // is refused, so the client must never flip to "disconnected" here.
         page_connected: !!page?.pageId,
