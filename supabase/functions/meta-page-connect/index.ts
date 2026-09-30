@@ -37,6 +37,8 @@ const PAGE_SCOPES = [
  * delivers Messenger messages or comment events, even when the Page is bound.
  */
 async function subscribePageWebhooks(pageId: string, token: string): Promise<void> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
   try {
     const res = await fetch(
       `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/subscribed_apps`,
@@ -44,6 +46,7 @@ async function subscribePageWebhooks(pageId: string, token: string): Promise<voi
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({ subscribed_fields: "messages,messaging_postbacks,feed", access_token: token }),
+        signal: controller.signal,
       },
     );
     const text = await res.text();
