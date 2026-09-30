@@ -282,6 +282,9 @@ export function ConnectionsTab() {
   
   const rememberedGoogle = (['gmail', 'google_calendar', 'youtube'] as StickyService[])
     .some((svc) => isRememberedConnected(svc, activeWorkspaceId));
+  const googleLive = (svc: StickyService) =>
+    connectedGoogle.has(svc) || isRememberedConnected(svc, activeWorkspaceId);
+  const gmailLive = !!mailboxInfo?.gmail_connected || googleLive('gmail');
   const someGoogleConnected = connectedGoogle.size > 0 || rememberedGoogle;
   const googleStatus: [string, Tone] = someGoogleConnected
     ? ['מחובר', 'ok']
@@ -296,7 +299,13 @@ export function ConnectionsTab() {
   // always matches the "חבר עמוד פייסבוק" action button in the card below.
   // Facebook / Instagram are strictly workspace-scoped: never fall back to
   // another workspace's binding.
-  const fbVerified = !!(fbHealth?.pageConnected || meta?.connected) && fbHealth?.needsReconnect !== true;
+  const fbLiveVerified = !!(fbHealth?.pageConnected || meta?.connected) && fbHealth?.needsReconnect !== true;
+  // Sticky: once verified, stays "מחובר" until the user explicitly disconnects
+  // (MetaDirectConnectionCard calls forgetConnected on manual disconnect).
+  useEffect(() => {
+    if (fbLiveVerified) rememberConnected('facebook', activeWorkspaceId, fbHealth?.pageName ?? null);
+  }, [fbLiveVerified, activeWorkspaceId, fbHealth?.pageName]);
+  const fbVerified = fbLiveVerified || isRememberedConnected('facebook', activeWorkspaceId);
   // Header icon/photo state uses the same strict verified value.
   const fbConnected = fbVerified;
   const metaStatus: [string, Tone] = fbVerified
@@ -308,7 +317,7 @@ export function ConnectionsTab() {
   // Instagram card: "מחובר" only when the Page token is verified AND an IG
   // professional account is actually linked to it. Anything else (timeout,
   // failed probe, no linked account) is strictly "לא מחובר".
-  const igConnected = fbVerified && !!fbHealth?.instagram?.id;
+  const igConnected = fbVerified && (!!fbHealth?.instagram?.id || isRememberedConnected('facebook', activeWorkspaceId) && !!fbHealth?.instagram?.id);
   const igStatus: [string, Tone] = igConnected
     ? ['מחובר', 'ok']
     : (fbHealthPending || fbBindingPending) && fbHealth?.needsReconnect !== true
@@ -464,17 +473,17 @@ export function ConnectionsTab() {
       title: 'אימייל',
       titleLead: mailboxInfo?.provider === 'realtyz'
         ? <Mail className={cn('h-5 w-5 shrink-0 text-primary', !mailboxInfo?.address && 'grayscale opacity-40')} strokeWidth={2.25} />
-        : <GoogleBrandGlyph brand="gmail" connected={!!mailboxInfo?.gmail_connected} />,
-      status: mailboxInfo?.provider === 'realtyz' ? 'Realtyz' : mailboxInfo?.gmail_connected ? 'Gmail' : 'Gmail · לא מחובר',
-      tone: (mailboxInfo?.address || mailboxInfo?.gmail_connected ? 'ok' : 'idle') as Tone,
+        : <GoogleBrandGlyph brand="gmail" connected={gmailLive} />,
+      status: mailboxInfo?.provider === 'realtyz' ? 'Realtyz' : gmailLive ? 'Gmail · מחובר' : 'Gmail · לא מחובר',
+      tone: (mailboxInfo?.provider === 'realtyz' ? !!mailboxInfo?.address : gmailLive) ? 'ok' as Tone : 'idle' as Tone,
       node: <WorkspaceMailboxCard />,
     },
     {
       id: 'google_calendar',
       title: 'יומן גוגל',
       titleLead: <GoogleBrandGlyph brand="calendar" connected={connectedGoogle.has('google_calendar') || isRememberedConnected('google_calendar', activeWorkspaceId)} />,
-      status: connectedGoogle.has('google_calendar') ? 'מחובר' : 'לא מחובר',
-      tone: (connectedGoogle.has('google_calendar') ? 'ok' : 'idle') as Tone,
+      status: googleLive('google_calendar') ? 'מחובר' : 'לא מחובר',
+      tone: (googleLive('google_calendar') ? 'ok' : 'idle') as Tone,
       node: (
         <div data-plain>
           <GoogleServiceConnectCard
@@ -492,8 +501,8 @@ export function ConnectionsTab() {
       id: 'youtube',
       title: 'YouTube',
       titleLead: <GoogleBrandGlyph brand="youtube" connected={connectedGoogle.has('youtube') || isRememberedConnected('youtube', activeWorkspaceId)} />,
-      status: connectedGoogle.has('youtube') ? 'מחובר' : 'לא מחובר',
-      tone: (connectedGoogle.has('youtube') ? 'ok' : 'idle') as Tone,
+      status: googleLive('youtube') ? 'מחובר' : 'לא מחובר',
+      tone: (googleLive('youtube') ? 'ok' : 'idle') as Tone,
       node: (
         <div data-plain className="space-y-3">
           <GoogleServiceConnectCard
