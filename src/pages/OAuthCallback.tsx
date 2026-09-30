@@ -159,6 +159,31 @@ export default function OAuthCallback() {
     window.location.replace(CONNECTIONS_PATH);
   };
 
+  // Last-resort page capture: any window error or unhandled promise rejection
+  // during the OAuth redirect must land ON THE SCREEN with its exact message —
+  // never disappear into the console as a silent crash.
+  useEffect(() => {
+    const show = (err: unknown) => {
+      const text = err instanceof Error ? err.message : String(err ?? 'unknown');
+      console.error('[oauth-callback] uncaught page error', err);
+      setIsLoading(false);
+      setError((prev) => prev ?? {
+        title: 'שגיאת דפדפן במהלך האימות',
+        detail: text,
+        hint: 'אירעה שגיאה לא צפויה בדפדפן. ההודעה המדויקת מוצגת למטה.',
+        raw: text,
+      });
+    };
+    const onError = (e: ErrorEvent) => show(e.error ?? e.message);
+    const onRejection = (e: PromiseRejectionEvent) => show(e.reason);
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+  }, []);
+
   /**
    * Starts a brand-new Facebook login (fresh code + the Page-selection step),
    * which is the only valid recovery from a used code or an empty Page list.
