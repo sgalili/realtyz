@@ -462,8 +462,10 @@ export function ConnectionsTab() {
     {
       id: 'mailbox',
       title: 'אימייל',
-      titleLead: <Mail className={cn('h-5 w-5 shrink-0 text-[#1d4ed8]', !mailboxInfo?.address && 'grayscale opacity-40')} strokeWidth={2.25} />,
-      status: mailboxInfo?.provider === 'realtyz' ? 'Realtyz' : mailboxInfo?.gmail_connected ? 'Gmail' : mailboxInfo?.address ? 'Realtyz' : 'לא הוגדר',
+      titleLead: mailboxInfo?.provider === 'realtyz'
+        ? <Mail className={cn('h-5 w-5 shrink-0 text-primary', !mailboxInfo?.address && 'grayscale opacity-40')} strokeWidth={2.25} />
+        : <GoogleBrandGlyph brand="gmail" connected={!!mailboxInfo?.gmail_connected} />,
+      status: mailboxInfo?.provider === 'realtyz' ? 'Realtyz' : mailboxInfo?.gmail_connected ? 'Gmail' : 'Gmail · לא מחובר',
       tone: (mailboxInfo?.address || mailboxInfo?.gmail_connected ? 'ok' : 'idle') as Tone,
       node: <WorkspaceMailboxCard />,
     },
