@@ -17,33 +17,43 @@ export function useWorkspaceMailbox() {
 
 export function WorkspaceMailboxCard() {
   const qc = useQueryClient();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { data: mb } = useWorkspaceMailbox();
-  const useRealtyz = mb?.provider === 'realtyz';
+  const useGmail = mb?.provider !== 'realtyz';
 
-  const setProvider = async (realtyz: boolean) => {
-    const { error } = await supabase.rpc('set_workspace_email_provider' as never, { p_provider: realtyz ? 'realtyz' : 'gmail' } as never);
-    if (error) return toast.error(error.message);
+  const setProvider = async (gmail: boolean) => {
+    const provider = gmail ? 'gmail' : 'realtyz';
+    const key = ['workspace-mailbox', workspaceOwnerId];
+    const prev = qc.getQueryData(key);
+    // Optimistic: the collapsed card header updates instantly.
+    qc.setQueryData(key, (old: any) => ({ ...(old ?? {}), provider }));
+    const { error } = await supabase.rpc('set_workspace_email_provider' as never, { p_provider: provider } as never);
+    if (error) {
+      qc.setQueryData(key, prev);
+      return toast.error(error.message);
+    }
     qc.invalidateQueries({ queryKey: ['workspace-mailbox'] });
-    toast.success(realtyz ? 'השליחה תתבצע מכתובת Realtyz' : 'השליחה תתבצע דרך Gmail');
+    toast.success(gmail ? 'השליחה תתבצע דרך Gmail' : 'השליחה תתבצע מכתובת Realtyz');
   };
 
   return (
     <div data-plain className="space-y-4">
-      <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+      <div className="flex items-center justify-between gap-3 rounded-lg border p-3" dir="rtl">
         <span className="text-sm font-medium">תיבה לשליחה</span>
-        <div className="flex items-center gap-2 text-sm">
-          <span className={!useRealtyz ? 'font-semibold text-destructive' : 'text-muted-foreground'}>Gmail</span>
+        {/* RTL: Gmail on the right, Realtyz on the left; the thumb moves toward the active label. */}
+        <div className="flex items-center gap-2 text-sm" dir="rtl">
+          <span className={useGmail ? 'font-semibold text-destructive' : 'text-muted-foreground'}>Gmail</span>
           <Switch
-            dir="ltr"
-            checked={useRealtyz}
+            dir="rtl"
+            checked={useGmail}
             onCheckedChange={setProvider}
             aria-label="בחירת תיבת מייל"
-            className="data-[state=checked]:!bg-primary data-[state=unchecked]:!bg-destructive"
+            className="data-[state=checked]:!bg-destructive data-[state=unchecked]:!bg-primary [&>span]:data-[state=checked]:!translate-x-0 [&>span]:data-[state=unchecked]:!-translate-x-5 rtl:[&>span]:data-[state=checked]:!translate-x-0"
           />
-          <span className={useRealtyz ? 'font-semibold text-primary' : 'text-muted-foreground'}>Realtyz</span>
+          <span className={!useGmail ? 'font-semibold text-primary' : 'text-muted-foreground'}>Realtyz</span>
         </div>
       </div>
-      {!useRealtyz && (
+      {useGmail && (
         <GoogleServiceConnectCard
           platform="gmail"
           title="Gmail"

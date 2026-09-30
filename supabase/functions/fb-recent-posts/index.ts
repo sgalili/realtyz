@@ -3,7 +3,7 @@
 // campaign_logs. campaign_logs is the permanent source of truth for the feed.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { isMetaPermissionError, resolveMetaPage, resolveMetaPageCandidates } from "../_shared/metaPage.ts";
+import { invalidateMetaTokenCache, isMetaPermissionError, resolveMetaPage, resolveMetaPageCandidates } from "../_shared/metaPage.ts";
 import { resolveCaller } from "../_shared/fbPersonal.ts";
 import { describeMetaError } from "../_shared/metaErrorDetail.ts";
 
