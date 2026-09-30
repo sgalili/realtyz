@@ -705,46 +705,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           <div className="flex flex-wrap items-center gap-2">{actionButtons}</div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={igHandle ? 'default' : 'secondary'} className="gap-1.5">
-            <Instagram className="h-3.5 w-3.5" />
-            {igHandle ? `אינסטגרם: @${igHandle}` : 'אינסטגרם לא מקושר'}
-          </Badge>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1 text-[15px]"
-            onClick={() => setIgHelpOpen(true)}
-          >
-            <Instagram className="h-3.5 w-3.5" /> איך מחברים?
-          </Button>
-        </div>
-
-        <Dialog open={igHelpOpen} onOpenChange={setIgHelpOpen}>
-          <DialogContent dir="rtl" className="text-right sm:max-w-md">
-            <DialogHeader className="text-right">
-              <DialogTitle>חיבור אינסטגרם ב-3 צעדים</DialogTitle>
-              <DialogDescription>
-                אינסטגרם מתחבר דרך עמוד הפייסבוק — אין צורך בהתחברות נפרדת.
-              </DialogDescription>
-            </DialogHeader>
-            <ol className="list-inside list-decimal space-y-1.5 text-[15px] text-muted-foreground">
-              <li>ודא שחשבון האינסטגרם הוא חשבון מקצועי (Business או Creator).</li>
-              <li>באפליקציית אינסטגרם: הגדרות ← קישור חשבונות ← פייסבוק, ובחר את עמוד הפייסבוק המחובר כאן.</li>
-              <li>חזור לכאן — האינסטגרם יופיע מקושר אוטומטית.</li>
-            </ol>
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 text-[15px]"
-              onClick={() => { setIgHelpOpen(false); void probe(true); }}
-            >
-              בדוק חיבור אינסטגרם
-            </Button>
-          </DialogContent>
-        </Dialog>
-
         <Dialog open={tokenHelpOpen} onOpenChange={setTokenHelpOpen}>
           <DialogContent dir="rtl" className="text-right sm:max-w-md">
             <DialogHeader className="text-right">
