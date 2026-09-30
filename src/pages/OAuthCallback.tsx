@@ -600,6 +600,15 @@ export default function OAuthCallback() {
             {error.detail}
           </div>
         )}
+        {error?.raw && (
+          <div
+            dir="ltr"
+            role="alert"
+            className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-left text-sm font-mono font-bold break-all text-destructive"
+          >
+            {error.raw}
+          </div>
+        )}
         {showFallback && (
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
             {error?.restartLogin ? (
@@ -618,5 +627,6 @@ export default function OAuthCallback() {
         )}
       </div>
     </div>
+    </CallbackCrashBoundary>
   );
 }
