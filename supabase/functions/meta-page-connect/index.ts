@@ -54,6 +54,8 @@ async function subscribePageWebhooks(pageId: string, token: string): Promise<voi
     else console.log("[meta-page-connect] webhook subscribed", pageId);
   } catch (e) {
     console.warn("[meta-page-connect] webhook subscribe threw", e instanceof Error ? e.message : e);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
