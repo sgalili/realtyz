@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { openOAuthWindow, getActiveOAuthPopup } from '@/lib/openOAuthWindow';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
 import { openExternal } from '@/lib/openExternal';
@@ -123,6 +123,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
   const probe = useCallback(async (notify = false) => {
     setLoading(true);
+    try {
     // The stored page binding is the source of truth for "connected".
     // meta-publish/status is only an extra health probe: if it fails we must
     // NOT drop the binding-based connected state.
@@ -154,6 +155,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       else toast.error('דף הפייסבוק אינו מחובר');
     }
     setLoading(false);
+    } catch {
+      setLoading(false);
+    }
   }, [onStatus, refreshHealth, refreshBinding, health?.pageConnected, binding?.hasToken]);
 
 
@@ -362,7 +366,23 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         toast.error('הדפדפן חסם את חלון ההתחברות', {
           description: 'אפשרו חלונות קופצים עבור האתר ונסו שוב.',
         });
+        return;
       }
+      // If the user closes the OAuth popup without finishing, the spinner must
+      // reset — otherwise the button stays stuck on the loading state forever.
+      const popupWatch = window.setInterval(() => {
+        if (connectAttemptRef.current !== attemptId) {
+          window.clearInterval(popupWatch);
+          return;
+        }
+        const popup = getActiveOAuthPopup();
+        if (!popup || popup.closed) {
+          window.clearInterval(popupWatch);
+          if (connectAttemptRef.current === attemptId) {
+            cancelConnecting();
+          }
+        }
+      }, 1000);
     } catch (e: any) {
       if (connectAttemptRef.current !== attemptId) return;
       finishConnecting();
@@ -407,8 +427,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       toast.success('עמוד הפייסבוק נותק');
     } catch (e: any) {
       toast.error('ניתוק נכשל', { description: e?.message });
+      // The optimistic wipe above already cleared the local state; resync from
+      // the server so the badge and button don't desync from reality.
+      disconnectedRef.current = false;
+      refreshBinding();
+      refreshHealth();
+      void probe(false).catch(() => undefined);
     } finally {
       // ALWAYS executed — the spinner can never get stuck, success or failure.
+      disconnectedRef.current = true;
       setDisconnecting(false);
     }
   };
@@ -627,13 +654,16 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
         {!isConnected && (
           <div className="rounded-xl border border-dashed p-3 space-y-2">
-            {/* Clicking the spinning button cancels the pending attempt. */}
+            {/* Clicking the spinning button cancels the pending attempt. The
+                label never reads "בטל חיבור" while disconnected — that text is
+                reserved for an active connection. */}
             <Button
               onClick={() => (connecting ? cancelConnecting() : void connect())}
+              title={connecting ? 'לחיצה מבטלת את ניסיון ההתחברות' : undefined}
               className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90"
             >
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
-              {connecting ? 'בטל חיבור' : 'חבר עמוד פייסבוק'}
+              {'חבר עמוד פייסבוק'}
             </Button>
             {pageOptions.length > 0 && (
               <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2">
