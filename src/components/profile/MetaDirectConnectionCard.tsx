@@ -44,9 +44,7 @@ type PageStatus = {
 
 const STATE_PREFIX = 'facebook_page:';
 /** Emergency ceiling for the callback token exchange — spinner never outlives it. */
-const EXCHANGE_TIMEOUT_MS = 20_000;
 /** OAuth must never leave the connect/cancel button spinning indefinitely. */
-const CONNECT_ATTEMPT_TIMEOUT_MS = 30_000;
 
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -105,18 +103,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const expectedStateRef = useRef<string | null>(null);
   const exchangingRef = useRef(false);
   const connectAttemptRef = useRef(0);
-  const connectTimerRef = useRef<number | null>(null);
-
-  const clearConnectTimer = useCallback(() => {
-    if (connectTimerRef.current === null) return;
-    window.clearTimeout(connectTimerRef.current);
-    connectTimerRef.current = null;
-  }, []);
+  // No artificial connect timer: the UI waits passively for the real OAuth
+  // redirect / API response. Cancellation is handled via attempt ids.
 
   const finishConnecting = useCallback(() => {
-    clearConnectTimer();
     setConnecting(false);
-  }, [clearConnectTimer]);
+  }, []);
 
   const cancelConnecting = useCallback(() => {
     // Invalidate the current async continuation. A late response from
@@ -126,8 +118,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     clearPendingOAuth();
     finishConnecting();
   }, [finishConnecting]);
-
-  useEffect(() => () => clearConnectTimer(), [clearConnectTimer]);
 
 
 
@@ -355,25 +345,12 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     disconnectedRef.current = false;
     expectedStateRef.current = null;
     exchangingRef.current = false;
-    clearConnectTimer();
     setConnecting(true);
-    connectTimerRef.current = window.setTimeout(() => {
-      if (connectAttemptRef.current !== attemptId) return;
-      connectAttemptRef.current += 1;
-      finishConnecting();
-      toast.error('החיבור לפייסבוק לא הושלם בזמן', {
-        description: 'אפשר לנסות להתחבר שוב.',
-      });
-    }, CONNECT_ATTEMPT_TIMEOUT_MS);
     try {
       clearPendingOAuth();
       // Shared start path — identical function, scopes and DB upsert as the
       // /campaigns banner.
-      const authUrl = await withTimeout(
-        startMetaPageConnect(),
-        EXCHANGE_TIMEOUT_MS,
-        'שירות החיבור לפייסבוק לא הגיב בזמן. נסה שוב.',
-      );
+      const authUrl = await startMetaPageConnect();
       // The user may have pressed "בטל חיבור" while the request was pending.
       // Ignore that stale result instead of reopening OAuth and reviving state.
       if (connectAttemptRef.current !== attemptId) return;

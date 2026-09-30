@@ -28,7 +28,6 @@ const CONNECTIONS_PATH = '/profile?tab=connections';
  */
 const EXCHANGE_TIMEOUT_MS = 15_000;
 /** Absolute ceiling for the whole callback: never sit on the loader. */
-const HARD_TIMEOUT_MS = 20_000;
 
 /** Google states we can exchange right here in the callback. */
 const GOOGLE_STATE_PREFIXES = ['gmail', 'google_calendar', 'youtube', 'google_drive', 'google_all'] as const;
@@ -112,7 +111,6 @@ export default function OAuthCallback() {
   const [error, setError] = useState<OAuthError>(null);
   const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('מסיים אימות...');
-  const hardTimerRef = useRef<number | null>(null);
   const exchangeDoneRef = useRef(false);
   const exchangeStartedRef = useRef(false);
   const [restarting, setRestarting] = useState(false);
@@ -141,32 +139,9 @@ export default function OAuthCallback() {
     }
   };
 
-  // Absolute escape hatch: whatever happens, never sit on the loader.
-  useEffect(() => {
-    hardTimerRef.current = window.setTimeout(() => {
-      if (exchangeDoneRef.current) return;
-      exchangeDoneRef.current = true;
-      console.error('[oauth-callback] absolute callback timeout', { timeoutMs: HARD_TIMEOUT_MS });
-      setIsLoading(false);
-      setError({
-        title: 'החיבור לא הושלם בזמן',
-        detail: `callback exceeded ${HARD_TIMEOUT_MS}ms without a server answer`,
-        hint: 'פייסבוק לא סיים את האישור. הקוד הנוכחי חד-פעמי, לכן יש להתחיל חיבור חדש.',
-        actionLabel: 'התחברות מחדש לפייסבוק',
-        restartLogin: true,
-      });
-    }, HARD_TIMEOUT_MS);
-
-    return () => {
-      if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
-    };
-  }, []);
-
-  // Once we have a definitive outcome, kill the safety timer.
-  useEffect(() => {
-    if (!error && !success) return;
-    if (hardTimerRef.current) window.clearTimeout(hardTimerRef.current);
-  }, [error, success]);
+  // No artificial timeout: the UI waits passively for the real OAuth
+  // redirect / server response. The edge function caps its own Graph calls
+  // and always returns a definitive success or error.
 
   // Token exchange logic. Completely separate from the UI safety timer.
   useEffect(() => {
