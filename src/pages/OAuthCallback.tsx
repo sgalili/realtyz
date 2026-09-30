@@ -516,6 +516,7 @@ export default function OAuthCallback() {
           title: 'החיבור לפייסבוק נכשל',
           detail: reason,
           hint: 'לא ניתן היה להשלים את החיבור. אפשר לנסות שוב או לחזור למערכת.',
+          raw: reason,
         });
       }
       } catch (e: any) {
@@ -527,6 +528,7 @@ export default function OAuthCallback() {
           title: 'החיבור לא הושלם',
           detail: reason,
           hint: 'אירעה שגיאה במהלך האימות. אפשר לנסות שוב או לחזור למערכת.',
+          raw: reason,
         });
       }
     };
