@@ -96,12 +96,15 @@ const GRAPH_VERSION = Deno.env.get("META_GRAPH_VERSION") || "v26.0";
 const CANONICAL_REDIRECT_URI = "https://realtyz.co.il/oauth/callback";
 
 /** Structured Graph error so failures are never a generic Hebrew sentence. */
-function graphErrorDetail(payload: any): {
+function graphErrorDetail(payload: any, status?: number | null): {
   message: string | null;
   type: string | null;
   code: number | null;
   subcode: number | null;
   trace: string | null;
+  user_title: string | null;
+  user_msg: string | null;
+  http_status: number | null;
 } {
   const e = payload?.error ?? {};
   return {
@@ -110,16 +113,20 @@ function graphErrorDetail(payload: any): {
     code: typeof e?.code === "number" ? e.code : null,
     subcode: typeof e?.error_subcode === "number" ? e.error_subcode : null,
     trace: e?.fbtrace_id ? String(e.fbtrace_id) : null,
+    user_title: e?.error_user_title ? String(e.error_user_title) : null,
+    user_msg: e?.error_user_msg ? String(e.error_user_msg) : null,
+    http_status: typeof status === "number" ? status : null,
   };
 }
 
-/** Logs the verbatim Graph payload and returns the structured detail. */
-function logGraphFailure(stage: string, payload: any) {
-  const detail = graphErrorDetail(payload);
+/** Logs the verbatim Graph payload (plus HTTP status) and returns the structured detail. */
+function logGraphFailure(stage: string, payload: any, status?: number | null) {
+  const detail = graphErrorDetail(payload, status);
   // describeMetaError flags Development Mode / unverified-business refusals so
   // the logs say whether the account simply needs a tester role in the app.
   const meta = describeMetaError(payload, null);
   console.error(`[meta-page-connect] ${stage} failed`, JSON.stringify({
+    http_status: detail.http_status,
     detail,
     kind: meta.kind,
     dev_mode_restricted: meta.dev_mode_restricted,
@@ -151,12 +158,15 @@ async function graph(path: string) {
     const text = await res.text();
     let payload: any = null;
     try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
-    return { ok: res.ok, payload };
+    // Status is kept so every caller can log/report Meta's real HTTP code
+    // (400 invalid code, 401 bad token, 5xx Meta outage) instead of "failed".
+    return { ok: res.ok, status: res.status, payload };
   } catch (e) {
     const aborted = (e as any)?.name === "AbortError";
-    console.error("[meta-page-connect] graph call failed", aborted ? "timeout" : String(e));
+    console.error("[meta-page-connect] graph call failed", aborted ? "timeout" : String(e), "path =", path.split("access_token")[0]);
     return {
       ok: false,
+      status: null,
       payload: {
         error: {
           message: aborted
@@ -901,25 +911,44 @@ async function handleRequest(req: Request): Promise<Response> {
       let userToken = suppliedToken;
       let userTokenExpiresAt: string | null = null;
       if (!userToken) {
-        const tokenRes = await graph(
-          `/oauth/access_token?${new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            redirect_uri: CANONICAL_REDIRECT_URI,
-            code,
-          })}`,
-        );
-        if (!tokenRes.ok || !tokenRes.payload?.access_token) {
-          const detail = logGraphFailure("code_exchange", tokenRes.payload);
+        // The authorization-code exchange is the most fragile call in the flow:
+        // fully wrapped so ANY failure shape (network throw, non-JSON body,
+        // non-200 status) reaches the UI verbatim instead of failing silently.
+        try {
+          const tokenRes = await graph(
+            `/oauth/access_token?${new URLSearchParams({
+              client_id: clientId,
+              client_secret: clientSecret,
+              redirect_uri: CANONICAL_REDIRECT_URI,
+              code,
+            })}`,
+          );
+          if (!tokenRes.ok || !tokenRes.payload?.access_token) {
+            const detail = logGraphFailure("code_exchange", tokenRes.payload, tokenRes.status);
+            return json({
+              error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד."),
+              error_detail: detail,
+              fb_message: detail.message,
+              // Verbatim Facebook response body (truncated) so the exact reason
+              // is always visible in the UI and the logs.
+              fb_raw: JSON.stringify(tokenRes.payload ?? null).slice(0, 1000),
+              http_status: tokenRes.status ?? null,
+              stage: "code_exchange",
+              redirect_uri_used: CANONICAL_REDIRECT_URI,
+            }, 200);
+          }
+          userToken = String(tokenRes.payload.access_token);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("[meta-page-connect] code_exchange threw unexpectedly", msg);
           return json({
-            error: humanizeGraphError(tokenRes.payload, "פייסבוק דחה את ההתחברות. יש לנסות להתחבר מחדש ולאשר את הרשאות העמוד."),
-            error_detail: detail,
-            fb_message: detail.message,
-            stage: "code_exchange",
+            error: `חילוף קוד האימות מול פייסבוק נכשל: ${msg}`,
+            error_detail: { message: msg, http_status: null },
+            fb_message: msg,
+            stage: "code_exchange_exception",
             redirect_uri_used: CANONICAL_REDIRECT_URI,
           }, 200);
         }
-        userToken = String(tokenRes.payload.access_token);
       }
 
 
@@ -939,7 +968,7 @@ async function handleRequest(req: Request): Promise<Response> {
           if (Number.isFinite(expiresIn) && expiresIn > 0) {
             userTokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
           }
-        } else logGraphFailure("long_lived_token", longRes.payload);
+        } else logGraphFailure("long_lived_token", longRes.payload, longRes.status);
       }
 
 
@@ -1032,7 +1061,7 @@ async function handleRequest(req: Request): Promise<Response> {
           p.access_token = String(tokRes.payload.access_token);
           p.name = p.name ?? tokRes.payload?.name ?? null;
         } else {
-          logGraphFailure("page_token_fetch", tokRes.payload);
+          logGraphFailure("page_token_fetch", tokRes.payload, tokRes.status);
         }
       }
 

@@ -365,24 +365,32 @@ export default function OAuthCallback() {
             const ctx: any = (fnError as any)?.context;
             const body = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
             if (body) {
-              const parts = [body.error, body.fb_message, body.error_detail?.message]
+              const parts = [body.error, body.fb_message, body.error_detail?.message, body.fb_raw]
                 .filter((p: any) => typeof p === 'string' && p.trim());
               if (parts.length) raw = Array.from(new Set(parts)).join(' — ');
+              console.error('[oauth-callback] facebook exchange transport error body', body);
             }
           } catch { /* keep transport message */ }
           throw new Error(raw);
         }
         const payload = (data as any) ?? {};
         if (payload.error) {
-          // Surface Facebook's own wording (message / code / fbtrace_id) instead
-          // of a generic failure sentence.
+          // Surface Facebook's own wording (message / code / fbtrace_id / HTTP
+          // status / verbatim body) instead of a generic failure sentence.
           const d = payload.error_detail ?? {};
           const parts = [String(payload.error)];
           if (d.message && !String(payload.error).includes(String(d.message))) parts.push(String(d.message));
+          if (d.user_title) parts.push(String(d.user_title));
+          if (d.user_msg) parts.push(String(d.user_msg));
           if (d.code) parts.push(`code ${d.code}${d.subcode ? `/${d.subcode}` : ''}`);
           if (d.trace) parts.push(`trace ${d.trace}`);
+          if (payload.http_status) parts.push(`HTTP ${payload.http_status}`);
           if (payload.stage) parts.push(`stage ${payload.stage}`);
-          console.error('[oauth-callback] facebook exchange failed', payload);
+          console.error('[oauth-callback] facebook exchange failed', {
+            payload,
+            fb_raw: payload.fb_raw ?? null,
+            http_status: payload.http_status ?? null,
+          });
           if (cancelled || exchangeDoneRef.current) return;
           exchangeDoneRef.current = true;
           setIsLoading(false);
