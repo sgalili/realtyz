@@ -4286,6 +4286,15 @@ const FB_DEV_MODE_NOTE =
   'בנוסף יש להפעיל את ההרשאה pages_read_engagement לפיתוח (App review ‹ Permissions and features) ואז להתחבר מחדש כדי לקבל טוקן חדש.\n' +
   'לחשבונות שאינם Testers נדרשים אימות עסקי (Business Verification) ו-App Review.';
 
+const facebookDevModeText = (payload: unknown): string => {
+  const d = payload as any;
+  const raw = d?.sync_error?.message ?? d?.raw_error?.message ?? d?.raw_error ?? d?.message ?? '';
+  const he = d?.sync_error?.message_he ?? d?.message_he ?? '';
+  const code = d?.sync_error?.code ?? d?.code ?? 10;
+  return [he || 'פייסבוק סירבה לקריאת הפוסטים.', raw && !String(he).includes(String(raw)) ? `פירוט: ${typeof raw === 'string' ? raw : JSON.stringify(raw)}` : '', `(code ${code})`]
+    .filter(Boolean).join(' ');
+};
+
 const facebookDevModeNote = (payload: unknown, message?: string | null): string | null => {
   const data = payload as any;
   const flagged = data?.sync_error?.dev_mode_restricted === true || data?.dev_mode_restricted === true;
@@ -4902,7 +4911,8 @@ const PublishedFeed = ({
             const importFailure = facebookSyncErrorText(importData, importError);
             // Meta Development Mode (code 10): bypass silently — log only.
             if (facebookDevModeNote(importData, null)) {
-              console.info('[PublishedFeed] fb import skipped: Meta Development Mode (code 10)');
+              console.error('[PublishedFeed] fb import refused by Meta (code 10)', importData);
+              setFacebookSyncWarning(facebookDevModeText(importData));
             } else if (importError || (importData as any)?.ok === false || (importedCount === 0 && importFailure)) {
               console.warn('[PublishedFeed] fb persistent import failed', { importError, importData });
               if (importFailure) setFacebookSyncWarning(importFailure);
@@ -4945,7 +4955,8 @@ const PublishedFeed = ({
               const reconcileFailure = facebookSyncErrorText(data, reconcileError);
               // Meta Development Mode (code 10): bypass silently — log only.
               if (facebookDevModeNote(data, null)) {
-                console.info('[PublishedFeed] native reconcile skipped: Meta Development Mode (code 10)');
+                console.error('[PublishedFeed] native reconcile refused by Meta (code 10)', data);
+                setFacebookSyncWarning(facebookDevModeText(data));
               } else if (reconcileFailure) {
                 console.warn('[PublishedFeed] native reconcile failed', { reconcileError, data });
                 setFacebookSyncWarning(reconcileFailure);
@@ -5311,11 +5322,8 @@ const PublishedFeed = ({
             const isDevModeRestricted =
               facebookDevModeNote(syncData, providerError) !== null;
             if (isDevModeRestricted) {
-              console.info('[campaign] facebook post refresh skipped: Meta app in Development Mode (code 10)', {
-                raw_status: (syncData as any)?.raw_status,
-                graph_source: (syncData as any)?.graph_source,
-              });
-              setFacebookSyncWarning(null);
+              console.error('[campaign] facebook post refresh refused by Meta (code 10)', syncData);
+              setFacebookSyncWarning(facebookDevModeText(syncData));
               hadTransientIssue = true;
             } else {
               console.warn('[campaign] facebook post refresh was non-fatal', {
