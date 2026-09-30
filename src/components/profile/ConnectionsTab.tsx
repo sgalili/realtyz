@@ -3,7 +3,7 @@ import { ChevronDown, Mail, MessageSquare, Phone, Settings2 } from 'lucide-react
 import { WorkspaceMailboxCard, useWorkspaceMailbox } from '@/components/profile/WorkspaceMailboxCard';
 import { BrandIcon } from '@/components/BrandIcon';
 import { PortalBrandGlyph } from '@/components/profile/PortalBrandGlyph';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -27,6 +27,7 @@ import {
   isRememberedConnected,
   rememberConnected,
   type StickyService,
+  CONN_STATUS_EVENT,
 } from '@/lib/connectionStatusCache';
 
 type Tone = 'ok' | 'idle';
