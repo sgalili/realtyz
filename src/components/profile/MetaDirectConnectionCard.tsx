@@ -217,7 +217,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           user_access_token: grant.accessToken ?? undefined,
           redirect_uri: redirectUri,
         });
-        window.clearTimeout(safety);
         setManualOpen(false);
         if (res?.page?.id) {
           setPage({
@@ -242,7 +241,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         refreshHealth();
         await probe(false).catch(() => undefined);
       } catch (e: any) {
-        window.clearTimeout(safety);
         // ZERO-FRICTION FALLBACK: the shared platform Meta app may not have
         // advanced access for this user yet. Reopen the dialog automatically with
         // the review-free basic scopes instead of dead-ending the connection.
@@ -262,7 +260,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         setManualOpen(true);
 
       } finally {
-        window.clearTimeout(safety);
         exchangingRef.current = false;
         setConnecting(false);
         setLoading(false);
