@@ -97,7 +97,7 @@ export function GroupStatusChips({
   }
 
   return (
-    <div className={inline ? (open ? 'w-full basis-full min-w-0' : 'inline-block') : 'mt-1.5'} dir="rtl">
+    <div className={inline ? 'relative inline-block' : 'relative mt-1.5'} dir="rtl">
       <Button
         variant="ghost"
         size="sm"
@@ -111,7 +111,7 @@ export function GroupStatusChips({
       </Button>
 
       {open && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <div className="absolute right-0 top-full z-30 mt-1 flex max-h-60 w-max max-w-[min(20rem,85vw)] flex-wrap items-center gap-1.5 overflow-y-auto rounded-xl border border-border bg-popover p-2 shadow-lg" onClick={(e) => e.stopPropagation()}>
           {ids.slice(0, max).map((gid) => {
             const bare = groupKeyFrom(gid);
             const info = lookup(gid);
