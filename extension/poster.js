@@ -291,38 +291,48 @@
   };
 
   async function postToGroup(job) {
-    if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
+    log('postToGroup started', { jobId: job && job.id, url: location.href });
+    if (isLoggedOut()) { log('FAIL: user is logged out'); return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' }; }
     if (!groupContextOk()) {
+      log('FAIL: not a group context', location.pathname);
       return { ok: false, reason: 'הפעולה בוטלה: העמוד הפתוח אינו קבוצת פייסבוק' };
     }
 
     // 0. wait for the group feed to be fully rendered before touching anything
+    log('waiting for group feed to load...');
     const feedReady = await waitForDom(() => (
       document.querySelector('div[role="feed"]') || composerTrigger() || textbox()
     ) ? true : null, 30000, 500);
-    if (!feedReady) return { ok: false, reason: 'פיד הקבוצה לא נטען — לא נמצאה תיבת הפרסום' };
+    if (!feedReady) { log('FAIL: feed did not load in 30s'); return { ok: false, reason: 'פיד הקבוצה לא נטען — לא נמצאה תיבת הפרסום' }; }
+    log('feed ready');
     await sleep(1200);
 
     // 1. open the composer
     let box = textbox();
     if (!box) {
+      log('locating post trigger ("מה עולה בראשך?")...');
       const trigger = await waitForDom(composerTrigger, 15000);
-      if (!trigger) return { ok: false, reason: 'לא נמצא "מה עולה בראשך?" בקבוצה תוך 15 שניות (אין הרשאת פרסום או שהעמוד לא נטען)' };
+      if (!trigger) { log('FAIL: trigger not found in 15s'); return { ok: false, reason: 'לא נמצא "מה עולה בראשך?" בקבוצה תוך 15 שניות (אין הרשאת פרסום או שהעמוד לא נטען)' }; }
+      log('trigger found, clicking it');
       trigger.scrollIntoView({ block: 'center' });
       trigger.click();
+      log('waiting for composer modal to open...');
       box = await waitForDom(textbox, 15000);
       if (!box) {
         // one retry: Facebook sometimes swallows the first click while hydrating
+        log('modal did not open, retrying trigger click');
         const again = composerTrigger();
         if (again) { again.click(); box = await waitForDom(textbox, 10000); }
       }
     }
-    if (!box) return { ok: false, reason: 'עורך הפוסט לא נפתח' };
+    if (!box) { log('FAIL: composer modal never opened'); return { ok: false, reason: 'עורך הפוסט לא נפתח' }; }
+    log('composer modal open, textbox located');
 
     // 2. text
     reportStage('writing');
+    log('injecting post text...');
     const injected = await injectText(box, String(job.message || ''));
-    if (!injected) return { ok: false, reason: 'הזנת תוכן הפוסט נכשלה' };
+    if (!injected) { log('FAIL: text injection failed'); return { ok: false, reason: 'הזנת תוכן הפוסט נכשלה' }; }
     // let Facebook's React state register the input before validating / submitting
     await sleep(1200);
     // Verify the text landed in the group post modal (never a comment box).
@@ -330,24 +340,30 @@
     const probe = firstLine.replace(/\s+/g, ' ').slice(0, 25);
     const liveBox = textbox();
     if (!liveBox || isCommentBox(liveBox) || (probe && !textOf(liveBox).replace(/\s+/g, ' ').includes(probe))) {
+      log('FAIL: injected text not verified in modal');
       return { ok: false, reason: 'הטקסט לא הוזן לחלון הפוסט של הקבוצה' };
     }
+    log('text verified in composer');
 
     // 3. media
     const photoList = Array.isArray(job.image_urls) && job.image_urls.length ? job.image_urls : (job.image_url ? [job.image_url] : []);
     if (photoList.length) {
+      log('attaching media', photoList.length, 'file(s)');
       const mediaErr = await attachImages(photoList);
-      if (mediaErr) return { ok: false, reason: mediaErr };
+      if (mediaErr) { log('FAIL: media attach —', mediaErr); return { ok: false, reason: mediaErr }; }
+      log('media attached');
     }
 
     // 4. post
+    log('locating "פרסם" submit button...');
     const btn = await waitFor(() => {
       const b = postButton();
       if (!b) return null;
       const disabled = b.getAttribute('aria-disabled') === 'true' || b.getAttribute('disabled') !== null;
       return disabled ? null : b;
     }, 20000);
-    if (!btn) return { ok: false, reason: 'כפתור הפרסום לא היה זמין' };
+    if (!btn) { log('FAIL: submit button unavailable'); return { ok: false, reason: 'כפתור הפרסום לא היה זמין' }; }
+    log('clicking "פרסם"');
     btn.click();
     const submitted = true;
 
