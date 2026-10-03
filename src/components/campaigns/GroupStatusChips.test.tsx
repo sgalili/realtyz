@@ -37,13 +37,14 @@ it('opens a single group directly without a dropdown, even when series children 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.queryByText('child')).not.toBeInTheDocument();
 });
-it('collapses multiple campaign targets into a counter and reveals names only in the overlay', () => {
+it('collapses multiple campaign targets into a counter whose overlay shows only series details', () => {
   render(<GroupStatusChips collapsedCounter groupIds={['123', 'ext:123', '456']} meta={{
     '123': { name: 'קבוצה א', icon: null }, '456': { name: 'קבוצה ב', icon: null },
   }}>series details</GroupStatusChips>);
   expect(screen.queryByText('קבוצה א')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '2 קבוצות' }));
-  expect(screen.getByText('קבוצה א')).toBeVisible();
+  expect(screen.queryByText('קבוצה א')).not.toBeInTheDocument();
+  expect(screen.queryByText('קבוצה ב')).not.toBeInTheDocument();
   expect(screen.getByText('series details')).toBeVisible();
 });
 it('puts the static status icon before the single campaign group name', () => {
