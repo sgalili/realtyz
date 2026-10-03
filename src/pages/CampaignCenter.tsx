@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 
 import { supabase } from '@/integrations/supabase/client';
+import { syncPagePostsViaExtension } from '@/lib/extensionPageSync';
 import { nextBlockedKeys } from '@/lib/mediaBlocklist';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
