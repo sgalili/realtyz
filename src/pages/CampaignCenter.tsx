@@ -23,7 +23,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square, Users,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History, Save, XCircle, Clock } from 'lucide-react';
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History, Save, XCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -6212,12 +6212,10 @@ const PublishedFeed = ({
                 })() : isPaused ? null : isSeries ? (() => {
                   const ok = seriesSlots.filter((x: any) => ['sent', 'published', 'completed'].includes(String(x.status || '').toLowerCase()) || isCommentOnlyFailure(x.failure_reason)).length;
                   const bad = seriesSlots.filter((x: any) => String(x.status || '').toLowerCase() === 'failed' && !isCommentOnlyFailure(x.failure_reason)).length;
-                  const wait = seriesSlots.length - ok - bad;
                   return (
-                    <span className="inline-flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums" title={`${ok} הצלחות, ${bad} נכשלו, ${wait} בתור`}>
+                    <span className="inline-flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums" title={`${ok} הצלחות, ${bad} נכשלו`}>
                       {ok > 0 && <span className="inline-flex items-center gap-0.5 text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />{ok}</span>}
                       {bad > 0 && <span className="inline-flex items-center gap-0.5 text-destructive"><XCircle className="h-3.5 w-3.5" />{bad}</span>}
-                      {wait > 0 && <span className="inline-flex items-center gap-0.5"><Clock className="h-3.5 w-3.5" />{wait}</span>}
                     </span>
                   );
                 })() : (extProgress && hasGroupTargets) ? (
