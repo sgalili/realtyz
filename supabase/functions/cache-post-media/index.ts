@@ -1,3 +1,4 @@
+import { postMediaIdentity } from '../_shared/postMediaIdentity.ts';
 // Mirrors social post images (Facebook CDN URLs that expire via `oe=`/`oh=`
 // signatures) into the public `post-media-cache` storage bucket and re-links
 // the campaign row so the feed keeps rendering long after the CDN link dies.
@@ -26,14 +27,7 @@ const isHttp = (v: unknown): v is string =>
 
 const isVideo = (u: string) => /\.(mp4|mov|m4v|webm)(\?|$)/i.test(u);
 
-const mediaDedupeKey = (url: string): string => {
-  try {
-    const u = new URL(url);
-    return `${u.hostname}${u.pathname}`.toLowerCase();
-  } catch {
-    return url.split("?")[0].toLowerCase();
-  }
-};
+const mediaDedupeKey = postMediaIdentity;
 
 const mergeUrls = (...values: unknown[]): string[] => {
   const seen = new Set<string>();

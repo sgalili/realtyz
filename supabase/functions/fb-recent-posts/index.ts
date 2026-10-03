@@ -1,3 +1,4 @@
+import { postMediaIdentity } from '../_shared/postMediaIdentity.ts';
 // Fetch Facebook Page posts directly via the Meta Graph API (using the
 // workspace's connected Page token) and persist every native Page post into
 // campaign_logs. campaign_logs is the permanent source of truth for the feed.
@@ -66,15 +67,7 @@ const isRenderableMediaUrl = (value: unknown): value is string => {
   }
 };
 
-const mediaDedupeKey = (url: string): string => {
-  try {
-    const u = new URL(url);
-    const filename = u.pathname.split('/').pop() || u.pathname;
-    return filename.toLowerCase();
-  } catch {
-    return String(url).split('?')[0].toLowerCase();
-  }
-};
+const mediaDedupeKey = postMediaIdentity;
 
 const normalizeMediaUrls = (value: unknown): string[] => {
   const input = Array.isArray(value) ? value : [];

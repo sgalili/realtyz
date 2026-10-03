@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Clean existing duplicate post images and prevent duplication during fetching, saving, and rendering.
+
 - [x] Permanently delete posts and associated queued jobs with verified results.
 - [x] Offer current-post or entire-series deletion for master posts.
 

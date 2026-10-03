@@ -8,6 +8,9 @@
 //   3. serialized JSON objects  -> '{"url":"https://...","mediaType":"link"}'
 // Only (1) ever rendered; (2) and (3) produced broken <img> tags.
 
+import { sha1 } from '@noble/hashes/sha1';
+import { bytesToHex } from '@noble/hashes/utils';
+
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/+$/, '') ?? '';
 export const POST_MEDIA_BUCKET = 'post-media-cache';
 
@@ -109,12 +112,21 @@ export function resolveMediaUrls(values: unknown, bucket = POST_MEDIA_BUCKET): s
   for (const item of source) {
     const url = resolveMediaUrl(item, bucket);
     if (!url) continue;
-    const key = mediaDedupeKey(url);
+    const key = mediaSourceIdentity(url);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(url);
   }
   return out;
+}
+
+/** Cached filenames are SHA-1 identities of the original host/path. */
+export function mediaSourceIdentity(url: string): string {
+  try {
+    const parsed = new URL(url.trim());
+    const cached = parsed.pathname.match(/\/post-media-cache\/posts\/([a-f0-9]{40})\./i);
+    return cached?.[1]?.toLowerCase() ?? bytesToHex(sha1(new TextEncoder().encode(`${parsed.hostname}${parsed.pathname}`)));
+  } catch { return url.trim().split(/[?#]/)[0]; }
 }
 
 export function mediaDedupeKey(url: string): string {

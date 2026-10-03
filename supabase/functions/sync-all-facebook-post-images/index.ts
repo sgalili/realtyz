@@ -1,3 +1,4 @@
+import { postMediaIdentity } from '../_shared/postMediaIdentity.ts';
 // Bulk media re-sync for every stored Facebook campaign post.
 //
 // 1. Pulls active full-resolution media for each post from the Facebook Graph
@@ -49,14 +50,7 @@ const isRenderableMediaUrl = (value: unknown): value is string => {
 
 const isCached = (url: string) => url.includes(`/${BUCKET}/`);
 
-const mediaDedupeKey = (url: string): string => {
-  try {
-    const u = new URL(url);
-    return `${u.hostname}${u.pathname}`.toLowerCase();
-  } catch {
-    return url.split("?")[0].toLowerCase();
-  }
-};
+const mediaDedupeKey = postMediaIdentity;
 
 const mergeUrls = (...values: unknown[]): string[] => {
   const seen = new Set<string>();
