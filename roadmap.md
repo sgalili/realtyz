@@ -29,6 +29,6 @@
 - [ ] Reconnect both Facebook Pages (blocked: owner must reconnect; current tokens can't enable delivery)
 
 ## Group pills and posting continuation
-- [ ] Lock group-pill/dropdown geometry and open single-group links directly.
-- [ ] Add confirmed workspace-safe continuation/resubmission preserving original job data and schedule.
-- [ ] Verify layout and continuation behavior without publishing unsolicited Facebook posts.
+- [x] Lock group-pill/dropdown geometry and open single-group links directly.
+- [x] Add confirmed workspace-safe continuation/resubmission preserving original job data and schedule.
+- [x] Verify layout and confirmation on the signed-in workspace; test retry/resubmit with mocked jobs, without live Facebook publication.
