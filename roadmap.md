@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Clean expanded groups and remove the repost title field.
+- [ ] Preserve clean text and configured first-comment link selections without misrepresenting Rita.
+- [ ] Fix and verify multi-selection layout on campaigns.
+
 - [x] Open continuation/repost in the full editor with editable settings and safe explicit resubmission.
 - [x] Align cancellation right beside publication confirmation and verify signed-in edits, cancellation, future-scheduled save/readback and cleanup without Facebook publication.
 

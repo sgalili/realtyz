@@ -3088,7 +3088,7 @@ const FullRepostEditor = ({ request, brandName, socialProfiles, onClose }: {
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [ready, setReady] = useState(false);
-  const [title, setTitle] = useState(request.post.campaign_name || 'פרסום מחדש');
+  const title = safeUtf8(request.post.campaign_name || 'פרסום מחדש');
   const publishRef = useRef<(() => boolean) | null>(null);
   const draft = useMemo(() => repostEditorDraft(request), [request]);
   const submit = async (payload: ConfirmPayload) => {
@@ -3153,7 +3153,6 @@ const FullRepostEditor = ({ request, brandName, socialProfiles, onClose }: {
     <DialogContent dir="rtl" className="flex max-h-[90dvh] w-[calc(100%-2rem)] min-w-0 max-w-3xl flex-col overflow-hidden p-4 sm:p-6" onInteractOutside={(e) => { if (busy) e.preventDefault(); }}>
       <DialogHeader><DialogTitle>עריכה ופרסום מחדש</DialogTitle><DialogDescription>אישור יפרסם שוב לקבוצות שנבחרו, גם אם הפוסט כבר פורסם.</DialogDescription></DialogHeader>
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain space-y-4">
-        <div className="space-y-1"><Label htmlFor="repost-title">כותרת</Label><Input id="repost-title" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         <InlineComposer channel={{ id: 'facebook', label: 'Facebook', brand: 'facebook' }} brandName={brandName}
           socialProfiles={socialProfiles} instanceId={`repost:${request.post.id}`} initialDraft={draft} editorMode hideBottomBar
           onRegisterPublish={(fn) => { publishRef.current = fn; }} onStatus={(status) => setReady(status.canPublish)}

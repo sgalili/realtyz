@@ -1,5 +1,6 @@
 import { fbGroupId } from '@/lib/fbGroupUrl';
 import { resolveMediaUrls } from '@/lib/postMediaUrl';
+import { safeUtf8 } from '@/lib/utf8Text';
 
 export const REPOST_EDITOR_EVENT = 'realtyz:open-repost-editor';
 export type RepostPost = {
@@ -26,6 +27,7 @@ export function repostEditorDraft({ post, jobs }: RepostEditorRequest) {
   const job = jobs[0]?.payload?.job ?? {};
   const response = post.provider_response && typeof post.provider_response === 'object' ? post.provider_response as Record<string, any> : {};
   const settings = response.repost_settings ?? {};
+  const firstComment = safeUtf8(post.first_comment ?? job.firstComment ?? '');
   const groups = [...new Set([...jobs.map((j) => fbGroupId(j.payload?.job?.groupUrl || j.target_ref)), ...(post.group_ids ?? []).map(fbGroupId)].filter((id): id is string => !!id))];
   const schedule = jobs[0]?.scheduled_for || post.sent_at;
   const date = schedule ? new Date(schedule) : null;
@@ -33,10 +35,12 @@ export function repostEditorDraft({ post, jobs }: RepostEditorRequest) {
   const pad = (n: number) => String(n).padStart(2, '0');
   const scheduledLocal = scheduled && date ? `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}` : '';
   return {
-    body: post.message_body ?? job.sourceText ?? job.text ?? '',
-    firstComment: post.first_comment ?? job.firstComment ?? '',
+    body: safeUtf8(post.message_body ?? job.sourceText ?? job.text ?? ''),
+    firstComment,
     firstCommentEnabled: settings.first_comment_enabled ?? !!(post.first_comment ?? job.firstComment),
-    attachWaLink: false, attachMsngrLink: false, publishToPage: settings.publish_to_page ?? false,
+    attachWaLink: settings.attach_wa_link ?? /wa\.me\/|api\.whatsapp\.com\/|realtyz\.co\.il\/r\//i.test(firstComment),
+    attachMsngrLink: settings.attach_msngr_link ?? /m\.me\//i.test(firstComment),
+    publishToPage: settings.publish_to_page ?? false,
     groupTextVariation: settings.group_text_variation ?? false,
     selectedListingId: post.listing_id ?? job.listing?.id ?? null,
     attachments: resolveMediaUrls(post.media_urls?.length ? post.media_urls : job.images ?? []).map((url, i) => ({ name: `תמונה ${i + 1}`, kind: 'image' as const, url })),
