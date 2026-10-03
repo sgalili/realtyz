@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Permanently delete posts and associated queued jobs with verified results.
-- [ ] Offer current-post or entire-series deletion for master posts.
+- [x] Permanently delete posts and associated queued jobs with verified results.
+- [x] Offer current-post or entire-series deletion for master posts.
 
 - [x] Keep campaign/post card titles and content stable between explicit edits.
 
