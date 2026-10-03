@@ -151,10 +151,10 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const toggleAll = () => onChange(allSelected ? [] : groups.map((g) => g.group_id));
 
   return (
-    <div className={cn("rounded-xl border border-border bg-background p-3 space-y-3", className)} dir="rtl">
-      <div className="flex items-center gap-2">
-        <Users className="h-4 w-4 text-primary" />
-        <span className="text-[15px] font-semibold text-foreground">פרסום בקבוצות פייסבוק</span>
+    <div className={cn("w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-background p-3 space-y-3", className)} dir="rtl">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <Users className="h-4 w-4 shrink-0 text-primary" />
+        <span className="min-w-0 break-words text-[15px] font-semibold text-foreground">פרסום בקבוצות פייסבוק</span>
         {groups.length > 0 && (
           <span className="text-[14px] text-muted-foreground">({selectedIds.length}/{groups.length})</span>
         )}
@@ -174,7 +174,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       )}
 
       {hasVisibleGroups && (
-        <div className="rounded-lg border border-border overflow-hidden">
+        <div className="min-w-0 max-w-full rounded-lg border border-border overflow-hidden">
           <label className="flex items-center gap-3 bg-muted/40 px-3 py-2 cursor-pointer border-b border-border">
             <div
               className={cn(
@@ -195,7 +195,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
           </label>
 
           <div
-            className="max-h-[45vh] min-h-[160px] overflow-y-auto overscroll-contain divide-y divide-border [-webkit-overflow-scrolling:touch]"
+            className="min-w-0 max-w-full max-h-[45vh] min-h-[160px] overflow-x-hidden overflow-y-auto overscroll-contain divide-y divide-border [-webkit-overflow-scrolling:touch]"
             style={{ touchAction: 'pan-y' }}
           >
 
@@ -205,7 +205,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                 <label
                   key={g.group_id}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 cursor-pointer transition",
+                    "flex w-full min-w-0 max-w-full items-center gap-3 px-3 py-2 cursor-pointer transition",
                     active ? "bg-primary/5" : "bg-background hover:bg-muted/30",
                   )}
                 >
@@ -219,14 +219,14 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                   </div>
                   <input type="checkbox" className="sr-only" checked={active} onChange={() => toggle(g.group_id)} />
                   {g.group_icon ? (
-                    <img src={g.group_icon} alt="" className="h-7 w-7 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                    <img src={g.group_icon} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                   ) : (
-                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+                    <div className="h-7 w-7 shrink-0 rounded-full bg-muted flex items-center justify-center">
                       <Users className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                   )}
                   <div className="min-w-0 flex-1 ps-[3px]">
-                    <div className="truncate text-[15px] font-medium text-foreground">{shortenName(g.group_name)}</div>
+                    <div title={g.group_name} className="truncate text-[15px] font-medium text-foreground">{shortenName(g.group_name)}</div>
                     {typeof g.member_count === "number" && g.member_count > 0 && (
                       <div className="text-[13px] text-muted-foreground tabular-nums">
                         {g.member_count.toLocaleString("he-IL")} חברים
@@ -261,7 +261,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
           <ChevronDown className={cn("h-4 w-4 transition", manualOpen && "rotate-180")} />
         </button>
         {manualOpen && (
-          <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-[1fr_1.4fr_auto]">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-t border-border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
             <input
               value={manualName}
               onChange={(e) => setManualName(e.target.value)}
