@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Replace Rita's property promotion picker with persistent group topics feeding AI generation; verify other workspaces stay unchanged.
+- [x] Replace Rita's property promotion picker with persistent group topics feeding AI generation; retain the existing property picker for other workspaces.
 
 - [x] Clean existing duplicate post images and prevent duplication during fetching, saving, and rendering.
 
