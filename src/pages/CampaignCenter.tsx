@@ -6482,6 +6482,7 @@ const PublishedFeed = ({
                     <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
                   </span>
                 )}
+                </div>
               </div>
               {isPaused && (() => {
                 const remainingMs = circuitUntilMs ? circuitUntilMs - nowMs : 0;
