@@ -703,6 +703,40 @@ export const resetQueueEntriesForText = (text: string) => {
 
 export const EXT_QUEUE_REMOVE_MESSAGE = "RZ_QUEUE_REMOVE";
 
+/**
+ * Permanently delete mirrored extension jobs from the database so the cloud
+ * queue sync cannot rebuild a card the user deleted. Matches by local job id
+ * and by post body (sourceText/text prefix), always scoped to the workspace.
+ */
+export const deleteCloudQueueForPosts = async (input: {
+  workspaceOwnerId: string;
+  ids?: string[];
+  texts?: (string | null | undefined)[];
+}): Promise<number> => {
+  const owner = String(input.workspaceOwnerId || '').trim();
+  if (!owner) return 0;
+  const esc = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
+  const prefixes = Array.from(new Set((input.texts || [])
+    .map((t) => String(t || '').trim().slice(0, 30)).filter((t) => t.length >= 8)));
+  const ids = Array.from(new Set((input.ids || []).map(String).filter(Boolean)));
+  const found = new Set<string>();
+  const collect = async (build: (q: any) => any) => {
+    const { data } = await build((supabase as any).from('campaign_activity_queue').select('id')
+      .eq('workspace_owner_id', owner).in('activity_type', ['fb_group_post', 'fb_comment']));
+    for (const r of data || []) found.add(String(r.id));
+  };
+  for (const p of prefixes) {
+    await collect((q) => q.like('payload->job->>sourceText', `${esc(p)}%`));
+    await collect((q) => q.like('payload->job->>text', `${esc(p)}%`));
+  }
+  if (ids.length) await collect((q) => q.in('payload->>local_id', ids));
+  if (found.size === 0) return 0;
+  const { data, error } = await (supabase as any).from('campaign_activity_queue')
+    .delete().eq('workspace_owner_id', owner).in('id', Array.from(found)).select('id');
+  if (error) throw new Error(error.message);
+  return (data || []).length;
+};
+
 const queueTextKey = (t: unknown) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 40);
 
 /**
