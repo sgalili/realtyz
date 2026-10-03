@@ -310,10 +310,50 @@ const STAGE_META: Record<ExtensionStage, { label: string; percent: number }> = {
 
 export const stageLabel = (stage: ExtensionStage) => STAGE_META[stage].label;
 
+const QUEUE_TOMBSTONE_KEY = "rz-ext-queue-tombstones";
+type QueueTombstones = { ids: string[]; keys: string[] };
+const readTombstones = (): QueueTombstones => {
+  try {
+    const t = JSON.parse(localStorage.getItem(QUEUE_TOMBSTONE_KEY) || "{}");
+    return { ids: Array.isArray(t.ids) ? t.ids : [], keys: Array.isArray(t.keys) ? t.keys : [] };
+  } catch { return { ids: [], keys: [] }; }
+};
+const addTombstones = (ids: string[], keys: string[]) => {
+  const t = readTombstones();
+  const next = {
+    ids: Array.from(new Set([...t.ids, ...ids])).slice(-500),
+    keys: Array.from(new Set([...t.keys, ...keys])).slice(-500),
+  };
+  try { localStorage.setItem(QUEUE_TOMBSTONE_KEY, JSON.stringify(next)); } catch { /* noop */ }
+};
+const isTombstoned = (e: QueuedExtensionPost, t: QueueTombstones) => {
+  if (!e) return true;
+  const id = String(e.id || "");
+  if (t.ids.includes(id) || t.ids.includes(`ext-queue-${id}`)) return true;
+  const body = String(e.sourceText || e.text || e.firstComment || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  return !!body && t.keys.some((k) => body.includes(k) || k.includes(body));
+};
+
+/** Purge ghost `ext-queue-` cache entries from localStorage (run on app load). */
+export const purgeGhostQueueCache = () => {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("ext-queue-")) localStorage.removeItem(k);
+    }
+    const raw = JSON.parse(localStorage.getItem(EXT_POST_QUEUE_KEY) || "[]");
+    if (!Array.isArray(raw)) { localStorage.removeItem(EXT_POST_QUEUE_KEY); return; }
+    const t = readTombstones();
+    const clean = raw.filter((e: QueuedExtensionPost) => e && e.id && !isTombstoned(e, t));
+    if (clean.length !== raw.length) localStorage.setItem(EXT_POST_QUEUE_KEY, JSON.stringify(clean));
+  } catch { /* noop */ }
+};
+
 export const readPostQueue = (workspaceOwnerId?: string | null): QueuedExtensionPost[] => {
   try {
     const raw = JSON.parse(localStorage.getItem(EXT_POST_QUEUE_KEY) || "[]");
-    const queue = Array.isArray(raw) ? (raw as QueuedExtensionPost[]) : [];
+    const t = readTombstones();
+    const queue = Array.isArray(raw) ? (raw as QueuedExtensionPost[]).filter((e) => !isTombstoned(e, t)) : [];
     return workspaceOwnerId ? queue.filter((job) => job.workspaceOwnerId === workspaceOwnerId) : queue;
   } catch {
     return [];
@@ -751,6 +791,10 @@ export const removeQueueEntriesForPosts = (input: {
   const ids = new Set((input.ids || []).map((i) => String(i)).filter(Boolean));
   const keys = (input.texts || []).map(queueTextKey).filter(Boolean);
   if (ids.size === 0 && keys.length === 0) return 0;
+  addTombstones(Array.from(ids), keys);
+  try {
+    ids.forEach((id) => { localStorage.removeItem(id); localStorage.removeItem(`ext-queue-${id}`); });
+  } catch { /* noop */ }
 
   const matches = (e: QueuedExtensionPost) => {
     if (ids.has(String(e.id))) return true;
@@ -759,7 +803,8 @@ export const removeQueueEntriesForPosts = (input: {
     return keys.some((k) => body.includes(k) || k.includes(body));
   };
 
-  const current = readPostQueue();
+  let current: QueuedExtensionPost[] = [];
+  try { const r = JSON.parse(localStorage.getItem(EXT_POST_QUEUE_KEY) || "[]"); current = Array.isArray(r) ? r : []; } catch { current = []; }
   const next = current.filter((e) => !matches(e));
   const removed = current.length - next.length;
   if (removed > 0) writePostQueue(next);

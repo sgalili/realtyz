@@ -50,19 +50,39 @@
       .filter(visible)
       .find((b) => re.test(textOf(b)) || re.test(b.getAttribute('aria-label') || ''));
 
+  const COMPOSER_RE = /מה עולה בראשך|מה עולה לך בראש|כתוב משהו|כתבי משהו|כתבו משהו|מה בא לך לשתף|Write something|What's on your mind|Anything on your mind|Create a public post/i;
+  const COMMENT_RE = /comment|reply|תגוב|הגב/i;
+
+  // The main group composer trigger lives outside any article (posts/comments).
   const composerTrigger = () =>
-    findByText(/כתוב משהו|כתבו משהו|מה בא לך לשתף|Write something|Anything on your mind|Create a public post/i);
+    [...document.querySelectorAll('div[role="button"], span[role="button"], [role="button"] span')]
+      .filter(visible)
+      .filter((b) => !b.closest('div[role="article"]') && !b.closest('div[role="dialog"]'))
+      .find((b) => COMPOSER_RE.test(textOf(b)) || COMPOSER_RE.test(b.getAttribute('aria-label') || '')) || null;
 
-  const dialog = () => document.querySelector('div[role="dialog"]');
+  // Post-creation modal: a dialog that contains a non-comment textbox.
+  const isCommentBox = (el) =>
+    !!el.closest('div[role="article"]') ||
+    COMMENT_RE.test(el.getAttribute('aria-label') || '') ||
+    COMMENT_RE.test(el.getAttribute('aria-placeholder') || '');
 
+  const composerBoxIn = (d) =>
+    [...d.querySelectorAll('div[role="textbox"][contenteditable="true"], div[contenteditable="true"][aria-label]')]
+      .filter(visible)
+      .find((el) => !isCommentBox(el)) || null;
+
+  const dialog = () =>
+    [...document.querySelectorAll('div[role="dialog"]')].filter(visible).find((d) => composerBoxIn(d)) || null;
+
+  // Only ever inject into the dedicated post-creation modal, never the page/comment boxes.
   const textbox = () => {
-    const scope = dialog() || document;
-    return [...scope.querySelectorAll('div[role="textbox"][contenteditable="true"], div[contenteditable="true"][aria-label]')]
-      .filter(visible)[0] || null;
+    const d = dialog();
+    return d ? composerBoxIn(d) : null;
   };
 
   const postButton = () => {
-    const scope = dialog() || document;
+    const scope = dialog();
+    if (!scope) return null;
     return [...scope.querySelectorAll('div[role="button"], button')]
       .filter(visible)
       .find((b) => {
@@ -71,14 +91,33 @@
       }) || null;
   };
 
-  /* React-safe text insertion */
+  const shiftEnter = (box) => {
+    const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, shiftKey: true, bubbles: true, cancelable: true };
+    box.dispatchEvent(new KeyboardEvent('keydown', opts));
+    let ok = false;
+    try { ok = document.execCommand('insertLineBreak'); } catch (e) { ok = false; }
+    if (!ok) { try { document.execCommand('insertParagraph'); } catch (e) { /* noop */ } }
+    box.dispatchEvent(new KeyboardEvent('keyup', opts));
+  };
+
+  /* React-safe text insertion, line by line so breaks/emojis/bullets survive */
   const injectText = async (box, text) => {
     box.focus();
     box.click();
     await sleep(250);
-    let ok = false;
-    try { ok = document.execCommand('insertText', false, text); } catch (e) { ok = false; }
+    const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+    let ok = true;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i]) {
+        let hit = false;
+        try { hit = document.execCommand('insertText', false, lines[i]); } catch (e) { hit = false; }
+        if (!hit) ok = false;
+      }
+      if (i < lines.length - 1) shiftEnter(box);
+      await sleep(30);
+    }
     if (!ok) {
+      box.textContent = '';
       // Fallback: clipboard-less paste event
       const dt = new DataTransfer();
       dt.setData('text/plain', text);

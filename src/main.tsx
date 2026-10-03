@@ -5,8 +5,10 @@ import { installDemoToastFilter } from "./lib/demoToastFilter";
 import { installRealtimeAuthSync } from "./lib/realtimeAuth";
 import { captureRefFromLocation } from "./lib/referralAttribution";
 import { installDomRemovalGuard } from "./lib/domRemovalGuard";
+import { purgeGhostQueueCache } from "./lib/extensionGroupBridge";
 
 installDomRemovalGuard();
+purgeGhostQueueCache();
 enableGlobalSilentMode();
 installDemoToastFilter();
 installRealtimeAuthSync();
