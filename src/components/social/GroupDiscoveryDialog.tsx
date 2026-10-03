@@ -152,15 +152,10 @@ export function GroupDiscoveryDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!joining) onOpenChange(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100vw-1.5rem)] max-w-lg p-4">
-        <DialogHeader className="text-right">
-          <DialogTitle>חיפוש והצטרפות לקבוצות</DialogTitle>
-          <DialogDescription>החיפוש וההצטרפות מתבצעים דרך התוסף, מחשבון הפייסבוק שלך בדפדפן.</DialogDescription>
-        </DialogHeader>
-
-        {!isExtensionInstalled() && <ExtensionDownloadButton />}
+        <DialogTitle className="sr-only">חיפוש והצטרפות לקבוצות</DialogTitle>
 
         <form className="flex min-w-0 gap-2" onSubmit={(e) => { e.preventDefault(); void runSearch(); }}>
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="מילות חיפוש, למשל: דירות להשכרה בתל אביב"
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש והצטרפות לקבוצות"
             className="min-w-0 flex-1 text-[15px]" disabled={searching || joining} aria-label="מילות חיפוש" />
           <Button type="submit" disabled={searching || joining || !query.trim()} className="shrink-0 gap-1">
             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
