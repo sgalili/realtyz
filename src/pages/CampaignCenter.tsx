@@ -1,4 +1,5 @@
 import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
+import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { resolvePosterDestination, applyContactCta } from '@/lib/posterDestination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
@@ -4019,6 +4020,7 @@ const GlobalSocialFeed = ({
   rows, activeChannel, onChannelChange,
   connectedChannels, onConnectChannel,
   feedSelectMode = false,
+  onToggleSelectMode,
   selectedFeedIds = [],
   filteredRows = [],
   bulkDeletingFeed = false,
@@ -4031,6 +4033,7 @@ const GlobalSocialFeed = ({
   connectedChannels: Set<string>;
   onConnectChannel: (id: string) => void;
   feedSelectMode?: boolean;
+  onToggleSelectMode?: () => void;
   selectedFeedIds?: string[];
   filteredRows?: CampaignRow[];
   bulkDeletingFeed?: boolean;
@@ -4109,13 +4112,14 @@ const GlobalSocialFeed = ({
     <div className="grid grid-cols-[minmax(auto,1fr)_1fr_minmax(auto,1fr)] items-center gap-2 w-full" dir="rtl">
       {totalSelectable > 0 ? (
         <div className="flex items-center gap-1.5 justify-self-start">
-          <label className="flex cursor-pointer select-none items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-foreground">
+          <SelectModeToggle active={feedSelectMode} count={selectedCount} onToggle={() => onToggleSelectMode?.()} className="h-7 w-7" />
+          {feedSelectMode && (
             <Checkbox
-              checked={allSelected ? true : someSelected ? 'indeterminate' : feedSelectMode}
-              onCheckedChange={(v) => { onToggleSelectAll?.(v === true || v === 'indeterminate'); }}
-              aria-label="בחר את כל הפוסטים"
+              checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+              onCheckedChange={() => { onToggleSelectAll?.(!allSelected); }}
+              aria-label={allSelected ? 'בטל את כל הבחירה' : 'בחר את כל הפוסטים'}
             />
-          </label>
+          )}
           <span className={cn(
             'text-base font-bold tabular-nums',
             activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
@@ -4138,7 +4142,7 @@ const GlobalSocialFeed = ({
         </button>
         {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
       </div>
-      {(feedSelectMode || selectedCount > 0) ? (
+      {(feedSelectMode && selectedCount > 0) ? (
         <div className="flex justify-self-end">
           <Button
             type="button"
@@ -6119,8 +6123,9 @@ const PublishedFeed = ({
         selectedFeedIds={selectedFeedIds}
         filteredRows={filteredRows || []}
         bulkDeletingFeed={bulkDeletingFeed}
+        onToggleSelectMode={() => { setFeedSelectMode((v) => !v); setSelectedFeedIds([]); }}
         onToggleSelectAll={(on) => {
-          setFeedSelectMode(on);
+          setFeedSelectMode(true);
           setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
         }}
         onDeleteSelected={() => {
