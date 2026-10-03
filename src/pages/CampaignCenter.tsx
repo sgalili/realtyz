@@ -5771,8 +5771,13 @@ const PublishedFeed = ({
     for (const r of selected) {
       try {
         if (String(r.id).startsWith('ext-queue-') || (r as any)._optimistic) {
-          removeQueueEntriesForPosts({ ids: [r.id], texts: [r.message_body || ''] });
-          setOptimisticRows((prev) => prev.filter((x) => x.id !== r.id));
+          const slots = ((r as any)._seriesSlots ?? []) as any[];
+          const ids = [String(r.id), ...slots.map((c) => String(c?.id ?? '')).filter(Boolean)];
+          const texts = [r.message_body, ...slots.map((c) => c?.message_body)].map((t) => String(t || '')).filter(Boolean);
+          removeQueueEntriesForPosts({ ids, texts });
+          const gone = new Set(ids);
+          setOptimisticRows((prev) => prev.filter((x) => !gone.has(x.id)));
+          setRows((prev) => prev?.filter((x) => !gone.has(x.id)) ?? prev);
           ok += 1;
           continue;
         }
