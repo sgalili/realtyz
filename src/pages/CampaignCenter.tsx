@@ -6313,11 +6313,11 @@ const PublishedFeed = ({
           displayedCopy = { body: r.message_body || '', title: r.campaign_name };
           postCopyRef.current.entries.set(r.id, displayedCopy);
         }
-        const bodyText = displayedCopy.body;
+        const bodyText = safeUtf8(displayedCopy.body);
         const isHe = /[\u0590-\u05FF]/.test(bodyText);
         const dirAttr: 'rtl' | 'ltr' = isHe ? 'rtl' : 'ltr';
         const alignClass = isHe ? 'text-right' : 'text-left';
-        const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
+        const preview = Array.from(bodyText.trim()).slice(0, 100).join('') + (Array.from(bodyText.trim()).length > 100 ? '…' : '');
         const fmt = (v: number | null | undefined) => (typeof v === 'number' ? v : 0);
         // Final render-time uniqueness guard: even if any upstream path leaks a
         // repeat, each image is painted exactly once.
@@ -6377,10 +6377,10 @@ const PublishedFeed = ({
                 {/* Title = the real first line of the post. Clicking anywhere on
                     the card only toggles expand/collapse — never opens Facebook. */}
                 <h3
-                  className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)}
+                  className={cn('min-w-0 flex-1 break-words font-semibold text-foreground line-clamp-2', alignClass)}
                   dir={dirAttr}
                 >
-                  {(bodyText.trim().split('\n')[0] || displayedCopy.title)}
+                  {(bodyText.trim().split('\n')[0] || safeUtf8(displayedCopy.title))}
                 </h3>
               </div>
 
