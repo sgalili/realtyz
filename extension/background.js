@@ -446,11 +446,26 @@ function loadQueue() {
   return new Promise((res) => chrome.storage.local.get([QUEUE_KEY], (r) => res(((r || {})[QUEUE_KEY]) || [])));
 }
 
+const TOMB_KEY = 'rzQueueTombstones';
+function loadTombs() {
+  return new Promise((res) => chrome.storage.local.get([TOMB_KEY], (r) => {
+    const t = (r || {})[TOMB_KEY] || {};
+    res({ ids: Array.isArray(t.ids) ? t.ids : [], keys: Array.isArray(t.keys) ? t.keys : [] });
+  }));
+}
+function isTomb(e, t) {
+  if (!e) return true;
+  if (t.ids.includes(String(e.id))) return true;
+  const body = qTextKey(e.text) || qTextKey(e.firstComment);
+  return !!body && t.keys.some((k) => body.indexOf(k) >= 0 || k.indexOf(body) >= 0);
+}
+
 async function mergeQueue(incoming) {
-  const current = await loadQueue();
+  const tombs = await loadTombs();
+  const current = (await loadQueue()).filter((e) => !isTomb(e, tombs));
   const byId = new Map(current.map((e) => [String(e.id), e]));
   for (const e of incoming || []) {
-    if (!e || !e.id) continue;
+    if (!e || !e.id || isTomb(e, tombs)) continue;
     if (!byId.has(String(e.id))) byId.set(String(e.id), e);
   }
   const merged = Array.from(byId.values());
@@ -464,6 +479,11 @@ const qTextKey = (t) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 40)
 async function removeQueueJobs(ids, textKeys) {
   const idSet = new Set((ids || []).map((i) => String(i)));
   const keys = (textKeys || []).map(qTextKey).filter(Boolean);
+  const tombs = await loadTombs();
+  await new Promise((res) => chrome.storage.local.set({ [TOMB_KEY]: {
+    ids: [...new Set([...tombs.ids, ...idSet])].slice(-500),
+    keys: [...new Set([...tombs.keys, ...keys])].slice(-500),
+  } }, res));
   const current = await loadQueue();
   const next = current.filter((e) => {
     if (!e) return false;
