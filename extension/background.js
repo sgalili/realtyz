@@ -5,6 +5,24 @@
  * runs the local posting automation (poster.js) and reports the outcome back.
  */
 
+/* Startup marker: must be the very first executable statement so the extension
+ * console proves the service worker parsed and evaluated the whole file. */
+try {
+  console.log('[Realtyz] Background worker initialized successfully');
+} catch (e) { /* noop */ }
+
+/* Top-level safety net: an unhandled rejection anywhere in the worker would
+ * otherwise kill the listener registrations silently. */
+try {
+  self.addEventListener('unhandledrejection', (event) => {
+    try { console.error('[Realtyz] Unhandled rejection in background worker:', event && event.reason); } catch (e) { /* noop */ }
+    try { event.preventDefault(); } catch (e) { /* noop */ }
+  });
+  self.addEventListener('error', (event) => {
+    try { console.error('[Realtyz] Background worker error:', event && event.message); } catch (e) { /* noop */ }
+  });
+} catch (e) { /* noop */ }
+
 const SUPABASE_URL = 'https://gvylyghwfysvydygqdtf.supabase.co';
 const ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2eWx5Z2h3ZnlzdnlkeWdxZHRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MjMxMDEsImV4cCI6MjA5NTk5OTEwMX0.3_sZy9BP9GIXO1yA1PoFYVdO0tDYzx7oFbfflsdk3aE';
@@ -723,10 +741,24 @@ async function poll() {
   }
 }
 
-chrome.alarms.create(ALARM, { periodInMinutes: 1 });
-chrome.alarms.onAlarm.addListener((a) => { if (a.name === ALARM) poll(); });
-chrome.runtime.onInstalled.addListener(() => { chrome.alarms.create(ALARM, { periodInMinutes: 1 }); poll(); });
-chrome.runtime.onStartup.addListener(() => poll());
+/* Queue/alarm initialization — wrapped so a storage or alarm API hiccup at
+ * browser startup can never crash the worker before its listeners register. */
+const initQueue = () => {
+  try {
+    chrome.alarms.create(ALARM, { periodInMinutes: 1 });
+  } catch (e) {
+    try { console.error('[Realtyz] Failed to create queue alarm:', e); } catch (e2) { /* noop */ }
+  }
+  try { poll(); } catch (e) { try { console.error('[Realtyz] Initial queue poll failed:', e); } catch (e2) { /* noop */ } }
+};
+
+try { chrome.alarms.create(ALARM, { periodInMinutes: 1 }); } catch (e) { /* noop */ }
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name !== ALARM) return;
+  try { poll(); } catch (e) { try { console.error('[Realtyz] Queue poll failed:', e); } catch (e2) { /* noop */ } }
+});
+chrome.runtime.onInstalled.addListener(() => initQueue());
+chrome.runtime.onStartup.addListener(() => initQueue());
 
 /* ── messages from the app page (content.js) ────────────────────────────── */
 
