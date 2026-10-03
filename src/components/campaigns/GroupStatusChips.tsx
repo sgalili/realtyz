@@ -170,7 +170,7 @@ export function GroupStatusChips({
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" side="bottom" dir="rtl" className="w-[min(36rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-2" onClick={(e) => e.stopPropagation()}>
-          {ids.length > max && <div className="flex min-w-0 flex-col items-stretch">{ids.slice(max).map(renderGroup)}</div>}
+          {ids.length > max && <div className="flex min-w-0 flex-col items-stretch">{ids.slice(max).map((gid) => renderGroup(gid))}</div>}
           {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
         </PopoverContent>
       </Popover>}
