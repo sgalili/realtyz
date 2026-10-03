@@ -69,7 +69,7 @@ import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platf
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { MAX_POST_IMAGES, randomImageSet, requestSmartMediaFilter } from '@/lib/listingImages';
-import { resolveMediaUrl, resolveMediaUrls, mediaDedupeKey } from '@/lib/postMediaUrl';
+import { resolveMediaUrl, resolveMediaUrls, mediaDedupeKey, mediaSourceIdentity } from '@/lib/postMediaUrl';
 
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
@@ -219,7 +219,7 @@ const mergePostMediaUrls = (...values: unknown[]): string[] => {
   const out: string[] = [];
   for (const value of values) {
     for (const url of normalizePostMediaUrls(value)) {
-      const key = mediaDedupeKey(url);
+      const key = mediaSourceIdentity(url);
       if (seen.has(key)) continue;
       seen.add(key);
       out.push(url);
@@ -237,7 +237,7 @@ const uniqueMediaUrls = (values: unknown): string[] => {
   const out: string[] = [];
   for (const value of list) {
     if (typeof value !== 'string' || !value) continue;
-    const key = mediaDedupeKey(value);
+    const key = mediaSourceIdentity(value);
     if (seenExact.has(value) || seenKey.has(key)) continue;
     seenExact.add(value);
     seenKey.add(key);
@@ -4245,7 +4245,8 @@ const readPersistedFeedCache = (): Record<string, CampaignRow[]> => {
   try {
     const raw = localStorage.getItem(FEED_CACHE_STORAGE_KEY) || sessionStorage.getItem(FEED_CACHE_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === 'object' ? parsed as Record<string, CampaignRow[]> : {};
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, rows]) => Array.isArray(rows)).map(([scope, rows]) => [scope, (rows as CampaignRow[]).map((row) => ({ ...row, media_urls: mergePostMediaUrls(row.media_urls, row.provider_response?.cached_media_urls, row.provider_response?.media_urls) }))]));
   } catch { return {}; }
 };
 
@@ -8119,7 +8120,7 @@ const CampaignCenter = () => {
       </Dialog>
       {campaignDraftRows.map((r) => {
 
-        const media = Array.isArray(r.media_urls) ? r.media_urls : [];
+        const media = normalizePostMediaUrls(r.media_urls);
         const first = media[0];
         const firstUrl = typeof first === 'string' ? first : (first as any)?.url ?? null;
         const title = String(r.generated_text || '').trim().split('\n')[0] || r.topic || 'טיוטת פוסט';
@@ -8224,7 +8225,7 @@ const CampaignCenter = () => {
           </div>
         );
         return [header, ...visible.map((r) => {
-          const media = Array.isArray(r.media_urls) ? r.media_urls : [];
+          const media = normalizePostMediaUrls(r.media_urls);
           const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
           const imageUrl = typeof image === 'string' ? image : (image as any)?.url ?? null;
           const groupIds: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
