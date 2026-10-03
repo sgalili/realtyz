@@ -101,6 +101,14 @@ export type ExtensionPost = {
   url: string | null;
   created_time: string | null;
   media: string[];
+  likeCount?: number | null;
+  commentCount?: number | null;
+  shareCount?: number | null;
+};
+
+const toCount = (v: any): number | null => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
 };
 
 const normalizeOne = (raw: any): ExtensionPost | null => {
@@ -116,6 +124,9 @@ const normalizeOne = (raw: any): ExtensionPost | null => {
     url,
     created_time: raw.created_time ?? raw.created ?? raw.date ?? null,
     media: mediaRaw.map((m: any) => (typeof m === 'string' ? m : m?.url)).filter((u: any) => typeof u === 'string' && u),
+    likeCount: toCount(raw.likeCount ?? raw.like_count ?? raw.likes),
+    commentCount: toCount(raw.commentCount ?? raw.comment_count ?? raw.comments),
+    shareCount: toCount(raw.shareCount ?? raw.share_count ?? raw.shares),
   };
 };
 
@@ -134,7 +145,7 @@ export const normalizeExtensionPosts = (input: any): ExtensionPost[] => {
  * callers treat that as "fallback unavailable", never as an error to alert on.
  */
 export const requestExtensionPagePosts = (
-  opts: { pageId?: string | null; since?: string; timeoutMs?: number } = {},
+  opts: { pageId?: string | null; since?: string; timeoutMs?: number; scrape?: boolean; max?: number } = {},
 ): Promise<ExtensionPost[]> => {
   const timeoutMs = opts.timeoutMs ?? 12000;
   return new Promise((resolve) => {
@@ -161,7 +172,7 @@ export const requestExtensionPagePosts = (
     document.addEventListener(EXT_POSTS_EVENT, onEvent as EventListener);
     const timer = window.setTimeout(() => finish([]), timeoutMs);
 
-    const payload = { source: 'realtyz-app', type: EXT_POSTS_REQUEST, pageId: opts.pageId ?? null, since: opts.since ?? null };
+    const payload = { source: 'realtyz-app', type: EXT_POSTS_REQUEST, pageId: opts.pageId ?? null, since: opts.since ?? null, scrape: opts.scrape === true, max: opts.max ?? 60 };
     try {
       window.postMessage(payload, window.location.origin);
     } catch {
