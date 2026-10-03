@@ -22,7 +22,7 @@
 
 ## Memories
 - [Compact campaign editing](mem://features/campaign-ui-cleanup) — No expanded group pills/title field; configured comment links checked and selection layout stable.
-- [Campaign card handling](mem://features/campaign-card-handling) — Stable ordering, collapsed campaign series, subtle comment warnings, text-only group pills and group-page link fallback.
+- [Campaign card handling](mem://features/campaign-card-handling) — Inline series below cards, far-edge repost, accurate status icons, single-line shortened names and comment warnings.
 - [Rita group post topics](mem://features/rita-group-post-topics) — Six group-engagement topics replace property promotion only in Rita's workspace and drive AI generation.
 - [Calendar autosync](mem://features/calendar-autosync) — All dated records + calls auto-sync to Google Calendar on insert/update; no manual add-to-calendar buttons.
 - [Rita agent, WA routing, roles](mem://features/rita-agent-and-roles) — ריטה is the sole AI identity (feminine); shared-number inbound routed by last outbound session; מתווך/שותף registration roles.

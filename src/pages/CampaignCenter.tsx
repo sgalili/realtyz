@@ -6280,6 +6280,8 @@ const PublishedFeed = ({
 
 
         const isOpen = expanded[r.id] ?? false;
+        const seriesKey = `series:${r.id}`;
+        const seriesOpen = expanded[seriesKey] ?? false;
         const scheduled = isScheduledRow(r);
         // A publish that Meta rejected: shown explicitly as "נכשל" with the exact
         // provider reason, never as a normal published post.
@@ -6365,6 +6367,7 @@ const PublishedFeed = ({
           : fmt(r.comment_count);
 
         return (
+          <div key={r.id} className="w-full min-w-0 max-w-full">
           <article
             key={r.id}
             className="w-full min-w-0 max-w-full rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden"
@@ -6442,22 +6445,22 @@ const PublishedFeed = ({
                     <GroupStatusChips
                       inline
                       collapsedCounter
+                      expanded={seriesOpen}
+                      onExpandedChange={(open) => setExpanded((s) => ({ ...s, [seriesKey]: open }))}
+                      detailsId={`campaign-series-${r.id}`}
                       groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
                       meta={fbGroupMeta}
                       results={cardGroupResults}
                       defaultState={
-                        scheduled || r._optimistic || ['pending', 'queued', 'publishing'].includes(String(r.status)) || legacyMetaError
+                        scheduled || r._optimistic || ['scheduled', 'pending', 'queued', 'publishing', 'processing', 'posting'].includes(String(r.status).toLowerCase()) || legacyMetaError
                           ? 'pending'
                           : failed ? 'failed' : 'published'
                       }
                       countdownIso={scheduled ? r.sent_at : null}
                       defaultOpen={false}
-                    >
-                      {inGroupOverlay !== true && isSeries && seriesSlots ? seriesSlots.map((slot) => renderFeedCard(slot, undefined, true)) : null}
-                    </GroupStatusChips>
+                    />
                   </div>
                 )}
-                {hasGroupTargets && <ContinuePostingButton post={r} />}
                 {scheduled && (() => {
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
@@ -6476,7 +6479,7 @@ const PublishedFeed = ({
                     </span>
                   );
                 })()}
-                <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
+                <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
                 {!scheduled && (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
@@ -6499,6 +6502,7 @@ const PublishedFeed = ({
                   </span>
                 )}
                 </div>
+                {hasGroupTargets && <div className="ms-auto shrink-0"><ContinuePostingButton post={r} /></div>}
               </div>
               {isPaused && (() => {
                 const remainingMs = circuitUntilMs ? circuitUntilMs - nowMs : 0;
@@ -6691,6 +6695,12 @@ const PublishedFeed = ({
               </>
             )}
           </article>
+          {inGroupOverlay !== true && seriesOpen && isSeries && seriesSlots && (
+            <div id={`campaign-series-${r.id}`} role="region" aria-label="פוסטים בקבוצות" className="mt-3 w-full min-w-0 space-y-3" dir="rtl">
+              {seriesSlots.map((slot) => renderFeedCard(slot, undefined, true))}
+            </div>
+          )}
+          </div>
         );
       })}
       {editRepostRow && (
