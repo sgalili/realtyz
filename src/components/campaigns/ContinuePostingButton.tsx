@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RefreshCw, Loader2 } from 'lucide-react';
+import { Megaphone, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -34,7 +34,7 @@ export function ContinuePostingButton({ post }: { post: RepostPost }) {
   };
   return <>
     <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="המשך / פרסום מחדש" aria-label="המשך / פרסום מחדש" disabled={busy} onClick={(e) => { e.stopPropagation(); void prepare(); }}>
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
     </Button>
   </>;
 }

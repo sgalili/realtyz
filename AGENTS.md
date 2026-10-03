@@ -2,7 +2,7 @@
 
 - Group selection uses one accessible checkbox action per row, immutable deduplicated snapshots and guarded no-op updates; external links are siblings to prevent duplicate activation and render cascades.
 
-- Campaign cards show unframed group names with adjacent static status icons; overflow and series details use a portaled overlay to preserve card geometry.
+- Campaign feed headers show a single unframed group with its static icon first, or a collapsed multi-group counter opposite logo/date; group and series details stay portaled to preserve geometry.
 - Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
 - Posting continuation uses the full campaign composer and an atomic workspace-authorized edited-repost operation; active original jobs block replacement and completed jobs require explicit resubmission.
 
