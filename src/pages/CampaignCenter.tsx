@@ -659,7 +659,6 @@ const listingOptionLabel = (listing: CampaignListing) => {
   return price ? `${location} — ${price}` : location;
 };
 
-const oldListingPostCommentPattern = /(מה תמצאו|מחיר מבוקש|ר\.מ|ברחוב\s|📍|💰|📞|^\s*✅)/m;
 
 const cleanFirstComment = (value: string) => String(value || '')
   .replace(/^```[a-z]*\s*/i, '')
@@ -793,7 +792,7 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
     `${propertyPhrase} עם מיקום נכון ופוטנציאל אמיתי.`,
     `${propertyPhrase} שמשלב מיקום ואופי, שווה ביקור.`,
   ];
-  const oneLiner = limitToTenWords(variants[Math.floor(Math.random() * variants.length)]);
+  const oneLiner = limitToTenWords(variants[0]);
   return `${oneLiner}\n${keywordLine}`.trim();
 };
 
@@ -1081,8 +1080,6 @@ const InlineComposer = ({
   useEffect(() => {
     const read = () => setComposerRecurrence(loadSchedulePrefs(workspaceOwnerId, 'composer').recurrence);
     read();
-    const t = window.setInterval(read, 1500);
-    return () => window.clearInterval(t);
   }, [workspaceOwnerId, scheduleDialogOpen]);
   const recurrenceBubble = composerRecurrence === 'daily' ? 'יומי'
     : composerRecurrence === 'weekly' ? 'שבועי'
@@ -1535,11 +1532,6 @@ const InlineComposer = ({
     })();
     return () => { cancelled = true; setPhotosLoading(false); };
   }, [selectedListingId, listings]);
-
-  useEffect(() => {
-    if (!firstComment || !oldListingPostCommentPattern.test(firstComment)) return;
-    setFirstComment(buildFallbackFirstComment(selectedListing as CampaignListing | null));
-  }, [firstComment, selectedListingId, selectedListing?.city, selectedListing?.neighborhood, selectedListing?.rooms, selectedListing?.property_title]);
 
   const visibleListings = useMemo(() => {
     const q = normalizeListingText(listingQuery).toLowerCase();
@@ -4144,7 +4136,14 @@ const mergeRowsById = (prev: CampaignRow[] | null, next: CampaignRow[]): Campaig
   const merged = next.map((row) => {
     const existing = prevById.get(row.id);
     if (!existing) { changed = true; return row; }
-    const candidate = { ...existing, ...row };
+    // Background provider/queue refreshes update delivery and counters only.
+    // Keep the displayed copy until an explicit edit or a new page visit.
+    const candidate = {
+      ...existing,
+      ...row,
+      message_body: existing.message_body,
+      campaign_name: existing.campaign_name,
+    };
     const same = Object.keys(candidate).every((k) => {
       const a = (candidate as any)[k];
       const b = (existing as any)[k];
@@ -4343,6 +4342,13 @@ const PublishedFeed = ({
   const fbGroupMeta = useFbGroupMeta();
   // Live local extension queue — cards flip failed → pending → completed on their own.
   const extensionQueue = useExtensionQueue(workspaceOwnerId);
+  const postCopyRef = useRef<{
+    scope: string | null | undefined;
+    entries: Map<string, { body: string; title: string | null }>;
+  }>({ scope: workspaceOwnerId, entries: new Map() });
+  if (postCopyRef.current.scope !== workspaceOwnerId) {
+    postCopyRef.current = { scope: workspaceOwnerId, entries: new Map() };
+  }
   const initialScopedRows = workspaceOwnerId ? FEED_ROWS_CACHE.get(workspaceOwnerId) ?? null : null;
   const [rows, setRows] = useState<CampaignRow[] | null>(initialScopedRows);
   // True only during the very first cold load (no cache anywhere, in-memory or
@@ -6020,7 +6026,13 @@ const PublishedFeed = ({
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
         const platformMeta = FEED_PLATFORMS.find((p) => p.id === String(r.channel || '').toLowerCase());
         const postUrl = derivePostUrl(r);
-        const bodyText = r.message_body || '';
+        // A status poll must never swap the text/title already shown on a card.
+        let displayedCopy = postCopyRef.current.entries.get(r.id);
+        if (!displayedCopy) {
+          displayedCopy = { body: r.message_body || '', title: r.campaign_name };
+          postCopyRef.current.entries.set(r.id, displayedCopy);
+        }
+        const bodyText = displayedCopy.body;
         const isHe = /[\u0590-\u05FF]/.test(bodyText);
         const dirAttr: 'rtl' | 'ltr' = isHe ? 'rtl' : 'ltr';
         const alignClass = isHe ? 'text-right' : 'text-left';
@@ -6087,7 +6099,7 @@ const PublishedFeed = ({
                   className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)}
                   dir={dirAttr}
                 >
-                  {(bodyText.trim().split('\n')[0] || r.campaign_name)}
+                  {(bodyText.trim().split('\n')[0] || displayedCopy.title)}
                 </h3>
               </div>
 
@@ -8451,7 +8463,7 @@ const CampaignCenter = () => {
                   const key = keyOf(b);
                   return (
                   <DraftCollapsibleCard
-                    key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`}
+                    key={`${key}-${composerResetTick}`}
                     index={idx}
                     iso={b.iso}
                     variant={b.variant}
