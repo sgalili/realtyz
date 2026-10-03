@@ -5705,6 +5705,7 @@ const PublishedFeed = ({
     const { data: result, error } = await supabase.rpc('delete_campaign_post', {
       p_workspace_owner_id: workspaceOwnerId, p_post_id: r.id, p_entire_series: entireSeries,
     });
+    console.log('[campaign-delete] rpc response', { id: r.id, error: error?.message ?? null, result });
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
     const deletion = result as { deleted_ids?: string[]; deleted_count?: number; queue_ids?: string[]; local_queue_ids?: string[] };
     const ids = [...(deletion.deleted_ids || [])];
@@ -5712,15 +5713,19 @@ const PublishedFeed = ({
     const hasSlots = ((r as any)._seriesSlots ?? []).length > 0;
     if (!ids.includes(r.id)) ids.push(r.id);
     if (!count && !hasSlots && !entireSeries) throw new Error('המחיקה לא אושרה במערכת');
-    // Collapsed master cards may hold slots outside the DB series — delete them too.
+    // Sweep every resolved series row by its explicit ID, plus any collapsed
+    // master-card slots that live outside the DB series.
     if (entireSeries || hasSlots) {
-      const extra = ((r as any)._seriesSlots ?? []).map((c: any) => String(c?.id ?? ''))
-        .filter((id: string) => id && !ids.includes(id));
+      const extra = [
+        ...targets.map((t) => String(t.id)),
+        ...((r as any)._seriesSlots ?? []).map((c: any) => String(c?.id ?? '')),
+      ].filter((id: string) => id && !ids.includes(id));
       const extraDb = extra.filter((id: string) => UUID_RE.test(id));
       const res = await Promise.allSettled(extraDb.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: false })));
       res.forEach((x: any) => { const d = x.status === 'fulfilled' ? (x.value?.data as any) : null; if (d?.deleted_ids) { ids.push(...d.deleted_ids); count += d.deleted_count || 0; } });
       ids.push(...extraDb);
       ids.push(...extra.filter((id: string) => !UUID_RE.test(id)));
+      console.log('[campaign-delete] series sweep', { extraRows: extraDb.length, totalDeleted: count });
     }
     removeQueueEntriesForPosts({ ids: [...ids, ...(deletion.queue_ids || []), ...(deletion.local_queue_ids || []).filter(Boolean)] });
     ids.forEach((id) => postCopyRef.current.entries.delete(id));
