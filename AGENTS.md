@@ -1,6 +1,6 @@
 # Architecture rules
 
-- Group-pill expansion uses a portaled overlay, including series children, to keep card geometry unchanged.
+- Campaign cards show unframed group names with adjacent static status icons; overflow and series details use a portaled overlay to preserve card geometry.
 - Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
 - Posting continuation uses the full campaign composer and an atomic workspace-authorized edited-repost operation; active original jobs block replacement and completed jobs require explicit resubmission.
 

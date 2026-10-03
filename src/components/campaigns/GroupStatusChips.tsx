@@ -1,7 +1,4 @@
-// Group target chips with per-group publishing status.
-// Collapsed by default: a single summary pill with the group count and a
-// collapse arrow. Expanding reveals the real Facebook group names, their
-// member counts and whether each group actually accepted the post.
+// Unframed group names with static per-target status; overflow stays portaled.
 import { useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronDown, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +11,7 @@ import { openExternal } from '@/lib/openExternal';
 export type GroupResult = {
   group_id?: string;
   ok?: boolean;
+  state?: GroupChipState;
   code?: string | number;
   reason?: string;
   post_id?: string;
@@ -36,9 +34,9 @@ export function groupResultMap(raw: unknown): Record<string, GroupResult> {
 }
 
 const STATE_STYLE: Record<GroupChipState, string> = {
-  published: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  pending: 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-  failed: 'border-destructive/40 bg-destructive/10 text-destructive',
+  published: 'text-primary',
+  pending: 'text-muted-foreground',
+  failed: 'text-destructive',
 };
 
 const STATE_LABEL: Record<GroupChipState, string> = {
@@ -83,81 +81,53 @@ export function GroupStatusChips({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const shared = useFbGroupMeta();
+  const local = localQueueGroupNames();
   const lookup = (gid: string): FbGroupMeta | undefined => {
     const bare = gid.replace(/^(ext:|manual:)/, '');
     const key = groupKeyFrom(gid);
-    const local = localQueueGroupNames();
     const clean = (m?: FbGroupMeta) => (m && m.name && !/^\d+$/.test(m.name) && !/^https?:/i.test(m.name) ? m : undefined);
     return clean(meta?.[gid]) ?? clean(meta?.[bare]) ?? clean(meta?.[key]) ?? clean(shared[gid]) ?? clean(shared[bare]) ?? clean(shared[key]) ?? local[gid] ?? local[key];
   };
   const nameOf = (gid: string) => lookup(gid)?.name || 'קבוצת פייסבוק';
 
-  const ids = Array.from(new Set(groupIds.filter(Boolean).map((g) => String(g))));
+  const ids = Array.from(new Map(groupIds.filter(Boolean).map((g) => [groupKeyFrom(String(g)), String(g)])).values());
   if (ids.length === 0) {
     return emptyLabel ? <p className="mt-1 text-[11px] text-muted-foreground">{emptyLabel}</p> : null;
   }
 
-  if (ids.length === 1) {
-    const gid = ids[0];
-    const url = fbGroupUrlFrom(lookup(gid)?.url, groupKeyFrom(gid));
+  const renderGroup = (gid: string) => {
+    const info = lookup(gid);
     const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
-    const state = result ? (result.ok || isCommentOnlyFailure(result.reason) ? 'published' : 'failed') : defaultState;
-    return <Button type="button" variant="ghost" size="sm" title="פתח קבוצה בפייסבוק" onClick={(e) => { e.stopPropagation(); openExternal(url); }} className={`h-7 max-w-full shrink-0 gap-1.5 rounded-full border px-2 text-[11px] ${STATE_STYLE[state]}`}><span className="max-w-[180px] truncate">{nameOf(gid)}</span><StateIcon state={state} /></Button>;
-  }
-
-  return (
-    <div className={inline ? 'inline-flex h-7 max-w-full shrink-0' : 'mt-1.5 inline-flex h-7 max-w-full shrink-0'} dir="rtl">
-      <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-      <Button
-        variant="ghost"
-        size="sm"
-        type="button"
-        onClick={(e) => e.stopPropagation()}
-        aria-expanded={open}
-        className="h-7 shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
-      >
-        <span className="max-w-[180px] truncate">{ids.length > 1 ? `${ids.length} קבוצות` : nameOf(ids[0])}</span>
-        <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+    const state = result?.state ?? (result ? (result.ok || isCommentOnlyFailure(result.reason) ? 'published' : 'failed') : defaultState);
+    const name = nameOf(gid);
+    const url = groupPostDestination(result, fbGroupUrlFrom(info?.url, groupKeyFrom(gid)));
+    return (
+      <Button key={gid} type="button" variant="ghost" size="sm"
+        title={`${name} — ${result?.reason || STATE_LABEL[state]}`}
+        onClick={(e) => { e.stopPropagation(); openExternal(url); }}
+        className="h-auto min-h-7 min-w-0 max-w-full justify-between gap-2 whitespace-normal rounded-none border-0 bg-transparent px-0 py-0.5 text-[11px] hover:bg-transparent">
+        <span className="min-w-0 break-words text-right text-foreground">{name}</span>
+        <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span>
       </Button>
-      </PopoverTrigger>
+    );
+  };
 
+  const hasDetails = (ids.length > 1 && !!children) || ids.length > max;
+  return (
+    <div className={`${inline ? '' : 'mt-1.5 '}flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-0.5`} dir="rtl">
+      {ids.slice(0, max).map(renderGroup)}
+      {hasDetails && <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" type="button" aria-label="פרטי קבוצות ופוסטים" aria-expanded={open}
+            onClick={(e) => e.stopPropagation()} className="h-7 w-7 shrink-0 border-0">
+            <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </Button>
+        </PopoverTrigger>
         <PopoverContent align="end" side="bottom" dir="rtl" className="w-[min(36rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-2" onClick={(e) => e.stopPropagation()}>
-        {!children && <div className="flex min-w-0 flex-col gap-1">
-          {ids.slice(0, max).map((gid) => {
-            const bare = groupKeyFrom(gid);
-            const info = lookup(gid);
-            const name = nameOf(gid);
-            const res = results?.[gid] ?? results?.[bare];
-            const state: GroupChipState = res ? (res.ok || isCommentOnlyFailure(res.reason) ? 'published' : 'failed') : defaultState;
-            const url = groupPostDestination(res, fbGroupUrlFrom(info?.url, /^https?:/i.test(gid) ? gid : bare) || bare);
-            const title = res?.reason ? `${name} — ${res.reason}` : `${name} — ${STATE_LABEL[state]}`;
-            return (
-              <Button variant="ghost"
-                key={gid}
-                type="button"
-                title={url ? `${title} — פתח בפייסבוק` : title}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openExternal(url);
-                }}
-                className="h-8 w-full min-w-0 justify-between gap-2 rounded-none px-2 text-[11px] font-medium text-foreground"
-              >
-                <span className="min-w-0 flex-1 truncate text-right">{name}</span>
-                {typeof info?.memberCount === 'number' && info.memberCount > 0 && (
-                  <span className="tabular-nums opacity-80" dir="ltr">
-                    {info.memberCount.toLocaleString('he-IL')}
-                  </span>
-                )}
-                <StateIcon state={state} />
-              </Button>
-            );
-          })}
-          {ids.length > max && <span className="text-[11px] text-muted-foreground">+{ids.length - max}</span>}
-        </div>}
-        {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
+          {ids.length > max && <div className="flex min-w-0 flex-col items-stretch">{ids.slice(max).map(renderGroup)}</div>}
+          {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
         </PopoverContent>
-      </Popover>
+      </Popover>}
     </div>
   );
 }

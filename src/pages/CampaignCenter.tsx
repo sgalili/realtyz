@@ -53,12 +53,11 @@ import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
-import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
+import { useFbGroupMeta, groupKeyFrom } from '@/hooks/useFbGroupMeta';
 
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { nativeWaLink, getOfficialWaNumber } from '@/lib/officialWa';
 import { cn } from '@/lib/utils';
-import { ExtensionPostProgress } from '@/components/ExtensionPostProgress';
 
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
@@ -6296,6 +6295,23 @@ const PublishedFeed = ({
           extQueueStatus !== 'posting';
         const failureReason = failed ? (rawFailureReason || 'הפרסום לפייסבוק נכשל') : null;
 
+        // Only jobs tied to this post may update its target icons. A waiting job
+        // is a static clock, not an indefinitely spinning fetch indicator.
+        const cardGroupResults = legacyMetaError ? {} : groupResultMap(r.provider_response?.group_results);
+        const bodyKey = (text: string) => String(text || '').replace(/\s+/g, ' ').trim();
+        const targetIds = new Set((r.group_ids || []).map((id: string) => groupKeyFrom(id)));
+        const matchingJobs = extensionQueue.filter((job) => job.type !== 'page_first_comment' &&
+          (job.campaignLogId === r.id || (bodyKey(r.message_body) && bodyKey(job.sourceText || job.text || '') === bodyKey(r.message_body))));
+        for (const gid of targetIds) {
+          const job = matchingJobs.filter((j) => groupKeyFrom(j.groupUrl || '') === gid)
+            .sort((a, b) => b.createdAt - a.createdAt)[0];
+          if (!job) continue;
+          cardGroupResults[String(gid)] = {
+            group_id: String(gid), post_url: job.postUrl, reason: job.error || undefined,
+            state: job.status === 'completed' || isCommentOnlyFailure(job.error) ? 'published' : job.status === 'failed' ? 'failed' : 'pending',
+          };
+        }
+
         const seriesSlots = r._seriesSlots;
         const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
         // Emergency override: never treat rows as paused in the UI so the
@@ -6402,56 +6418,28 @@ const PublishedFeed = ({
                 )}>
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
-                {hasGroupTargets && inGroupOverlay !== true && (
-                  <div onClick={(e) => e.stopPropagation()}>
+                {hasGroupTargets && (
+                  <div className="min-w-0 max-w-full" onClick={(e) => e.stopPropagation()}>
                     <GroupStatusChips
                       inline
                       groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
                       meta={fbGroupMeta}
-                      results={legacyMetaError ? undefined : groupResultMap((r.provider_response as any)?.group_results)}
+                      results={cardGroupResults}
                       defaultState={
-                        extQueueStatus === 'completed'
-                          ? 'published'
-                          : extQueueStatus === 'pending' || extQueueStatus === 'posting' || legacyMetaError || scheduled
-                            ? 'pending'
-                            : failed
-                              ? 'failed'
-                              : 'published'
+                        scheduled || r._optimistic || ['pending', 'queued', 'publishing'].includes(String(r.status)) || legacyMetaError
+                          ? 'pending'
+                          : failed ? 'failed' : 'published'
                       }
                       countdownIso={scheduled ? r.sent_at : null}
                       defaultOpen={false}
                     >
-                      {isSeries && seriesSlots ? seriesSlots.map((slot) => renderFeedCard(slot, undefined, true)) : null}
+                      {inGroupOverlay !== true && isSeries && seriesSlots ? seriesSlots.map((slot) => renderFeedCard(slot, undefined, true)) : null}
                     </GroupStatusChips>
                   </div>
                 )}
                 {hasGroupTargets && <ContinuePostingButton post={r} />}
                 <span className="flex-1" />
-                {(r as any)._optimistic && !scheduled ? (() => {
-                  const remaining = Math.max(0, Math.ceil((((r as any)._eta_ms as number) - Date.now()) / 1000));
-                  return (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
-                    </span>
-                  );
-                })() : isPaused ? null : isSeries ? null : (extProgress && hasGroupTargets) ? (
-                  <ExtensionPostProgress progress={extProgress} />
-                ) : (legacyMetaError && hasGroupTargets) ? (
-                  <ExtensionPostProgress
-                    progress={{ stage: 'queued', label: '⏳ בתור', percent: 8, error: null, done: 0, total: 1 }}
-                  />
-                ) : failed ? (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30 max-w-[60%]"
-                    title={failureReason ?? undefined}
-                  >
-                    <XCircle className="h-3.5 w-3.5 shrink-0" aria-label="נכשל" />
-                  </span>
-                ) : scheduled ? (() => {
-
-
-
+                {scheduled ? (() => {
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
                   // Strict dd/hh/mm countdown — no extra wording, no series pill.
@@ -6485,7 +6473,6 @@ const PublishedFeed = ({
                 )}
                 {commentWarning && !failed && !extProgress && (
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-label="פורסם" />
                     <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
                   </span>
                 )}
