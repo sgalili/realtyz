@@ -806,12 +806,18 @@ const queueTextKey = (t: unknown) => String(t || '').replace(/\s+/g, ' ').trim()
  * stops trying to publish them. Removes from localStorage['rzPostQueue'] and
  * asks the extension to purge the same jobs from chrome.storage.local.
  */
+/** Fired whenever posts are deleted so every on-screen list drops them instantly. */
+export const POSTS_REMOVED_EVENT = 'rz:posts-removed';
+
 export const removeQueueEntriesForPosts = (input: {
   ids?: string[];
   texts?: (string | null | undefined)[];
 }): number => {
   const ids = new Set((input.ids || []).map((i) => String(i)).filter(Boolean));
   const keys = (input.texts || []).map(queueTextKey).filter(Boolean);
+  if (ids.size > 0 && typeof window !== 'undefined') {
+    try { window.dispatchEvent(new CustomEvent(POSTS_REMOVED_EVENT, { detail: { ids: [...ids] } })); } catch { /* noop */ }
+  }
   if (ids.size === 0 && keys.length === 0) return 0;
   addTombstones(Array.from(ids), keys);
   try {

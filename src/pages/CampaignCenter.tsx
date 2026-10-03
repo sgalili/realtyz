@@ -66,7 +66,7 @@ import { GroupStatusChips, groupResultMap } from '@/components/campaigns/GroupSt
 import { QueueCard } from '@/components/campaigns/QueueCard';
 import { ContinuePostingButton } from '@/components/campaigns/ContinuePostingButton';
 import { REPOST_EDITOR_EVENT, repostEditorDraft, type RepostEditorRequest } from '@/lib/repostEditor';
-import { applyContinuedQueueJobs } from '@/lib/extensionGroupBridge';
+import { applyContinuedQueueJobs, POSTS_REMOVED_EVENT } from '@/lib/extensionGroupBridge';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { ScheduledCountdown } from '@/components/campaigns/ScheduledCountdown';
 import { EditScheduledSeriesDialog } from '@/components/campaigns/EditScheduledSeriesDialog';
@@ -4533,6 +4533,22 @@ const PublishedFeed = ({
   }
   const initialScopedRows = workspaceOwnerId ? FEED_ROWS_CACHE.get(workspaceOwnerId) ?? null : null;
   const [rows, setRows] = useState<CampaignRow[] | null>(initialScopedRows);
+  useEffect(() => {
+    const onRemoved = (e: Event) => {
+      const ids = new Set<string>(((e as CustomEvent).detail?.ids || []).map(String));
+      if (ids.size === 0) return;
+      setRows((prev) => {
+        if (!prev || !prev.some((r) => ids.has(r.id))) return prev;
+        return prev.filter((r) => !ids.has(r.id));
+      });
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduled-items'] });
+    };
+    window.addEventListener(POSTS_REMOVED_EVENT, onRemoved);
+    return () => window.removeEventListener(POSTS_REMOVED_EVENT, onRemoved);
+  }, [queryClient]);
   // True only during the very first cold load (no cache anywhere, in-memory or
   // persisted). The blocking loader is gated on this — a background refresh
   // must never hide already-rendered cached rows.
@@ -7701,6 +7717,16 @@ const CampaignCenter = () => {
 
   const [campaignHistoryRows, setCampaignHistoryRows] = useState<any[]>([]);
   const [campaignDraftRows, setCampaignDraftRows] = useState<any[]>([]);
+  useEffect(() => {
+    const onRemoved = (e: Event) => {
+      const ids = new Set<string>(((e as CustomEvent).detail?.ids || []).map(String));
+      if (ids.size === 0) return;
+      setCampaignHistoryRows((prev) => (prev.some((r) => ids.has(String(r.id))) ? prev.filter((r) => !ids.has(String(r.id))) : prev));
+      setCampaignDraftRows((prev) => (prev.some((r) => ids.has(String(r.id))) ? prev.filter((r) => !ids.has(String(r.id))) : prev));
+    };
+    window.addEventListener(POSTS_REMOVED_EVENT, onRemoved);
+    return () => window.removeEventListener(POSTS_REMOVED_EVENT, onRemoved);
+  }, []);
   const [campaignHistoryLoading, setCampaignHistoryLoading] = useState(false);
   const [alsoEmail, setAlsoEmail] = useState(false);
   // Bulk selection + confirmation for permanently deleting saved drafts.
