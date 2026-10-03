@@ -4,7 +4,9 @@
 // real Facebook group names, their member counts and whether each group
 // actually accepted the post.
 import { useEffect, useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronUp, Clock, Users, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { useFbGroupMeta, type FbGroupMeta } from '@/hooks/useFbGroupMeta';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { openExternal } from '@/lib/openExternal';
@@ -15,6 +17,7 @@ export type GroupResult = {
   code?: string | number;
   reason?: string;
   post_id?: string;
+  post_url?: string;
 };
 
 export type GroupChipState = 'published' | 'pending' | 'failed';
@@ -106,18 +109,19 @@ export function GroupStatusChips({
 
   return (
     <div className={inline ? 'inline-block' : 'mt-1.5'} dir="rtl">
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
+        aria-expanded={open}
+        className="h-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
       >
-        <Users className="h-3.5 w-3.5 text-primary" />
         <span>{ids.length} קבוצות</span>
         {countdown && (
           <span className="tabular-nums text-muted-foreground" dir="ltr">· {countdown}</span>
         )}
-        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-      </button>
+      </Button>
 
       {open && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -126,8 +130,8 @@ export function GroupStatusChips({
             const info = lookup(gid);
             const name = info?.name || `קבוצה ${bare.slice(-6)}`;
             const res = results?.[gid] ?? results?.[bare];
-            const state: GroupChipState = res ? (res.ok ? 'published' : 'failed') : defaultState;
-            const url = fbGroupUrlFrom(info?.url, bare);
+            const state: GroupChipState = res ? (res.ok || isCommentOnlyFailure(res.reason) ? 'published' : 'failed') : defaultState;
+            const url = groupPostDestination(res, fbGroupUrlFrom(info?.url, bare) || bare);
             const title = res?.reason ? `${name} — ${res.reason}` : `${name} — ${STATE_LABEL[state]}`;
             return (
               <button

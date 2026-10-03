@@ -300,7 +300,7 @@ export type ExtensionProgress = {
 };
 
 const STAGE_META: Record<ExtensionStage, { label: string; percent: number }> = {
-  queued: { label: "⏳ ממתין בתור", percent: 8 },
+  queued: { label: "⏳ בתור", percent: 8 },
   navigating: { label: "🔄 ניווט לקבוצה", percent: 35 },
   writing: { label: "✍️ כותב פוסט", percent: 60 },
   commenting: { label: "💬 מוסיף תגובה ראשונה", percent: 85 },
@@ -808,8 +808,8 @@ export const queueProgressForText = (
     stage,
     label: total > 1 && stage !== 'failed' ? `${meta.label} · ${done}/${total}` : meta.label,
     percent,
-    error: stage === 'failed' || failedJobs.length > 0
-      ? (failedJobs.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
+    error: stage === 'failed' || failedJobs.length > 0 || hits.some((e) => e.status === 'completed' && e.error)
+      ? (hits.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
       : null,
     done,
     total,
@@ -871,8 +871,8 @@ export const queueProgressForGroups = (
     stage,
     label: total > 1 && stage !== 'failed' ? `${meta.label} · ${done}/${total}` : meta.label,
     percent,
-    error: stage === 'failed' || failedJobs.length > 0
-      ? (failedJobs.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
+    error: stage === 'failed' || failedJobs.length > 0 || hits.some((e) => e.status === 'completed' && e.error)
+      ? (hits.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
       : null,
     done,
     total,

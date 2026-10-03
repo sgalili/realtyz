@@ -1,3 +1,4 @@
+import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { resolvePosterDestination, applyContactCta } from '@/lib/posterDestination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
@@ -3912,6 +3913,7 @@ type CampaignRow = {
   is_external?: boolean;
   listing_id?: string | null;
   series_id?: string | null;
+  _seriesSlots?: CampaignRow[];
 };
 
 // A scheduled row is one still waiting in the queue: status "scheduled"/"pending"
@@ -3982,7 +3984,16 @@ const derivePostUrl = (r: CampaignRow): string | null => {
     if (typeof url === 'string' && url.startsWith('http')) return url;
   }
   const pid = r.provider_message_id;
-  if (!pid) return null;
+  if (!pid) {
+    const results = r.provider_response?.group_results;
+    if (Array.isArray(results)) {
+      for (const result of results) {
+        const url = groupPostDestination(result, String(result.group_id || ''));
+        if (url) return url;
+      }
+    }
+    return groupPostDestination(undefined, r.group_ids?.[0] || '');
+  }
   const ch = String(r.channel || '').toLowerCase();
   if (ch === 'facebook') return `https://www.facebook.com/${pid}`;
   if (ch === 'instagram') return `https://www.instagram.com/p/${pid}/`;
@@ -5815,11 +5826,11 @@ const PublishedFeed = ({
       statuses: string[];
     }>();
     for (const e of extensionQueue) {
-      const key = `${bodyKey(e.text)}|${Math.floor(Number(e.scheduledTime || 0) / 60000)}`;
+      const key = `${bodyKey(e.sourceText || e.text)}|${Math.floor(Number(e.scheduledTime || 0) / 60000)}`;
       if (!bodyKey(e.text)) continue;
       const gid = String(e.groupUrl || '').match(/groups\/([^/?#]+)/)?.[1] || '';
       const cur = extGroups.get(key) || {
-        text: e.text,
+        text: e.sourceText || e.text,
         images: Array.isArray(e.images) ? e.images : [],
         groupIds: [] as string[],
         scheduledTime: Number(e.scheduledTime) || Date.now(),
@@ -5855,44 +5866,19 @@ const PublishedFeed = ({
       ? merged
       : merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
 
-    // Collapse recurring series: every scheduled row sharing the same
-    // campaign_name+channel belongs to one series. Emit ONE master row
-    // (the next upcoming slot) carrying `_seriesSlots` — an ordered list
-    // of every future slot. All other rows in the series are removed
-    // from the top-level feed so the page never floods with duplicates.
-    const seriesMap = new Map<string, CampaignRow[]>();
-    const nonSeries: CampaignRow[] = [];
-    for (const r of channelFiltered) {
-      if (isScheduledRow(r) && r.campaign_name) {
-        const key = r.series_id || `${String(r.campaign_name).trim()}|${String(r.channel || '').toLowerCase()}`;
-        const arr = seriesMap.get(key) || [];
-        arr.push(r);
-        seriesMap.set(key, arr);
-      } else {
-        nonSeries.push(r);
-      }
-    }
-    const masters: CampaignRow[] = [];
-    for (const arr of seriesMap.values()) {
-      const sorted = [...arr].sort((a, b) => {
-        const ta = a.sent_at ? new Date(a.sent_at).getTime() : 0;
-        const tb = b.sent_at ? new Date(b.sent_at).getTime() : 0;
-        return ta - tb;
-      });
-      const master = { ...sorted[0], _seriesSlots: sorted.map((s) => ({ id: s.id, sent_at: s.sent_at })) } as CampaignRow & { _seriesSlots: Array<{ id: string; sent_at: string | null }> };
-      masters.push(master);
-    }
-    // Preserve original ordering: masters slot in at their earliest slot time.
-    return [...nonSeries, ...masters].sort((a, b) => {
-      const aTime = isScheduledRow(a) && a.sent_at ? new Date(a.sent_at).getTime() : new Date(a.created_at).getTime();
-      const bTime = isScheduledRow(b) && b.sent_at ? new Date(b.sent_at).getTime() : new Date(b.created_at).getTime();
-      // Scheduled items ascending by next-slot; published items descending.
-      const aSched = isScheduledRow(a);
-      const bSched = isScheduledRow(b);
-      if (aSched && !bSched) return -1;
-      if (!aSched && bSched) return 1;
-      if (aSched && bSched) return aTime - bTime;
-      return bTime - aTime;
+    return collapseCampaignCards(channelFiltered).map((row) => {
+      if (row._seriesSlots?.length) return row;
+      const key = bodyKey(row.message_body);
+      const jobs = extensionQueue.filter((job) => job.type !== 'page_first_comment' && key && bodyKey(job.sourceText || job.text) === key);
+      if (jobs.length < 2) return row;
+      return { ...row, _seriesSlots: [...jobs].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)).map((job) => ({
+        ...row, _seriesSlots: undefined, id: job.id, message_body: job.text || row.message_body,
+        created_at: new Date(job.createdAt).toISOString(), sent_at: new Date(job.scheduledTime).toISOString(),
+        status: job.status === 'completed' ? 'sent' : job.status === 'failed' ? 'failed' : 'queued',
+        failure_reason: job.error, provider_message_id: job.postId || null,
+        external_url: job.postUrl || null, provider_response: {},
+        group_ids: [job.groupUrl || ''],
+      })) };
     });
   }, [rows, activeChannel, optimisticRows, extensionQueue]);
 
@@ -6037,7 +6023,10 @@ const PublishedFeed = ({
           ? (queueProgressForText(extensionQueue, r.message_body || '') ||
              queueProgressForGroups(extensionQueue, (r as any).group_ids as string[]))
           : null;
+        const commentWarning = isCommentOnlyFailure(rawFailureReason) || !!r.provider_response?.first_comment_error ||
+          isCommentOnlyFailure(extProgress?.error);
         const failed =
+          !isCommentOnlyFailure(rawFailureReason) &&
           String(r.status || '').toLowerCase() === 'failed' &&
           !legacyMetaError &&
           extQueueStatus !== 'completed' &&
@@ -6045,7 +6034,7 @@ const PublishedFeed = ({
           extQueueStatus !== 'posting';
         const failureReason = failed ? (rawFailureReason || 'הפרסום לפייסבוק נכשל') : null;
 
-        const seriesSlots = (r as any)._seriesSlots as Array<{ id: string; sent_at: string | null }> | undefined;
+        const seriesSlots = r._seriesSlots;
         const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
         // Emergency override: never treat rows as paused in the UI so the
         // protection banner and yellow/red countdown are fully bypassed.
@@ -6185,7 +6174,7 @@ const PublishedFeed = ({
                   <ExtensionPostProgress progress={extProgress} />
                 ) : (legacyMetaError && hasGroupTargets) ? (
                   <ExtensionPostProgress
-                    progress={{ stage: 'queued', label: '⏳ ממתין בתור', percent: 8, error: null, done: 0, total: 1 }}
+                    progress={{ stage: 'queued', label: '⏳ בתור', percent: 8, error: null, done: 0, total: 1 }}
                   />
                 ) : failed ? (
                   <span
@@ -6229,6 +6218,13 @@ const PublishedFeed = ({
                       <span className="tabular-nums">{r.like_count ?? 0}</span>
                     </span>
                   </>
+                )}
+                {commentWarning && !failed && !extProgress && (
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-label="פורסם" />
+                    <span>פורסם</span>
+                    <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
+                  </span>
                 )}
                 <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
@@ -6278,22 +6274,23 @@ const PublishedFeed = ({
 
             {isOpen && (
               <>
-                {isSeries && (
-                  <div className="mx-4 mb-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3" dir="rtl">
-                    <div className="flex items-center gap-2 text-[12px] font-bold text-amber-900">
-                      <CalendarIcon className="h-3.5 w-3.5" />
-                      <span>סדרה מחזורית · {seriesSlots!.length} פרסומים עתידיים</span>
-                    </div>
-                    <ul className="mt-2 max-h-56 overflow-y-auto space-y-1 text-[12px] tabular-nums">
-                      {seriesSlots!.map((slot, idx) => {
-                        const d = slot.sent_at ? new Date(slot.sent_at) : null;
-                        const label = d
-                          ? d.toLocaleDateString('he-IL') + ', ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-                          : '—';
+                {isSeries && seriesSlots && (
+                  <div className="mx-4 mb-3" dir="rtl">
+                    <div className="mb-2 text-xs font-semibold text-muted-foreground">{seriesSlots.length} פוסטים בקמפיין</div>
+                    <ul className="max-h-80 overflow-y-auto divide-y divide-border">
+                      {seriesSlots.map((slot) => {
+                        const url = derivePostUrl(slot);
+                        const warning = !!slot.provider_response?.first_comment_error || isCommentOnlyFailure(slot.failure_reason);
+                        const label = isScheduledRow(slot) ? 'בתור' : slot.status === 'failed' && !warning ? 'נכשל' : 'פורסם';
                         return (
-                          <li key={slot.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1 text-amber-900">
-                            <span className="text-[11px] font-semibold text-amber-800">#{idx + 1}{idx === 0 ? ' · הבא' : ''}</span>
-                            <span>{label}</span>
+                          <li key={slot.id} className="flex min-w-0 items-center gap-2 py-2 text-xs">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium">{slot.message_body?.trim().split('\n')[0] || slot.campaign_name}</p>
+                              <span className="text-muted-foreground">{new Date(slot.sent_at || slot.created_at).toLocaleString('he-IL')} · {label}</span>
+                            </div>
+                            {warning && <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3 text-muted-foreground" aria-label={FIRST_COMMENT_WARNING} /></span>}
+                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="פתח פוסט" title="פתח פוסט" disabled={!url}
+                              onClick={() => { if (url) window.open(url, '_blank', 'noopener,noreferrer'); }}><ExternalLink className="h-3.5 w-3.5" /></Button>
                           </li>
                         );
                       })}
@@ -8218,17 +8215,9 @@ const CampaignCenter = () => {
     <div className="space-y-2" dir="rtl">
       {(() => {
         const future = campaignHistoryRows
-          .filter((r) => ['scheduled', 'pending'].includes(r.status) && new Date(r.sent_at).getTime() > Date.now())
-          .sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
-        // ONLY the next upcoming run of each series is ever shown — recurring
-        // posts must never surface far-future slots (e.g. 10.12.2026).
-        const seen = new Set<string>();
-        const visible = future.filter((r) => {
-          const key = r.series_id || `${r.campaign_name}|${r.channel}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+          .filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status))
+          .sort(stableCardCompare);
+        const visible = collapseCampaignCards(future);
         if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
         const header = (
           <div key="future-bulk-bar" className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
@@ -8271,6 +8260,14 @@ const CampaignCenter = () => {
               groupEmptyLabel="ללא קבוצות — פרסום לעמוד בלבד"
               status="scheduled"
               countdownIso={r.sent_at}
+              details={r._seriesSlots && (
+                <ul className="mt-2 max-h-64 overflow-y-auto divide-y divide-border">
+                  {r._seriesSlots.map((slot) => <li key={slot.id} className="flex items-center justify-between gap-2 py-2 text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate">{slot.message_body?.split('\n')[0] || slot.campaign_name}</span>
+                    <span className="shrink-0">{new Date(slot.sent_at).toLocaleString('he-IL')} · בתור</span>
+                  </li>)}
+                </ul>
+              )}
               dateLabel={new Date(r.sent_at).toLocaleString('he-IL')}
               actions={
                 <>
