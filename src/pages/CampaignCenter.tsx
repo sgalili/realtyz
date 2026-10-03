@@ -8332,7 +8332,7 @@ const CampaignCenter = () => {
     <div className="space-y-2" dir="rtl">
       {(() => {
         const future = campaignHistoryRows
-          .filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status) && !deletedIds.has(String(r.id)))
+          .filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status) && !readDeletedTombstones().has(String(r.id)))
           .sort(stableCardCompare);
         const visible = collapseCampaignCards(future);
         if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
@@ -9033,5 +9033,11 @@ const CampaignCenter = () => {
   );
 };
 
+
+function readDeletedTombstones(): Set<string> {
+  const out = new Set<string>();
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i) || ''; if (k.startsWith('campaign:deleted:')) (JSON.parse(localStorage.getItem(k) || '[]') as string[]).forEach((id) => out.add(id)); } } catch { /* ignore */ }
+  return out;
+}
 
 export default CampaignCenter;
