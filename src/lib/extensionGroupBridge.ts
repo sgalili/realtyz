@@ -743,6 +743,22 @@ export const resetQueueEntriesForText = (text: string) => {
 
 export const EXT_QUEUE_REMOVE_MESSAGE = "RZ_QUEUE_REMOVE";
 
+/** Replace retried local jobs with the server-authorized generation, not a stale status merge. */
+export const applyContinuedQueueJobs = (owner: string, rows: any[]) => {
+  const cloudIds = new Set(rows.map((r) => String(r.id)));
+  const current = readPostQueue();
+  const replaced = current.filter((j) => j.workspaceOwnerId === owner && j.cloudId && cloudIds.has(j.cloudId));
+  window.postMessage({ source: 'realtyz-app', type: EXT_QUEUE_REMOVE_MESSAGE, ids: replaced.map((j) => j.id), textKeys: [] }, window.location.origin);
+  const next = current.filter((j) => !(j.workspaceOwnerId === owner && j.cloudId && cloudIds.has(j.cloudId)));
+  for (const row of rows) {
+    const job = row.payload?.job;
+    if (!job?.id) continue; // Server-claimed jobs remain server-owned.
+    next.push({ ...job, cloudId: row.id, workspaceOwnerId: owner, status: 'pending', error: null, stage: 'queued', scheduledTime: new Date(row.scheduled_for).getTime() });
+  }
+  writePostQueue(next);
+  window.dispatchEvent(new Event('realtyz:campaign-changed'));
+};
+
 /**
  * Permanently delete mirrored extension jobs from the database so the cloud
  * queue sync cannot rebuild a card the user deleted. Matches by local job id

@@ -116,8 +116,7 @@ export function QueueCard({
             countdownIso={status === 'scheduled' ? countdownIso : null}
             emptyLabel={groupEmptyLabel}
             defaultOpen={open}
-          />
-          {open && details}
+          >{details}</GroupStatusChips>
         </div>
 
         {/* Row 2: logo · date .... status · actions */}

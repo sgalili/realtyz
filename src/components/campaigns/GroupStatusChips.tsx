@@ -5,6 +5,7 @@
 import { useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronDown, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { useFbGroupMeta, groupKeyFrom, localQueueGroupNames, type FbGroupMeta } from '@/hooks/useFbGroupMeta';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
@@ -96,22 +97,33 @@ export function GroupStatusChips({
     return emptyLabel ? <p className="mt-1 text-[11px] text-muted-foreground">{emptyLabel}</p> : null;
   }
 
+  if (ids.length === 1) {
+    const gid = ids[0];
+    const url = fbGroupUrlFrom(lookup(gid)?.url, groupKeyFrom(gid));
+    const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
+    const state = result ? (result.ok || isCommentOnlyFailure(result.reason) ? 'published' : 'failed') : defaultState;
+    return <Button type="button" variant="ghost" size="sm" title="פתח קבוצה בפייסבוק" onClick={(e) => { e.stopPropagation(); openExternal(url); }} className={`h-7 max-w-full shrink-0 gap-1.5 rounded-full border px-2 text-[11px] ${STATE_STYLE[state]}`}><span className="max-w-[180px] truncate">{nameOf(gid)}</span><StateIcon state={state} /></Button>;
+  }
+
   return (
-    <div className={inline ? 'relative inline-block' : 'relative mt-1.5'} dir="rtl">
+    <div className={inline ? 'inline-flex h-7 max-w-full shrink-0' : 'mt-1.5 inline-flex h-7 max-w-full shrink-0'} dir="rtl">
+      <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
       <Button
         variant="ghost"
         size="sm"
         type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onClick={(e) => e.stopPropagation()}
         aria-expanded={open}
-        className="h-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
+        className="h-7 shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
       >
         <span className="max-w-[180px] truncate">{ids.length > 1 ? `${ids.length} קבוצות` : nameOf(ids[0])}</span>
         <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </Button>
+      </PopoverTrigger>
 
-      {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 flex max-h-60 w-max max-w-[min(20rem,85vw)] flex-wrap items-center gap-1.5 overflow-y-auto rounded-xl border border-border bg-popover p-2 shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <PopoverContent align="end" side="bottom" dir="rtl" className="w-[min(36rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-wrap items-center gap-1.5">
           {ids.slice(0, max).map((gid) => {
             const bare = groupKeyFrom(gid);
             const info = lookup(gid);
@@ -121,7 +133,7 @@ export function GroupStatusChips({
             const url = groupPostDestination(res, fbGroupUrlFrom(info?.url, /^https?:/i.test(gid) ? gid : bare) || bare);
             const title = res?.reason ? `${name} — ${res.reason}` : `${name} — ${STATE_LABEL[state]}`;
             return (
-              <button
+              <Button variant="ghost"
                 key={gid}
                 type="button"
                 title={url ? `${title} — פתח בפייסבוק` : title}
@@ -138,13 +150,14 @@ export function GroupStatusChips({
                   </span>
                 )}
                 <StateIcon state={state} />
-              </button>
+              </Button>
             );
           })}
           {ids.length > max && <span className="text-[11px] text-muted-foreground">+{ids.length - max}</span>}
         </div>
-      )}
-      {open && children && <div className="mt-3 w-full min-w-0 space-y-3">{children}</div>}
+        {children && <div className="mt-3 w-full min-w-0 space-y-3">{children}</div>}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

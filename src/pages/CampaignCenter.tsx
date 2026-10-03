@@ -65,6 +65,7 @@ import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { GroupStatusChips, groupResultMap } from '@/components/campaigns/GroupStatusChips';
 import { QueueCard } from '@/components/campaigns/QueueCard';
+import { ContinuePostingButton } from '@/components/campaigns/ContinuePostingButton';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { ScheduledCountdown } from '@/components/campaigns/ScheduledCountdown';
 import { EditScheduledSeriesDialog } from '@/components/campaigns/EditScheduledSeriesDialog';
@@ -6304,6 +6305,7 @@ const PublishedFeed = ({
                     </GroupStatusChips>
                   </div>
                 )}
+                {hasGroupTargets && <ContinuePostingButton post={r} />}
                 <span className="flex-1" />
                 {(r as any)._optimistic && !scheduled ? (() => {
                   const remaining = Math.max(0, Math.ceil((((r as any)._eta_ms as number) - Date.now()) / 1000));
@@ -8409,6 +8411,7 @@ const CampaignCenter = () => {
                       className="shrink-0"
                     />
                   )}
+                  {groupIds.length > 0 && <ContinuePostingButton post={r} />}
                   <Button
                     size="icon"
                     variant="outline"

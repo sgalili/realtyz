@@ -1,0 +1,1 @@
+ALTER FUNCTION public.continue_group_post_jobs(uuid,uuid[],boolean) SECURITY INVOKER;

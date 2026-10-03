@@ -6872,6 +6872,45 @@ export type Database = {
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
+      continue_group_post_jobs: {
+        Args: {
+          _job_ids: string[]
+          _resubmit?: boolean
+          _workspace_owner_id: string
+        }
+        Returns: {
+          activity_type: string
+          attempts: number
+          claim_expires_at: string | null
+          claimed_by: string | null
+          cloud_attempts: number
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          owner_notified_at: string | null
+          payload: Json
+          processed_at: string | null
+          publication_status: string
+          runner: string
+          runner_note: string | null
+          scheduled_for: string
+          status: string
+          target_label: string | null
+          target_ref: string | null
+          updated_at: string
+          variation_index: number | null
+          variations: Json
+          workspace_owner_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "campaign_activity_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       crm_import_merge: { Args: never; Returns: string }
       crm_safe_int: { Args: { _t: string }; Returns: number }
       crm_safe_numeric: { Args: { _t: string }; Returns: number }
