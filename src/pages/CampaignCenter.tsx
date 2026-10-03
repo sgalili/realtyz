@@ -6418,8 +6418,8 @@ const PublishedFeed = ({
                 )}>
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
-                {hasGroupTargets && inGroupOverlay !== true && (
-                  <div onClick={(e) => e.stopPropagation()}>
+                {hasGroupTargets && (
+                  <div className="min-w-0 max-w-full" onClick={(e) => e.stopPropagation()}>
                     <GroupStatusChips
                       inline
                       groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
@@ -6433,7 +6433,7 @@ const PublishedFeed = ({
                       countdownIso={scheduled ? r.sent_at : null}
                       defaultOpen={false}
                     >
-                      {isSeries && seriesSlots ? seriesSlots.map((slot) => renderFeedCard(slot, undefined, true)) : null}
+                      {inGroupOverlay !== true && isSeries && seriesSlots ? seriesSlots.map((slot) => renderFeedCard(slot, undefined, true)) : null}
                     </GroupStatusChips>
                   </div>
                 )}
