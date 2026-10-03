@@ -760,9 +760,9 @@ chrome.alarms.onAlarm.addListener((a) => {
 chrome.runtime.onInstalled.addListener(() => initQueue());
 chrome.runtime.onStartup.addListener(() => initQueue());
 
-/* ── messages from the app page (content.js) ────────────────────────────── */
+/* ── messages from the app page (content.js) and from the web app itself ── */
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+const handleMessage = (msg, _sender, sendResponse) => {
   if (!msg || typeof msg !== 'object') return;
 
   if (msg.type === 'RZ_EXT_PAIR' && typeof msg.token === 'string' && msg.token) {
