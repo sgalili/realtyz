@@ -24,6 +24,22 @@ export type ComposerSession = {
   updatedAt: string;
 };
 
+/** Active workspace owner (server-resolved); falls back to the user id. */
+async function resolveScope(): Promise<{ userId: string; ws: string } | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  let ws: string | null = null;
+  try {
+    const { data } = await (supabase as any).rpc('current_workspace_owner');
+    if (typeof data === 'string' && data) ws = data;
+  } catch { /* fallback below */ }
+  return { userId: user.id, ws: ws ?? user.id };
+}
+
+const logErr = (op: string, error: any) => {
+  if (error) console.warn(`[composer-session] ${op} failed`, error.message || error);
+};
+
 const localKey = (channel: string) => `rz-composer-session:v1:${channel}`;
 const slotKey = (channel: string) => `session:${channel}`;
 
@@ -55,11 +71,16 @@ export function readComposerSessionLocal(channel: string): ComposerSession | nul
 /** Durable read — used when localStorage was cleared or on another device. */
 export async function fetchComposerSession(channel: string): Promise<ComposerSession | null> {
   try {
-    const { data } = await (supabase as any)
+    const scope = await resolveScope();
+    if (!scope) return null;
+    const { data, error } = await (supabase as any)
       .from('campaign_composer_sessions')
       .select('payload')
+      .eq('workspace_owner_id', scope.ws)
       .eq('channel', slotKey(channel))
+      .limit(1)
       .maybeSingle();
+    logErr('fetch', error);
     const session = normalize((data as any)?.payload, channel);
     if (session && typeof window !== 'undefined') {
       try { localStorage.setItem(localKey(channel), JSON.stringify(session)); } catch { /* quota */ }
@@ -86,18 +107,19 @@ export async function saveComposerSession(
     try { localStorage.setItem(localKey(channel), JSON.stringify(session)); } catch { /* quota */ }
   }
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await (supabase as any).from('campaign_composer_sessions').upsert(
+    const scope = await resolveScope();
+    if (!scope) return;
+    const { error } = await (supabase as any).from('campaign_composer_sessions').upsert(
       {
-        user_id: user.id,
-        workspace_owner_id: user.id,
+        user_id: scope.userId,
+        workspace_owner_id: scope.ws,
         channel: slotKey(channel),
         payload: session as any,
         updated_at: session.updatedAt,
       },
       { onConflict: 'workspace_owner_id,channel' },
     );
+    logErr('save', error);
   } catch {
     // The local copy still covers refreshes.
   }
@@ -109,10 +131,14 @@ export async function clearComposerSession(channel: string): Promise<void> {
     try { localStorage.removeItem(localKey(channel)); } catch { /* ignore */ }
   }
   try {
-    await (supabase as any)
+    const scope = await resolveScope();
+    if (!scope) return;
+    const { error } = await (supabase as any)
       .from('campaign_composer_sessions')
       .delete()
+      .eq('workspace_owner_id', scope.ws)
       .eq('channel', slotKey(channel));
+    logErr('clear', error);
   } catch { /* ignore */ }
 }
 
@@ -125,28 +151,34 @@ const draftSlot = (channel: string, instanceId: string, ws?: string | null) =>
 
 export async function saveComposerDraftCloud(channel: string, instanceId: string, payload: unknown, ws?: string | null) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await (supabase as any).from('campaign_composer_sessions').upsert(
+    const scope = await resolveScope();
+    if (!scope) return;
+    const { error } = await (supabase as any).from('campaign_composer_sessions').upsert(
       {
-        user_id: user.id,
-        workspace_owner_id: user.id,
+        user_id: scope.userId,
+        workspace_owner_id: scope.ws,
         channel: draftSlot(channel, instanceId, ws),
         payload: payload as any,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'workspace_owner_id,channel' },
     );
+    logErr('save', error);
   } catch { /* local copy still covers refreshes */ }
 }
 
 export async function fetchComposerDraftCloud(channel: string, instanceId: string, ws?: string | null): Promise<any | null> {
   try {
-    const { data } = await (supabase as any)
+    const scope = await resolveScope();
+    if (!scope) return null;
+    const { data, error } = await (supabase as any)
       .from('campaign_composer_sessions')
       .select('payload')
+      .eq('workspace_owner_id', scope.ws)
       .eq('channel', draftSlot(channel, instanceId, ws))
+      .limit(1)
       .maybeSingle();
+    logErr('fetch-draft', error);
     return (data as any)?.payload ?? null;
   } catch {
     return null;
@@ -155,9 +187,13 @@ export async function fetchComposerDraftCloud(channel: string, instanceId: strin
 
 export async function clearComposerDraftsCloud(channel: string) {
   try {
-    await (supabase as any)
+    const scope = await resolveScope();
+    if (!scope) return;
+    const { error } = await (supabase as any)
       .from('campaign_composer_sessions')
       .delete()
+      .eq('workspace_owner_id', scope.ws)
       .like('channel', `draft:${channel}:%`);
+    logErr('clear-drafts', error);
   } catch { /* ignore */ }
 }
