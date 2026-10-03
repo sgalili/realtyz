@@ -45,6 +45,7 @@ import {
   isLegacyMetaGroupError,
   resetQueueEntriesForText,
   removeQueueEntriesForPosts,
+  deleteCloudQueueForPosts,
 } from '@/lib/extensionGroupBridge';
 
 import { toast } from 'sonner';
@@ -5649,7 +5650,8 @@ const PublishedFeed = ({
       const localIds = [String(r.id), ...childIds];
       const texts = [r.message_body, ...slots.map((c) => c?.message_body)].map((t) => String(t || '')).filter(Boolean);
       const removed = removeQueueEntriesForPosts({ ids: localIds, texts });
-      console.log('[campaign-delete] local queue purge', { id: r.id, localIds, removedFromQueue: removed });
+      const cloudRemoved = await deleteCloudQueueForPosts({ workspaceOwnerId, ids: localIds, texts });
+      console.log('[campaign-delete] queue purge', { id: r.id, localIds, removedFromQueue: removed, cloudRemoved });
       const dbIds = childIds.filter((id: string) => UUID_RE.test(id));
       if (dbIds.length > 0) {
         await Promise.all(dbIds.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: entireSeries })));
@@ -5775,6 +5777,7 @@ const PublishedFeed = ({
           const ids = [String(r.id), ...slots.map((c) => String(c?.id ?? '')).filter(Boolean)];
           const texts = [r.message_body, ...slots.map((c) => c?.message_body)].map((t) => String(t || '')).filter(Boolean);
           removeQueueEntriesForPosts({ ids, texts });
+          if (workspaceOwnerId) await deleteCloudQueueForPosts({ workspaceOwnerId, ids, texts });
           const gone = new Set(ids);
           setOptimisticRows((prev) => prev.filter((x) => !gone.has(x.id)));
           setRows((prev) => prev?.filter((x) => !gone.has(x.id)) ?? prev);
