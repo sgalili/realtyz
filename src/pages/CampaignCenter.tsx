@@ -5958,8 +5958,13 @@ const PublishedFeed = ({
         sent_at: status === 'scheduled' ? new Date(g.scheduledTime).toISOString() : null,
       });
     }
-    const UNSENT = new Set(['scheduled', 'pending', 'queued', 'publishing', 'processing']);
+    // Only not-yet-started items belong to "עתידיים". Anything that is being
+    // published or already went live ('publishing', 'processing', 'sent',
+    // 'published', 'success', 'completed') stays visible under "פורסמו".
+    const UNSENT = new Set(['scheduled', 'pending', 'queued']);
+    const PUBLISHED_ALIASES = new Set(['published', 'success', 'completed', 'posted', 'delivered']);
     const merged: CampaignRow[] = [...optimisticRows, ...extRows, ...base]
+      .map((r: any) => (PUBLISHED_ALIASES.has(String(r.status || '').toLowerCase()) ? { ...r, status: 'sent' } : r))
       .filter((r: any) => r._optimistic || !UNSENT.has(String(r.status || '').toLowerCase()));
     const channelFiltered = activeChannel === 'all'
       ? merged
