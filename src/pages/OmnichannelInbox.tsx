@@ -1227,7 +1227,7 @@ const OmnichannelInbox = () => {
                     <FolderInput className="h-3.5 w-3.5" /> העבר
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" dir="rtl">
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => bulkUpdateChats({ is_bookmarked: true }, 'השיחות הועברו לשמורים')}>
                     <Bookmark className="h-4 w-4 ms-2" /> לשמורים
                   </DropdownMenuItem>
