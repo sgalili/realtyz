@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Permanently delete posts and associated queued jobs with verified results.
+- [ ] Offer current-post or entire-series deletion for master posts.
+
 - [x] Keep campaign/post card titles and content stable between explicit edits.
 
 - [x] Enable horizontal scrolling for the affiliate table on mobile and preview.
