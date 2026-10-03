@@ -4731,6 +4731,7 @@ const PublishedFeed = ({
   const fbSyncBlockedRef = useRef(false);
   const fbSyncWarningRef = useRef<string | null>(null);
   const fullSyncRunningRef = useRef(false);
+  const [extSync, setExtSync] = useState<{ state: 'idle' | 'running' | 'done' | 'no_extension' | 'empty' | 'error'; count: number; at: number }>({ state: 'idle', count: 0, at: 0 });
   const setFacebookSyncWarning = useCallback((message: string | null) => {
     if (fbSyncWarningRef.current === message) return;
     fbSyncWarningRef.current = message;
@@ -5480,102 +5481,32 @@ const PublishedFeed = ({
       if (fullSyncRunningRef.current) return;
       fullSyncRunningRef.current = true;
       const toastId = 'campaigns-hero-sync';
-      toast.loading('מסנכרן פוסטים חיים מפייסבוק…', { id: toastId });
+      toast.loading('התוסף מסנכרן פוסטים מעמוד הפייסבוק…', { id: toastId });
       let ok = false;
       let hadTransientIssue = false;
       let refreshWarning: string | null = null;
       try {
         if (scope) {
-          const invokeSync = () => supabase.functions.invoke('fb-recent-posts', {
-            body: {
-              lastRecords: 500,
-              pageSize: 50,
-              user_id: scope,
-              owner_id: scope,
-              persist: true,
-              sync_comments: false,
-              prune_missing: false,
-              skipAnalytics: true,
-              manual_refresh: true,
-            },
-          });
-          let { data: syncData, error: syncError } = await invokeSync();
-          // Same source of truth as חיבורים: the active workspace's
-          // messenger_page_bindings row. If it has a token, a "no connection"
-          // answer is a stale race (e.g. right after reconnect) — retry once
-          // and never surface the missing-connection message.
-          const isNoConnection = (d: any) =>
-            d?.sync_error?.kind === 'no_connection'
-            || String(d?.raw_error ?? d?.error ?? '').includes('facebook_page_access_token_missing');
-          if (isNoConnection(syncData)) {
-            const { data: bindRows } = await (supabase as any).rpc('get_effective_meta_page', { _owner: scope });
-            const bound: any = Array.isArray(bindRows) ? bindRows[0] : bindRows;
-            if (bound?.page_id && bound?.has_token) {
-              effectiveMetaPageRef.current = { pageId: String(bound.page_id), hasToken: true } as any;
-              ({ data: syncData, error: syncError } = await invokeSync());
-              if (isNoConnection(syncData)) {
-                syncData = { ...(syncData as any), error: null, raw_error: null, sync_error: null, ok: true };
-              }
-            }
-          }
-          const providerError = (syncData as any)?.error || (syncError as any)?.message || null;
-          const graphFailure = facebookGraphFailure({
-            raw_error: (syncData as any)?.raw_error,
-            message: providerError,
-          });
-          const pulled = Number((syncData as any)?.count ?? 0);
-          if (providerError || (graphFailure && pulled === 0)) {
-            // Meta Development Mode restriction (Graph code 10,
-            // dev_mode_restricted): bypass silently. Log in the background,
-            // keep the existing posts, and let the page load as if the
-            // refresh simply returned an empty list — no banner, no popup.
-            const isDevModeRestricted =
-              facebookDevModeNote(syncData, providerError) !== null;
-            if (isDevModeRestricted) {
-              console.error('[campaign] facebook post refresh refused by Meta (code 10)', syncData);
-              setFacebookSyncWarning(facebookDevModeText(syncData));
-              hadTransientIssue = true;
-            } else {
-              console.warn('[campaign] facebook post refresh was non-fatal', {
-                providerError,
-                raw_status: (syncData as any)?.raw_status,
-                raw_error: (syncData as any)?.raw_error,
-                graph_source: (syncData as any)?.graph_source,
-              });
-              // If the workspace already has a bound Facebook Page, transient
-              // blips (timeouts, rate limits, empty responses) must not trigger
-              // the disruptive reconnect banner.
-              const isFbConnected = facebookIsLive();
-              const isTransient = isTransientFacebookError({
-                raw_error: (syncData as any)?.raw_error,
-                message: providerError,
-              });
-              // A missing read scope (#10 pages_read_engagement / Page Public
-              // Content Access) is an app-review limitation, NOT a broken Page
-              // binding. While a Page with a live token is bound we keep the
-              // existing posts and stay silent instead of forcing a reconnect.
-              const isScopeLimitation = graphFailure === 'permission';
-              // Always tell the user the exact Graph reason, even for a transient
-              // blip — silence used to hide expired tokens and missing scopes.
-              const exactReason = facebookSyncErrorText(syncData, syncError)
-                ?? 'רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.';
-              setFacebookSyncWarning(exactReason);
-              if (isFbConnected && (isTransient || isScopeLimitation)) {
-                hadTransientIssue = true;
-              } else {
-                refreshWarning = exactReason;
-              }
-            }
-          } else {
-            setFacebookSyncWarning(null);
-          }
+          // Page sync runs through the Realtyz browser extension (DOM scrape of
+          // the connected Page) — no Meta Graph read permissions required.
+          setExtSync({ state: 'running', count: 0, at: Date.now() });
+          let pageId: string | null = null;
+          try {
+            const { data: effective } = await (supabase as any).rpc('get_effective_meta_page', { _owner: scope });
+            const row: any = Array.isArray(effective) ? effective[0] : effective;
+            pageId = row?.page_id ? String(row.page_id) : null;
+          } catch { /* extension falls back to the signed-in profile */ }
+          const res = await syncPagePostsViaExtension({ ownerId: scope, pageId, max: 100 });
+          setExtSync({ state: res.status === 'synced' ? 'done' : res.status, count: res.upserted, at: Date.now() });
+          setFacebookSyncWarning(null);
+          if (res.status !== 'synced') hadTransientIssue = true;
         }
         // Repaint only from persisted rows. mergeRowsById keeps existing cards
         // if the provider returned nothing or timed out.
         await load({ skipFbImport: true });
         ok = refreshWarning === null;
         if (ok && !hadTransientIssue) toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
-        else if (hadTransientIssue) toast.message('רענון הפוסטים נדחה לרגע — החיבור נשמר', { id: toastId });
+        else if (hadTransientIssue) toast.dismiss(toastId);
         else toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
       } catch (err) {
         console.warn('[campaign] manual facebook sync failed', err);
@@ -6215,41 +6146,39 @@ const PublishedFeed = ({
         </Button>
       </div>
 
-      {fbSyncWarning ? (
+      {extSync.state !== 'idle' ? (
         <div
-          role="alert"
-          className="mb-3 flex w-full min-w-0 max-w-full flex-col items-stretch gap-3 overflow-hidden rounded-md border border-destructive/40 bg-destructive/10 p-3 text-right sm:flex-row sm:items-start sm:justify-between"
+          role="status"
+          aria-live="polite"
+          className="mb-3 flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-right"
         >
-          <div className="flex w-full min-w-0 flex-1 items-start gap-2 overflow-hidden">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            <p className="min-w-0 max-w-full flex-1 whitespace-pre-line break-words text-xs font-medium leading-5 text-destructive [overflow-wrap:break-word] [word-break:break-word]">{fbSyncWarning}</p>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {extSync.state === 'running' ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+            ) : extSync.state === 'done' ? (
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+            ) : (
+              <RefreshCw className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+            <p className="min-w-0 truncate text-xs text-muted-foreground">
+              {extSync.state === 'running' && 'התוסף קורא את עמוד הפייסבוק…'}
+              {extSync.state === 'done' && `סונכרנו ${extSync.count} פוסטים דרך התוסף`}
+              {extSync.state === 'no_extension' && 'התקן את תוסף Realtyz כדי לסנכרן פוסטים ומדדים'}
+              {extSync.state === 'empty' && 'לא נמצאו פוסטים — ודא שאתה מחובר לפייסבוק בדפדפן'}
+              {extSync.state === 'error' && 'הסנכרון לא הושלם, נסה שוב'}
+            </p>
           </div>
-          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-            {fbSyncWarning.includes('developers.facebook.com') ? (
-              <Button asChild type="button" size="sm" variant="outline" className="min-w-0 flex-1 sm:flex-none">
-                <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer">
-                  Meta App Dashboard
-                </a>
-              </Button>
-            ) : null}
+          {extSync.state !== 'running' ? (
             <Button
               type="button"
               size="sm"
-              className="min-w-0 flex-1 sm:flex-none"
-              onClick={() => void handleFeedConnect('facebook')}
+              variant="outline"
+              className="h-7 shrink-0 px-2 text-xs"
+              onClick={() => window.dispatchEvent(new CustomEvent('rz:campaigns-sync'))}
             >
-              התחבר מחדש
+              סנכרן שוב
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setFacebookSyncWarning(null)}
-              className="text-destructive hover:text-destructive"
-            >
-              סגור
-            </Button>
-          </div>
+          ) : null}
         </div>
       ) : null}
 
