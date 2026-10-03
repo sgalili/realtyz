@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
@@ -146,20 +147,35 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
   // Compare by normalized bare id: drafts and repost prefills store ids
   // without the `ext:` prefix / URL form that fb_user_groups rows may carry.
-  const bare = (id: string) => fbGroupId(id) ?? id;
-  const isSelected = (g: FacebookGroup) => {
-    const target = bare(g.group_id);
-    return selectedIds.some((id) => bare(id) === target);
+  const bare = (id: string) => fbGroupId(id) ?? id.replace(/^(ext:|manual:)/, '');
+  const selection = useMemo(() => Array.isArray(selectedIds)
+    ? [...new Map(selectedIds.filter((id) => typeof id === 'string' && id.trim()).map((id) => [bare(id), id])).values()]
+    : [], [selectedIds]);
+  const selectedKeys = useMemo(() => new Set(selection.map(bare)), [selection]);
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const isSelected = (g: FacebookGroup) => selectedKeys.has(bare(g.group_id));
+  const commitSelection = (next: string[]) => {
+    if (next.length === selectionRef.current.length && next.every((id, i) => id === selectionRef.current[i])) return;
+    selectionRef.current = next;
+    onChange(next);
   };
   const toggle = (id: string) => {
+    if (loading || !id || !groups.some((g) => bare(g.group_id) === bare(id))) return;
+    const current = selectionRef.current;
     const target = bare(id);
-    onChange(isSelected({ group_id: id } as FacebookGroup)
-      ? selectedIds.filter((x) => bare(x) !== target)
-      : [...selectedIds, id]);
+    commitSelection(current.some((x) => bare(x) === target)
+      ? current.filter((x) => bare(x) !== target)
+      : [...current, id]);
   };
   const allSelected = groups.length > 0 && groups.every(isSelected);
   const someSelected = groups.some(isSelected) && !allSelected;
-  const toggleAll = () => onChange(allSelected ? [] : groups.map((g) => g.group_id));
+  const toggleAll = () => {
+    if (loading || !groups.length) return;
+    const keys = new Set(selectionRef.current.map(bare));
+    commitSelection(groups.every((g) => keys.has(bare(g.group_id)))
+      ? [] : [...new Map(groups.map((g) => [bare(g.group_id), g.group_id])).values()]);
+  };
 
   return (
     <div className={cn("w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-background p-3 space-y-3", className)} dir="rtl">
@@ -167,7 +183,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         <Users className="h-4 w-4 shrink-0 text-primary" />
         <span className="min-w-0 break-words text-[15px] font-semibold text-foreground">פרסום בקבוצות פייסבוק</span>
         {groups.length > 0 && (
-          <span className="text-[14px] text-muted-foreground">({selectedIds.length}/{groups.length})</span>
+          <span className="text-[14px] text-muted-foreground">({selection.length}/{groups.length})</span>
         )}
         {groups.length > 0 && (
           <button
@@ -197,7 +213,9 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
       {hasVisibleGroups && (
         <div className="min-w-0 max-w-full rounded-lg border border-border overflow-hidden">
-          {selectMode && <label className="flex items-center gap-3 bg-muted/40 px-3 py-2 cursor-pointer border-b border-border">
+          {selectMode && <Button type="button" variant="ghost" role="checkbox" aria-checked={someSelected ? 'mixed' : allSelected}
+            aria-label="בחר הכל" disabled={loading} onClick={(e) => { e.stopPropagation(); toggleAll(); }}
+            className="flex h-auto w-full min-w-0 items-center justify-start gap-3 rounded-none bg-muted/40 px-3 py-2 border-b border-border">
             <div
               className={cn(
                 "h-4 w-4 rounded border flex items-center justify-center shrink-0 transition",
@@ -211,10 +229,9 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
               {allSelected && <Check className="h-3 w-3" />}
               {someSelected && <div className="h-0.5 w-2 bg-primary-foreground rounded" />}
             </div>
-            <input type="checkbox" className="sr-only" checked={allSelected} onChange={toggleAll} />
             <span className="text-[15px] font-semibold text-foreground flex-1">בחר הכל</span>
-            <span className="text-[14px] text-muted-foreground tabular-nums">{selectedIds.length}/{groups.length}</span>
-          </label>}
+            <span className="text-[14px] text-muted-foreground tabular-nums">{selection.length}/{groups.length}</span>
+          </Button>}
 
           <div
             className="min-w-0 max-w-full max-h-[45vh] min-h-[160px] overflow-x-hidden overflow-y-auto overscroll-contain divide-y divide-border [-webkit-overflow-scrolling:touch]"
@@ -224,13 +241,16 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
             {groups.map((g) => {
               const active = isSelected(g);
               return (
-                <label
+                <div
                   key={g.group_id}
                   className={cn(
                     "flex w-full min-w-0 max-w-full items-center gap-3 px-3 py-2 cursor-pointer transition",
                     active ? "bg-primary/5" : "bg-background hover:bg-muted/30",
                   )}
                 >
+                  <Button type="button" variant="ghost" role="checkbox" aria-checked={active} aria-label={g.group_name}
+                    disabled={loading} onClick={(e) => { e.stopPropagation(); toggle(g.group_id); }}
+                    className="h-auto min-w-0 flex-1 justify-start gap-3 whitespace-normal rounded-none p-0 text-right hover:bg-transparent">
                   {selectMode && <div
                     className={cn(
                       "h-4 w-4 rounded border flex items-center justify-center shrink-0",
@@ -239,7 +259,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                   >
                     {active && <Check className="h-3 w-3" />}
                   </div>}
-                  <input type="checkbox" className="sr-only" checked={active} onChange={() => toggle(g.group_id)} />
                   {g.group_icon ? (
                     <img src={g.group_icon} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                   ) : (
@@ -255,17 +274,18 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                       </div>
                     )}
                   </div>
+                  </Button>
                   {g.group_url && (
-                    <button
+                    <Button variant="ghost" size="icon"
                       type="button"
                       title="פתח קבוצה בלשונית חדשה"
-                      onClick={(e) => { e.preventDefault(); openExternal(g.group_url); }}
+                      onClick={(e) => { e.stopPropagation(); openExternal(g.group_url); }}
                       className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <ExternalLink className="h-4 w-4" />
-                    </button>
+                    </Button>
                   )}
-                </label>
+                </div>
               );
             })}
           </div>
