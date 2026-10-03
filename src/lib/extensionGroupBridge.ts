@@ -1,4 +1,4 @@
-import { ensureMandatoryComment } from "@/lib/mandatoryComment";
+import { ensureMandatoryComment, enforceRitaIdentity } from "@/lib/mandatoryComment";
 /**
  * extensionGroupBridge — connects the companion Realtyz browser extension to
  * the app's Facebook group selection + publishing state.
@@ -573,7 +573,7 @@ export const enqueueExtensionPosts = (input: {
       const override = input.texts?.[g.group_id] ?? input.texts?.[bare];
       return {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        text: safeUtf8(override && override.trim() ? override : input.text),
+        text: safeUtf8(enforceRitaIdentity(override && override.trim() ? override : input.text)),
         sourceText: safeUtf8(input.text),
         groupUrl: url,
         groupName: g.group_name || bare,
@@ -975,7 +975,7 @@ export const startLocalPosting = (payload: ExtensionPublishPayload): number => {
   if (groups.length === 0) return 0;
 
   const post = {
-    text: safeUtf8(payload.text),
+    text: safeUtf8(enforceRitaIdentity(payload.text)),
     images: payload.imageUrls ?? [],
     firstComment: ensureMandatoryComment(payload.firstComment, payload.link),
     link: payload.link ?? null,
