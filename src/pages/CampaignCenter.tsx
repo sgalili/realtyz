@@ -6419,7 +6419,7 @@ const PublishedFeed = ({
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
               </div>
-              {/* Row 3: group status/name (or counter), repost action and countdown together. */}
+              {/* Row 3: group status/name (or counter), repost action, countdown and engagement counters together. */}
               <div className="flex min-w-0 flex-wrap items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {hasGroupTargets && (
                   <div className="min-w-0 max-w-[55%]">
@@ -6460,8 +6460,7 @@ const PublishedFeed = ({
                     </span>
                   );
                 })()}
-              </div>
-              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" dir="rtl">
+                <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {!scheduled && (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
@@ -6483,6 +6482,7 @@ const PublishedFeed = ({
                     <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
                   </span>
                 )}
+                </div>
               </div>
               {isPaused && (() => {
                 const remainingMs = circuitUntilMs ? circuitUntilMs - nowMs : 0;
