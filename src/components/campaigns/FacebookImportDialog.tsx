@@ -100,7 +100,17 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
             fixes.push('פרופיל → חיבורים → פייסבוק ואינסטגרם → חיבור פייסבוק, ואשר את כל ההרשאות.');
           } else {
             problems.push(`פייסבוק החזירה שגיאה: ${rawText}`);
-            fixes.push('ודא שאתה Admin של העמוד ושההרשאות pages_show_list ו-pages_read_engagement אושרו.');
+            const code = Number(raw?.code ?? NaN);
+            const appReviewIssue =
+              code === 10 || code === 200 || code === 190 ||
+              /app review|advanced access|not approved|pages_read_engagement|permission|live mode|development mode/i.test(String(rawText));
+            if (appReviewIssue) {
+              fixes.push('אפליקציית Meta במצב Live ללא אישור App Review להרשאות pages_read_engagement / pages_show_list / pages_manage_posts.');
+              fixes.push('פתרון: ב-Meta App Dashboard העבר את האפליקציה למצב Development, או הוסף את המשתמש כ-Admin/Developer/Tester תחת App Roles → Roles, ואז התחבר מחדש לפייסבוק.');
+              fixes.push('לשימוש קבוע במצב Live יש להגיש את ההרשאות ל-App Review ולקבל Advanced Access.');
+            } else {
+              fixes.push('ודא שאתה Admin של העמוד ושההרשאות pages_show_list ו-pages_read_engagement אושרו.');
+            }
           }
         }
         if (res.persist_error) {
