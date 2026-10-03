@@ -3881,6 +3881,7 @@ type CampaignRow = {
   external_url?: string | null;
   is_external?: boolean;
   listing_id?: string | null;
+  series_id?: string | null;
 };
 
 // A scheduled row is one still waiting in the queue: status "scheduled"/"pending"
@@ -4750,7 +4751,7 @@ const PublishedFeed = ({
     // they are a member of.
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids, series_id')
       .eq('workspace_owner_id', ownerScope)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -5573,8 +5574,17 @@ const PublishedFeed = ({
   // Performs the actual deletion. `mode === 'both'` first wipes the post off
   // the native social network (Meta Graph via meta-publish) and aborts on
   // failure, so we never leave a phantom post live on the broker's Page.
-  const performDelete = async (r: CampaignRow, mode: 'db' | 'both', silent = false) => {
-    const externalIds = mode === 'both' ? externalIdsFor(r) : [];
+  const performDelete = async (r: CampaignRow, mode: 'db' | 'both', silent = false, entireSeries = false) => {
+    if (!workspaceOwnerId) throw new Error('לא נמצא מרחב עבודה פעיל');
+    let targets = [r];
+    if (entireSeries) {
+      let query = supabase.from('campaign_logs').select('*').eq('workspace_owner_id', workspaceOwnerId);
+      query = r.series_id ? query.eq('series_id', r.series_id) : query.eq('campaign_name', r.campaign_name).eq('channel', r.channel).in('status', ['scheduled', 'pending', 'queued']);
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      targets = data?.length ? data as CampaignRow[] : [r];
+    }
+    const externalIds = mode === 'both' ? Array.from(new Set(targets.flatMap(externalIdsFor))) : [];
 
     if (externalIds.length > 0) {
       const { data: sess } = await supabase.auth.getSession();
@@ -5599,27 +5609,23 @@ const PublishedFeed = ({
       }
     }
 
-    // Local cleanup of the campaign_logs group rows.
-    const { from, to } = groupFilter(r);
-    const { error, count } = await supabase
-      .from('campaign_logs')
-      .delete({ count: 'exact' })
-      .eq('campaign_name', r.campaign_name)
-      .eq('channel', r.channel)
-      .gte('created_at', from)
-      .lt('created_at', to);
+    const { data: result, error } = await supabase.rpc('delete_campaign_post', {
+      p_workspace_owner_id: workspaceOwnerId, p_post_id: r.id, p_entire_series: entireSeries,
+    });
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
-
-    // A deleted post must never stay in the browser-extension queue.
-    removeQueueEntriesForPosts({ ids: [r.id], texts: [r.message_body || ''] });
-
+    const deletion = result as { deleted_ids?: string[]; deleted_count?: number; deleted_texts?: string[] };
+    const ids = deletion.deleted_ids || [];
+    const count = deletion.deleted_count || 0;
+    if (!count || !ids.includes(r.id)) throw new Error('המחיקה לא אושרה במערכת');
+    removeQueueEntriesForPosts({ ids, texts: [] });
+    ids.forEach((id) => postCopyRef.current.entries.delete(id));
     setRows((prev) => {
-      const next = prev?.filter((x) => x.id !== r.id) ?? prev;
+      const next = prev?.filter((x) => !ids.includes(x.id)) ?? prev;
       const scopeKey = workspaceOwnerId ?? userId ?? '';
       if (next && scopeKey) FEED_ROWS_CACHE.set(scopeKey, next);
       return next;
     });
-    setOptimisticRows((prev) => prev.filter((x) => x.id !== r.id));
+    setOptimisticRows((prev) => prev.filter((x) => !ids.includes(x.id)));
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     if (!silent) toast.success(
       externalIds.length > 0
@@ -5834,7 +5840,7 @@ const PublishedFeed = ({
     const nonSeries: CampaignRow[] = [];
     for (const r of channelFiltered) {
       if (isScheduledRow(r) && r.campaign_name) {
-        const key = `${String(r.campaign_name).trim()}|${String(r.channel || '').toLowerCase()}`;
+        const key = r.series_id || `${String(r.campaign_name).trim()}|${String(r.channel || '').toLowerCase()}`;
         const arr = seriesMap.get(key) || [];
         arr.push(r);
         seriesMap.set(key, arr);
@@ -6436,7 +6442,8 @@ const PublishedFeed = ({
         open={!!deleteTarget}
         onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
         hasExternalPost={deleteTarget ? externalIdsFor(deleteTarget).length > 0 : false}
-        onConfirm={async (mode) => { if (deleteTarget) await performDelete(deleteTarget, mode); }}
+        hasSeries={!!deleteTarget && (!!deleteTarget.series_id || ((deleteTarget as any)._seriesSlots?.length > 1))}
+        onConfirm={async (mode, entireSeries) => { if (deleteTarget) await performDelete(deleteTarget, mode, false, entireSeries); }}
       />
     </div>
   );
@@ -7460,6 +7467,7 @@ const CampaignCenter = () => {
   const [futureSelectMode, setFutureSelectMode] = useState(false);
   const [selectedFutureIds, setSelectedFutureIds] = useState<string[]>([]);
   const [bulkDeletingFuture, setBulkDeletingFuture] = useState(false);
+  const [futureDeleteTarget, setFutureDeleteTarget] = useState<CampaignRow | null>(null);
   const toggleFutureSelected = (id: string) =>
     setSelectedFutureIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]));
   const bulkDeleteSelectedFuture = async () => {
@@ -8258,13 +8266,7 @@ const CampaignCenter = () => {
                     title="מחק פוסט מתוזמן"
                     aria-label="מחק פוסט מתוזמן"
                     className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
-                    onClick={async () => {
-                      setCampaignHistoryRows((prev) => prev.filter((x) => x.id !== r.id));
-                      removeQueueEntriesForPosts({ ids: [r.id], texts: [String(r.message_body || '')] });
-                      const { error } = await supabase.from('campaign_logs').delete().eq('id', r.id);
-                      if (error) { toast.error('מחיקת הפוסט המתוזמן נכשלה'); setHistoryRefreshTick((t) => t + 1); }
-                      else toast.success('הפוסט המתוזמן נמחק');
-                    }}
+                    onClick={() => setFutureDeleteTarget(r)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -8746,6 +8748,24 @@ const CampaignCenter = () => {
       </Tabs>
 
 
+      <DeletePostDialog
+        open={!!futureDeleteTarget}
+        onOpenChange={(open) => { if (!open) setFutureDeleteTarget(null); }}
+        hasExternalPost={false}
+        hasSeries={!!futureDeleteTarget && (!!futureDeleteTarget.series_id || campaignHistoryRows.filter((r) => r.campaign_name === futureDeleteTarget.campaign_name && r.channel === futureDeleteTarget.channel).length > 1)}
+        onConfirm={async (_mode, entireSeries) => {
+          if (!futureDeleteTarget || !workspaceOwnerId) throw new Error('לא נמצא פוסט במרחב העבודה');
+          const { data, error } = await supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: futureDeleteTarget.id, p_entire_series: entireSeries });
+          if (error) throw new Error(error.message);
+          const result = data as { deleted_ids: string[]; deleted_count: number };
+          if (!result.deleted_count) throw new Error('המחיקה לא אושרה במערכת');
+          removeQueueEntriesForPosts({ ids: result.deleted_ids });
+          setCampaignHistoryRows((prev) => prev.filter((r) => !result.deleted_ids.includes(r.id)));
+          setHistoryRefreshTick((t) => t + 1);
+          queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
+          toast.success(entireSeries ? 'כל הסדרה נמחקה לצמיתות' : 'הפוסט נמחק לצמיתות');
+        }}
+      />
       <EditScheduledSeriesDialog
         open={!!editSeriesRow}
         onOpenChange={(v) => { if (!v) setEditSeriesRow(null); }}
