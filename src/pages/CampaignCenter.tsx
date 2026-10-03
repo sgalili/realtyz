@@ -6419,7 +6419,7 @@ const PublishedFeed = ({
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
               </div>
-              {/* Row 3: group status/name (or counter), repost action and countdown together. */}
+              {/* Row 3: group status/name (or counter), repost action, countdown and engagement counters together. */}
               <div className="flex min-w-0 flex-wrap items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {hasGroupTargets && (
                   <div className="min-w-0 max-w-[55%]">
