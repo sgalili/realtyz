@@ -61,6 +61,7 @@ export function GroupStatusChips({
   countdownIso: _countdownIso,
   defaultOpen = false,
   inline = false,
+  collapsedCounter = false,
   children,
 }: {
   groupIds: string[];
@@ -76,6 +77,8 @@ export function GroupStatusChips({
   defaultOpen?: boolean;
   /** Render without top margin so the collapsed pill can sit inside a flex row. */
   inline?: boolean;
+  /** Campaign header: one name, otherwise a count opening portaled details. */
+  collapsedCounter?: boolean;
   /** Rendered directly under the expanded group list (e.g. series post cards). */
   children?: ReactNode;
 }) {
@@ -106,13 +109,28 @@ export function GroupStatusChips({
         title={`${name} — ${result?.reason || STATE_LABEL[state]}`}
         onClick={(e) => { e.stopPropagation(); openExternal(url); }}
         className="h-auto min-h-7 min-w-0 max-w-full justify-between gap-2 whitespace-normal rounded-none border-0 bg-transparent px-0 py-0.5 text-[11px] hover:bg-transparent">
-        <span className="min-w-0 break-words text-right text-foreground">{name}</span>
         <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span>
+        <span className="min-w-0 break-words text-right text-foreground">{name}</span>
       </Button>
     );
   };
 
   const hasDetails = (ids.length > 1 && !!children) || ids.length > max;
+  if (collapsedCounter && ids.length > 1) return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm" aria-expanded={open}
+          onClick={(e) => e.stopPropagation()}
+          className="h-7 shrink-0 rounded-full border-border bg-background px-2 text-[11px] text-foreground">
+          {ids.length} קבוצות
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" side="bottom" dir="rtl" className="w-[min(36rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex min-w-0 flex-col items-stretch">{ids.map(renderGroup)}</div>
+        {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
+      </PopoverContent>
+    </Popover>
+  );
   return (
     <div className={`${inline ? '' : 'mt-1.5 '}flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-0.5`} dir="rtl">
       {ids.slice(0, max).map(renderGroup)}

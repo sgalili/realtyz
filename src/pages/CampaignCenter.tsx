@@ -6401,8 +6401,8 @@ const PublishedFeed = ({
               </div>
 
 
-              {/* Row 2 (single combined row): logo · date · groups pill ........  comments · shares · likes · chevron */}
-              <div className={cn('flex min-w-0 flex-wrap items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
+              {/* Logo and date opposite the group target and repost action. */}
+              <div className="flex min-w-0 items-center gap-2" dir="rtl">
                 <span className="inline-flex items-center justify-center shrink-0">
                   {platformMeta?.brand ? (
                     <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
@@ -6413,15 +6413,17 @@ const PublishedFeed = ({
                   )}
                 </span>
                 <span className={cn(
-                  'text-xs whitespace-nowrap',
+                  'min-w-0 text-[11px]',
                   scheduled ? 'text-amber-700 font-semibold' : 'text-muted-foreground',
                 )}>
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
+                <span className="min-w-0 flex-1" />
                 {hasGroupTargets && (
-                  <div className="min-w-0 max-w-full" onClick={(e) => e.stopPropagation()}>
+                  <div className="min-w-0 max-w-[45%]" onClick={(e) => e.stopPropagation()}>
                     <GroupStatusChips
                       inline
+                      collapsedCounter
                       groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
                       meta={fbGroupMeta}
                       results={cardGroupResults}
@@ -6438,7 +6440,8 @@ const PublishedFeed = ({
                   </div>
                 )}
                 {hasGroupTargets && <ContinuePostingButton post={r} />}
-                <span className="flex-1" />
+              </div>
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" dir="rtl">
                 {scheduled ? (() => {
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
@@ -6476,11 +6479,6 @@ const PublishedFeed = ({
                     <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
                   </span>
                 )}
-                <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
-                        className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
-                        aria-label={isOpen ? 'כווץ' : 'הרחב'}>
-                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
               </div>
               {isPaused && (() => {
                 const remainingMs = circuitUntilMs ? circuitUntilMs - nowMs : 0;
