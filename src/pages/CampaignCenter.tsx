@@ -4749,7 +4749,7 @@ const PublishedFeed = ({
     // STRICT tenant scope: the active workspace owner only. Scoping by member
     // user ids leaked posts from a broker's own workspace into every workspace
     // they are a member of.
-    const { data } = await supabase
+    const { data, error: feedReadError } = await supabase
       .from('campaign_logs')
       .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids, series_id')
       .eq('workspace_owner_id', ownerScope)
@@ -4757,6 +4757,7 @@ const PublishedFeed = ({
       .order('created_at', { ascending: false })
       .limit(1000);
 
+    if (feedReadError) throw new Error(feedReadError.message);
     const normalizeStoredRow = (r: any): CampaignRow => {
       const pr = r?.provider_response ?? {};
       // Priority: permanently mirrored copies → the durable column → whatever
@@ -4842,14 +4843,6 @@ const PublishedFeed = ({
       }
     }
 
-    // Never wipe a populated feed with an empty read (transient RLS/scope/
-    // disconnect blips) — keep the cached list until real rows come back.
-    const cachedForScope = FEED_ROWS_CACHE.get(ownerScope);
-    if (merged.length === 0 && cachedForScope && cachedForScope.length > 0) {
-      setRows(cachedForScope);
-      setColdLoading(false);
-      return { rows: cachedForScope, ownerScope, importedCount: 0, importComplete: false };
-    }
     // Merge by id instead of replacing the array, so a background sync never
     // blanks the list and untouched cards keep their identity (no flicker).
     const mergedForState = mergeRowsById(rowsRef.current, merged);
@@ -5558,7 +5551,7 @@ const PublishedFeed = ({
     setRows((prev) => {
       const next = prev?.filter((x) => x.id !== r.id) ?? prev;
       const scopeKey = workspaceOwnerId ?? userId ?? '';
-      if (next && scopeKey) FEED_ROWS_CACHE.set(scopeKey, next);
+      if (next && scopeKey) { FEED_ROWS_CACHE.set(scopeKey, next); persistFeedCache(scopeKey, next); }
       return next;
     });
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
@@ -5613,16 +5606,16 @@ const PublishedFeed = ({
       p_workspace_owner_id: workspaceOwnerId, p_post_id: r.id, p_entire_series: entireSeries,
     });
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
-    const deletion = result as { deleted_ids?: string[]; deleted_count?: number; deleted_texts?: string[] };
+    const deletion = result as { deleted_ids?: string[]; deleted_count?: number; queue_ids?: string[]; local_queue_ids?: string[] };
     const ids = deletion.deleted_ids || [];
     const count = deletion.deleted_count || 0;
     if (!count || !ids.includes(r.id)) throw new Error('המחיקה לא אושרה במערכת');
-    removeQueueEntriesForPosts({ ids, texts: [] });
+    removeQueueEntriesForPosts({ ids: [...ids, ...(deletion.queue_ids || []), ...(deletion.local_queue_ids || []).filter(Boolean)] });
     ids.forEach((id) => postCopyRef.current.entries.delete(id));
     setRows((prev) => {
       const next = prev?.filter((x) => !ids.includes(x.id)) ?? prev;
       const scopeKey = workspaceOwnerId ?? userId ?? '';
-      if (next && scopeKey) FEED_ROWS_CACHE.set(scopeKey, next);
+      if (next && scopeKey) { FEED_ROWS_CACHE.set(scopeKey, next); persistFeedCache(scopeKey, next); }
       return next;
     });
     setOptimisticRows((prev) => prev.filter((x) => !ids.includes(x.id)));
@@ -7475,21 +7468,29 @@ const CampaignCenter = () => {
     if (ids.length === 0) return;
     setBulkDeletingFuture(true);
     const targets = campaignHistoryRows.filter((x) => ids.includes(x.id));
-    // Recurring series: delete every sibling slot of each selected series.
-    const seriesIds = Array.from(new Set(targets.map((t) => t.series_id).filter(Boolean)));
-    const allIds = new Set(ids);
-    for (const row of campaignHistoryRows) {
-      if (row.series_id && seriesIds.includes(row.series_id)) allIds.add(row.id);
-    }
-    const idList = Array.from(allIds);
-    const { error } = await supabase.from('campaign_logs').delete().in('id', idList);
-    setBulkDeletingFuture(false);
-    if (error) { toast.error('מחיקת הפוסטים נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
-    removeQueueEntriesForPosts({ ids: idList, texts: targets.map((t) => String(t.message_body || '')) });
-    setCampaignHistoryRows((prev) => prev.filter((x) => !allIds.has(x.id)));
-    setSelectedFutureIds([]);
-    setFutureSelectMode(false);
-    toast.success(`${ids.length} פוסטים נמחקו`);
+    try {
+      if (!workspaceOwnerId) throw new Error('לא נמצא מרחב עבודה פעיל');
+      const removed = new Set<string>();
+      for (const target of targets) {
+        if (removed.has(target.id)) continue;
+        const { data, error } = await supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: target.id, p_entire_series: true });
+        if (error) throw new Error(error.message);
+        const result = data as { deleted_ids: string[]; deleted_count: number; queue_ids?: string[]; local_queue_ids?: string[] };
+        if (!result.deleted_count) throw new Error('המחיקה לא אושרה במערכת');
+        result.deleted_ids.forEach((id) => removed.add(id));
+        removeQueueEntriesForPosts({ ids: [...result.deleted_ids, ...(result.queue_ids || []), ...(result.local_queue_ids || []).filter(Boolean)] });
+        setCampaignHistoryRows((prev) => prev.filter((r) => !removed.has(r.id)));
+        const cached = (FEED_ROWS_CACHE.get(workspaceOwnerId) || []).filter((r) => !removed.has(r.id));
+        FEED_ROWS_CACHE.set(workspaceOwnerId, cached);
+        persistFeedCache(workspaceOwnerId, cached);
+      }
+      setSelectedFutureIds([]);
+      setFutureSelectMode(false);
+      toast.success(`${removed.size} פוסטים נמחקו לצמיתות`);
+    } catch (error: any) {
+      toast.error(error?.message || 'מחיקת הפוסטים נכשלה');
+      setHistoryRefreshTick((t) => t + 1);
+    } finally { setBulkDeletingFuture(false); }
   };
 
 
@@ -8757,10 +8758,13 @@ const CampaignCenter = () => {
           if (!futureDeleteTarget || !workspaceOwnerId) throw new Error('לא נמצא פוסט במרחב העבודה');
           const { data, error } = await supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: futureDeleteTarget.id, p_entire_series: entireSeries });
           if (error) throw new Error(error.message);
-          const result = data as { deleted_ids: string[]; deleted_count: number };
+          const result = data as { deleted_ids: string[]; deleted_count: number; queue_ids?: string[]; local_queue_ids?: string[] };
           if (!result.deleted_count) throw new Error('המחיקה לא אושרה במערכת');
-          removeQueueEntriesForPosts({ ids: result.deleted_ids });
+          removeQueueEntriesForPosts({ ids: [...result.deleted_ids, ...(result.queue_ids || []), ...(result.local_queue_ids || []).filter(Boolean)] });
           setCampaignHistoryRows((prev) => prev.filter((r) => !result.deleted_ids.includes(r.id)));
+          const cached = (FEED_ROWS_CACHE.get(workspaceOwnerId) || []).filter((r) => !result.deleted_ids.includes(r.id));
+          FEED_ROWS_CACHE.set(workspaceOwnerId, cached);
+          persistFeedCache(workspaceOwnerId, cached);
           setHistoryRefreshTick((t) => t + 1);
           queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
           toast.success(entireSeries ? 'כל הסדרה נמחקה לצמיתות' : 'הפוסט נמחק לצמיתות');
