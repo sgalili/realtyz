@@ -2,7 +2,7 @@
 // Collapsed by default: a single summary pill with the group count and a
 // collapse arrow. Expanding reveals the real Facebook group names, their
 // member counts and whether each group actually accepted the post.
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { CheckCircle2, ChevronDown, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
@@ -72,7 +72,7 @@ export function GroupStatusChips({
   defaultState?: GroupChipState;
   max?: number;
   emptyLabel?: string;
-  /** When provided, the collapsed summary shows a dd/hh/mm/ss countdown. */
+  /** Kept for API compatibility; the collapsed pill no longer shows a countdown. */
   countdownIso?: string | null;
   defaultOpen?: boolean;
   /** Render without top margin so the collapsed pill can sit inside a flex row. */
