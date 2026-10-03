@@ -6440,30 +6440,6 @@ const PublishedFeed = ({
                 {hasGroupTargets && <ContinuePostingButton post={r} />}
                 <span className="flex-1" />
                 {scheduled ? (() => {
-                  const remaining = Math.max(0, Math.ceil((((r as any)._eta_ms as number) - Date.now()) / 1000));
-                  return (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
-                    </span>
-                  );
-                })() : isPaused ? null : isSeries ? null : (extProgress && hasGroupTargets) ? (
-                  <ExtensionPostProgress progress={extProgress} />
-                ) : (legacyMetaError && hasGroupTargets) ? (
-                  <ExtensionPostProgress
-                    progress={{ stage: 'queued', label: '⏳ בתור', percent: 8, error: null, done: 0, total: 1 }}
-                  />
-                ) : failed ? (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30 max-w-[60%]"
-                    title={failureReason ?? undefined}
-                  >
-                    <XCircle className="h-3.5 w-3.5 shrink-0" aria-label="נכשל" />
-                  </span>
-                ) : scheduled ? (() => {
-
-
-
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
                   // Strict dd/hh/mm countdown — no extra wording, no series pill.
