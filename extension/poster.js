@@ -41,6 +41,9 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /* Visible debug logging — every step shows up in the Facebook tab's F12 console. */
+  const log = (...args) => { try { console.log('[Realtyz Extension]', ...args); } catch (e) { /* noop */ } };
+
   const visible = (el) => {
     if (!el) return false;
     const r = el.getBoundingClientRect();
@@ -85,15 +88,20 @@
       .filter(visible)
       .find((b) => re.test(textOf(b)) || re.test(b.getAttribute('aria-label') || ''));
 
-  const COMPOSER_RE = /מה עולה בראשך|מה עולה לך בראש|כתוב משהו|כתבי משהו|כתבו משהו|מה בא לך לשתף|Write something|What's on your mind|Anything on your mind|Create a public post/i;
+  const COMPOSER_RE = /מה עולה בראשך|מה עולה לך בראש|כתוב משהו|כתבי משהו|כתבו משהו|מה בא לך לשתף|כאן כותבים|Write something|What's on your mind|Anything on your mind|Create a public post|Create post/i;
   const COMMENT_RE = /comment|reply|תגוב|הגב/i;
 
   // The main group composer trigger lives outside any article (posts/comments).
+  // Broadened: also matches aria-placeholder spans and page-level textboxes.
   const composerTrigger = () =>
-    [...document.querySelectorAll('div[role="button"], span[role="button"], [role="button"] span')]
+    [...document.querySelectorAll('div[role="button"], span[role="button"], [role="button"] span, span[aria-placeholder], [role="textbox"]')]
       .filter(visible)
       .filter((b) => !b.closest('div[role="article"]') && !b.closest('div[role="dialog"]'))
-      .find((b) => COMPOSER_RE.test(textOf(b)) || COMPOSER_RE.test(b.getAttribute('aria-label') || '')) || null;
+      .find((b) =>
+        COMPOSER_RE.test(textOf(b)) ||
+        COMPOSER_RE.test(b.getAttribute('aria-label') || '') ||
+        COMPOSER_RE.test(b.getAttribute('aria-placeholder') || ''),
+      ) || null;
 
   // Post-creation modal: a dialog that contains a non-comment textbox.
   const isCommentBox = (el) =>
@@ -101,8 +109,9 @@
     COMMENT_RE.test(el.getAttribute('aria-label') || '') ||
     COMMENT_RE.test(el.getAttribute('aria-placeholder') || '');
 
+  // Any contenteditable inside the dialog counts — Facebook's Hebrew UI varies.
   const composerBoxIn = (d) =>
-    [...d.querySelectorAll('div[role="textbox"][contenteditable="true"], div[contenteditable="true"][aria-label]')]
+    [...d.querySelectorAll('div[role="textbox"][contenteditable="true"], div[contenteditable="true"][aria-label], div[contenteditable="true"], [contenteditable="true"]')]
       .filter(visible)
       .find((el) => !isCommentBox(el)) || null;
 
@@ -135,7 +144,16 @@
     box.dispatchEvent(new KeyboardEvent('keyup', opts));
   };
 
-  /* React-safe text insertion, line by line so breaks/emojis/bullets survive */
+  /* React-safe text insertion, line by line so breaks/emojis/bullets survive.
+   * Dispatches the full event set (beforeinput/input/keyup/change) so
+   * Facebook's React state registers the text before we click "פרסם". */
+  const dispatchInputEvents = (box) => {
+    try { box.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText' })); } catch (e) { /* noop */ }
+    try { box.dispatchEvent(new InputEvent('input', { bubbles: true })); } catch (e) { /* noop */ }
+    try { box.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true })); } catch (e) { /* noop */ }
+    try { box.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { /* noop */ }
+  };
+
   const injectText = async (box, text) => {
     box.focus();
     box.click();
@@ -147,6 +165,7 @@
         let hit = false;
         try { hit = document.execCommand('insertText', false, lines[i]); } catch (e) { hit = false; }
         if (!hit) ok = false;
+        dispatchInputEvents(box);
       }
       if (i < lines.length - 1) shiftEnter(box);
       await sleep(30);
@@ -158,7 +177,7 @@
       dt.setData('text/plain', text);
       box.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
     }
-    box.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    dispatchInputEvents(box);
     await sleep(600);
     return textOf(box).length > 0;
   };
@@ -272,38 +291,48 @@
   };
 
   async function postToGroup(job) {
-    if (isLoggedOut()) return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' };
+    log('postToGroup started', { jobId: job && job.id, url: location.href });
+    if (isLoggedOut()) { log('FAIL: user is logged out'); return { ok: false, reason: 'נדרשת התחברות לפייסבוק בדפדפן' }; }
     if (!groupContextOk()) {
+      log('FAIL: not a group context', location.pathname);
       return { ok: false, reason: 'הפעולה בוטלה: העמוד הפתוח אינו קבוצת פייסבוק' };
     }
 
     // 0. wait for the group feed to be fully rendered before touching anything
+    log('waiting for group feed to load...');
     const feedReady = await waitForDom(() => (
       document.querySelector('div[role="feed"]') || composerTrigger() || textbox()
     ) ? true : null, 30000, 500);
-    if (!feedReady) return { ok: false, reason: 'פיד הקבוצה לא נטען — לא נמצאה תיבת הפרסום' };
+    if (!feedReady) { log('FAIL: feed did not load in 30s'); return { ok: false, reason: 'פיד הקבוצה לא נטען — לא נמצאה תיבת הפרסום' }; }
+    log('feed ready');
     await sleep(1200);
 
     // 1. open the composer
     let box = textbox();
     if (!box) {
+      log('locating post trigger ("מה עולה בראשך?")...');
       const trigger = await waitForDom(composerTrigger, 15000);
-      if (!trigger) return { ok: false, reason: 'לא נמצא "מה עולה בראשך?" בקבוצה תוך 15 שניות (אין הרשאת פרסום או שהעמוד לא נטען)' };
+      if (!trigger) { log('FAIL: trigger not found in 15s'); return { ok: false, reason: 'לא נמצא "מה עולה בראשך?" בקבוצה תוך 15 שניות (אין הרשאת פרסום או שהעמוד לא נטען)' }; }
+      log('trigger found, clicking it');
       trigger.scrollIntoView({ block: 'center' });
       trigger.click();
+      log('waiting for composer modal to open...');
       box = await waitForDom(textbox, 15000);
       if (!box) {
         // one retry: Facebook sometimes swallows the first click while hydrating
+        log('modal did not open, retrying trigger click');
         const again = composerTrigger();
         if (again) { again.click(); box = await waitForDom(textbox, 10000); }
       }
     }
-    if (!box) return { ok: false, reason: 'עורך הפוסט לא נפתח' };
+    if (!box) { log('FAIL: composer modal never opened'); return { ok: false, reason: 'עורך הפוסט לא נפתח' }; }
+    log('composer modal open, textbox located');
 
     // 2. text
     reportStage('writing');
+    log('injecting post text...');
     const injected = await injectText(box, String(job.message || ''));
-    if (!injected) return { ok: false, reason: 'הזנת תוכן הפוסט נכשלה' };
+    if (!injected) { log('FAIL: text injection failed'); return { ok: false, reason: 'הזנת תוכן הפוסט נכשלה' }; }
     // let Facebook's React state register the input before validating / submitting
     await sleep(1200);
     // Verify the text landed in the group post modal (never a comment box).
@@ -311,36 +340,45 @@
     const probe = firstLine.replace(/\s+/g, ' ').slice(0, 25);
     const liveBox = textbox();
     if (!liveBox || isCommentBox(liveBox) || (probe && !textOf(liveBox).replace(/\s+/g, ' ').includes(probe))) {
+      log('FAIL: injected text not verified in modal');
       return { ok: false, reason: 'הטקסט לא הוזן לחלון הפוסט של הקבוצה' };
     }
+    log('text verified in composer');
 
     // 3. media
     const photoList = Array.isArray(job.image_urls) && job.image_urls.length ? job.image_urls : (job.image_url ? [job.image_url] : []);
     if (photoList.length) {
+      log('attaching media', photoList.length, 'file(s)');
       const mediaErr = await attachImages(photoList);
-      if (mediaErr) return { ok: false, reason: mediaErr };
+      if (mediaErr) { log('FAIL: media attach —', mediaErr); return { ok: false, reason: mediaErr }; }
+      log('media attached');
     }
 
     // 4. post
+    log('locating "פרסם" submit button...');
     const btn = await waitFor(() => {
       const b = postButton();
       if (!b) return null;
       const disabled = b.getAttribute('aria-disabled') === 'true' || b.getAttribute('disabled') !== null;
       return disabled ? null : b;
     }, 20000);
-    if (!btn) return { ok: false, reason: 'כפתור הפרסום לא היה זמין' };
+    if (!btn) { log('FAIL: submit button unavailable'); return { ok: false, reason: 'כפתור הפרסום לא היה זמין' }; }
+    log('clicking "פרסם"');
     btn.click();
     const submitted = true;
 
     // 5. verify: the composer dialog closes and the text shows up in the feed
     const snippet = String(job.message || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    log('waiting for composer to close (submit verification)...');
     const closed = await waitFor(() => (dialog() ? null : true), 60000, 700);
     if (!closed) {
       const err = [...document.querySelectorAll('div[role="alert"], div[role="dialog"] span')]
         .map(textOf)
         .find((t) => /שגיאה|נכשל|error|try again|לא ניתן/i.test(t));
+      log('FAIL: composer stayed open', err || '');
       return { ok: false, reason: err ? err.slice(0, 200) : 'הפרסום לא הושלם — חלון העורך נשאר פתוח' };
     }
+    log('composer closed, verifying post in feed...');
 
     const seen = await waitFor(() => {
       const body = document.body ? document.body.innerText.replace(/\s+/g, ' ') : '';
@@ -350,8 +388,10 @@
     const pendingApproval = !seen && /ממתין לאישור|ממתינים לאישור|pending approval|submitted for approval|awaiting approval/i
       .test(document.body ? document.body.innerText : '');
     if (!seen && !pendingApproval) {
+      log('FAIL: post not visible in feed after submit');
       return { ok: false, submitted, reason: 'נלחץ "פרסם" אך הפוסט לא הופיע בקבוצה — לא אומת' };
     }
+    log(pendingApproval ? 'post submitted, awaiting admin approval' : 'post verified live in feed');
 
     let postUrl = null;
     let article = null;
