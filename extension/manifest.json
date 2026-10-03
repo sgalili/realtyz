@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Realtyz Group Sync",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "מסנכרן את קבוצות הפייסבוק שלך אל Realtyz ומפרסם את התור המתוזמן ישירות מהדפדפן שלך.",
-  "permissions": ["storage", "alarms", "tabs", "scripting"],
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs",
+    "scripting"
+  ],
   "host_permissions": [
     "https://*.facebook.com/*",
     "https://facebook.com/*",
@@ -29,8 +34,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.facebook.com/*"],
-      "js": ["facebook.js"],
+      "matches": [
+        "https://*.facebook.com/*"
+      ],
+      "js": [
+        "facebook.js"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -45,7 +54,9 @@
         "https://*.facebook.com/photo*",
         "https://*.facebook.com/*/videos/*"
       ],
-      "js": ["poster.js"],
+      "js": [
+        "poster.js"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -57,7 +68,9 @@
         "https://*.lovable.dev/*",
         "http://localhost/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start"
     }
   ]

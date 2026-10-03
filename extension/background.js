@@ -1077,3 +1077,80 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === 'RZ_FB_GROUP_JOIN_CANCEL') { rzJoinCancelled.add(msg.requestId); sendResponse({ ok: true }); }
 });
+
+/* ── Page post sync (replaces Graph /{page_id}/posts) ─────────────────────
+ * Opens the connected Facebook Page in a background tab, scrolls the feed,
+ * and reads posts + visible like/comment/share counters straight from the DOM.
+ * Read-only: never clicks, reacts or comments. */
+function rzScrapePagePosts() {
+  const num = (raw) => {
+    if (!raw) return null;
+    const m = String(raw).replace(/,/g, '').match(/([\d.]+)\s*(K|M|אלף|מיליון)?/i);
+    if (!m) return null;
+    let n = parseFloat(m[1]);
+    if (/K|אלף/i.test(m[2] || '')) n *= 1000;
+    if (/M|מיליון/i.test(m[2] || '')) n *= 1000000;
+    return Number.isFinite(n) ? Math.round(n) : null;
+  };
+  const idFrom = (h) => {
+    const s = String(h || '');
+    const m = s.match(/\/posts\/(pfbid[\w-]+|\d{5,})/) || s.match(/permalink\/(\d{5,})/) ||
+      s.match(/story_fbid=(pfbid[\w-]+|\d{5,})/) || s.match(/\/videos\/(\d{5,})/) || s.match(/fbid=(\d{5,})/);
+    return m ? m[1] : null;
+  };
+  const out = new Map();
+  document.querySelectorAll('div[role="article"]').forEach((art) => {
+    if (art.parentElement && art.parentElement.closest('div[role="article"]')) return; // skip comment articles
+    const hrefs = [...art.querySelectorAll('a[href]')].map((a) => a.href || '');
+    const link = hrefs.find((h) => /\/posts\/|permalink|story_fbid=|\/videos\/|photo\/?\?fbid=/.test(h));
+    const id = idFrom(link);
+    if (!id || out.has(id)) return;
+    const msgNode = art.querySelector('[data-ad-preview="message"], [data-ad-comet-preview="message"]');
+    const message = ((msgNode && msgNode.innerText) || '').trim().slice(0, 5000);
+    const text = art.innerText || '';
+    const labels = [...art.querySelectorAll('[aria-label]')].map((n) => n.getAttribute('aria-label') || '').join(' | ');
+    const blob = text + ' | ' + labels;
+    let likes = null;
+    const lm = labels.match(/(?:All reactions|כל התגובות לפוסט|כל רגשות)[:\s]*([\d.,]+\s*[KM]?)/i) ||
+      labels.match(/([\d.,]+\s*[KM]?)\s*(?:reactions|people reacted|לייקים|אנשים)/i);
+    if (lm) likes = num(lm[1]);
+    const cm = blob.match(/([\d.,]+\s*[KM]?)\s*(?:comments?|תגובות|תגובה)/i);
+    const sm = blob.match(/([\d.,]+\s*[KM]?)\s*(?:shares?|שיתופים|שיתוף)/i);
+    const media = [...art.querySelectorAll('img')].map((i) => i.currentSrc || i.src)
+      .filter((u) => u && /scontent|fbcdn/.test(u) && !/\/p\d+x\d+\//.test(u)).slice(0, 10);
+    const tEl = art.querySelector('abbr[data-utime], [data-utime]');
+    const utime = tEl ? Number(tEl.getAttribute('data-utime')) : null;
+    out.set(id, {
+      post_id: id, message, url: link || null,
+      created_time: utime ? new Date(utime * 1000).toISOString() : null,
+      media, likeCount: likes, commentCount: cm ? num(cm[1]) : null, shareCount: sm ? num(sm[1]) : null,
+    });
+  });
+  return [...out.values()];
+}
+
+async function rzScrapePage(pageId, max) {
+  const url = pageId ? 'https://www.facebook.com/' + encodeURIComponent(pageId) : 'https://www.facebook.com/me';
+  const tab = await rzOpenAndWait(url);
+  const all = new Map();
+  try {
+    for (let i = 0; i < 8 && all.size < max; i++) {
+      const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapePagePosts });
+      for (const p of (res && res.result) || []) all.set(p.post_id, p);
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.scrollBy(0, 2200) });
+      await rzWait(1800);
+    }
+  } finally { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } }
+  const posts = [...all.values()].slice(0, max);
+  try { await chrome.storage.local.set({ rzPosts: posts, rzPostsAt: Date.now() }); } catch (e) { /* noop */ }
+  return posts;
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (!msg || msg.type !== 'RZ_FB_PAGE_SCRAPE') return;
+  const pageId = msg.pageId ? String(msg.pageId).replace(/[^\w.-]/g, '').slice(0, 80) : null;
+  rzScrapePage(pageId, Math.min(Number(msg.max) || 60, 150))
+    .then((posts) => sendResponse({ ok: true, posts }))
+    .catch((e) => sendResponse({ ok: false, error: String(e && e.message || e), posts: [] }));
+  return true;
+});
