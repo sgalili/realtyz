@@ -29,7 +29,7 @@ export function ContinuePostingButton({ post }: { post: RepostPost }) {
       const posts = post._seriesSlots?.length ? [post, ...post._seriesSlots] : [post];
       const matched = data.filter((job) => posts.some((p) => matchesRepostJob(job, p)));
       window.dispatchEvent(new CustomEvent(REPOST_EDITOR_EVENT, { detail: { owner, post, jobs: matched } }));
-    } catch (error) { toast.error(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { toast.error(error && typeof error === 'object' && 'message' in error ? String(error.message) : String(error)); }
     finally { setBusy(false); }
   };
   return <>

@@ -1118,6 +1118,7 @@ const InlineComposer = ({
     try { return localStorage.getItem('campaign:groupTextVariation') !== 'false'; } catch { return true; }
   });
   useEffect(() => {
+    if (editorMode) return;
     try { localStorage.setItem('campaign:groupTextVariation', groupTextVariation ? 'true' : 'false'); } catch {}
   }, [groupTextVariation]);
   const platformProfiles = useMemo(

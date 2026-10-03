@@ -37,7 +37,7 @@ export function repostEditorDraft({ post, jobs }: RepostEditorRequest) {
     firstComment: post.first_comment ?? job.firstComment ?? '',
     firstCommentEnabled: settings.first_comment_enabled ?? !!(post.first_comment ?? job.firstComment),
     attachWaLink: false, attachMsngrLink: false, publishToPage: settings.publish_to_page ?? false,
-    groupTextVariation: settings.group_text_variation,
+    groupTextVariation: settings.group_text_variation ?? false,
     selectedListingId: post.listing_id ?? job.listing?.id ?? null,
     attachments: resolveMediaUrls(post.media_urls?.length ? post.media_urls : job.images ?? []).map((url, i) => ({ name: `תמונה ${i + 1}`, kind: 'image' as const, url })),
     groupIds: groups, mode: scheduled ? 'scheduled' as const : 'now' as const, scheduledLocal,
