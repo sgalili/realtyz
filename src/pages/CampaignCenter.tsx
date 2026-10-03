@@ -5659,13 +5659,22 @@ const PublishedFeed = ({
       return;
     }
     let targets = [r];
-    if (entireSeries && mode === 'both') {
+    // Resolve the full series up-front for BOTH modes so deletion targets
+    // explicit row IDs (matched by series_id / campaign identity) instead of
+    // relying solely on the RPC's internal series matching.
+    if (entireSeries) {
       let query = supabase.from('campaign_logs').select('*').eq('workspace_owner_id', workspaceOwnerId);
-      query = r.series_id ? query.eq('series_id', r.series_id) : query.eq('campaign_name', r.campaign_name).eq('channel', r.channel).in('status', ['scheduled', 'pending', 'queued']);
+      query = r.series_id
+        ? query.eq('series_id', r.series_id)
+        : query.eq('campaign_name', r.campaign_name).eq('channel', r.channel);
       const { data, error } = await query;
       if (error) throw new Error(error.message);
       targets = data?.length ? data as CampaignRow[] : [r];
     }
+    console.log('[campaign-delete] target', {
+      id: r.id, series_id: r.series_id ?? null, campaign_name: r.campaign_name,
+      channel: r.channel, mode, entireSeries, seriesRows: targets.length,
+    });
     const externalIds = mode === 'both' ? Array.from(new Set(targets.flatMap(externalIdsFor))) : [];
 
     if (externalIds.length > 0) {
