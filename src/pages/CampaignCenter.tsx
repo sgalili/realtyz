@@ -4120,10 +4120,9 @@ const GlobalSocialFeed = ({
               aria-label={allSelected ? 'בטל את כל הבחירה' : 'בחר את כל הפוסטים'}
             />
           )}
-          <span className={cn(
-            'text-base font-bold tabular-nums',
-            activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
-          )} dir="ltr">{counts.all}</span>
+          {feedSelectMode && selectedCount > 0 && (
+            <span className="text-base font-bold tabular-nums text-primary" dir="ltr">{selectedCount}</span>
+          )}
         </div>
       ) : (
         <div aria-hidden className="min-w-0" />
