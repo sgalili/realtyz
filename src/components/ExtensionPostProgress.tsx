@@ -21,7 +21,7 @@ export const ExtensionPostProgress = ({
   const running = !done && !failed;
 
   return (
-    <div className={cn('flex w-14 shrink-0 flex-col gap-1', className)} dir="rtl">
+    <div className={cn('flex shrink-0 flex-col gap-1', className)} dir="rtl">
       <span
         className={cn(
           'inline-flex items-center gap-1 self-start rounded-full px-2 py-0.5 text-[11px] font-bold ring-1',
@@ -34,18 +34,6 @@ export const ExtensionPostProgress = ({
         {done ? <CheckCircle2 className="h-3.5 w-3.5" aria-label="פורסם" /> : failed ? <XCircle className="h-3.5 w-3.5" aria-label="נכשל" /> : <Loader2 className="h-3.5 w-3.5 animate-spin" aria-label={progress.label} />}
         {commentWarning && <AlertTriangle className="h-3 w-3 text-muted-foreground" aria-label={FIRST_COMMENT_WARNING} />}
       </span>
-
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn(
-            'h-full rounded-full transition-all duration-500',
-            done && 'bg-emerald-500',
-            failed && 'bg-destructive',
-            running && 'bg-blue-500',
-          )}
-          style={{ width: `${Math.max(6, Math.min(100, progress.percent))}%` }}
-        />
-      </div>
 
     </div>
   );

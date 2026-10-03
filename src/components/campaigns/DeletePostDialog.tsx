@@ -30,8 +30,8 @@ export function DeletePostDialog({
   const [entireSeries, setEntireSeries] = useState(false);
 
   useEffect(() => {
-    if (open) { setBusy(null); setError(null); setEntireSeries(false); }
-  }, [open]);
+    if (open) { setBusy(null); setError(null); setEntireSeries(hasSeries); }
+  }, [open, hasSeries]);
 
   const run = async (mode: DeleteMode) => {
     setBusy(mode);
