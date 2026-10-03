@@ -6460,8 +6460,7 @@ const PublishedFeed = ({
                     </span>
                   );
                 })()}
-              </div>
-              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" dir="rtl">
+                <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {!scheduled && (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
