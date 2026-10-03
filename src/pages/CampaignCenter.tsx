@@ -4424,6 +4424,17 @@ const PublishedFeed = ({
   const [bulkDeletingFeed, setBulkDeletingFeed] = useState(false);
   // Optimistic rows for immediate publish — prepended to the feed with a
   // countdown pill while Meta finishes verifying the FB publish.
+  // Deletion tombstones: hidden instantly and never resurrected by refetches.
+  const tombKey = `campaign:deleted:${workspaceOwnerId ?? ''}`;
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    try { setDeletedIds(new Set(JSON.parse(localStorage.getItem(tombKey) || '[]'))); } catch { setDeletedIds(new Set()); }
+  }, [tombKey]);
+  const tombstone = (ids: string[]) => setDeletedIds((prev) => {
+    const next = new Set(prev); ids.filter(Boolean).forEach((id) => next.add(String(id)));
+    try { localStorage.setItem(tombKey, JSON.stringify([...next].slice(-2000))); } catch { /* ignore */ }
+    return next;
+  });
   const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number; _scheduled_at?: string | null }>>([]);
   useEffect(() => {
     const handler = (ev: Event) => {
@@ -5650,6 +5661,9 @@ const PublishedFeed = ({
   // failure, so we never leave a phantom post live on the broker's Page.
   const performDelete = async (r: CampaignRow, mode: 'db' | 'both', silent = false, entireSeries = false) => {
     if (!workspaceOwnerId) throw new Error('לא נמצא מרחב עבודה פעיל');
+    const instantIds = [String(r.id), ...(((r as any)._seriesSlots ?? []) as any[]).map((c) => String(c?.id ?? ''))].filter(Boolean);
+    tombstone(instantIds);
+    removeQueueEntriesForPosts({ ids: instantIds, texts: [r.message_body, ...(((r as any)._seriesSlots ?? []) as any[]).map((c) => c?.message_body)].map((t) => String(t || '')).filter(Boolean) });
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     // Local-only cards (extension queue / optimistic) have non-UUID ids and no
     // DB row — remove them locally; never send them to UUID columns.
@@ -5662,12 +5676,12 @@ const PublishedFeed = ({
       const localIds = [String(r.id), ...childIds];
       const texts = [r.message_body, ...slots.map((c) => c?.message_body)].map((t) => String(t || '')).filter(Boolean);
       const removed = removeQueueEntriesForPosts({ ids: localIds, texts });
-      const cloudRemoved = await deleteCloudQueueForPosts({ workspaceOwnerId, ids: localIds, texts });
-      console.log('[campaign-delete] queue purge', { id: r.id, localIds, removedFromQueue: removed, cloudRemoved });
       const dbIds = childIds.filter((id: string) => UUID_RE.test(id));
-      if (dbIds.length > 0) {
-        await Promise.all(dbIds.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: entireSeries })));
-      }
+      const [cloudRemoved] = await Promise.all([
+        deleteCloudQueueForPosts({ workspaceOwnerId, ids: localIds, texts }),
+        ...dbIds.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: entireSeries })),
+      ]);
+      console.log('[campaign-delete] queue purge', { id: r.id, localIds, removedFromQueue: removed, cloudRemoved });
       const gone = new Set([...localIds, ...dbIds]);
       setOptimisticRows((prev) => prev.filter((x) => !gone.has(x.id)));
       setRows((prev) => {
@@ -5724,9 +5738,11 @@ const PublishedFeed = ({
       if (fbFailed && !silent) toast.warning(`${fbFailed} פוסטים לא נמחקו מפייסבוק, נמחקו מהמערכת`);
     }
 
-    const { data: result, error } = await supabase.rpc('delete_campaign_post', {
-      p_workspace_owner_id: workspaceOwnerId, p_post_id: r.id, p_entire_series: entireSeries,
-    });
+    const [{ data: result, error }] = await Promise.all([
+      supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: r.id, p_entire_series: entireSeries }),
+      deleteCloudQueueForPosts({ workspaceOwnerId, ids: targets.map((t) => String(t.id)), texts: targets.map((t) => String(t.message_body || '')).filter(Boolean) }).catch(() => 0),
+    ]);
+    tombstone(targets.map((t) => String(t.id)));
     console.log('[campaign-delete] rpc response', { id: r.id, error: error?.message ?? null, result });
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
     const deletion = result as { deleted_ids?: string[]; deleted_count?: number; queue_ids?: string[]; local_queue_ids?: string[] };
@@ -5749,6 +5765,7 @@ const PublishedFeed = ({
       ids.push(...extra.filter((id: string) => !UUID_RE.test(id)));
       console.log('[campaign-delete] series sweep', { extraRows: extraDb.length, totalDeleted: count });
     }
+    tombstone(ids);
     removeQueueEntriesForPosts({ ids: [...ids, ...(deletion.queue_ids || []), ...(deletion.local_queue_ids || []).filter(Boolean)] });
     ids.forEach((id) => postCopyRef.current.entries.delete(id));
     setRows((prev) => {
@@ -5977,6 +5994,7 @@ const PublishedFeed = ({
     const PUBLISHED_ALIASES = new Set(['published', 'success', 'completed', 'posted', 'delivered']);
     const merged: CampaignRow[] = [...optimisticRows, ...extRows, ...base]
       .map((r: any) => (PUBLISHED_ALIASES.has(String(r.status || '').toLowerCase()) ? { ...r, status: 'sent' } : r))
+      .filter((r: any) => !deletedIds.has(String(r.id)))
       .filter((r: any) => r._optimistic || !UNSENT.has(String(r.status || '').toLowerCase()));
     const channelFiltered = activeChannel === 'all'
       ? merged
@@ -5996,7 +6014,7 @@ const PublishedFeed = ({
         group_ids: [job.groupUrl || ''].filter(Boolean),
       })) };
     });
-  }, [rows, activeChannel, optimisticRows, extensionQueue]);
+  }, [rows, activeChannel, optimisticRows, extensionQueue, deletedIds]);
 
   // Blocking loader ONLY on a true cold start: no cached rows in memory AND
   // the initial background load is still in-flight. As soon as we have any
@@ -8314,7 +8332,7 @@ const CampaignCenter = () => {
     <div className="space-y-2" dir="rtl">
       {(() => {
         const future = campaignHistoryRows
-          .filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status))
+          .filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status) && !deletedIds.has(String(r.id)))
           .sort(stableCardCompare);
         const visible = collapseCampaignCards(future);
         if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
