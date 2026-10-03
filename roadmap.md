@@ -1,8 +1,8 @@
 # Roadmap
 
-- [ ] Preserve successful post status with subtle first-comment warnings.
-- [ ] Keep card order stable and collapse related campaign posts into master cards.
-- [ ] Use text-only group count pills, standardize בתור, and prefer direct post URLs with group-page fallback.
+- [x] Preserve successful post status with subtle first-comment warnings.
+- [x] Keep card order stable and collapse related campaign posts into master cards.
+- [x] Use text-only group count pills, standardize בתור, and prefer direct post URLs with group-page fallback.
 
 - [x] Replace Rita's property promotion picker with persistent group topics feeding AI generation; retain the existing property picker for other workspaces.
 
