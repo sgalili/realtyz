@@ -3668,12 +3668,14 @@ export type Database = {
           gender: string | null
           id: string
           identity_number: string | null
+          inbox_done_at: string | null
           instagram_handle: string | null
           instagram_psid: string | null
           interaction_outcome: string | null
           interest_score_json: Json | null
           interest_scores: Json | null
           interest_tag: string | null
+          is_bookmarked: boolean
           is_demo: boolean
           is_voted: boolean | null
           last_interaction_at: string | null
@@ -3724,12 +3726,14 @@ export type Database = {
           gender?: string | null
           id?: string
           identity_number?: string | null
+          inbox_done_at?: string | null
           instagram_handle?: string | null
           instagram_psid?: string | null
           interaction_outcome?: string | null
           interest_score_json?: Json | null
           interest_scores?: Json | null
           interest_tag?: string | null
+          is_bookmarked?: boolean
           is_demo?: boolean
           is_voted?: boolean | null
           last_interaction_at?: string | null
@@ -3780,12 +3784,14 @@ export type Database = {
           gender?: string | null
           id?: string
           identity_number?: string | null
+          inbox_done_at?: string | null
           instagram_handle?: string | null
           instagram_psid?: string | null
           interaction_outcome?: string | null
           interest_score_json?: Json | null
           interest_scores?: Json | null
           interest_tag?: string | null
+          is_bookmarked?: boolean
           is_demo?: boolean
           is_voted?: boolean | null
           last_interaction_at?: string | null
