@@ -5615,7 +5615,7 @@ const PublishedFeed = ({
     // Local-only cards (extension queue / optimistic) have non-UUID ids and no
     // DB row — remove them locally; never send them to UUID columns.
     if (!UUID_RE.test(String(r.id))) {
-      const childIds = ((r as any)._children ?? (r as any).children ?? []).map((c: any) => String(c?.id ?? '')).filter(Boolean);
+      const childIds = ((r as any)._seriesSlots ?? []).map((c: any) => String(c?.id ?? '')).filter(Boolean);
       const localIds = [String(r.id), ...childIds];
       removeQueueEntriesForPosts({ ids: localIds, texts: [r.message_body || ''] });
       const dbIds = childIds.filter((id: string) => UUID_RE.test(id));
@@ -5624,7 +5624,11 @@ const PublishedFeed = ({
       }
       const gone = new Set([...localIds, ...dbIds]);
       setOptimisticRows((prev) => prev.filter((x) => !gone.has(x.id)));
-      setRows((prev) => prev?.filter((x) => !gone.has(x.id)) ?? prev);
+      setRows((prev) => {
+        const next = prev?.filter((x) => !gone.has(x.id)) ?? prev;
+        if (next) { FEED_ROWS_CACHE.set(workspaceOwnerId, next); persistFeedCache(workspaceOwnerId, next); }
+        return next;
+      });
       if (!silent) toast.success('הפוסט נמחק מהמערכת');
       return;
     }
@@ -5666,9 +5670,18 @@ const PublishedFeed = ({
     });
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
     const deletion = result as { deleted_ids?: string[]; deleted_count?: number; queue_ids?: string[]; local_queue_ids?: string[] };
-    const ids = deletion.deleted_ids || [];
-    const count = deletion.deleted_count || 0;
+    const ids = [...(deletion.deleted_ids || [])];
+    let count = deletion.deleted_count || 0;
     if (!count || !ids.includes(r.id)) throw new Error('המחיקה לא אושרה במערכת');
+    // Collapsed master cards may hold slots outside the DB series — delete them too.
+    if (entireSeries) {
+      const extra = ((r as any)._seriesSlots ?? []).map((c: any) => String(c?.id ?? ''))
+        .filter((id: string) => id && !ids.includes(id));
+      const extraDb = extra.filter((id: string) => UUID_RE.test(id));
+      const res = await Promise.all(extraDb.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: false })));
+      res.forEach((x: any) => { const d = x?.data as any; if (d?.deleted_ids) { ids.push(...d.deleted_ids); count += d.deleted_count || 0; } });
+      ids.push(...extra.filter((id: string) => !UUID_RE.test(id)));
+    }
     removeQueueEntriesForPosts({ ids: [...ids, ...(deletion.queue_ids || []), ...(deletion.local_queue_ids || []).filter(Boolean)] });
     ids.forEach((id) => postCopyRef.current.entries.delete(id));
     setRows((prev) => {
@@ -6016,7 +6029,7 @@ const PublishedFeed = ({
           <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
         </div>
-      ) : (filteredRows || []).map((r) => {
+      ) : (filteredRows || []).map(function renderFeedCard(r: any): any {
 
 
         const isOpen = expanded[r.id] ?? false;
@@ -6294,24 +6307,7 @@ const PublishedFeed = ({
                 {isSeries && seriesSlots && (
                   <div className="mx-4 mb-3" dir="rtl">
                     <div className="mb-2 text-xs font-semibold text-muted-foreground">{seriesSlots.length} פוסטים בקמפיין</div>
-                    <ul className="max-h-80 overflow-y-auto divide-y divide-border">
-                      {seriesSlots.map((slot) => {
-                        const url = derivePostUrl(slot);
-                        const warning = !!slot.provider_response?.first_comment_error || isCommentOnlyFailure(slot.failure_reason);
-                        const label = isScheduledRow(slot) ? 'בתור' : slot.status === 'failed' && !warning ? 'נכשל' : 'פורסם';
-                        return (
-                          <li key={slot.id} className="flex min-w-0 items-center gap-2 py-2 text-xs">
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate font-medium">{slot.message_body?.trim().split('\n')[0] || slot.campaign_name}</p>
-                              <span className="text-muted-foreground">{new Date(slot.sent_at || slot.created_at).toLocaleString('he-IL')} · {label}</span>
-                            </div>
-                            {warning && <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3 text-muted-foreground" aria-label={FIRST_COMMENT_WARNING} /></span>}
-                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="פתח פוסט" title="פתח פוסט" disabled={!url}
-                              onClick={() => { if (url) window.open(url, '_blank', 'noopener,noreferrer'); }}><ExternalLink className="h-3.5 w-3.5" /></Button>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <div className="space-y-3">{seriesSlots.map((slot) => renderFeedCard(slot))}</div>
                   </div>
                 )}
                 {uniqueMedia.length > 0 && (() => {
