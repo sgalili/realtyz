@@ -7555,6 +7555,46 @@ export type Database = {
         Args: { _holder_name?: string; _license_number: string }
         Returns: Json
       }
+      submit_edited_group_repost: {
+        Args: {
+          _jobs: Json
+          _original_job_ids: string[]
+          _post: Json
+          _workspace_owner_id: string
+        }
+        Returns: {
+          activity_type: string
+          attempts: number
+          claim_expires_at: string | null
+          claimed_by: string | null
+          cloud_attempts: number
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          owner_notified_at: string | null
+          payload: Json
+          processed_at: string | null
+          publication_status: string
+          runner: string
+          runner_note: string | null
+          scheduled_for: string
+          status: string
+          target_label: string | null
+          target_ref: string | null
+          updated_at: string
+          variation_index: number | null
+          variations: Json
+          workspace_owner_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "campaign_activity_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
       track_affiliate_click: { Args: { _code: string }; Returns: undefined }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }

@@ -242,6 +242,7 @@ export type QueuedExtensionPost = {
   id: string;
   /** campaign_activity_queue row id — lets the same job render on any domain. */
   cloudId?: string;
+  campaignLogId?: string;
   type?: "group_post" | "page_first_comment";
   text?: string;
   /** The original campaign body text; used to link the queue job back to the
@@ -431,6 +432,7 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
         local_id: job.id,
         job,
         published_via: "browser_extension",
+        ...(job.campaignLogId ? { campaign_log_id: job.campaignLogId } : {}),
       };
       if (!job.cloudId) {
         const { data, error } = await (supabase as any)
@@ -503,6 +505,7 @@ export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedE
       .select("id, status, last_error, scheduled_for, created_at, payload")
       .eq("workspace_owner_id", workspaceOwnerId)
       .in("activity_type", ["fb_group_post", "fb_comment"])
+      .neq("status", "cancelled")
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(300);
@@ -513,6 +516,7 @@ export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedE
       if (!job || typeof job !== "object" || !job.id) continue;
       out.push({
         ...(job as QueuedExtensionPost),
+        ...(row.payload?.campaign_log_id ? { campaignLogId: row.payload.campaign_log_id } : {}),
         cloudId: row.id as string,
         status: LOCAL_STATUS(row.status),
         error: row.last_error ?? job.error ?? null,
@@ -744,16 +748,18 @@ export const resetQueueEntriesForText = (text: string) => {
 export const EXT_QUEUE_REMOVE_MESSAGE = "RZ_QUEUE_REMOVE";
 
 /** Replace retried local jobs with the server-authorized generation, not a stale status merge. */
-export const applyContinuedQueueJobs = (owner: string, rows: any[]) => {
+export const applyContinuedQueueJobs = (owner: string, rows: any[], originalLocalIds: string[] = []) => {
   const cloudIds = new Set(rows.map((r) => String(r.id)));
+  const localIds = new Set(originalLocalIds);
   const current = readPostQueue();
-  const replaced = current.filter((j) => j.workspaceOwnerId === owner && j.cloudId && cloudIds.has(j.cloudId));
+  const isReplaced = (j: QueuedExtensionPost) => j.workspaceOwnerId === owner && (localIds.has(j.id) || (!!j.cloudId && cloudIds.has(j.cloudId)));
+  const replaced = current.filter(isReplaced);
   window.postMessage({ source: 'realtyz-app', type: EXT_QUEUE_REMOVE_MESSAGE, ids: replaced.map((j) => j.id), textKeys: [] }, window.location.origin);
-  const next = current.filter((j) => !(j.workspaceOwnerId === owner && j.cloudId && cloudIds.has(j.cloudId)));
+  const next = current.filter((j) => !isReplaced(j));
   for (const row of rows) {
     const job = row.payload?.job;
     if (!job?.id) continue; // Server-claimed jobs remain server-owned.
-    next.push({ ...job, cloudId: row.id, workspaceOwnerId: owner, status: 'pending', error: null, stage: 'queued', scheduledTime: new Date(row.scheduled_for).getTime() });
+    next.push({ ...job, campaignLogId: row.payload?.campaign_log_id, cloudId: row.id, workspaceOwnerId: owner, status: 'pending', error: null, stage: 'queued', scheduledTime: new Date(row.scheduled_for).getTime() });
   }
   writePostQueue(next);
   window.dispatchEvent(new Event('realtyz:campaign-changed'));
