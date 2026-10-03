@@ -2045,6 +2045,7 @@ const InlineComposer = ({
       return;
     }
 
+    if (editorMode && /wa\.me\/|api\.whatsapp\.com\/|realtyz\.co\.il\/r\//i.test(initial.firstComment || '') && !waInjectedRef.current) return;
     let cancelled = false;
     (async () => {
       // Fallback CTA must always target the official Meta WhatsApp Business
@@ -2105,6 +2106,7 @@ const InlineComposer = ({
       setMsngrShortUrl('');
       return;
     }
+    if (editorMode && /m\.me\//i.test(initial.firstComment || '') && !msngrInjectedRef.current) return;
     const pageRef = socialProfiles.find((p) => p.platform === 'facebook')?.accountRef;
     const url = pageRef ? `https://m.me/${pageRef}` : 'https://m.me/';
     setMsngrShortUrl(url);
@@ -4234,9 +4236,9 @@ const GlobalSocialFeed = ({
 
 
   return (
-    <div className="grid grid-cols-[minmax(auto,1fr)_1fr_minmax(auto,1fr)] items-center gap-2 w-full" dir="rtl">
+    <div className="grid w-full min-w-0 grid-cols-[4.5rem_minmax(0,1fr)_2rem] items-center gap-1 sm:gap-2" dir="rtl">
       {totalSelectable > 0 ? (
-        <div className="flex items-center gap-1.5 justify-self-start">
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5 justify-self-start">
           <SelectModeToggle active={feedSelectMode} count={selectedCount} onToggle={() => onToggleSelectMode?.()} className="h-7 w-7" />
           {feedSelectMode && (
             <Checkbox
@@ -4245,14 +4247,11 @@ const GlobalSocialFeed = ({
               aria-label={allSelected ? 'בטל את כל הבחירה' : 'בחר את כל הפוסטים'}
             />
           )}
-          {feedSelectMode && selectedCount > 0 && (
-            <span className="text-base font-bold tabular-nums text-primary" dir="ltr">{selectedCount}</span>
-          )}
         </div>
       ) : (
         <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex flex-nowrap items-center justify-center gap-4 px-1 pb-1 w-full min-w-0 justify-self-center">
+      <div className="flex w-full min-w-0 flex-nowrap items-center justify-start gap-4 overflow-x-auto px-1 pb-1 sm:justify-center">
         <button
           type="button"
           onClick={() => onChannelChange('all')}
