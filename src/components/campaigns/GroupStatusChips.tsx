@@ -105,6 +105,7 @@ export function GroupStatusChips({
 
   const renderGroup = (gid: string) => {
     const info = lookup(gid);
+    const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
     const state = stateOf(gid);
     const name = nameOf(gid);
     const url = groupPostDestination(result, fbGroupUrlFrom(info?.url, groupKeyFrom(gid)));
