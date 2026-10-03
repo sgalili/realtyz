@@ -66,7 +66,7 @@ import { GroupStatusChips, groupResultMap } from '@/components/campaigns/GroupSt
 import { QueueCard } from '@/components/campaigns/QueueCard';
 import { ContinuePostingButton } from '@/components/campaigns/ContinuePostingButton';
 import { REPOST_EDITOR_EVENT, repostEditorDraft, type RepostEditorRequest } from '@/lib/repostEditor';
-import { applyContinuedQueueJobs } from '@/lib/extensionGroupBridge';
+import { applyContinuedQueueJobs, POSTS_REMOVED_EVENT } from '@/lib/extensionGroupBridge';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { ScheduledCountdown } from '@/components/campaigns/ScheduledCountdown';
 import { EditScheduledSeriesDialog } from '@/components/campaigns/EditScheduledSeriesDialog';
