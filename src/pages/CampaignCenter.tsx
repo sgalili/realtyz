@@ -3853,7 +3853,7 @@ const ConfirmDispatchDialog = ({
 
 
 
-        <DialogFooter className="!justify-between gap-2 sm:gap-2 flex-row-reverse">
+        <DialogFooter className="!justify-between gap-2 sm:gap-2 !flex-row">
           <Button
             type="button"
             disabled={isBroadcasting}
@@ -5611,8 +5611,25 @@ const PublishedFeed = ({
   // failure, so we never leave a phantom post live on the broker's Page.
   const performDelete = async (r: CampaignRow, mode: 'db' | 'both', silent = false, entireSeries = false) => {
     if (!workspaceOwnerId) throw new Error('לא נמצא מרחב עבודה פעיל');
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // Local-only cards (extension queue / optimistic) have non-UUID ids and no
+    // DB row — remove them locally; never send them to UUID columns.
+    if (!UUID_RE.test(String(r.id))) {
+      const childIds = ((r as any)._children ?? (r as any).children ?? []).map((c: any) => String(c?.id ?? '')).filter(Boolean);
+      const localIds = [String(r.id), ...childIds];
+      removeQueueEntriesForPosts({ ids: localIds, texts: [r.message_body || ''] });
+      const dbIds = childIds.filter((id: string) => UUID_RE.test(id));
+      if (dbIds.length > 0) {
+        await Promise.all(dbIds.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: entireSeries })));
+      }
+      const gone = new Set([...localIds, ...dbIds]);
+      setOptimisticRows((prev) => prev.filter((x) => !gone.has(x.id)));
+      setRows((prev) => prev?.filter((x) => !gone.has(x.id)) ?? prev);
+      if (!silent) toast.success('הפוסט נמחק מהמערכת');
+      return;
+    }
     let targets = [r];
-    if (entireSeries) {
+    if (entireSeries && mode === 'both') {
       let query = supabase.from('campaign_logs').select('*').eq('workspace_owner_id', workspaceOwnerId);
       query = r.series_id ? query.eq('series_id', r.series_id) : query.eq('campaign_name', r.campaign_name).eq('channel', r.channel).in('status', ['scheduled', 'pending', 'queued']);
       const { data, error } = await query;
@@ -5625,7 +5642,7 @@ const PublishedFeed = ({
       const { data: sess } = await supabase.auth.getSession();
       const accessToken = sess?.session?.access_token;
       const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/meta-publish`;
-      for (const pid of externalIds) {
+      await Promise.all(externalIds.map(async (pid) => {
         const resp = await fetch(fnUrl, {
           method: 'DELETE',
           headers: {
@@ -5641,7 +5658,7 @@ const PublishedFeed = ({
           const body = await resp.json().catch(() => ({}));
           throw new Error(`מחיקה מפייסבוק נכשלה: ${body?.error ?? resp.status}`);
         }
-      }
+      }));
     }
 
     const { data: result, error } = await supabase.rpc('delete_campaign_post', {
