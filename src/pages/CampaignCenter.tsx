@@ -659,7 +659,6 @@ const listingOptionLabel = (listing: CampaignListing) => {
   return price ? `${location} — ${price}` : location;
 };
 
-const oldListingPostCommentPattern = /(מה תמצאו|מחיר מבוקש|ר\.מ|ברחוב\s|📍|💰|📞|^\s*✅)/m;
 
 const cleanFirstComment = (value: string) => String(value || '')
   .replace(/^```[a-z]*\s*/i, '')
@@ -793,7 +792,7 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
     `${propertyPhrase} עם מיקום נכון ופוטנציאל אמיתי.`,
     `${propertyPhrase} שמשלב מיקום ואופי, שווה ביקור.`,
   ];
-  const oneLiner = limitToTenWords(variants[Math.floor(Math.random() * variants.length)]);
+  const oneLiner = limitToTenWords(variants[0]);
   return `${oneLiner}\n${keywordLine}`.trim();
 };
 
@@ -1533,11 +1532,6 @@ const InlineComposer = ({
     })();
     return () => { cancelled = true; setPhotosLoading(false); };
   }, [selectedListingId, listings]);
-
-  useEffect(() => {
-    if (!firstComment || !oldListingPostCommentPattern.test(firstComment)) return;
-    setFirstComment(buildFallbackFirstComment(selectedListing as CampaignListing | null));
-  }, [firstComment, selectedListingId, selectedListing?.city, selectedListing?.neighborhood, selectedListing?.rooms, selectedListing?.property_title]);
 
   const visibleListings = useMemo(() => {
     const q = normalizeListingText(listingQuery).toLowerCase();
