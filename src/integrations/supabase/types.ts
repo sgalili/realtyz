@@ -7418,6 +7418,7 @@ export type Database = {
         }
         Returns: number
       }
+      post_media_source_key: { Args: { _url: string }; Returns: string }
       queue_autopilot_messages: {
         Args: {
           p_campaign_id?: string
