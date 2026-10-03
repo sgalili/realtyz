@@ -3,7 +3,7 @@
 // countdown to the next publishing round (dd/hh/mm/ss). Expanding reveals the
 // real Facebook group names, their member counts and whether each group
 // actually accepted the post.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
@@ -79,6 +79,7 @@ export function GroupStatusChips({
   countdownIso,
   defaultOpen = false,
   inline = false,
+  children,
 }: {
   groupIds: string[];
   meta?: Record<string, FbGroupMeta>;
@@ -93,6 +94,8 @@ export function GroupStatusChips({
   defaultOpen?: boolean;
   /** Render without top margin so the collapsed pill can sit inside a flex row. */
   inline?: boolean;
+  /** Rendered directly under the expanded group list (e.g. series post cards). */
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const shared = useFbGroupMeta();
@@ -112,7 +115,7 @@ export function GroupStatusChips({
   }
 
   return (
-    <div className={inline ? 'inline-block' : 'mt-1.5'} dir="rtl">
+    <div className={inline ? (open ? 'w-full basis-full min-w-0' : 'inline-block') : 'mt-1.5'} dir="rtl">
       <Button
         variant="ghost"
         size="sm"
@@ -121,8 +124,7 @@ export function GroupStatusChips({
         aria-expanded={open}
         className="h-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
       >
-        <span className="max-w-[180px] truncate">{nameOf(ids[0])}</span>
-        {ids.length > 1 && <span className="tabular-nums text-muted-foreground" dir="ltr">+{ids.length - 1}</span>}
+        <span className="max-w-[180px] truncate">{ids.length > 1 ? `${ids.length} קבוצות` : nameOf(ids[0])}</span>
         {countdown && (
           <span className="tabular-nums text-muted-foreground" dir="ltr">· {countdown}</span>
         )}
@@ -162,6 +164,7 @@ export function GroupStatusChips({
           {ids.length > max && <span className="text-[11px] text-muted-foreground">+{ids.length - max}</span>}
         </div>
       )}
+      {open && children && <div className="mt-3 w-full min-w-0 space-y-3">{children}</div>}
     </div>
   );
 }

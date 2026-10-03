@@ -5672,14 +5672,17 @@ const PublishedFeed = ({
     const deletion = result as { deleted_ids?: string[]; deleted_count?: number; queue_ids?: string[]; local_queue_ids?: string[] };
     const ids = [...(deletion.deleted_ids || [])];
     let count = deletion.deleted_count || 0;
-    if (!count || !ids.includes(r.id)) throw new Error('המחיקה לא אושרה במערכת');
+    const hasSlots = ((r as any)._seriesSlots ?? []).length > 0;
+    if (!ids.includes(r.id)) ids.push(r.id);
+    if (!count && !hasSlots && !entireSeries) throw new Error('המחיקה לא אושרה במערכת');
     // Collapsed master cards may hold slots outside the DB series — delete them too.
-    if (entireSeries) {
+    if (entireSeries || hasSlots) {
       const extra = ((r as any)._seriesSlots ?? []).map((c: any) => String(c?.id ?? ''))
         .filter((id: string) => id && !ids.includes(id));
       const extraDb = extra.filter((id: string) => UUID_RE.test(id));
-      const res = await Promise.all(extraDb.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: false })));
-      res.forEach((x: any) => { const d = x?.data as any; if (d?.deleted_ids) { ids.push(...d.deleted_ids); count += d.deleted_count || 0; } });
+      const res = await Promise.allSettled(extraDb.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: false })));
+      res.forEach((x: any) => { const d = x.status === 'fulfilled' ? (x.value?.data as any) : null; if (d?.deleted_ids) { ids.push(...d.deleted_ids); count += d.deleted_count || 0; } });
+      ids.push(...extraDb);
       ids.push(...extra.filter((id: string) => !UUID_RE.test(id)));
     }
     removeQueueEntriesForPosts({ ids: [...ids, ...(deletion.queue_ids || []), ...(deletion.local_queue_ids || []).filter(Boolean)] });
@@ -6189,8 +6192,10 @@ const PublishedFeed = ({
                               : 'published'
                       }
                       countdownIso={scheduled ? r.sent_at : null}
-                      defaultOpen={isOpen}
-                    />
+                      defaultOpen={false}
+                    >
+                      {isSeries && seriesSlots ? seriesSlots.map((slot) => renderFeedCard(slot)) : null}
+                    </GroupStatusChips>
                   </div>
                 )}
                 <span className="flex-1" />
@@ -6315,7 +6320,7 @@ const PublishedFeed = ({
 
             {isOpen && (
               <>
-                {isSeries && seriesSlots && (
+                {isSeries && seriesSlots && !hasGroupTargets && (
                   <div className="mx-4 mb-3" dir="rtl">
                     <div className="mb-2 text-xs font-semibold text-muted-foreground">{seriesSlots.length} פוסטים בקמפיין</div>
                     <div className="space-y-3">{seriesSlots.map((slot) => renderFeedCard(slot))}</div>
