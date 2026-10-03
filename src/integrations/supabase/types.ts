@@ -6794,6 +6794,13 @@ export type Database = {
         }
         Returns: number
       }
+      campaign_delete_same_post: {
+        Args: {
+          a: Database["public"]["Tables"]["campaign_logs"]["Row"]
+          b: Database["public"]["Tables"]["campaign_logs"]["Row"]
+        }
+        Returns: boolean
+      }
       can_access_campaign_log_owner: {
         Args: { _row_user: string }
         Returns: boolean
