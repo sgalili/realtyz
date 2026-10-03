@@ -124,15 +124,29 @@
     return d ? composerBoxIn(d) : null;
   };
 
+  // Primary submit button at the bottom of the composer dialog ("פרסם" / "Post").
   const postButton = () => {
     const scope = dialog();
     if (!scope) return null;
-    return [...scope.querySelectorAll('div[role="button"], button')]
+    const RE = /^(פרסם|פרסמי|פרסום|Post|Publish)$/i;
+    const cands = [...scope.querySelectorAll('div[role="button"], button, [aria-label]')]
       .filter(visible)
-      .find((b) => {
-        const label = `${textOf(b)} ${b.getAttribute('aria-label') || ''}`.trim();
-        return /^(פרסם|פרסמי|פוסט|Post)$/i.test(textOf(b)) || /^(פרסם|Post)$/i.test(label);
-      }) || null;
+      .filter((b) => RE.test(textOf(b)) || RE.test((b.getAttribute('aria-label') || '').trim()));
+    if (!cands.length) return null;
+    // Prefer the bottom-most match (the blue footer button), not header/menu items.
+    cands.sort((a, b) => b.getBoundingClientRect().bottom - a.getBoundingClientRect().bottom);
+    const c = cands[0];
+    return c.closest('div[role="button"], button') || c;
+  };
+
+  const realClick = (el) => {
+    try { el.scrollIntoView({ block: 'center' }); } catch (e) { /* noop */ }
+    const r = el.getBoundingClientRect();
+    const o = { bubbles: true, cancelable: true, view: window, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 0 };
+    for (const t of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+      try { el.dispatchEvent(new (t.startsWith('pointer') ? PointerEvent : MouseEvent)(t, o)); } catch (e) { /* noop */ }
+    }
+    el.click();
   };
 
   const shiftEnter = (box) => {
@@ -363,8 +377,14 @@
       return disabled ? null : b;
     }, 20000);
     if (!btn) { log('FAIL: submit button unavailable'); return { ok: false, reason: 'כפתור הפרסום לא היה זמין' }; }
-    log('clicking "פרסם"');
-    btn.click();
+    log('clicking primary "פרסם" button at dialog footer');
+    realClick(btn);
+    // If the dialog is still open with the button enabled after 4s, click once more.
+    await new Promise((r) => setTimeout(r, 4000));
+    if (dialog() && postButton() && postButton().getAttribute('aria-disabled') !== 'true') {
+      log('dialog still open, retrying submit click once');
+      realClick(postButton());
+    }
     const submitted = true;
 
     // 5. verify: the composer dialog closes and the text shows up in the feed
