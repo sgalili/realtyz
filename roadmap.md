@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Replace group counters with unframed names and adjacent status icons; remove perpetual and redundant card loaders.
+
 - [x] Clean expanded groups and remove the repost title field.
 - [x] Preserve clean text and configured first-comment link selections without misrepresenting Rita.
 - [x] Fix and verify multi-selection layout on campaigns.
