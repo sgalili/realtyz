@@ -760,9 +760,9 @@ chrome.alarms.onAlarm.addListener((a) => {
 chrome.runtime.onInstalled.addListener(() => initQueue());
 chrome.runtime.onStartup.addListener(() => initQueue());
 
-/* ── messages from the app page (content.js) ────────────────────────────── */
+/* ── messages from the app page (content.js) and from the web app itself ── */
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+const handleMessage = (msg, _sender, sendResponse) => {
   if (!msg || typeof msg !== 'object') return;
 
   if (msg.type === 'RZ_EXT_PAIR' && typeof msg.token === 'string' && msg.token) {
@@ -846,4 +846,33 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     chrome.storage.local.remove([TOKEN_KEY], () => sendResponse({ ok: true }));
     return true;
   }
-});
+};
+
+chrome.runtime.onMessage.addListener(handleMessage);
+
+/* Direct web-app bridge: the Realtyz dashboard can message the extension
+ * without the content script when the origin is listed in
+ * manifest.externally_connectable. Same handlers, same semantics. */
+try {
+  chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
+    try {
+      const origin = String((sender && sender.url) || '');
+      const allowed =
+        /^https:\/\/([a-z0-9-]+\.)?realtyz\.co\.il\//i.test(origin) ||
+        /^https:\/\/[a-z0-9-]+\.lovable\.app\//i.test(origin) ||
+        /^https:\/\/[a-z0-9-]+\.lovableproject\.com\//i.test(origin) ||
+        /^https:\/\/[a-z0-9-]+\.lovable\.dev\//i.test(origin);
+      if (!allowed) {
+        try { sendResponse({ ok: false, error: 'origin_not_allowed' }); } catch (e) { /* noop */ }
+        return true;
+      }
+      return handleMessage(msg, sender, sendResponse);
+    } catch (e) {
+      try { console.error('[Realtyz] External message handling failed:', e); } catch (e2) { /* noop */ }
+      try { sendResponse({ ok: false, error: String((e && e.message) || e) }); } catch (e2) { /* noop */ }
+      return true;
+    }
+  });
+} catch (e) {
+  try { console.error('[Realtyz] Failed to register external message listener:', e); } catch (e2) { /* noop */ }
+}
