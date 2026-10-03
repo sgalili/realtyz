@@ -37,8 +37,8 @@ it('opens a single group directly without a dropdown, even when series children 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.queryByText('child')).not.toBeInTheDocument();
 });
-it('collapses multiple campaign targets into a counter whose overlay shows only series details', () => {
-  render(<GroupStatusChips collapsedCounter groupIds={['123', 'ext:123', '456']} meta={{
+it('expands multiple campaign targets inline with only series details', () => {
+  const { container } = render(<GroupStatusChips collapsedCounter groupIds={['123', 'ext:123', '456']} meta={{
     '123': { name: 'קבוצה א', icon: null }, '456': { name: 'קבוצה ב', icon: null },
   }}>series details</GroupStatusChips>);
   expect(screen.queryByText('קבוצה א')).not.toBeInTheDocument();
@@ -46,6 +46,38 @@ it('collapses multiple campaign targets into a counter whose overlay shows only 
   expect(screen.queryByText('קבוצה א')).not.toBeInTheDocument();
   expect(screen.queryByText('קבוצה ב')).not.toBeInTheDocument();
   expect(screen.getByText('series details')).toBeVisible();
+  expect(container).toContainElement(screen.getByText('series details'));
+  expect(document.querySelector('[data-radix-popper-content-wrapper]')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '2 קבוצות' }));
+  expect(screen.queryByText('series details')).not.toBeInTheDocument();
+});
+it('leaves controlled series content to the parent card', () => {
+  const onExpandedChange = vi.fn();
+  render(<GroupStatusChips collapsedCounter expanded={false} onExpandedChange={onExpandedChange} detailsId="series-1" groupIds={['123', '456']}>details</GroupStatusChips>);
+  const counter = screen.getByRole('button', { name: '2 קבוצות' });
+  fireEvent.click(counter);
+  expect(onExpandedChange).toHaveBeenCalledWith(true);
+  expect(counter).toHaveAttribute('aria-controls', 'series-1');
+  expect(screen.queryByText('details')).not.toBeInTheDocument();
+});
+it('shortens a long group name on one line while retaining its accessible full name', () => {
+  const name = 'דירות במרכז להשכרה ולמכירה בתל אביב רמת גן גבעתיים והסביבה הקרובה';
+  render(<GroupStatusChips groupIds={['123']} meta={{ '123': { name, icon: null } }} />);
+  const target = screen.getByRole('button', { name });
+  expect(target).toHaveClass('whitespace-nowrap', 'overflow-hidden');
+  expect(target.lastElementChild).toHaveClass('truncate');
+  expect(target.lastElementChild?.textContent?.length).toBeLessThanOrEqual(45);
+  expect(target.lastElementChild).toHaveTextContent(/\.\.\.$/);
+  expect(target.title).toContain(name);
+});
+it('derives icons from published, scheduled and failed results without treating missing ok as failure', () => {
+  render(<GroupStatusChips defaultState="published" groupIds={['1', '2', '3', '4', '5']} results={{
+    '1': { status: 'completed' }, '2': { status: 'scheduled' }, '3': { ok: false },
+    '4': { post_url: 'https://www.facebook.com/groups/4/posts/5' }, '5': { code: 200 },
+  }} />);
+  expect(screen.getAllByLabelText('פורסם')).toHaveLength(3);
+  expect(screen.getByLabelText('ממתין לאישור')).toBeInTheDocument();
+  expect(screen.getByLabelText('נדחה')).toBeInTheDocument();
 });
 it('puts the static status icon before the single campaign group name', () => {
   render(<GroupStatusChips collapsedCounter groupIds={['123']} meta={{ '123': { name: 'קבוצה יחידה', icon: null } }} />);
