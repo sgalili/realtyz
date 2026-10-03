@@ -124,7 +124,7 @@ export function GroupStatusChips({
     return result.post_id || result.post_url ? 'published' : defaultState;
   };
 
-  const renderGroup = (gid: string) => {
+  const renderGroup = (gid: string, showStatus = true) => {
     const info = lookup(gid);
     const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
     const state = stateOf(gid);
@@ -136,7 +136,7 @@ export function GroupStatusChips({
         onClick={(e) => { e.stopPropagation(); openExternal(url); }}
         aria-label={name}
         className="h-7 min-w-0 max-w-full justify-start gap-2 overflow-hidden whitespace-nowrap rounded-none border-0 bg-transparent px-0 py-0.5 text-[11px] hover:bg-transparent">
-        <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span>
+        {showStatus && <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span>}
         <span className="min-w-0 truncate text-right text-foreground">{shortenName(name)}</span>
       </Button>
     );
@@ -144,16 +144,15 @@ export function GroupStatusChips({
 
   const hasDetails = (ids.length > 1 && !!children) || ids.length > max;
   if (collapsedCounter && ids.length > 1) {
-    const states = ids.map(stateOf);
-    const agg: GroupChipState = states.includes('failed') ? 'failed' : states.includes('pending') ? 'pending' : 'published';
+    // No aggregate status icon on the main card — status lives on each sub-post.
     return (
       <div className="min-w-0">
       <span className="inline-flex min-w-0 items-center gap-1.5">
-        <span className={`shrink-0 ${STATE_STYLE[agg]}`} aria-label={STATE_LABEL[agg]}><StateIcon state={agg} /></span>
             <Button type="button" variant="outline" size="sm" aria-expanded={detailsOpen} aria-controls={detailsId}
               onClick={(e) => { e.stopPropagation(); toggleDetails(); }}
-              className="h-7 shrink-0 rounded-full border-border bg-background px-2 text-[11px] text-foreground">
+              className="h-7 shrink-0 gap-1 rounded-full border-border bg-background px-2 text-[11px] text-foreground">
               {ids.length} קבוצות
+              <ChevronDown className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
             </Button>
       </span>
       {!onExpandedChange && detailsOpen && children && <div className="mt-3 w-full min-w-0 space-y-3" dir="rtl">{children}</div>}
@@ -162,7 +161,7 @@ export function GroupStatusChips({
   }
   return (
     <div className={`${inline ? '' : 'mt-1.5 '}flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-0.5`} dir="rtl">
-      {ids.slice(0, max).map(renderGroup)}
+      {ids.slice(0, max).map((gid) => renderGroup(gid, !collapsedCounter))}
       {hasDetails && <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" type="button" aria-label="פרטי קבוצות ופוסטים" aria-expanded={open}
@@ -171,7 +170,7 @@ export function GroupStatusChips({
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" side="bottom" dir="rtl" className="w-[min(36rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-2" onClick={(e) => e.stopPropagation()}>
-          {ids.length > max && <div className="flex min-w-0 flex-col items-stretch">{ids.slice(max).map(renderGroup)}</div>}
+          {ids.length > max && <div className="flex min-w-0 flex-col items-stretch">{ids.slice(max).map((gid) => renderGroup(gid))}</div>}
           {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
         </PopoverContent>
       </Popover>}

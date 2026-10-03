@@ -79,10 +79,19 @@ it('derives icons from published, scheduled and failed results without treating 
   expect(screen.getByLabelText('ממתין לאישור')).toBeInTheDocument();
   expect(screen.getByLabelText('נדחה')).toBeInTheDocument();
 });
-it('puts the static status icon before the single campaign group name', () => {
+it('shows no status icon on the main card, only the single group name', () => {
   render(<GroupStatusChips collapsedCounter groupIds={['123']} meta={{ '123': { name: 'קבוצה יחידה', icon: null } }} />);
   const target = screen.getByRole('button', { name: /קבוצה יחידה/ });
-  expect(target.firstElementChild).toHaveAttribute('aria-label', 'ממתין לאישור');
+  expect(target.querySelector('[aria-label="ממתין לאישור"]')).toBeNull();
   expect(target.lastElementChild).toHaveTextContent('קבוצה יחידה');
   expect(screen.queryByText('1 קבוצות')).not.toBeInTheDocument();
+});
+it('shows a downward arrow inside the multi-group counter pill without a status icon', () => {
+  render(<GroupStatusChips collapsedCounter groupIds={['123', '456']} meta={{
+    '123': { name: 'קבוצה א', icon: null }, '456': { name: 'קבוצה ב', icon: null },
+  }} results={{ '123': { state: 'published' }, '456': { state: 'failed' } }}>details</GroupStatusChips>);
+  const pill = screen.getByRole('button', { name: '2 קבוצות' });
+  expect(pill.querySelector('svg')).not.toBeNull();
+  expect(screen.queryByLabelText('פורסם')).toBeNull();
+  expect(screen.queryByLabelText('נדחה')).toBeNull();
 });

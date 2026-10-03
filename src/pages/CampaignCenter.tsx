@@ -6490,6 +6490,8 @@ const PublishedFeed = ({
                     />
                   </div>
                 )}
+                {/* Square megaphone repost button sits directly next to the groups pill. */}
+                {hasGroupTargets && <div className="shrink-0"><ContinuePostingButton post={r} /></div>}
                 {scheduled && (() => {
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
@@ -6509,7 +6511,7 @@ const PublishedFeed = ({
                   );
                 })()}
                 {hasGroupTargets && (
-                <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
+                <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
                 {!scheduled && (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
@@ -6533,7 +6535,6 @@ const PublishedFeed = ({
                 )}
                 </div>
                 )}
-                {hasGroupTargets && <div className="ms-auto shrink-0"><ContinuePostingButton post={r} /></div>}
               </div>
               )}
               {isPaused && (() => {
@@ -6726,12 +6727,15 @@ const PublishedFeed = ({
 
               </>
             )}
+            {/* Expanded sub-posts: nested inside the card border with a
+                complementary muted shade so they clearly belong to the card. */}
+            {inGroupOverlay !== true && seriesOpen && isSeries && seriesSlots && (
+              <div id={`campaign-series-${r.id}`} role="region" aria-label="פוסטים בקבוצות"
+                className="w-full min-w-0 space-y-3 border-t border-border/60 bg-muted/40 p-3" dir="rtl">
+                {seriesSlots.map((slot) => renderFeedCard(slot, undefined, true))}
+              </div>
+            )}
           </article>
-          {inGroupOverlay !== true && seriesOpen && isSeries && seriesSlots && (
-            <div id={`campaign-series-${r.id}`} role="region" aria-label="פוסטים בקבוצות" className="mt-3 w-full min-w-0 space-y-3" dir="rtl">
-              {seriesSlots.map((slot) => renderFeedCard(slot, undefined, true))}
-            </div>
-          )}
           </div>
         );
       })}
