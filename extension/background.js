@@ -876,3 +876,78 @@ try {
 } catch (e) {
   try { console.error('[Realtyz] Failed to register external message listener:', e); } catch (e2) { /* noop */ }
 }
+
+/* ── Live engagement metrics ────────────────────────────────────────────
+ * Every 30 min (and never while a posting job runs) the extension opens up
+ * to 3 of this workspace's published group posts in a background tab, reads
+ * the visible like/comment/share counters, and reports them back. Read-only:
+ * it never clicks, reacts or comments. */
+const METRICS_ALARM = 'rz-metrics';
+let metricsRunning = false;
+
+function scrapeEngagementInPage() {
+  const parseNum = (s) => {
+    if (!s) return null;
+    const t = String(s).replace(/[,\u200f\u200e\s]/g, '').toUpperCase();
+    const m = t.match(/(\d+(?:\.\d+)?)(K|M|אלף|מיליון)?/);
+    if (!m) return null;
+    let n = parseFloat(m[1]);
+    if (m[2] === 'K' || m[2] === 'אלף') n *= 1000;
+    if (m[2] === 'M' || m[2] === 'מיליון') n *= 1000000;
+    return Math.round(n);
+  };
+  const root = document.querySelector('[role="article"]') || document.querySelector('[role="main"]') || document.body;
+  const texts = Array.from(root.querySelectorAll('span, div[role="button"], a')).slice(0, 4000)
+    .map((el) => (el.getAttribute('aria-label') || el.textContent || '').trim())
+    .filter((t) => t && t.length < 80);
+  const pick = (re) => { for (const t of texts) { if (re.test(t)) { const n = parseNum(t); if (n != null) return n; } } return null; };
+  let likes = pick(/(reactions?|תגובות רגשיות|אהבו|לייק|likes?)/i);
+  if (likes == null) {
+    const r = root.querySelector('[aria-label*="All reactions"], [aria-label*="כל התגובות"]');
+    likes = r ? parseNum(r.parentElement && r.parentElement.textContent) : null;
+  }
+  const comments = pick(/(\d[\d.,KM]*\s*(comments?|תגובות|תגובה))|((comments?|תגובות):?\s*\d)/i);
+  const shares = pick(/(\d[\d.,KM]*\s*(shares?|שיתופים|שיתוף))|((shares?|שיתופים):?\s*\d)/i);
+  return { likes: likes || 0, comments: comments || 0, shares: shares || 0 };
+}
+
+async function syncMetrics() {
+  if (metricsRunning || (typeof running !== 'undefined' && running)) return;
+  const token = await getToken();
+  if (!token) return;
+  metricsRunning = true;
+  try {
+    const { json } = await api('ext-metrics', { token, action: 'targets', limit: 3 });
+    const targets = Array.isArray(json && json.targets) ? json.targets : [];
+    for (const t of targets) {
+      if (typeof running !== 'undefined' && running) break;
+      if (!t || !t.job_id || !/^https:\/\/(www\.|m\.)?facebook\.com\//.test(t.post_url || '')) continue;
+      let tabId = null;
+      try {
+        const tab = await chrome.tabs.create({ url: t.post_url, active: false });
+        tabId = tab.id;
+        if (!(await waitForTabLoad(tabId))) continue;
+        await sleep(4000 + Math.floor(Math.random() * 3000));
+        const [res] = await chrome.scripting.executeScript({ target: { tabId }, func: scrapeEngagementInPage });
+        const m = (res && res.result) || null;
+        if (m) await api('ext-metrics', { token, action: 'report', job_id: t.job_id, likes: m.likes, comments: m.comments, shares: m.shares });
+      } catch (e) {
+        try { console.warn('[Realtyz] metrics scrape failed', e); } catch (e2) { /* noop */ }
+      } finally {
+        if (tabId != null) { try { await chrome.tabs.remove(tabId); } catch (e) { /* noop */ } }
+      }
+      await sleep(5000 + Math.floor(Math.random() * 5000));
+    }
+  } finally {
+    metricsRunning = false;
+  }
+}
+
+try { chrome.alarms.create(METRICS_ALARM, { periodInMinutes: 30, delayInMinutes: 2 }); } catch (e) { /* noop */ }
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name !== METRICS_ALARM) return;
+  syncMetrics().catch(() => {});
+});
+chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+  if (msg && msg.type === 'RZ_SYNC_METRICS') { syncMetrics().finally(() => sendResponse({ ok: true })); return true; }
+});
