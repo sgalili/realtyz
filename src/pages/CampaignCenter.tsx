@@ -5565,8 +5565,33 @@ const PublishedFeed = ({
         },
       )
 
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'campaign_logs' },
+        (payload) => { if (belongsToActiveWorkspace(payload.new)) scheduleDbReload(); },
+      )
       .subscribe();
-    return () => { removeChannelSafe(channel); };
+    // DB-only resync so newly created/queued/processed posts appear without a
+    // hard refresh, even if a realtime event is missed. Never triggers a Meta import.
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+    function scheduleDbReload() {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => { void loadRef.current({ skipFbImport: true }).catch(() => {}); }, 800);
+    }
+    const onCampaignChanged = () => scheduleDbReload();
+    const onFocus = () => { if (document.visibilityState === 'visible') scheduleDbReload(); };
+    window.addEventListener('realtyz:campaign-changed', onCampaignChanged);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    const poll = setInterval(() => { if (document.visibilityState === 'visible') scheduleDbReload(); }, 30_000);
+    return () => {
+      removeChannelSafe(channel);
+      if (reloadTimer) clearTimeout(reloadTimer);
+      clearInterval(poll);
+      window.removeEventListener('realtyz:campaign-changed', onCampaignChanged);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
   }, [userId, workspaceOwnerId, campaignUserIds.join('|')]);
 
   // Each card represents a GROUP of campaign_logs rows (same campaign_name +
