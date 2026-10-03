@@ -59,7 +59,7 @@ export function GroupStatusChips({
   defaultState = 'pending',
   max = 30,
   emptyLabel,
-  countdownIso,
+  countdownIso: _countdownIso,
   defaultOpen = false,
   inline = false,
   children,
@@ -82,7 +82,6 @@ export function GroupStatusChips({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const shared = useFbGroupMeta();
-  const countdown = useCountdown(countdownIso);
   const lookup = (gid: string): FbGroupMeta | undefined => {
     const bare = gid.replace(/^(ext:|manual:)/, '');
     const key = groupKeyFrom(gid);
