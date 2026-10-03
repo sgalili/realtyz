@@ -11,6 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CheckCheck, FolderInput } from 'lucide-react';
+import { SelectModeToggle, SelectBox, SelectAllRow } from '@/components/ui/multi-select-controls';
 import { Search, Send, Bot, MessageSquare, MessageCircle, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -179,6 +181,34 @@ const OmnichannelInbox = () => {
   const [delayMax, setDelayMax] = useState(23);
   const [manualTakeoverWarning, setManualTakeoverWarning] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [chatSelectMode, setChatSelectMode] = useState(false);
+  const [selectedChats, setSelectedChats] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const toggleChat = (id: string) => setSelectedChats((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const refreshInbox = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['inbox-leads'] }),
+    queryClient.invalidateQueries({ queryKey: ['last-messages'] }),
+    queryClient.invalidateQueries({ queryKey: ['inbox-chats'] }),
+  ]);
+  const bulkUpdateChats = async (patch: Record<string, unknown>, okMsg: string) => {
+    const ids = Array.from(selectedChats).filter((id) => !id.startsWith('phone:') && !id.startsWith('demo-'));
+    if (!ids.length) { toast.error('אין שיחות שניתן לעדכן בבחירה'); return; }
+    setBulkBusy(true);
+    try {
+      const { error } = await supabase.from('leads').update(patch as any).in('id', ids);
+      if (error) throw error;
+      toast.success(okMsg);
+      setSelectedChats(new Set());
+      await refreshInbox();
+    } catch (err: any) {
+      toast.error(`העדכון נכשל: ${err?.message || err}`);
+    } finally { setBulkBusy(false); }
+  };
   const [isDeletingChat, setIsDeletingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -270,6 +300,36 @@ const OmnichannelInbox = () => {
       setIsDeletingChat(false);
       setDeleteTargetId(null);
     }
+  };
+
+  const handleBulkDeleteChats = async () => {
+    const ids = Array.from(selectedChats);
+    setBulkBusy(true);
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        if (id.startsWith('demo-')) { failed++; continue; }
+        if (id.startsWith('phone:')) {
+          const { error } = await supabase.from('messages').delete().is('lead_id', null).filter('metadata->>sender_phone', 'eq', id.slice(6));
+          if (error) throw error;
+        } else {
+          await supabase.from('chat_history').delete().eq('lead_id', id);
+          await supabase.from('messages').delete().eq('lead_id', id);
+          const { error } = await supabase.rpc('gdpr_delete_lead', { _lead_id: id });
+          if (error) {
+            const { error: delErr } = await supabase.from('leads').delete().eq('id', id);
+            if (delErr) throw delErr;
+          }
+        }
+      } catch { failed++; }
+    }
+    setBulkBusy(false);
+    setBulkDeleteOpen(false);
+    if (selectedVoterId && selectedChats.has(selectedVoterId)) setSelectedVoterId(null);
+    setSelectedChats(new Set());
+    await refreshInbox();
+    if (failed) toast.error(`${failed} שיחות לא נמחקו`);
+    else toast.success(`${ids.length} שיחות נמחקו לצמיתות`);
   };
 
   const { isDemoMode, demoCandidateId } = useDemoMode();
@@ -946,6 +1006,9 @@ const OmnichannelInbox = () => {
         const hit = Array.from(channelFilter).some((c) => (known?.has(c) ?? false) || lastCh === c);
         if (!hit) return false;
       }
+      const doneAt = (v as any).inbox_done_at ? new Date((v as any).inbox_done_at).getTime() : 0;
+      const handled = doneAt > 0 && (!m?.created_at || new Date(m.created_at).getTime() <= doneAt);
+      if ((activeTab === 'waiting' || activeTab === 'handling') && handled) return false;
       if (activeTab === 'waiting') return m?.direction === 'inbound';
       if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
       if (bookmarkedOnly) return (v as any).is_bookmarked === true;
@@ -1131,17 +1194,58 @@ const OmnichannelInbox = () => {
                 });
               })()}
             </div>
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="חיפוש שיחות..."
-                className="pr-9 h-9 bg-muted/50 border-0"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="חיפוש שיחות..."
+                  className="pr-9 h-9 bg-muted/50 border-0"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <SelectModeToggle
+                active={chatSelectMode}
+                count={selectedChats.size}
+                onToggle={() => { setChatSelectMode((v) => !v); setSelectedChats(new Set()); }}
               />
             </div>
           </div>
 
+          {chatSelectMode && (
+            <SelectAllRow
+              className="sticky top-0 z-10"
+              total={filteredVoters?.length ?? 0}
+              selected={selectedChats.size}
+              onToggle={() => setSelectedChats(
+                selectedChats.size === (filteredVoters?.length ?? 0) ? new Set() : new Set((filteredVoters ?? []).map((v: any) => v.id)),
+              )}
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled={bulkBusy}>
+                    <FolderInput className="h-3.5 w-3.5" /> העבר
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => bulkUpdateChats({ is_bookmarked: true }, 'השיחות הועברו לשמורים')}>
+                    <Bookmark className="h-4 w-4 ms-2" /> לשמורים
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => bulkUpdateChats({ is_bookmarked: false, inbox_done_at: null }, 'השיחות הוחזרו לכל השיחות')}>
+                    <InboxIcon className="h-4 w-4 ms-2" /> לכל השיחות
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled={bulkBusy}
+                onClick={() => bulkUpdateChats({ inbox_done_at: new Date().toISOString() }, 'השיחות סומנו כטופלו')}>
+                <CheckCheck className="h-3.5 w-3.5" /> טופל
+              </Button>
+              <Button size="sm" variant="destructive" className="h-7 w-7 p-0" aria-label="מחק נבחרות" title="מחק נבחרות"
+                disabled={bulkBusy} onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </SelectAllRow>
+          )}
           <ScrollArea className="min-h-0 flex-1 overflow-y-auto">
             {searchedPhone && !phoneAlreadyKnown && (
               <button
@@ -1174,9 +1278,12 @@ const OmnichannelInbox = () => {
                     exit={{ opacity: 0, y: -12, scale: 0.98 }}
                     transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }}
                     dir="ltr"
-                    onClick={() => setSelectedVoterId(isActive ? null : voter.id)}
-                    className={`relative flex min-w-0 flex-row-reverse items-start gap-3 overflow-hidden px-3 py-3 ps-8 cursor-pointer border-b border-border/30 transition-colors ${isActive ? 'bg-accent' : 'hover:bg-muted/50'}`}
+                    onClick={() => (chatSelectMode ? toggleChat(voter.id) : setSelectedVoterId(isActive ? null : voter.id))}
+                    className={`relative flex min-w-0 flex-row-reverse items-start gap-3 overflow-hidden px-3 py-3 ps-8 cursor-pointer border-b border-border/30 transition-colors ${isActive || selectedChats.has(voter.id) ? 'bg-accent' : 'hover:bg-muted/50'}`}
                   >
+                    {chatSelectMode && (
+                      <SelectBox className="mt-3" checked={selectedChats.has(voter.id)} onChange={() => toggleChat(voter.id)} />
+                    )}
                     <button
                       type="button"
                       onClick={(event) => { event.stopPropagation(); setDeleteTargetId(voter.id); }}
@@ -1521,6 +1628,24 @@ const OmnichannelInbox = () => {
         </div>
 
       </div>
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת {selectedChats.size} שיחות</AlertDialogTitle>
+            <AlertDialogDescription>השיחות ואנשי הקשר שלהן יימחקו לצמיתות. לא ניתן לבטל פעולה זו.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkBusy}
+              onClick={(e) => { e.preventDefault(); handleBulkDeleteChats(); }}
+            >
+              {bulkBusy ? 'מוחק...' : 'מחק לצמיתות'}
+            </AlertDialogAction>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
         <AlertDialogContent className="text-right" dir="rtl">
           <AlertDialogHeader>

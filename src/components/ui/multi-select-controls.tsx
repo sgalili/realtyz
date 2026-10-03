@@ -1,0 +1,81 @@
+import { Check, List } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+/**
+ * Unified multi-select controls (same pattern as the publishing-groups dialog):
+ * a small unlabeled list icon toggles checkboxes, a select-all row, per-item
+ * checkboxes and a counter badge that appears only when something is selected.
+ */
+export const SelectModeToggle = ({
+  active,
+  onToggle,
+  count = 0,
+  className,
+}: { active: boolean; onToggle: () => void; count?: number; className?: string }) => (
+  <button
+    type="button"
+    aria-label="בחירה מרובה"
+    title="בחירה מרובה"
+    aria-pressed={active}
+    onClick={onToggle}
+    className={cn(
+      'relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition',
+      active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted',
+      className,
+    )}
+  >
+    <List className="h-4 w-4" />
+    {count > 0 && (
+      <span className="absolute -top-1 -left-1 min-w-[16px] h-4 rounded-full bg-primary px-1 text-[10px] font-bold leading-4 text-primary-foreground tabular-nums">
+        {count}
+      </span>
+    )}
+  </button>
+);
+
+export const SelectBox = ({
+  checked,
+  indeterminate,
+  onChange,
+  label,
+  className,
+}: { checked: boolean; indeterminate?: boolean; onChange: () => void; label?: string; className?: string }) => (
+  <button
+    type="button"
+    role="checkbox"
+    aria-checked={indeterminate ? 'mixed' : checked}
+    aria-label={label ?? 'בחירה'}
+    onClick={(e) => { e.stopPropagation(); onChange(); }}
+    className={cn(
+      'h-4 w-4 shrink-0 rounded border flex items-center justify-center transition',
+      checked ? 'border-primary bg-primary text-primary-foreground'
+        : indeterminate ? 'border-primary bg-primary/30' : 'border-border bg-background',
+      className,
+    )}
+  >
+    {checked && <Check className="h-3 w-3" />}
+    {!checked && indeterminate && <span className="h-0.5 w-2 rounded bg-primary-foreground" />}
+  </button>
+);
+
+export const SelectAllRow = ({
+  total,
+  selected,
+  onToggle,
+  children,
+  className,
+}: { total: number; selected: number; onToggle: () => void; children?: React.ReactNode; className?: string }) => {
+  const all = total > 0 && selected === total;
+  return (
+    <div className={cn('flex flex-wrap items-center gap-2 bg-muted/40 px-3 py-2 border-b border-border', className)} dir="rtl">
+      <SelectBox checked={all} indeterminate={selected > 0 && !all} onChange={onToggle} label={all ? 'בטל בחירה' : 'בחר הכל'} />
+      <button type="button" onClick={onToggle} className="text-[14px] font-semibold text-foreground">
+        {all ? 'בטל הכל' : 'בחר הכל'}
+      </button>
+      {selected > 0 && (
+        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">{selected} נבחרו</span>
+      )}
+      {selected > 0 && <div className="ms-auto flex flex-wrap items-center gap-1.5">{children}</div>}
+    </div>
+  );
+};
