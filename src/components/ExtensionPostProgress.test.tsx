@@ -8,7 +8,7 @@ describe('extension post status', () => {
     const html = renderToStaticMarkup(<ExtensionPostProgress progress={{
       stage: 'failed', label: 'שגיאה', percent: 100, error: FIRST_COMMENT_WARNING, done: 0, total: 1,
     }} />);
-    expect(html).toContain('פורסם בהצלחה');
+    expect(html).toContain('aria-label="פורסם"');
     expect(html).toContain(`aria-label="${FIRST_COMMENT_WARNING}"`);
     expect(html).not.toContain('text-destructive');
     expect(html).not.toContain('שגיאה');
@@ -18,6 +18,6 @@ describe('extension post status', () => {
       stage: 'failed', label: 'שגיאה', percent: 100, error: 'Facebook rejected post', done: 0, total: 1,
     }} />);
     expect(html).toContain('text-destructive');
-    expect(html).not.toContain('פורסם בהצלחה');
+    expect(html).not.toContain('aria-label="פורסם"');
   });
 });

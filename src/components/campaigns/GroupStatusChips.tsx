@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
-import { useFbGroupMeta, type FbGroupMeta } from '@/hooks/useFbGroupMeta';
+import { useFbGroupMeta, groupKeyFrom, localQueueGroupNames, type FbGroupMeta } from '@/hooks/useFbGroupMeta';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { openExternal } from '@/lib/openExternal';
 
@@ -99,8 +99,12 @@ export function GroupStatusChips({
   const countdown = useCountdown(countdownIso);
   const lookup = (gid: string): FbGroupMeta | undefined => {
     const bare = gid.replace(/^(ext:|manual:)/, '');
-    return meta?.[gid] ?? meta?.[bare] ?? shared[gid] ?? shared[bare];
+    const key = groupKeyFrom(gid);
+    const local = localQueueGroupNames();
+    const clean = (m?: FbGroupMeta) => (m && m.name && !/^\d+$/.test(m.name) && !/^https?:/i.test(m.name) ? m : undefined);
+    return clean(meta?.[gid]) ?? clean(meta?.[bare]) ?? clean(meta?.[key]) ?? clean(shared[gid]) ?? clean(shared[bare]) ?? clean(shared[key]) ?? local[gid] ?? local[key];
   };
+  const nameOf = (gid: string) => lookup(gid)?.name || 'קבוצת פייסבוק';
 
   const ids = Array.from(new Set(groupIds.filter(Boolean).map((g) => String(g))));
   if (ids.length === 0) {
@@ -117,7 +121,8 @@ export function GroupStatusChips({
         aria-expanded={open}
         className="h-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
       >
-        <span>{ids.length} קבוצות</span>
+        <span className="max-w-[180px] truncate">{nameOf(ids[0])}</span>
+        {ids.length > 1 && <span className="tabular-nums text-muted-foreground" dir="ltr">+{ids.length - 1}</span>}
         {countdown && (
           <span className="tabular-nums text-muted-foreground" dir="ltr">· {countdown}</span>
         )}
@@ -126,12 +131,12 @@ export function GroupStatusChips({
       {open && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {ids.slice(0, max).map((gid) => {
-            const bare = gid.replace(/^(ext:|manual:)/, '');
+            const bare = groupKeyFrom(gid);
             const info = lookup(gid);
-            const name = info?.name || `קבוצה ${bare.slice(-6)}`;
+            const name = nameOf(gid);
             const res = results?.[gid] ?? results?.[bare];
             const state: GroupChipState = res ? (res.ok || isCommentOnlyFailure(res.reason) ? 'published' : 'failed') : defaultState;
-            const url = groupPostDestination(res, fbGroupUrlFrom(info?.url, bare) || bare);
+            const url = groupPostDestination(res, fbGroupUrlFrom(info?.url, /^https?:/i.test(gid) ? gid : bare) || bare);
             const title = res?.reason ? `${name} — ${res.reason}` : `${name} — ${STATE_LABEL[state]}`;
             return (
               <button

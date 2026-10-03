@@ -121,7 +121,7 @@ export function QueueCard({
         </div>
 
         {/* Row 2: logo · date .... status · actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Facebook className="h-5 w-5 shrink-0 text-[#1877F2]" />
           {dateLabel && (
             <span className={cn('whitespace-nowrap text-xs', status === 'scheduled' ? 'font-semibold text-amber-700' : 'text-muted-foreground')}>
@@ -129,12 +129,12 @@ export function QueueCard({
             </span>
           )}
           <span className="flex-1" />
-          <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1', STATUS_PILL[status])}>
+          <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1', STATUS_PILL[status])} title={STATUS_LABEL[status]} aria-label={STATUS_LABEL[status]}>
             {status === 'published' && <CheckCircle2 className="h-3 w-3" />}
             {status === 'failed' && <AlertTriangle className="h-3 w-3" />}
             {status === 'publishing' && <Loader2 className="h-3 w-3 animate-spin" />}
             {status === 'scheduled' && <CalendarIcon className="h-3 w-3" />}
-            {countdown ? <span className="tabular-nums" dir="ltr">{countdown}</span> : STATUS_LABEL[status]}
+            {countdown ? <span className="tabular-nums" dir="ltr">{countdown}</span> : status === 'draft' ? <span className="sr-only">{STATUS_LABEL[status]}</span> : null}
           </span>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{actions}</div>
           <button

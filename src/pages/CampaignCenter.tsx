@@ -23,7 +23,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square, Users,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History, Save } from 'lucide-react';
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History, Save, XCircle, Clock } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -5891,7 +5891,9 @@ const PublishedFeed = ({
         sent_at: status === 'scheduled' ? new Date(g.scheduledTime).toISOString() : null,
       });
     }
-    const merged: CampaignRow[] = [...optimisticRows, ...extRows, ...base];
+    const UNSENT = new Set(['scheduled', 'pending', 'queued', 'publishing', 'processing']);
+    const merged: CampaignRow[] = [...optimisticRows, ...extRows, ...base]
+      .filter((r: any) => r._optimistic || !UNSENT.has(String(r.status || '').toLowerCase()));
     const channelFiltered = activeChannel === 'all'
       ? merged
       : merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
@@ -5907,7 +5909,7 @@ const PublishedFeed = ({
         status: job.status === 'completed' ? 'sent' : job.status === 'failed' ? 'failed' : 'queued',
         failure_reason: job.error, provider_message_id: job.postId || null,
         external_url: job.postUrl || null, provider_response: {},
-        group_ids: [job.groupUrl || ''],
+        group_ids: [job.groupUrl || ''].filter(Boolean),
       })) };
     });
   }, [rows, activeChannel, optimisticRows, extensionQueue]);
@@ -6103,7 +6105,7 @@ const PublishedFeed = ({
         return (
           <article
             key={r.id}
-            className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden"
+            className="w-full min-w-0 max-w-full rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden"
             dir={dirAttr}
           >
             <header
@@ -6154,7 +6156,7 @@ const PublishedFeed = ({
 
 
               {/* Row 2 (single combined row): logo · date · groups pill ........  comments · shares · likes · chevron */}
-              <div className={cn('flex items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
+              <div className={cn('flex min-w-0 flex-wrap items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
                 <span className="inline-flex items-center justify-center shrink-0">
                   {platformMeta?.brand ? (
                     <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
@@ -6200,7 +6202,18 @@ const PublishedFeed = ({
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : isPaused ? null : (extProgress && hasGroupTargets) ? (
+                })() : isPaused ? null : isSeries ? (() => {
+                  const ok = seriesSlots.filter((x: any) => ['sent', 'published', 'completed'].includes(String(x.status || '').toLowerCase()) || isCommentOnlyFailure(x.failure_reason)).length;
+                  const bad = seriesSlots.filter((x: any) => String(x.status || '').toLowerCase() === 'failed' && !isCommentOnlyFailure(x.failure_reason)).length;
+                  const wait = seriesSlots.length - ok - bad;
+                  return (
+                    <span className="inline-flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums" title={`${ok} הצלחות, ${bad} נכשלו, ${wait} בתור`}>
+                      {ok > 0 && <span className="inline-flex items-center gap-0.5 text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />{ok}</span>}
+                      {bad > 0 && <span className="inline-flex items-center gap-0.5 text-destructive"><XCircle className="h-3.5 w-3.5" />{bad}</span>}
+                      {wait > 0 && <span className="inline-flex items-center gap-0.5"><Clock className="h-3.5 w-3.5" />{wait}</span>}
+                    </span>
+                  );
+                })() : (extProgress && hasGroupTargets) ? (
                   <ExtensionPostProgress progress={extProgress} />
                 ) : (legacyMetaError && hasGroupTargets) ? (
                   <ExtensionPostProgress
@@ -6211,8 +6224,7 @@ const PublishedFeed = ({
                     className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-bold text-destructive ring-1 ring-destructive/30 max-w-[60%]"
                     title={failureReason ?? undefined}
                   >
-                    <AlertTriangle className="h-3 w-3 shrink-0" />
-                    <span className="truncate">נכשל · {failureReason}</span>
+                    <XCircle className="h-3.5 w-3.5 shrink-0" aria-label="נכשל" />
                   </span>
                 ) : scheduled ? (() => {
 
@@ -6252,7 +6264,6 @@ const PublishedFeed = ({
                 {commentWarning && !failed && !extProgress && (
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-label="פורסם" />
-                    <span>פורסם</span>
                     <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
                   </span>
                 )}
