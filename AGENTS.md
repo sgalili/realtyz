@@ -1,5 +1,8 @@
 # Architecture rules
 
+- Group-pill expansion uses a portaled overlay, including series children, to keep card geometry unchanged.
+- Posting continuation resets only workspace-authorized original queue jobs atomically; active jobs are skipped and completed jobs require explicit resubmission.
+
 - Campaign composer topic mode is derived from the active workspace, not the signed-in user; topic selection persists with its workspace-scoped draft and overrides property focus in AI generation.
 
 - Campaign feed refreshes preserve displayed post copy by stable post ID within the active workspace; refresh status/counters independently to prevent background content swaps.
