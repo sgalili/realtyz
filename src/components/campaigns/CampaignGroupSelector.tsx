@@ -144,11 +144,21 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     }
   };
 
-  const toggle = (id: string) => {
-    onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+  // Compare by normalized bare id: drafts and repost prefills store ids
+  // without the `ext:` prefix / URL form that fb_user_groups rows may carry.
+  const bare = (id: string) => fbGroupId(id) ?? id;
+  const isSelected = (g: FacebookGroup) => {
+    const target = bare(g.group_id);
+    return selectedIds.some((id) => bare(id) === target);
   };
-  const allSelected = groups.length > 0 && selectedIds.length === groups.length;
-  const someSelected = selectedIds.length > 0 && !allSelected;
+  const toggle = (id: string) => {
+    const target = bare(id);
+    onChange(isSelected({ group_id: id } as FacebookGroup)
+      ? selectedIds.filter((x) => bare(x) !== target)
+      : [...selectedIds, id]);
+  };
+  const allSelected = groups.length > 0 && groups.every(isSelected);
+  const someSelected = groups.some(isSelected) && !allSelected;
   const toggleAll = () => onChange(allSelected ? [] : groups.map((g) => g.group_id));
 
   return (
