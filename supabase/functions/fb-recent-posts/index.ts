@@ -1262,7 +1262,7 @@ Deno.serve(async (req) => {
     // Facebook — drop it from our feed too. Guarded so an empty/partial
     // provider payload can never wipe the history.
     let prunedMissing = 0;
-    if (persist && pruneMissing && posts.length >= 5) {
+    if (persist && pruneMissing && !extensionOnly && posts.length >= 5) {
       const liveIds = new Set(posts.map((p) => String(p.fb_post_id)).filter(Boolean));
       const oldestLive = posts
         .map((p) => new Date(p.created_at ?? Date.now()).getTime())
@@ -1295,7 +1295,7 @@ Deno.serve(async (req) => {
     }
 
     let commentSyncQueued = false;
-    if (persist && syncComments && posts.length > 0) {
+    if (persist && syncComments && !extensionOnly && posts.length > 0) {
       const postIds = posts.map((p) => p.fb_post_id).filter(Boolean);
       const syncTask = (async () => {
         for (let i = 0; i < postIds.length; i += 2) {
@@ -1527,7 +1527,8 @@ Deno.serve(async (req) => {
         // A stored Page binding stays a live connection even when a single read
         // is refused, so the client must never flip to "disconnected" here.
         page_connected: !!page?.pageId,
-        needs_extension: permissionBlocked && posts.length === 0,
+        needs_extension: extensionPosts.length === 0,
+        source: "extension",
         // Exact Graph failure (code/subcode/type/message/trace) so the UI can
         // tell the user precisely why the sync did not complete.
         sync_error: syncErrorDetail,
