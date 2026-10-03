@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Open continuation/repost in the full editor with editable settings and safe explicit resubmission.
+- [ ] Align cancellation right beside publication confirmation and verify the edited repost flow.
+
 - [x] Preserve successful post status with subtle first-comment warnings.
 - [x] Keep card order stable and collapse related campaign posts into master cards.
 - [x] Use text-only group count pills, standardize בתור, and prefer direct post URLs with group-page fallback.
