@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Harden individual and select-all group selection and verify dialog stability on desktop/mobile.
+- [x] Harden individual and select-all group selection with immutable guarded updates and one activation per row; verified signed-in desktop/mobile repeated toggles and cancellation, no runtime exceptions, and five passing regression tests without publication.
 
 - [x] Replace group counters with unframed names and adjacent status icons; remove perpetual and redundant card loaders. Verified signed-in cards, series overlay, mobile layout and seven regression tests without Facebook publication.
 
