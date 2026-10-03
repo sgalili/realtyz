@@ -3471,7 +3471,7 @@ const ConfirmDispatchDialog = ({
             }));
           } catch { /* noop */ }
           try {
-            await supabase.from('campaign_logs').insert({
+            const { error: grpInsErr } = await supabase.from('campaign_logs').insert({
               user_id: ownerScope,
               workspace_owner_id: ownerScope,
               campaign_name: campaignName,
@@ -3485,7 +3485,9 @@ const ConfirmDispatchDialog = ({
               status: scheduledAt ? 'scheduled' : 'publishing',
               sent_at: scheduledAt ?? null,
             } as any);
-          } catch (err) {
+            if (grpInsErr) throw grpInsErr;
+          } catch (err: any) {
+            toast.error('שמירת רשומת הקמפיין נכשלה: ' + (err?.message || String(err)));
             console.warn('[campaign] group-only history row failed', err);
           }
           onConfirmed();
@@ -3660,6 +3662,7 @@ const ConfirmDispatchDialog = ({
 
         const rows = (leads || []).map((l: any) => ({
           user_id: ownerScope,
+          workspace_owner_id: ownerScope,
           campaign_name: campaignName,
           channel: channel.id,
           lead_id: l.id,
@@ -7690,6 +7693,7 @@ const CampaignCenter = () => {
     let cancelled = false;
     setCampaignHistoryLoading(true);
     void (async () => {
+     try {
       const scope = workspaceOwnerId ?? user.id;
       const cols = 'id,campaign_name,channel,message_body,status,sent_at,created_at,media_urls,listing_id,series_id,series_index,series_total,needs_regeneration,group_ids,recurrence_rule';
       // Two dedicated queries: future scheduled slots (hundreds of them, some
@@ -7741,8 +7745,13 @@ const CampaignCenter = () => {
           meta[id.replace(/^(ext:|manual:)/, '')] = entry;
         });
         setHistoryGroupMeta(meta);
-        setCampaignHistoryLoading(false);
       }
+     } catch (err: any) {
+      console.error('[campaign-history] load failed', err);
+      if (!cancelled) toast.error('טעינת היסטוריית הקמפיינים נכשלה: ' + (err?.message || String(err)));
+     } finally {
+      if (!cancelled) setCampaignHistoryLoading(false);
+     }
     })();
     return () => { cancelled = true; };
   }, [user?.id, workspaceOwnerId, historyRefreshTick]);
