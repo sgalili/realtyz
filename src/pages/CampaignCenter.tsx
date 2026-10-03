@@ -5613,11 +5613,11 @@ const PublishedFeed = ({
       p_workspace_owner_id: workspaceOwnerId, p_post_id: r.id, p_entire_series: entireSeries,
     });
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
-    const deletion = result as { deleted_ids?: string[]; deleted_count?: number; deleted_texts?: string[] };
+    const deletion = result as { deleted_ids?: string[]; deleted_count?: number; queue_ids?: string[]; local_queue_ids?: string[] };
     const ids = deletion.deleted_ids || [];
     const count = deletion.deleted_count || 0;
     if (!count || !ids.includes(r.id)) throw new Error('המחיקה לא אושרה במערכת');
-    removeQueueEntriesForPosts({ ids, texts: [] });
+    removeQueueEntriesForPosts({ ids: [...ids, ...(deletion.queue_ids || []), ...(deletion.local_queue_ids || []).filter(Boolean)] });
     ids.forEach((id) => postCopyRef.current.entries.delete(id));
     setRows((prev) => {
       const next = prev?.filter((x) => !ids.includes(x.id)) ?? prev;
@@ -7475,21 +7475,26 @@ const CampaignCenter = () => {
     if (ids.length === 0) return;
     setBulkDeletingFuture(true);
     const targets = campaignHistoryRows.filter((x) => ids.includes(x.id));
-    // Recurring series: delete every sibling slot of each selected series.
-    const seriesIds = Array.from(new Set(targets.map((t) => t.series_id).filter(Boolean)));
-    const allIds = new Set(ids);
-    for (const row of campaignHistoryRows) {
-      if (row.series_id && seriesIds.includes(row.series_id)) allIds.add(row.id);
-    }
-    const idList = Array.from(allIds);
-    const { error } = await supabase.from('campaign_logs').delete().in('id', idList);
-    setBulkDeletingFuture(false);
-    if (error) { toast.error('מחיקת הפוסטים נכשלה'); setHistoryRefreshTick((t) => t + 1); return; }
-    removeQueueEntriesForPosts({ ids: idList, texts: targets.map((t) => String(t.message_body || '')) });
-    setCampaignHistoryRows((prev) => prev.filter((x) => !allIds.has(x.id)));
-    setSelectedFutureIds([]);
-    setFutureSelectMode(false);
-    toast.success(`${ids.length} פוסטים נמחקו`);
+    try {
+      if (!workspaceOwnerId) throw new Error('לא נמצא מרחב עבודה פעיל');
+      const removed = new Set<string>();
+      for (const target of targets) {
+        if (removed.has(target.id)) continue;
+        const { data, error } = await supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: target.id, p_entire_series: true });
+        if (error) throw new Error(error.message);
+        const result = data as { deleted_ids: string[]; deleted_count: number; queue_ids?: string[]; local_queue_ids?: string[] };
+        if (!result.deleted_count) throw new Error('המחיקה לא אושרה במערכת');
+        result.deleted_ids.forEach((id) => removed.add(id));
+        removeQueueEntriesForPosts({ ids: [...result.deleted_ids, ...(result.queue_ids || []), ...(result.local_queue_ids || []).filter(Boolean)] });
+        setCampaignHistoryRows((prev) => prev.filter((r) => !removed.has(r.id)));
+      }
+      setSelectedFutureIds([]);
+      setFutureSelectMode(false);
+      toast.success(`${removed.size} פוסטים נמחקו לצמיתות`);
+    } catch (error: any) {
+      toast.error(error?.message || 'מחיקת הפוסטים נכשלה');
+      setHistoryRefreshTick((t) => t + 1);
+    } finally { setBulkDeletingFuture(false); }
   };
 
 
@@ -8757,9 +8762,9 @@ const CampaignCenter = () => {
           if (!futureDeleteTarget || !workspaceOwnerId) throw new Error('לא נמצא פוסט במרחב העבודה');
           const { data, error } = await supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: futureDeleteTarget.id, p_entire_series: entireSeries });
           if (error) throw new Error(error.message);
-          const result = data as { deleted_ids: string[]; deleted_count: number };
+          const result = data as { deleted_ids: string[]; deleted_count: number; queue_ids?: string[]; local_queue_ids?: string[] };
           if (!result.deleted_count) throw new Error('המחיקה לא אושרה במערכת');
-          removeQueueEntriesForPosts({ ids: result.deleted_ids });
+          removeQueueEntriesForPosts({ ids: [...result.deleted_ids, ...(result.queue_ids || []), ...(result.local_queue_ids || []).filter(Boolean)] });
           setCampaignHistoryRows((prev) => prev.filter((r) => !result.deleted_ids.includes(r.id)));
           setHistoryRefreshTick((t) => t + 1);
           queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
