@@ -1,10 +1,9 @@
 // Group target chips with per-group publishing status.
-// Collapsed by default: a single summary row with the total group count and the
-// countdown to the next publishing round (dd/hh/mm/ss). Expanding reveals the
-// real Facebook group names, their member counts and whether each group
-// actually accepted the post.
+// Collapsed by default: a single summary pill with the group count and a
+// collapse arrow. Expanding reveals the real Facebook group names, their
+// member counts and whether each group actually accepted the post.
 import { useEffect, useState, type ReactNode } from 'react';
-import { CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { useFbGroupMeta, groupKeyFrom, localQueueGroupNames, type FbGroupMeta } from '@/hooks/useFbGroupMeta';
@@ -51,22 +50,6 @@ const StateIcon = ({ state }: { state: GroupChipState }) => {
   if (state === 'published') return <CheckCircle2 className="h-3.5 w-3.5" />;
   if (state === 'failed') return <XCircle className="h-3.5 w-3.5" />;
   return <Clock className="h-3.5 w-3.5" />;
-};
-
-/** dd/hh/mm/ss remaining until the next publishing round. */
-function useCountdown(iso?: string | null) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!iso) return;
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, [iso]);
-  if (!iso) return null;
-  const target = new Date(iso).getTime();
-  if (!Number.isFinite(target)) return null;
-  const s = Math.max(0, Math.floor((target - now) / 1000));
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(s / 86400))}/${pad(Math.floor((s % 86400) / 3600))}/${pad(Math.floor((s % 3600) / 60))}/${pad(s % 60)}`;
 }
 
 export function GroupStatusChips({
