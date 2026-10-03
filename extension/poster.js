@@ -369,13 +369,16 @@
 
     // 5. verify: the composer dialog closes and the text shows up in the feed
     const snippet = String(job.message || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    log('waiting for composer to close (submit verification)...');
     const closed = await waitFor(() => (dialog() ? null : true), 60000, 700);
     if (!closed) {
       const err = [...document.querySelectorAll('div[role="alert"], div[role="dialog"] span')]
         .map(textOf)
         .find((t) => /שגיאה|נכשל|error|try again|לא ניתן/i.test(t));
+      log('FAIL: composer stayed open', err || '');
       return { ok: false, reason: err ? err.slice(0, 200) : 'הפרסום לא הושלם — חלון העורך נשאר פתוח' };
     }
+    log('composer closed, verifying post in feed...');
 
     const seen = await waitFor(() => {
       const body = document.body ? document.body.innerText.replace(/\s+/g, ' ') : '';
@@ -385,8 +388,10 @@
     const pendingApproval = !seen && /ממתין לאישור|ממתינים לאישור|pending approval|submitted for approval|awaiting approval/i
       .test(document.body ? document.body.innerText : '');
     if (!seen && !pendingApproval) {
+      log('FAIL: post not visible in feed after submit');
       return { ok: false, submitted, reason: 'נלחץ "פרסם" אך הפוסט לא הופיע בקבוצה — לא אומת' };
     }
+    log(pendingApproval ? 'post submitted, awaiting admin approval' : 'post verified live in feed');
 
     let postUrl = null;
     let article = null;
