@@ -6401,7 +6401,7 @@ const PublishedFeed = ({
               </div>
 
 
-              {/* Logo and date opposite the group target and repost action. */}
+              {/* Row 2: platform logo and date only. */}
               <div className="flex min-w-0 items-center gap-2" dir="rtl">
                 <span className="inline-flex items-center justify-center shrink-0">
                   {platformMeta?.brand ? (
@@ -6418,9 +6418,11 @@ const PublishedFeed = ({
                 )}>
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
-                <span className="min-w-0 flex-1" />
+              </div>
+              {/* Row 3: group status/name (or counter), repost action and countdown together. */}
+              <div className="flex min-w-0 flex-wrap items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {hasGroupTargets && (
-                  <div className="min-w-0 max-w-[45%]" onClick={(e) => e.stopPropagation()}>
+                  <div className="min-w-0 max-w-[55%]">
                     <GroupStatusChips
                       inline
                       collapsedCounter
@@ -6440,25 +6442,27 @@ const PublishedFeed = ({
                   </div>
                 )}
                 {hasGroupTargets && <ContinuePostingButton post={r} />}
-              </div>
-              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" dir="rtl">
-                {scheduled ? (() => {
+                {scheduled && (() => {
                   const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
                   const diff = Number.isFinite(target) ? target - Date.now() : NaN;
-                  // Strict dd/hh/mm countdown — no extra wording, no series pill.
+                  // Strict dd/hh/mm countdown — hidden entirely at 00/00/00.
                   let label = '';
                   if (Number.isFinite(diff)) {
                     const s = Math.max(0, Math.floor(diff / 1000));
                     const pad = (n: number) => String(n).padStart(2, '0');
                     label = `${pad(Math.floor(s / 86400))}/${pad(Math.floor((s % 86400) / 3600))}/${pad(Math.floor((s % 3600) / 60))}`;
                   }
+                  if (!label || label === '00/00/00') return null;
                   return (
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums" dir="ltr">
                       <CalendarIcon className="h-3 w-3" />
                       {label}
                     </span>
                   );
-                })() : (
+                })()}
+              </div>
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" dir="rtl">
+                {!scheduled && (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
                       <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />

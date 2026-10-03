@@ -98,10 +98,15 @@ export function GroupStatusChips({
     return emptyLabel ? <p className="mt-1 text-[11px] text-muted-foreground">{emptyLabel}</p> : null;
   }
 
+  const stateOf = (gid: string): GroupChipState => {
+    const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
+    return result?.state ?? (result ? (result.ok || isCommentOnlyFailure(result.reason) ? 'published' : 'failed') : defaultState);
+  };
+
   const renderGroup = (gid: string) => {
     const info = lookup(gid);
     const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
-    const state = result?.state ?? (result ? (result.ok || isCommentOnlyFailure(result.reason) ? 'published' : 'failed') : defaultState);
+    const state = stateOf(gid);
     const name = nameOf(gid);
     const url = groupPostDestination(result, fbGroupUrlFrom(info?.url, groupKeyFrom(gid)));
     return (
@@ -116,21 +121,28 @@ export function GroupStatusChips({
   };
 
   const hasDetails = (ids.length > 1 && !!children) || ids.length > max;
-  if (collapsedCounter && ids.length > 1) return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" aria-expanded={open}
-          onClick={(e) => e.stopPropagation()}
-          className="h-7 shrink-0 rounded-full border-border bg-background px-2 text-[11px] text-foreground">
-          {ids.length} קבוצות
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" side="bottom" dir="rtl" className="w-[min(36rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-2" onClick={(e) => e.stopPropagation()}>
-        <div className="flex min-w-0 flex-col items-stretch">{ids.map(renderGroup)}</div>
-        {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
-      </PopoverContent>
-    </Popover>
-  );
+  if (collapsedCounter && ids.length > 1) {
+    const states = ids.map(stateOf);
+    const agg: GroupChipState = states.includes('failed') ? 'failed' : states.includes('pending') ? 'pending' : 'published';
+    return (
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        <span className={`shrink-0 ${STATE_STYLE[agg]}`} aria-label={STATE_LABEL[agg]}><StateIcon state={agg} /></span>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="sm" aria-expanded={open}
+              onClick={(e) => e.stopPropagation()}
+              className="h-7 shrink-0 rounded-full border-border bg-background px-2 text-[11px] text-foreground">
+              {ids.length} קבוצות
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" side="bottom" dir="rtl" className="w-[min(36rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex min-w-0 flex-col items-stretch">{ids.map(renderGroup)}</div>
+            {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
+          </PopoverContent>
+        </Popover>
+      </span>
+    );
+  }
   return (
     <div className={`${inline ? '' : 'mt-1.5 '}flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-0.5`} dir="rtl">
       {ids.slice(0, max).map(renderGroup)}
