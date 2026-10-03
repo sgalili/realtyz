@@ -5746,7 +5746,10 @@ const PublishedFeed = ({
     );
   };
 
-  const deleteCampaign = (r: CampaignRow) => setDeleteTarget(r);
+  const deleteCampaign = (r: CampaignRow) => {
+    console.log('DELETE CLICKED:', r.id, { series_id: r.series_id ?? null, campaign_name: r.campaign_name });
+    setDeleteTarget(r);
+  };
 
   const toggleFeedSelected = (id: string) =>
     setSelectedFeedIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]));
@@ -6436,7 +6439,7 @@ const PublishedFeed = ({
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button variant="outline" size="icon" title="מחק פוסט" aria-label="מחק פוסט"
-                            onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
+                            onClick={(e) => { e.stopPropagation(); console.log('DELETE CLICKED:', r.id, r.series_id ?? null); deleteCampaign(r); }}
                             className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -6526,7 +6529,7 @@ const PublishedFeed = ({
         onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
         hasExternalPost={deleteTarget ? externalIdsFor(deleteTarget).length > 0 : false}
         hasSeries={!!deleteTarget && (!!deleteTarget.series_id || ((deleteTarget as any)._seriesSlots?.length > 1))}
-        onConfirm={async (mode, entireSeries) => { if (deleteTarget) await performDelete(deleteTarget, mode, false, entireSeries); }}
+        onConfirm={async (mode, entireSeries) => { if (deleteTarget) { console.log('DELETE CONFIRMED:', deleteTarget.id, { mode, entireSeries }); await performDelete(deleteTarget, mode, false, entireSeries); } }}
       />
     </div>
   );
