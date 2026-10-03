@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils';
 import type { ExtensionProgress } from '@/lib/extensionGroupBridge';
+import { AlertTriangle } from 'lucide-react';
+import { FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 
 /**
  * Live status badge + progress bar for a post the Realtyz browser extension
@@ -13,8 +15,9 @@ export const ExtensionPostProgress = ({
   progress: ExtensionProgress;
   className?: string;
 }) => {
-  const done = progress.stage === 'completed';
-  const failed = progress.stage === 'failed';
+  const commentWarning = isCommentOnlyFailure(progress.error);
+  const done = progress.stage === 'completed' || commentWarning;
+  const failed = progress.stage === 'failed' && !commentWarning;
   const running = !done && !failed;
 
   return (
@@ -26,9 +29,10 @@ export const ExtensionPostProgress = ({
           failed && 'bg-destructive/10 text-destructive ring-destructive/30',
           running && 'bg-blue-100 text-blue-800 ring-blue-200',
         )}
-        title={progress.error ?? 'מנוהל בתור הפרסום של תוסף הדפדפן'}
+        title={commentWarning ? FIRST_COMMENT_WARNING : progress.error ?? 'מנוהל בתור הפרסום של תוסף הדפדפן'}
       >
-        <span className="truncate">{progress.label}</span>
+        <span className="truncate">{commentWarning ? 'פורסם בהצלחה' : progress.label}</span>
+        {commentWarning && <AlertTriangle className="h-3 w-3 text-muted-foreground" aria-label={FIRST_COMMENT_WARNING} />}
       </span>
 
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
