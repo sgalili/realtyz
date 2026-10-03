@@ -6727,12 +6727,15 @@ const PublishedFeed = ({
 
               </>
             )}
+            {/* Expanded sub-posts: nested inside the card border with a
+                complementary muted shade so they clearly belong to the card. */}
+            {inGroupOverlay !== true && seriesOpen && isSeries && seriesSlots && (
+              <div id={`campaign-series-${r.id}`} role="region" aria-label="פוסטים בקבוצות"
+                className="w-full min-w-0 space-y-3 border-t border-border/60 bg-muted/40 p-3" dir="rtl">
+                {seriesSlots.map((slot) => renderFeedCard(slot, undefined, true))}
+              </div>
+            )}
           </article>
-          {inGroupOverlay !== true && seriesOpen && isSeries && seriesSlots && (
-            <div id={`campaign-series-${r.id}`} role="region" aria-label="פוסטים בקבוצות" className="mt-3 w-full min-w-0 space-y-3" dir="rtl">
-              {seriesSlots.map((slot) => renderFeedCard(slot, undefined, true))}
-            </div>
-          )}
           </div>
         );
       })}
