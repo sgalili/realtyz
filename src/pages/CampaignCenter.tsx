@@ -5641,9 +5641,15 @@ const PublishedFeed = ({
     // Local-only cards (extension queue / optimistic) have non-UUID ids and no
     // DB row — remove them locally; never send them to UUID columns.
     if (!UUID_RE.test(String(r.id))) {
-      const childIds = ((r as any)._seriesSlots ?? []).map((c: any) => String(c?.id ?? '')).filter(Boolean);
+      // Extension-queue / optimistic card: never touch UUID columns. Purge the
+      // underlying queue jobs from localStorage + the extension, then drop the
+      // card from every local state slice immediately.
+      const slots = ((r as any)._seriesSlots ?? []) as any[];
+      const childIds = slots.map((c) => String(c?.id ?? '')).filter(Boolean);
       const localIds = [String(r.id), ...childIds];
-      removeQueueEntriesForPosts({ ids: localIds, texts: [r.message_body || ''] });
+      const texts = [r.message_body, ...slots.map((c) => c?.message_body)].map((t) => String(t || '')).filter(Boolean);
+      const removed = removeQueueEntriesForPosts({ ids: localIds, texts });
+      console.log('[campaign-delete] local queue purge', { id: r.id, localIds, removedFromQueue: removed });
       const dbIds = childIds.filter((id: string) => UUID_RE.test(id));
       if (dbIds.length > 0) {
         await Promise.all(dbIds.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: entireSeries })));
@@ -5655,6 +5661,7 @@ const PublishedFeed = ({
         if (next) { FEED_ROWS_CACHE.set(workspaceOwnerId, next); persistFeedCache(workspaceOwnerId, next); }
         return next;
       });
+      queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
       if (!silent) toast.success('הפוסט נמחק מהמערכת');
       return;
     }
@@ -5764,8 +5771,13 @@ const PublishedFeed = ({
     for (const r of selected) {
       try {
         if (String(r.id).startsWith('ext-queue-') || (r as any)._optimistic) {
-          removeQueueEntriesForPosts({ ids: [r.id], texts: [r.message_body || ''] });
-          setOptimisticRows((prev) => prev.filter((x) => x.id !== r.id));
+          const slots = ((r as any)._seriesSlots ?? []) as any[];
+          const ids = [String(r.id), ...slots.map((c) => String(c?.id ?? '')).filter(Boolean)];
+          const texts = [r.message_body, ...slots.map((c) => c?.message_body)].map((t) => String(t || '')).filter(Boolean);
+          removeQueueEntriesForPosts({ ids, texts });
+          const gone = new Set(ids);
+          setOptimisticRows((prev) => prev.filter((x) => !gone.has(x.id)));
+          setRows((prev) => prev?.filter((x) => !gone.has(x.id)) ?? prev);
           ok += 1;
           continue;
         }
