@@ -4,13 +4,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
 import { openExternal } from "@/lib/openExternal";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { useMetaPageBinding } from "@/hooks/useMetaPageBinding";
-import { isExtensionInstalled, ExtensionDownloadButton } from "@/components/social/ExtensionDownloadButton";
+import { isExtensionInstalled } from "@/components/social/ExtensionDownloadButton";
 import {
   joinGroupsViaExtension, searchGroupsViaExtension, sortDiscovered,
   type DiscoveredGroup, type JoinStatus,
