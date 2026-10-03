@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Harden individual and select-all group selection and verify dialog stability on desktop/mobile.
+
 - [x] Replace group counters with unframed names and adjacent status icons; remove perpetual and redundant card loaders. Verified signed-in cards, series overlay, mobile layout and seven regression tests without Facebook publication.
 
 - [x] Clean expanded groups and remove the repost title field.
