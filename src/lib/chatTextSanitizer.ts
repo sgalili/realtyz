@@ -1,3 +1,5 @@
+import { safeUtf8 } from '@/lib/utf8Text';
+
 /**
  * The AI leg occasionally leaks its raw envelope into the message body:
  * fenced code blocks (```json ... ```), a bare JSON object with a `reply` /
@@ -7,7 +9,7 @@
  */
 export function sanitizeChatText(raw: string | null | undefined): string {
   if (!raw) return '';
-  let text = String(raw).trim();
+  let text = safeUtf8(raw).trim();
 
   // 1) Drop the dispatcher's channel tag ("[whatsapp] ...") before anything else.
   text = text.replace(/^\s*\[(?:whatsapp|instagram|facebook|messenger|email|sms|telegram|web)\]\s*/i, '');

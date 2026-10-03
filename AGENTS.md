@@ -1,6 +1,7 @@
 # Architecture rules
 
 - Group-pill expansion uses a portaled overlay, including series children, to keep card geometry unchanged.
+- Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
 - Posting continuation uses the full campaign composer and an atomic workspace-authorized edited-repost operation; active original jobs block replacement and completed jobs require explicit resubmission.
 
 - Campaign composer topic mode is derived from the active workspace, not the signed-in user; topic selection persists with its workspace-scoped draft and overrides property focus in AI generation.

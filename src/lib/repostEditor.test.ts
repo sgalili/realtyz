@@ -3,6 +3,15 @@ import { matchesRepostJob, repostEditorDraft, type RepostJob } from './repostEdi
 
 const job: RepostJob = { id: 'queue-id', status: 'completed', scheduled_for: '2030-01-02T15:00:00Z', target_ref: 'https://www.facebook.com/groups/123/', payload: { campaign_log_id: 'post-id', job: { id: 'local-id', sourceText: 'original\n\nparagraph', firstComment: 'comment\nhttps://realtyz.co.il/r/tracked', images: ['https://realtyz.co.il/photo.jpg'], groupUrl: 'https://www.facebook.com/groups/123/' } } };
 describe('repost editor', () => {
+  it('checks configured comment links without changing the tracked destination', () => {
+    const draft = repostEditorDraft({ owner: 'workspace', post: { id: 'post', message_body: 'שלום\uFFFD 🏠', first_comment: 'https://realtyz.co.il/r/own\nhttps://m.me/page' }, jobs: [] });
+    expect(draft.attachWaLink).toBe(true);
+    expect(draft.attachMsngrLink).toBe(true);
+    expect(draft.body).toBe('שלום 🏠');
+    expect(draft.firstComment).toContain('/r/own');
+    const disabled = repostEditorDraft({ owner: 'workspace', post: { id: 'post', first_comment: 'https://wa.me/123', provider_response: { repost_settings: { attach_wa_link: false } } }, jobs: [] });
+    expect(disabled.attachWaLink).toBe(false);
+  });
   it('matches original stable IDs regardless of delivery status', () => {
     for (const status of ['pending', 'processing', 'completed', 'failed']) {
       expect(matchesRepostJob({ ...job, status }, { id: 'post-id' })).toBe(true);

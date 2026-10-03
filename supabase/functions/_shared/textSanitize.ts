@@ -34,7 +34,7 @@ function _stripStreetNumbersInline(s: string): string {
 }
 
 export function sanitizeOutboundText(input: string): string {
-  let out = String(input ?? "");
+  let out = String(input ?? "").replace(/\uFFFD/g, "");
   out = out
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F2FF}]/gu, "")
     .replace(/[—–]+/g, " ")
@@ -54,7 +54,7 @@ export function sanitizeOutboundText(input: string): string {
  * NEVER apply this to WhatsApp Green API output — WA renders `*bold*` natively.
  */
 export function stripMarkdownEmphasis(input: string): string {
-  let out = String(input ?? "");
+  let out = String(input ?? "").replace(/\uFFFD/g, "");
   // Bold: **text** or __text__  →  text
   out = out.replace(/\*\*([^*\n]+?)\*\*/g, "$1").replace(
     /__([^_\n]+?)__/g,

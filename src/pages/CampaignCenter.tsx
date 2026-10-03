@@ -2045,6 +2045,7 @@ const InlineComposer = ({
       return;
     }
 
+    if (editorMode && /wa\.me\/|api\.whatsapp\.com\/|realtyz\.co\.il\/r\//i.test(initial.firstComment || '') && !waInjectedRef.current) return;
     let cancelled = false;
     (async () => {
       // Fallback CTA must always target the official Meta WhatsApp Business
@@ -2105,6 +2106,7 @@ const InlineComposer = ({
       setMsngrShortUrl('');
       return;
     }
+    if (editorMode && /m\.me\//i.test(initial.firstComment || '') && !msngrInjectedRef.current) return;
     const pageRef = socialProfiles.find((p) => p.platform === 'facebook')?.accountRef;
     const url = pageRef ? `https://m.me/${pageRef}` : 'https://m.me/';
     setMsngrShortUrl(url);
@@ -3088,7 +3090,7 @@ const FullRepostEditor = ({ request, brandName, socialProfiles, onClose }: {
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [ready, setReady] = useState(false);
-  const [title, setTitle] = useState(request.post.campaign_name || 'פרסום מחדש');
+  const title = safeUtf8(request.post.campaign_name || 'פרסום מחדש');
   const publishRef = useRef<(() => boolean) | null>(null);
   const draft = useMemo(() => repostEditorDraft(request), [request]);
   const submit = async (payload: ConfirmPayload) => {
@@ -3153,7 +3155,6 @@ const FullRepostEditor = ({ request, brandName, socialProfiles, onClose }: {
     <DialogContent dir="rtl" className="flex max-h-[90dvh] w-[calc(100%-2rem)] min-w-0 max-w-3xl flex-col overflow-hidden p-4 sm:p-6" onInteractOutside={(e) => { if (busy) e.preventDefault(); }}>
       <DialogHeader><DialogTitle>עריכה ופרסום מחדש</DialogTitle><DialogDescription>אישור יפרסם שוב לקבוצות שנבחרו, גם אם הפוסט כבר פורסם.</DialogDescription></DialogHeader>
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain space-y-4">
-        <div className="space-y-1"><Label htmlFor="repost-title">כותרת</Label><Input id="repost-title" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         <InlineComposer channel={{ id: 'facebook', label: 'Facebook', brand: 'facebook' }} brandName={brandName}
           socialProfiles={socialProfiles} instanceId={`repost:${request.post.id}`} initialDraft={draft} editorMode hideBottomBar
           onRegisterPublish={(fn) => { publishRef.current = fn; }} onStatus={(status) => setReady(status.canPublish)}
@@ -4235,9 +4236,9 @@ const GlobalSocialFeed = ({
 
 
   return (
-    <div className="grid grid-cols-[minmax(auto,1fr)_1fr_minmax(auto,1fr)] items-center gap-2 w-full" dir="rtl">
+    <div className="grid w-full min-w-0 grid-cols-[4.5rem_minmax(0,1fr)_2rem] items-center gap-1 sm:gap-2" dir="rtl">
       {totalSelectable > 0 ? (
-        <div className="flex items-center gap-1.5 justify-self-start">
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5 justify-self-start">
           <SelectModeToggle active={feedSelectMode} count={selectedCount} onToggle={() => onToggleSelectMode?.()} className="h-7 w-7" />
           {feedSelectMode && (
             <Checkbox
@@ -4246,14 +4247,11 @@ const GlobalSocialFeed = ({
               aria-label={allSelected ? 'בטל את כל הבחירה' : 'בחר את כל הפוסטים'}
             />
           )}
-          {feedSelectMode && selectedCount > 0 && (
-            <span className="text-base font-bold tabular-nums text-primary" dir="ltr">{selectedCount}</span>
-          )}
         </div>
       ) : (
         <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex flex-nowrap items-center justify-center gap-4 px-1 pb-1 w-full min-w-0 justify-self-center">
+      <div className="flex w-full min-w-0 flex-nowrap items-center justify-start gap-4 overflow-x-auto px-1 pb-1 sm:justify-center">
         <button
           type="button"
           onClick={() => onChannelChange('all')}
@@ -6263,7 +6261,7 @@ const PublishedFeed = ({
           <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
         </div>
-      ) : (filteredRows || []).map(function renderFeedCard(r: any): any {
+      ) : (filteredRows || []).map(function renderFeedCard(r: any, _index?: number, inGroupOverlay: unknown = false): any {
 
 
         const isOpen = expanded[r.id] ?? false;
@@ -6315,11 +6313,11 @@ const PublishedFeed = ({
           displayedCopy = { body: r.message_body || '', title: r.campaign_name };
           postCopyRef.current.entries.set(r.id, displayedCopy);
         }
-        const bodyText = displayedCopy.body;
+        const bodyText = safeUtf8(displayedCopy.body);
         const isHe = /[\u0590-\u05FF]/.test(bodyText);
         const dirAttr: 'rtl' | 'ltr' = isHe ? 'rtl' : 'ltr';
         const alignClass = isHe ? 'text-right' : 'text-left';
-        const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
+        const preview = Array.from(bodyText.trim()).slice(0, 100).join('') + (Array.from(bodyText.trim()).length > 100 ? '…' : '');
         const fmt = (v: number | null | undefined) => (typeof v === 'number' ? v : 0);
         // Final render-time uniqueness guard: even if any upstream path leaks a
         // repeat, each image is painted exactly once.
@@ -6379,10 +6377,10 @@ const PublishedFeed = ({
                 {/* Title = the real first line of the post. Clicking anywhere on
                     the card only toggles expand/collapse — never opens Facebook. */}
                 <h3
-                  className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)}
+                  className={cn('min-w-0 flex-1 break-words font-semibold text-foreground line-clamp-2', alignClass)}
                   dir={dirAttr}
                 >
-                  {(bodyText.trim().split('\n')[0] || displayedCopy.title)}
+                  {(bodyText.trim().split('\n')[0] || safeUtf8(displayedCopy.title))}
                 </h3>
               </div>
 
@@ -6404,7 +6402,7 @@ const PublishedFeed = ({
                 )}>
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
-                {hasGroupTargets && (
+                {hasGroupTargets && inGroupOverlay !== true && (
                   <div onClick={(e) => e.stopPropagation()}>
                     <GroupStatusChips
                       inline
@@ -6423,7 +6421,7 @@ const PublishedFeed = ({
                       countdownIso={scheduled ? r.sent_at : null}
                       defaultOpen={false}
                     >
-                      {isSeries && seriesSlots ? seriesSlots.map((slot) => renderFeedCard(slot)) : null}
+                      {isSeries && seriesSlots ? seriesSlots.map((slot) => renderFeedCard(slot, undefined, true)) : null}
                     </GroupStatusChips>
                   </div>
                 )}

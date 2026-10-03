@@ -123,7 +123,7 @@ export function GroupStatusChips({
       </PopoverTrigger>
 
         <PopoverContent align="end" side="bottom" dir="rtl" className="w-[min(36rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-2" onClick={(e) => e.stopPropagation()}>
-        <div className="flex flex-wrap items-center gap-1.5">
+        {!children && <div className="flex min-w-0 flex-col gap-1">
           {ids.slice(0, max).map((gid) => {
             const bare = groupKeyFrom(gid);
             const info = lookup(gid);
@@ -141,9 +141,9 @@ export function GroupStatusChips({
                   e.stopPropagation();
                   openExternal(url);
                 }}
-                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${STATE_STYLE[state]} ${url ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
+                className="h-8 w-full min-w-0 justify-between gap-2 rounded-none px-2 text-[11px] font-medium text-foreground"
               >
-                <span className="max-w-[170px] truncate">{name}</span>
+                <span className="min-w-0 flex-1 truncate text-right">{name}</span>
                 {typeof info?.memberCount === 'number' && info.memberCount > 0 && (
                   <span className="tabular-nums opacity-80" dir="ltr">
                     {info.memberCount.toLocaleString('he-IL')}
@@ -154,8 +154,8 @@ export function GroupStatusChips({
             );
           })}
           {ids.length > max && <span className="text-[11px] text-muted-foreground">+{ids.length - max}</span>}
-        </div>
-        {children && <div className="mt-3 w-full min-w-0 space-y-3">{children}</div>}
+        </div>}
+        {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
         </PopoverContent>
       </Popover>
     </div>
