@@ -41,6 +41,9 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /* Visible debug logging — every step shows up in the Facebook tab's F12 console. */
+  const log = (...args) => { try { console.log('[Realtyz Extension]', ...args); } catch (e) { /* noop */ } };
+
   const visible = (el) => {
     if (!el) return false;
     const r = el.getBoundingClientRect();
@@ -85,15 +88,20 @@
       .filter(visible)
       .find((b) => re.test(textOf(b)) || re.test(b.getAttribute('aria-label') || ''));
 
-  const COMPOSER_RE = /מה עולה בראשך|מה עולה לך בראש|כתוב משהו|כתבי משהו|כתבו משהו|מה בא לך לשתף|Write something|What's on your mind|Anything on your mind|Create a public post/i;
+  const COMPOSER_RE = /מה עולה בראשך|מה עולה לך בראש|כתוב משהו|כתבי משהו|כתבו משהו|מה בא לך לשתף|כאן כותבים|Write something|What's on your mind|Anything on your mind|Create a public post|Create post/i;
   const COMMENT_RE = /comment|reply|תגוב|הגב/i;
 
   // The main group composer trigger lives outside any article (posts/comments).
+  // Broadened: also matches aria-placeholder spans and page-level textboxes.
   const composerTrigger = () =>
-    [...document.querySelectorAll('div[role="button"], span[role="button"], [role="button"] span')]
+    [...document.querySelectorAll('div[role="button"], span[role="button"], [role="button"] span, span[aria-placeholder], [role="textbox"]')]
       .filter(visible)
       .filter((b) => !b.closest('div[role="article"]') && !b.closest('div[role="dialog"]'))
-      .find((b) => COMPOSER_RE.test(textOf(b)) || COMPOSER_RE.test(b.getAttribute('aria-label') || '')) || null;
+      .find((b) =>
+        COMPOSER_RE.test(textOf(b)) ||
+        COMPOSER_RE.test(b.getAttribute('aria-label') || '') ||
+        COMPOSER_RE.test(b.getAttribute('aria-placeholder') || ''),
+      ) || null;
 
   // Post-creation modal: a dialog that contains a non-comment textbox.
   const isCommentBox = (el) =>
@@ -101,8 +109,9 @@
     COMMENT_RE.test(el.getAttribute('aria-label') || '') ||
     COMMENT_RE.test(el.getAttribute('aria-placeholder') || '');
 
+  // Any contenteditable inside the dialog counts — Facebook's Hebrew UI varies.
   const composerBoxIn = (d) =>
-    [...d.querySelectorAll('div[role="textbox"][contenteditable="true"], div[contenteditable="true"][aria-label]')]
+    [...d.querySelectorAll('div[role="textbox"][contenteditable="true"], div[contenteditable="true"][aria-label], div[contenteditable="true"], [contenteditable="true"]')]
       .filter(visible)
       .find((el) => !isCommentBox(el)) || null;
 
