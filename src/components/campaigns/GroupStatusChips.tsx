@@ -107,9 +107,7 @@ export function GroupStatusChips({
         className="h-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
       >
         <span className="max-w-[180px] truncate">{ids.length > 1 ? `${ids.length} קבוצות` : nameOf(ids[0])}</span>
-        {countdown && (
-          <span className="tabular-nums text-muted-foreground" dir="ltr">· {countdown}</span>
-        )}
+        <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </Button>
 
       {open && (
