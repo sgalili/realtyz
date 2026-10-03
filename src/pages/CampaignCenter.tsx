@@ -6460,7 +6460,7 @@ const PublishedFeed = ({
                     </span>
                   );
                 })()}
-                <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+                <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
                 {!scheduled && (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
