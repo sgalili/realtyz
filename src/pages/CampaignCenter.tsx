@@ -6506,6 +6506,7 @@ const PublishedFeed = ({
                     </span>
                   );
                 })()}
+                {hasGroupTargets && (
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
                 {!scheduled && (
                   <>
@@ -6529,8 +6530,10 @@ const PublishedFeed = ({
                   </span>
                 )}
                 </div>
+                )}
                 {hasGroupTargets && <div className="ms-auto shrink-0"><ContinuePostingButton post={r} /></div>}
               </div>
+              )}
               {isPaused && (() => {
                 const remainingMs = circuitUntilMs ? circuitUntilMs - nowMs : 0;
                 const hasCountdown = remainingMs > 0;
