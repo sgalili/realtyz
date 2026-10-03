@@ -6,6 +6,27 @@
  * a clear Hebrew reason so the queue never stays stuck.
  */
 (function () {
+  /* Safe runtime messaging: after the extension is reloaded/updated the old
+   * content script keeps running with an invalidated context, and any
+   * chrome.runtime.sendMessage call throws "Extension context invalidated". */
+  const rzContextAlive = () => { try { return !!(chrome && chrome.runtime && chrome.runtime.id); } catch (e) { return false; } };
+  const rzSafeSend = (msg, cb) => {
+    const fail = (err) => {
+      if (typeof cb !== 'function') return;
+      try { cb({ ok: false, error: 'extension_context_invalidated', detail: String(err || '') }); } catch (e) { /* noop */ }
+    };
+    if (!rzContextAlive()) { fail('no runtime id'); return; }
+    try {
+      chrome.runtime.sendMessage(msg, (res) => {
+        try { void chrome.runtime.lastError; } catch (e) { /* noop */ }
+        if (typeof cb === 'function') { try { cb(res); } catch (e) { console.warn('[realtyz] message callback failed', e); } }
+      });
+    } catch (err) {
+      console.warn('[realtyz] sendMessage failed', err && err.message);
+      fail(err && err.message);
+    }
+  };
+
   // Static + programmatic injection may both run — load exactly once per page.
   if (window.__rzPosterLoaded) return;
   window.__rzPosterLoaded = true;
@@ -14,7 +35,7 @@
   const reportStage = (stage) => {
     if (!currentJobId) return;
     try {
-      chrome.runtime.sendMessage({ type: 'RZ_JOB_STAGE', jobId: currentJobId, stage }, () => chrome.runtime.lastError);
+      rzSafeSend({ type: 'RZ_JOB_STAGE', jobId: currentJobId, stage }, () => chrome.runtime.lastError);
     } catch (e) { /* noop */ }
   };
 
@@ -451,7 +472,7 @@
     const type = result.ok === true ? 'POST_SUCCESS' : 'POST_FAILED';
     const send = (attempt) => {
       try {
-        chrome.runtime.sendMessage({ type, jobId, result }, () => {
+        rzSafeSend({ type, jobId, result }, () => {
           if (chrome.runtime.lastError && attempt < 5) setTimeout(() => send(attempt + 1), 1000);
         });
       } catch (e) { if (attempt < 5) setTimeout(() => send(attempt + 1), 1000); }

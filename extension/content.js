@@ -1,6 +1,27 @@
 /* Realtyz Group Sync — hands the collected groups, posts and comments to the
  * Realtyz app. */
 (function () {
+  /* Safe runtime messaging: after the extension is reloaded/updated the old
+   * content script keeps running with an invalidated context, and any
+   * chrome.runtime.sendMessage call throws "Extension context invalidated". */
+  const rzContextAlive = () => { try { return !!(chrome && chrome.runtime && chrome.runtime.id); } catch (e) { return false; } };
+  const rzSafeSend = (msg, cb) => {
+    const fail = (err) => {
+      if (typeof cb !== 'function') return;
+      try { cb({ ok: false, error: 'extension_context_invalidated', detail: String(err || '') }); } catch (e) { /* noop */ }
+    };
+    if (!rzContextAlive()) { fail('no runtime id'); return; }
+    try {
+      chrome.runtime.sendMessage(msg, (res) => {
+        try { void chrome.runtime.lastError; } catch (e) { /* noop */ }
+        if (typeof cb === 'function') { try { cb(res); } catch (e) { console.warn('[realtyz] message callback failed', e); } }
+      });
+    } catch (err) {
+      console.warn('[realtyz] sendMessage failed', err && err.message);
+      fail(err && err.message);
+    }
+  };
+
   const GROUPS_KEY = 'rz-ext-fb-groups';
   const INSTALLED_KEY = 'rz-ext-installed';
 
@@ -86,8 +107,8 @@
     if (!d || typeof d !== 'object' || d.source !== 'realtyz-app') return;
 
     if (d.type === 'RZ_EXT_PAIR' && typeof d.token === 'string') {
-      chrome.runtime.sendMessage({ type: 'RZ_EXT_PAIR', token: d.token }, () => {
-        chrome.runtime.sendMessage({ type: 'RZ_EXT_STATUS' }, (res) => {
+      rzSafeSend({ type: 'RZ_EXT_PAIR', token: d.token }, () => {
+        rzSafeSend({ type: 'RZ_EXT_STATUS' }, (res) => {
           emit('RZ_EXT_STATUS', 'paired', !!(res && res.paired), 'rz:ext-status');
           try {
             window.postMessage({ source: 'realtyz-extension', type: 'RZ_EXT_STATUS', paired: !!(res && res.paired), state: (res && res.state) || {} }, window.location.origin);
@@ -97,24 +118,24 @@
     }
 
     if (d.type === 'RZ_EXT_STATUS_REQUEST') {
-      chrome.runtime.sendMessage({ type: 'RZ_EXT_STATUS' }, (res) => {
+      rzSafeSend({ type: 'RZ_EXT_STATUS' }, (res) => {
         try {
           window.postMessage({ source: 'realtyz-extension', type: 'RZ_EXT_STATUS', paired: !!(res && res.paired), state: (res && res.state) || {} }, window.location.origin);
         } catch (err) { /* noop */ }
       });
     }
 
-    if (d.type === 'RZ_EXT_POLL_NOW') chrome.runtime.sendMessage({ type: 'RZ_EXT_POLL_NOW' });
-    if (d.type === 'RZ_EXT_UNPAIR') chrome.runtime.sendMessage({ type: 'RZ_EXT_UNPAIR' });
+    if (d.type === 'RZ_EXT_POLL_NOW') rzSafeSend({ type: 'RZ_EXT_POLL_NOW' });
+    if (d.type === 'RZ_EXT_UNPAIR') rzSafeSend({ type: 'RZ_EXT_UNPAIR' });
     if (d.type === 'RZ_WORKSPACE_ACTIVATE' && typeof d.workspaceOwnerId === 'string') {
-      chrome.runtime.sendMessage({ type: 'RZ_WORKSPACE_ACTIVATE', workspaceOwnerId: d.workspaceOwnerId });
+      rzSafeSend({ type: 'RZ_WORKSPACE_ACTIVATE', workspaceOwnerId: d.workspaceOwnerId });
     }
   });
 
   /* ── Instant local posting handed over by the app ─────────────────────── */
   const startPosting = (post) => {
     if (!post) return;
-    chrome.runtime.sendMessage({ type: 'RZ_START_POSTING', post }, (res) => {
+    rzSafeSend({ type: 'RZ_START_POSTING', post }, (res) => {
       const result = res || { ok: false, reason: 'התוסף לא החזיר תשובה' };
       try {
         window.postMessage({ source: 'realtyz-extension', type: 'RZ_POSTING_RESULT', result }, window.location.origin);
@@ -177,7 +198,7 @@
         });
         chrome.storage.local.set({ rzPostQueue: [...byId.values()] }, () => {
           if (chrome.runtime.lastError) return;
-          try { chrome.runtime.sendMessage({ type: 'RZ_EXT_POLL_NOW' }, () => chrome.runtime.lastError); } catch (e) { /* noop */ }
+          try { rzSafeSend({ type: 'RZ_EXT_POLL_NOW' }, () => chrome.runtime.lastError); } catch (e) { /* noop */ }
         });
       });
     } catch (err) { /* noop */ }
@@ -187,7 +208,7 @@
     if (!Array.isArray(queue)) return;
     let answered = false;
     try {
-      chrome.runtime.sendMessage({ type: 'RZ_QUEUE_UPDATE', queue }, (res) => {
+      rzSafeSend({ type: 'RZ_QUEUE_UPDATE', queue }, (res) => {
         if (chrome.runtime.lastError) { mergeIntoStorage(queue); return; }
         answered = true;
         if (res && Array.isArray(res.queue)) writeQueue(res.queue);
@@ -270,7 +291,7 @@
     if (!d || typeof d !== 'object' || d.type !== 'RZ_QUEUE_REMOVE') return;
     if (d.source === 'realtyz-extension') return;
     try {
-      chrome.runtime.sendMessage(
+      rzSafeSend(
         { type: 'RZ_QUEUE_REMOVE', ids: d.ids || [], textKeys: d.textKeys || [] },
         (res) => {
           if (chrome.runtime.lastError) return;
@@ -286,7 +307,7 @@
   // Keep the app in sync with the extension's own queue state (status badges).
   const syncQueue = () => {
     try {
-      chrome.runtime.sendMessage({ type: 'RZ_QUEUE_STATE_REQUEST' }, (res) => {
+      rzSafeSend({ type: 'RZ_QUEUE_STATE_REQUEST' }, (res) => {
         if (chrome.runtime.lastError) return;
         const extQueue = res && Array.isArray(res.queue) ? res.queue : null;
         if (!extQueue) return;
