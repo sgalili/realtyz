@@ -124,7 +124,7 @@ export function GroupStatusChips({
     return result.post_id || result.post_url ? 'published' : defaultState;
   };
 
-  const renderGroup = (gid: string) => {
+  const renderGroup = (gid: string, showStatus = true) => {
     const info = lookup(gid);
     const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
     const state = stateOf(gid);
@@ -136,7 +136,7 @@ export function GroupStatusChips({
         onClick={(e) => { e.stopPropagation(); openExternal(url); }}
         aria-label={name}
         className="h-7 min-w-0 max-w-full justify-start gap-2 overflow-hidden whitespace-nowrap rounded-none border-0 bg-transparent px-0 py-0.5 text-[11px] hover:bg-transparent">
-        <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span>
+        {showStatus && <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span>}
         <span className="min-w-0 truncate text-right text-foreground">{shortenName(name)}</span>
       </Button>
     );
@@ -161,7 +161,7 @@ export function GroupStatusChips({
   }
   return (
     <div className={`${inline ? '' : 'mt-1.5 '}flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-0.5`} dir="rtl">
-      {ids.slice(0, max).map(renderGroup)}
+      {ids.slice(0, max).map((gid) => renderGroup(gid, !collapsedCounter))}
       {hasDetails && <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" type="button" aria-label="פרטי קבוצות ופוסטים" aria-expanded={open}
