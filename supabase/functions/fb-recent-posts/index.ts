@@ -1096,6 +1096,7 @@ Deno.serve(async (req) => {
     // Posts scraped by the companion browser extension (DOM fallback) arrive
     // here so a Graph permission block never leaves the user empty-handed.
     const extensionPosts: any[] = Array.isArray(body?.posts) ? body.posts : [];
+    const extensionOnly = true;
     let permissionBlocked = false;
     let graphSource: string | null = null;
     if (extensionPosts.length > 0) {
@@ -1117,7 +1118,10 @@ Deno.serve(async (req) => {
       );
       diagnostics.push({ source: "extension", count: extensionPosts.length });
     }
-    {
+    // Page post reads via Graph (`/{page_id}/posts`) need pages_read_engagement,
+    // which requires Meta App Review. Page sync is extension-only: the
+    // Realtyz browser extension scrapes the Page DOM and posts the results here.
+    if (!extensionOnly) {
       const graphResult = await fetchGraphHistory();
       permissionBlocked = graphResult.blocked;
       diagnostics.push({ source: "graph", profile: graphResult.source, status: graphResult.status, count: graphResult.posts.length, error: graphResult.error });
@@ -1330,7 +1334,7 @@ Deno.serve(async (req) => {
     let enrichedCounters = 0;
     let enrichedDates = 0;
     try {
-      const cred = workingCred ?? await resolveGraphCredential();
+      const cred = extensionOnly ? { token: null } as any : (workingCred ?? await resolveGraphCredential());
       if (cred.token && !skipAnalytics) {
         const { data: allFbPosts } = await admin
           .from("campaign_logs")
