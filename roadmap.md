@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Open continuation/repost in the full editor with editable settings and safe explicit resubmission.
-- [ ] Align cancellation right beside publication confirmation and verify the edited repost flow.
+- [x] Open continuation/repost in the full editor with editable settings and safe explicit resubmission.
+- [x] Align cancellation right beside publication confirmation and verify signed-in edits, cancellation, future-scheduled save/readback and cleanup without Facebook publication.
 
 - [x] Preserve successful post status with subtle first-comment warnings.
 - [x] Keep card order stable and collapse related campaign posts into master cards.

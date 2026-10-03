@@ -66,6 +66,8 @@ import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { GroupStatusChips, groupResultMap } from '@/components/campaigns/GroupStatusChips';
 import { QueueCard } from '@/components/campaigns/QueueCard';
 import { ContinuePostingButton } from '@/components/campaigns/ContinuePostingButton';
+import { REPOST_EDITOR_EVENT, repostEditorDraft, type RepostEditorRequest } from '@/lib/repostEditor';
+import { applyContinuedQueueJobs } from '@/lib/extensionGroupBridge';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { ScheduledCountdown } from '@/components/campaigns/ScheduledCountdown';
 import { EditScheduledSeriesDialog } from '@/components/campaigns/EditScheduledSeriesDialog';
@@ -199,6 +201,7 @@ type ConfirmPayload = {
   first_comment: string;
   first_comment_enabled: boolean;
   attach_msngr_link: boolean;
+  group_text_variation?: boolean;
   /** YouTube upload metadata (only for the youtube channel). */
   youtube?: {
     title: string;
@@ -827,7 +830,7 @@ const draftKeyFor = (b: { listing?: string | null; variant?: number }, idx: numb
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId, onStatus,
-  onRegisterPublish, bulkGroupIds, bulkScheduleIso, onBulkGroupIdsChange, hideBottomBar,
+  onRegisterPublish, bulkGroupIds, bulkScheduleIso, onBulkGroupIdsChange, hideBottomBar, initialDraft, editorMode = false,
 }: {
   channel: ChannelCard;
   brandName: string;
@@ -854,6 +857,8 @@ const InlineComposer = ({
   onBulkGroupIdsChange?: (ids: string[]) => void;
   /** When rendered inside a collapsed draft card the page-level bar handles dispatch. */
   hideBottomBar?: boolean;
+  initialDraft?: ReturnType<typeof repostEditorDraft>;
+  editorMode?: boolean;
 }) => {
   // Persistent draft key — namespaced per replicated instance AND per active
   // workspace, so a draft written in one office can never resurface inside
@@ -864,6 +869,7 @@ const InlineComposer = ({
   const wsScope = workspaceOwnerId ?? 'anon';
   const draftKey = `rz-composer-draft:v3:${wsScope}:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
+    if (initialDraft) return initialDraft;
     if (typeof window === 'undefined') return null;
     try {
       const direct = JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null');
@@ -931,7 +937,7 @@ const InlineComposer = ({
 
   const initial = readDraft() || {};
 
-  const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
+  const [body, setBody] = useState<string>(editorMode ? initial.body || '' : cleanBody(initial.body || ''));
   // Asks the operator whether to attach images when publishing without any.
   const [askImages, setAskImages] = useState(false);
 
@@ -969,15 +975,15 @@ const InlineComposer = ({
   // Tracks the last AI-generated body so manual edits before publish can be
   // shipped to learn-from-edit on success. Reset on send.
   const [originalAiBody, setOriginalAiBody] = useState<string>('');
-  const [mode, setMode] = useState<'now' | 'scheduled'>('now');
+  const [mode, setMode] = useState<'now' | 'scheduled'>(initial.mode === 'scheduled' ? 'scheduled' : 'now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
-  const [scheduledLocal, setScheduledLocal] = useState<string>('');
+  const [scheduledLocal, setScheduledLocal] = useState<string>(initial.scheduledLocal || '');
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState<boolean>(false);
 
   // Preset from props (multi-property replicas) OR ?schedule=ISO so the calendar
   // can deep-link the composer. Run once per mount.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (editorMode || typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const iso = presetScheduleIso || params.get('schedule');
     if (iso) {
@@ -1054,6 +1060,7 @@ const InlineComposer = ({
   });
   const groupsHydratedRef = useRef(false);
   useEffect(() => {
+    if (editorMode) { groupsHydratedRef.current = true; return; }
     if (typeof window === 'undefined') return;
     if (hideBottomBar) {
       // In multi-draft mode the page-level bulk bar is the source of truth.
@@ -1066,7 +1073,7 @@ const InlineComposer = ({
     groupsHydratedRef.current = true;
   }, [groupStorageKey, hideBottomBar, bulkGroupIds, workspaceOwnerId]);
   useEffect(() => {
-    if (hideBottomBar) return; // page-level bar owns persistence in multi-draft mode
+    if (editorMode || hideBottomBar) return; // page-level bar owns persistence in multi-draft mode
     // Never write an empty selection before hydration finished — that wiped the
     // saved 24-group selection and reset every counter to 0.
     if (!workspaceOwnerId || !groupsHydratedRef.current) return;
@@ -1077,6 +1084,7 @@ const InlineComposer = ({
   // The scheduling dialog and the calendar write to the same shared store —
   // mirror their changes back so every counter shows the identical number.
   useEffect(() => subscribeCampaignGroups((ids) => {
+    if (editorMode) return;
     groupsHydratedRef.current = true;
     setGroupIds(ids);
   }), []);
@@ -1106,9 +1114,11 @@ const InlineComposer = ({
   // Group picker modal (opened from the group icon button next to "פרסם").
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
   const [groupTextVariation, setGroupTextVariation] = useState<boolean>(() => {
+    if (initialDraft?.groupTextVariation !== undefined) return !!initialDraft.groupTextVariation;
     try { return localStorage.getItem('campaign:groupTextVariation') !== 'false'; } catch { return true; }
   });
   useEffect(() => {
+    if (editorMode) return;
     try { localStorage.setItem('campaign:groupTextVariation', groupTextVariation ? 'true' : 'false'); } catch {}
   }, [groupTextVariation]);
   const platformProfiles = useMemo(
@@ -1228,7 +1238,7 @@ const InlineComposer = ({
   // the saved draft — that is exactly how 7 drafts used to lose their text.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!hydratedRef.current) return;
+    if (editorMode || !hydratedRef.current) return;
     try {
       const snapshot = {
         body,
@@ -1287,6 +1297,7 @@ const InlineComposer = ({
   // ?properties= or a presetListingId), that property wins over the stale draft
   // so the dropdown shows it and auto-generation can fire immediately.
   const deepLinkListingId = useMemo(() => {
+    if (editorMode) return initialDraft?.selectedListingId ?? null;
     if (presetListingId) return presetListingId;
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
@@ -1312,8 +1323,8 @@ const InlineComposer = ({
       String(saved.body || '').trim().length > 0 ||
       (Array.isArray(saved.attachments) && saved.attachments.length > 0) ||
       String(saved.firstComment || '').trim().length > 0;
-    const deepLinked = !!deepLinkListingId && (forceFreshDeepLink || !savedHasWork);
-    setBody(deepLinked ? '' : cleanBody(saved.body || ''));
+    const deepLinked = !editorMode && !!deepLinkListingId && (forceFreshDeepLink || !savedHasWork);
+    setBody(deepLinked ? '' : editorMode ? saved.body || '' : cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
     setSelectedListingId(usesGroupTopics ? null : (deepLinked ? deepLinkListingId : (saved.selectedListingId ?? deepLinkListingId ?? null)));
     setSelectedGroupTopicId(groupPostTopic(saved.selectedGroupTopicId).id);
@@ -1345,7 +1356,7 @@ const InlineComposer = ({
   // cache, new tab, other device, new auth session), pull the durable mirror
   // back in — even for preset/deep-linked replicas.
   useEffect(() => {
-    if (forceFreshDeepLink) {
+    if (editorMode || forceFreshDeepLink) {
       setHydrated(true);
       return;
     }
@@ -1495,6 +1506,8 @@ const InlineComposer = ({
   // smart vision filter purges logos / photos of people for good.
   const autoPhotoListingRef = useRef<string | null>(null);
   useEffect(() => {
+    // Explicit repost attachments must never be replaced or repopulated.
+    if (editorMode) return;
     // No property selected = general/SaaS post: never inject any default image.
     if (!selectedListingId) { autoPhotoListingRef.current = null; setPhotosLoading(false); return; }
     if (autoPhotoListingRef.current === selectedListingId) return;
@@ -1932,7 +1945,7 @@ const InlineComposer = ({
   // Selecting a property: restore its cached post + first comment instantly,
   // otherwise generate both right away (only when nothing exists yet).
   useEffect(() => {
-    if (!hydrated) return;
+    if (editorMode || !hydrated) return;
     const id = selectedListingId;
     if (!id) return;
     if (listingAutoGenRef.current === id) return;
@@ -1960,6 +1973,7 @@ const InlineComposer = ({
 
   // Keep the per-property cache fresh (debounced) so the next visit is instant.
   useEffect(() => {
+    if (editorMode) return;
     if (!selectedListingId) return;
     if (!body.trim()) return;
     const t = setTimeout(() => writeListingCache(selectedListingId, { body, firstComment }), 700);
@@ -2024,6 +2038,7 @@ const InlineComposer = ({
   // line into the first-comment textarea with a random intro phrase.
   useEffect(() => {
     if (!attachWaLink) {
+      if (editorMode && !waInjectedRef.current) return;
       stripAllWaLinkLines();
       waInjectedRef.current = '';
       setWaShortUrl('');
@@ -2084,6 +2099,7 @@ const InlineComposer = ({
   // Messenger deep-link uses the connected FB Page ref.
   useEffect(() => {
     if (!attachMsngrLink) {
+      if (editorMode && !msngrInjectedRef.current) return;
       stripAllMsngrLinkLines();
       msngrInjectedRef.current = '';
       setMsngrShortUrl('');
@@ -2106,6 +2122,7 @@ const InlineComposer = ({
   // load so the property context can be enriched into the AI payload.
   const autoGenTriggeredRef = useRef(false);
   useEffect(() => {
+    if (editorMode) return;
     if (autoGenTriggeredRef.current) return;
     if (listingsLoading) return;
     // Never regenerate over restored work: wait for hydration to finish first.
@@ -2135,7 +2152,7 @@ const InlineComposer = ({
   // loaded page, slow fetch, ...) the effect above can stay parked and the draft
   // would remain empty forever. Fire generation anyway shortly after hydration.
   useEffect(() => {
-    if (!hydrated) return;
+    if (editorMode || !hydrated) return;
     if (autoGenTriggeredRef.current) return;
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const hasContext = !!presetScheduleIso || !!presetListingId || !!params?.get('schedule')
@@ -2171,13 +2188,13 @@ const InlineComposer = ({
   // by the collapsed draft card header, and by "publish all drafts".
   const scheduledDateNow = scheduledLocal ? new Date(scheduledLocal) : null;
   const scheduledValidNow = mode === 'now' || (!!scheduledDateNow && scheduledDateNow.getTime() > Date.now());
-  const hasSelectedPagesNow = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+  const hasSelectedPagesNow = (editorMode && !publishToPage) || channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
   const canPublish = hasBody && scheduledValidNow && hasSelectedPagesNow;
 
   const submitDraft = useCallback((opts?: { skipImagePrompt?: boolean }): boolean => {
     const sd = scheduledLocal ? new Date(scheduledLocal) : null;
     const valid = mode === 'now' || (!!sd && sd.getTime() > Date.now());
-    const pagesOk = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+    const pagesOk = (editorMode && !publishToPage) || channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
     if (!body.trim() || !valid || !pagesOk) return false;
     // No images attached: ask the user whether to add some before publishing.
     if (!opts?.skipImagePrompt && attachments.filter((a) => a.kind === 'image').length === 0) {
@@ -2187,7 +2204,7 @@ const InlineComposer = ({
 
     // Never lose the picked groups: fall back to the shared per-workspace store
     // so a scheduled/instant post can never be saved as "לא נבחרו קבוצות".
-    const effectiveGroupIds = groupIds.length > 0
+    const effectiveGroupIds = editorMode || groupIds.length > 0
       ? groupIds
       : loadCampaignGroups(workspaceOwnerId);
     onConfirm({
@@ -2206,6 +2223,7 @@ const InlineComposer = ({
       first_comment: firstCommentEnabled ? firstComment : '',
       first_comment_enabled: firstCommentEnabled,
       attach_msngr_link: attachMsngrLink,
+      group_text_variation: groupTextVariation,
       ...(channel.id === 'youtube'
         ? {
             youtube: {
@@ -2229,7 +2247,7 @@ const InlineComposer = ({
     });
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, publishToPage, workspaceOwnerId, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length, ytTitle, ytTags, ytPrivacy, ytCategory, ytMadeForKids]);
+  }, [body, originalAiBody, selectedListingId, mode, attachments, scheduledLocal, groupIds, publishToPage, workspaceOwnerId, selectedProfileIds, attachWaLink, firstComment, firstCommentEnabled, attachMsngrLink, channel.id, platformProfiles.length, ytTitle, ytTags, ytPrivacy, ytCategory, ytMadeForKids, editorMode, groupTextVariation]);
 
   useEffect(() => {
     onRegisterPublish?.(submitDraft);
@@ -2253,7 +2271,7 @@ const InlineComposer = ({
 
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-44 shadow-sm space-y-4" dir="rtl">
+    <div className={editorMode ? "min-w-0 space-y-4" : "rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-44 shadow-sm space-y-4"} dir="rtl">
       {/* Header row removed — title lives in the page hero; history is in the hero icon */}
 
 
@@ -2701,6 +2719,22 @@ const InlineComposer = ({
       </div>
 
 
+      {editorMode && (
+        <div className="space-y-3 border-t border-border pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <Label>מועד פרסום</Label>
+            <Select value={mode} onValueChange={(v) => setMode(v === 'scheduled' ? 'scheduled' : 'now')} dir="rtl">
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent dir="rtl"><SelectItem value="now">עכשיו</SelectItem><SelectItem value="scheduled">בתאריך ושעה</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <Label>קבוצות לפרסום</Label>
+          <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
+          <label className="flex items-center gap-2 text-sm"><Checkbox checked={groupTextVariation} onCheckedChange={(v) => setGroupTextVariation(v === true)} />שינוי טקסט לקבוצות</label>
+          <label className="flex items-center gap-2 text-sm"><Checkbox checked={publishToPage} onCheckedChange={(v) => setPublishToPage(v === true)} />פרסם גם בעמוד הפייסבוק העסקי</label>
+        </div>
+      )}
+
       {/* No-images guard before publishing */}
       <Dialog open={askImages} onOpenChange={setAskImages}>
         <DialogContent dir="rtl" className="max-w-sm">
@@ -2921,7 +2955,7 @@ const InlineComposer = ({
                       setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
                       setPreviewImageUrl(nextUrl);
                       // Deletion is permanent and global — never comes back.
-                      if (selectedListingId && removedUrl) void blocklistListingImage(selectedListingId, removedUrl);
+                      if (!editorMode && selectedListingId && removedUrl) void blocklistListingImage(selectedListingId, removedUrl);
                     }}
                     aria-label="מחק מהפוסט"
                   >
@@ -2942,7 +2976,7 @@ const InlineComposer = ({
 
 
       {/* Unified controlled-share cockpit for Facebook groups (merged selector + Time Bank queue) */}
-      {hasBody && channel.id === 'facebook' && (
+      {!editorMode && hasBody && channel.id === 'facebook' && (
         <CustomGroupsQuickShare body={body} />
       )}
 
@@ -3043,6 +3077,94 @@ const InlineComposer = ({
       />
     </div>
   );
+};
+
+const FullRepostEditor = ({ request, brandName, socialProfiles, onClose }: {
+  request: RepostEditorRequest; brandName: string; socialProfiles: SocialAccountProfile[]; onClose: () => void;
+}) => {
+  const owner = useActiveWorkspaceOwnerId();
+  const ownerRef = useRef(owner);
+  ownerRef.current = owner;
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [ready, setReady] = useState(false);
+  const [title, setTitle] = useState(request.post.campaign_name || 'פרסום מחדש');
+  const publishRef = useRef<(() => boolean) | null>(null);
+  const draft = useMemo(() => repostEditorDraft(request), [request]);
+  const submit = async (payload: ConfirmPayload) => {
+    if (busyRef.current || owner !== request.owner) return;
+    if (!payload.group_ids.length) { toast.error('יש לבחור לפחות קבוצה אחת'); return; }
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth.user) throw new Error('יש להתחבר');
+      let comment = payload.first_comment;
+      let link = comment.match(/https:\/\/realtyz\.co\.il\/[^\s]+/i)?.[0] ?? null;
+      if (payload.listing_id) {
+        const destination = await resolvePosterDestination(payload.listing_id, auth.user.id);
+        link = destination.link;
+        if (payload.first_comment_enabled) comment = applyContactCta(comment, destination.ctaLine);
+      }
+      const ids = [...new Set(payload.group_ids.map((id) => id.replace(/^ext:/, '')))];
+      const { data: groupRows, error: groupsError } = await supabase.from('fb_user_groups')
+        .select('group_id,group_name').eq('workspace_owner_id', request.owner);
+      if (groupsError) throw groupsError;
+      const jobs = await Promise.all(ids.map(async (id, index) => {
+        const name = groupRows?.find((g) => g.group_id.replace(/^ext:/, '') === id)?.group_name
+          || request.jobs.find((j) => j.payload?.job?.groupUrl?.includes(`/groups/${id}`))?.payload?.job?.groupName || id;
+        let text = payload.body;
+        if (ids.length > 1 && payload.group_text_variation) {
+          const { data, error } = await supabase.functions.invoke('spin-group-post', { body: { body: text, group_name: name, seed: `${Date.now()}-${index}`, workspace_owner_id: request.owner } });
+          if (error) throw error;
+          if (data?.error) throw new Error(String(data.error));
+          if (data?.draft) text = String(data.draft);
+        }
+        return { group_id: id, group_name: name, text };
+      }));
+      if (ownerRef.current !== request.owner) return;
+      const { data, error } = await supabase.rpc('submit_edited_group_repost', {
+        _workspace_owner_id: request.owner, _original_job_ids: request.jobs.map((j) => j.id),
+        _post: { body: payload.body, title, first_comment: comment, media_urls: payload.media_urls,
+          scheduled_at: payload.scheduled_at, listing_id: payload.listing_id, publish_to_page: payload.publish_to_page,
+          first_comment_enabled: payload.first_comment_enabled, attach_wa_link: payload.attach_wa_link,
+          attach_msngr_link: payload.attach_msngr_link, group_text_variation: payload.group_text_variation, link,
+          listing: payload.listing_id ? { id: payload.listing_id, title, description: payload.body, media: payload.media_urls, publicUrl: link } : null },
+        _jobs: jobs,
+      });
+      if (error) throw error;
+      if (ownerRef.current !== request.owner) return;
+      applyContinuedQueueJobs(request.owner, data ?? [], request.jobs.map((j) => String(j.payload?.job?.id || '')).filter(Boolean));
+      if (payload.publish_to_page) {
+        const pageResult = await supabase.functions.invoke('meta-publish', { body: {
+          post: payload.body, channels: ['facebook'], campaign_name: title, media_urls: payload.media_urls,
+          scheduled_at: payload.scheduled_at, workspace_owner_id: request.owner, group_ids: [],
+          publish_to_page: true, first_comment: comment || null,
+        } });
+        if (pageResult.error || pageResult.data?.error) toast.error(`הקבוצות נוספו לתור; הפרסום בעמוד נכשל: ${pageResult.error?.message || pageResult.data?.error}`);
+      }
+      toast.success(`${data?.length ?? 0} קבוצות נוספו לתור הפרסום מחדש`);
+      onClose();
+    } catch (error) { toast.error(error && typeof error === 'object' && 'message' in error ? String(error.message) : String(error)); }
+    finally { busyRef.current = false; setBusy(false); }
+  };
+  return <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
+    <DialogContent dir="rtl" className="flex max-h-[90dvh] w-[calc(100%-2rem)] min-w-0 max-w-3xl flex-col overflow-hidden p-4 sm:p-6" onInteractOutside={(e) => { if (busy) e.preventDefault(); }}>
+      <DialogHeader><DialogTitle>עריכה ופרסום מחדש</DialogTitle><DialogDescription>אישור יפרסם שוב לקבוצות שנבחרו, גם אם הפוסט כבר פורסם.</DialogDescription></DialogHeader>
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain space-y-4">
+        <div className="space-y-1"><Label htmlFor="repost-title">כותרת</Label><Input id="repost-title" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+        <InlineComposer channel={{ id: 'facebook', label: 'Facebook', brand: 'facebook' }} brandName={brandName}
+          socialProfiles={socialProfiles} instanceId={`repost:${request.post.id}`} initialDraft={draft} editorMode hideBottomBar
+          onRegisterPublish={(fn) => { publishRef.current = fn; }} onStatus={(status) => setReady(status.canPublish)}
+          onConfirm={(payload) => { void submit(payload); }} />
+      </div>
+      <DialogFooter dir="ltr" className="!flex-row !justify-between gap-2 border-t border-border pt-3">
+        <Button disabled={busy || !ready} onClick={() => publishRef.current?.()}>{busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}אישור ופרסום מחדש</Button>
+        <Button variant="outline" disabled={busy} onClick={onClose}>ביטול</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 };
 
 /* ───────────── Stacked per-platform composer section ─────────────
@@ -3859,7 +3981,7 @@ const ConfirmDispatchDialog = ({
 
 
 
-        <DialogFooter className="!justify-between gap-2 sm:gap-2 !flex-row">
+        <DialogFooter dir="ltr" className="!justify-between gap-2 sm:gap-2 !flex-row">
           <Button
             type="button"
             disabled={isBroadcasting}
@@ -3882,7 +4004,7 @@ const ConfirmDispatchDialog = ({
                 <Loader2 className="h-4 w-4 animate-spin" />
                 מפרסם ברשתות החברתיות...
               </span>
-            ) : 'אישור ושידור'}
+            ) : 'אישור פרסום'}
           </Button>
           <Button variant="outline" onClick={onClose} disabled={isBroadcasting}>ביטול</Button>
         </DialogFooter>
@@ -7359,6 +7481,16 @@ const CampaignCenter = () => {
     ({ none: 'ללא', daily: 'יומי', weekly: 'שבועי', monthly: 'חודשי', custom: 'מותאם' } as const)[r];
 
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const [repostRequest, setRepostRequest] = useState<RepostEditorRequest | null>(null);
+  useEffect(() => {
+    setRepostRequest(null);
+    const open = (event: Event) => {
+      const request = (event as CustomEvent<RepostEditorRequest>).detail;
+      if (workspaceOwnerId && request?.owner === workspaceOwnerId) setRepostRequest(request);
+    };
+    window.addEventListener(REPOST_EDITOR_EVENT, open);
+    return () => window.removeEventListener(REPOST_EDITOR_EVENT, open);
+  }, [workspaceOwnerId]);
 
   // Persist bulk choices per workspace so a refresh doesn't lose the last
 
@@ -9025,6 +9157,7 @@ const CampaignCenter = () => {
           }
         }}
       />
+      {repostRequest && <FullRepostEditor key={`${repostRequest.owner}:${repostRequest.post.id}`} request={repostRequest} brandName={brandName} socialProfiles={socialAccountProfiles} onClose={() => setRepostRequest(null)} />}
       <VoiceLeadPickerDialog
         open={!!voiceDialChannel}
         onClose={() => setVoiceDialChannel(null)}
