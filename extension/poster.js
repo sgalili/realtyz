@@ -6,6 +6,9 @@
  * a clear Hebrew reason so the queue never stays stuck.
  */
 (function () {
+  // Static + programmatic injection may both run — load exactly once per page.
+  if (window.__rzPosterLoaded) return;
+  window.__rzPosterLoaded = true;
   /* Live stage feedback so the web app can render a real progress bar. */
   let currentJobId = null;
   const reportStage = (stage) => {
@@ -458,6 +461,7 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.source !== 'realtyz-extension') return;
+    if (msg.type === 'RZ_POSTER_PING') { sendResponse({ alive: true }); return; }
     if (msg.type !== 'RZ_POST_TO_GROUP' && msg.type !== 'RZ_POST_FIRST_COMMENT') return;
     const claimed = claimJob(msg.job);
     if (!claimed) {

@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Realtyz Group Sync",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "מסנכרן את קבוצות הפייסבוק שלך אל Realtyz ומפרסם את התור המתוזמן ישירות מהדפדפן שלך.",
   "permissions": ["storage", "alarms", "tabs", "scripting"],
   "host_permissions": [
     "https://*.facebook.com/*",
+    "https://facebook.com/*",
     "https://gvylyghwfysvydygqdtf.supabase.co/*",
     "https://realtyz.co.il/*",
     "https://*.realtyz.co.il/*",
@@ -27,6 +28,7 @@
       "//": "poster.js automates posting/commenting — load it ONLY on group and single-post contexts, never on the personal newsfeed or profile.",
       "matches": [
         "https://*.facebook.com/groups/*",
+        "https://facebook.com/groups/*",
         "https://*.facebook.com/*/posts/*",
         "https://*.facebook.com/*/permalink/*",
         "https://*.facebook.com/permalink.php*",

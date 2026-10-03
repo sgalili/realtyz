@@ -63,19 +63,58 @@ const api = async (fn, body) => {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const waitForTabLoad = (tabId, timeoutMs = 45000) =>
+/* Event-driven load wait: resolves on chrome.tabs.onUpdated 'complete', or
+ * false only when the tab actually disappears. No blind timer closes the tab. */
+const waitForTabLoad = (tabId) =>
   new Promise((resolve) => {
-    const started = Date.now();
-    const tick = () => {
-      chrome.tabs.get(tabId, (tab) => {
-        if (chrome.runtime.lastError || !tab) return resolve(false);
-        if (tab.status === 'complete') return resolve(true);
-        if (Date.now() - started > timeoutMs) return resolve(false);
-        setTimeout(tick, 500);
-      });
+    let settled = false;
+    const finish = (v) => {
+      if (settled) return;
+      settled = true;
+      chrome.tabs.onUpdated.removeListener(onUpd);
+      chrome.tabs.onRemoved.removeListener(onRem);
+      resolve(v);
     };
-    tick();
+    const onUpd = (id, info) => { if (id === tabId && info.status === 'complete') finish(true); };
+    const onRem = (id) => { if (id === tabId) finish(false); };
+    chrome.tabs.onUpdated.addListener(onUpd);
+    chrome.tabs.onRemoved.addListener(onRem);
+    chrome.tabs.get(tabId, (tab) => {
+      if (chrome.runtime.lastError || !tab) return finish(false);
+      if (tab.status === 'complete') finish(true);
+    });
   });
+
+const FB_POSTER_URL = /^https:\/\/([a-z0-9-]+\.)?facebook\.com\/(groups\/|[^?#]*\/posts\/|[^?#]*\/permalink\/|permalink\.php|story\.php|photo|[^?#]*\/videos\/)/i;
+
+/* Fail-safe: if the static content script missed, inject poster.js explicitly. */
+const pingPoster = (tabId) =>
+  new Promise((resolve) => {
+    try {
+      chrome.tabs.sendMessage(tabId, { source: 'realtyz-extension', type: 'RZ_POSTER_PING' }, (res) => {
+        if (chrome.runtime.lastError) return resolve(false);
+        resolve(!!(res && res.alive));
+      });
+    } catch (e) { resolve(false); }
+  });
+
+const ensurePoster = async (tabId) => {
+  if (await pingPoster(tabId)) return true;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['poster.js'] });
+  } catch (e) { return false; }
+  for (let i = 0; i < 10; i++) {
+    if (await pingPoster(tabId)) return true;
+    await sleep(300);
+  }
+  return false;
+};
+
+// Any Facebook group/post tab that finishes loading gets the poster guaranteed.
+chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
+  if (info.status !== 'complete' || !tab || !tab.url || !FB_POSTER_URL.test(tab.url)) return;
+  ensurePoster(tabId).catch(() => {});
+});
 
 /* Explicit completion handshake. The tab is never closed and the queue never
  * advances on a blind timer: we hand the job to the content script, it ACKs
@@ -287,6 +326,7 @@ async function runJobInner(token, job) {
     await setJobStage(job.id, 'writing');
     writingStarted = true;
 
+    await ensurePoster(tabId);
     const result = await sendToTab(
       tabId,
       {
@@ -379,6 +419,7 @@ async function runPageFirstComment(token, entry) {
     await sleep(2500);
     await setJobStage(entry.id, 'commenting');
 
+    await ensurePoster(tabId);
     const result = await sendToTab(
       tabId,
       {
