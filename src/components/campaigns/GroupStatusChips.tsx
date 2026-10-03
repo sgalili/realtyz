@@ -98,10 +98,14 @@ export function GroupStatusChips({
     return emptyLabel ? <p className="mt-1 text-[11px] text-muted-foreground">{emptyLabel}</p> : null;
   }
 
+  const stateOf = (gid: string): GroupChipState => {
+    const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
+    return result?.state ?? (result ? (result.ok || isCommentOnlyFailure(result.reason) ? 'published' : 'failed') : defaultState);
+  };
+
   const renderGroup = (gid: string) => {
     const info = lookup(gid);
-    const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
-    const state = result?.state ?? (result ? (result.ok || isCommentOnlyFailure(result.reason) ? 'published' : 'failed') : defaultState);
+    const state = stateOf(gid);
     const name = nameOf(gid);
     const url = groupPostDestination(result, fbGroupUrlFrom(info?.url, groupKeyFrom(gid)));
     return (
