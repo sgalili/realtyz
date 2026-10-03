@@ -9,7 +9,7 @@
  */
 export const MANDATORY_COMMENT_LINK = "https://realtyz.co.il/r/94mp59n9";
 export const CANONICAL_CONTACT_PREFIX = "לחצו ודברו איתי ישירות";
-export const MANDATORY_FIRST_COMMENT = `${CANONICAL_CONTACT_PREFIX}: ${MANDATORY_COMMENT_LINK}`;
+export const MANDATORY_FIRST_COMMENT = `${CANONICAL_CONTACT_PREFIX}:\n${MANDATORY_COMMENT_LINK}`;
 
 /** Repairs broken emoji sequences (lone surrogates, U+FFFD, orphan VS16/ZWJ, "🛠 ️" splits). */
 export function repairEmojis(input: string | null | undefined): string {
@@ -23,6 +23,22 @@ export function repairEmojis(input: string | null | undefined): string {
     .replace(/[ \t]{2,}/g, " ");
 }
 
+
+/** Rita identity: first name only ("ריטה"), never a surname; one brief AI disclosure. */
+export const RITA_DISCLOSURE = 'ריטה, סוכנת ה-AI של Realtyz';
+export function enforceRitaIdentity(input: string | null | undefined): string {
+  let t = String(input ?? '')
+    .replace(/ריטה[ \t]+גלילי/g, 'ריטה')
+    .replace(/\bRita[ \t]+Galili\b/gi, 'ריטה')
+    .replace(/\bRita\b/g, 'ריטה')
+    .replace(/(ריטה)[ \t]+(?:גלילי|Galili)/gi, '$1');
+  if (!/ריטה/.test(t)) return t;
+  const discRe = /(?:ריטה[,\s]*)?(?:סוכנת|הסוכנת|סוכן)\s*(?:ה-?\s*)?AI(?:\s*(?:הרשמית\s*)?של\s*(?:Realtyz|רילטיז|המשרד))?/g;
+  let count = 0;
+  t = t.replace(discRe, (m) => (count++ === 0 ? RITA_DISCLOSURE : '')).replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+,/g, ',');
+  return t;
+}
+
 const CONTACT_LINE_RE = /(wa\.me\/|api\.whatsapp\.com|m\.me\/|realtyz\.co\.il\/(r|p)\/|מוזמנים לפנות אליי|לחצו ודברו איתי ישירות|לפרטים ויצירת קשר)/i;
 
 /**
@@ -34,11 +50,16 @@ export function ensureMandatoryComment(text: string | null | undefined, destinat
   const dest = String(destination ?? "").trim();
   const existing = String(text ?? "").match(/https?:\/\/realtyz\.co\.il\/r\/[A-Za-z0-9]+/)?.[0];
   const link = dest || existing || MANDATORY_COMMENT_LINK;
-  const line = `${CANONICAL_CONTACT_PREFIX}: ${link}`;
+  const line = `${CANONICAL_CONTACT_PREFIX}:\n${link}`;
   const seen = new Set<string>();
-  const cleaned = repairEmojis(text)
+  const cleaned = enforceRitaIdentity(repairEmojis(text))
     .split(/\n/)
-    .map((l) => l.trim())
+    .flatMap((l) => {
+      const m = l.match(/https?:\/\/(?:wa\.me|api\.whatsapp\.com|m\.me)\/\S+/i);
+      if (!m) return [l.trim()];
+      const pre = l.slice(0, m.index).replace(/[:：\-–—\s]+$/, '').trim();
+      return pre && !CONTACT_LINE_RE.test(pre) ? [pre, m[0]] : [m[0]];
+    })
     .filter((l) => {
       if (!l) return true;
       if (CONTACT_LINE_RE.test(l)) return false;
