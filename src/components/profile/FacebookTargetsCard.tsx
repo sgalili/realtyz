@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ExternalLink, Loader2, Trash2, Users } from 'lucide-react';
+import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2, Users } from 'lucide-react';
+import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -12,7 +13,9 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 
-type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean };
+type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean; blocked?: boolean; blockedReason?: string | null };
+
+const bareId = (id: string) => id.replace(/^(ext:|manual:)/, '');
 
 /** Minimum readable font size across this card. */
 const TEXT_SM = 'text-[14px]';
@@ -53,11 +56,15 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { data: pageBinding } = useMetaPageBinding();
   const cached = readCache(workspaceOwnerId);
-  const [groups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
+  const [allGroups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
+  const groups = allGroups.filter((g) => !g.blocked);
+  const blockedGroups = allGroups.filter((g) => g.blocked);
   const [loading, setLoading] = useState(!cached);
   const [deleteMode, setDeleteMode] = useState(false);
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [tab, setTab] = useState<'active' | 'blocked'>('active');
+  const [discoverOpen, setDiscoverOpen] = useState(false);
 
   // Never keep another workspace's groups in local storage.
   useEffect(() => { purgeForeignCaches(workspaceOwnerId); setMarkedIds(new Set()); }, [workspaceOwnerId]);
@@ -68,7 +75,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     try {
       const { data } = await (supabase as any)
         .from('fb_user_groups')
-        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id')
+        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked, blocked_reason')
         // Workspace-scoped so shared Facebook groups are identical for every member.
         .eq('workspace_owner_id', workspaceOwnerId)
         .order('group_name', { ascending: true });
@@ -85,7 +92,9 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         icon: r.group_icon ?? null,
         url: r.group_url ?? null,
         members: typeof r.member_count === 'number' ? r.member_count : null,
-        selected: r.is_selected !== false,
+        selected: r.is_selected !== false && !r.is_blocked,
+        blocked: !!r.is_blocked,
+        blockedReason: r.blocked_reason ?? null,
       }));
       setGroups(nextGroups);
       try {
@@ -115,7 +124,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   const setAllGroups = async (next: boolean) => {
     const ids = groups.map((g) => g.id);
     if (ids.length === 0) return;
-    setGroups((prev) => prev.map((g) => ({ ...g, selected: next })));
+    setGroups((prev) => prev.map((g) => (g.blocked ? g : { ...g, selected: next })));
     const { error } = await (supabase as any)
       .from('fb_user_groups')
       .update({ is_selected: next })
@@ -148,7 +157,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         .eq('workspace_owner_id', workspaceOwnerId)
         .in('id', ids);
       if (error) throw error;
-      const remaining = groups.filter((g) => !markedIds.has(g.id));
+      const remaining = allGroups.filter((g) => !markedIds.has(g.id));
       setGroups(remaining);
       try {
         localStorage.setItem(cacheKeyFor(workspaceOwnerId), JSON.stringify({ groups: remaining }));
@@ -161,6 +170,27 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     } finally {
       setDeleting(false);
     }
+  };
+
+  const unblock = async (target: GroupTarget) => {
+    setGroups((prev) => prev.map((g) => (g.id === target.id ? { ...g, blocked: false, selected: true } : g)));
+    const { error } = await (supabase as any)
+      .from('fb_user_groups')
+      .update({ is_blocked: false, blocked_reason: null, blocked_at: null, fail_count: 0, is_selected: true })
+      .eq('workspace_owner_id', workspaceOwnerId)
+      .eq('id', target.id);
+    if (error) { toast.error('שחרור הקבוצה נכשל', { description: error.message }); void load(); }
+    else toast.success('הקבוצה הוחזרה לרשימה הפעילה');
+  };
+
+  const blockGroup = async (target: GroupTarget) => {
+    setGroups((prev) => prev.map((g) => (g.id === target.id ? { ...g, blocked: true, selected: false, blockedReason: 'נחסם ידנית' } : g)));
+    const { error } = await (supabase as any)
+      .from('fb_user_groups')
+      .update({ is_blocked: true, blocked_reason: 'נחסם ידנית', blocked_at: new Date().toISOString(), is_selected: false })
+      .eq('workspace_owner_id', workspaceOwnerId)
+      .eq('id', target.id);
+    if (error) { toast.error('חסימת הקבוצה נכשלה', { description: error.message }); void load(); }
   };
 
   const selectedGroups = groups.filter((g) => g.selected).length;
@@ -179,7 +209,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
             <div className={cn('flex items-center gap-1.5 font-semibold text-muted-foreground', TEXT_SM)}>
               <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
             </div>
-            {groups.length > 0 && (
+            {tab === 'active' && groups.length > 0 && (
               <div className="flex items-center gap-3">
                 <button
                   type="button"
