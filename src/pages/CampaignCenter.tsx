@@ -6529,7 +6529,7 @@ const PublishedFeed = ({
         onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}
         hasExternalPost={deleteTarget ? externalIdsFor(deleteTarget).length > 0 : false}
         hasSeries={!!deleteTarget && (!!deleteTarget.series_id || ((deleteTarget as any)._seriesSlots?.length > 1))}
-        onConfirm={async (mode, entireSeries) => { if (deleteTarget) await performDelete(deleteTarget, mode, false, entireSeries); }}
+        onConfirm={async (mode, entireSeries) => { if (deleteTarget) { console.log('DELETE CONFIRMED:', deleteTarget.id, { mode, entireSeries }); await performDelete(deleteTarget, mode, false, entireSeries); } }}
       />
     </div>
   );
