@@ -19,7 +19,6 @@ export function repairEmojis(input: string | null | undefined): string {
     .replace(/(\p{Extended_Pictographic})[ \t]+\uFE0F/gu, "$1\uFE0F")
     .replace(/(^|[^\p{Extended_Pictographic}\u20E3])\uFE0F/gmu, "$1")
     .replace(/(^|\s)\u200D|\u200D(?=\s|$)/gmu, "$1")
-    .replace(/^[ \t]+/gm, (m) => m)
     .replace(/[ \t]{2,}/g, " ");
 }
 
@@ -43,7 +42,7 @@ export function ensureMandatoryComment(text: string | null | undefined, destinat
       if (!l) return true;
       if (CONTACT_LINE_RE.test(l)) return false;
       const key = l.replace(/[\p{Extended_Pictographic}\uFE0F\s]/gu, "");
-      if (!key || seen.has(key)) return !key && false;
+      if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     })
