@@ -4386,6 +4386,18 @@ const PublishedFeed = ({
   const fbGroupMeta = useFbGroupMeta();
   // Live local extension queue — cards flip failed → pending → completed on their own.
   const extensionQueue = useExtensionQueue(workspaceOwnerId);
+  // When an extension job finishes (completed/failed), re-query the DB at once
+  // so the published post appears under "פורסמו" without waiting for the poll.
+  const finishedJobsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const done = new Set(extensionQueue.filter((j) => j.status === 'completed' || j.status === 'failed').map((j) => j.id));
+    const prev = finishedJobsRef.current;
+    finishedJobsRef.current = done;
+    if (!prev) return;
+    for (const id of done) {
+      if (!prev.has(id)) { window.dispatchEvent(new Event('realtyz:campaign-changed')); break; }
+    }
+  }, [extensionQueue]);
   const postCopyRef = useRef<{
     scope: string | null | undefined;
     entries: Map<string, { body: string; title: string | null }>;
@@ -5958,8 +5970,13 @@ const PublishedFeed = ({
         sent_at: status === 'scheduled' ? new Date(g.scheduledTime).toISOString() : null,
       });
     }
-    const UNSENT = new Set(['scheduled', 'pending', 'queued', 'publishing', 'processing']);
+    // Only not-yet-started items belong to "עתידיים". Anything that is being
+    // published or already went live ('publishing', 'processing', 'sent',
+    // 'published', 'success', 'completed') stays visible under "פורסמו".
+    const UNSENT = new Set(['scheduled', 'pending', 'queued']);
+    const PUBLISHED_ALIASES = new Set(['published', 'success', 'completed', 'posted', 'delivered']);
     const merged: CampaignRow[] = [...optimisticRows, ...extRows, ...base]
+      .map((r: any) => (PUBLISHED_ALIASES.has(String(r.status || '').toLowerCase()) ? { ...r, status: 'sent' } : r))
       .filter((r: any) => r._optimistic || !UNSENT.has(String(r.status || '').toLowerCase()));
     const channelFiltered = activeChannel === 'all'
       ? merged
