@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { OutcomePicker, OutcomeBadge, type InteractionOutcome } from '@/components/dealroom/OutcomePicker';
@@ -830,7 +831,7 @@ const LeadCRM = () => {
       .slice(0, 12)
       .map(([k]) => k);
   }, [leads]);
-  const baseColCount = 6;
+  const baseColCount = selectMode ? 6 : 5;
 
   // Owner-only Homely columns. Only injected when the agent has filtered the
   // table to sellers or landlords (property owners). Each column is rendered
@@ -1809,6 +1810,11 @@ const LeadCRM = () => {
                   <SlidersHorizontal className="h-4 w-4" />
                 </button>
               </div>
+              <SelectModeToggle
+                active={selectMode}
+                count={selectedIds.size}
+                onToggle={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
+              />
             </div>
             {/* Lead kind tabs */}
             <div className="flex flex-wrap gap-1.5 -mt-1">
