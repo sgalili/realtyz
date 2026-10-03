@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { fbGroupId } from '@/lib/fbGroupUrl';
-import { applyContinuedQueueJobs, mirrorQueueToCloud, readPostQueue } from '@/lib/extensionGroupBridge';
+import { applyContinuedQueueJobs } from '@/lib/extensionGroupBridge';
 import { toast } from 'sonner';
 
 type Post = { id: string; message_body?: string | null; group_ids?: string[]; sent_at?: string | null; _seriesSlots?: Post[] };
@@ -14,6 +14,8 @@ const failed = new Set(['failed', 'error']);
 
 export function ContinuePostingButton({ post }: { post: Post }) {
   const owner = useActiveWorkspaceOwnerId();
+  const ownerRef = useRef(owner);
+  ownerRef.current = owner;
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
@@ -23,10 +25,15 @@ export function ContinuePostingButton({ post }: { post: Post }) {
     if (!owner || busy) return;
     setBusy(true);
     try {
-      await mirrorQueueToCloud(readPostQueue(owner));
-      const { data, error } = await supabase.from('campaign_activity_queue').select('id,status,payload,target_ref,scheduled_for')
-        .eq('workspace_owner_id', owner).eq('activity_type', 'fb_group_post').order('created_at', { ascending: false }).limit(2000);
-      if (error) throw error;
+      const data: any[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const result = await supabase.from('campaign_activity_queue').select('id,status,payload,target_ref,scheduled_for')
+          .eq('workspace_owner_id', owner).eq('activity_type', 'fb_group_post').order('id').range(offset, offset + 499);
+        if (result.error) throw result.error;
+        data.push(...(result.data ?? []));
+        if ((result.data?.length ?? 0) < 500) break;
+      }
+      if (ownerRef.current !== owner) return;
       const posts = post._seriesSlots?.length ? [post, ...post._seriesSlots] : [post];
       const matched = (data ?? []).filter((job) => posts.some((p) => {
         const payload = job.payload as any;
@@ -34,7 +41,7 @@ export function ContinuePostingButton({ post }: { post: Post }) {
         const body = payload?.job?.sourceText || payload?.job?.text || payload?.body || payload?.text;
         const group = fbGroupId(payload?.job?.groupUrl || payload?.group_url || job.target_ref);
         return !!body && body === p.message_body && !!group && (p.group_ids ?? []).some((g) => fbGroupId(g) === group)
-          && (!p.sent_at || new Date(p.sent_at).getTime() === new Date(job.scheduled_for).getTime());
+          && (!p.id.startsWith('ext-queue-') || p.id === `ext-queue-${String(body).replace(/\s+/g, ' ').trim().slice(0, 80)}|${Math.floor(new Date(job.scheduled_for).getTime() / 60000)}`);
       }));
       if (!matched.length) throw new Error('לא נמצאו עבודות מקוריות לפוסט הזה. לא נוצר תור חדש כדי למנוע שינוי בתוכן או בקבוצות.');
       setJobs(matched);
@@ -52,6 +59,7 @@ export function ContinuePostingButton({ post }: { post: Post }) {
         _workspace_owner_id: owner, _job_ids: eligible.map((j) => j.id), _resubmit: resubmit,
       });
       if (error) throw error;
+      if (ownerRef.current !== owner) return;
       applyContinuedQueueJobs(owner, data ?? []);
       toast.success(data?.length ? `${data.length} עבודות הוחזרו לתור` : 'לא שונו עבודות: התור כבר פעיל או שהסטטוס השתנה');
       setOpen(false);
