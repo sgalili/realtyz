@@ -27,3 +27,8 @@
 - [x] Scheduled group posts wait in the extension queue until the chosen time
 - [x] Page connect subscribes the Page to Messenger/comment webhooks + asks pages_manage_metadata/pages_messaging
 - [ ] Reconnect both Facebook Pages (blocked: owner must reconnect; current tokens can't enable delivery)
+
+## Group pills and posting continuation
+- [ ] Lock group-pill/dropdown geometry and open single-group links directly.
+- [ ] Add confirmed workspace-safe continuation/resubmission preserving original job data and schedule.
+- [ ] Verify layout and continuation behavior without publishing unsolicited Facebook posts.
