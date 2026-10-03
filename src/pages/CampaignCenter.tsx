@@ -5826,11 +5826,11 @@ const PublishedFeed = ({
       statuses: string[];
     }>();
     for (const e of extensionQueue) {
-      const key = `${bodyKey(e.text)}|${Math.floor(Number(e.scheduledTime || 0) / 60000)}`;
+      const key = `${bodyKey(e.sourceText || e.text)}|${Math.floor(Number(e.scheduledTime || 0) / 60000)}`;
       if (!bodyKey(e.text)) continue;
       const gid = String(e.groupUrl || '').match(/groups\/([^/?#]+)/)?.[1] || '';
       const cur = extGroups.get(key) || {
-        text: e.text,
+        text: e.sourceText || e.text,
         images: Array.isArray(e.images) ? e.images : [],
         groupIds: [] as string[],
         scheduledTime: Number(e.scheduledTime) || Date.now(),
@@ -5866,7 +5866,20 @@ const PublishedFeed = ({
       ? merged
       : merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
 
-    return collapseCampaignCards(channelFiltered);
+    return collapseCampaignCards(channelFiltered).map((row) => {
+      if (row._seriesSlots?.length) return row;
+      const key = bodyKey(row.message_body);
+      const jobs = extensionQueue.filter((job) => job.type !== 'page_first_comment' && key && bodyKey(job.sourceText || job.text) === key);
+      if (jobs.length < 2) return row;
+      return { ...row, _seriesSlots: [...jobs].sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)).map((job) => ({
+        ...row, _seriesSlots: undefined, id: job.id, message_body: job.text || row.message_body,
+        created_at: new Date(job.createdAt).toISOString(), sent_at: new Date(job.scheduledTime).toISOString(),
+        status: job.status === 'completed' ? 'sent' : job.status === 'failed' ? 'failed' : 'queued',
+        failure_reason: job.error, provider_message_id: job.postId || null,
+        external_url: job.postUrl || null, provider_response: {},
+        group_ids: [job.groupUrl || ''],
+      })) };
+    });
   }, [rows, activeChannel, optimisticRows, extensionQueue]);
 
   // Blocking loader ONLY on a true cold start: no cached rows in memory AND
