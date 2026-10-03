@@ -222,7 +222,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
           >
 
             {groups.map((g) => {
-              const active = selectedIds.includes(g.group_id);
+              const active = isSelected(g);
               return (
                 <label
                   key={g.group_id}
