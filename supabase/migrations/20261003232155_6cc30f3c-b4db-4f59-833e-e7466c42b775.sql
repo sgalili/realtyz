@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.fb_group_autoblock_on_failure() FROM PUBLIC, anon, authenticated;
