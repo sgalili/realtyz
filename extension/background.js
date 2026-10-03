@@ -77,29 +77,54 @@ const waitForTabLoad = (tabId, timeoutMs = 45000) =>
     tick();
   });
 
-const sendToTab = (tabId, payload, timeoutMs) =>
+/* Explicit completion handshake. The tab is never closed and the queue never
+ * advances on a blind timer: we hand the job to the content script, it ACKs
+ * acceptance, and we then wait for its final POST_SUCCESS / POST_FAILED
+ * runtime message. The only other way out is the tab itself disappearing
+ * (closed by the user / crashed), which is a real event, not a timer. */
+const pendingAcks = new Map(); // jobId -> { tabId, resolve }
+
+const settleAck = (jobId, result) => {
+  const hit = pendingAcks.get(String(jobId));
+  if (!hit) return false;
+  pendingAcks.delete(String(jobId));
+  hit.resolve(result);
+  return true;
+};
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  for (const [jobId, hit] of pendingAcks) {
+    if (hit.tabId === tabId) settleAck(jobId, { ok: false, reason: 'לשונית הפרסום נסגרה לפני שהפעולה הסתיימה', tab_closed: true });
+  }
+});
+
+// Keep the MV3 service worker alive while a job is in flight.
+let keepAliveTimer = null;
+const keepAlive = (on) => {
+  if (on && !keepAliveTimer) keepAliveTimer = setInterval(() => { try { chrome.runtime.getPlatformInfo(() => chrome.runtime.lastError); } catch (e) { /* noop */ } }, 20000);
+  if (!on && keepAliveTimer && pendingAcks.size === 0) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
+};
+
+const sendToTab = (tabId, payload) =>
   new Promise((resolve) => {
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      resolve({ ok: false, reason: 'תם הזמן להרצת הפרסום בדפדפן' });
-    }, timeoutMs);
+    const jobId = String((payload && payload.job && payload.job.id) || '');
+    const done = (res) => { keepAlive(false); resolve(res); };
+    if (!jobId) return resolve({ ok: false, reason: 'חסר מזהה עבודה' });
+    pendingAcks.set(jobId, { tabId, resolve: done });
+    keepAlive(true);
     try {
-      chrome.tabs.sendMessage(tabId, payload, (res) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
+      chrome.tabs.sendMessage(tabId, payload, (ack) => {
         if (chrome.runtime.lastError) {
-          return resolve({ ok: false, reason: 'לא ניתן להריץ את הפרסום בעמוד הקבוצה' });
+          return settleAck(jobId, { ok: false, reason: 'לא ניתן להריץ את הפרסום בעמוד הקבוצה' });
         }
-        resolve(res || { ok: false, reason: 'לא התקבלה תשובה מעמוד הקבוצה' });
+        // Rejected up-front (bad id / duplicate) — that's already final.
+        if (!ack || ack.accepted !== true) {
+          settleAck(jobId, ack || { ok: false, reason: 'עמוד הקבוצה לא אישר את קבלת המשימה' });
+        }
+        // accepted: keep waiting for POST_SUCCESS / POST_FAILED.
       });
     } catch (e) {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({ ok: false, reason: String((e && e.message) || e) });
+      settleAck(jobId, { ok: false, reason: String((e && e.message) || e) });
     }
   });
 
@@ -716,6 +741,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     removeQueueJobs(msg.ids, msg.textKeys).then((queue) => {
       try { sendResponse({ ok: true, queue }); } catch (e) { /* noop */ }
     });
+    return true;
+  }
+
+  if ((msg.type === 'POST_SUCCESS' || msg.type === 'POST_FAILED') && msg.jobId) {
+    const result = { ...(msg.result || {}), ok: msg.type === 'POST_SUCCESS' && (msg.result ? msg.result.ok !== false : true) };
+    settleAck(msg.jobId, result);
+    sendResponse({ ok: true });
     return true;
   }
 
