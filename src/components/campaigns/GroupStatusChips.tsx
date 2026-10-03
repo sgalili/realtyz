@@ -144,16 +144,15 @@ export function GroupStatusChips({
 
   const hasDetails = (ids.length > 1 && !!children) || ids.length > max;
   if (collapsedCounter && ids.length > 1) {
-    const states = ids.map(stateOf);
-    const agg: GroupChipState = states.includes('failed') ? 'failed' : states.includes('pending') ? 'pending' : 'published';
+    // No aggregate status icon on the main card — status lives on each sub-post.
     return (
       <div className="min-w-0">
       <span className="inline-flex min-w-0 items-center gap-1.5">
-        <span className={`shrink-0 ${STATE_STYLE[agg]}`} aria-label={STATE_LABEL[agg]}><StateIcon state={agg} /></span>
             <Button type="button" variant="outline" size="sm" aria-expanded={detailsOpen} aria-controls={detailsId}
               onClick={(e) => { e.stopPropagation(); toggleDetails(); }}
-              className="h-7 shrink-0 rounded-full border-border bg-background px-2 text-[11px] text-foreground">
+              className="h-7 shrink-0 gap-1 rounded-full border-border bg-background px-2 text-[11px] text-foreground">
               {ids.length} קבוצות
+              <ChevronDown className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
             </Button>
       </span>
       {!onExpandedChange && detailsOpen && children && <div className="mt-3 w-full min-w-0 space-y-3" dir="rtl">{children}</div>}
