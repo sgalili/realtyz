@@ -567,6 +567,7 @@ const LeadCRM = () => {
   }, [routeLeadId]);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const [homelyContactsSyncOpen, setHomelyContactsSyncOpen] = useState(false);
@@ -1910,11 +1911,14 @@ const LeadCRM = () => {
             </Select>
           </div>}
         </CardHeader>
-        {selectedIds.size > 0 && (
+        {selectMode && (
           <div className="border-t border-border/60 bg-muted/30 px-4 py-2 flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-            <Badge variant="secondary" className="gap-1 text-sm">
+            <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר הכל" />
+            <button type="button" className="text-sm font-semibold" onClick={toggleAll}>{allFilteredSelected ? 'בטל הכל' : 'בחר הכל'}</button>
+            {selectedIds.size > 0 && <Badge variant="secondary" className="gap-1 text-sm">
               <Users className="h-3.5 w-3.5" /> {selectedIds.size} נבחרו
-            </Badge>
+            </Badge>}
+            {selectedIds.size > 0 && <>
             <Separator orientation="vertical" className="h-6" />
             {recruitmentMode && (
               <Button
@@ -1942,7 +1946,8 @@ const LeadCRM = () => {
             <Button variant="destructive" size="icon" className="h-8 w-8" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}>
               <Trash2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 ms-auto" onClick={() => setSelectedIds(new Set())}>
+            </>}
+            <Button variant="ghost" size="icon" className="h-8 w-8 ms-auto" onClick={() => { setSelectedIds(new Set()); setSelectMode(false); }}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -1972,9 +1977,9 @@ const LeadCRM = () => {
                   {isOwnerView && HOMELY_OWNER_COLUMNS.map((col) => (
                     <TableHead key={`oh-${col.key}`} className="w-auto font-semibold text-xs text-center bg-blue-50/60">{col.label}</TableHead>
                   ))}
-                  <TableHead className="w-10 text-center">
+                  {selectMode && <TableHead className="w-10 text-center">
                     <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
-                  </TableHead>
+                  </TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2136,9 +2141,9 @@ const LeadCRM = () => {
                             );
                           });
                         })()}
-                        <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                        {selectMode && <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
                           <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleOne(lead.id)} />
-                        </TableCell>
+                        </TableCell>}
                       </TableRow>
                     );
                   })}
