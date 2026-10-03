@@ -6433,12 +6433,15 @@ const PublishedFeed = ({
                     <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
                   )}
                 </span>
-                <span className={cn(
-                  'min-w-0 text-[11px]',
-                  scheduled ? 'text-amber-700 font-semibold' : 'text-muted-foreground',
-                )}>
-                  {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
-                </span>
+                {/* With group targets (or scheduled) the date moves to the groups-counter row. */}
+                {!(hasGroupTargets || scheduled) && (
+                  <span className={cn(
+                    'min-w-0 text-[11px]',
+                    'text-muted-foreground',
+                  )}>
+                    {dateStr}
+                  </span>
+                )}
                 {/* No group targets: engagement counters join the logo/date row at the far edge. */}
                 {!hasGroupTargets && (
                   <div className="ms-auto flex min-w-0 items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
@@ -6469,6 +6472,13 @@ const PublishedFeed = ({
               {/* Row 3: group status/name (or counter), repost action, countdown and engagement counters together. */}
               {(hasGroupTargets || scheduled) && (
               <div className="flex min-w-0 flex-wrap items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
+                {/* Date sits in this row, before the groups counter label. */}
+                <span className={cn(
+                  'shrink-0 text-[11px]',
+                  scheduled ? 'text-amber-700 font-semibold' : 'text-muted-foreground',
+                )}>
+                  {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
+                </span>
                 {hasGroupTargets && (
                   <div className="min-w-0 max-w-[55%]">
                     <GroupStatusChips
