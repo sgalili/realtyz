@@ -9,6 +9,30 @@ export type FbGroupMeta = {
   url?: string | null;
 };
 
+/** Extracts the Facebook group slug/id from a group URL (or returns the input). */
+export function groupKeyFrom(value: string): string {
+  const v = String(value || '').replace(/^(ext:|manual:)/, '');
+  return v.match(/groups\/([^/?#]+)/)?.[1] || v;
+}
+
+function addNamed(map: Record<string, FbGroupMeta>, name: unknown, url: unknown, ids: string[] = []) {
+  const n = String(name || '').trim();
+  if (!n || /^\d+$/.test(n) || /^https?:/i.test(n)) return;
+  const u = url ? String(url) : null;
+  const keys = [...ids, ...(u ? [u, groupKeyFrom(u)] : [])].filter(Boolean);
+  for (const k of keys) if (!map[k] || /^\d+$/.test(map[k].name)) map[k] = { name: n, icon: map[k]?.icon ?? null, memberCount: map[k]?.memberCount ?? null, url: u ?? map[k]?.url ?? null };
+}
+
+/** Names the browser extension queue already knows (local, per browser). */
+export function localQueueGroupNames(): Record<string, FbGroupMeta> {
+  const map: Record<string, FbGroupMeta> = {};
+  try {
+    const q = JSON.parse(localStorage.getItem('rzPostQueue') || '[]');
+    if (Array.isArray(q)) q.forEach((e: any) => addNamed(map, e?.groupName, e?.groupUrl));
+  } catch { /* noop */ }
+  return map;
+}
+
 let cacheOwner: string | null = null;
 let cache: Record<string, FbGroupMeta> | null = null;
 let inflight: Promise<Record<string, FbGroupMeta>> | null = null;
@@ -38,6 +62,14 @@ async function fetchGroupMeta(owner: string): Promise<Record<string, FbGroupMeta
         map[id] = meta;
         map[id.replace(/^ext:/, '')] = meta;
       });
+    } catch { /* non-fatal */ }
+    try {
+      const { data } = await (supabase as any)
+        .from('custom_user_groups')
+        .select('id, group_name, group_url')
+        .eq('workspace_owner_id', owner)
+        .limit(1000);
+      (data ?? []).forEach((g: any) => addNamed(map, g.group_name, g.group_url, [String(g.id)]));
     } catch { /* non-fatal */ }
     cache = map;
     inflight = null;
