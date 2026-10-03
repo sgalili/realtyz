@@ -2812,7 +2812,7 @@ const InlineComposer = ({
 
       {/* Facebook groups picker — opened from the group icon button */}
       <Dialog open={groupPickerOpen} onOpenChange={setGroupPickerOpen}>
-        <DialogContent dir="rtl" className="w-[96vw] sm:max-w-[720px]">
+        <DialogContent dir="rtl" className="w-[96vw] max-w-[720px] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-right">קבוצות לפרסום</DialogTitle>
           </DialogHeader>
