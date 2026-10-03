@@ -6261,7 +6261,7 @@ const PublishedFeed = ({
           <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
         </div>
-      ) : (filteredRows || []).map(function renderFeedCard(r: any, _index?: number, inGroupOverlay = false): any {
+      ) : (filteredRows || []).map(function renderFeedCard(r: any, _index?: number, inGroupOverlay: unknown = false): any {
 
 
         const isOpen = expanded[r.id] ?? false;
@@ -6402,7 +6402,7 @@ const PublishedFeed = ({
                 )}>
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
-                {hasGroupTargets && !inGroupOverlay && (
+                {hasGroupTargets && inGroupOverlay !== true && (
                   <div onClick={(e) => e.stopPropagation()}>
                     <GroupStatusChips
                       inline
