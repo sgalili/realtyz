@@ -101,6 +101,28 @@
     if (d.type === 'RZ_FB_POSTS_REQUEST') deliverPosts();
     if (d.type === 'RZ_FB_COMMENTS_REQUEST') deliverComments(d.postIds);
   });
+
+  /* ── Group discovery (keyword search) + auto-join bridge ─────────────── */
+  window.addEventListener('message', (e) => {
+    if (e.source !== window) return;
+    const d = e.data;
+    if (!d || typeof d !== 'object' || d.source !== 'realtyz-app') return;
+    if (d.type === 'RZ_FB_GROUP_SEARCH' && d.requestId) {
+      rzSafeSend({ type: 'RZ_FB_GROUP_SEARCH', query: String(d.query || '') }, (res) => {
+        window.postMessage({ source: 'realtyz-extension', type: 'RZ_FB_GROUP_SEARCH_RESULT', requestId: d.requestId,
+          ok: !!(res && res.ok), groups: (res && res.groups) || [], error: res && res.error }, window.location.origin);
+      });
+    }
+    if (d.type === 'RZ_FB_GROUP_JOIN' && d.requestId && Array.isArray(d.groups)) {
+      rzSafeSend({ type: 'RZ_FB_GROUP_JOIN', requestId: d.requestId, groups: d.groups });
+    }
+    if (d.type === 'RZ_FB_GROUP_JOIN_CANCEL' && d.requestId) rzSafeSend({ type: 'RZ_FB_GROUP_JOIN_CANCEL', requestId: d.requestId });
+  });
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg && msg.type === 'RZ_FB_GROUP_JOIN_PROGRESS') {
+      window.postMessage({ source: 'realtyz-extension', ...msg }, window.location.origin);
+    }
+  });
   /* ── Posting-runner bridge (pairing + status) ─────────────────────────── */
   window.addEventListener('message', (e) => {
     const d = e.data;

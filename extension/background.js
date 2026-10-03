@@ -951,3 +951,129 @@ chrome.alarms.onAlarm.addListener((a) => {
 chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   if (msg && msg.type === 'RZ_SYNC_METRICS') { syncMetrics().finally(() => sendResponse({ ok: true })); return true; }
 });
+
+
+/* ── Group discovery: keyword search + auto-join (runs in the broker's own browser) ── */
+
+const rzWait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function rzOpenAndWait(url) {
+  const tab = await chrome.tabs.create({ url, active: false });
+  await new Promise((resolve) => {
+    const t = setTimeout(resolve, 20000);
+    const l = (id, info) => { if (id === tab.id && info.status === 'complete') { clearTimeout(t); chrome.tabs.onUpdated.removeListener(l); resolve(); } };
+    chrome.tabs.onUpdated.addListener(l);
+  });
+  await rzWait(3000);
+  return tab;
+}
+
+/** Runs inside facebook.com/search/groups — reads visible result cards. */
+function rzScrapeGroupResults() {
+  const parseNum = (txt) => {
+    const m = String(txt || '').replace(/,/g, '').match(/([\d.]+)\s*(K|M|אלף|מיליון)?/i);
+    if (!m) return null;
+    const f = /M|מיליון/i.test(m[2] || '') ? 1e6 : /K|אלף/i.test(m[2] || '') ? 1e3 : 1;
+    return Math.round(Number(m[1]) * f);
+  };
+  const out = new Map();
+  document.querySelectorAll('a[href*="/groups/"]').forEach((a) => {
+    const m = a.href.match(/facebook\.com\/groups\/([A-Za-z0-9._-]+)\/?(?:\?|$)/);
+    if (!m || ['joins', 'feed', 'discover', 'create', 'search'].includes(m[1])) return;
+    const name = (a.innerText || a.textContent || '').trim();
+    if (!name || name.length < 2) return;
+    const id = m[1];
+    if (out.has(id)) return;
+    let card = a;
+    for (let i = 0; i < 8 && card.parentElement; i++) { card = card.parentElement; if ((card.innerText || '').length > name.length + 30) break; }
+    const text = card.innerText || '';
+    let members = null, ppd = null, activity = null;
+    const mm = text.match(/([\d.,]+\s*(?:K|M|אלף|מיליון)?)\s*(?:members|חברים|חברות)/i);
+    if (mm) members = parseNum(mm[1]);
+    const am = text.match(/([\d.,]+\+?\s*(?:K)?)\s*(?:posts?|פוסטים|פרסומים)\s*(?:a|per|ב|ל)?\s*(day|week|יום|שבוע)/i);
+    if (am) { const n = parseNum(am[1]) || 0; ppd = /week|שבוע/i.test(am[2]) ? n / 7 : n; activity = am[0]; }
+    const img = card.querySelector('image, img');
+    const icon = img ? (img.getAttribute('xlink:href') || img.getAttribute('href') || img.src || null) : null;
+    const isMember = /(?:Joined|You're a member|חבר\/ה|הצטרפת|כבר חבר)/i.test(text) && !/(?:Join group|הצטרפות לקבוצה|הצטרף לקבוצה)/i.test(text);
+    out.set(id, { group_id: id, group_name: name, group_url: 'https://www.facebook.com/groups/' + id,
+      group_icon: icon, member_count: members, posts_per_day: ppd, activity_text: activity,
+      privacy: /Private|פרטית/i.test(text) ? 'private' : (/Public|ציבורית/i.test(text) ? 'public' : null), is_member: isMember });
+  });
+  return [...out.values()];
+}
+
+async function rzSearchGroups(query) {
+  const tab = await rzOpenAndWait('https://www.facebook.com/search/groups/?q=' + encodeURIComponent(query));
+  try {
+    for (let i = 0; i < 4; i++) {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.scrollBy(0, 2500) });
+      await rzWait(1800);
+    }
+    const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapeGroupResults });
+    return (res && res.result) || [];
+  } finally { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } }
+}
+
+/** Runs inside a group page — clicks "Join" and reports the outcome. */
+function rzClickJoin() {
+  const btns = [...document.querySelectorAll('div[role="button"], a[role="button"], button')];
+  const label = (b) => ((b.getAttribute('aria-label') || '') + ' ' + (b.innerText || '')).trim();
+  if (btns.some((b) => /^(Joined|חבר\/ה|הצטרפת)/i.test(label(b)))) return 'already_member';
+  if (btns.some((b) => /(Cancel request|ביטול בקשה)/i.test(label(b)))) return 'requested';
+  const join = btns.find((b) => /(Join group|Join Group|הצטרפות לקבוצה|הצטרף לקבוצה|הצטרפות)/i.test(label(b)));
+  if (!join) return 'failed';
+  join.click();
+  return 'clicked';
+}
+function rzJoinOutcome() {
+  if (document.querySelector('div[role="dialog"] textarea, div[role="dialog"] input[type="text"], div[role="dialog"] input[type="radio"]')) return 'needs_answers';
+  const text = document.body.innerText || '';
+  if (/(Cancel request|ביטול בקשה|Request sent|הבקשה נשלחה)/i.test(text)) return 'requested';
+  if (/(Joined|הצטרפת|חבר\/ה)/i.test(text)) return 'joined';
+  return 'requested';
+}
+
+const rzJoinCancelled = new Set();
+
+async function rzJoinGroups(requestId, groups, senderTabId) {
+  const report = (payload) => { if (senderTabId != null) chrome.tabs.sendMessage(senderTabId, { type: 'RZ_FB_GROUP_JOIN_PROGRESS', requestId, ...payload }, () => chrome.runtime.lastError); };
+  const list = groups.slice(0, 15);
+  for (let i = 0; i < list.length; i++) {
+    const g = list[i];
+    if (rzJoinCancelled.has(requestId)) break;
+    let status = 'failed', error;
+    let tab;
+    try {
+      tab = await rzOpenAndWait(g.group_url || ('https://www.facebook.com/groups/' + g.group_id));
+      const [r1] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzClickJoin });
+      status = r1 && r1.result;
+      if (status === 'clicked') {
+        await rzWait(4000);
+        const [r2] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzJoinOutcome });
+        status = (r2 && r2.result) || 'requested';
+      }
+    } catch (e) { status = 'failed'; error = String(e && e.message || e); }
+    finally { if (tab) { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } } }
+    report({ groupId: g.group_id, status, error });
+    // Human-like spacing between joins so the account is not flagged.
+    if (i < list.length - 1) await rzWait(20000 + Math.floor(Math.random() * 20000));
+  }
+  rzJoinCancelled.delete(requestId);
+  report({ done: true });
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || typeof msg !== 'object') return;
+  if (msg.type === 'RZ_FB_GROUP_SEARCH') {
+    rzSearchGroups(String(msg.query || '').slice(0, 120))
+      .then((groups) => sendResponse({ ok: true, groups }))
+      .catch((e) => sendResponse({ ok: false, error: String(e && e.message || e) }));
+    return true;
+  }
+  if (msg.type === 'RZ_FB_GROUP_JOIN' && Array.isArray(msg.groups)) {
+    rzJoinGroups(msg.requestId, msg.groups, sender && sender.tab ? sender.tab.id : null);
+    sendResponse({ ok: true });
+    return;
+  }
+  if (msg.type === 'RZ_FB_GROUP_JOIN_CANCEL') { rzJoinCancelled.add(msg.requestId); sendResponse({ ok: true }); }
+});

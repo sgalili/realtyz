@@ -3061,7 +3061,10 @@ export type Database = {
       }
       fb_user_groups: {
         Row: {
+          blocked_at: string | null
+          blocked_reason: string | null
           created_at: string
+          fail_count: number
           group_icon: string | null
           group_id: string
           group_name: string
@@ -3069,6 +3072,7 @@ export type Database = {
           id: string
           imported_at: string
           is_administrator: boolean
+          is_blocked: boolean
           is_selected: boolean
           max_posts_per_day: number | null
           member_count: number | null
@@ -3079,7 +3083,10 @@ export type Database = {
           workspace_owner_id: string
         }
         Insert: {
+          blocked_at?: string | null
+          blocked_reason?: string | null
           created_at?: string
+          fail_count?: number
           group_icon?: string | null
           group_id: string
           group_name: string
@@ -3087,6 +3094,7 @@ export type Database = {
           id?: string
           imported_at?: string
           is_administrator?: boolean
+          is_blocked?: boolean
           is_selected?: boolean
           max_posts_per_day?: number | null
           member_count?: number | null
@@ -3097,7 +3105,10 @@ export type Database = {
           workspace_owner_id: string
         }
         Update: {
+          blocked_at?: string | null
+          blocked_reason?: string | null
           created_at?: string
+          fail_count?: number
           group_icon?: string | null
           group_id?: string
           group_name?: string
@@ -3105,6 +3116,7 @@ export type Database = {
           id?: string
           imported_at?: string
           is_administrator?: boolean
+          is_blocked?: boolean
           is_selected?: boolean
           max_posts_per_day?: number | null
           member_count?: number | null

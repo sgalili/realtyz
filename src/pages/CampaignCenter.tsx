@@ -3108,10 +3108,12 @@ const FullRepostEditor = ({ request, brandName, socialProfiles, onClose }: {
         link = destination.link;
         if (payload.first_comment_enabled) comment = applyContactCta(comment, destination.ctaLine);
       }
-      const ids = [...new Set(payload.group_ids.map((id) => id.replace(/^ext:/, '')))];
-      const { data: groupRows, error: groupsError } = await supabase.from('fb_user_groups')
-        .select('group_id,group_name').eq('workspace_owner_id', request.owner);
+      const { data: groupRows, error: groupsError } = await (supabase as any).from('fb_user_groups')
+        .select('group_id,group_name,is_blocked').eq('workspace_owner_id', request.owner);
       if (groupsError) throw groupsError;
+      // Never post to blocked/restricted groups again.
+      const blockedIds = new Set(((groupRows ?? []) as any[]).filter((g) => g.is_blocked).map((g) => String(g.group_id).replace(/^ext:/, '')));
+      const ids = [...new Set(payload.group_ids.map((id) => id.replace(/^ext:/, '')))].filter((id) => !blockedIds.has(id));
       const jobs = await Promise.all(ids.map(async (id, index) => {
         const name = groupRows?.find((g) => g.group_id.replace(/^ext:/, '') === id)?.group_name
           || request.jobs.find((j) => j.payload?.job?.groupUrl?.includes(`/groups/${id}`))?.payload?.job?.groupName || id;
