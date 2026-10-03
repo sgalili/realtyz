@@ -5623,6 +5623,7 @@ const PublishedFeed = ({
       return next;
     });
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['scheduled-items'] });
     toast.success('הקמפיין הועבר לארכיון');
   };
 
@@ -5663,6 +5664,7 @@ const PublishedFeed = ({
         return next;
       });
       queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['scheduled-items'] });
       if (!silent) toast.success('הפוסט נמחק מהמערכת');
       return;
     }
@@ -5745,6 +5747,7 @@ const PublishedFeed = ({
     });
     setOptimisticRows((prev) => prev.filter((x) => !ids.includes(x.id)));
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['scheduled-items'] });
     // Force a fresh DB fetch so the deleted card can never linger on screen.
     void load({ forceFb: false }).catch(() => undefined);
     if (!silent) toast.success(
@@ -8874,6 +8877,7 @@ const CampaignCenter = () => {
           persistFeedCache(workspaceOwnerId, cached);
           setHistoryRefreshTick((t) => t + 1);
           queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['scheduled-items'] });
           toast.success(entireSeries ? 'כל הסדרה נמחקה לצמיתות' : 'הפוסט נמחק לצמיתות');
         }}
       />
