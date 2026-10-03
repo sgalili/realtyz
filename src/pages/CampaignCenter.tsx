@@ -6437,8 +6437,35 @@ const PublishedFeed = ({
                 )}>
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
+                {/* No group targets: engagement counters join the logo/date row at the far edge. */}
+                {!hasGroupTargets && (
+                  <div className="ms-auto flex min-w-0 items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
+                    {!scheduled && (
+                      <>
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
+                          <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                          <span className="tabular-nums">{commentDisplay}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="שיתופים">
+                          <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                          <span className="tabular-nums">{r.share_count ?? 0}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="לייקים">
+                          <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                          <span className="tabular-nums">{r.like_count ?? 0}</span>
+                        </span>
+                      </>
+                    )}
+                    {commentWarning && !failed && !extProgress && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               {/* Row 3: group status/name (or counter), repost action, countdown and engagement counters together. */}
+              {(hasGroupTargets || scheduled) && (
               <div className="flex min-w-0 flex-wrap items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {hasGroupTargets && (
                   <div className="min-w-0 max-w-[55%]">
@@ -6479,6 +6506,7 @@ const PublishedFeed = ({
                     </span>
                   );
                 })()}
+                {hasGroupTargets && (
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
                 {!scheduled && (
                   <>
@@ -6502,8 +6530,10 @@ const PublishedFeed = ({
                   </span>
                 )}
                 </div>
+                )}
                 {hasGroupTargets && <div className="ms-auto shrink-0"><ContinuePostingButton post={r} /></div>}
               </div>
+              )}
               {isPaused && (() => {
                 const remainingMs = circuitUntilMs ? circuitUntilMs - nowMs : 0;
                 const hasCountdown = remainingMs > 0;
