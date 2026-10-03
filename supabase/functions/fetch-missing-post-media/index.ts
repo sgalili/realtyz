@@ -1,3 +1,4 @@
+import { postMediaIdentity } from '../_shared/postMediaIdentity.ts';
 // Safe, rate-limit-compliant media recovery worker.
 //
 // Processes at most 25 campaign posts per run. For every post whose media is
@@ -53,14 +54,7 @@ const isRenderableMediaUrl = (value: unknown): value is string => {
 
 const isCached = (url: string) => url.includes(`/${BUCKET}/`);
 
-const dedupeKey = (url: string): string => {
-  try {
-    const u = new URL(url);
-    return `${u.hostname}${u.pathname}`.toLowerCase();
-  } catch {
-    return url.split("?")[0].toLowerCase();
-  }
-};
+const dedupeKey = postMediaIdentity;
 
 const mergeUrls = (...values: unknown[]): string[] => {
   const seen = new Set<string>();

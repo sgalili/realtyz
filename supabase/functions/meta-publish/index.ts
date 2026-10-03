@@ -1,3 +1,4 @@
+import { dedupePostMedia } from '../_shared/postMediaIdentity.ts';
 // meta-publish — direct Meta Graph API publishing for Facebook Pages and
 // Instagram Business accounts.
 //
@@ -523,9 +524,9 @@ Deno.serve(async (req) => {
     const channels: string[] = (Array.isArray(body?.channels) ? body.channels : ["facebook"]).map((c: unknown) =>
       String(c || "").toLowerCase()
     );
-    const media: string[] = (Array.isArray(body?.media_urls) ? body.media_urls : [])
+    const media: string[] = dedupePostMedia((Array.isArray(body?.media_urls) ? body.media_urls : [])
       .map((u: unknown) => String(u || "").trim())
-      .filter((u: string) => /^https:\/\//i.test(u));
+      .filter((u: string) => /^https:\/\//i.test(u)));
     const link = String(body?.link ?? "").trim() || null;
     const campaignName = String(body?.campaign_name ?? "Realtyz").trim();
     const scheduledIso = body?.scheduled_at ? String(body.scheduled_at) : null;
