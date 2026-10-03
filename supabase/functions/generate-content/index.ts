@@ -345,7 +345,9 @@ HIGH-CONVERTING COPY STRUCTURE (apply ONLY when a specific נכס/PROMOTED LISTI
 
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של ${brokerFirst}. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
 
-    const systemPrompt = isSaas ? saasSystemPrompt : brokerSystemPrompt;
+    const systemPrompt = (isSaas ? saasSystemPrompt : brokerSystemPrompt) + `
+
+כללי זהות ריטה (חובה): אם מוזכרת ריטה, כתבו רק "ריטה" ללא שם משפחה לעולם (אסור "גלילי" או כל שם משפחה). אם הטקסט נכתב בשם ריטה, ציינו פעם אחת בלבד, בקצרה ובטבעיות, שהיא סוכנת ה-AI של Realtyz, בלי הסברים נוספים ובלי להסתיר.`;
 
     const noListingSelected = !promotedListing;
 
