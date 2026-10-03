@@ -5615,7 +5615,7 @@ const PublishedFeed = ({
     // Local-only cards (extension queue / optimistic) have non-UUID ids and no
     // DB row — remove them locally; never send them to UUID columns.
     if (!UUID_RE.test(String(r.id))) {
-      const childIds = ((r as any)._children ?? (r as any).children ?? []).map((c: any) => String(c?.id ?? '')).filter(Boolean);
+      const childIds = ((r as any)._seriesSlots ?? []).map((c: any) => String(c?.id ?? '')).filter(Boolean);
       const localIds = [String(r.id), ...childIds];
       removeQueueEntriesForPosts({ ids: localIds, texts: [r.message_body || ''] });
       const dbIds = childIds.filter((id: string) => UUID_RE.test(id));
@@ -5624,7 +5624,11 @@ const PublishedFeed = ({
       }
       const gone = new Set([...localIds, ...dbIds]);
       setOptimisticRows((prev) => prev.filter((x) => !gone.has(x.id)));
-      setRows((prev) => prev?.filter((x) => !gone.has(x.id)) ?? prev);
+      setRows((prev) => {
+        const next = prev?.filter((x) => !gone.has(x.id)) ?? prev;
+        if (next) { FEED_ROWS_CACHE.set(workspaceOwnerId, next); persistFeedCache(workspaceOwnerId, next); }
+        return next;
+      });
       if (!silent) toast.success('הפוסט נמחק מהמערכת');
       return;
     }
@@ -5666,9 +5670,18 @@ const PublishedFeed = ({
     });
     if (error) throw new Error('מחיקה מהמערכת נכשלה: ' + error.message);
     const deletion = result as { deleted_ids?: string[]; deleted_count?: number; queue_ids?: string[]; local_queue_ids?: string[] };
-    const ids = deletion.deleted_ids || [];
-    const count = deletion.deleted_count || 0;
+    const ids = [...(deletion.deleted_ids || [])];
+    let count = deletion.deleted_count || 0;
     if (!count || !ids.includes(r.id)) throw new Error('המחיקה לא אושרה במערכת');
+    // Collapsed master cards may hold slots outside the DB series — delete them too.
+    if (entireSeries) {
+      const extra = ((r as any)._seriesSlots ?? []).map((c: any) => String(c?.id ?? ''))
+        .filter((id: string) => id && !ids.includes(id));
+      const extraDb = extra.filter((id: string) => UUID_RE.test(id));
+      const res = await Promise.all(extraDb.map((id: string) => supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: id, p_entire_series: false })));
+      res.forEach((x: any) => { const d = x?.data as any; if (d?.deleted_ids) { ids.push(...d.deleted_ids); count += d.deleted_count || 0; } });
+      ids.push(...extra.filter((id: string) => !UUID_RE.test(id)));
+    }
     removeQueueEntriesForPosts({ ids: [...ids, ...(deletion.queue_ids || []), ...(deletion.local_queue_ids || []).filter(Boolean)] });
     ids.forEach((id) => postCopyRef.current.entries.delete(id));
     setRows((prev) => {
