@@ -21,6 +21,7 @@
 - **FB groups (HARD)**: group posts ONLY via the Chrome extension (`enqueueExtensionPosts` → localStorage rzPostQueue, or `fb_group_post` queue rows). Never Graph `/feed` for groups; `fb-group-publish` deleted.
 
 ## Memories
+- [Rita group post topics](mem://features/rita-group-post-topics) — Six group-engagement topics replace property promotion only in Rita's workspace and drive AI generation.
 - [Calendar autosync](mem://features/calendar-autosync) — All dated records + calls auto-sync to Google Calendar on insert/update; no manual add-to-calendar buttons.
 - [Rita agent, WA routing, roles](mem://features/rita-agent-and-roles) — ריטה is the sole AI identity (feminine); shared-number inbound routed by last outbound session; מתווך/שותף registration roles.
 - [Visual Identity](mem://style/visual-identity) — Realtyz branding: minimalist, no icons/emojis in headers.
