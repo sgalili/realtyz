@@ -11,7 +11,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { requestExtensionPagePosts, requestExtensionPostComments } from '@/lib/extensionPostBridge';
+import { requestExtensionPostComments } from '@/lib/extensionPostBridge';
+import { syncPagePostsViaExtension } from '@/lib/extensionPageSync';
 
 type Report = {
   ok: boolean;
@@ -48,74 +49,18 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
     let comments = 0;
 
     try {
-      setStep('מייבא פוסטים, תמונות ומדדים מפייסבוק…');
-      const { data, error } = await supabase.functions.invoke('fb-recent-posts', {
-        body: {
-          since,
-          lastRecords: 500,
-          pageSize: 50,
-          persist: true,
-          sync_comments: false,
-        },
-      });
-      if (error) {
-        problems.push(`ייבוא הפוסטים נכשל: ${error.message}`);
-        fixes.push('רענן את הדף ונסה שוב. אם זה חוזר, התחבר מחדש לאפליקציה.');
-      } else {
-        let res: any = data ?? {};
-        posts = Number(res.upserted ?? res.count ?? 0) || 0;
-        images = Number(res.enriched_media ?? 0) || 0;
-        counters = Number(res.enriched_counters ?? 0) || 0;
-
-        // Graph blocked us on permissions (e.g. #10 pages_read_engagement):
-        // fall back silently to the browser extension's DOM scraper instead of
-        // alerting the user.
-        if (res.needs_extension || (res.permission_blocked && posts === 0)) {
-          setStep('פייסבוק חסמה את הקריאה ישירות — מייבא דרך התוסף…');
-          const scraped = await requestExtensionPagePosts({ since });
-          if (scraped.length > 0) {
-            const { data: extData } = await supabase.functions.invoke('fb-recent-posts', {
-              body: { since, persist: true, sync_comments: false, posts: scraped },
-            });
-            const extRes: any = extData ?? {};
-            if (Number(extRes.upserted ?? extRes.count ?? 0) > 0) {
-              res = { ...extRes, permission_blocked: false, needs_extension: false, raw_error: null };
-              posts = Number(extRes.upserted ?? extRes.count ?? 0) || 0;
-              images = Number(extRes.enriched_media ?? 0) || 0;
-              counters = Number(extRes.enriched_counters ?? 0) || 0;
-            }
-          }
-          if (res.needs_extension || res.permission_blocked) {
-            // No extension available — explain the one-time install, quietly.
-            fixes.push('התקן את תוסף Realtyz לדפדפן והישאר מחובר לפייסבוק, ואז הרץ ייבוא שוב.');
-            res = { ...res, raw_error: null, ok: true, permission_blocked: false, needs_extension: false };
-          }
-        }
-
-        if (res.ok === false || res.raw_error) {
-          const raw = res.raw_error;
-          const rawText = typeof raw === 'string' ? raw : (raw?.message ?? JSON.stringify(raw ?? {}));
-          if (String(rawText).includes('facebook_page_access_token_missing')) {
-            problems.push('לחשבון הזה אין עמוד פייסבוק מחובר, לכן לא ניתן לייבא פוסטים.');
-            fixes.push('פרופיל → חיבורים → פייסבוק ואינסטגרם → חיבור פייסבוק, ואשר את כל ההרשאות.');
-          } else {
-            problems.push(`פייסבוק החזירה שגיאה: ${rawText}`);
-            const code = Number(raw?.code ?? NaN);
-            const appReviewIssue =
-              code === 10 || code === 200 || code === 190 ||
-              /app review|advanced access|not approved|pages_read_engagement|permission|live mode|development mode/i.test(String(rawText));
-            if (appReviewIssue) {
-              fixes.push('אפליקציית Meta במצב Live ללא אישור App Review להרשאות pages_read_engagement / pages_show_list / pages_manage_posts.');
-              fixes.push('פתרון: ב-Meta App Dashboard העבר את האפליקציה למצב Development, או הוסף את המשתמש כ-Admin/Developer/Tester תחת App Roles → Roles, ואז התחבר מחדש לפייסבוק.');
-              fixes.push('לשימוש קבוע במצב Live יש להגיש את ההרשאות ל-App Review ולקבל Advanced Access.');
-            } else {
-              fixes.push('ודא שאתה Admin של העמוד ושההרשאות pages_show_list ו-pages_read_engagement אושרו.');
-            }
-          }
-        }
-        if (res.persist_error) {
-          problems.push(`שמירת הפוסטים במסד נכשלה: ${res.persist_error}`);
-        }
+      setStep('התוסף פותח את עמוד הפייסבוק וקורא פוסטים ומדדים…');
+      const sync = await syncPagePostsViaExtension({ since, max: 150 });
+      posts = sync.upserted;
+      counters = sync.scraped;
+      if (sync.status === 'no_extension') {
+        problems.push('תוסף Realtyz לא זוהה בדפדפן.');
+        fixes.push('התקן את תוסף Realtyz (גרסה 1.7.0 ומעלה), הישאר מחובר לפייסבוק, ואז הרץ ייבוא שוב.');
+      } else if (sync.status === 'empty') {
+        problems.push('התוסף לא מצא פוסטים בעמוד.');
+        fixes.push('ודא שאתה מחובר לפייסבוק בדפדפן הזה ושיש לך גישה לעמוד, ואז נסה שוב.');
+      } else if (sync.status === 'error') {
+        problems.push(`שמירת הפוסטים נכשלה: ${sync.error}`);
       }
 
       setStep('מייבא עצי תגובות ותשובות…');
