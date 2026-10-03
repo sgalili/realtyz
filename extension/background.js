@@ -134,6 +134,8 @@ const RATE_KEY = 'rzActionRate';
 const ACTIVE_WORKSPACE_KEY = 'rzActiveWorkspaceOwner';
 const MAX_PER_HOUR = 12;
 const MAX_PER_DAY = 60;
+const DEFERRED = 'deferred';
+const DEFER_MS = 15 * 60 * 1000;
 
 const BLOCKED_URL = /facebook\.com\/(?:$|\?|home|profile\.php|me(?:\/|$)|watch|marketplace|reels|stories|messages|notifications|friends|bookmarks|settings)/i;
 
@@ -227,7 +229,9 @@ async function runJobInner(token, job) {
   if (!(await automationEnabled())) return report(token, job, false, 'האוטומציה בדפדפן מושבתת');
   if (!String(job.message || '').trim()) return report(token, job, false, 'תוכן הפוסט ריק');
   if (await alreadyDone(job)) return report(token, job, true, null, null);
-  if (!(await rateAllows())) return report(token, job, false, 'הגעת לתקרת הפעולות לשעה — הפעולה תרוץ בהמשך');
+  // Rate cap reached: never mark the job failed. Leave it queued (local) or let
+  // the server lease expire (cloud) so it runs automatically in the next window.
+  if (!(await rateAllows())) { lastJobReason = null; return DEFERRED; }
   await rateRecord();
 
   let tabId = null;
@@ -417,7 +421,8 @@ async function runLocalPost(post) {
         first_comment: post.firstComment || post.first_comment || null,
         link: post.link || null,
       });
-      if (ok) done += 1;
+      if (ok === DEFERRED) failures.push(g.group_name || g.group_id || '');
+      else if (ok) done += 1;
       else failures.push(g.group_name || g.group_id || '');
       await setState({ local_done: done });
       if (i < groups.length - 1) await sleep(8000); // gentle pacing
@@ -529,6 +534,19 @@ async function drainQueue() {
           first_comment: entry.firstComment || null,
           link: entry.link || null,
         });
+      }
+      if (ok === DEFERRED) {
+        queue = await loadQueue();
+        const hit = queue.find((e) => String(e.id) === String(entry.id));
+        if (hit) {
+          hit.status = 'pending';
+          hit.stage = 'queued';
+          hit.error = null;
+          hit.startedAt = null;
+          hit.scheduledTime = Date.now() + DEFER_MS;
+        }
+        await saveQueue(queue);
+        break; // cap reached — stop this drain, resume next window
       }
       entry.status = ok ? 'completed' : 'failed';
       const failReason = ok ? null : (lastJobReason || 'פרסום בדפדפן נכשל');
