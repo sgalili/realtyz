@@ -1,10 +1,9 @@
 // Group target chips with per-group publishing status.
-// Collapsed by default: a single summary row with the total group count and the
-// countdown to the next publishing round (dd/hh/mm/ss). Expanding reveals the
-// real Facebook group names, their member counts and whether each group
-// actually accepted the post.
-import { useEffect, useState, type ReactNode } from 'react';
-import { CheckCircle2, Clock, XCircle } from 'lucide-react';
+// Collapsed by default: a single summary pill with the group count and a
+// collapse arrow. Expanding reveals the real Facebook group names, their
+// member counts and whether each group actually accepted the post.
+import { useState, type ReactNode } from 'react';
+import { CheckCircle2, ChevronDown, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { useFbGroupMeta, groupKeyFrom, localQueueGroupNames, type FbGroupMeta } from '@/hooks/useFbGroupMeta';
@@ -51,22 +50,6 @@ const StateIcon = ({ state }: { state: GroupChipState }) => {
   if (state === 'published') return <CheckCircle2 className="h-3.5 w-3.5" />;
   if (state === 'failed') return <XCircle className="h-3.5 w-3.5" />;
   return <Clock className="h-3.5 w-3.5" />;
-};
-
-/** dd/hh/mm/ss remaining until the next publishing round. */
-function useCountdown(iso?: string | null) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!iso) return;
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, [iso]);
-  if (!iso) return null;
-  const target = new Date(iso).getTime();
-  if (!Number.isFinite(target)) return null;
-  const s = Math.max(0, Math.floor((target - now) / 1000));
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(s / 86400))}/${pad(Math.floor((s % 86400) / 3600))}/${pad(Math.floor((s % 3600) / 60))}/${pad(s % 60)}`;
 }
 
 export function GroupStatusChips({
@@ -76,7 +59,7 @@ export function GroupStatusChips({
   defaultState = 'pending',
   max = 30,
   emptyLabel,
-  countdownIso,
+  countdownIso: _countdownIso,
   defaultOpen = false,
   inline = false,
   children,
@@ -89,7 +72,7 @@ export function GroupStatusChips({
   defaultState?: GroupChipState;
   max?: number;
   emptyLabel?: string;
-  /** When provided, the collapsed summary shows a dd/hh/mm/ss countdown. */
+  /** Kept for API compatibility; the collapsed pill no longer shows a countdown. */
   countdownIso?: string | null;
   defaultOpen?: boolean;
   /** Render without top margin so the collapsed pill can sit inside a flex row. */
@@ -99,7 +82,6 @@ export function GroupStatusChips({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const shared = useFbGroupMeta();
-  const countdown = useCountdown(countdownIso);
   const lookup = (gid: string): FbGroupMeta | undefined => {
     const bare = gid.replace(/^(ext:|manual:)/, '');
     const key = groupKeyFrom(gid);
@@ -125,9 +107,7 @@ export function GroupStatusChips({
         className="h-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-muted"
       >
         <span className="max-w-[180px] truncate">{ids.length > 1 ? `${ids.length} קבוצות` : nameOf(ids[0])}</span>
-        {countdown && (
-          <span className="tabular-nums text-muted-foreground" dir="ltr">· {countdown}</span>
-        )}
+        <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </Button>
 
       {open && (
