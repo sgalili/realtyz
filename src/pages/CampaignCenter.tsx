@@ -53,7 +53,7 @@ import { toast } from 'sonner';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
-import { useFbGroupMeta } from '@/hooks/useFbGroupMeta';
+import { useFbGroupMeta, groupKeyFrom } from '@/hooks/useFbGroupMeta';
 
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { nativeWaLink, getOfficialWaNumber } from '@/lib/officialWa';
