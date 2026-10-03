@@ -326,6 +326,7 @@ async function runJobInner(token, job) {
     await setJobStage(job.id, 'writing');
     writingStarted = true;
 
+    await ensurePoster(tabId);
     const result = await sendToTab(
       tabId,
       {
@@ -418,6 +419,7 @@ async function runPageFirstComment(token, entry) {
     await sleep(2500);
     await setJobStage(entry.id, 'commenting');
 
+    await ensurePoster(tabId);
     const result = await sendToTab(
       tabId,
       {
