@@ -36,6 +36,17 @@
     }
   };
 
+  // MutationObserver + polling hybrid: resolves as soon as the DOM produces a match.
+  const waitForDom = (fn, timeoutMs = 15000, step = 400) => new Promise((resolve) => {
+    let done = false; let obs = null; let iv = null; let to = null;
+    const finish = (v) => { if (done) return; done = true; try { obs && obs.disconnect(); } catch (e) {} clearInterval(iv); clearTimeout(to); resolve(v); };
+    const check = () => { let hit = null; try { hit = fn(); } catch (e) { hit = null; } if (hit) finish(hit); };
+    check(); if (done) return;
+    try { obs = new MutationObserver(check); obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true }); } catch (e) {}
+    iv = setInterval(check, step);
+    to = setTimeout(() => finish(null), timeoutMs);
+  });
+
   const LOGIN_RE = /log in|התחבר|כניסה לחשבון/i;
   const isLoggedOut = () =>
     !!document.querySelector('form[action*="login"] input[name="pass"]') ||
@@ -243,7 +254,7 @@
     }
 
     // 0. wait for the group feed to be fully rendered before touching anything
-    const feedReady = await waitFor(() => (
+    const feedReady = await waitForDom(() => (
       document.querySelector('div[role="feed"]') || composerTrigger() || textbox()
     ) ? true : null, 30000, 500);
     if (!feedReady) return { ok: false, reason: 'פיד הקבוצה לא נטען — לא נמצאה תיבת הפרסום' };
@@ -252,10 +263,16 @@
     // 1. open the composer
     let box = textbox();
     if (!box) {
-      const trigger = await waitFor(composerTrigger, 20000);
-      if (!trigger) return { ok: false, reason: 'לא נמצא עורך הפוסטים בקבוצה (אין הרשאת פרסום או שהעמוד לא נטען)' };
+      const trigger = await waitForDom(composerTrigger, 15000);
+      if (!trigger) return { ok: false, reason: 'לא נמצא "מה עולה בראשך?" בקבוצה תוך 15 שניות (אין הרשאת פרסום או שהעמוד לא נטען)' };
+      trigger.scrollIntoView({ block: 'center' });
       trigger.click();
-      box = await waitFor(textbox, 20000);
+      box = await waitForDom(textbox, 15000);
+      if (!box) {
+        // one retry: Facebook sometimes swallows the first click while hydrating
+        const again = composerTrigger();
+        if (again) { again.click(); box = await waitForDom(textbox, 10000); }
+      }
     }
     if (!box) return { ok: false, reason: 'עורך הפוסט לא נפתח' };
 
@@ -263,6 +280,8 @@
     reportStage('writing');
     const injected = await injectText(box, String(job.message || ''));
     if (!injected) return { ok: false, reason: 'הזנת תוכן הפוסט נכשלה' };
+    // let Facebook's React state register the input before validating / submitting
+    await sleep(1200);
     // Verify the text landed in the group post modal (never a comment box).
     const firstLine = String(job.message || '').split('\n').map((l) => l.trim()).find(Boolean) || '';
     const probe = firstLine.replace(/\s+/g, ' ').slice(0, 25);
