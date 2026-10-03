@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
 import { openExternal } from "@/lib/openExternal";
 import { fbGroupId, fbGroupUrl, fbGroupUrlFrom } from "@/lib/fbGroupUrl";
-import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown } from "lucide-react";
+import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown, List } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { useMetaPageBinding } from "@/hooks/useMetaPageBinding";
@@ -42,6 +42,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const [manualUrl, setManualUrl] = useState("");
   const [addingManual, setAddingManual] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
 
   const hasVisibleGroups = groups.length > 0;
 
@@ -158,6 +159,17 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         {groups.length > 0 && (
           <span className="text-[14px] text-muted-foreground">({selectedIds.length}/{groups.length})</span>
         )}
+        {groups.length > 0 && (
+          <button
+            type="button"
+            aria-label="בחירה מרובה"
+            aria-pressed={selectMode}
+            onClick={() => setSelectMode((v) => !v)}
+            className={cn("ms-auto shrink-0 rounded-md p-1.5 transition", selectMode ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}
+          >
+            <List className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {loading && !hasVisibleGroups && (
@@ -175,7 +187,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
       {hasVisibleGroups && (
         <div className="min-w-0 max-w-full rounded-lg border border-border overflow-hidden">
-          <label className="flex items-center gap-3 bg-muted/40 px-3 py-2 cursor-pointer border-b border-border">
+          {selectMode && <label className="flex items-center gap-3 bg-muted/40 px-3 py-2 cursor-pointer border-b border-border">
             <div
               className={cn(
                 "h-4 w-4 rounded border flex items-center justify-center shrink-0 transition",
@@ -192,7 +204,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
             <input type="checkbox" className="sr-only" checked={allSelected} onChange={toggleAll} />
             <span className="text-[15px] font-semibold text-foreground flex-1">בחר הכל</span>
             <span className="text-[14px] text-muted-foreground tabular-nums">{selectedIds.length}/{groups.length}</span>
-          </label>
+          </label>}
 
           <div
             className="min-w-0 max-w-full max-h-[45vh] min-h-[160px] overflow-x-hidden overflow-y-auto overscroll-contain divide-y divide-border [-webkit-overflow-scrolling:touch]"
@@ -209,14 +221,14 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                     active ? "bg-primary/5" : "bg-background hover:bg-muted/30",
                   )}
                 >
-                  <div
+                  {selectMode && <div
                     className={cn(
                       "h-4 w-4 rounded border flex items-center justify-center shrink-0",
                       active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background",
                     )}
                   >
                     {active && <Check className="h-3 w-3" />}
-                  </div>
+                  </div>}
                   <input type="checkbox" className="sr-only" checked={active} onChange={() => toggle(g.group_id)} />
                   {g.group_icon ? (
                     <img src={g.group_icon} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
