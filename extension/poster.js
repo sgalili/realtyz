@@ -144,7 +144,16 @@
     box.dispatchEvent(new KeyboardEvent('keyup', opts));
   };
 
-  /* React-safe text insertion, line by line so breaks/emojis/bullets survive */
+  /* React-safe text insertion, line by line so breaks/emojis/bullets survive.
+   * Dispatches the full event set (beforeinput/input/keyup/change) so
+   * Facebook's React state registers the text before we click "פרסם". */
+  const dispatchInputEvents = (box) => {
+    try { box.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText' })); } catch (e) { /* noop */ }
+    try { box.dispatchEvent(new InputEvent('input', { bubbles: true })); } catch (e) { /* noop */ }
+    try { box.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true })); } catch (e) { /* noop */ }
+    try { box.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { /* noop */ }
+  };
+
   const injectText = async (box, text) => {
     box.focus();
     box.click();
@@ -156,6 +165,7 @@
         let hit = false;
         try { hit = document.execCommand('insertText', false, lines[i]); } catch (e) { hit = false; }
         if (!hit) ok = false;
+        dispatchInputEvents(box);
       }
       if (i < lines.length - 1) shiftEnter(box);
       await sleep(30);
@@ -167,7 +177,7 @@
       dt.setData('text/plain', text);
       box.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
     }
-    box.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    dispatchInputEvents(box);
     await sleep(600);
     return textOf(box).length > 0;
   };
