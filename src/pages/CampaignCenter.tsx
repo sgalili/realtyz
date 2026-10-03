@@ -6209,16 +6209,7 @@ const PublishedFeed = ({
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : isPaused ? null : isSeries ? (() => {
-                  const ok = seriesSlots.filter((x: any) => ['sent', 'published', 'completed'].includes(String(x.status || '').toLowerCase()) || isCommentOnlyFailure(x.failure_reason)).length;
-                  const bad = seriesSlots.filter((x: any) => String(x.status || '').toLowerCase() === 'failed' && !isCommentOnlyFailure(x.failure_reason)).length;
-                  return (
-                    <span className="inline-flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums" title={`${ok} הצלחות, ${bad} נכשלו`}>
-                      {ok > 0 && <span className="inline-flex items-center gap-0.5 text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />{ok}</span>}
-                      {bad > 0 && <span className="inline-flex items-center gap-0.5 text-destructive"><XCircle className="h-3.5 w-3.5" />{bad}</span>}
-                    </span>
-                  );
-                })() : (extProgress && hasGroupTargets) ? (
+                })() : isPaused ? null : isSeries ? null : (extProgress && hasGroupTargets) ? (
                   <ExtensionPostProgress progress={extProgress} />
                 ) : (legacyMetaError && hasGroupTargets) ? (
                   <ExtensionPostProgress
