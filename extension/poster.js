@@ -441,33 +441,39 @@
   }
 
 
+  /* Final completion signal back to the background worker. Only this message
+   * lets it close the tab and move on to the next queue item. */
+  const signalDone = (jobId, res) => {
+    const result = res || { ok: false, reason: 'לא התקבלה תוצאה' };
+    const type = result.ok === true ? 'POST_SUCCESS' : 'POST_FAILED';
+    const send = (attempt) => {
+      try {
+        chrome.runtime.sendMessage({ type, jobId, result }, () => {
+          if (chrome.runtime.lastError && attempt < 5) setTimeout(() => send(attempt + 1), 1000);
+        });
+      } catch (e) { if (attempt < 5) setTimeout(() => send(attempt + 1), 1000); }
+    };
+    send(0);
+  };
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || msg.source !== 'realtyz-extension') return;
-    if (msg.type === 'RZ_POST_TO_GROUP') {
-      const claimed = claimJob(msg.job);
-      if (!claimed) {
-        sendResponse({ ok: false, reason: 'הפעולה בוטלה: אין מזהה עבודה תקף או שהעבודה כבר בוצעה' });
-        return true;
-      }
-      currentJobId = claimed;
-      postToGroup(msg.job || {})
-        .then((res) => sendResponse(res))
-        .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
-      return true;
+    if (msg.type !== 'RZ_POST_TO_GROUP' && msg.type !== 'RZ_POST_FIRST_COMMENT') return;
+    const claimed = claimJob(msg.job);
+    if (!claimed) {
+      sendResponse({ accepted: false, ok: false, reason: 'הפעולה בוטלה: אין מזהה עבודה תקף או שהעבודה כבר בוצעה' });
+      return;
     }
-    if (msg.type === 'RZ_POST_FIRST_COMMENT') {
-      const claimed = claimJob(msg.job);
-      if (!claimed) {
-        sendResponse({ ok: false, reason: 'הפעולה בוטלה: אין מזהה עבודה תקף או שהעבודה כבר בוצעה' });
-        return true;
-      }
-      currentJobId = claimed;
-      reportStage('commenting');
-      postFirstCommentToPage(msg.job || {})
-        .then((res) => sendResponse(res))
-        .catch((e) => sendResponse({ ok: false, reason: String((e && e.message) || e) }));
-      return true;
-    }
+    currentJobId = claimed;
+    const jobId = String((msg.job && msg.job.id) || claimed);
+    // ACK immediately; the real outcome arrives later via POST_SUCCESS/POST_FAILED.
+    sendResponse({ accepted: true, jobId });
+    const run = msg.type === 'RZ_POST_TO_GROUP'
+      ? postToGroup(msg.job || {})
+      : (reportStage('commenting'), postFirstCommentToPage(msg.job || {}));
+    run
+      .then((res) => signalDone(jobId, res))
+      .catch((e) => signalDone(jobId, { ok: false, reason: String((e && e.message) || e) }));
   });
 })();
 
