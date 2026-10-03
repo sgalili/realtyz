@@ -32,6 +32,8 @@ import { nextBlockedKeys } from '@/lib/mediaBlocklist';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
+import { GROUP_POST_TOPICS, groupPostTopic, groupPostTopicInstructions } from '@/lib/groupPostTopics';
 import {
   enqueueExtensionPosts,
   enqueuePageFirstComment,
@@ -854,6 +856,7 @@ const InlineComposer = ({
   // another one. Persisted to localStorage so dialog closes, route changes,
   // and hard refreshes never lose unfinished work.
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const usesGroupTopics = useIsRitaWorkspace();
   const wsScope = workspaceOwnerId ?? 'anon';
   const draftKey = `rz-composer-draft:v3:${wsScope}:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
@@ -986,7 +989,7 @@ const InlineComposer = ({
       ?? params.get('listing')
       ?? (params.get('properties') || '').split(',').map((s) => s.trim()).filter(Boolean)[0]
       ?? null;
-    if (listingParam) setSelectedListingId(listingParam);
+    if (listingParam && !usesGroupTopics) setSelectedListingId(listingParam);
 
     const variant = presetVariant ?? Number(params.get('variant') || '');
     const variants = presetVariants ?? Number(params.get('variants') || '');
@@ -1132,6 +1135,7 @@ const InlineComposer = ({
           original_text: originalAiBody,
           context: [
             `Platform: ${channel.label}`,
+            usesGroupTopics ? groupPostTopicInstructions(selectedGroupTopicId) : null,
             customInstructions ? `Broker instructions: ${customInstructions}` : null,
             selectedListing?.property_title ? `Promoted listing: ${selectedListing.property_title}` : null,
           ].filter(Boolean).join('\n\n'),
@@ -1173,7 +1177,8 @@ const InlineComposer = ({
   const [listingQuery, setListingQuery] = useState('');
   const [listings, setListings] = useState<CampaignListing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
-  const [selectedListingId, setSelectedListingId] = useState<string | null>(initial.selectedListingId ?? null);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(usesGroupTopics ? null : (initial.selectedListingId ?? null));
+  const [selectedGroupTopicId, setSelectedGroupTopicId] = useState(() => groupPostTopic(initial.selectedGroupTopicId).id);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
   const [bodyManuallyEdited, setBodyManuallyEdited] = useState(false);
   const [externalResults, setExternalResults] = useState<import('@/lib/propertySearch').UnifiedResult[]>([]);
@@ -1225,6 +1230,7 @@ const InlineComposer = ({
         body,
         customInstructions,
         selectedListingId,
+        selectedGroupTopicId,
         attachments,
         logId,
         firstComment,
@@ -1252,7 +1258,7 @@ const InlineComposer = ({
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, publishToPage, groupIds, mode, scheduledLocal, hydrated]);
+  }, [draftKey, body, customInstructions, selectedListingId, selectedGroupTopicId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, publishToPage, groupIds, mode, scheduledLocal, hydrated]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -1305,7 +1311,8 @@ const InlineComposer = ({
     const deepLinked = !!deepLinkListingId && (forceFreshDeepLink || !savedHasWork);
     setBody(deepLinked ? '' : cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
-    setSelectedListingId(deepLinked ? deepLinkListingId : (saved.selectedListingId ?? deepLinkListingId ?? null));
+    setSelectedListingId(usesGroupTopics ? null : (deepLinked ? deepLinkListingId : (saved.selectedListingId ?? deepLinkListingId ?? null)));
+    setSelectedGroupTopicId(groupPostTopic(saved.selectedGroupTopicId).id);
     setAttachments(deepLinked ? [] : (saved.attachments || []));
     setLogId(deepLinked ? null : (saved.logId ?? null));
     setFirstComment(deepLinked ? '' : (saved.firstComment || ''));
@@ -1350,7 +1357,8 @@ const InlineComposer = ({
       if (cloud) {
         if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
         if (cloud.customInstructions) setCustomInstructions(cloud.customInstructions);
-        if (cloud.selectedListingId) setSelectedListingId(cloud.selectedListingId);
+        if (cloud.selectedListingId && !usesGroupTopics) setSelectedListingId(cloud.selectedListingId);
+        setSelectedGroupTopicId(groupPostTopic(cloud.selectedGroupTopicId).id);
         if (Array.isArray(cloud.attachments) && cloud.attachments.length) setAttachments(cloud.attachments);
         if (cloud.logId) setLogId(cloud.logId);
         if (cloud.firstComment) setFirstComment(cloud.firstComment);
@@ -1751,20 +1759,24 @@ const InlineComposer = ({
     const ctrl = registerGeneration();
     setGenerating(true);
     try {
-      const topic = body.trim()
+      const topic = usesGroupTopics ? groupPostTopic(selectedGroupTopicId).label : body.trim()
         || customInstructions.trim()
         || (listingHeadline(selectedListing) ? `פוסט קידום: ${listingHeadline(selectedListing)}` : 'פוסט שיווקי');
       const rotateNote = opts?.rotateTemplate
         ? 'בחר תבנית שונה לחלוטין מהפעם הקודמת מתוך מאגר הידע (KB) של תבניות הפוסטים. גוון בין התבניות הקיימות במאגר הידע של החשבון. שמור על דיוק עובדתי מלא לפי נתוני הנכס, טון מקצועי בכיר וקריאה לפעולה חדה לוואטסאפ/טלפון. אל תחזור על אותו פתיח, אותה מבנה או אותו ניסוח CTA כמו בגרסה הקודמת.'
         : '';
-      const mergedInstructions = [customInstructions.trim(), rotateNote].filter(Boolean).join('\n\n');
+      const mergedInstructions = [
+        usesGroupTopics ? groupPostTopicInstructions(selectedGroupTopicId) : null,
+        customInstructions.trim(),
+        rotateNote,
+      ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
           topic,
           platform: channel.id,
           customInstructions: mergedInstructions || undefined,
-          selectedListingId: selectedListingId || undefined,
-          listingFocusOnly: !!selectedListingId,
+          selectedListingId: usesGroupTopics ? undefined : (selectedListingId || undefined),
+          listingFocusOnly: !usesGroupTopics && !!selectedListingId,
         },
         signal: ctrl.signal,
       });
@@ -1779,7 +1791,7 @@ const InlineComposer = ({
         // generation must never lose an already-generated draft.
         try {
           const prev = readDraft() || {};
-          const snapshot = { ...prev, body: text, customInstructions, selectedListingId, attachments, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink };
+          const snapshot = { ...prev, body: text, customInstructions, selectedListingId, selectedGroupTopicId, attachments, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink };
           localStorage.setItem(draftKey, JSON.stringify(snapshot));
           void saveComposerDraftCloud(channel.id, instanceId ?? 'single', snapshot, wsScope);
         } catch {}
@@ -2247,6 +2259,22 @@ const InlineComposer = ({
 
       <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/[0.03] p-3">
         <div className="pt-1">
+          {usesGroupTopics ? (
+            <>
+              <Label htmlFor={`group-post-topic-${channel.id}-${instanceId ?? 'single'}`} className="font-semibold text-foreground text-[15px]">נושאי פוסטים לקבוצות</Label>
+              <Select value={selectedGroupTopicId} onValueChange={(id) => setSelectedGroupTopicId(groupPostTopic(id).id)} dir="rtl">
+                <SelectTrigger id={`group-post-topic-${channel.id}-${instanceId ?? 'single'}`} className="mt-1 w-full min-w-0 h-auto min-h-10 text-right [&>span]:min-w-0 [&>span]:truncate">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-w-[calc(100vw-2rem)]" dir="rtl">
+                  {GROUP_POST_TOPICS.map((topic) => (
+                    <SelectItem key={topic.id} value={topic.id} className="whitespace-normal break-words">{topic.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          ) : (
+            <>
           <Label className="font-semibold text-foreground" style={{ fontSize: 'calc(0.75rem + 3px)' }}>קדם נכס ספציפי מהמאגר</Label>
           <Popover open={listingPickerOpen} onOpenChange={setListingPickerOpen}>
             <PopoverTrigger asChild>
@@ -2398,6 +2426,8 @@ const InlineComposer = ({
               </div>
             </PopoverContent>
           </Popover>
+            </>
+          )}
         </div>
       </div>
 
