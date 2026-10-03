@@ -6016,7 +6016,7 @@ const PublishedFeed = ({
           <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
         </div>
-      ) : (filteredRows || []).map((r) => {
+      ) : (filteredRows || []).map(function renderFeedCard(r: any): any {
 
 
         const isOpen = expanded[r.id] ?? false;
@@ -6294,24 +6294,7 @@ const PublishedFeed = ({
                 {isSeries && seriesSlots && (
                   <div className="mx-4 mb-3" dir="rtl">
                     <div className="mb-2 text-xs font-semibold text-muted-foreground">{seriesSlots.length} פוסטים בקמפיין</div>
-                    <ul className="max-h-80 overflow-y-auto divide-y divide-border">
-                      {seriesSlots.map((slot) => {
-                        const url = derivePostUrl(slot);
-                        const warning = !!slot.provider_response?.first_comment_error || isCommentOnlyFailure(slot.failure_reason);
-                        const label = isScheduledRow(slot) ? 'בתור' : slot.status === 'failed' && !warning ? 'נכשל' : 'פורסם';
-                        return (
-                          <li key={slot.id} className="flex min-w-0 items-center gap-2 py-2 text-xs">
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate font-medium">{slot.message_body?.trim().split('\n')[0] || slot.campaign_name}</p>
-                              <span className="text-muted-foreground">{new Date(slot.sent_at || slot.created_at).toLocaleString('he-IL')} · {label}</span>
-                            </div>
-                            {warning && <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3 text-muted-foreground" aria-label={FIRST_COMMENT_WARNING} /></span>}
-                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="פתח פוסט" title="פתח פוסט" disabled={!url}
-                              onClick={() => { if (url) window.open(url, '_blank', 'noopener,noreferrer'); }}><ExternalLink className="h-3.5 w-3.5" /></Button>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <div className="space-y-3">{seriesSlots.map((slot) => renderFeedCard(slot))}</div>
                   </div>
                 )}
                 {uniqueMedia.length > 0 && (() => {
