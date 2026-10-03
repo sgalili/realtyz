@@ -3671,6 +3671,7 @@ const ConfirmDispatchDialog = ({
         if (rows.length > 0) {
           const { error: insErr } = await supabase.from('campaign_logs').insert(rows);
           if (insErr) throw insErr;
+          window.dispatchEvent(new Event('realtyz:campaign-changed'));
         }
 
         // Fan-out live sends for direct channels.
