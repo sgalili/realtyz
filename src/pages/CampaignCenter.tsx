@@ -5646,7 +5646,7 @@ const PublishedFeed = ({
       const { data: sess } = await supabase.auth.getSession();
       const accessToken = sess?.session?.access_token;
       const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/meta-publish`;
-      await Promise.all(externalIds.map(async (pid) => {
+      const fbResults = await Promise.allSettled(externalIds.map(async (pid) => {
         const resp = await fetch(fnUrl, {
           method: 'DELETE',
           headers: {
@@ -5663,6 +5663,8 @@ const PublishedFeed = ({
           throw new Error(`מחיקה מפייסבוק נכשלה: ${body?.error ?? resp.status}`);
         }
       }));
+      const fbFailed = fbResults.filter((x) => x.status === 'rejected').length;
+      if (fbFailed && !silent) toast.warning(`${fbFailed} פוסטים לא נמחקו מפייסבוק, נמחקו מהמערכת`);
     }
 
     const { data: result, error } = await supabase.rpc('delete_campaign_post', {
