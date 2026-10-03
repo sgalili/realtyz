@@ -2812,11 +2812,11 @@ const InlineComposer = ({
 
       {/* Facebook groups picker — opened from the group icon button */}
       <Dialog open={groupPickerOpen} onOpenChange={setGroupPickerOpen}>
-        <DialogContent dir="rtl" className="w-[96vw] max-w-[720px] overflow-hidden">
+        <DialogContent dir="rtl" className="w-[calc(100%-2rem)] min-w-0 max-w-lg overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-right">קבוצות לפרסום</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="min-w-0 max-w-full space-y-3">
             <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
             <label className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 cursor-pointer">
               <Checkbox checked={groupTextVariation} onCheckedChange={(v) => setGroupTextVariation(v === true)} />
