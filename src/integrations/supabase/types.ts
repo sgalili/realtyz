@@ -1274,11 +1274,14 @@ export type Database = {
           claim_expires_at: string | null
           claimed_by: string | null
           cloud_attempts: number
+          comments_count: number
           completed_at: string | null
           created_at: string
           created_by: string | null
           id: string
           last_error: string | null
+          last_synced_at: string | null
+          likes_count: number
           owner_notified_at: string | null
           payload: Json
           processed_at: string | null
@@ -1286,6 +1289,7 @@ export type Database = {
           runner: string
           runner_note: string | null
           scheduled_for: string
+          shares_count: number
           status: string
           target_label: string | null
           target_ref: string | null
@@ -1300,11 +1304,14 @@ export type Database = {
           claim_expires_at?: string | null
           claimed_by?: string | null
           cloud_attempts?: number
+          comments_count?: number
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           last_error?: string | null
+          last_synced_at?: string | null
+          likes_count?: number
           owner_notified_at?: string | null
           payload?: Json
           processed_at?: string | null
@@ -1312,6 +1319,7 @@ export type Database = {
           runner?: string
           runner_note?: string | null
           scheduled_for?: string
+          shares_count?: number
           status?: string
           target_label?: string | null
           target_ref?: string | null
@@ -1326,11 +1334,14 @@ export type Database = {
           claim_expires_at?: string | null
           claimed_by?: string | null
           cloud_attempts?: number
+          comments_count?: number
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           last_error?: string | null
+          last_synced_at?: string | null
+          likes_count?: number
           owner_notified_at?: string | null
           payload?: Json
           processed_at?: string | null
@@ -1338,6 +1349,7 @@ export type Database = {
           runner?: string
           runner_note?: string | null
           scheduled_for?: string
+          shares_count?: number
           status?: string
           target_label?: string | null
           target_ref?: string | null
@@ -6884,11 +6896,14 @@ export type Database = {
           claim_expires_at: string | null
           claimed_by: string | null
           cloud_attempts: number
+          comments_count: number
           completed_at: string | null
           created_at: string
           created_by: string | null
           id: string
           last_error: string | null
+          last_synced_at: string | null
+          likes_count: number
           owner_notified_at: string | null
           payload: Json
           processed_at: string | null
@@ -6896,6 +6911,7 @@ export type Database = {
           runner: string
           runner_note: string | null
           scheduled_for: string
+          shares_count: number
           status: string
           target_label: string | null
           target_ref: string | null
@@ -6976,12 +6992,26 @@ export type Database = {
       }
       ext_create_pairing: { Args: { _label?: string }; Returns: Json }
       ext_is_active: { Args: { _ws: string }; Returns: boolean }
+      ext_metrics_targets: {
+        Args: { _limit?: number; _token: string }
+        Returns: Json
+      }
       ext_report_job: {
         Args: {
           _job_id: string
           _ok: boolean
           _post_url?: string
           _reason?: string
+          _token: string
+        }
+        Returns: Json
+      }
+      ext_report_metrics: {
+        Args: {
+          _comments: number
+          _job_id: string
+          _likes: number
+          _shares: number
           _token: string
         }
         Returns: Json
@@ -7568,11 +7598,14 @@ export type Database = {
           claim_expires_at: string | null
           claimed_by: string | null
           cloud_attempts: number
+          comments_count: number
           completed_at: string | null
           created_at: string
           created_by: string | null
           id: string
           last_error: string | null
+          last_synced_at: string | null
+          likes_count: number
           owner_notified_at: string | null
           payload: Json
           processed_at: string | null
@@ -7580,6 +7613,7 @@ export type Database = {
           runner: string
           runner_note: string | null
           scheduled_for: string
+          shares_count: number
           status: string
           target_label: string | null
           target_ref: string | null
