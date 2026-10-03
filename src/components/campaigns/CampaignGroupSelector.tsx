@@ -267,7 +267,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
               onChange={(e) => setManualName(e.target.value)}
               placeholder="שם קבוצה"
               maxLength={120}
-              className="rounded-md border border-border bg-background px-2 py-1.5 text-[15px] text-foreground"
+              className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1.5 text-[15px] text-foreground"
             />
             <input
               value={manualUrl}
@@ -275,7 +275,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
               placeholder="https://www.facebook.com/groups/..."
               dir="ltr"
               maxLength={500}
-              className="rounded-md border border-border bg-background px-2 py-1.5 text-[15px] text-foreground"
+              className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1.5 text-[15px] text-foreground"
             />
             <button
               type="button"
