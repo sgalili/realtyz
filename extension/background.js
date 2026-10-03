@@ -166,18 +166,22 @@ const alreadyDone = async (entry) => {
   if (!key) return true; // no identity → refuse
   const r = await local([DONE_KEY]);
   const ledger = (r[DONE_KEY] && typeof r[DONE_KEY] === 'object') ? r[DONE_KEY] : {};
-  return Boolean(ledger[key]);
+  const v = ledger[key];
+  if (!v) return false;
+  // Legacy numeric entries carry no outcome — treat as unverified.
+  if (typeof v === 'object' && v.outcome === 'posted') return 'posted';
+  return 'ambiguous';
 };
 
-const markDone = async (entry) => {
+const markDone = async (entry, outcome = 'posted') => {
   const key = jobKey(entry);
   if (!key) return;
   const r = await local([DONE_KEY]);
   const ledger = (r[DONE_KEY] && typeof r[DONE_KEY] === 'object') ? r[DONE_KEY] : {};
-  ledger[key] = Date.now();
+  ledger[key] = { at: Date.now(), outcome };
   // keep the ledger small: drop entries older than 30 days
   const cutoff = Date.now() - 30 * 86400000;
-  for (const k of Object.keys(ledger)) if (Number(ledger[k]) < cutoff) delete ledger[k];
+  for (const k of Object.keys(ledger)) { const v = ledger[k]; const at = typeof v === 'object' && v ? Number(v.at) : Number(v); if (!(at >= cutoff)) delete ledger[k]; }
   await localSet({ [DONE_KEY]: ledger });
 };
 
@@ -228,7 +232,9 @@ async function runJobInner(token, job) {
   if (BLOCKED_URL.test(url)) return report(token, job, false, 'הפעולה בוטלה: היעד אינו קבוצת פייסבוק');
   if (!(await automationEnabled())) return report(token, job, false, 'האוטומציה בדפדפן מושבתת');
   if (!String(job.message || '').trim()) return report(token, job, false, 'תוכן הפוסט ריק');
-  if (await alreadyDone(job)) return report(token, job, true, null, null);
+  const prior = await alreadyDone(job);
+  if (prior === 'posted') return report(token, job, true, null, null);
+  if (prior) return report(token, job, false, 'ניסיון קודם לא אומת — בדוק בקבוצה לפני פרסום חוזר');
   // Rate cap reached: never mark the job failed. Leave it queued (local) or let
   // the server lease expire (cloud) so it runs automatically in the next window.
   if (!(await rateAllows())) { lastJobReason = null; return DEFERRED; }
@@ -246,6 +252,13 @@ async function runJobInner(token, job) {
       return;
     }
     await sleep(2500); // let Facebook hydrate the feed
+    try {
+      const t = await chrome.tabs.get(tabId);
+      if (t && t.url && !/facebook\.com\/groups\//i.test(t.url)) {
+        await report(token, job, false, 'פייסבוק הפנה מחוץ לקבוצה (התחברות/אימות נדרשים)');
+        return false;
+      }
+    } catch (e) { /* noop */ }
     await setJobStage(job.id, 'writing');
     writingStarted = true;
 
@@ -267,21 +280,23 @@ async function runJobInner(token, job) {
     );
 
     const requiredCommentFailed = Boolean(job.first_comment) && result.first_comment_ok !== true;
-    const verified = result.ok === true && result.verified_in_feed === true && !requiredCommentFailed;
+    const posted = result.ok === true && result.submitted === true && result.verified_in_feed === true;
+    const verified = posted && !requiredCommentFailed;
     // Once Facebook accepted the post, never auto-repost it (even if feed
     // verification or the first comment failed) — that is what caused duplicates.
-    if (result.ok === true) await markDone(job);
+    if (posted) await markDone(job, 'posted');
+    else if (result.submitted === true) await markDone(job, 'ambiguous');
     const reason = requiredCommentFailed
       ? (result.first_comment_error || 'הפוסט פורסם אך התגובה הראשונה לא נוספה')
-      : result.ok === true && result.verified_in_feed !== true
-        ? 'פייסבוק סגר את העורך, אך הפוסט לא אומת בפיד'
-        : (result.reason || null);
+      : !posted
+        ? (result.reason || 'הפוסט לא אומת בקבוצה')
+        : null;
     await report(token, job, verified, reason, result.post_url || null);
     return verified;
   } catch (e) {
     // A timeout after the composer was filled is ambiguous: the post may be
     // live. Lock it in the ledger so a retry can never publish it twice.
-    if (writingStarted) await markDone(job);
+    if (writingStarted) await markDone(job, 'ambiguous');
     await report(token, job, false, writingStarted
       ? 'לא התקבל אישור מפייסבוק — בדוק בקבוצה לפני פרסום חוזר'
       : String((e && e.message) || e));

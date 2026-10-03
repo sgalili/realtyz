@@ -242,6 +242,13 @@
       return { ok: false, reason: 'הפעולה בוטלה: העמוד הפתוח אינו קבוצת פייסבוק' };
     }
 
+    // 0. wait for the group feed to be fully rendered before touching anything
+    const feedReady = await waitFor(() => (
+      document.querySelector('div[role="feed"]') || composerTrigger() || textbox()
+    ) ? true : null, 30000, 500);
+    if (!feedReady) return { ok: false, reason: 'פיד הקבוצה לא נטען — לא נמצאה תיבת הפרסום' };
+    await sleep(1200);
+
     // 1. open the composer
     let box = textbox();
     if (!box) {
@@ -256,6 +263,13 @@
     reportStage('writing');
     const injected = await injectText(box, String(job.message || ''));
     if (!injected) return { ok: false, reason: 'הזנת תוכן הפוסט נכשלה' };
+    // Verify the text landed in the group post modal (never a comment box).
+    const firstLine = String(job.message || '').split('\n').map((l) => l.trim()).find(Boolean) || '';
+    const probe = firstLine.replace(/\s+/g, ' ').slice(0, 25);
+    const liveBox = textbox();
+    if (!liveBox || isCommentBox(liveBox) || (probe && !textOf(liveBox).replace(/\s+/g, ' ').includes(probe))) {
+      return { ok: false, reason: 'הטקסט לא הוזן לחלון הפוסט של הקבוצה' };
+    }
 
     // 3. media
     const photoList = Array.isArray(job.image_urls) && job.image_urls.length ? job.image_urls : (job.image_url ? [job.image_url] : []);
@@ -273,6 +287,7 @@
     }, 20000);
     if (!btn) return { ok: false, reason: 'כפתור הפרסום לא היה זמין' };
     btn.click();
+    const submitted = true;
 
     // 5. verify: the composer dialog closes and the text shows up in the feed
     const snippet = String(job.message || '').replace(/\s+/g, ' ').trim().slice(0, 40);
@@ -288,6 +303,12 @@
       const body = document.body ? document.body.innerText.replace(/\s+/g, ' ') : '';
       return snippet && body.includes(snippet) ? true : null;
     }, 25000, 1000);
+
+    const pendingApproval = !seen && /ממתין לאישור|ממתינים לאישור|pending approval|submitted for approval|awaiting approval/i
+      .test(document.body ? document.body.innerText : '');
+    if (!seen && !pendingApproval) {
+      return { ok: false, submitted, reason: 'נלחץ "פרסם" אך הפוסט לא הופיע בקבוצה — לא אומת' };
+    }
 
     let postUrl = null;
     let article = null;
@@ -309,11 +330,14 @@
       commentError = await addFirstComment(article, snippet, firstComment);
     }
 
-    // Dialog closed with no visible error → Facebook accepted the post.
+    // Only reached after: modal text verified, "פרסם" clicked, dialog closed,
+    // and the post is visible in the feed (or awaiting admin approval).
     return {
       ok: true,
+      submitted,
+      pending_approval: pendingApproval,
       post_url: postUrl,
-      verified_in_feed: !!seen,
+      verified_in_feed: true,
       first_comment_ok: firstComment ? !commentError : null,
       first_comment_error: commentError || null,
     };
