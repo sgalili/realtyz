@@ -1096,6 +1096,7 @@ Deno.serve(async (req) => {
     // Posts scraped by the companion browser extension (DOM fallback) arrive
     // here so a Graph permission block never leaves the user empty-handed.
     const extensionPosts: any[] = Array.isArray(body?.posts) ? body.posts : [];
+    const extensionOnly = true;
     let permissionBlocked = false;
     let graphSource: string | null = null;
     if (extensionPosts.length > 0) {
@@ -1117,7 +1118,10 @@ Deno.serve(async (req) => {
       );
       diagnostics.push({ source: "extension", count: extensionPosts.length });
     }
-    {
+    // Page post reads via Graph (`/{page_id}/posts`) need pages_read_engagement,
+    // which requires Meta App Review. Page sync is extension-only: the
+    // Realtyz browser extension scrapes the Page DOM and posts the results here.
+    if (!extensionOnly) {
       const graphResult = await fetchGraphHistory();
       permissionBlocked = graphResult.blocked;
       diagnostics.push({ source: "graph", profile: graphResult.source, status: graphResult.status, count: graphResult.posts.length, error: graphResult.error });
@@ -1258,7 +1262,7 @@ Deno.serve(async (req) => {
     // Facebook — drop it from our feed too. Guarded so an empty/partial
     // provider payload can never wipe the history.
     let prunedMissing = 0;
-    if (persist && pruneMissing && posts.length >= 5) {
+    if (persist && pruneMissing && !extensionOnly && posts.length >= 5) {
       const liveIds = new Set(posts.map((p) => String(p.fb_post_id)).filter(Boolean));
       const oldestLive = posts
         .map((p) => new Date(p.created_at ?? Date.now()).getTime())
@@ -1291,7 +1295,7 @@ Deno.serve(async (req) => {
     }
 
     let commentSyncQueued = false;
-    if (persist && syncComments && posts.length > 0) {
+    if (persist && syncComments && !extensionOnly && posts.length > 0) {
       const postIds = posts.map((p) => p.fb_post_id).filter(Boolean);
       const syncTask = (async () => {
         for (let i = 0; i < postIds.length; i += 2) {
@@ -1330,7 +1334,7 @@ Deno.serve(async (req) => {
     let enrichedCounters = 0;
     let enrichedDates = 0;
     try {
-      const cred = workingCred ?? await resolveGraphCredential();
+      const cred = extensionOnly ? { token: null } as any : (workingCred ?? await resolveGraphCredential());
       if (cred.token && !skipAnalytics) {
         const { data: allFbPosts } = await admin
           .from("campaign_logs")
@@ -1523,7 +1527,8 @@ Deno.serve(async (req) => {
         // A stored Page binding stays a live connection even when a single read
         // is refused, so the client must never flip to "disconnected" here.
         page_connected: !!page?.pageId,
-        needs_extension: permissionBlocked && posts.length === 0,
+        needs_extension: extensionPosts.length === 0,
+        source: "extension",
         // Exact Graph failure (code/subcode/type/message/trace) so the UI can
         // tell the user precisely why the sync did not complete.
         sync_error: syncErrorDetail,

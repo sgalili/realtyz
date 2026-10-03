@@ -98,7 +98,14 @@
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     if (d.type === 'RZ_FB_GROUPS_REQUEST') deliver();
-    if (d.type === 'RZ_FB_POSTS_REQUEST') deliverPosts();
+    if (d.type === 'RZ_FB_POSTS_REQUEST') {
+      if (d.scrape) {
+        rzSafeSend({ type: 'RZ_FB_PAGE_SCRAPE', pageId: d.pageId || null, max: d.max || 60 }, (res) => {
+          if (res && Array.isArray(res.posts) && res.posts.length) emit('RZ_FB_POSTS', 'posts', res.posts, 'rz:ext-fb-posts');
+          else deliverPosts();
+        });
+      } else deliverPosts();
+    }
     if (d.type === 'RZ_FB_COMMENTS_REQUEST') deliverComments(d.postIds);
   });
 
