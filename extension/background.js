@@ -301,7 +301,6 @@ async function runJobInner(token, job) {
           link: job.link || null,
         },
       },
-      JOB_TIMEOUT_MS,
     );
 
     const requiredCommentFailed = Boolean(job.first_comment) && result.first_comment_ok !== true;
@@ -392,7 +391,6 @@ async function runPageFirstComment(token, entry) {
           message,
         },
       },
-      JOB_TIMEOUT_MS,
     );
 
     await report(token, { id: entry.id, local: true }, result.ok === true, result.reason || null, result.post_url || postUrl);
