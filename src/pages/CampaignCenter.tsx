@@ -5737,6 +5737,8 @@ const PublishedFeed = ({
     });
     setOptimisticRows((prev) => prev.filter((x) => !ids.includes(x.id)));
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
+    // Force a fresh DB fetch so the deleted card can never linger on screen.
+    void load({ forceFb: false }).catch(() => undefined);
     if (!silent) toast.success(
       externalIds.length > 0
         ? `הפוסט נמחק מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
