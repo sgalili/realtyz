@@ -11,6 +11,7 @@ export const MANDATORY_FIRST_COMMENT = `${CANONICAL_CONTACT_PREFIX}: ${MANDATORY
 /** Repairs broken emoji sequences (lone surrogates, U+FFFD, orphan VS16/ZWJ, "🛠 ️" splits). */
 export function repairEmojis(input: string | null | undefined): string {
   return String(input ?? '')
+    .replace(/^([ \t]*)(?:[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]|\uFFFD|\?(?=\s))+[ \t]*/gm, '$1💬 ')
     .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
     .replace(/\uFFFD/g, '')
     .replace(/(\p{Extended_Pictographic})[ \t]+\uFE0F/gu, '$1\uFE0F')
