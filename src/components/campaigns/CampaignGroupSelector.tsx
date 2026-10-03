@@ -59,11 +59,12 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   /** Graph-imported groups plus manually added ones, de-duplicated by id. */
   const fetchStoredGroups = async (): Promise<FacebookGroup[]> => {
     const byId = new Map<string, FacebookGroup>();
+    const blocked = new Set<string>();
 
     try {
       const { data } = await (supabase as any)
         .from("fb_user_groups")
-        .select("group_id, group_name, group_icon, group_url, member_count, is_selected, page_id")
+        .select("group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked")
         // Workspace-scoped: every member of this workspace sees the same groups.
         .eq("workspace_owner_id", workspaceOwnerId)
         // Only groups the broker approved in the connections screen are targets.
@@ -74,6 +75,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       const connectedPage = pageBinding?.pageId ?? null;
       for (const r of (data ?? []) as any[]) {
         if (!r?.group_id) continue;
+        // Blocked/restricted groups are never offered as campaign targets.
+        if (r.is_blocked) { blocked.add(String(r.group_id).replace(/^(ext:|manual:)/, '')); continue; }
         if (r.page_id && connectedPage && String(r.page_id) !== connectedPage) continue;
         byId.set(String(r.group_id), mapRow(r));
       }
@@ -88,7 +91,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         .order("created_at", { ascending: false });
       for (const r of (data ?? []) as any[]) {
         const id = groupIdFromUrl(String(r?.group_url ?? ""));
-        if (!id || byId.has(id)) continue;
+        if (!id || byId.has(id) || blocked.has(id)) continue;
         byId.set(id, {
           group_id: id,
           group_name: String(r?.group_name || "קבוצה"),

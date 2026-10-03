@@ -205,6 +205,49 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         </div>
       ) : (
         <div className="space-y-1.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <div role="tablist" className="flex min-w-0 flex-1 rounded-lg bg-muted p-0.5">
+              <button type="button" role="tab" aria-selected={tab === 'active'} onClick={() => { setTab('active'); setDeleteMode(false); }}
+                className={cn('flex-1 rounded-md px-2 py-1 font-semibold', TEXT_SM, tab === 'active' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
+                פעילות
+              </button>
+              <button type="button" role="tab" aria-selected={tab === 'blocked'} onClick={() => { setTab('blocked'); setDeleteMode(false); }}
+                className={cn('flex-1 rounded-md px-2 py-1 font-semibold', TEXT_SM, tab === 'blocked' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
+                חסומות{blockedGroups.length > 0 ? ` (${blockedGroups.length})` : ''}
+              </button>
+            </div>
+            <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 gap-1" onClick={() => setDiscoverOpen(true)}>
+              <Search className="h-3.5 w-3.5" /> הוספת קבוצות
+            </Button>
+          </div>
+          <GroupDiscoveryDialog
+            open={discoverOpen}
+            onOpenChange={setDiscoverOpen}
+            blockedIds={new Set(blockedGroups.map((g) => bareId(g.groupId)))}
+            knownIds={new Set(groups.map((g) => bareId(g.groupId)))}
+            onJoined={() => void load()}
+          />
+          {tab === 'blocked' ? (
+            blockedGroups.length === 0 ? (
+              <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות חסומות. קבוצות שהפרסום בהן נכשל או הוגבל יופיעו כאן ולא ייבחרו בקמפיינים.</p>
+            ) : (
+              <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
+                {blockedGroups.map((g) => (
+                  <div key={g.id} className="flex flex-nowrap items-center gap-[11px] rounded-lg border border-border/70 px-2 py-1.5">
+                    <Ban className="h-4 w-4 shrink-0 text-destructive" />
+                    <div className={cn('min-w-0 flex-1 text-right', TEXT_MD)}>
+                      <span title={g.name} className="block truncate">{shortenName(g.name)}</span>
+                      {g.blockedReason && <span title={g.blockedReason} className={cn('block truncate text-muted-foreground', TEXT_SM)}>{g.blockedReason}</span>}
+                    </div>
+                    <button type="button" onClick={() => void unblock(g)} title="החזר לרשימה הפעילה"
+                      className={cn('inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 font-semibold text-primary hover:bg-muted', TEXT_SM)}>
+                      <Undo2 className="h-3.5 w-3.5" /> שחרור
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (<>
           <div className="flex items-center justify-between gap-2">
             <div className={cn('flex items-center gap-1.5 font-semibold text-muted-foreground', TEXT_SM)}>
               <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
@@ -288,6 +331,13 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                       </span>
                     )}
                   </button>
+                  {!deleteMode && (
+                    <button type="button" aria-label={`חסימת הקבוצה ${g.name}`} title="העבר לקבוצות חסומות"
+                      onClick={() => void blockGroup(g)}
+                      className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive">
+                      <Ban className="h-4 w-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`}
@@ -303,6 +353,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
               ))}
             </div>
           )}
+          </>)}
         </div>
       )}
     </div>
