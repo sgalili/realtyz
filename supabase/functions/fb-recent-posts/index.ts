@@ -1149,7 +1149,14 @@ Deno.serve(async (req) => {
         byNativeId.set(p.fb_post_id, p);
       }
     }
-    const posts = Array.from(byNativeId.values()).slice(0, lastRecords);
+    const { data: deletedMarkers, error: deletedMarkerError } = await admin
+      .from('deleted_social_posts')
+      .select('external_post_id')
+      .eq('workspace_owner_id', ownerId)
+      .eq('channel', 'facebook');
+    if (deletedMarkerError) throw new Error(deletedMarkerError.message);
+    const deletedNativeIds = new Set((deletedMarkers ?? []).map((row: any) => String(row.external_post_id)));
+    const posts = Array.from(byNativeId.values()).filter((post) => !deletedNativeIds.has(String(post.fb_post_id))).slice(0, lastRecords);
 
     let upserted = 0;
     let persistError: string | null = null;

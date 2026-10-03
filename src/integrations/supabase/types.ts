@@ -2160,6 +2160,27 @@ export type Database = {
           },
         ]
       }
+      deleted_social_posts: {
+        Row: {
+          channel: string
+          created_at: string
+          external_post_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          external_post_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          external_post_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       demo_captured_leads: {
         Row: {
           archetype: string | null
@@ -6844,6 +6865,14 @@ export type Database = {
       current_workspace_owner: { Args: never; Returns: string }
       dedupe_media_jsonb: {
         Args: { _arr: Json; _blocked?: Json }
+        Returns: Json
+      }
+      delete_campaign_post: {
+        Args: {
+          p_entire_series?: boolean
+          p_post_id: string
+          p_workspace_owner_id: string
+        }
         Returns: Json
       }
       delete_email: {
