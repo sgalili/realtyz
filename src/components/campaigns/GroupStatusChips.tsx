@@ -1,6 +1,6 @@
 // Unframed group names with static per-target status; overflow stays portaled.
 import { useState, type ReactNode } from 'react';
-import { CheckCircle2, ChevronDown, Clock, XCircle } from 'lucide-react';
+import { Ban, CheckCircle2, ChevronDown, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
@@ -20,7 +20,7 @@ export type GroupResult = {
   post_url?: string;
 };
 
-export type GroupChipState = 'published' | 'pending' | 'failed';
+export type GroupChipState = 'published' | 'pending' | 'failed' | 'restricted';
 
 /** Normalises the group_results array stored on campaign_logs.provider_response. */
 export function groupResultMap(raw: unknown): Record<string, GroupResult> {
@@ -39,15 +39,18 @@ const STATE_STYLE: Record<GroupChipState, string> = {
   published: 'text-primary',
   pending: 'text-muted-foreground',
   failed: 'text-destructive',
+  restricted: 'text-destructive',
 };
 
 const STATE_LABEL: Record<GroupChipState, string> = {
   published: 'פורסם',
   pending: 'ממתין לאישור',
   failed: 'נדחה',
+  restricted: 'מוגבל לפרסום',
 };
 
 const StateIcon = ({ state }: { state: GroupChipState }) => {
+  if (state === 'restricted') return <Ban className="h-3.5 w-3.5" />;
   if (state === 'published') return <CheckCircle2 className="h-3.5 w-3.5" />;
   if (state === 'failed') return <XCircle className="h-3.5 w-3.5" />;
   return <Clock className="h-3.5 w-3.5" />;
@@ -64,6 +67,7 @@ export function GroupStatusChips({
   defaultOpen = false,
   inline = false,
   collapsedCounter = false,
+  showStatus = !collapsedCounter,
   expanded,
   onExpandedChange,
   detailsId,
@@ -84,6 +88,8 @@ export function GroupStatusChips({
   inline?: boolean;
   /** Campaign header: one name, otherwise a count opening portaled details. */
   collapsedCounter?: boolean;
+  /** Individual subposts retain their own status even in compact header mode. */
+  showStatus?: boolean;
   expanded?: boolean;
   onExpandedChange?: (open: boolean) => void;
   detailsId?: string;
@@ -115,6 +121,8 @@ export function GroupStatusChips({
     const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
     if (!result) return defaultState;
     if (isCommentOnlyFailure(result.reason)) return 'published';
+    if (['restricted', 'blocked'].includes(String(result.state || result.status || '').toLowerCase()) ||
+      /restricted|restriction|blocked|suspended|מוגבל|חסום|הגבל/i.test(result.reason || '')) return 'restricted';
     if (result.state) return result.state;
     const status = String(result.status || '').toLowerCase();
     if (['sent', 'published', 'completed', 'success', 'posted', 'delivered'].includes(status)) return 'published';
@@ -159,9 +167,30 @@ export function GroupStatusChips({
       </div>
     );
   }
+  if (collapsedCounter && ids.length === 1) {
+    const gid = ids[0];
+    const name = nameOf(gid);
+    const state = stateOf(gid);
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" size="sm" aria-label={`הצגת שם הקבוצה המלא: ${name}`}
+            title={name} onClick={(e) => e.stopPropagation()}
+            className="h-7 w-full min-w-0 max-w-full flex-nowrap justify-start gap-1 overflow-hidden rounded-full border-border bg-background px-2 text-[11px]">
+            {showStatus && <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span>}
+            <span className="min-w-0 flex-1 truncate text-right">{shortenName(name)}</span>
+            <ChevronDown className="h-3 w-3 shrink-0" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" dir="rtl" className="w-[min(20rem,calc(100vw-2rem))] break-words p-3 text-sm" onClick={(e) => e.stopPropagation()}>
+          {name}
+        </PopoverContent>
+      </Popover>
+    );
+  }
   return (
     <div className={`${inline ? '' : 'mt-1.5 '}flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-0.5`} dir="rtl">
-      {ids.slice(0, max).map((gid) => renderGroup(gid, !collapsedCounter))}
+      {ids.slice(0, max).map((gid) => renderGroup(gid, showStatus))}
       {hasDetails && <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" type="button" aria-label="פרטי קבוצות ופוסטים" aria-expanded={open}

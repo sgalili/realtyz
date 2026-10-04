@@ -2,7 +2,7 @@
 
 - Group selection uses one accessible checkbox action per row, immutable deduplicated snapshots and guarded no-op updates; external links are siblings to prevent duplicate activation and render cascades.
 
-- Campaign feed group counters control inline series cards below the main article; single names truncate with icon first and repost stays at the engagement-row edge to avoid overlay clipping and mobile overflow.
+- Campaign feed metadata uses one nonwrapping RTL row ordered platform, date, group target, repost and engagement; shrinkable names open full-name popovers, and inline bordered series retain per-target statuses inside their parent to avoid clipping and mobile overflow.
 - Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
 - Posting continuation uses the full campaign composer and an atomic workspace-authorized edited-repost operation; active original jobs block replacement and completed jobs require explicit resubmission.
 
