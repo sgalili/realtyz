@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2, Users } from 'lucide-react';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { SelectModeToggle, SelectAllRow, SelectBox } from '@/components/ui/multi-select-controls';
 import { cn } from '@/lib/utils';
 import { shortenName } from '@/lib/shortenName';
@@ -250,9 +249,6 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
             )
           ) : (<>
           <div className="flex items-center justify-between gap-2">
-            <div className={cn('flex items-center gap-1.5 font-semibold text-muted-foreground', TEXT_SM)}>
-              <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
-            </div>
             {groups.length > 0 && (
               <SelectModeToggle
                 active={deleteMode}
@@ -260,6 +256,9 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
               />
             )}
+            <div className={cn('flex items-center gap-1.5 font-semibold text-muted-foreground', TEXT_SM)}>
+              <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
+            </div>
           </div>
 
           {deleteMode && (
@@ -289,22 +288,20 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
               {groups.map((g) => (
                 <div
                   key={g.id}
-                  // Single row: checkbox + picture + name + open-in-new-tab.
-                  // `!flex` beats the parent's `[&_label]:block` RTL overrides.
-                  className="flex flex-nowrap items-center gap-[11px] rounded-lg border border-border/70 px-2 py-1.5"
+                  // Single row: (multi-select checkbox) + picture + name + open-in-new-tab.
+                  // The publish checkbox is intentionally absent — tap the row to toggle,
+                  // and selection boxes appear only in multi-select mode.
+                  className={cn(
+                    'flex flex-nowrap items-center gap-[11px] rounded-lg border px-2 py-1.5 transition-colors',
+                    g.selected ? 'border-primary/40 bg-primary/5' : 'border-border/70',
+                  )}
+                  onClick={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
                 >
-                  {deleteMode ? (
+                  {deleteMode && (
                     <SelectBox
                       checked={markedIds.has(g.id)}
                       onChange={() => toggleMark(g.id)}
                       label={g.name}
-                    />
-                  ) : (
-                    <Checkbox
-                      className="shrink-0"
-                      checked={g.selected}
-                      onCheckedChange={() => void toggleGroup(g)}
-                      aria-label={g.name}
                     />
                   )}
                   {g.icon && (
@@ -317,21 +314,17 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
                   )}
-                  <button
-                    type="button"
-                    onClick={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
-                    className={cn('min-w-0 flex-1 text-right', TEXT_MD)}
-                  >
+                  <div className={cn('min-w-0 flex-1 text-right', TEXT_MD)}>
                     <span className="block truncate">{shortenName(g.name)}</span>
                     {typeof g.members === 'number' && g.members > 0 && (
                       <span className={cn('block text-muted-foreground tabular-nums', TEXT_SM)}>
                         {g.members.toLocaleString('he-IL')} חברים
                       </span>
                     )}
-                  </button>
+                  </div>
                   {!deleteMode && (
                     <button type="button" aria-label={`חסימת הקבוצה ${g.name}`} title="העבר לקבוצות חסומות"
-                      onClick={() => void blockGroup(g)}
+                      onClick={(e) => { e.stopPropagation(); void blockGroup(g); }}
                       className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive">
                       <Ban className="h-4 w-4" />
                     </button>
@@ -340,9 +333,10 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                     type="button"
                     aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`}
                     title="צפה בקבוצה בלשונית חדשה"
-                    onClick={() =>
-                      openExternal(fbGroupUrlFrom(g.url, g.groupId))
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openExternal(fbGroupUrlFrom(g.url, g.groupId));
+                    }}
                     className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
                   >
                     <ExternalLink className="h-4 w-4" />
