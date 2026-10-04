@@ -315,21 +315,17 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
                   )}
-                  <button
-                    type="button"
-                    onClick={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
-                    className={cn('min-w-0 flex-1 text-right', TEXT_MD)}
-                  >
+                  <div className={cn('min-w-0 flex-1 text-right', TEXT_MD)}>
                     <span className="block truncate">{shortenName(g.name)}</span>
                     {typeof g.members === 'number' && g.members > 0 && (
                       <span className={cn('block text-muted-foreground tabular-nums', TEXT_SM)}>
                         {g.members.toLocaleString('he-IL')} חברים
                       </span>
                     )}
-                  </button>
+                  </div>
                   {!deleteMode && (
                     <button type="button" aria-label={`חסימת הקבוצה ${g.name}`} title="העבר לקבוצות חסומות"
-                      onClick={() => void blockGroup(g)}
+                      onClick={(e) => { e.stopPropagation(); void blockGroup(g); }}
                       className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive">
                       <Ban className="h-4 w-4" />
                     </button>
@@ -338,9 +334,10 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                     type="button"
                     aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`}
                     title="צפה בקבוצה בלשונית חדשה"
-                    onClick={() =>
-                      openExternal(fbGroupUrlFrom(g.url, g.groupId))
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openExternal(fbGroupUrlFrom(g.url, g.groupId));
+                    }}
                     className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
                   >
                     <ExternalLink className="h-4 w-4" />
