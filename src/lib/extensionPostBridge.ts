@@ -82,7 +82,7 @@ export const requestExtensionPostComments = (
       if (data.type !== EXT_COMMENTS_MESSAGE) return;
       finish(normalizeCommentBundles(data.comments ?? data.payload));
     };
-    const onEvent = (event: CustomEvent) => { if (!opts.scrape) finish(normalizeCommentBundles(event.detail?.comments ?? event.detail));
+    const onEvent = (event: CustomEvent) => finish(normalizeCommentBundles(event.detail?.comments ?? event.detail));
 
     window.addEventListener('message', onMessage);
     document.addEventListener(EXT_COMMENTS_EVENT, onEvent as EventListener);
