@@ -1174,12 +1174,13 @@ function rzScrapePagePosts() {
   return [...out.values()];
 }
 
-async function rzScrapePage(pageId, max) {
+async function rzScrapePage(pageId, max, budgetMs) {
+  const deadline = Date.now() + Math.max(8000, Math.min(Number(budgetMs) || 17000, 60000));
   const url = pageId ? 'https://www.facebook.com/' + encodeURIComponent(pageId) : 'https://www.facebook.com/me';
   const tab = await rzOpenAndWait(url);
   const all = new Map();
   try {
-    for (let i = 0; i < 8 && all.size < max; i++) {
+    for (let i = 0; i < 8 && all.size < max && Date.now() < deadline; i++) {
       const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapePagePosts });
       for (const p of (res && res.result) || []) all.set(p.post_id, p);
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.scrollBy(0, 2200) });
@@ -1194,7 +1195,7 @@ async function rzScrapePage(pageId, max) {
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg || msg.type !== 'RZ_FB_PAGE_SCRAPE') return;
   const pageId = msg.pageId ? String(msg.pageId).replace(/[^\w.-]/g, '').slice(0, 80) : null;
-  rzScrapePage(pageId, Math.min(Number(msg.max) || 60, 150))
+  rzScrapePage(pageId, Math.min(Number(msg.max) || 60, 150), msg.budgetMs)
     .then((posts) => sendResponse({ ok: true, posts }))
     .catch((e) => sendResponse({ ok: false, error: String(e && e.message || e), posts: [] }));
   return true;

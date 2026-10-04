@@ -5498,9 +5498,15 @@ const PublishedFeed = ({
             pageId = row?.page_id ? String(row.page_id) : null;
           } catch { /* extension falls back to the signed-in profile */ }
           const res = await syncPagePostsViaExtension({ ownerId: scope, pageId, max: 100 });
-          setExtSync({ state: res.status === 'synced' ? 'done' : res.status, count: res.upserted, at: Date.now() });
           setFacebookSyncWarning(null);
-          if (res.status !== 'synced') hadTransientIssue = true;
+          if (res.status === 'synced') {
+            // Show success only after saved rows are repainted from the database.
+            await load({ skipFbImport: true });
+            setExtSync({ state: 'done', count: res.upserted || res.scraped, at: Date.now() });
+          } else {
+            setExtSync({ state: res.status, count: 0, at: Date.now() });
+            hadTransientIssue = true;
+          }
         }
         // Repaint only from persisted rows. mergeRowsById keeps existing cards
         // if the provider returned nothing or timed out.
@@ -6163,7 +6169,7 @@ const PublishedFeed = ({
             )}
             <p className="min-w-0 truncate text-xs text-muted-foreground">
               {extSync.state === 'running' && 'התוסף קורא את עמוד הפייסבוק…'}
-              {extSync.state === 'done' && `סונכרנו ${extSync.count} פוסטים דרך התוסף`}
+              {extSync.state === 'done' && `סונכרנו ${extSync.count} פוסטים בהצלחה`}
               {extSync.state === 'no_extension' && 'התקן את תוסף Realtyz כדי לסנכרן פוסטים ומדדים'}
               {extSync.state === 'empty' && 'לא נמצאו פוסטים — ודא שאתה מחובר לפייסבוק בדפדפן'}
               {extSync.state === 'error' && 'הסנכרון לא הושלם, נסה שוב'}
