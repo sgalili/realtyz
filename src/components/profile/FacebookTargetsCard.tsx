@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2, Users } from 'lucide-react';
+import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2 } from 'lucide-react';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { Button } from '@/components/ui/button';
 import { SelectModeToggle, SelectAllRow, SelectBox } from '@/components/ui/multi-select-controls';
@@ -193,7 +193,6 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     if (error) { toast.error('חסימת הקבוצה נכשלה', { description: error.message }); void load(); }
   };
 
-  const selectedGroups = groups.filter((g) => g.selected).length;
 
   return (
     <div dir="rtl" className={cn('rounded-xl border border-border bg-background p-3 space-y-3', className)}>
