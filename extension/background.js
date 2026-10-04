@@ -1231,14 +1231,16 @@ async function rzScrapePage(pageId, max, budgetMs) {
       await rzWait(1500);
     }
     // Full-array extraction of everything currently in the DOM, then keep
-    // scrolling + re-extracting until the quota or the deadline is reached.
+    // scrolling + re-extracting until the 10-post quota or the deadline is hit.
     for (let i = 0; i < 8 && all.size < max && Date.now() < deadline; i++) {
       await collect();
+      if (all.size >= max) break; // quota reached — stop scrolling
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.scrollBy(0, 2200) });
       await rzWait(1800);
     }
-    await collect(); // final pass over the fully loaded feed
+    if (all.size < max) await collect(); // final pass only if still short
   } finally { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } }
+  // Newest-first: feed order is already newest-first, keep only the recent 10.
   const posts = [...all.values()].slice(0, max);
   try { await chrome.storage.local.set({ rzPosts: posts, rzPostsAt: Date.now() }); } catch (e) { /* noop */ }
   return posts;
@@ -1247,7 +1249,7 @@ async function rzScrapePage(pageId, max, budgetMs) {
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg || msg.type !== 'RZ_FB_PAGE_SCRAPE') return;
   const pageId = msg.pageId ? String(msg.pageId).replace(/[^\w.-]/g, '').slice(0, 80) : null;
-  rzScrapePage(pageId, Math.min(Number(msg.max) || 60, 150), msg.budgetMs)
+  rzScrapePage(pageId, Math.min(Number(msg.max) || 10, 10), msg.budgetMs)
     .then((posts) => sendResponse({ ok: true, posts }))
     .catch((e) => sendResponse({ ok: false, error: String(e && e.message || e), posts: [] }));
   return true;
