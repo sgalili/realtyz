@@ -1084,8 +1084,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
  * Read-only: never clicks, reacts or comments. */
 function rzScrapePagePosts() {
   const num = (raw) => {
-    if (!raw) return null;
-    const m = String(raw).replace(/,/g, '').match(/([\d.]+)\s*(K|M|אלף|מיליון)?/i);
+    if (raw == null) return null;
+    const m = String(raw).replace(/[,\s]/g, '').match(/^([\d.]+)(K|M|אלף|מיליון)?$/i);
     if (!m) return null;
     let n = parseFloat(m[1]);
     if (/K|אלף/i.test(m[2] || '')) n *= 1000;
@@ -1095,37 +1095,67 @@ function rzScrapePagePosts() {
   const idFrom = (h) => {
     const s = String(h || '');
     const m = s.match(/\/posts\/(pfbid[\w-]+|\d{5,})/) || s.match(/permalink\/(\d{5,})/) ||
-      s.match(/story_fbid=(pfbid[\w-]+|\d{5,})/) || s.match(/\/videos\/(\d{5,})/) || s.match(/fbid=(\d{5,})/);
+      s.match(/story_fbid=(pfbid[\w-]+|\d{5,})/) || s.match(/\/videos\/(\d{5,})/) || s.match(/fbid=(\d{5,})/) ||
+      s.match(/\/reel\/(\d{5,})/);
     return m ? m[1] : null;
   };
+  const hash = (t) => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return 'h' + (h >>> 0).toString(36); };
+  const NOISE = /(סמן סטטוס מקוון|פעיל\/ה|Active now|Turn on active status|אנשי קשר|Contacts|Sponsored|ממומן)/i;
+  const clean = (t) => String(t || '').replace(/\uFFFD/g, '').replace(/[\u200B-\u200F\u202A-\u202E]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+
+  // Strictly the feed: top-level children of [role=feed]; fall back to top-level articles inside <main>.
+  const feeds = [...document.querySelectorAll('[role="feed"]')]
+    .filter((f) => !f.closest('[role="complementary"], [role="navigation"], [role="banner"]'));
+  let units = [];
+  feeds.forEach((f) => { units.push(...[...f.children].map((c) => c.querySelector('div[role="article"]') || c)); });
+  if (!units.length) {
+    const main = document.querySelector('[role="main"]') || document.body;
+    units = [...main.querySelectorAll('div[role="article"]')]
+      .filter((a) => !(a.parentElement && a.parentElement.closest('div[role="article"]')));
+  }
+
   const out = new Map();
-  document.querySelectorAll('div[role="article"]').forEach((art) => {
-    if (art.parentElement && art.parentElement.closest('div[role="article"]')) return; // skip comment articles
-    const hrefs = [...art.querySelectorAll('a[href]')].map((a) => a.href || '');
-    const link = hrefs.find((h) => /\/posts\/|permalink|story_fbid=|\/videos\/|photo\/?\?fbid=/.test(h));
-    const id = idFrom(link);
-    if (!id || out.has(id)) return;
-    const msgNode = art.querySelector('[data-ad-preview="message"], [data-ad-comet-preview="message"]');
-    const message = ((msgNode && msgNode.innerText) || '').trim().slice(0, 5000);
-    const text = art.innerText || '';
-    const labels = [...art.querySelectorAll('[aria-label]')].map((n) => n.getAttribute('aria-label') || '').join(' | ');
-    const blob = text + ' | ' + labels;
-    let likes = null;
-    const lm = labels.match(/(?:All reactions|כל התגובות לפוסט|כל רגשות)[:\s]*([\d.,]+\s*[KM]?)/i) ||
-      labels.match(/([\d.,]+\s*[KM]?)\s*(?:reactions|people reacted|לייקים|אנשים)/i);
-    if (lm) likes = num(lm[1]);
-    const cm = blob.match(/([\d.,]+\s*[KM]?)\s*(?:comments?|תגובות|תגובה)/i);
-    const sm = blob.match(/([\d.,]+\s*[KM]?)\s*(?:shares?|שיתופים|שיתוף)/i);
-    const media = [...art.querySelectorAll('img')].map((i) => i.currentSrc || i.src)
-      .filter((u) => u && /scontent|fbcdn/.test(u) && !/\/p\d+x\d+\//.test(u)).slice(0, 10);
+  for (const art of units) {
+    if (!art || art.closest('[role="complementary"], [role="navigation"], [role="banner"], [role="dialog"]')) continue;
+    // Drop comment articles nested in the post.
+    const nested = [...art.querySelectorAll('div[role="article"]')];
+    const msgNode = art.querySelector('[data-ad-preview="message"], [data-ad-comet-preview="message"]') ||
+      [...art.querySelectorAll('div[dir="auto"]')].find((d) => !nested.some((n) => n.contains(d)) && (d.innerText || '').trim().length > 20);
+    const message = clean(msgNode && msgNode.innerText).slice(0, 5000);
+    const hrefs = [...art.querySelectorAll('a[href]')].filter((a) => !nested.some((n) => n.contains(a))).map((a) => a.href || '');
+    const link = hrefs.find((h) => /\/posts\/|permalink|story_fbid=|\/videos\/|\/reel\/|photo\/?\?fbid=/.test(h)) || null;
+    const media = [...new Set([...art.querySelectorAll('img')]
+      .filter((i) => !nested.some((n) => n.contains(i)) && (i.naturalWidth || i.width || 0) >= 120)
+      .map((i) => i.currentSrc || i.src)
+      .filter((u) => u && /scontent|fbcdn/.test(u) && !/\/p\d+x\d+\/|emoji|rsrc\.php/.test(u)))].slice(0, 10);
+    if (!message && !media.length) continue;
+    if (!link && NOISE.test(message) && message.length < 80) continue;
+    const id = idFrom(link) || hash(message + '|' + (media[0] || ''));
+    if (out.has(id)) continue;
+
+    // Counters: read only the post's own footer (outside nested comment articles).
+    const labels = [...art.querySelectorAll('[aria-label]')].filter((n) => !nested.some((x) => x.contains(n)))
+      .map((n) => n.getAttribute('aria-label') || '');
+    const spans = [...art.querySelectorAll('span, div[role="button"]')].filter((n) => !nested.some((x) => x.contains(n)) && n.childElementCount === 0)
+      .map((n) => (n.textContent || '').trim()).filter((t) => t && t.length < 40);
+    const pick = (re, list) => { for (const t of list) { const m = t.match(re); if (m) { const v = num(m[1]); if (v != null) return v; } } return null; };
+    const N = '([\\d.,]+\\s*(?:K|M|אלף|מיליון)?)';
+    let likes = pick(new RegExp('(?:All reactions|כל רגשות|כל התגובות לפוסט)[:\\s]*' + N, 'i'), labels) ??
+      pick(new RegExp('^' + N + '\\s*(?:reactions?|people reacted|לייקים|רגשות)', 'i'), labels);
+    const comments = pick(new RegExp('^' + N + '\\s*(?:comments?|תגובות|תגובה)$', 'i'), spans) ?? pick(new RegExp(N + '\\s*(?:comments?|תגובות)', 'i'), labels);
+    const shares = pick(new RegExp('^' + N + '\\s*(?:shares?|שיתופים|שיתוף)$', 'i'), spans) ?? pick(new RegExp(N + '\\s*(?:shares?|שיתופים)', 'i'), labels);
+
     const tEl = art.querySelector('abbr[data-utime], [data-utime]');
     const utime = tEl ? Number(tEl.getAttribute('data-utime')) : null;
-    out.set(id, {
-      post_id: id, message, url: link || null,
-      created_time: utime ? new Date(utime * 1000).toISOString() : null,
-      media, likeCount: likes, commentCount: cm ? num(cm[1]) : null, shareCount: sm ? num(sm[1]) : null,
-    });
-  });
+    let created = utime ? new Date(utime * 1000).toISOString() : null;
+    if (!created) {
+      const tl = hrefs.map((h) => art.querySelector('a[href="' + CSS.escape(h) + '"]')).find((a) => a && /\d/.test(a.getAttribute('aria-label') || a.innerText || ''));
+      const d = tl ? Date.parse(tl.getAttribute('aria-label') || '') : NaN;
+      if (Number.isFinite(d)) created = new Date(d).toISOString();
+    }
+    out.set(id, { post_id: id, message, url: link, created_time: created, media,
+      likeCount: likes, commentCount: comments, shareCount: shares });
+  }
   return [...out.values()];
 }
 
