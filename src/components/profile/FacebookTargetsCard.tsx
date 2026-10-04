@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2, Users } from 'lucide-react';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { SelectModeToggle, SelectAllRow, SelectBox } from '@/components/ui/multi-select-controls';
 import { cn } from '@/lib/utils';
 import { shortenName } from '@/lib/shortenName';
