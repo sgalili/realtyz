@@ -1181,9 +1181,11 @@ function rzScrapePagePosts() {
 }
 
 async function rzScrapePage(pageId, max, budgetMs) {
-  const deadline = Date.now() + Math.max(8000, Math.min(Number(budgetMs) || 17000, 60000));
   const url = pageId ? 'https://www.facebook.com/' + encodeURIComponent(pageId) : 'https://www.facebook.com/me';
   const tab = await rzOpenAndWait(url);
+  // Budget starts once the feed is open, so loading time never eats scrape time
+  // (the app's own overall timeout still caps the total sync).
+  const deadline = Date.now() + Math.max(8000, Math.min(Number(budgetMs) || 17000, 60000));
   const all = new Map();
   const collect = async () => {
     const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapePagePosts });
