@@ -959,11 +959,26 @@ const rzWait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function rzOpenAndWait(url) {
   const tab = await chrome.tabs.create({ url, active: false });
+  // 1) Wait for the tab to fully finish loading (status === 'complete').
   await new Promise((resolve) => {
-    const t = setTimeout(resolve, 20000);
+    const t = setTimeout(resolve, 25000);
     const l = (id, info) => { if (id === tab.id && info.status === 'complete') { clearTimeout(t); chrome.tabs.onUpdated.removeListener(l); resolve(); } };
     chrome.tabs.onUpdated.addListener(l);
+    // If it was already complete before the listener attached, resolve immediately.
+    chrome.tabs.get(tab.id).then((cur) => { if (cur && cur.status === 'complete') { clearTimeout(t); chrome.tabs.onUpdated.removeListener(l); resolve(); } }).catch(() => {});
   });
+  // 2) Facebook renders its React feed after 'complete' — poll until the feed/posts exist (max ~8s), then settle 3s more.
+  let ready = false;
+  for (let i = 0; i < 8 && !ready; i++) {
+    await rzWait(1000);
+    try {
+      const [r] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => !!(document.querySelector('[role="feed"]') || document.querySelector('div[role="article"]')),
+      });
+      ready = !!(r && r.result);
+    } catch (e) { /* tab not injectable yet — keep waiting */ }
+  }
   await rzWait(3000);
   return tab;
 }
