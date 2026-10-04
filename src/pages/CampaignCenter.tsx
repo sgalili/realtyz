@@ -4732,7 +4732,7 @@ const PublishedFeed = ({
   const fbSyncBlockedRef = useRef(false);
   const fbSyncWarningRef = useRef<string | null>(null);
   const fullSyncRunningRef = useRef(false);
-  const [extSync, setExtSync] = useState<{ state: 'idle' | 'running' | 'done' | 'no_extension' | 'empty' | 'error'; count: number; at: number }>({ state: 'idle', count: 0, at: 0 });
+  const [extSync, setExtSync] = useState<{ state: 'idle' | 'running' | 'done' | 'no_extension' | 'empty' | 'error' | 'timeout'; count: number; at: number }>({ state: 'idle', count: 0, at: 0 });
   const setFacebookSyncWarning = useCallback((message: string | null) => {
     if (fbSyncWarningRef.current === message) return;
     fbSyncWarningRef.current = message;
@@ -6167,6 +6167,7 @@ const PublishedFeed = ({
               {extSync.state === 'no_extension' && 'התקן את תוסף Realtyz כדי לסנכרן פוסטים ומדדים'}
               {extSync.state === 'empty' && 'לא נמצאו פוסטים — ודא שאתה מחובר לפייסבוק בדפדפן'}
               {extSync.state === 'error' && 'הסנכרון לא הושלם, נסה שוב'}
+              {extSync.state === 'timeout' && 'הסנכרון ארך יותר מדי זמן — נסה שוב'}
             </p>
           </div>
           {extSync.state !== 'running' ? (
