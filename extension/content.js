@@ -100,9 +100,13 @@
     if (d.type === 'RZ_FB_GROUPS_REQUEST') deliver();
     if (d.type === 'RZ_FB_POSTS_REQUEST') {
       if (d.scrape) {
-        rzSafeSend({ type: 'RZ_FB_PAGE_SCRAPE', pageId: d.pageId || null, max: d.max || 60 }, (res) => {
-          if (res && Array.isArray(res.posts) && res.posts.length) emit('RZ_FB_POSTS', 'posts', res.posts, 'rz:ext-fb-posts');
-          else deliverPosts();
+        const requestId = d.requestId || null;
+        rzSafeSend({ type: 'RZ_FB_PAGE_SCRAPE', pageId: d.pageId || null, max: d.max || 60, budgetMs: d.budgetMs || 17000 }, (res) => {
+          const posts = (res && Array.isArray(res.posts)) ? res.posts : [];
+          // Dedicated, request-correlated result so stale cached deliveries never answer a scrape.
+          try { window.postMessage({ source: 'realtyz-extension', type: 'RZ_FB_PAGE_SCRAPE_RESULT', requestId,
+            ok: !!(res && res.ok), posts, error: res && res.error }, window.location.origin); } catch (e) { /* noop */ }
+          if (posts.length) emit('RZ_FB_POSTS', 'posts', posts, 'rz:ext-fb-posts');
         });
       } else deliverPosts();
     }
