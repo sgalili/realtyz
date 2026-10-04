@@ -1166,15 +1166,45 @@ function rzScrapePagePosts() {
     const comments = pick(new RegExp('^' + N + '\\s*(?:comments?|תגובות|תגובה)$', 'i'), spans) ?? pick(new RegExp(N + '\\s*(?:comments?|תגובות)', 'i'), labels);
     const shares = pick(new RegExp('^' + N + '\\s*(?:shares?|שיתופים|שיתוף)$', 'i'), spans) ?? pick(new RegExp(N + '\\s*(?:shares?|שיתופים)', 'i'), labels);
 
+    // Native timestamp: read the EXACT date/time string Facebook shows in the
+    // post header (e.g. "לפני 5 שעות", "Yesterday at 14:32", "3 באוקטובר").
+    // It lives on the permalink <a> in the header (aria-label or its text).
+    const timeLink = [...art.querySelectorAll('a[href]')]
+      .filter((a) => !nested.some((n) => n.contains(a)))
+      .find((a) => {
+        const t = clean(a.getAttribute('aria-label') || a.innerText || '');
+        return t && t.length < 60 && /\d|אתמול|Yesterday|Just now|עכשיו/i.test(t) &&
+          /(לפני|ago|Yesterday|אתמול|Just now|עכשיו|AM|PM|בשעה|:|\d{4})/i.test(t);
+      });
+    const nativeTimeText = timeLink ? clean(timeLink.getAttribute('aria-label') || timeLink.innerText || '') : null;
+    // Parse the native string into an absolute date so the DB gets the real
+    // publication time instead of "now". Supports Hebrew + English relative
+    // and absolute formats; falls back to data-utime when present.
+    const parseNativeTime = (t) => {
+      if (!t) return null;
+      const now = Date.now();
+      const rel = t.match(/(\d+)\s*(?:דקות|דקה|minutes?|mins?|hrs?|hours?|שעות|שעה|ימים|יום|days?|שבועות|שבוע|weeks?)/i);
+      if (/(Just now|עכשיו|כרגע)/i.test(t)) return new Date(now).toISOString();
+      if (rel) {
+        const n = Number(rel[1]);
+        const unit = rel[2] || rel[0];
+        const ms = /דק|min/i.test(unit) ? 6e4 : /שע|hr|hour/i.test(unit) ? 36e5 :
+          /יום|ימים|day/i.test(unit) ? 864e5 : /שבוע|week/i.test(unit) ? 6048e5 : 6e4;
+        return new Date(now - n * ms).toISOString();
+      }
+      if (/(אתמול|Yesterday)/i.test(t)) {
+        const hm = t.match(/(\d{1,2}):(\d{2})/);
+        const d = new Date(now - 864e5);
+        if (hm) d.setHours(Number(hm[1]), Number(hm[2]), 0, 0);
+        return d.toISOString();
+      }
+      const d = Date.parse(t);
+      return Number.isFinite(d) ? new Date(d).toISOString() : null;
+    };
     const tEl = art.querySelector('abbr[data-utime], [data-utime]');
     const utime = tEl ? Number(tEl.getAttribute('data-utime')) : null;
-    let created = utime ? new Date(utime * 1000).toISOString() : null;
-    if (!created) {
-      const tl = hrefs.map((h) => art.querySelector('a[href="' + CSS.escape(h) + '"]')).find((a) => a && /\d/.test(a.getAttribute('aria-label') || a.innerText || ''));
-      const d = tl ? Date.parse(tl.getAttribute('aria-label') || '') : NaN;
-      if (Number.isFinite(d)) created = new Date(d).toISOString();
-    }
-    out.set(id, { post_id: id, message, url: link, created_time: created, media,
+    const created = parseNativeTime(nativeTimeText) || (utime ? new Date(utime * 1000).toISOString() : null);
+    out.set(id, { post_id: id, message, url: link, created_time: created, created_time_text: nativeTimeText, media,
       likeCount: likes, commentCount: comments, shareCount: shares });
   }
   return [...out.values()];
