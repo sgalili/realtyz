@@ -1118,22 +1118,28 @@ function rzScrapePagePosts() {
   const NOISE = /(סמן סטטוס מקוון|פעיל\/ה|Active now|Turn on active status|אנשי קשר|Contacts|Sponsored|ממומן)/i;
   const clean = (t) => String(t || '').replace(/\uFFFD/g, '').replace(/[\u200B-\u200F\u202A-\u202E]/g, '').replace(/\n{3,}/g, '\n\n').trim();
 
-  // Strictly the feed: top-level children of [role=feed]; fall back to top-level articles inside <main>.
+  // Discover ALL post containers in the feed (querySelectorAll, not a single querySelector):
+  // every top-level article / div[role=article] under [role=feed]; fall back to feed children,
+  // then to top-level articles inside <main>.
+  const isTop = (a) => !(a.parentElement && a.parentElement.closest('article, div[role="article"]'));
   const feeds = [...document.querySelectorAll('[role="feed"]')]
     .filter((f) => !f.closest('[role="complementary"], [role="navigation"], [role="banner"]'));
   let units = [];
-  feeds.forEach((f) => { units.push(...[...f.children].map((c) => c.querySelector('div[role="article"]') || c)); });
+  for (const f of feeds) {
+    const arts = [...f.querySelectorAll('article, div[role="article"]')].filter(isTop);
+    if (arts.length) units.push(...arts);
+    else units.push(...[...f.children].map((c) => c.querySelector('article, div[role="article"]') || c));
+  }
   if (!units.length) {
     const main = document.querySelector('[role="main"]') || document.body;
-    units = [...main.querySelectorAll('div[role="article"]')]
-      .filter((a) => !(a.parentElement && a.parentElement.closest('div[role="article"]')));
+    units = [...main.querySelectorAll('article, div[role="article"]')].filter(isTop);
   }
 
   const out = new Map();
   for (const art of units) {
     if (!art || art.closest('[role="complementary"], [role="navigation"], [role="banner"], [role="dialog"]')) continue;
     // Drop comment articles nested in the post.
-    const nested = [...art.querySelectorAll('div[role="article"]')];
+    const nested = [...art.querySelectorAll('article, div[role="article"]')];
     const msgNode = art.querySelector('[data-ad-preview="message"], [data-ad-comet-preview="message"]') ||
       [...art.querySelectorAll('div[dir="auto"]')].find((d) => !nested.some((n) => n.contains(d)) && (d.innerText || '').trim().length > 20);
     const message = clean(msgNode && msgNode.innerText).slice(0, 5000);
