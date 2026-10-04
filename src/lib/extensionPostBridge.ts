@@ -145,7 +145,7 @@ export const normalizeExtensionPosts = (input: any): ExtensionPost[] => {
  * callers treat that as "fallback unavailable", never as an error to alert on.
  */
 export const requestExtensionPagePosts = (
-  opts: { pageId?: string | null; since?: string; timeoutMs?: number; scrape?: boolean; max?: number } = {},
+  opts: { pageId?: string | null; since?: string; timeoutMs?: number; scrape?: boolean; max?: number; onTimeout?: () => void } = {},
 ): Promise<ExtensionPost[]> => {
   const timeoutMs = opts.timeoutMs ?? 12000;
   return new Promise((resolve) => {
@@ -170,7 +170,10 @@ export const requestExtensionPagePosts = (
 
     window.addEventListener('message', onMessage);
     document.addEventListener(EXT_POSTS_EVENT, onEvent as EventListener);
-    const timer = window.setTimeout(() => finish([]), timeoutMs);
+    const timer = window.setTimeout(() => {
+      try { opts.onTimeout?.(); } catch { /* noop */ }
+      finish([]);
+    }, timeoutMs);
 
     const payload = { source: 'realtyz-app', type: EXT_POSTS_REQUEST, pageId: opts.pageId ?? null, since: opts.since ?? null, scrape: opts.scrape === true, max: opts.max ?? 60 };
     try {
