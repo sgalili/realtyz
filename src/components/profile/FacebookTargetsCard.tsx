@@ -5,6 +5,7 @@ import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2, Users } from 'lucide
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SelectModeToggle, SelectAllRow, SelectBox } from '@/components/ui/multi-select-controls';
 import { cn } from '@/lib/utils';
 import { shortenName } from '@/lib/shortenName';
 import { openExternal } from '@/lib/openExternal';
@@ -252,45 +253,34 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
             <div className={cn('flex items-center gap-1.5 font-semibold text-muted-foreground', TEXT_SM)}>
               <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
             </div>
-            {tab === 'active' && groups.length > 0 && (
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
-                  className={cn('font-semibold text-destructive underline', TEXT_SM)}
-                >
-                  {deleteMode ? 'ביטול' : 'מחיקת קבוצות'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => (deleteMode ? markAll(markedIds.size !== groups.length) : void setAllGroups(selectedGroups !== groups.length))}
-                  className={cn('font-semibold text-primary underline', TEXT_SM)}
-                >
-                  {deleteMode
-                    ? (markedIds.size === groups.length ? 'בטל הכל' : 'בחר הכל')
-                    : (selectedGroups === groups.length ? 'בטל הכל' : 'בחר הכל')}
-                </button>
-              </div>
+            {groups.length > 0 && (
+              <SelectModeToggle
+                active={deleteMode}
+                count={markedIds.size}
+                onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
+              />
             )}
           </div>
 
           {deleteMode && (
-            <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2 py-1.5">
-              <span className={cn('text-muted-foreground', TEXT_SM)}>
-                {markedIds.size > 0 ? `${markedIds.size} נבחרו למחיקה` : 'סמן קבוצות למחיקה'}
-              </span>
+            <SelectAllRow
+              total={groups.length}
+              selected={markedIds.size}
+              onToggle={() => markAll(markedIds.size !== groups.length)}
+              className="rounded-lg border border-border"
+            >
               <Button
                 type="button"
                 size="sm"
                 variant="destructive"
-                className="h-8 gap-1 text-[12px]"
+                className="h-7 gap-1 text-[12px]"
                 disabled={markedIds.size === 0 || deleting}
                 onClick={() => void deleteMarked()}
               >
                 {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                מחיקת קבוצות נבחרות
+                מחיקה
               </Button>
-            </div>
+            </SelectAllRow>
           )}
           {groups.length === 0 ? (
             <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות מיובאות. לחץ "סנכרן קבוצות".</p>
@@ -303,12 +293,20 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                   // `!flex` beats the parent's `[&_label]:block` RTL overrides.
                   className="flex flex-nowrap items-center gap-[11px] rounded-lg border border-border/70 px-2 py-1.5"
                 >
-                  <Checkbox
-                    className="shrink-0"
-                    checked={deleteMode ? markedIds.has(g.id) : g.selected}
-                    onCheckedChange={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
-                    aria-label={g.name}
-                  />
+                  {deleteMode ? (
+                    <SelectBox
+                      checked={markedIds.has(g.id)}
+                      onChange={() => toggleMark(g.id)}
+                      label={g.name}
+                    />
+                  ) : (
+                    <Checkbox
+                      className="shrink-0"
+                      checked={g.selected}
+                      onCheckedChange={() => void toggleGroup(g)}
+                      aria-label={g.name}
+                    />
+                  )}
                   {g.icon && (
                     <img
                       src={g.icon}
