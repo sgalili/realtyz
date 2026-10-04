@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2, Users } from 'lucide-react';
+import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2 } from 'lucide-react';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { Button } from '@/components/ui/button';
 import { SelectModeToggle, SelectAllRow, SelectBox } from '@/components/ui/multi-select-controls';
@@ -193,11 +193,16 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     if (error) { toast.error('חסימת הקבוצה נכשלה', { description: error.message }); void load(); }
   };
 
-  const selectedGroups = groups.filter((g) => g.selected).length;
 
   return (
     <div dir="rtl" className={cn('rounded-xl border border-border bg-background p-3 space-y-3', className)}>
-      <ExtensionGroupSyncCard onSynced={() => void load()} actions={actions} />
+      {/* Extension/sync row — "הוספת קבוצות" sits at the card's far edge. */}
+      <div className="flex items-center justify-between gap-2">
+        <ExtensionGroupSyncCard onSynced={() => void load()} actions={actions} className="min-w-0 flex-1" />
+        <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 gap-1" onClick={() => setDiscoverOpen(true)}>
+          <Search className="h-3.5 w-3.5" /> הוספת קבוצות
+        </Button>
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-5">
@@ -205,20 +210,25 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         </div>
       ) : (
         <div className="space-y-1.5">
+          {/* Multi-select toggle leads the tab row (RTL: right of the tabs). */}
           <div className="flex min-w-0 items-center gap-2">
+            {groups.length > 0 && (
+              <SelectModeToggle
+                active={deleteMode}
+                count={markedIds.size}
+                onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
+              />
+            )}
             <div role="tablist" className="flex min-w-0 flex-1 rounded-lg bg-muted p-0.5">
               <button type="button" role="tab" aria-selected={tab === 'active'} onClick={() => { setTab('active'); setDeleteMode(false); }}
                 className={cn('flex-1 rounded-md px-2 py-1 font-semibold', TEXT_SM, tab === 'active' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
-                פעילות
+                פעילות ({groups.length})
               </button>
               <button type="button" role="tab" aria-selected={tab === 'blocked'} onClick={() => { setTab('blocked'); setDeleteMode(false); }}
                 className={cn('flex-1 rounded-md px-2 py-1 font-semibold', TEXT_SM, tab === 'blocked' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
-                חסומות{blockedGroups.length > 0 ? ` (${blockedGroups.length})` : ''}
+                חסומות ({blockedGroups.length})
               </button>
             </div>
-            <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 gap-1" onClick={() => setDiscoverOpen(true)}>
-              <Search className="h-3.5 w-3.5" /> הוספת קבוצות
-            </Button>
           </div>
           <GroupDiscoveryDialog
             open={discoverOpen}
@@ -248,19 +258,6 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
               </div>
             )
           ) : (<>
-          <div className="flex items-center justify-between gap-2">
-            {groups.length > 0 && (
-              <SelectModeToggle
-                active={deleteMode}
-                count={markedIds.size}
-                onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
-              />
-            )}
-            <div className={cn('flex items-center gap-1.5 font-semibold text-muted-foreground', TEXT_SM)}>
-              <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
-            </div>
-          </div>
-
           {deleteMode && (
             <SelectAllRow
               total={groups.length}
