@@ -1118,22 +1118,28 @@ function rzScrapePagePosts() {
   const NOISE = /(סמן סטטוס מקוון|פעיל\/ה|Active now|Turn on active status|אנשי קשר|Contacts|Sponsored|ממומן)/i;
   const clean = (t) => String(t || '').replace(/\uFFFD/g, '').replace(/[\u200B-\u200F\u202A-\u202E]/g, '').replace(/\n{3,}/g, '\n\n').trim();
 
-  // Strictly the feed: top-level children of [role=feed]; fall back to top-level articles inside <main>.
+  // Discover ALL post containers in the feed (querySelectorAll, not a single querySelector):
+  // every top-level article / div[role=article] under [role=feed]; fall back to feed children,
+  // then to top-level articles inside <main>.
+  const isTop = (a) => !(a.parentElement && a.parentElement.closest('article, div[role="article"]'));
   const feeds = [...document.querySelectorAll('[role="feed"]')]
     .filter((f) => !f.closest('[role="complementary"], [role="navigation"], [role="banner"]'));
   let units = [];
-  feeds.forEach((f) => { units.push(...[...f.children].map((c) => c.querySelector('div[role="article"]') || c)); });
+  for (const f of feeds) {
+    const arts = [...f.querySelectorAll('article, div[role="article"]')].filter(isTop);
+    if (arts.length) units.push(...arts);
+    else units.push(...[...f.children].map((c) => c.querySelector('article, div[role="article"]') || c));
+  }
   if (!units.length) {
     const main = document.querySelector('[role="main"]') || document.body;
-    units = [...main.querySelectorAll('div[role="article"]')]
-      .filter((a) => !(a.parentElement && a.parentElement.closest('div[role="article"]')));
+    units = [...main.querySelectorAll('article, div[role="article"]')].filter(isTop);
   }
 
   const out = new Map();
   for (const art of units) {
     if (!art || art.closest('[role="complementary"], [role="navigation"], [role="banner"], [role="dialog"]')) continue;
     // Drop comment articles nested in the post.
-    const nested = [...art.querySelectorAll('div[role="article"]')];
+    const nested = [...art.querySelectorAll('article, div[role="article"]')];
     const msgNode = art.querySelector('[data-ad-preview="message"], [data-ad-comet-preview="message"]') ||
       [...art.querySelectorAll('div[dir="auto"]')].find((d) => !nested.some((n) => n.contains(d)) && (d.innerText || '').trim().length > 20);
     const message = clean(msgNode && msgNode.innerText).slice(0, 5000);
@@ -1175,17 +1181,33 @@ function rzScrapePagePosts() {
 }
 
 async function rzScrapePage(pageId, max, budgetMs) {
-  const deadline = Date.now() + Math.max(8000, Math.min(Number(budgetMs) || 17000, 60000));
   const url = pageId ? 'https://www.facebook.com/' + encodeURIComponent(pageId) : 'https://www.facebook.com/me';
   const tab = await rzOpenAndWait(url);
+  // Budget starts once the feed is open, so loading time never eats scrape time
+  // (the app's own overall timeout still caps the total sync).
+  const deadline = Date.now() + Math.max(8000, Math.min(Number(budgetMs) || 17000, 60000));
   const all = new Map();
+  const collect = async () => {
+    const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapePagePosts });
+    const batch = ((res && res.result) || []);
+    for (const p of batch) all.set(p.post_id, p);
+    return batch.length;
+  };
   try {
+    // Warm-up: incremental scrolls FIRST so multiple posts load into the DOM
+    // before any extraction runs.
+    for (let i = 0; i < 3 && Date.now() < deadline; i++) {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.scrollBy(0, 2200) });
+      await rzWait(1500);
+    }
+    // Full-array extraction of everything currently in the DOM, then keep
+    // scrolling + re-extracting until the quota or the deadline is reached.
     for (let i = 0; i < 8 && all.size < max && Date.now() < deadline; i++) {
-      const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapePagePosts });
-      for (const p of (res && res.result) || []) all.set(p.post_id, p);
+      await collect();
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.scrollBy(0, 2200) });
       await rzWait(1800);
     }
+    await collect(); // final pass over the fully loaded feed
   } finally { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } }
   const posts = [...all.values()].slice(0, max);
   try { await chrome.storage.local.set({ rzPosts: posts, rzPostsAt: Date.now() }); } catch (e) { /* noop */ }
