@@ -1185,13 +1185,27 @@ async function rzScrapePage(pageId, max, budgetMs) {
   const url = pageId ? 'https://www.facebook.com/' + encodeURIComponent(pageId) : 'https://www.facebook.com/me';
   const tab = await rzOpenAndWait(url);
   const all = new Map();
+  const collect = async () => {
+    const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapePagePosts });
+    const batch = ((res && res.result) || []);
+    for (const p of batch) all.set(p.post_id, p);
+    return batch.length;
+  };
   try {
+    // Warm-up: incremental scrolls FIRST so multiple posts load into the DOM
+    // before any extraction runs.
+    for (let i = 0; i < 3 && Date.now() < deadline; i++) {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.scrollBy(0, 2200) });
+      await rzWait(1500);
+    }
+    // Full-array extraction of everything currently in the DOM, then keep
+    // scrolling + re-extracting until the quota or the deadline is reached.
     for (let i = 0; i < 8 && all.size < max && Date.now() < deadline; i++) {
-      const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapePagePosts });
-      for (const p of (res && res.result) || []) all.set(p.post_id, p);
+      await collect();
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: () => window.scrollBy(0, 2200) });
       await rzWait(1800);
     }
+    await collect(); // final pass over the fully loaded feed
   } finally { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } }
   const posts = [...all.values()].slice(0, max);
   try { await chrome.storage.local.set({ rzPosts: posts, rzPostsAt: Date.now() }); } catch (e) { /* noop */ }
