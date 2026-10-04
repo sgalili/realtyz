@@ -289,22 +289,20 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
               {groups.map((g) => (
                 <div
                   key={g.id}
-                  // Single row: checkbox + picture + name + open-in-new-tab.
-                  // `!flex` beats the parent's `[&_label]:block` RTL overrides.
-                  className="flex flex-nowrap items-center gap-[11px] rounded-lg border border-border/70 px-2 py-1.5"
+                  // Single row: (multi-select checkbox) + picture + name + open-in-new-tab.
+                  // The publish checkbox is intentionally absent — tap the row to toggle,
+                  // and selection boxes appear only in multi-select mode.
+                  className={cn(
+                    'flex flex-nowrap items-center gap-[11px] rounded-lg border px-2 py-1.5 transition-colors',
+                    g.selected ? 'border-primary/40 bg-primary/5' : 'border-border/70',
+                  )}
+                  onClick={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
                 >
-                  {deleteMode ? (
+                  {deleteMode && (
                     <SelectBox
                       checked={markedIds.has(g.id)}
                       onChange={() => toggleMark(g.id)}
                       label={g.name}
-                    />
-                  ) : (
-                    <Checkbox
-                      className="shrink-0"
-                      checked={g.selected}
-                      onCheckedChange={() => void toggleGroup(g)}
-                      aria-label={g.name}
                     />
                   )}
                   {g.icon && (
