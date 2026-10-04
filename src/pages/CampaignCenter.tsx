@@ -6309,7 +6309,7 @@ const PublishedFeed = ({
           <div key={r.id} className="w-full min-w-0 max-w-full">
           <article
             key={r.id}
-            className="w-full min-w-0 max-w-full rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden"
+            className={cn("w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-card", inGroupOverlay !== true && "shadow-sm")}
             dir={dirAttr}
           >
             <header
@@ -6359,68 +6359,27 @@ const PublishedFeed = ({
               </div>
 
 
-              {/* Row 2: platform logo and date only. */}
-              <div className="flex min-w-0 items-center gap-2" dir="rtl">
-                <span className="inline-flex items-center justify-center shrink-0">
+              {/* One RTL metadata/action row; only date and group name may shrink. */}
+              <div data-campaign-action-bar className="flex w-full min-w-0 flex-nowrap items-center gap-1 sm:gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
+                <span className="inline-flex shrink-0 items-center justify-center">
                   {platformMeta?.brand ? (
-                    <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
+                    <BrandIcon name={platformMeta.brand} className={cn('h-4 w-4 sm:h-5 sm:w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
                   ) : platformMeta?.icon ? (
-                    <platformMeta.icon className="h-5 w-5 text-muted-foreground" />
+                    <platformMeta.icon className="h-4 w-4 text-muted-foreground" />
                   ) : (
                     <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
                   )}
                 </span>
-                {/* With group targets (or scheduled) the date moves to the groups-counter row. */}
-                {!(hasGroupTargets || scheduled) && (
-                  <span className={cn(
-                    'min-w-0 text-[11px]',
-                    'text-muted-foreground',
-                  )}>
-                    {dateStr}
-                  </span>
-                )}
-                {/* No group targets: engagement counters join the logo/date row at the far edge. */}
-                {!hasGroupTargets && (
-                  <div className="ms-auto flex min-w-0 items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
-                    {!scheduled && (
-                      <>
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
-                          <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                          <span className="tabular-nums">{commentDisplay}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="שיתופים">
-                          <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                          <span className="tabular-nums">{r.share_count ?? 0}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="לייקים">
-                          <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                          <span className="tabular-nums">{r.like_count ?? 0}</span>
-                        </span>
-                      </>
-                    )}
-                    {commentWarning && !failed && !extProgress && (
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-              {/* Row 3: group status/name (or counter), repost action, countdown and engagement counters together. */}
-              {(hasGroupTargets || scheduled) && (
-              <div className="flex min-w-0 flex-wrap items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
-                {/* Date sits in this row, before the groups counter label. */}
-                <span className={cn(
-                  'shrink-0 text-[11px]',
-                  scheduled ? 'text-amber-700 font-semibold' : 'text-muted-foreground',
-                )}>
-                  {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
+                <span title={scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
+                  className="w-16 min-w-0 shrink truncate whitespace-nowrap text-[10px] text-muted-foreground sm:w-auto sm:max-w-40 sm:text-[11px]">
+                  {dateStr}
                 </span>
                 {hasGroupTargets && (
-                  <div className="min-w-0 max-w-[55%]">
+                  <div className="min-w-0 flex-1">
                     <GroupStatusChips
                       inline
                       collapsedCounter
+                      showStatus={inGroupOverlay === true}
                       expanded={seriesOpen}
                       onExpandedChange={(open) => setExpanded((s) => ({ ...s, [seriesKey]: open }))}
                       detailsId={`campaign-series-${r.id}`}
@@ -6432,58 +6391,33 @@ const PublishedFeed = ({
                           ? 'pending'
                           : failed ? 'failed' : 'published'
                       }
-                      countdownIso={scheduled ? r.sent_at : null}
-                      defaultOpen={false}
                     />
                   </div>
                 )}
-                {/* Square megaphone repost button sits directly next to the groups pill. */}
-                {hasGroupTargets && <div className="shrink-0"><ContinuePostingButton post={r} /></div>}
-                {scheduled && (() => {
-                  const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
-                  const diff = Number.isFinite(target) ? target - Date.now() : NaN;
-                  // Strict dd/hh/mm countdown — hidden entirely at 00/00/00.
-                  let label = '';
-                  if (Number.isFinite(diff)) {
-                    const s = Math.max(0, Math.floor(diff / 1000));
-                    const pad = (n: number) => String(n).padStart(2, '0');
-                    label = `${pad(Math.floor(s / 86400))}/${pad(Math.floor((s % 86400) / 3600))}/${pad(Math.floor((s % 3600) / 60))}`;
-                  }
-                  if (!label || label === '00/00/00') return null;
-                  return (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums" dir="ltr">
-                      <CalendarIcon className="h-3 w-3" />
-                      {label}
-                    </span>
-                  );
-                })()}
-                {hasGroupTargets && (
-                <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2" title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
-                {!scheduled && (
-                  <>
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
-                      <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                      <span className="tabular-nums">{commentDisplay}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="שיתופים">
-                      <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                      <span className="tabular-nums">{r.share_count ?? 0}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="לייקים">
-                      <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                      <span className="tabular-nums">{r.like_count ?? 0}</span>
-                    </span>
-                  </>
-                )}
-                {commentWarning && !failed && !extProgress && (
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3" aria-label={FIRST_COMMENT_WARNING} /></span>
-                  </span>
-                )}
+                {hasGroupTargets && <ContinuePostingButton post={r} />}
+                <div className="ms-auto flex shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2"
+                  title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
+                  {!scheduled && (
+                    <>
+                      <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground sm:gap-1 sm:text-xs" title="תגובות">
+                        <MessageSquare className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+                        <span className="tabular-nums">{commentDisplay}</span>
+                      </span>
+                      <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground sm:gap-1 sm:text-xs" title="שיתופים">
+                        <Share2 className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+                        <span className="tabular-nums">{r.share_count ?? 0}</span>
+                      </span>
+                      <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground sm:gap-1 sm:text-xs" title="לייקים">
+                        <Heart className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+                        <span className="tabular-nums">{r.like_count ?? 0}</span>
+                      </span>
+                    </>
+                  )}
+                  {commentWarning && !failed && !extProgress && (
+                    <span title={FIRST_COMMENT_WARNING}><AlertTriangle className="h-3 w-3 text-muted-foreground" aria-label={FIRST_COMMENT_WARNING} /></span>
+                  )}
                 </div>
-                )}
               </div>
-              )}
               {isPaused && (() => {
                 const remainingMs = circuitUntilMs ? circuitUntilMs - nowMs : 0;
                 const hasCountdown = remainingMs > 0;
@@ -6678,7 +6612,7 @@ const PublishedFeed = ({
                 complementary muted shade so they clearly belong to the card. */}
             {inGroupOverlay !== true && seriesOpen && isSeries && seriesSlots && (
               <div id={`campaign-series-${r.id}`} role="region" aria-label="פוסטים בקבוצות"
-                className="w-full min-w-0 space-y-3 border-t border-border/60 bg-muted/40 p-3" dir="rtl">
+                className="mx-2 mb-2 min-w-0 space-y-2 rounded-lg border border-border bg-muted/60 p-2 sm:mx-3 sm:mb-3 sm:space-y-3 sm:p-3" dir="rtl">
                 {seriesSlots.map((slot) => renderFeedCard(slot, undefined, true))}
               </div>
             )}
