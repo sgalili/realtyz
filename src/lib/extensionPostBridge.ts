@@ -101,6 +101,7 @@ export type ExtensionPost = {
   message: string;
   url: string | null;
   created_time: string | null;
+  created_time_text?: string | null;
   media: string[];
   likeCount?: number | null;
   commentCount?: number | null;
@@ -124,6 +125,7 @@ const normalizeOne = (raw: any): ExtensionPost | null => {
     message: String(raw.message ?? raw.post ?? raw.text ?? '').trim(),
     url,
     created_time: raw.created_time ?? raw.created ?? raw.date ?? null,
+    created_time_text: raw.created_time_text ?? raw.created_timeText ?? null,
     media: mediaRaw.map((m: any) => (typeof m === 'string' ? m : m?.url)).filter((u: any) => typeof u === 'string' && u),
     likeCount: toCount(raw.likeCount ?? raw.like_count ?? raw.likes),
     commentCount: toCount(raw.commentCount ?? raw.comment_count ?? raw.comments),
@@ -184,7 +186,7 @@ export const requestExtensionPagePosts = (
       finish([]);
     }, timeoutMs);
 
-    const payload = { source: 'realtyz-app', type: EXT_POSTS_REQUEST, pageId: opts.pageId ?? null, since: opts.since ?? null, scrape: opts.scrape === true, max: opts.max ?? 60, requestId, budgetMs: opts.budgetMs };
+    const payload = { source: 'realtyz-app', type: EXT_POSTS_REQUEST, pageId: opts.pageId ?? null, since: opts.since ?? null, scrape: opts.scrape === true, max: opts.max ?? 10, requestId, budgetMs: opts.budgetMs };
     try {
       window.postMessage(payload, window.location.origin);
     } catch {

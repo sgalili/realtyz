@@ -38,7 +38,7 @@ export async function syncPagePostsViaExtension(opts: {
     pageId: opts.pageId ?? null,
     since: opts.since,
     scrape: true,
-    max: opts.max ?? 60,
+    max: opts.max ?? 10,
     timeoutMs: EXT_PAGE_SYNC_TIMEOUT_MS,
     // Extension stops scrolling early so its answer always lands before our timeout.
     budgetMs: EXT_PAGE_SYNC_TIMEOUT_MS - 6_000,
