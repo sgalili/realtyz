@@ -250,9 +250,6 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
             )
           ) : (<>
           <div className="flex items-center justify-between gap-2">
-            <div className={cn('flex items-center gap-1.5 font-semibold text-muted-foreground', TEXT_SM)}>
-              <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
-            </div>
             {groups.length > 0 && (
               <SelectModeToggle
                 active={deleteMode}
@@ -260,6 +257,9 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
               />
             )}
+            <div className={cn('flex items-center gap-1.5 font-semibold text-muted-foreground', TEXT_SM)}>
+              <Users className="h-4 w-4" /> קבוצות ({selectedGroups}/{groups.length})
+            </div>
           </div>
 
           {deleteMode && (
