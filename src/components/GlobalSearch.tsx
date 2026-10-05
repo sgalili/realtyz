@@ -11,7 +11,7 @@ import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 const PROPERTY_QUICK_LINK = { label: 'נכסים', path: '/properties', icon: Building2 };
 
 const QUICK_LINKS = [
-  { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
+  { label: 'לוח בקרה', path: '/command-center', icon: LayoutDashboard },
   { label: 'אנשי קשר', path: '/lead-crm', icon: User },
   PROPERTY_QUICK_LINK,
   { label: 'תיבת הודעות', path: '/inbox', icon: MessageSquare },

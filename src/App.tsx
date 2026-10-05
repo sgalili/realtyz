@@ -241,14 +241,14 @@ function RootRoute() {
     try { next = window.localStorage.getItem('realtyz-pending-oauth-consent'); } catch { /* */ }
     if (next && next.startsWith('/.lovable/oauth/consent')) return <Navigate to={next} replace />;
   }
-  if (isMarketingHost && !user && !loading) return <Navigate to="/landing" replace />;
+  void isMarketingHost; // the public board is the homepage on every host
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" />
     </div>
   );
-  if (!user) return <Suspense fallback={<PageLoader />}><Landing /></Suspense>;
-  return <ProtectedRoute><CommandCenter /></ProtectedRoute>;
+  if (!user) return <Suspense fallback={<PageLoader />}><PublicListingsBoard /></Suspense>;
+  return <ProtectedRoute><Suspense fallback={<PageLoader />}><PublicListingsBoard embedded /></Suspense></ProtectedRoute>;
 }
 
 
