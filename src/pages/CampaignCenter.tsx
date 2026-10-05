@@ -6137,7 +6137,7 @@ const PublishedFeed = ({
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {t.label}
+              {t.label} ({t.count})
             </button>
           ))}
         </div>
@@ -8988,7 +8988,17 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           
-          <PublishedFeed subTab={historyTab} onSubTabChange={setHistoryTab} altContent={queueAltContent} />
+          <PublishedFeed
+            subTab={historyTab}
+            onSubTabChange={setHistoryTab}
+            altContent={queueAltContent}
+            tabCounts={{
+              drafts: campaignDraftRows.length,
+              future: collapseCampaignCards(
+                campaignHistoryRows.filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status) && !readDeletedTombstones().has(String(r.id))),
+              ).length,
+            }}
+          />
         </TabsContent>
         <TabsContent value="calendar" className="mt-6">
           <ScheduledCampaignCalendar
