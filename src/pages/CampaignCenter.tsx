@@ -6264,6 +6264,11 @@ const PublishedFeed = ({
           };
         }
 
+        // Prefer the exact native post permalink over the group-page fallback.
+        const isPermalink = (u?: string | null) => !!u && /\/posts\/|\/permalink\/|story_fbid=|multi_permalinks=/.test(u);
+        const exactGroupPost = Object.values(cardGroupResults).map((g: any) => g?.post_url).find(isPermalink) || null;
+        const nativeGroupPostUrl = exactGroupPost;
+
         const seriesSlots = r._seriesSlots;
         const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
         // Emergency override: never treat rows as paused in the UI so the
@@ -6274,7 +6279,8 @@ const PublishedFeed = ({
 
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
         const platformMeta = FEED_PLATFORMS.find((p) => p.id === String(r.channel || '').toLowerCase());
-        const postUrl = derivePostUrl(r);
+        const derivedUrl = derivePostUrl(r);
+        const postUrl = nativeGroupPostUrl && !isPermalink(derivedUrl) ? nativeGroupPostUrl : derivedUrl;
         // A status poll must never swap the text/title already shown on a card.
         let displayedCopy = postCopyRef.current.entries.get(r.id);
         if (!displayedCopy) {

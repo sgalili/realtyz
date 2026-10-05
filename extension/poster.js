@@ -419,10 +419,28 @@
       article = [...document.querySelectorAll('div[role="article"]')].find((a) =>
         (a.innerText || '').replace(/\s+/g, ' ').includes(snippet),
       ) || null;
-      const href = article
-        ? [...article.querySelectorAll('a[href]')].map((a) => a.getAttribute('href') || '').find((h) => /\/posts\/|permalink|multi_permalinks/.test(h))
+      const permalinkRe = /\/posts\/\d|\/permalink\/\d|multi_permalinks=|story_fbid=/;
+      const findHref = () => article
+        ? [...article.querySelectorAll('a[href]')].map((a) => a.getAttribute('href') || '').find((h) => permalinkRe.test(h))
         : null;
-      if (href) postUrl = href.startsWith('http') ? href : `https://www.facebook.com${href}`;
+      let href = findHref();
+      if (!href && article) {
+        // Facebook only fills the timestamp permalink after hover/focus.
+        for (const a of article.querySelectorAll('a[role="link"], a[href="#"]')) {
+          a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+          a.dispatchEvent(new FocusEvent('focus', { bubbles: true }));
+        }
+        href = await waitFor(() => findHref() || null, 4000, 300);
+      }
+      if (href) {
+        const abs = href.startsWith('http') ? href : `https://www.facebook.com${href}`;
+        try {
+          const u = new URL(abs);
+          const keep = new URLSearchParams();
+          for (const k of ['story_fbid', 'id', 'multi_permalinks']) if (u.searchParams.get(k)) keep.set(k, u.searchParams.get(k));
+          postUrl = `${u.origin}${u.pathname}${keep.toString() ? `?${keep}` : ''}`;
+        } catch { postUrl = abs; }
+      }
     }
 
     // 6. first comment (contact details / link) right after the post went live
