@@ -705,7 +705,7 @@ async function drainQueue() {
 let runningSince = 0;
 let pollAgain = false;
 const POLL_STALE_MS = 8 * 60 * 1000;
-const JOB_TIMEOUT_MS = 6 * 60 * 1000;
+const POLL_JOB_TIMEOUT_MS = 6 * 60 * 1000;
 const withTimeout = (p, ms, label) => Promise.race([
   p, new Promise((_, rej) => setTimeout(() => rej(new Error(label)), ms)),
 ]);
@@ -744,9 +744,10 @@ async function poll() {
     const jobs = Array.isArray(json.jobs) ? json.jobs : [];
     for (const job of jobs) {
       try {
-        await withTimeout(runJob(token, job), JOB_TIMEOUT_MS, 'job_timeout');
+        await withTimeout(runJob(token, job), POLL_JOB_TIMEOUT_MS, 'job_timeout');
       } catch (e) {
-        try { await report(token, job, false, 'הפרסום לא הסתיים בזמן, יחודש אוטומטית'); } catch (e2) { /* noop */ }
+        // Don't report: the job may still finish; the in-flight lock prevents a local duplicate.
+        await setState({ last_error: 'פרסום אחד נמשך זמן רב, ממשיכים לקבוצה הבאה' });
       }
       runningSince = Date.now();
       await sleep(8000); // gentle pacing between group posts
