@@ -29,6 +29,7 @@ import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
+const MyAds = lazy(() => import("./pages/MyAds"));
 const LeadCRM = lazy(() => import("./pages/LeadCRM"));
 const OmnichannelInbox = lazy(() => import("./pages/OmnichannelInbox"));
 const AIContentGenerator = lazy(() => import("./pages/AIContentGenerator"));
@@ -442,6 +443,7 @@ const App = () => (
               <Route path="/strategy-bank" element={<ProtectedRoute allowGuestDemo><KnowledgeBase /></ProtectedRoute>} />
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/shared-deals" element={<ProtectedRoute><SharedDeals /></ProtectedRoute>} />
+              <Route path="/my-ads" element={<ProtectedRoute><MyAds /></ProtectedRoute>} />
               <Route path="/sign/:token" element={<Suspense fallback={<PageLoader />}><SignDocument /></Suspense>} />
               <Route path="/upgrade" element={<ProtectedRoute allowGuestDemo><Upgrade /></ProtectedRoute>} />
               <Route path="/pricing" element={<Navigate to="/upgrade" replace />} />

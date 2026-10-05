@@ -10,6 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import {
   EMPTY_LEAD_FILTER,
   EMPTY_PROPERTY_FILTER,
@@ -93,6 +95,10 @@ export default function LeadTypeFilterButton({
   propertyTypes?: string[];
   className?: string;
 }) {
+  const { user } = useAuth();
+  const { isAffiliate, isTeamMember } = useUserRole();
+  // Lead type/value filters are for partners and brokers only.
+  const showLeadFilters = !!user && (isAffiliate || isTeamMember);
   const property = propertyState ?? null;
   const active = leadFilterActiveCount(state) + (property ? propertyFilterActiveCount(property) : 0);
 
@@ -131,6 +137,7 @@ export default function LeadTypeFilterButton({
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="max-h-[70vh] w-80 space-y-3 overflow-y-auto p-3" dir="rtl">
+        {showLeadFilters ? (<>
         <div className="text-sm font-semibold">סוג הליד</div>
         <div className="space-y-2">
           {LEAD_TYPE_ORDER.map((key) => {
@@ -151,10 +158,11 @@ export default function LeadTypeFilterButton({
             <Input type="number" min={0} dir="ltr" placeholder="עד" className="h-9" value={state.max ?? ''} onChange={(event) => setBound('max', event.target.value)} />
           </div>
         </div>
+        </>) : null}
 
         {property ? (
           <>
-            <Separator />
+            {showLeadFilters ? <Separator /> : null}
             <div className="text-sm font-semibold">פרטי הנכס</div>
             <div className="space-y-2">
               <div className="space-y-1">
