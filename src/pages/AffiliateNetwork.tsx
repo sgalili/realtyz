@@ -416,7 +416,7 @@ function BrokerAffiliateNetwork() {
   const updateReferral = useUpdateReferral();
   const quickSave = useSetAffiliateReward();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("q") ?? "" : ""));
   const [trackingSearch, setTrackingSearch] = useState("");
   const [submissionsSearch, setSubmissionsSearch] = useState("");
   const [leadFilter, setLeadFilter] = useState<LeadFilterState>(EMPTY_LEAD_FILTER);

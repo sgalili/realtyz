@@ -11,6 +11,7 @@ import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import { officialWaLink, openWhatsAppContactPicker } from '@/lib/officialWa';
 import { openExternal } from '@/lib/openExternal';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 
 export type ContactOptions = LeadContactOptions;
@@ -51,6 +52,8 @@ export default function PropertyContactActions({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
+  const { user } = useAuth();
+  const [joinOpen, setJoinOpen] = useState(false);
   const ref = new URLSearchParams(window.location.search).get('ref');
 
   // Canonical opener built from the property row itself, so Rita can parse the
@@ -146,7 +149,12 @@ export default function PropertyContactActions({
             <ClipboardList className="h-4 w-4" />השארת פרטים
           </Button>
         )}
-        {showShare && (
+        {showShare && !user && (
+          <Button variant="outline" size={compact ? 'icon' : 'default'} className={compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'} aria-label="שיתוף נכס" onClick={() => setJoinOpen(true)}>
+            <Share2 className="h-4 w-4" />{compact ? null : 'שיתוף'}
+          </Button>
+        )}
+        {showShare && user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size={compact ? 'icon' : 'default'} className={compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'} aria-label="שיתוף נכס">
@@ -167,6 +175,24 @@ export default function PropertyContactActions({
           </DropdownMenu>
         )}
       </div>
+      <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
+        <DialogContent dir="rtl" className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="text-right">שתפו נכסים והרוויחו</DialogTitle></DialogHeader>
+          <div className="space-y-3 text-sm text-foreground">
+            <p>הצטרפו בחינם לרשת השותפים של Realtyz ותקבלו תגמול על כל פנייה איכותית שמגיעה דרך הקישור שלכם.</p>
+            <ol className="list-decimal space-y-1.5 ps-5">
+              <li>נרשמים בחינם בדקה אחת.</li>
+              <li>משתפים את הנכס עם קישור אישי בווטסאפ, SMS, מייל או ברשתות.</li>
+              <li>ריטה מטפלת בפניות, מסננת ומעבירה למפרסם באופן אוטומטי.</li>
+              <li>על כל פנייה שעומדת בתנאים, התגמול נכנס לחשבון שלכם.</li>
+            </ol>
+          </div>
+          <DialogFooter className="flex-row items-center justify-between sm:justify-between">
+            <Button variant="outline" onClick={() => setJoinOpen(false)}>ביטול</Button>
+            <Button onClick={() => { const next = `/affiliate-network?q=${encodeURIComponent(title)}`; window.location.assign(`/affiliates?next=${encodeURIComponent(next)}`); }}>הצטרפות ושיתוף הנכס</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent dir="rtl" className="sm:max-w-md">
           <DialogHeader><DialogTitle className="text-right">{mode === 'phone' ? 'חזרה טלפונית' : mode === 'whatsapp' ? 'שיחה עם ריטה' : 'השארת פרטים'}</DialogTitle></DialogHeader>
