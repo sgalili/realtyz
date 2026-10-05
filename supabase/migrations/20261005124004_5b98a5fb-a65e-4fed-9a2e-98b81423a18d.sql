@@ -1,0 +1,3 @@
+ALTER TABLE public.messenger_page_bindings ADD COLUMN IF NOT EXISTS sync_strategy text NOT NULL DEFAULT 'extension' CHECK (sync_strategy IN ('graph','extension'));
+UPDATE public.messenger_page_bindings SET sync_strategy = 'graph' WHERE owner_id = 'dc819834-1aa9-4aca-bb27-ec2c8cebde69';
+COMMENT ON COLUMN public.messenger_page_bindings.sync_strategy IS 'Workspace-owned Page read strategy; Graph for approved Development-mode workspace, extension for restricted workspaces. Never inherited from a shared binding.';
