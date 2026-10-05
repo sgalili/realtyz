@@ -83,7 +83,7 @@ it('shows no status icon on the main card, only the single group name', () => {
   render(<GroupStatusChips collapsedCounter groupIds={['123']} meta={{ '123': { name: 'קבוצה יחידה', icon: null } }} />);
   const target = screen.getByRole('button', { name: /קבוצה יחידה/ });
   expect(target.querySelector('[aria-label="ממתין לאישור"]')).toBeNull();
-  expect(target.lastElementChild).toHaveTextContent('קבוצה יחידה');
+  expect(target.querySelector('.truncate')).toHaveTextContent('קבוצה יחידה');
   expect(screen.queryByText('1 קבוצות')).not.toBeInTheDocument();
 });
 it('shows a downward arrow inside the multi-group counter pill without a status icon', () => {
@@ -94,4 +94,24 @@ it('shows a downward arrow inside the multi-group counter pill without a status 
   expect(pill.querySelector('svg')).not.toBeNull();
   expect(screen.queryByLabelText('פורסם')).toBeNull();
   expect(screen.queryByLabelText('נדחה')).toBeNull();
+});
+it('expands a truncated compact group name without opening Facebook', () => {
+  const name = 'דירות במרכז להשכרה ולמכירה בתל אביב רמת גן גבעתיים והסביבה הקרובה';
+  render(<GroupStatusChips collapsedCounter groupIds={['123']} meta={{ '123': { name, icon: null } }} />);
+  const target = screen.getByRole('button', { name: `הצגת שם הקבוצה המלא: ${name}` });
+  expect(target.querySelector('.truncate')).toHaveTextContent(/\.\.\.$/);
+  fireEvent.click(target);
+  expect(screen.getByRole('dialog')).toHaveTextContent(name);
+  expect(mocks.open).not.toHaveBeenCalled();
+});
+it('places the current status before the compact subpost name and updates it on refresh', () => {
+  const props = { collapsedCounter: true, showStatus: true, groupIds: ['123'], meta: { '123': { name: 'קבוצה יחידה', icon: null } } };
+  const { rerender } = render(<GroupStatusChips {...props} results={{ '123': { status: 'queued' } }} />);
+  const target = screen.getByRole('button', { name: /הצגת שם הקבוצה/ });
+  expect(target.firstElementChild).toHaveAttribute('aria-label', 'ממתין לאישור');
+  rerender(<GroupStatusChips {...props} results={{ '123': { status: 'completed' } }} />);
+  expect(target.firstElementChild).toHaveAttribute('aria-label', 'פורסם');
+  rerender(<GroupStatusChips {...props} results={{ '123': { state: 'failed', reason: 'posting restricted in this group' } }} />);
+  expect(target.firstElementChild).toHaveAttribute('aria-label', 'מוגבל לפרסום');
+  expect(screen.queryByLabelText('פורסם')).toBeNull();
 });
