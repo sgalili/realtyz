@@ -66,6 +66,7 @@ import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { GroupStatusChips, groupResultMap } from '@/components/campaigns/GroupStatusChips';
 import { QueueCard } from '@/components/campaigns/QueueCard';
 import { ContinuePostingButton } from '@/components/campaigns/ContinuePostingButton';
+import { ResumePostingButton } from '@/components/campaigns/ResumePostingButton';
 import { REPOST_EDITOR_EVENT, repostEditorDraft, type RepostEditorRequest } from '@/lib/repostEditor';
 import { applyContinuedQueueJobs, POSTS_REMOVED_EVENT } from '@/lib/extensionGroupBridge';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
@@ -6396,6 +6397,7 @@ const PublishedFeed = ({
                     />
                   </div>
                 )}
+                {hasGroupTargets && !r._optimistic && <ResumePostingButton campaignLogId={r.id} />}
                 {hasGroupTargets && <ContinuePostingButton post={r} />}
                 <div className="ms-auto flex shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2"
                   title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
