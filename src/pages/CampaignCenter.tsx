@@ -4041,6 +4041,7 @@ type CampaignRow = {
 
   media_urls?: string[];
   group_ids?: string[];
+  publish_to_page?: boolean;
   external_url?: string | null;
   is_external?: boolean;
   listing_id?: string | null;
@@ -4965,7 +4966,7 @@ const PublishedFeed = ({
     // they are a member of.
     const { data, error: feedReadError } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids, series_id')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids, series_id, publish_to_page')
       .eq('workspace_owner_id', ownerScope)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
