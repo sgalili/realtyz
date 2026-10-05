@@ -55,11 +55,11 @@
 
 ## Oct 6 batch (9 updates)
 - [x] 1. Search bar: icon to opposite side, filter button (affiliate filter popup incl. bid range), "Search" button when text present
-- [ ] 2. Public board as default homepage for all; signed-in header (burger, notifications, logo, full name, Rita photo)
+- [x] 2. Public board as default homepage for all; signed-in header (burger, notifications, logo, full name, Rita photo)
 - [x] 3. Public list view = /properties table minus affiliate/office cols, horizontal scroll, inline expand below row (one open at a time)
-- [ ] 4. Landing pages show every detail/feature/extra from /properties
+- [x] 4. Landing pages show every detail/feature/extra from /properties
 - [x] 5. Multiselect icon button (list-check) right before sort button
 - [x] 6. Rita chat: skip name/phone form, open WhatsApp with message referencing the ad, Rita asks name
 - [x] 7. Show action buttons per priced lead type on public ads
-- [ ] 8. Signed-out "share ad": affiliate onboarding flow, then share the original property
-- [ ] 9. Daily lead cap in bids dialog, stop promotion at cap, leftover-lead discount (% or fixed)
+- [x] 8. Signed-out "share ad": affiliate onboarding flow, then share the original property
+- [~] 9. (cap + stop + no-charge done; affiliate discount input & leftover purchase screen open) Daily lead cap in bids dialog, stop promotion at cap, leftover-lead discount (% or fixed)
