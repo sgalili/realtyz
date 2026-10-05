@@ -59,6 +59,9 @@ export default function PropertyContactActions({
   // Canonical opener built from the property row itself, so Rita can parse the
   // exact property (type, street + house number, city) with zero questions.
   const waMessage = premsg?.trim() || `היי ריטה, אשמח לקבל פרטים אודות ${title}.`;
+  // The sharing partner's code travels inside the opener so the WhatsApp
+  // contact is credited to them when the message arrives.
+  const waOpener = ref && /^[A-Za-z0-9_-]{4,40}$/.test(ref) ? `${waMessage}\n(קוד הפניה: ${ref})` : waMessage;
 
   const shareDetails = () => {
     const url = shareUrl?.trim() || (typeof window !== 'undefined' ? window.location.href : '');
@@ -91,7 +94,7 @@ export default function PropertyContactActions({
   // WhatsApp already knows the visitor's number, so skip the form: open the
   // chat at once with a message about this property; Rita asks for the name.
   const openRita = () => {
-    window.open(officialWaLink(waMessage), '_blank', 'noopener,noreferrer');
+    window.open(officialWaLink(waOpener), '_blank', 'noopener,noreferrer');
   };
 
   const submit = async () => {
