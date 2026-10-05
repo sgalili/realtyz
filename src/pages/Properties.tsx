@@ -1601,7 +1601,7 @@ export function ResultTable({
             ) : null}
             {showAffiliateColumn ? <HeaderCell col="affiliate" label="שותפים" /> : null}
             {commissionCell ? <HeaderCell col="commission" label="עמלות" /> : null}
-            <HeaderCell col="publisher" label="משרד מפרסם" />
+            {showPublisherColumn ? <HeaderCell col="publisher" label="משרד מפרסם" /> : null}
             <HeaderCell col="image" label="תמונה" extraClass="w-14" />
 
             <HeaderCell col="name" label="רחוב" />
