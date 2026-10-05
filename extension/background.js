@@ -524,10 +524,12 @@ async function report(token, job, ok, reason, postUrl) {
   }
 
   // Local (app-triggered) jobs have no backend queue row — skip the report call.
-  if (token && !job.local) {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const serverId = !job.local ? job.id : (job.cloudId && UUID.test(String(job.cloudId)) ? job.cloudId : null);
+  if (token && serverId) {
     await sendReport({
       token,
-      job_id: job.id,
+      job_id: serverId,
       ok: !!ok,
       reason: ok ? null : (reason || 'פרסום בדפדפן נכשל'),
       post_url: postUrl || null,
@@ -699,6 +701,7 @@ async function drainQueue() {
           id: `queue-${entry.id}`,
           dedupe_key: String(entry.id),
           local: true,
+          cloudId: entry.cloudId || null,
           workspaceOwnerId: entry.workspaceOwnerId,
           group_id: '',
           group_url: entry.groupUrl,

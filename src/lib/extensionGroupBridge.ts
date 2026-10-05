@@ -408,6 +408,7 @@ const LOCAL_STATUS = (s: string | null | undefined): QueuedExtensionPost["status
 };
 
 let mirrorBusy = false;
+const mirroredStatus = new Map<string, string>();
 let mirrorPending: QueuedExtensionPost[] | null = null;
 
 /** Push local queue jobs (and their live status) into the database. */
@@ -462,10 +463,12 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
         continue;
       }
       const cloudStatus = CLOUD_STATUS[job.status] ?? "pending";
-      await (supabase as any)
+      if (mirroredStatus.get(job.cloudId) === cloudStatus) continue;
+      // Keep the server payload (campaign_log_id, copy, media) intact: only
+      // status fields change, so the campaign counter keeps its linkage.
+      const { error: updErr } = await (supabase as any)
         .from("campaign_activity_queue")
         .update({
-          payload,
           status: cloudStatus,
           last_error: job.error ?? null,
           ...(cloudStatus === "completed"
@@ -475,7 +478,10 @@ export const mirrorQueueToCloud = async (queue: QueuedExtensionPost[]): Promise<
             ? { processed_at: new Date().toISOString(), claimed_by: null, claim_expires_at: null }
             : {}),
         })
-        .eq("id", job.cloudId);
+        .eq("id", job.cloudId)
+        .eq("workspace_owner_id", ownerId);
+      if (updErr) console.error("[queue-mirror] status sync failed", job.cloudId, updErr.message);
+      else mirroredStatus.set(job.cloudId, cloudStatus);
     }
 
     if (changed) {
@@ -686,6 +692,9 @@ export const useExtensionQueue = (workspaceOwnerId?: string | null): QueuedExten
       // Keep the previous array identity when nothing actually changed, so the
       // campaign cards do not unmount/remount on every poll tick.
       setQueue((curr) => (sameQueue(curr, value) ? curr : value));
+      // Extension results land in this tab's storage: persist finished
+      // cloud-linked jobs so the database-driven X/Y counter advances.
+      if (value.some((j) => j.cloudId && (j.status === 'completed' || j.status === 'failed'))) void mirrorQueueToCloud(all);
     };
     const onCustom = (e: Event) => commit((e as CustomEvent).detail);
     const onStorage = (e: StorageEvent) => {
