@@ -5478,6 +5478,7 @@ const PublishedFeed = ({
   // comments probes. A provider failure must never mutate connection state.
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
+    let cancelled = false;
     const runFullSync = async () => {
       if (fullSyncRunningRef.current) return;
       fullSyncRunningRef.current = true;
