@@ -90,6 +90,7 @@ import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/S
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { startMetaPageConnect, FACEBOOK_PAGE_PROVIDER } from '@/lib/facebookPageConnect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
+import { FacebookGroupsIcon } from '@/components/icons/FacebookGroupsIcon';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useRefreshMetaPageBinding, useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 
@@ -5486,9 +5487,9 @@ const PublishedFeed = ({
     const scope = workspaceOwnerId ?? userId;
     let cancelled = false;
     const runFullSync = async () => {
-      if (fullSyncRunningRef.current) return;
-      fullSyncRunningRef.current = true;
       const toastId = 'campaigns-hero-sync';
+      if (fullSyncRunningRef.current) { toast.loading('הסנכרון כבר רץ…', { id: toastId }); return; }
+      fullSyncRunningRef.current = true;
       toast.loading('מסנכרן פוסטים מעמוד הפייסבוק…', { id: toastId });
       let ok = false;
       let hadTransientIssue = false;
@@ -5507,6 +5508,8 @@ const PublishedFeed = ({
           } else {
             setExtSync({ state: res.status, count: 0, at: Date.now() });
             hadTransientIssue = true;
+            console.warn('[campaign] manual sync not completed', res);
+            refreshWarning = res.status === 'no_extension' ? 'יש להתקין ולחבר את תוסף Realtyz כדי לסנכרן' : 'הסנכרון לא הושלם, נסה שוב';
           }
         }
         // Repaint only from persisted rows. mergeRowsById keeps existing cards
@@ -5514,7 +5517,7 @@ const PublishedFeed = ({
         await load({ skipFbImport: true });
         ok = refreshWarning === null;
         if (ok && !hadTransientIssue) toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
-        else if (hadTransientIssue) toast.dismiss(toastId);
+        else if (hadTransientIssue) toast.warning(refreshWarning || 'הסנכרון לא הושלם', { id: toastId });
         else toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
       } catch (err) {
         console.warn('[campaign] manual facebook sync failed', err);
