@@ -1227,7 +1227,7 @@ Deno.serve(async (req) => {
       for (let i = 0; i < incomingIds.length; i += 200) {
         const { data: prior } = await admin
           .from("campaign_logs")
-          .select("provider_message_id, media_urls, provider_response")
+          .select("provider_message_id, media_urls, provider_response, sent_at, created_at")
           .eq("user_id", ownerId)
           .in("provider_message_id", incomingIds.slice(i, i + 200));
         (prior ?? []).forEach((row: any) => existingById.set(String(row.provider_message_id), row));
@@ -1254,8 +1254,10 @@ Deno.serve(async (req) => {
             campaign_name: titleFromText(p.text),
             channel: "facebook",
             message_body: p.text || titleFromText(p.text),
-            created_at: p.created_at,
-            sent_at: p.created_at,
+            // Original Facebook publish time wins; otherwise keep the stored
+            // date; only a brand-new undated post gets the import time.
+            created_at: p.created_at ?? prior?.created_at ?? prior?.sent_at ?? new Date().toISOString(),
+            sent_at: p.created_at ?? prior?.sent_at ?? prior?.created_at ?? new Date().toISOString(),
             status: "sent",
             is_archived: false,
             provider_message_id: String(p.fb_post_id),
