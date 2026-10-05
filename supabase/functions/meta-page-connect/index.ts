@@ -507,15 +507,8 @@ async function handleRequest(req: Request): Promise<Response> {
         .eq("owner_id", ownerId)
         .order("updated_at", { ascending: false });
 
-      let bindings = (rows ?? []) as any[];
-
-      // Same fallback the UI shows (get_effective_meta_page): a workspace with
-      // no own binding still uses the platform-shared Page, so it must never be
-      // reported as "not connected".
-      if (bindings.length === 0) {
-        const shared = await sharedBinding();
-        if (shared?.page_id) bindings = [shared];
-      }
+      // Strict workspace isolation: only this workspace's own bindings count.
+      const bindings = (rows ?? []) as any[];
 
       if (bindings.length === 0) {
         return json({ connected: false, needs_reconnect: false, never_connected: true, page: null, error: null });
@@ -633,8 +626,8 @@ async function handleRequest(req: Request): Promise<Response> {
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      // Fall back to the platform-shared Page, exactly like the UI resolver.
-      const row: any = (data as any)?.page_id ? data : await sharedBinding();
+      // Strict workspace isolation: never fall back to another workspace's Page.
+      const row: any = (data as any)?.page_id ? data : null;
 
 
       if (!row?.page_id) {
