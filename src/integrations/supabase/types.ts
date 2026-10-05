@@ -7475,6 +7475,10 @@ export type Database = {
       }
       get_match_stats: { Args: { p_user_id: string }; Returns: Json }
       get_my_ad_details: { Args: { _listing_id: string }; Returns: Json }
+      get_my_ad_history: {
+        Args: { _listing_id: string; _offset?: number }
+        Returns: Json
+      }
       get_my_ads_stats: {
         Args: never
         Returns: {
@@ -7835,6 +7839,10 @@ export type Database = {
       }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
       track_affiliate_click: { Args: { _code: string }; Returns: undefined }
+      track_listing_referral_view: {
+        Args: { _code?: string; _id_or_slug: string }
+        Returns: undefined
+      }
       track_listing_view: { Args: { _id_or_slug: string }; Returns: undefined }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       trigger_match_for_lead: {
