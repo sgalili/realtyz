@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAppMode } from '@/hooks/useAppMode';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
@@ -54,6 +55,8 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
 
 export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
+  const { isPartnerMode } = useAppMode();
+  const myListingsPath = isPartnerMode ? '/affiliate-network' : '/properties';
   const { user } = useAuth();
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
