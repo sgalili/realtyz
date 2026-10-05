@@ -32,7 +32,7 @@ export function ResumePostingButton({ campaignLogId }: { campaignLogId: string }
   if (!data || data.total < 1) return null;
   const resumable = data.stalled + data.failed;
   const active = data.pending + data.processing;
-  if (data.completed === data.total || (resumable === 0 && active === 0)) return null;
+  if (data.completed >= data.total) return null;
 
   const resume = async () => {
     if (busy || !owner) return;
@@ -55,10 +55,10 @@ export function ResumePostingButton({ campaignLogId }: { campaignLogId: string }
         title={`פורסמו ${data.completed} · ממתינות ${active} · נעצרו ${resumable}`}>
         {label}
       </span>
-      {resumable > 0 && (
+      {(
         <Button type="button" variant="outline" size="icon"
           className="h-7 w-7 shrink-0 rounded-md border-primary/40 bg-background text-primary"
-          title={`המשך פרסום מהקבוצה שנעצרה (${resumable})`} aria-label="המשך פרסום מהקבוצה שנעצרה"
+          title={`המשך פרסום ל-${data.total - data.completed} קבוצות שנותרו`} aria-label="המשך פרסום מהקבוצה שנעצרה"
           disabled={busy} onClick={() => void resume()}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
         </Button>
