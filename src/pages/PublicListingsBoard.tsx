@@ -195,17 +195,17 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             })}
           </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border bg-card">
-              <table className="w-full min-w-[720px] text-sm">
+            <div className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
+              <table className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     <th className="w-14 p-2" />
                     <th className="p-2 text-right font-semibold">כתובת</th>
                     <th className="p-2 text-right font-semibold">עסקה</th>
+                    <th className="p-2 text-right font-semibold">מחיר</th>
                     <th className="p-2 text-right font-semibold">חדרים</th>
                     <th className="p-2 text-right font-semibold">מ״ר</th>
                     <th className="p-2 text-right font-semibold">קומה</th>
-                    <th className="p-2 text-right font-semibold">מחיר</th>
                     <th className="w-10 p-2" />
                   </tr>
                 </thead>
@@ -218,12 +218,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     return [
                       <tr key={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <td className="p-2">{card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-10 w-10 rounded object-cover" loading="lazy" /> : <div className="h-10 w-10 rounded bg-muted" />}</td>
-                        <td className="p-2 font-semibold text-foreground">{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</td>
+                        <td className="p-2 font-semibold text-foreground"><span className="block max-w-[9rem] truncate sm:max-w-[14rem]" title={[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}>{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span></td>
                         <td className="p-2"><span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success text-success-foreground' : 'bg-sale text-sale-foreground')}>{dealLabel(card.deal_type)}</span></td>
+                        <td className="p-2 whitespace-nowrap font-bold">{shekel(card.price)}</td>
                         <td className="p-2">{card.rooms || ''}</td>
                         <td className="p-2">{card.sqm || ''}</td>
                         <td className="p-2 whitespace-nowrap">{card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}</td>
-                        <td className="p-2 whitespace-nowrap font-bold">{shekel(card.price)}</td>
                         <td className="p-2"><ChevronDown className={cn('h-5 w-5 transition-transform', open && 'rotate-180')} /></td>
                       </tr>,
                       open ? <tr key={`${card.id}-x`} className="border-t bg-muted/10">
