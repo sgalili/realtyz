@@ -179,7 +179,7 @@ export const FacebookGroupBulkPostCard = () => {
           target_label: group?.group_name ?? null,
           scheduled_for: when.toISOString(),
           status: 'pending',
-          publication_status: 'scheduled',
+          publication_status: 'pending_time_bank',
           variation_index: 0,
           variations: [{ body: text }],
           payload: {
