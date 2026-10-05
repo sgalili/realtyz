@@ -6,6 +6,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { pokeExtension } from '@/lib/extensionPairing';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 
 type Progress = { total: number; completed: number; pending: number; processing: number; stalled: number; failed: number };
@@ -38,7 +39,11 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
   if (data.completed >= data.total) return null;
 
   const resume = async () => {
-    if (busy || !owner) return;
+    if (busy) return;
+    if (!owner) {
+      toast.error('לא ניתן לחדש — סביבת העבודה עדיין נטענת, נסו שוב בעוד רגע');
+      return;
+    }
     setBusy(true);
     // Instant feedback so the click never feels dead.
     toast.loading('מחדש את תור הפרסום...', { id: `resume-${campaignLogId}` });
@@ -70,23 +75,33 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
       ? `${data.processing > 0 ? `מפרסם לקבוצה ${Math.min(data.completed + 1, data.total)} מתוך ${data.total}` : `ממתין לפרסום · ${data.completed}/${data.total}`} · לחיצה תחדש את התור`
       : `פורסמו ${data.completed}/${data.total} · לחיצה תמשיך ל-${remaining} קבוצות שנותרו`;
   return (
-    <Button type="button" variant="ghost" size="sm"
-      onClick={(e) => { e.stopPropagation(); void resume(); }}
-      disabled={busy}
-      title={title}
-      aria-label={`${title}`}
-      className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70">
-      {busy ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : running ? (
-        <span className="relative flex h-2 w-2" aria-hidden>
-          <span className="absolute inline-flex h-full w-full animate-ping motion-reduce:animate-none rounded-full bg-primary opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-        </span>
-      ) : (
-        <Play className="h-3 w-3" aria-hidden />
-      )}
-      <span aria-live="polite" dir="ltr">{data.completed}/{data.total}</span>
-    </Button>
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button type="button" variant="ghost" size="sm"
+            onClick={(e) => { e.stopPropagation(); void resume(); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            disabled={busy}
+            aria-label={title}
+            className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70">
+            {busy ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : running ? (
+              <span className="relative flex h-2 w-2" aria-hidden>
+                <span className="absolute inline-flex h-full w-full animate-ping motion-reduce:animate-none rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+              </span>
+            ) : (
+              <Play className="h-3 w-3" aria-hidden />
+            )}
+            <span aria-live="polite" dir="ltr">{data.completed}/{data.total}</span>
+          </Button>
+        </TooltipTrigger>
+        {/* pointer-events-none so the tooltip layer can never swallow the pill click */}
+        <TooltipContent side="top" className="pointer-events-none max-w-[240px] text-center">
+          {title}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
