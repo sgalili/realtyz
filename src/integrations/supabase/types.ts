@@ -3966,6 +3966,7 @@ export type Database = {
           project_name: string | null
           promoted_until: string | null
           property_title: string
+          public_views: number
           rooms: number | null
           short_description: string | null
           slug: string
@@ -4032,6 +4033,7 @@ export type Database = {
           project_name?: string | null
           promoted_until?: string | null
           property_title: string
+          public_views?: number
           rooms?: number | null
           short_description?: string | null
           slug: string
@@ -4098,6 +4100,7 @@ export type Database = {
           project_name?: string | null
           promoted_until?: string | null
           property_title?: string
+          public_views?: number
           rooms?: number | null
           short_description?: string | null
           slug?: string
@@ -7430,6 +7433,23 @@ export type Database = {
         }[]
       }
       get_match_stats: { Args: { p_user_id: string }; Returns: Json }
+      get_my_ads_stats: {
+        Args: never
+        Returns: {
+          address: string
+          affiliates: number
+          asking_price: number
+          city: string
+          clicks: number
+          deal_type: string
+          image_url: string
+          listing_id: string
+          relation: string
+          slug: string
+          title: string
+          views: number
+        }[]
+      }
       get_my_referral_code: { Args: never; Returns: string }
       get_my_referral_stats: { Args: never; Returns: Json }
       get_my_subscription_status: { Args: never; Returns: Json }
@@ -7773,6 +7793,7 @@ export type Database = {
       }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
       track_affiliate_click: { Args: { _code: string }; Returns: undefined }
+      track_listing_view: { Args: { _id_or_slug: string }; Returns: undefined }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       trigger_match_for_lead: {
         Args: { p_lead_id: string }
