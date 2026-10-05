@@ -4733,6 +4733,7 @@ const PublishedFeed = ({
   const fbSyncBlockedRef = useRef(false);
   const fbSyncWarningRef = useRef<string | null>(null);
   const fullSyncRunningRef = useRef(false);
+  const isRitaWorkspace = useIsRitaWorkspace();
   const [extSync, setExtSync] = useState<{ state: 'idle' | 'running' | 'done' | 'no_extension' | 'empty' | 'error' | 'timeout'; count: number; at: number }>({ state: 'idle', count: 0, at: 0 });
   const setFacebookSyncWarning = useCallback((message: string | null) => {
     if (fbSyncWarningRef.current === message) return;
@@ -6149,7 +6150,7 @@ const PublishedFeed = ({
         </Button>
       </div>
 
-      {extSync.state !== 'idle' ? (
+      {!isRitaWorkspace && extSync.state !== 'idle' ? (
         <div
           role="status"
           aria-live="polite"
