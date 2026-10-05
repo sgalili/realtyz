@@ -306,7 +306,7 @@ export function PageHero() {
   const { user } = useAuth();
   const { isPartnerMode } = useAppMode();
   const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
-  const myListingsPath = isPartnerMode ? "/affiliate-network" : "/properties";
+  const myListingsPath = "/my-ads";
   const { isSuperAdmin } = useUserRole();
   const { preferences: affiliatePrefs } = useAffiliatePreferences();
   const automationAnyOn = Boolean(affiliatePrefs.rita_auto_mode || affiliatePrefs.auto_funnel_enabled);
