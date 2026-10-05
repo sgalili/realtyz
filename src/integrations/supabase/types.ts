@@ -7468,6 +7468,10 @@ export type Database = {
         Returns: string
       }
       listing_photo_pool: { Args: { _listing_id: string }; Returns: string[] }
+      mark_group_posts_published: {
+        Args: { _campaign_log_id: string }
+        Returns: number
+      }
       market_pool_coverage: {
         Args: { _since?: string }
         Returns: {

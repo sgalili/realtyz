@@ -99,6 +99,23 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
     } finally { setBusy(false); }
   };
 
+  const markPublished = async () => {
+    if (busy || !owner || !persisted) return;
+    if (!window.confirm('לסמן את כל הקבוצות שנותרו כפורסמו? הפעולה לא תפרסם בפייסבוק.')) return;
+    setBusy(true);
+    try {
+      const { data: n, error } = await (supabase.rpc as any)('mark_group_posts_published', { _campaign_log_id: campaignLogId });
+      if (error) throw error;
+      qc.setQueryData(key, { ...data, completed: data.total, pending: 0, processing: 0, failed: 0, stalled: 0 });
+      toast.success(`${n} קבוצות סומנו כפורסמו`);
+      void qc.invalidateQueries({ queryKey: key });
+      void qc.invalidateQueries({ queryKey: ['group-posting-jobs', owner, campaignLogId] });
+      void qc.invalidateQueries({ queryKey: ['extension-queue'] });
+    } catch (e: any) {
+      toast.error(e?.message || 'הסימון נכשל');
+    } finally { setBusy(false); }
+  };
+
   const running = data.pending + data.processing > 0;
   const remaining = data.total - data.completed;
   const title = busy
@@ -142,11 +159,19 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
       <PopoverContent align="start" dir="rtl" className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
         <div className="mb-2 flex items-center justify-between gap-2 px-1">
           <span className="text-sm font-semibold">פורסמו {data.completed} מתוך {data.total}</span>
-          <Button type="button" size="sm" className="h-7 gap-1 px-2 text-xs" disabled={busy}
-            onClick={(e) => { e.stopPropagation(); void resume(); }}>
-            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-            המשך פרסום
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button type="button" size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled={busy || !persisted}
+              title="סימון כל הקבוצות שנותרו כפורסמו"
+              onClick={(e) => { e.stopPropagation(); void markPublished(); }}>
+              <Check className="h-3 w-3" strokeWidth={3} />
+              סמן כפורסם
+            </Button>
+            <Button type="button" size="sm" className="h-7 gap-1 px-2 text-xs" disabled={busy}
+              onClick={(e) => { e.stopPropagation(); void resume(); }}>
+              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+              המשך פרסום
+            </Button>
+          </div>
         </div>
         <ul className="max-h-72 space-y-1 overflow-y-auto">
           {jobsLoading && <li className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></li>}
