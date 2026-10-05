@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Play, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +6,6 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { pokeExtension } from '@/lib/extensionPairing';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 
 type Progress = { total: number; completed: number; pending: number; processing: number; stalled: number; failed: number };
@@ -34,6 +33,21 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
   });
   useGroupQueueLive(owner, () => { void qc.invalidateQueries({ queryKey: key }); });
   const data = stored && stored.total > 0 ? stored : fallbackProgress;
+
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current || !owner || !data || data.total < 1 || data.completed >= data.total) return;
+    autoRan.current = true;
+    try { pokeExtension(); } catch { /* extension may be absent */ }
+    const k = `auto-resume:${owner}:${campaignLogId}`;
+    const idle = data.pending + data.processing === 0;
+    if (persisted && idle && !sessionStorage.getItem(k)) {
+      sessionStorage.setItem(k, '1');
+      void (supabase.rpc as any)('resume_group_posting', { _campaign_log_id: campaignLogId })
+        .then(() => { try { pokeExtension(); } catch { /* noop */ } qc.invalidateQueries({ queryKey: key }); });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner, campaignLogId, data?.total, data?.completed]);
 
   if (!data || data.total < 1) return isError ? <span role="status" title="לא ניתן לעדכן את התקדמות הפרסום" className="shrink-0 text-xs text-destructive">!</span> : null;
   if (data.completed >= data.total) return null;
@@ -75,14 +89,12 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
       ? `${data.processing > 0 ? `מפרסם לקבוצה ${Math.min(data.completed + 1, data.total)} מתוך ${data.total}` : `ממתין לפרסום · ${data.completed}/${data.total}`} · לחיצה תחדש את התור`
       : `פורסמו ${data.completed}/${data.total} · לחיצה תמשיך ל-${remaining} קבוצות שנותרו`;
   return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
           <Button type="button" variant="ghost" size="sm"
             onClick={(e) => { e.stopPropagation(); void resume(); }}
             onPointerDown={(e) => e.stopPropagation()}
             disabled={busy}
             aria-label={title}
+            title={title}
             className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70">
             {busy ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -96,12 +108,5 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
             )}
             <span aria-live="polite" dir="ltr">{data.completed}/{data.total}</span>
           </Button>
-        </TooltipTrigger>
-        {/* pointer-events-none so the tooltip layer can never swallow the pill click */}
-        <TooltipContent side="top" className="pointer-events-none max-w-[240px] text-center">
-          {title}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   );
 }
