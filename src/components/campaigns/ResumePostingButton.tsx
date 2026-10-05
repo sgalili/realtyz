@@ -31,8 +31,6 @@ export function ResumePostingButton({ campaignLogId }: { campaignLogId: string }
   });
 
   if (!data || data.total < 1) return null;
-  const resumable = data.stalled + data.failed;
-  const active = data.pending + data.processing;
   if (data.completed >= data.total) return null;
 
   const resume = async () => {
