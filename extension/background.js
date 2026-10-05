@@ -1026,7 +1026,7 @@ async function rzSearchGroups(query) {
     }
     const [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzScrapeGroupResults });
     return (res && res.result) || [];
-  } finally { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } }
+  } catch (e) { throw e; } // Failed/unacknowledged extraction leaves the tab open for inspection.
 }
 
 /** Runs inside a group page — clicks "Join" and reports the outcome. */
@@ -1242,15 +1242,35 @@ async function rzScrapePage(pageId, max, budgetMs) {
   } finally { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } }
   // Newest-first: feed order is already newest-first, keep only the recent 10.
   const posts = [...all.values()].slice(0, max);
-  try { await chrome.storage.local.set({ rzPosts: posts, rzPostsAt: Date.now() }); } catch (e) { /* noop */ }
-  return posts;
+  return { posts, tabId: tab.id };
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'RZ_FB_PAGE_SCRAPE_ACK') {
+    const key = 'rzPageDelivery:' + String(msg.requestId);
+    chrome.storage.local.get(key).then(async (stored) => {
+      const delivery = stored[key];
+      if (!delivery || delivery.appTabId !== sender.tab?.id || delivery.workspaceOwnerId !== msg.workspaceOwnerId || delivery.pageId !== msg.pageId) {
+        sendResponse({ ok: false, error: 'delivery_mismatch' }); return;
+      }
+      try { await chrome.tabs.remove(delivery.tabId); } catch (e) { /* already closed manually */ }
+      await chrome.storage.local.remove(key);
+      sendResponse({ ok: true });
+    }).catch(() => sendResponse({ ok: false, error: 'ack_failed' }));
+    return true;
+  }
   if (!msg || msg.type !== 'RZ_FB_PAGE_SCRAPE') return;
   const pageId = msg.pageId ? String(msg.pageId).replace(/[^\w.-]/g, '').slice(0, 80) : null;
+  if (!pageId || !msg.requestId || !msg.workspaceOwnerId || !sender.tab?.id) {
+    sendResponse({ ok: false, error: 'workspace_page_required', posts: [] }); return;
+  }
   rzScrapePage(pageId, Math.min(Number(msg.max) || 10, 10), msg.budgetMs)
-    .then((posts) => sendResponse({ ok: true, posts }))
+    .then(async ({ posts, tabId }) => {
+      await chrome.storage.local.set({ ['rzPageDelivery:' + msg.requestId]: {
+        appTabId: sender.tab.id, workspaceOwnerId: msg.workspaceOwnerId, pageId, tabId, posts,
+      } });
+      sendResponse({ ok: true, posts });
+    })
     .catch((e) => sendResponse({ ok: false, error: String(e && e.message || e), posts: [] }));
   return true;
 });

@@ -4465,6 +4465,7 @@ export type Database = {
           page_avatar_url: string | null
           page_id: string
           page_name: string | null
+          sync_strategy: string
           updated_at: string
         }
         Insert: {
@@ -4477,6 +4478,7 @@ export type Database = {
           page_avatar_url?: string | null
           page_id: string
           page_name?: string | null
+          sync_strategy?: string
           updated_at?: string
         }
         Update: {
@@ -4489,6 +4491,7 @@ export type Database = {
           page_avatar_url?: string | null
           page_id?: string
           page_name?: string | null
+          sync_strategy?: string
           updated_at?: string
         }
         Relationships: []

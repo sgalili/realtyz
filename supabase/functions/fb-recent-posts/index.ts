@@ -540,7 +540,7 @@ Deno.serve(async (req) => {
     const persist = body?.persist !== false &&
       url.searchParams.get("persist") !== "false";
     const requestedOwnerId = asText(
-      body?.user_id ?? body?.owner_id ?? url.searchParams.get("user_id"),
+      body?.workspace_owner_id ?? body?.user_id ?? body?.owner_id ?? url.searchParams.get("user_id"),
     );
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -572,18 +572,37 @@ Deno.serve(async (req) => {
       if (allowed) {
         ownerId = requestedOwnerId;
       } else {
-        // Stale/foreign workspace pointer coming from the browser cache: fall
-        // back to the caller's own workspace instead of blanking the page.
-        console.warn("[fb-recent-posts] ignoring non-member workspace request", {
-          caller: caller.userId,
-          requested: requestedOwnerId,
+        return new Response(JSON.stringify({ ok: false, error: "workspace_forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
-
-
-
+    if (Array.isArray(body?.posts) && (!requestedOwnerId ||
+      [body?.owner_id, body?.user_id].some((id) => id && id !== requestedOwnerId))) {
+      return new Response(JSON.stringify({ ok: false, error: "explicit_workspace_required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: ownBinding, error: strategyError } = await admin.from("messenger_page_bindings")
+      .select("sync_strategy").eq("owner_id", ownerId).order("is_selected", { ascending: false })
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+    if (strategyError) throw strategyError;
+    // Strategy belongs to the requested workspace, never to a shared Page fallback.
+    const syncStrategy = ownBinding?.sync_strategy === "graph" ? "graph" : "extension";
     const page = await resolveMetaPage(admin, ownerId);
+    if (body?.action === "sync_config") {
+      return new Response(JSON.stringify({ ok: true, workspace_owner_id: ownerId,
+        sync_strategy: syncStrategy, page_id: page?.pageId ?? null }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (Array.isArray(body?.posts) && (syncStrategy !== "extension" ||
+      !page?.pageId || body?.page_id !== page.pageId || body.posts.length > 10 ||
+      body.posts.some((post: any) => !post || typeof post !== 'object' || typeof post.post_id !== 'string'))) {
+      return new Response(JSON.stringify({ ok: false, error: "workspace_page_mismatch" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const ws = { facebook_page_id: page?.pageId ?? null, facebook_page_name: page?.pageName ?? null };
     const profileKey: string | null = null;
 
@@ -1096,7 +1115,7 @@ Deno.serve(async (req) => {
     // Posts scraped by the companion browser extension (DOM fallback) arrive
     // here so a Graph permission block never leaves the user empty-handed.
     const extensionPosts: any[] = Array.isArray(body?.posts) ? body.posts : [];
-    const extensionOnly = true;
+    const extensionOnly = syncStrategy === "extension";
     let permissionBlocked = false;
     let graphSource: string | null = null;
     if (extensionPosts.length > 0) {
@@ -1118,9 +1137,7 @@ Deno.serve(async (req) => {
       );
       diagnostics.push({ source: "extension", count: extensionPosts.length });
     }
-    // Page post reads via Graph (`/{page_id}/posts`) need pages_read_engagement,
-    // which requires Meta App Review. Page sync is extension-only: the
-    // Realtyz browser extension scrapes the Page DOM and posts the results here.
+    // Only explicitly Graph-configured workspaces use the stored Page token.
     if (!extensionOnly) {
       const graphResult = await fetchGraphHistory();
       permissionBlocked = graphResult.blocked;
@@ -1527,8 +1544,9 @@ Deno.serve(async (req) => {
         // A stored Page binding stays a live connection even when a single read
         // is refused, so the client must never flip to "disconnected" here.
         page_connected: !!page?.pageId,
-        needs_extension: extensionPosts.length === 0,
-        source: "extension",
+        workspace_owner_id: ownerId,
+        needs_extension: extensionOnly && extensionPosts.length === 0,
+        source: syncStrategy,
         // Exact Graph failure (code/subcode/type/message/trace) so the UI can
         // tell the user precisely why the sync did not complete.
         sync_error: syncErrorDetail,

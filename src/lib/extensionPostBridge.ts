@@ -148,7 +148,7 @@ export const normalizeExtensionPosts = (input: any): ExtensionPost[] => {
  * callers treat that as "fallback unavailable", never as an error to alert on.
  */
 export const requestExtensionPagePosts = (
-  opts: { pageId?: string | null; since?: string; timeoutMs?: number; scrape?: boolean; max?: number; budgetMs?: number; onTimeout?: () => void; onResult?: (r: { ok: boolean; error?: string }) => void } = {},
+  opts: { workspaceOwnerId?: string; pageId?: string | null; since?: string; timeoutMs?: number; scrape?: boolean; max?: number; budgetMs?: number; onTimeout?: () => void; onResult?: (r: { ok: boolean; error?: string }) => void } = {},
 ): Promise<ExtensionPost[]> => {
   const timeoutMs = opts.timeoutMs ?? 12000;
   return new Promise((resolve) => {
@@ -166,12 +166,18 @@ export const requestExtensionPagePosts = (
 
     const onMessage = (event: MessageEvent) => {
       const data: any = event.data;
+      if (event.source !== window || event.origin !== window.location.origin) return;
       if (!data || data.source !== 'realtyz-extension') return;
       // A live scrape is answered only by its own correlated result, never by stale cache pushes.
       if (opts.scrape) {
-        if (data.type !== 'RZ_FB_PAGE_SCRAPE_RESULT' || (data.requestId && data.requestId !== requestId)) return;
+        if (data.type !== 'RZ_FB_PAGE_SCRAPE_RESULT' || data.requestId !== requestId ||
+          data.workspaceOwnerId !== opts.workspaceOwnerId || data.pageId !== opts.pageId) return;
+        if (!Array.isArray(data.posts)) return;
+        const posts = normalizeExtensionPosts(data.posts);
+        if (data.ok) window.postMessage({ source: 'realtyz-app', type: 'RZ_FB_PAGE_SCRAPE_ACK',
+          requestId, workspaceOwnerId: opts.workspaceOwnerId, pageId: opts.pageId }, window.location.origin);
         try { opts.onResult?.({ ok: !!data.ok, error: data.error || undefined }); } catch { /* noop */ }
-        finish(normalizeExtensionPosts(data.posts));
+        finish(posts);
         return;
       }
       if (data.type !== EXT_POSTS_MESSAGE) return;
@@ -186,7 +192,7 @@ export const requestExtensionPagePosts = (
       finish([]);
     }, timeoutMs);
 
-    const payload = { source: 'realtyz-app', type: EXT_POSTS_REQUEST, pageId: opts.pageId ?? null, since: opts.since ?? null, scrape: opts.scrape === true, max: opts.max ?? 10, requestId, budgetMs: opts.budgetMs };
+    const payload = { source: 'realtyz-app', type: EXT_POSTS_REQUEST, workspaceOwnerId: opts.workspaceOwnerId, pageId: opts.pageId ?? null, since: opts.since ?? null, scrape: opts.scrape === true, max: opts.max ?? 10, requestId, budgetMs: opts.budgetMs };
     try {
       window.postMessage(payload, window.location.origin);
     } catch {
