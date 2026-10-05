@@ -34,7 +34,6 @@ import {
   MapPin,
   Megaphone,
   MousePointerClick,
-  Search,
   SlidersHorizontal,
   Sparkles,
   TrendingUp,
