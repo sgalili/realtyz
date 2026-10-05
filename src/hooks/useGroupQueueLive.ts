@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 
 // Share one channel and one coalesced notification per active workspace.
 const live = new Map<string, {
@@ -15,7 +16,7 @@ export function useGroupQueueLive(owner: string | null | undefined, onChange: ()
     if (!owner) return;
     let entry = live.get(owner);
     if (!entry) {
-      const channel = supabase.channel(`group-queue-${owner}`)
+      const channel = safeChannel(`group-queue-${owner}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'campaign_activity_queue', filter: `workspace_owner_id=eq.${owner}` }, () => {
           const current = live.get(owner);
           if (!current || current.timer) return;
@@ -35,7 +36,7 @@ export function useGroupQueueLive(owner: string | null | undefined, onChange: ()
       current.listeners.delete(listener);
       if (current.listeners.size === 0) {
         clearTimeout(current.timer);
-        void supabase.removeChannel(current.channel);
+        removeChannelSafe(current.channel);
         live.delete(owner);
       }
     };
