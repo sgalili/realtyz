@@ -1640,6 +1640,7 @@ export function ResultTable({
                 {commissionCell ? (
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{commissionCell(r)}</td>
                 ) : null}
+                {showPublisherColumn ? (
                 <td className="px-2 py-1.5 whitespace-nowrap">
                   {(() => {
                     const pub = r.localId ? publishers?.get(r.localId) : undefined;
@@ -1659,6 +1660,7 @@ export function ResultTable({
                     );
                   })()}
                 </td>
+                ) : null}
                 <td className="px-2 py-1.5">
                   <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
