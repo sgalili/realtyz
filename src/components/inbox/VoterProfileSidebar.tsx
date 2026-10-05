@@ -1,3 +1,4 @@
+import { waMeLink } from '@/lib/officialWa';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { Badge } from '@/components/ui/badge';
@@ -117,7 +118,7 @@ const VoterProfileSidebar = ({ voter }: Props) => {
   const intentScore = total > 0 ? Math.min(100, Math.round((inbound / Math.max(total, 1)) * 100 * 1.5)) : 0;
   const interactionScore = voter.engagement_score ?? 0;
 
-  const waLink = `https://wa.me/${(voter.phone_number || '').replace(/\D/g, '')}`;
+  const waLink = waMeLink(voter.phone_number);
 
   const cell = (icon: JSX.Element, label: string, value: string) => (
     <div className="p-3 rounded-lg bg-muted/40 space-y-1">

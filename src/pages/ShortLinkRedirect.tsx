@@ -86,14 +86,9 @@ export default function ShortLinkRedirect() {
     }`;
     setManualUrl(universalUrl);
 
-    // 1. Native scheme first — no landing page, no store prompt.
-    window.location.href = nativeUrl;
-
-    // 2. If the app did not take over (page still visible), use the universal link.
-    const fallback = window.setTimeout(() => {
-      if (document.visibilityState === "visible") window.location.replace(universalUrl);
-    }, 1200);
-    return () => window.clearTimeout(fallback);
+    void nativeUrl;
+    // Universal link only: the OS hands wa.me to the installed app.
+    window.location.replace(universalUrl);
   }, [target]);
 
   return (
@@ -115,6 +110,8 @@ export default function ShortLinkRedirect() {
             {(manualUrl || wa) && (
               <a
                 href={manualUrl ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-6 inline-block rounded-lg bg-emerald-600 px-5 py-3 font-semibold text-white"
               >
                 פתיחת וואטסאפ עכשיו
