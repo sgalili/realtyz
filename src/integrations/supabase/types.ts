@@ -7006,6 +7006,15 @@ export type Database = {
         Returns: Json
       }
       ext_create_pairing: { Args: { _label?: string }; Returns: Json }
+      ext_group_post_guard: {
+        Args: {
+          _group: string
+          _owner: string
+          _rejection?: string
+          _token: string
+        }
+        Returns: Json
+      }
       ext_is_active: { Args: { _ws: string }; Returns: boolean }
       ext_metrics_targets: {
         Args: { _limit?: number; _token: string }
@@ -7031,6 +7040,8 @@ export type Database = {
         }
         Returns: Json
       }
+      fb_group_key: { Args: { _value: string }; Returns: string }
+      fb_group_rejection: { Args: { _reason: string }; Returns: boolean }
       finish_market_scrape_run: {
         Args: {
           _error?: string
