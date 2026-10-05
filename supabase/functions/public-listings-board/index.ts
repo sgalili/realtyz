@@ -66,7 +66,14 @@ Deno.serve(async (req) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    return json({ properties: (data ?? []).map((row) => toPublicCard(row as any)) });
+    // Properties that already hit their daily lead limit stop being promoted.
+    const rows = (data ?? []) as any[];
+    const capped = new Set<string>();
+    await Promise.all(rows.filter((r) => r.daily_lead_cap).map(async (r) => {
+      const { data: reached } = await admin.rpc("listing_daily_cap_reached", { _listing_id: r.id });
+      if (reached === true) capped.add(r.id);
+    }));
+    return json({ properties: rows.filter((r) => !capped.has(r.id)).map((row) => toPublicCard(row)) });
   } catch (error) {
     console.error("[public-listings-board]", error);
     return json({ error: "board lookup failed" }, 500);

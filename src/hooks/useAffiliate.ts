@@ -441,6 +441,7 @@ export function useSetAffiliateReward() {
       tier4Type?: RewardType;
       tier4Amount?: number;
       contactOptions?: Record<string, unknown>;
+      dailyLeadCap?: number | null;
     }) => {
       const patch: Record<string, unknown> = {
         affiliate_enabled: input.enabled,
@@ -455,6 +456,7 @@ export function useSetAffiliateReward() {
         affiliate_tier4_amount: input.tier4Amount ?? 0,
       };
       if (input.contactOptions) patch.contact_options = input.contactOptions;
+      if (input.dailyLeadCap !== undefined) patch.daily_lead_cap = input.dailyLeadCap && input.dailyLeadCap > 0 ? Math.floor(input.dailyLeadCap) : null;
 
       const { error } = await supabase
         .from('listings')

@@ -153,6 +153,7 @@ function RewardDialog({
   const [tier3, setTier3] = useState("");
   const [tier4Type, setTier4Type] = useState<RewardType>("fixed");
   const [tier4, setTier4] = useState("");
+  const [dailyCap, setDailyCap] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
   const [questionsPhone, setQuestionsPhone] = useState<string[]>([]);
   const [editingQuestions, setEditingQuestions] = useState<null | "chat" | "phone">(null);
@@ -174,6 +175,7 @@ function RewardDialog({
     setTier3(zeroToEmpty(listing.affiliate_tier3_amount));
     setTier4Type((listing.affiliate_tier4_type ?? "fixed") as RewardType);
     setTier4(zeroToEmpty(listing.affiliate_tier4_amount));
+    setDailyCap(zeroToEmpty((listing as any).daily_lead_cap));
     const options =
       listing.contact_options && typeof listing.contact_options === "object" ? listing.contact_options : {};
     const base =
@@ -313,6 +315,14 @@ function RewardDialog({
                 ))}
 
                 <div className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
+                  <div className="text-[12px] font-semibold text-slate-900">מגבלת פניות ב־24 שעות</div>
+                  <Label className="text-[11px] font-normal text-slate-500">
+                    כשמגיעים למספר הזה, הנכס מפסיק להיות מקודם. פניות שמגיעות אחרי המגבלה לא יחויבו, ותוכלו לבחור אם לרכוש אותן בהנחה. השאירו ריק ללא מגבלה.
+                  </Label>
+                  <Input value={dailyCap} inputMode="numeric" placeholder="ללא מגבלה" onChange={(e) => setDailyCap(e.target.value.replace(/\D/g, ""))} />
+                </div>
+
+                <div className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
                   <div className="flex items-center gap-2">
                     <Trophy className={`h-4 w-4 ${num(tier4) > 0 ? "text-success" : "text-slate-400"}`} />
                     <div className="text-[12px] font-semibold text-slate-900">סגירת עסקה</div>
@@ -358,6 +368,7 @@ function RewardDialog({
                     tier3Amount: num(tier3),
                     tier4Type,
                     tier4Amount: num(tier4),
+                    dailyLeadCap: num(dailyCap) || null,
                     contactOptions: deriveContactOptions({
                       tier1: num(tier1),
                       tier2: num(tier2),
