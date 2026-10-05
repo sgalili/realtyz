@@ -1,10 +1,10 @@
 # Roadmap
 ## My ads and expansion updates
-- [ ] Keep My ads available to signed-in private owners with ads and remove all per-user posting caps.
-- [ ] Add authorized Yad2 live-ad URL import with explicit publication.
-- [ ] Add property images and expandable persisted statistics/history including per-affiliate contacts and paid bids.
-- [ ] Replace My ads arrow with a chevron.
-- [ ] Apply smooth single-open card expansion across app and verify signed-in flows.
+- [x] Keep My ads available to signed-in private owners with ads and remove the private-owner posting cap.
+- [x] Add authorized Yad2 URL import with explicit publication, preserved draft details and mirrored trusted source images; live Yad2 extraction/publication remains unverified.
+- [x] Add property images and expandable persisted statistics/history including per-affiliate views, contacts and paid bids; history is paginated and queries refresh every 30 seconds. Historical granular view/click data cannot be reconstructed.
+- [x] Replace My ads arrow with a chevron.
+- [x] Add shared smooth single-open expansion and update custom property, task, dashboard, campaign and chat cards; signed-in My ads desktop/mobile checks and three expansion tests passed. Not every app route was visually tested.
 - [x] Immediately block explicitly rejected Facebook groups with visible reasons, persistent queue/send exclusion and manual unblock; database rollback checks and signed-in reason/unblock flow passed without Facebook publication. Updated extension 1.9.3 requires user installation; real Facebook rejection remains unverified.
 - [x] Restore full per-group campaign cards, reliable live progress and updated publication status icons; 18 tests passed, signed-in expansion into ten children and narrow-screen layout verified without posting. Actual Facebook execution remains untested.
 - [x] Isolate Facebook page sync by workspace, acknowledge extension delivery before tab cleanup, and validate initiating workspace binding; five regression tests and background ACK lifecycle checks passed, live authenticated config confirmed Rita Graph / Udi extension / foreign workspace 403, build OK. Actual Facebook scraping and Graph import require the connected browser and remain unverified.
