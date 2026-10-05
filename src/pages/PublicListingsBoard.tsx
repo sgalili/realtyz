@@ -145,6 +145,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           {embedded ? null : <div className="relative flex min-h-11 items-center justify-between gap-3">
             <PublicListingPublisher autoResume />
             <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
+            {user ? <Button asChild variant="link" className="h-auto shrink-0 p-0 text-sm font-semibold text-primary"><a href="/owner/properties">המודעות שלי</a></Button> : null}
             <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
           </div>}
           <div className="mt-5 space-y-2">
