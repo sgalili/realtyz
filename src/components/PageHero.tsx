@@ -396,7 +396,7 @@ export function PageHero() {
           )}
           {/* Yad2 scraping balance — owners / super admins, and ONLY on /properties. */}
           {canSeeBalance && location.pathname.startsWith("/properties") && <BrightDataHeroPill />}
-          {(location.pathname === "/" || location.pathname.startsWith("/public-listings")) && <PublicListingPublisher autoResume />}
+          {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}
