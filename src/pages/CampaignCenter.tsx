@@ -6418,6 +6418,35 @@ const PublishedFeed = ({
                     return `${p(dt.getDate())}.${p(dt.getMonth() + 1)}.${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
                   })()}
                 </span>
+                {String(r.channel || '').toLowerCase() === 'facebook' && (() => {
+                  const toGroups = hasGroupTargets;
+                  const toPage = r.publish_to_page === true || (!toGroups && r.publish_to_page !== false);
+                  const kind = toGroups && toPage ? 'both' : toGroups ? 'groups' : 'page';
+                  const label = kind === 'both' ? 'פורסם בעמוד ובקבוצות' : kind === 'groups' ? 'פורסם בקבוצות' : 'פורסם בעמוד הפייסבוק';
+                  const cls = kind === 'both'
+                    ? 'bg-warning/15 text-warning-foreground'
+                    : kind === 'groups'
+                      ? 'bg-success/10 text-success'
+                      : 'bg-primary/10 text-primary';
+                  return (
+                    <span
+                      title={label}
+                      aria-label={label}
+                      className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full', cls)}
+                    >
+                      {kind === 'groups' ? (
+                        <Users className="h-3 w-3" />
+                      ) : kind === 'both' ? (
+                        <span className="relative inline-flex h-3 w-3 items-center justify-center">
+                          <BrandIcon name="facebook" className="absolute -right-1 h-2.5 w-2.5" />
+                          <Users className="absolute -left-1 h-2.5 w-2.5" />
+                        </span>
+                      ) : (
+                        <BrandIcon name="facebook" className="h-3 w-3" />
+                      )}
+                    </span>
+                  );
+                })()}
                 {hasGroupTargets && (
                   <div className="min-w-0 flex-1">
                     <GroupStatusChips
