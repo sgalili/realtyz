@@ -17,6 +17,7 @@ import {
   User,
   ArrowLeft,
   ArrowRight,
+  ChevronLeft,
   DownloadCloud,
   Loader2,
   RefreshCw,
@@ -240,6 +241,7 @@ function CampaignsHeroSyncButton() {
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/$/, title: "לוח נדל״ן שיתופי" },
   { match: /^\/public-listings/, title: "לוח נדל״ן שיתופי" },
+  { match: /^\/my-ads/, title: "המודעות שלי" },
   { match: /^\/(command-center|tasks)/, title: "משימות" },
   { match: /^\/dashboard$/, title: "לוח בקרה" },
   { match: /^\/lead-crm/, title: "אנשי קשר" },
@@ -403,7 +405,7 @@ export function PageHero() {
             >
               <Link to={myListingsPath}>
                 המודעות שלי
-                <ArrowLeft className="!h-4 !w-4" strokeWidth={2.5} />
+                 <ChevronLeft className="!h-4 !w-4" strokeWidth={2.5} />
               </Link>
             </Button>
           )}
