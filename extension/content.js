@@ -92,21 +92,39 @@
   deliver();
   setInterval(deliver, 3000);
 
+  const pendingPageResults = new Map();
   window.addEventListener('message', (e) => {
-
-
+    if (e.source !== window || e.origin !== window.location.origin) return;
     const d = e.data;
-    if (!d || typeof d !== 'object') return;
+    if (!d || typeof d !== 'object' || d.source !== 'realtyz-app') return;
+    if (d.type === 'RZ_FB_PAGE_SCRAPE_ACK') {
+      const pending = pendingPageResults.get(d.requestId);
+      if (!pending || pending.workspaceOwnerId !== d.workspaceOwnerId || pending.pageId !== d.pageId) return;
+      rzSafeSend({ type: d.type, requestId: d.requestId, workspaceOwnerId: d.workspaceOwnerId, pageId: d.pageId }, (res) => {
+        if (res && res.ok) { clearInterval(pending.timer); pendingPageResults.delete(d.requestId); }
+      });
+      return;
+    }
     if (d.type === 'RZ_FB_GROUPS_REQUEST') deliver();
     if (d.type === 'RZ_FB_POSTS_REQUEST') {
       if (d.scrape) {
-        const requestId = d.requestId || null;
-        rzSafeSend({ type: 'RZ_FB_PAGE_SCRAPE', pageId: d.pageId || null, max: d.max || 60, budgetMs: d.budgetMs || 17000 }, (res) => {
+        const requestId = d.requestId;
+        if (!requestId || !d.workspaceOwnerId || !d.pageId) return;
+        rzSafeSend({ type: 'RZ_FB_PAGE_SCRAPE', requestId, workspaceOwnerId: d.workspaceOwnerId,
+          pageId: d.pageId, max: d.max || 10, budgetMs: d.budgetMs || 17000 }, (res) => {
           const posts = (res && Array.isArray(res.posts)) ? res.posts : [];
           // Dedicated, request-correlated result so stale cached deliveries never answer a scrape.
-          try { window.postMessage({ source: 'realtyz-extension', type: 'RZ_FB_PAGE_SCRAPE_RESULT', requestId,
-            ok: !!(res && res.ok), posts, error: res && res.error }, window.location.origin); } catch (e) { /* noop */ }
-          if (posts.length) emit('RZ_FB_POSTS', 'posts', posts, 'rz:ext-fb-posts');
+          const result = { source: 'realtyz-extension', type: 'RZ_FB_PAGE_SCRAPE_RESULT', requestId,
+            workspaceOwnerId: d.workspaceOwnerId, pageId: d.pageId,
+            ok: !!(res && res.ok), posts, error: res && res.error };
+          const deliverResult = () => { try { window.postMessage(result, window.location.origin); } catch (e) { /* noop */ } };
+          if (result.ok) {
+            const timer = setInterval(deliverResult, 1000);
+            pendingPageResults.set(requestId, { workspaceOwnerId: d.workspaceOwnerId, pageId: d.pageId, timer });
+            // Stop retries after two minutes, but NEVER close an unacknowledged Facebook tab.
+            setTimeout(() => { clearInterval(timer); pendingPageResults.delete(requestId); }, 120000);
+          }
+          deliverResult();
         });
       } else deliverPosts();
     }
