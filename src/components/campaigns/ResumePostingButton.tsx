@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
+import { pokeExtension } from '@/lib/extensionPairing';
 
 type Progress = { total: number; completed: number; pending: number; processing: number; stalled: number; failed: number };
 
@@ -40,6 +41,8 @@ export function ResumePostingButton({ campaignLogId }: { campaignLogId: string }
     try {
       const { data: n, error } = await (supabase.rpc as any)('resume_group_posting', { _campaign_log_id: campaignLogId });
       if (error) throw error;
+      // Wake the extension immediately instead of waiting for its 1-minute alarm.
+      try { pokeExtension(); } catch { /* extension may be absent */ }
       toast.success(n > 0 ? `הפרסום ימשיך ב-${n} קבוצות שנותרו` : 'אין קבוצות לחידוש');
       await qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: ['extension-queue'] });
