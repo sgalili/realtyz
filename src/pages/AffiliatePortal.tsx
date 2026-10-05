@@ -401,7 +401,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
 
         {listing.deal_type && (
           <Badge
-            className={`absolute left-3 top-3 z-10 border ${isRent ? 'border-[#0b3982] bg-[#0b3982] text-white' : 'bg-primary text-primary-foreground'}`}
+            className={`absolute left-3 top-3 z-10 border ${isRent ? 'border-transparent bg-sale text-sale-foreground' : 'border-transparent bg-success text-success-foreground'}`}
           >
             {DEAL_TYPE_LABELS[listing.deal_type] ?? listing.deal_type}
           </Badge>

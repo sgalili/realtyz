@@ -187,7 +187,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}${card.total_floors ? ` מתוך ${card.total_floors}` : ''}` : null].filter(Boolean).join(' · ')}</p>
                     </div>
                     <div className="shrink-0 text-left">
-                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success text-success-foreground' : 'bg-sale text-sale-foreground shadow-sm')}>{dealLabel(card.deal_type)}</span>
+                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-sale text-sale-foreground shadow-sm' : 'bg-success text-success-foreground')}>{dealLabel(card.deal_type)}</span>
                       <p className="mt-1 text-sm font-bold text-foreground">{shekel(card.price)}</p>
                     </div>
                   </div>
@@ -232,7 +232,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       <tr key={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <td className="p-2">{card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-10 w-10 rounded object-cover" loading="lazy" /> : <div className="h-10 w-10 rounded bg-muted" />}</td>
                         <td className="p-2 font-semibold text-foreground"><span className="block max-w-[9rem] truncate sm:max-w-[14rem]" title={[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}>{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span></td>
-                        <td className="p-2"><span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success text-success-foreground' : 'bg-sale text-sale-foreground')}>{dealLabel(card.deal_type)}</span></td>
+                        <td className="p-2"><span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold', card.deal_type === 'rent' ? 'bg-sale text-sale-foreground' : 'bg-success text-success-foreground')}>{dealLabel(card.deal_type)}</span></td>
                         <td className="p-2 whitespace-nowrap font-bold">{shekel(card.price)}</td>
                         <td className="p-2">{card.rooms || ''}</td>
                         <td className="p-2">{card.sqm || ''}</td>

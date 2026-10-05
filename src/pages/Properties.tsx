@@ -1321,7 +1321,7 @@ function ResultCard({
           ))}
         </div>
         {result.listing_type && (
-          <Badge className={`absolute top-3 left-3 border z-10 ${isRent ? 'bg-[#0b3982] text-white border-[#0b3982]' : 'bg-primary text-primary-foreground'}`}>
+          <Badge className={`absolute top-3 left-3 border z-10 ${isRent ? 'bg-sale text-sale-foreground border-transparent' : 'bg-success text-success-foreground border-transparent'}`}>
             {LISTING_TYPE_LABELS_HE[result.listing_type]}
           </Badge>
         )}

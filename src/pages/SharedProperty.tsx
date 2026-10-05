@@ -222,7 +222,7 @@ export default function SharedProperty() {
       <main className="mx-auto max-w-4xl space-y-6 px-4 py-6">
         <section className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className={isRent ? 'bg-sky-600 text-white' : 'bg-emerald-600 text-white'}>
+            <Badge className={isRent ? 'bg-sale text-sale-foreground' : 'bg-success text-success-foreground'}>
               {isRent ? 'להשכרה' : 'למכירה'}
             </Badge>
             {p.project_name ? <Badge variant="outline">{p.project_name}</Badge> : null}
