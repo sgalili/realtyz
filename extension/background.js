@@ -700,9 +700,21 @@ async function drainQueue() {
 
 
 
+// Lock watchdog: a hung job can never freeze the queue forever, and a poke
+// that arrives mid-run schedules one immediate follow-up pass instead of being dropped.
+let runningSince = 0;
+let pollAgain = false;
+const POLL_STALE_MS = 8 * 60 * 1000;
+const JOB_TIMEOUT_MS = 6 * 60 * 1000;
+const withTimeout = (p, ms, label) => Promise.race([
+  p, new Promise((_, rej) => setTimeout(() => rej(new Error(label)), ms)),
+]);
+
 async function poll() {
-  if (running) return;
+  if (running && Date.now() - runningSince < POLL_STALE_MS) { pollAgain = true; return; }
   running = true;
+  runningSince = Date.now();
+  pollAgain = false;
   try {
     // The local browser queue runs regardless of Realtyz pairing.
     await drainQueue();
@@ -731,13 +743,20 @@ async function poll() {
 
     const jobs = Array.isArray(json.jobs) ? json.jobs : [];
     for (const job of jobs) {
-      await runJob(token, job);
+      try {
+        await withTimeout(runJob(token, job), JOB_TIMEOUT_MS, 'job_timeout');
+      } catch (e) {
+        try { await report(token, job, false, 'הפרסום לא הסתיים בזמן, יחודש אוטומטית'); } catch (e2) { /* noop */ }
+      }
+      runningSince = Date.now();
       await sleep(8000); // gentle pacing between group posts
     }
+    if (jobs.length > 0) pollAgain = true; // keep draining while due jobs remain
   } catch (e) {
     await setState({ last_error: String((e && e.message) || e) });
   } finally {
     running = false;
+    if (pollAgain) { pollAgain = false; setTimeout(() => { try { poll(); } catch (e) { /* noop */ } }, 1000); }
   }
 }
 
