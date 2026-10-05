@@ -260,6 +260,16 @@ Deno.serve(async (req) => {
                   .is("assigned_to", null);
               }
 
+              // Partner attribution: the public WhatsApp button embeds the
+              // sharing partner's referral code in the opening message.
+              const refMatch = String(content).match(/קוד הפניה:\s*([A-Za-z0-9_-]{4,40})/);
+              if (refMatch) {
+                const { error: refErr } = await admin.rpc("attribute_whatsapp_referral", {
+                  _ref: refMatch[1], _phone: from, _name: profileName,
+                });
+                if (refErr) console.error("[meta-wa-webhook] referral attribution failed", refErr);
+              }
+
               // Pull the WhatsApp profile photo (Green API) in the background so
               // the inbox shows the real picture instead of initials.
               triggerAvatarFetch(supabaseUrl, serviceRoleKey, leadId as string | null, ownerId);
