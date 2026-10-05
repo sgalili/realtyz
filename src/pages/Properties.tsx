@@ -65,6 +65,7 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
 import { AffiliateShareCell } from '@/components/properties/AffiliateShareCell';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
+import { useAppMode } from '@/hooks/useAppMode';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
@@ -1496,6 +1497,10 @@ export function ResultTable({
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { notesByListing } = usePropertyNotesByListing();
+  // Publisher column only matters in partner mode: in broker mode every row
+  // already belongs to the user's own workspace.
+  const { isPartnerMode } = useAppMode();
+  const showPublisherColumn = isPartnerMode;
 
   // Partner sharing lives in ONE unified first column. Saved properties get it
   // automatically; callers may override the cell with their own control.
@@ -1596,7 +1601,7 @@ export function ResultTable({
             ) : null}
             {showAffiliateColumn ? <HeaderCell col="affiliate" label="שותפים" /> : null}
             {commissionCell ? <HeaderCell col="commission" label="עמלות" /> : null}
-            <HeaderCell col="publisher" label="משרד מפרסם" />
+            {showPublisherColumn ? <HeaderCell col="publisher" label="משרד מפרסם" /> : null}
             <HeaderCell col="image" label="תמונה" extraClass="w-14" />
 
             <HeaderCell col="name" label="רחוב" />
@@ -1635,6 +1640,7 @@ export function ResultTable({
                 {commissionCell ? (
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{commissionCell(r)}</td>
                 ) : null}
+                {showPublisherColumn ? (
                 <td className="px-2 py-1.5 whitespace-nowrap">
                   {(() => {
                     const pub = r.localId ? publishers?.get(r.localId) : undefined;
@@ -1654,6 +1660,7 @@ export function ResultTable({
                     );
                   })()}
                 </td>
+                ) : null}
                 <td className="px-2 py-1.5">
                   <div className="relative h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
                     {r.photos?.[0] ? (
