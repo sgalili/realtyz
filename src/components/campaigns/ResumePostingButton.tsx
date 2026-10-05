@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Play, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
@@ -80,26 +79,30 @@ export function ResumePostingButton({ campaignLogId }: { campaignLogId: string }
   };
 
   const running = data.pending + data.processing > 0;
+  const remaining = data.total - data.completed;
+  const title = busy
+    ? 'מחדש פרסום...'
+    : running
+      ? `${data.processing > 0 ? `מפרסם לקבוצה ${Math.min(data.completed + 1, data.total)} מתוך ${data.total}` : `ממתין לפרסום · ${data.completed}/${data.total}`} · לחיצה תחדש את התור`
+      : `פורסמו ${data.completed}/${data.total} · לחיצה תמשיך ל-${remaining} קבוצות שנותרו`;
   return (
-    <span className="inline-flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      {running && (
-        <span role="status" aria-live="polite"
-          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[11px] font-medium text-primary tabular-nums"
-          title={data.processing > 0 ? `מפרסם לקבוצה ${Math.min(data.completed + 1, data.total)} מתוך ${data.total}` : `ממתין לפרסום · ${data.completed}/${data.total}`}>
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-          </span>
-          {data.completed}/{data.total}
+    <button type="button"
+      onClick={(e) => { e.stopPropagation(); void resume(); }}
+      disabled={busy}
+      title={title}
+      aria-label={`${title}`}
+      className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70">
+      {busy ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : running ? (
+        <span className="relative flex h-2 w-2" aria-hidden>
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
         </span>
+      ) : (
+        <Play className="h-3 w-3" aria-hidden />
       )}
-      <Button type="button" variant="outline" size="icon"
-        className="h-7 w-7 shrink-0 rounded-md border-primary/40 bg-background text-primary"
-        title={`המשך פרסום ל-${data.total - data.completed} קבוצות שנותרו · פורסמו ${data.completed}/${data.total}`}
-        aria-label="המשך פרסום מהקבוצה שנעצרה"
-        disabled={busy} onClick={() => void resume()}>
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-      </Button>
-    </span>
+      <span aria-live="polite">{data.completed}/{data.total}</span>
+    </button>
   );
 }
