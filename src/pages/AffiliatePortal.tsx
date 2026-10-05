@@ -4,6 +4,8 @@
 // browses broker-approved properties, sees exactly what they earn per closing,
 // and generates a personal tracking link to market with.
 import { useEffect, useMemo, useState } from 'react';
+import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import LeftoverDiscountButton from '@/components/affiliate/LeftoverDiscountButton';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -283,7 +285,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
   const [index, setIndex] = useState(0);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useExclusiveExpansion('marketplace-cards');
   const activePhoto = hasPhotos ? photos[Math.min(index, photos.length - 1)] : null;
   const isRent = listing.deal_type === 'rent';
   const title = listing.property_title || 'נכס ללא כותרת';
@@ -418,7 +420,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
       )}
 
       {/* Thumbnail row — mounted only once the card is expanded */}
-      {hasMany && expanded && (
+      <AnimatedExpansion open={hasMany && expanded}>
         <div
           className="scrollbar-thin flex gap-1.5 overflow-x-auto border-b bg-muted/40 px-2 py-2"
           dir="rtl"
@@ -437,9 +439,10 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
             </button>
           ))}
         </div>
-      )}
+      </AnimatedExpansion>
 
-      <div className={`flex flex-1 flex-col gap-3 ${compact ? (expanded ? 'border-t p-3' : 'hidden') : 'p-4'}`}>
+      <AnimatedExpansion open={!compact || expanded}>
+      <div className={`flex flex-1 flex-col gap-3 ${compact ? 'border-t p-3' : 'p-4'}`}>
         {compact ? (
           <BrokerAttribution
             brokerName={listing.broker_name}
@@ -505,7 +508,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
           </div>
         ) : null}
 
-        {expanded && (
+        <AnimatedExpansion open={expanded}>
           <div className="space-y-3 border-t pt-3" onClick={stop}>
             <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
               <div>
@@ -582,8 +585,9 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
               </Button>
             )}
           </div>
-        )}
+        </AnimatedExpansion>
       </div>
+      </AnimatedExpansion>
     </Card>
   );
 

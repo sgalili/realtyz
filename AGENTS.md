@@ -1,4 +1,7 @@
 # Architecture rules
+- Peer card expansions share a group-keyed exclusive state and animated height container; nested utility controls use separate groups so they never collapse their parent.
+- My ads statistics are read through property-authorized RPCs keyed by the active workspace; partners see only their own detailed results on external listings, and raw contact identity is never included.
+- Public listing import reuses the structured listing parser and explicit confirmation before saving to the active workspace; third-party extraction failure must never publish invented data.
 
 - Group selection uses one accessible checkbox action per row, immutable deduplicated snapshots and guarded no-op updates; external links are siblings to prevent duplicate activation and render cascades.
 

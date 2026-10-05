@@ -13,6 +13,9 @@ const EVENT = 'realtyz-app-mode-change';
 
 /** Paths a partner-mode session is allowed to reach. */
 export const PARTNER_MODE_PATHS = [
+  '/',
+  '/public-listings',
+  '/my-ads',
   '/affiliate-pricing',
   '/affiliate-network',
   '/referral',

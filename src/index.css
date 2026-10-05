@@ -4,6 +4,21 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes collapsible-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-collapsible-content-height); opacity: 1; }
+}
+@keyframes collapsible-up {
+  from { height: var(--radix-collapsible-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+.animate-collapsible-down, [data-state="open"].data-\[state\=open\]\:animate-collapsible-down { animation: collapsible-down .28s cubic-bezier(.22,1,.36,1); }
+.animate-collapsible-up, [data-state="closed"].data-\[state\=closed\]\:animate-collapsible-up { animation: collapsible-up .28s cubic-bezier(.22,1,.36,1); }
+@media (prefers-reduced-motion: reduce) {
+  [data-state="open"].data-\[state\=open\]\:animate-collapsible-down,
+  [data-state="closed"].data-\[state\=closed\]\:animate-collapsible-up { animation: none; }
+}
+
 /* ============================================================
    REALTYZ — Anglo Saxon brand identity.
    Primary surface accents: deep corporate Navy (#0B2545) for

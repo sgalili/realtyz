@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ScheduledToursCard, useScheduledToursCount } from '@/components/dashboard/ScheduledToursCard';
 import { NewTourDialog } from '@/components/dashboard/NewTourDialog';
 import { NewDemoDialog } from '@/components/dashboard/NewDemoDialog';
@@ -186,10 +187,7 @@ export default function CommandCenter() {
   const [taskDay, setTaskDay] = useState<string | null>(() => todayKey());
   const toggleCard = (key: string) =>
     setOpenIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
+      return prev.has(key) ? new Set<string>() : new Set([key]);
     });
 
   const counts = useMemo(() => {
@@ -348,7 +346,7 @@ export default function CommandCenter() {
           </div>
         </div>
 
-        {isOpen && (
+        <AnimatedExpansion open={isOpen}>
           <div className="mt-3 space-y-3 border-t border-border/60 pt-3">
             {task.description && (
               <p className="w-full whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
@@ -356,7 +354,7 @@ export default function CommandCenter() {
               </p>
             )}
           </div>
-        )}
+        </AnimatedExpansion>
       </li>
     );
   };

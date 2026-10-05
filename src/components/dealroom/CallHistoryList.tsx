@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { supabase } from '@/integrations/supabase/client';
 import { Phone, AlertTriangle, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -68,7 +69,7 @@ export function CallHistoryList({ leadId, limit = 5 }: { leadId: string; limit?:
                 </button>
               </div>
               {r.summary && <p className="text-muted-foreground line-clamp-2">{r.summary}</p>}
-              {isOpen && (
+              <AnimatedExpansion open={isOpen}>
                 <div className="space-y-1 pt-1 border-t">
                   {r.callback_reason && (
                     <p className="text-destructive"><strong>Callback reason:</strong> {r.callback_reason}</p>
@@ -79,7 +80,7 @@ export function CallHistoryList({ leadId, limit = 5 }: { leadId: string; limit?:
                     </pre>
                   )}
                 </div>
-              )}
+              </AnimatedExpansion>
             </li>
           );
         })}

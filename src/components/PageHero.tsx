@@ -17,6 +17,7 @@ import {
   User,
   ArrowLeft,
   ArrowRight,
+  ChevronLeft,
   DownloadCloud,
   Loader2,
   RefreshCw,
@@ -27,6 +28,7 @@ import { useAffiliatePreferences } from "@/hooks/useAffiliate";
 import { useAppMode } from "@/hooks/useAppMode";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { RealtyzWave } from "@/components/RealtyzWave";
 import { PublicListingPublisher } from "@/components/public/PublicListingPublisher";
 import { BrightDataHeroPill } from "@/components/BrightDataHeroPill";
@@ -240,6 +242,7 @@ function CampaignsHeroSyncButton() {
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/$/, title: "לוח נדל״ן שיתופי" },
   { match: /^\/public-listings/, title: "לוח נדל״ן שיתופי" },
+  { match: /^\/my-ads/, title: "המודעות שלי" },
   { match: /^\/(command-center|tasks)/, title: "משימות" },
   { match: /^\/dashboard$/, title: "לוח בקרה" },
   { match: /^\/lead-crm/, title: "אנשי קשר" },
@@ -307,7 +310,14 @@ export function PageHero() {
   const { isPartnerMode } = useAppMode();
   const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
   const myListingsPath = "/my-ads";
-  const { isSuperAdmin } = useUserRole();
+  const { isSuperAdmin, isAffiliate, isTeamMember, isPropertyOwner } = useUserRole();
+  const { activeWorkspaceId } = useWorkspace();
+  const { data: ownerAds = [] } = useQuery({
+    queryKey: ['my-ads-stats', user?.id, activeWorkspaceId],
+    enabled: isPublicBoard && !!user && isPropertyOwner && !isAffiliate && !isTeamMember && !!activeWorkspaceId,
+    queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return data ?? []; },
+  });
+  const canSeeMyAds = isAffiliate || isTeamMember || (isPropertyOwner && ownerAds.length > 0);
   const { preferences: affiliatePrefs } = useAffiliatePreferences();
   const automationAnyOn = Boolean(affiliatePrefs.rita_auto_mode || affiliatePrefs.auto_funnel_enabled);
   const canSeeBalance = isSuperAdmin || BALANCE_OWNER_EMAILS.includes((user?.email ?? "").toLowerCase());
@@ -395,7 +405,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
-          {isPublicBoard && user && (
+          {isPublicBoard && user && canSeeMyAds && (
             <Button
               asChild
               variant="link"
@@ -403,7 +413,7 @@ export function PageHero() {
             >
               <Link to={myListingsPath}>
                 המודעות שלי
-                <ArrowLeft className="!h-4 !w-4" strokeWidth={2.5} />
+                 <ChevronLeft className="!h-4 !w-4" strokeWidth={2.5} />
               </Link>
             </Button>
           )}

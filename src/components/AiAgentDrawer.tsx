@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateLiveData } from '@/lib/liveSync';
 import { useLocation } from 'react-router-dom';
@@ -685,7 +686,7 @@ ${shareUrl}
                         <span>{topic.label}</span>
                         {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />}
                       </button>
-                      {isOpen && (
+                      <AnimatedExpansion open={isOpen}>
                         <div className="border-t border-border/50 bg-background/50 p-2 space-y-1.5">
                           {topic.prompts.map((p, pi) => (
                             <button
@@ -699,7 +700,7 @@ ${shareUrl}
                             </button>
                           ))}
                         </div>
-                      )}
+                      </AnimatedExpansion>
                     </div>
                   );
                 })}

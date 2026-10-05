@@ -3911,6 +3911,47 @@ export type Database = {
           },
         ]
       }
+      listing_stat_events: {
+        Row: {
+          affiliate_id: string | null
+          amount: number
+          created_at: string
+          event_type: string
+          id: string
+          listing_id: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          affiliate_id?: string | null
+          amount?: number
+          created_at?: string
+          event_type: string
+          id?: string
+          listing_id: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          affiliate_id?: string | null
+          amount?: number
+          created_at?: string
+          event_type?: string
+          id?: string
+          listing_id?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_stat_events_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           additional_details: Json
@@ -7433,6 +7474,11 @@ export type Database = {
         }[]
       }
       get_match_stats: { Args: { p_user_id: string }; Returns: Json }
+      get_my_ad_details: { Args: { _listing_id: string }; Returns: Json }
+      get_my_ad_history: {
+        Args: { _listing_id: string; _offset?: number }
+        Returns: Json
+      }
       get_my_ads_stats: {
         Args: never
         Returns: {
@@ -7793,6 +7839,10 @@ export type Database = {
       }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
       track_affiliate_click: { Args: { _code: string }; Returns: undefined }
+      track_listing_referral_view: {
+        Args: { _code?: string; _id_or_slug: string }
+        Returns: undefined
+      }
       track_listing_view: { Args: { _id_or_slug: string }; Returns: undefined }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       trigger_match_for_lead: {

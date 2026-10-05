@@ -150,14 +150,14 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile', '/posts'];
+const AFFILIATE_ALLOWED_PATHS = ['/', '/public-listings', '/my-ads', '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile', '/posts'];
 
 /**
  * Private property owners are a separate product: only their own properties,
  * the leads interested in them, the reward settings and Rita. Broker CRM,
  * recruitment and affiliate management are unreachable, not just hidden.
  */
-export const OWNER_ALLOWED_PATHS = ['/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
+export const OWNER_ALLOWED_PATHS = ['/', '/public-listings', '/my-ads', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
 const SEEKER_ALLOWED_PATHS = ['/public-listings', '/profile'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {

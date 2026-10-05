@@ -1,4 +1,5 @@
 export type PublicListingDraftFields = {
+  importedListing?: Record<string, any> | null;
   /** מתווך / פרטי */
   publisherType: 'broker' | 'private' | '';
   dealType: 'sale' | 'rent' | '';

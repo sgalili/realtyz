@@ -2,25 +2,14 @@
  * CollapsibleSection
  * ------------------
  * Dashboard section wrapper that can be collapsed / expanded.
- * Default state is collapsed, and the last state per section is persisted in
- * localStorage so it survives refresh, navigation, and sign-out / sign-in.
+ * Only one peer section is expanded at a time.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
+import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const STORAGE_PREFIX = 'realtyz.dashboard.section.';
-
-function readState(id: string, defaultOpen: boolean): boolean {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${id}`);
-    if (raw === 'open') return true;
-    if (raw === 'closed') return false;
-  } catch {
-    /* ignore */
-  }
-  return defaultOpen;
-}
 
 interface CollapsibleSectionProps {
   id: string;
@@ -41,19 +30,13 @@ export function CollapsibleSection({
   className,
   children,
 }: CollapsibleSectionProps) {
-  const [open, setOpen] = useState(() => readState(id, defaultOpen));
+  const [open, setOpen] = useExclusiveExpansion('dashboard-sections', id);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_PREFIX}${id}`, open ? 'open' : 'closed');
-    } catch {
-      /* ignore */
-    }
-  }, [id, open]);
+  useEffect(() => { if (defaultOpen) setOpen(true); }, [defaultOpen, setOpen]);
 
   return (
     <section className={cn('rounded-xl border border-border/60 bg-card/40', className)} dir="rtl">
-      <button
+      <Button variant="ghost"
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
@@ -69,8 +52,8 @@ export function CollapsibleSection({
         <ChevronDown
           className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')}
         />
-      </button>
-      {open && <div className="px-1 pb-1">{children}</div>}
+       </Button>
+       <AnimatedExpansion open={open}><div className="px-1 pb-1">{children}</div></AnimatedExpansion>
     </section>
   );
 }

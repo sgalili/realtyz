@@ -1,0 +1,10 @@
+DO $$ DECLARE definition text; BEGIN
+ SELECT pg_get_functiondef('public.get_my_ad_details(uuid)'::regprocedure) INTO definition;
+ definition := replace(definition,
+ 'coalesce((SELECT coalesce(sum(c.gross) FILTER(WHERE NOT c.is_leftover),0)+coalesce(sum(c.purchase_price) FILTER(WHERE c.purchased_at IS NOT NULL),0) FROM public.listing_lead_charges c WHERE c.listing_id=_listing_id AND c.affiliate_id=a.affiliate_id),0) AS paid_bids,',
+ 'coalesce((SELECT coalesce(sum(c.gross) FILTER(WHERE NOT c.is_leftover AND c.gross>0),0)+coalesce(sum(c.purchase_price) FILTER(WHERE c.purchased_at IS NOT NULL AND c.purchase_price>0),0) FROM public.listing_lead_charges c WHERE c.listing_id=_listing_id AND c.affiliate_id=a.affiliate_id),0)+coalesce((SELECT sum(s.earned_amount) FROM public.affiliate_lead_submissions s WHERE s.listing_id=_listing_id AND s.affiliate_id=a.affiliate_id AND s.settlement_status=''paid'' AND s.earned_amount>0 AND NOT EXISTS(SELECT 1 FROM public.listing_lead_charges c WHERE c.listing_id=s.listing_id AND c.affiliate_id=s.affiliate_id AND c.lead_id=s.lead_id)),0) AS paid_bids,');
+ definition := replace(definition,
+ '(SELECT count(*) FROM public.listing_lead_charges c WHERE c.listing_id=_listing_id AND c.affiliate_id=a.affiliate_id AND (NOT c.is_leftover OR c.purchased_at IS NOT NULL)) AS paid_count,',
+ '(SELECT count(*) FROM public.listing_lead_charges c WHERE c.listing_id=_listing_id AND c.affiliate_id=a.affiliate_id AND ((NOT c.is_leftover AND c.gross>0) OR (c.purchased_at IS NOT NULL AND c.purchase_price>0)))+(SELECT count(*) FROM public.affiliate_lead_submissions s WHERE s.listing_id=_listing_id AND s.affiliate_id=a.affiliate_id AND s.settlement_status=''paid'' AND s.earned_amount>0 AND NOT EXISTS(SELECT 1 FROM public.listing_lead_charges c WHERE c.listing_id=s.listing_id AND c.affiliate_id=s.affiliate_id AND c.lead_id=s.lead_id)) AS paid_count,');
+ EXECUTE definition;
+END $$;
