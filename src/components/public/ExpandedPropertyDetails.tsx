@@ -99,7 +99,6 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
     garden && { icon: Trees, label: 'שטח גינה', value: `${garden} מ״ר` },
     floor && { icon: Layers, label: 'קומה', value: floor },
     entrance && { icon: CalendarDays, label: 'כניסה', value: a.isEnterDateFlexible === true ? `${entrance} (גמיש)` : entrance },
-    a.isImmediateEntrance === true && dateHe(a.entranceDate) ? null : null,
     parkingCount && { icon: Car, label: 'מקומות חניה', value: String(parkingCount) },
     a.includeParking !== undefined && { icon: CarFront, label: 'חניה כלולה', value: a.includeParking ? 'כן' : 'לא' },
     num(a.balconiesCount) && { icon: DoorOpen, label: 'מרפסות', value: String(num(a.balconiesCount)) },
