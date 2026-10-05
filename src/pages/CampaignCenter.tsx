@@ -4506,11 +4506,14 @@ const PublishedFeed = ({
   subTab = 'published',
   onSubTabChange,
   altContent,
+  tabCounts,
 }: {
   subTab?: FeedSubTab;
   onSubTabChange?: (v: FeedSubTab) => void;
   /** Rendered instead of the published list when a non-published tab is active. */
   altContent?: React.ReactNode;
+  /** Live item counts for the drafts/future tabs (published is counted locally). */
+  tabCounts?: { drafts: number; future: number };
 } = {}) => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
@@ -6118,9 +6121,9 @@ const PublishedFeed = ({
       <div className="relative -top-[25px] flex h-[44px] items-center gap-2" dir="rtl">
         <div className="grid h-[44px] flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           {([
-            { v: 'published' as FeedSubTab, label: 'פורסמו' },
-            { v: 'future' as FeedSubTab, label: 'מתוזמנים' },
-            { v: 'drafts' as FeedSubTab, label: 'טיוטות' },
+            { v: 'published' as FeedSubTab, label: 'פורסמו', count: filteredRows?.length ?? 0 },
+            { v: 'future' as FeedSubTab, label: 'מתוזמנים', count: tabCounts?.future ?? 0 },
+            { v: 'drafts' as FeedSubTab, label: 'טיוטות', count: tabCounts?.drafts ?? 0 },
           ]).map((t) => (
             <button
               key={t.v}
