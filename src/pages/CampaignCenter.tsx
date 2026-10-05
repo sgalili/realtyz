@@ -30,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 
 import { supabase } from '@/integrations/supabase/client';
-import { syncPagePostsViaExtension } from '@/lib/extensionPageSync';
+import { syncWorkspacePagePosts } from '@/lib/extensionPageSync';
 import { nextBlockedKeys } from '@/lib/mediaBlocklist';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
@@ -5365,6 +5365,7 @@ const PublishedFeed = ({
   // the feed never depends on an expiring CDN signature. Fire-and-forget.
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
+    let cancelled = false;
     if (!scope) return;
     const key = `realtyz.fb_media_resync.${scope}`;
     try {
@@ -5482,22 +5483,16 @@ const PublishedFeed = ({
       if (fullSyncRunningRef.current) return;
       fullSyncRunningRef.current = true;
       const toastId = 'campaigns-hero-sync';
-      toast.loading('התוסף מסנכרן פוסטים מעמוד הפייסבוק…', { id: toastId });
+      toast.loading('מסנכרן פוסטים מעמוד הפייסבוק…', { id: toastId });
       let ok = false;
       let hadTransientIssue = false;
       let refreshWarning: string | null = null;
       try {
         if (scope) {
-          // Page sync runs through the Realtyz browser extension (DOM scrape of
-          // the connected Page) — no Meta Graph read permissions required.
+          // The initiating workspace owns its strategy and Page binding.
           setExtSync({ state: 'running', count: 0, at: Date.now() });
-          let pageId: string | null = null;
-          try {
-            const { data: effective } = await (supabase as any).rpc('get_effective_meta_page', { _owner: scope });
-            const row: any = Array.isArray(effective) ? effective[0] : effective;
-            pageId = row?.page_id ? String(row.page_id) : null;
-          } catch { /* extension falls back to the signed-in profile */ }
-          const res = await syncPagePostsViaExtension({ ownerId: scope, pageId, max: 100 });
+          const res = await syncWorkspacePagePosts({ ownerId: scope, max: 10 });
+          if (cancelled) { toast.dismiss(toastId); return; }
           setFacebookSyncWarning(null);
           if (res.status === 'synced') {
             // Show success only after saved rows are repainted from the database.
@@ -5532,7 +5527,7 @@ const PublishedFeed = ({
 
     const onSync = () => { void runFullSync(); };
     window.addEventListener('rz:campaigns-sync', onSync as EventListener);
-    return () => window.removeEventListener('rz:campaigns-sync', onSync as EventListener);
+    return () => { cancelled = true; window.removeEventListener('rz:campaigns-sync', onSync as EventListener); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, setFacebookSyncWarning, workspaceOwnerId, userId]);
 

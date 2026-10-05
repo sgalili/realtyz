@@ -12,7 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle, CheckCircle2, Download, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { requestExtensionPostComments } from '@/lib/extensionPostBridge';
-import { syncPagePostsViaExtension } from '@/lib/extensionPageSync';
+import { syncWorkspacePagePosts } from '@/lib/extensionPageSync';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 type Report = {
   ok: boolean;
@@ -33,6 +34,7 @@ const DEFAULT_SINCE = '2026-07-27';
  * Hebrew with exact steps to solve it — never a silent toast.
  */
 export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string }) {
+  const ownerId = useActiveWorkspaceOwnerId();
   const [open, setOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [step, setStep] = useState<string>('');
@@ -49,8 +51,8 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
     let comments = 0;
 
     try {
-      setStep('התוסף פותח את עמוד הפייסבוק וקורא פוסטים ומדדים…');
-      const sync = await syncPagePostsViaExtension({ since, max: 150 });
+      setStep('מסנכרן פוסטים ומדדים מעמוד הפייסבוק…');
+      const sync = await syncWorkspacePagePosts({ ownerId, since, max: 10 });
       posts = sync.upserted;
       counters = sync.scraped;
       if (sync.status === 'no_extension') {
@@ -59,6 +61,8 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
       } else if (sync.status === 'empty') {
         problems.push('התוסף לא מצא פוסטים בעמוד.');
         fixes.push('ודא שאתה מחובר לפייסבוק בדפדפן הזה ושיש לך גישה לעמוד, ואז נסה שוב.');
+      } else if (sync.status === 'timeout') {
+        problems.push('הסנכרון לא הושלם בזמן. נסה שוב.');
       } else if (sync.status === 'error') {
         problems.push(`שמירת הפוסטים נכשלה: ${sync.error}`);
       }
