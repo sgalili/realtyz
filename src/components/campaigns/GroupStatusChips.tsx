@@ -204,7 +204,6 @@ export function GroupStatusChips({
     const url = groupPostDestination(result, fbGroupUrlFrom(lookup(gid)?.url, groupKeyFrom(gid)));
     return <SingleGroupPill name={name} url={url}
       status={showStatus ? <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span> : null} />;
-    );
   }
   return (
     <div className={`${inline ? '' : 'mt-1.5 '}flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-0.5`} dir="rtl">
