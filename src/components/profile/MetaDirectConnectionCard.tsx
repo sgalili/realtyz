@@ -167,6 +167,9 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     setPage(null);
     setStatus(null);
     setBindings([]);
+    setPageOptions([]);
+    setSelectingPageId(null);
+    setLoading(true);
     probe(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
