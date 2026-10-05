@@ -39,10 +39,23 @@ export async function getOfficialWaNumber(): Promise<string> {
   return cached;
 }
 
+/** Clean international digits (Israeli 05X -> 9725X), no '+'. */
+export function cleanIntlPhone(phone: string | null | undefined): string {
+  let d = String(phone ?? '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0')) d = '972' + d.slice(1);
+  return d;
+}
+
+/** Universal https://wa.me/<phone>?text=... link (phone optional for share). */
+export function waMeLink(phone?: string | null, text?: string): string {
+  const base = `https://wa.me/${cleanIntlPhone(phone)}`;
+  return text ? `${base}?text=${encodeURIComponent(text)}` : base;
+}
+
 /** Builds a wa.me link that ALWAYS targets the official WBA number. */
 export function officialWaLink(text?: string, phone: string = OFFICIAL_WABA_PHONE): string {
-  const base = `https://wa.me/${phone.replace(/\D/g, '')}`;
-  return text ? `${base}?text=${encodeURIComponent(text)}` : base;
+  return waMeLink(phone, text);
 }
 
 /**
@@ -51,9 +64,9 @@ export function officialWaLink(text?: string, phone: string = OFFICIAL_WABA_PHON
  * into the chat instead of landing on WhatsApp's "download" web page.
  */
 export function nativeWaLink(phone: string = OFFICIAL_WABA_PHONE, text?: string): string {
-  const digits = phone.replace(/\D/g, '');
-  const base = `whatsapp://send?phone=${digits}`;
-  return text ? `${base}&text=${encodeURIComponent(text)}` : base;
+  // Universal link: in-app webviews (Facebook/Instagram) hand wa.me to the
+  // OS, which opens the installed app; custom schemes fail there.
+  return waMeLink(phone, text);
 }
 
 /** Opens WhatsApp against the official WBA number only. */
@@ -71,21 +84,7 @@ export async function openOfficialWhatsApp(text?: string): Promise<void> {
  * non-official sender identity: it is the device's own WhatsApp share sheet.
  */
 export function openWhatsAppContactPicker(text: string): void {
-  const encoded = encodeURIComponent(text);
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  if (isMobile) {
-    // Native protocol: opens the installed app directly on the contact list.
-    window.location.href = `whatsapp://send?text=${encoded}`;
-    // Safety net for devices without the custom scheme registered.
-    setTimeout(() => {
-      window.location.href = `https://wa.me/?text=${encoded}`;
-    }, 700);
-    return;
-  }
-  // Desktop: api.whatsapp.com hands off to WhatsApp Desktop / Web with the
-  // contact selection list open.
-  window.open(`https://wa.me/?text=${encoded}`, '_blank', 'noopener,noreferrer');
+  window.open(waMeLink(null, text), '_blank', 'noopener,noreferrer');
 }
 
 

@@ -148,10 +148,8 @@ async function handleShortLink(code: string): Promise<void> {
   }
   const query = `phone=${phone}${text ? `&text=${encodeURIComponent(text)}` : ""}`;
   const universal = `https://wa.me/${phone}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
-  window.location.replace(`whatsapp://send?${query}`);
-  window.setTimeout(() => {
-    if (document.visibilityState === "visible") window.location.replace(universal);
-  }, 1200);
+  void query;
+  window.location.replace(universal);
 }
 
 async function bootstrap() {
