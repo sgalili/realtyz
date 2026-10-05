@@ -4041,6 +4041,7 @@ type CampaignRow = {
 
   media_urls?: string[];
   group_ids?: string[];
+  publish_to_page?: boolean;
   external_url?: string | null;
   is_external?: boolean;
   listing_id?: string | null;
@@ -4505,11 +4506,14 @@ const PublishedFeed = ({
   subTab = 'published',
   onSubTabChange,
   altContent,
+  tabCounts,
 }: {
   subTab?: FeedSubTab;
   onSubTabChange?: (v: FeedSubTab) => void;
   /** Rendered instead of the published list when a non-published tab is active. */
   altContent?: React.ReactNode;
+  /** Live item counts for the drafts/future tabs (published is counted locally). */
+  tabCounts?: { drafts: number; future: number };
 } = {}) => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
@@ -4965,7 +4969,7 @@ const PublishedFeed = ({
     // they are a member of.
     const { data, error: feedReadError } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids, series_id')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids, series_id, publish_to_page')
       .eq('workspace_owner_id', ownerScope)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -6117,9 +6121,9 @@ const PublishedFeed = ({
       <div className="relative -top-[25px] flex h-[44px] items-center gap-2" dir="rtl">
         <div className="grid h-[44px] flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           {([
-            { v: 'published' as FeedSubTab, label: 'פורסמו' },
-            { v: 'future' as FeedSubTab, label: 'מתוזמנים' },
-            { v: 'drafts' as FeedSubTab, label: 'טיוטות' },
+            { v: 'published' as FeedSubTab, label: 'פורסמו', count: filteredRows?.length ?? 0 },
+            { v: 'future' as FeedSubTab, label: 'מתוזמנים', count: tabCounts?.future ?? 0 },
+            { v: 'drafts' as FeedSubTab, label: 'טיוטות', count: tabCounts?.drafts ?? 0 },
           ]).map((t) => (
             <button
               key={t.v}
@@ -6133,7 +6137,7 @@ const PublishedFeed = ({
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {t.label}
+              {t.label} ({t.count})
             </button>
           ))}
         </div>
@@ -6414,6 +6418,35 @@ const PublishedFeed = ({
                     return `${p(dt.getDate())}.${p(dt.getMonth() + 1)}.${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
                   })()}
                 </span>
+                {String(r.channel || '').toLowerCase() === 'facebook' && (() => {
+                  const toGroups = hasGroupTargets;
+                  const toPage = r.publish_to_page === true || (!toGroups && r.publish_to_page !== false);
+                  const kind = toGroups && toPage ? 'both' : toGroups ? 'groups' : 'page';
+                  const label = kind === 'both' ? 'פורסם בעמוד ובקבוצות' : kind === 'groups' ? 'פורסם בקבוצות' : 'פורסם בעמוד הפייסבוק';
+                  const cls = kind === 'both'
+                    ? 'bg-warning/15 text-warning-foreground'
+                    : kind === 'groups'
+                      ? 'bg-success/10 text-success'
+                      : 'bg-primary/10 text-primary';
+                  return (
+                    <span
+                      title={label}
+                      aria-label={label}
+                      className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full', cls)}
+                    >
+                      {kind === 'groups' ? (
+                        <Users className="h-3 w-3" />
+                      ) : kind === 'both' ? (
+                        <span className="relative inline-flex h-3 w-3 items-center justify-center">
+                          <BrandIcon name="facebook" className="absolute -right-1 h-2.5 w-2.5" />
+                          <Users className="absolute -left-1 h-2.5 w-2.5" />
+                        </span>
+                      ) : (
+                        <BrandIcon name="facebook" className="h-3 w-3" />
+                      )}
+                    </span>
+                  );
+                })()}
                 {hasGroupTargets && (
                   <div className="min-w-0 flex-1">
                     <GroupStatusChips
@@ -8984,7 +9017,17 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           
-          <PublishedFeed subTab={historyTab} onSubTabChange={setHistoryTab} altContent={queueAltContent} />
+          <PublishedFeed
+            subTab={historyTab}
+            onSubTabChange={setHistoryTab}
+            altContent={queueAltContent}
+            tabCounts={{
+              drafts: campaignDraftRows.length,
+              future: collapseCampaignCards(
+                campaignHistoryRows.filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status) && !readDeletedTombstones().has(String(r.id))),
+              ).length,
+            }}
+          />
         </TabsContent>
         <TabsContent value="calendar" className="mt-6">
           <ScheduledCampaignCalendar
