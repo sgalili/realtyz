@@ -51,7 +51,7 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
   );
 }
 
-export default function PublicListingsBoard() {
+export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [cards, setCards] = useState<PublicCard[]>([]);
@@ -125,14 +125,14 @@ export default function PublicListingsBoard() {
   const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background">
+    <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
       <header className="border-b bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
-          <div className="relative flex min-h-11 items-center justify-between gap-3">
+          {embedded ? <div className="flex items-center justify-between gap-3"><h1 className="text-xl font-bold text-foreground">לוח נדל״ן שיתופי</h1><PublicListingPublisher autoResume /></div> : <div className="relative flex min-h-11 items-center justify-between gap-3">
             <PublicListingPublisher autoResume />
             <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
             <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
-          </div>
+          </div>}
           <div className="mt-5 space-y-2">
             <div className="flex max-w-md items-center gap-2">
               <div className="relative min-w-0 flex-1">

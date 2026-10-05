@@ -25,6 +25,9 @@ const PERKS = [
 
 export default function AffiliateSignup() {
   const navigate = useNavigate();
+  // Signed-out visitors who tapped "share" on a property come back to it.
+  const nextRaw = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('next') : null;
+  const nextPath = nextRaw && nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/affiliate';
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -37,7 +40,7 @@ export default function AffiliateSignup() {
   useEffect(() => {
     let alive = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (alive && data.session) navigate('/affiliate', { replace: true });
+      if (alive && data.session) navigate(nextPath, { replace: true });
     });
     return () => {
       alive = false;
@@ -53,7 +56,7 @@ export default function AffiliateSignup() {
     if (termsAccepted) {
       await supabase.rpc('accept_affiliate_terms', { _version: AFFILIATE_TERMS_VERSION });
     }
-    navigate('/affiliate', { replace: true });
+    navigate(nextPath, { replace: true });
   };
 
   const submit = async () => {

@@ -67,7 +67,14 @@ const GROUP_LABELS: Record<string, string> = {
   total_floors: 'קומות בבניין', year_built: 'שנת בנייה', balcony: 'מרפסת',
   safe_room: 'ממ״ד', storage: 'מחסן', air_conditioning: 'מיזוג', accessible: 'גישה לנכים',
   renovated: 'משופץ', furnished: 'מרוהט', bars: 'סורגים', parking: 'חניה', elevator: 'מעלית',
-  entry_date: 'תאריך כניסה', price: 'מחיר', date: 'תאריך', rooms: 'חדרים', sqm: 'מ״ר', floor: 'קומה',
+  entry_date: 'תאריך כניסה', garden: 'גינה', yard: 'חצר', pool: 'בריכה', solar_heater: 'דוד שמש',
+  boiler: 'דוד חשמל', kosher_kitchen: 'מטבח כשר', pets: 'חיות מחמד', pets_allowed: 'מותר בעלי חיים',
+  roommates: 'שותפים', long_term: 'לטווח ארוך', parking_spots: 'מקומות חניה', warehouse: 'מחסן',
+  shelter: 'מקלט', mamad: 'ממ״ד', exposure: 'כיווני אוויר', view: 'נוף', arnona: 'ארנונה',
+  vaad_bayit: 'ועד בית', house_committee: 'ועד בית', property_tax: 'ארנונה', garden_sqm: 'שטח גינה',
+  balcony_sqm: 'שטח מרפסת', built_sqm: 'שטח בנוי', lot_sqm: 'שטח מגרש', bathrooms: 'חדרי רחצה',
+  toilets: 'שירותים', bedrooms: 'חדרי שינה', heating: 'חימום', schools: 'בתי ספר', transport: 'תחבורה',
+  parks: 'פארקים', shopping: 'קניות', notes: 'הערות', name: 'שם', type: 'סוג', distance: 'מרחק', price: 'מחיר', date: 'תאריך', rooms: 'חדרים', sqm: 'מ״ר', floor: 'קומה',
 };
 
 const VALUE_LABELS: Record<string, string> = {
@@ -76,7 +83,7 @@ const VALUE_LABELS: Record<string, string> = {
   new: 'חדש', renovated: 'משופץ', good: 'שמור', needs_renovation: 'דורש שיפוץ', true: 'כן', false: 'לא',
 };
 
-const HIDDEN_PUBLIC_KEYS = new Set(['sources', 'source', 'source_url', 'external_id', 'removed_photo_keys', 'media_vision_checked', 'media_vision_at', 'metadata_backfilled_at', 'fetched_at', 'created_at', 'updated_at']);
+const HIDDEN_PUBLIC_KEYS = new Set(['office_notes', 'internal_notes', 'owner_phone', 'owner_name', 'owner_email', 'id', 'url', 'sources', 'source', 'source_url', 'external_id', 'removed_photo_keys', 'media_vision_checked', 'media_vision_at', 'metadata_backfilled_at', 'fetched_at', 'created_at', 'updated_at']);
 
 function cleanDate(value: unknown): string | null {
   const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -93,7 +100,8 @@ function readable(value: unknown): string {
       .map(([key, item]) => {
         const text = readable(item);
         const keyLabel = GROUP_LABELS[key];
-        return text && keyLabel ? `${keyLabel}: ${text}` : '';
+        if (HIDDEN_PUBLIC_KEYS.has(key)) return '';
+        return text ? (keyLabel || /[\u0590-\u05FF]/.test(key) ? `${keyLabel ?? key}: ${text}` : text) : '';
       })
       .filter(Boolean)
       .join(' · ');
@@ -131,9 +139,11 @@ function detailGroups(row: any): Array<{ title: string; rows: Array<{ label: str
       ? (value as unknown[]).map((item, index) => [String(index + 1), item] as [string, unknown])
       : Object.entries(value as Record<string, unknown>);
     for (const [key, item] of entries) {
-      if (HIDDEN_PUBLIC_KEYS.has(key) || (!GROUP_LABELS[key] && !/[\u0590-\u05FF]/.test(key))) continue;
+      if (HIDDEN_PUBLIC_KEYS.has(key)) continue;
       const text = readable(item);
-      if (text) rows.push({ label: GROUP_LABELS[key] ?? key, value: text });
+      // Keep every detail from the property record: unknown keys get a tidy label.
+      const label = GROUP_LABELS[key] ?? (/^\d+$/.test(key) ? '' : key.replace(/_/g, ' '));
+      if (text) rows.push({ label, value: text });
     }
     if (rows.length) groups.push({ title, rows });
   }

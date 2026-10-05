@@ -63,11 +63,11 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   {
     title: 'מטלות\n',
-    url: '/',
+    url: '/command-center',
     icon: ClipboardList,
     iconColor: '!text-[#0369a1]', // sky-700
     badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
-    aliases: ['/command-center', '/tasks'],
+    aliases: ['/tasks'],
   },
   {
     title: 'לוח בקרה',
@@ -248,7 +248,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
     switch (url) {
-      case '/': return counts.tasks;
+      case '/command-center': return counts.tasks;
       case '/lead-crm': return counts.leads;
       case '/properties': return counts.listings;
       case '/inbox': return counts.chats;
@@ -361,7 +361,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     <SidebarMenuButton asChild isActive={active}>
                       <NavLink
                         to={item.url}
-                        end={item.url === '/'}
+                        end={item.url === '/command-center'}
                         onClick={handleNavClick}
                         className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
                         activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
@@ -375,7 +375,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         )}
                         {!collapsed && !item.badge && (() => {
                           const c = countFor(item.url);
-                          if (c === undefined || (c === 0 && item.url !== '/')) return null;
+                          if (c === undefined || (c === 0 && item.url !== '/command-center')) return null;
                           return (
                             <span className="ms-auto rounded-full bg-background px-2 py-0.5 text-[11px] font-bold leading-none text-foreground ring-1 ring-border">
                               {formatCount(c)}
