@@ -20,7 +20,7 @@ export default function LeftoverLeadsDialog() {
   const [open, setOpen] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const qc = useQueryClient();
-  const { workspaceOwnerId } = useWorkspace() as { workspaceOwnerId?: string | null };
+  const { activeWorkspaceId: workspaceOwnerId } = useWorkspace();
   const key = ['leftover-leads', workspaceOwnerId ?? 'none'];
   const { data: rows = [], isLoading } = useQuery({
     queryKey: key,
