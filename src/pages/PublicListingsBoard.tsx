@@ -202,7 +202,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             })}
           </div>
           ) : (
-            <div ref={tableWrapRef} className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
+            <div ref={tableWrapRef} className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain rounded-lg border border-t-0 bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
               <table className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
