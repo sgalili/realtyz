@@ -145,6 +145,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           {embedded ? null : <div className="relative flex min-h-11 items-center justify-between gap-3">
             <PublicListingPublisher autoResume />
             <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
+            {user ? <Button asChild variant="link" className="h-auto shrink-0 p-0 text-sm font-semibold text-primary"><a href="/owner/properties">המודעות שלי</a></Button> : null}
             <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
           </div>}
           <div className="mt-5 space-y-2">
@@ -161,7 +162,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5', deals[value] ? 'font-semibold text-foreground' : 'text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
                 </div>
               </div>
-              {user ? <Button asChild className="shrink-0" size="sm" variant="outline"><a href="/owner/properties">עריכת המודעות שלי</a></Button> : null}
               <Button className="shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
             </div>
           </div>
