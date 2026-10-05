@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAppMode } from '@/hooks/useAppMode';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
@@ -55,8 +54,6 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
 
 export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
-  const { isPartnerMode } = useAppMode();
-  const myListingsPath = isPartnerMode ? '/affiliate-network' : '/properties';
   const { user } = useAuth();
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,13 +142,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
       <header className="bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
-          <div className="relative flex min-h-11 items-center justify-between gap-3">
-            <PublicListingPublisher autoResume />
-            <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
-            {user ? <Button asChild variant="link" className="h-auto shrink-0 p-0 text-sm font-semibold text-primary"><Link to={myListingsPath}>המודעות שלי</Link></Button> : null}
-            {embedded ? null : <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />}
-          </div>
-          <div className="-ms-2.5 mt-5 flex items-center gap-2">
+          {embedded ? null : (
+            <div className="relative flex min-h-11 items-center justify-between gap-3">
+              <PublicListingPublisher autoResume />
+              <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
+              <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
+            </div>
+          )}
+          <div className={cn('-ms-2.5 flex items-center gap-2', embedded ? '' : 'mt-5')}>
             <div className="inline-flex shrink-0 rounded-md bg-background py-1 ps-1">
               {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5 px-2', deals[value] ? 'font-semibold text-foreground' : 'text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
             </div>

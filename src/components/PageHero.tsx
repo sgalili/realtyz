@@ -10,7 +10,7 @@
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import * as React from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Plus,
   FileSpreadsheet,
@@ -24,6 +24,7 @@ import {
   Bot,
 } from "lucide-react";
 import { useAffiliatePreferences } from "@/hooks/useAffiliate";
+import { useAppMode } from "@/hooks/useAppMode";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { RealtyzWave } from "@/components/RealtyzWave";
@@ -303,6 +304,9 @@ export function PageHero() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { isPartnerMode } = useAppMode();
+  const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
+  const myListingsPath = isPartnerMode ? "/affiliate-network" : "/properties";
   const { isSuperAdmin } = useUserRole();
   const { preferences: affiliatePrefs } = useAffiliatePreferences();
   const automationAnyOn = Boolean(affiliatePrefs.rita_auto_mode || affiliatePrefs.auto_funnel_enabled);
@@ -391,6 +395,18 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {isPublicBoard && user && (
+            <Button
+              asChild
+              variant="link"
+              className="h-auto gap-1 p-0 text-sm font-semibold text-white hover:text-white/90"
+            >
+              <Link to={myListingsPath}>
+                המודעות שלי
+                <ArrowLeft className="!h-4 !w-4" strokeWidth={2.5} />
+              </Link>
+            </Button>
+          )}
           {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
             <Button
               size="icon"
