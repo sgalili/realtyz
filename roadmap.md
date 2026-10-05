@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Immediately block explicitly rejected Facebook groups with visible reasons, persistent queue/send exclusion and manual unblock; verify without Facebook publication.
 - [x] Restore full per-group campaign cards, reliable live progress and updated publication status icons; 18 tests passed, signed-in expansion into ten children and narrow-screen layout verified without posting. Actual Facebook execution remains untested.
 - [x] Isolate Facebook page sync by workspace, acknowledge extension delivery before tab cleanup, and validate initiating workspace binding; five regression tests and background ACK lifecycle checks passed, live authenticated config confirmed Rita Graph / Udi extension / foreign workspace 403, build OK. Actual Facebook scraping and Graph import require the connected browser and remain unverified.
 
