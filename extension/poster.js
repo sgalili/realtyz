@@ -294,6 +294,14 @@
   const groupContextOk = () => GROUP_CONTEXT.test(location.pathname) && !BLOCKED_CONTEXT.test(location.pathname);
   const postContextOk = () => POST_CONTEXT.test(contextOf()) && !BLOCKED_CONTEXT.test(location.pathname);
 
+  // Read only notices/composer UI, never other people's post text in the feed.
+  const groupRejectionNotice = () => {
+    const pattern = /(?:your (?:post|content).{0,50}(?:rejected|declined|removed)|(?:post|posting).{0,40}(?:blocked|not allowed|disabled)|you (?:are|have been).{0,30}(?:blocked|banned|restricted).{0,40}(?:group|posting)|הפוסט שלך.{0,40}(?:נדחה|נחסם|הוסר)|(?:לא ניתן|אינך יכול|אין לך הרשאה).{0,30}לפרסם|(?:נחסמת|הושעית).{0,30}(?:בקבוצה|מהקבוצה))/i;
+    const notice = [...document.querySelectorAll('[role="alert"], [role="status"], [role="dialog"], [data-pagelet="GroupInlineComposer"]')]
+      .filter(visible).map(textOf).find((text) => pattern.test(text));
+    return notice ? `group_post_rejected: ${notice.replace(/\s+/g, ' ').slice(0, 350)}` : null;
+  };
+
   /* One run per job id inside this tab, forever. */
   const doneJobs = new Set();
   const claimJob = (job) => {
@@ -311,13 +319,15 @@
       log('FAIL: not a group context', location.pathname);
       return { ok: false, reason: 'הפעולה בוטלה: העמוד הפתוח אינו קבוצת פייסבוק' };
     }
+    const initialRejection = groupRejectionNotice();
+    if (initialRejection) return { ok: false, reason: initialRejection };
 
     // 0. wait for the group feed to be fully rendered before touching anything
     log('waiting for group feed to load...');
     const feedReady = await waitForDom(() => (
       document.querySelector('div[role="feed"]') || composerTrigger() || textbox()
     ) ? true : null, 30000, 500);
-    if (!feedReady) { log('FAIL: feed did not load in 30s'); return { ok: false, reason: 'פיד הקבוצה לא נטען — לא נמצאה תיבת הפרסום' }; }
+    if (!feedReady) { log('FAIL: feed did not load in 30s'); return { ok: false, reason: groupRejectionNotice() || 'פיד הקבוצה לא נטען — לא נמצאה תיבת הפרסום' }; }
     log('feed ready');
     await sleep(1200);
 
@@ -326,7 +336,7 @@
     if (!box) {
       log('locating post trigger ("מה עולה בראשך?")...');
       const trigger = await waitForDom(composerTrigger, 15000);
-      if (!trigger) { log('FAIL: trigger not found in 15s'); return { ok: false, reason: 'לא נמצא "מה עולה בראשך?" בקבוצה תוך 15 שניות (אין הרשאת פרסום או שהעמוד לא נטען)' }; }
+      if (!trigger) { log('FAIL: trigger not found in 15s'); return { ok: false, reason: groupRejectionNotice() || 'לא נמצא "מה עולה בראשך?" בקבוצה תוך 15 שניות (אין הרשאת פרסום או שהעמוד לא נטען)' }; }
       log('trigger found, clicking it');
       trigger.scrollIntoView({ block: 'center' });
       trigger.click();
@@ -381,6 +391,8 @@
     realClick(btn);
     // If the dialog is still open with the button enabled after 4s, click once more.
     await new Promise((r) => setTimeout(r, 4000));
+    const immediateRejection = groupRejectionNotice();
+    if (immediateRejection) return { ok: false, submitted: true, reason: immediateRejection };
     if (dialog() && postButton() && postButton().getAttribute('aria-disabled') !== 'true') {
       log('dialog still open, retrying submit click once');
       realClick(postButton());
@@ -390,7 +402,9 @@
     // 5. verify: the composer dialog closes and the text shows up in the feed
     const snippet = String(job.message || '').replace(/\s+/g, ' ').trim().slice(0, 40);
     log('waiting for composer to close (submit verification)...');
-    const closed = await waitFor(() => (dialog() ? null : true), 60000, 700);
+    const closed = await waitFor(() => (groupRejectionNotice() || !dialog() ? true : null), 60000, 700);
+    const submitRejection = groupRejectionNotice();
+    if (submitRejection) return { ok: false, submitted, reason: submitRejection };
     if (!closed) {
       const err = [...document.querySelectorAll('div[role="alert"], div[role="dialog"] span')]
         .map(textOf)
@@ -401,9 +415,12 @@
     log('composer closed, verifying post in feed...');
 
     const seen = await waitFor(() => {
+      if (groupRejectionNotice()) return true;
       const body = document.body ? document.body.innerText.replace(/\s+/g, ' ') : '';
       return snippet && body.includes(snippet) ? true : null;
     }, 25000, 1000);
+    const feedRejection = groupRejectionNotice();
+    if (feedRejection) return { ok: false, submitted, reason: feedRejection };
 
     const pendingApproval = !seen && /ממתין לאישור|ממתינים לאישור|pending approval|submitted for approval|awaiting approval/i
       .test(document.body ? document.body.innerText : '');

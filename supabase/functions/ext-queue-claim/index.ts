@@ -46,5 +46,5 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: (data as any)?.reason ?? "invalid_token" }, 401);
   }
 
-  return json({ ok: true, jobs: (data as any).jobs ?? [] });
+  return json({ ok: true, workspace_owner_id: (data as any).workspace_owner_id, jobs: (data as any).jobs ?? [] });
 });
