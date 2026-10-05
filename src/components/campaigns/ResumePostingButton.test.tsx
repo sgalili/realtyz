@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { afterEach, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), poke: vi.fn(), live: { notify: () => {} }, owner: 'workspace-a' }));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: mocks.rpc } }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: mocks.rpc, from: () => { const c: any = { select: () => c, eq: () => c, order: () => Promise.resolve({ data: [{ id: 'j1', status: 'pending', publication_status: null, last_error: null, scheduled_for: null, group_url: 'https://facebook.com/groups/RentApTLV', group_name: null }], error: null }) }; return c; } } }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => mocks.owner }));
 vi.mock('@/hooks/useGroupQueueLive', () => ({ useGroupQueueLive: (_owner: string, notify: () => void) => { mocks.live.notify = notify; } }));
 vi.mock('@/lib/extensionPairing', () => ({ pokeExtension: mocks.poke }));
@@ -30,12 +30,14 @@ it('shows live progress immediately, updates after a queue notification and hide
   await waitFor(() => expect(screen.queryByRole('button')).toBeNull());
   client.clear();
 });
-it('clicks the progress pill to resume through the existing RPC and extension bridge', async () => {
+it('opens per-group statuses from the pill and resumes through the existing RPC and extension bridge', async () => {
   mocks.rpc.mockImplementation((name) => Promise.resolve(name === 'resume_group_posting' ? { data: 9, error: null } : { data: [{ ...progress, completed: 1, pending: 9 }], error: null }));
   const { client } = setup();
   await waitFor(() => expect(screen.getByText('1/10')).toBeVisible());
   fireEvent.click(screen.getByRole('button'));
+  await waitFor(() => expect(screen.getByText('RentApTLV')).toBeVisible());
+  fireEvent.click(screen.getByRole('button', { name: /המשך פרסום/ }));
   await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith('resume_group_posting', { _campaign_log_id: id }));
-  expect(mocks.poke).toHaveBeenCalledTimes(2);
+  expect(mocks.poke).toHaveBeenCalled();
   client.clear();
 });

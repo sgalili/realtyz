@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Play, Loader2 } from 'lucide-react';
+import { Play, Loader2, Check, XCircle } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { SendClockIcon } from '@/components/campaigns/SendClockIcon';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
@@ -16,6 +18,7 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
   const owner = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   const key = ['group-posting-progress', owner, campaignLogId];
   const persisted = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(campaignLogId);
   const { data: stored, isError } = useQuery({
@@ -31,8 +34,23 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
       return !p || p.total < 1 || (p.pending + p.processing) > 0 ? 4_000 : 60_000;
     },
   });
-  useGroupQueueLive(owner, () => { void qc.invalidateQueries({ queryKey: key }); });
+  useGroupQueueLive(owner, () => { void qc.invalidateQueries({ queryKey: key }); void qc.invalidateQueries({ queryKey: ['group-posting-jobs', owner, campaignLogId] }); });
   const data = stored && stored.total > 0 ? stored : fallbackProgress;
+  // Per-group job rows (RLS keeps them inside the active workspace).
+  const { data: jobs, isLoading: jobsLoading } = useQuery({
+    queryKey: ['group-posting-jobs', owner, campaignLogId],
+    enabled: open && !!owner && persisted,
+    queryFn: async () => {
+      const { data: rows, error } = await (supabase as any)
+        .from('campaign_activity_queue')
+        .select('id, status, publication_status, last_error, scheduled_for, payload->group_url, payload->group_name')
+        .eq('payload->>campaign_log_id', campaignLogId)
+        .order('scheduled_for', { ascending: true });
+      if (error) throw error;
+      return (rows ?? []) as Array<{ id: string; status: string; publication_status: string | null; last_error: string | null; scheduled_for: string | null; group_url: string | null; group_name: string | null }>;
+    },
+    refetchInterval: open ? 4_000 : false,
+  });
 
   const autoRan = useRef(false);
   useEffect(() => {
@@ -88,14 +106,26 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
     : running
       ? `${data.processing > 0 ? `מפרסם לקבוצה ${Math.min(data.completed + 1, data.total)} מתוך ${data.total}` : `ממתין לפרסום · ${data.completed}/${data.total}`} · לחיצה תחדש את התור`
       : `פורסמו ${data.completed}/${data.total} · לחיצה תמשיך ל-${remaining} קבוצות שנותרו`;
+  const groupLabel = (j: { group_name: string | null; group_url: string | null }) => {
+    if (j.group_name) return j.group_name;
+    const m = String(j.group_url || '').match(/groups\/([^/?#]+)/);
+    return m ? m[1] : 'קבוצה';
+  };
+  const timeOf = (iso: string | null) => {
+    if (!iso) return '';
+    const d = new Date(iso); const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
   return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
           <Button type="button" variant="ghost" size="sm"
-            onClick={(e) => { e.stopPropagation(); void resume(); }}
+            onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
             onPointerDown={(e) => e.stopPropagation()}
-            disabled={busy}
             aria-label={title}
+            aria-expanded={open}
             title={title}
-            className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70">
+            className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {busy ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : running ? (
@@ -108,5 +138,40 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
             )}
             <span aria-live="polite" dir="ltr">{data.completed}/{data.total}</span>
           </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" dir="rtl" className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-2 flex items-center justify-between gap-2 px-1">
+          <span className="text-sm font-semibold">פורסמו {data.completed} מתוך {data.total}</span>
+          <Button type="button" size="sm" className="h-7 gap-1 px-2 text-xs" disabled={busy}
+            onClick={(e) => { e.stopPropagation(); void resume(); }}>
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+            המשך פרסום
+          </Button>
+        </div>
+        <ul className="max-h-72 space-y-1 overflow-y-auto">
+          {jobsLoading && <li className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></li>}
+          {!jobsLoading && (jobs ?? []).length === 0 && <li className="px-1 py-2 text-xs text-muted-foreground">אין נתוני קבוצות</li>}
+          {(jobs ?? []).map((j) => {
+            const done = j.status === 'completed' || j.status === 'sent' || j.publication_status === 'published';
+            const failed = !done && (j.status === 'failed' || j.status === 'cancelled');
+            const processing = j.status === 'processing';
+            return (
+              <li key={j.id} className="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 text-xs hover:bg-muted/50">
+                <span className="shrink-0">
+                  {done ? <Check className="h-4 w-4 text-success" strokeWidth={3} />
+                    : failed ? <XCircle className="h-4 w-4 text-destructive" />
+                    : processing ? <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    : <SendClockIcon className="h-4 w-4 text-muted-foreground" />}
+                </span>
+                <span className="min-w-0 flex-1 truncate" title={groupLabel(j)}>{groupLabel(j)}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground" title={j.last_error || undefined}>
+                  {done ? 'פורסם' : failed ? 'נכשל' : processing ? 'מפרסם…' : `ממתין ${timeOf(j.scheduled_for)}`}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }
