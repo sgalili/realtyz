@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Search, Send } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Search, Send } from 'lucide-react';
+import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -64,6 +66,9 @@ export default function PublicListingsBoard() {
   const [chat, setChat] = useState<{ role: 'rita' | 'visitor'; text: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [unlocked, setUnlocked] = useState<any | null>(null);
+  const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
+  const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -115,7 +120,9 @@ export default function PublicListingsBoard() {
     }
   };
 
-  const filtered = useMemo(() => cards, [cards]);
+  const filtered = useMemo(() => cards.filter((card) => matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter)), [cards, propFilter]);
+  const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
+  const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
   return (
     <div dir="rtl" className="min-h-screen bg-background">
@@ -127,11 +134,13 @@ export default function PublicListingsBoard() {
             <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
           </div>
           <div className="mt-5 space-y-2">
-            <div className="relative min-w-[200px] max-w-md">
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש לפי עיר או שכונה" className="pe-10 ps-3" />
-              <Button type="button" size="icon" variant="ghost" onClick={() => void load()} aria-label="חיפוש" className="absolute end-1 top-1/2 h-8 w-8 -translate-y-1/2">
-                <Search className="h-4 w-4" />
-              </Button>
+            <div className="flex max-w-md items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש לפי עיר או שכונה" className="pe-11 ps-9" />
+                <LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} className="absolute end-1 top-1/2 -translate-y-1/2" />
+              </div>
+              {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
             </div>
             <div className="flex w-full items-center justify-between gap-2">
               <div className="relative min-w-[200px] max-w-md flex-1">
@@ -148,7 +157,8 @@ export default function PublicListingsBoard() {
 
       <main className="mx-auto max-w-6xl px-4 py-6">
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
-          <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-3')}>
+          grid ? (
+          <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
             {filtered.map((card) => {
               const title = cleanTitle(card);
               const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
@@ -184,6 +194,56 @@ export default function PublicListingsBoard() {
               </article>;
             })}
           </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border bg-card">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead className="bg-muted/40 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="w-14 p-2" />
+                    <th className="p-2 text-right font-semibold">כתובת</th>
+                    <th className="p-2 text-right font-semibold">עסקה</th>
+                    <th className="p-2 text-right font-semibold">חדרים</th>
+                    <th className="p-2 text-right font-semibold">מ״ר</th>
+                    <th className="p-2 text-right font-semibold">קומה</th>
+                    <th className="p-2 text-right font-semibold">מחיר</th>
+                    <th className="w-10 p-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((card) => {
+                    const title = cleanTitle(card);
+                    const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
+                    const open = expandedId === card.id;
+                    const toggle = () => setExpandedId(open ? null : card.id);
+                    return [
+                      <tr key={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <td className="p-2">{card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-10 w-10 rounded object-cover" loading="lazy" /> : <div className="h-10 w-10 rounded bg-muted" />}</td>
+                        <td className="p-2 font-semibold text-foreground">{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</td>
+                        <td className="p-2"><span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold', card.deal_type === 'rent' ? 'bg-success text-success-foreground' : 'bg-sale text-sale-foreground')}>{dealLabel(card.deal_type)}</span></td>
+                        <td className="p-2">{card.rooms || ''}</td>
+                        <td className="p-2">{card.sqm || ''}</td>
+                        <td className="p-2 whitespace-nowrap">{card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}</td>
+                        <td className="p-2 whitespace-nowrap font-bold">{shekel(card.price)}</td>
+                        <td className="p-2"><ChevronDown className={cn('h-5 w-5 transition-transform', open && 'rotate-180')} /></td>
+                      </tr>,
+                      open ? <tr key={`${card.id}-x`} className="border-t bg-muted/10">
+                        <td colSpan={8} className="p-3">
+                          <div className="grid gap-3 sm:grid-cols-[280px_1fr]">
+                            <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
+                            <div className="space-y-3">
+                              {card.description && <p className="whitespace-pre-line text-sm text-foreground">{card.description}</p>}
+                              <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact shareUrl={publicUrl(propertyPath)} showShare />
+                              <Button variant="link" className="h-auto p-0" onClick={(e) => { e.stopPropagation(); navigate(propertyPath); }}>לעמוד הנכס המלא</Button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr> : null,
+                    ];
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
       </main>
 
