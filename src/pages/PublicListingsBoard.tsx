@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
 import type { LeadContactOptions } from '@/lib/leadTiers';
@@ -234,8 +235,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                         <td className="p-2 whitespace-nowrap">{card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}</td>
                         <td className="p-2"><ChevronDown className={cn('h-5 w-5 transition-transform', open && 'rotate-180')} /></td>
                       </tr>,
-                      open ? <tr key={`${card.id}-x`} className="border-t bg-muted/10">
+                      <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={8} className="p-0">
+                          <AnimatedExpansion open={open}>
                           <div className="sticky right-0 grid min-w-0 gap-3 p-3 sm:grid-cols-[280px_minmax(0,1fr)]" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
                             <div className="min-w-0 space-y-3">
@@ -243,8 +245,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact shareUrl={publicUrl(propertyPath)} showShare />
                             </div>
                           </div>
+                          </AnimatedExpansion>
                         </td>
-                      </tr> : null,
+                      </tr>,
                     ];
                   })}
                 </tbody>

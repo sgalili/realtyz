@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
@@ -1194,7 +1196,7 @@ function ResultCard({
   // Lazy gallery: until the card is expanded we only paint the cover image.
   // Already-imported photos come straight from the DB/storage URLs, so the
   // cover is instant; the rest are fetched on expand.
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useExclusiveExpansion('property-gallery');
   // Total number of images the property has — reported by the source payload
   // even when the media was not imported into our storage yet.
   const photoCount = sourcePhotoCount(result, photos.length);
@@ -1345,7 +1347,7 @@ function ResultCard({
       </div>
 
       {/* Thumbnail row — lazily mounted: images load only once expanded */}
-      {hasMany && expanded && (
+      <AnimatedExpansion open={hasMany && expanded}>
         <div
           className="flex gap-1.5 overflow-x-auto px-2 py-2 bg-muted/40 border-b scrollbar-thin"
           dir="rtl"
@@ -1368,7 +1370,7 @@ function ResultCard({
             );
           })}
         </div>
-      )}
+      </AnimatedExpansion>
 
       <div className="p-4 flex flex-col gap-3 flex-1">
         {/* Property notes — full text, directly under the property name. */}

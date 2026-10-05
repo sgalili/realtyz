@@ -5,7 +5,10 @@
  * Default state is collapsed, and the last state per section is persisted in
  * localStorage so it survives refresh, navigation, and sign-out / sign-in.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
+import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +44,7 @@ export function CollapsibleSection({
   className,
   children,
 }: CollapsibleSectionProps) {
-  const [open, setOpen] = useState(() => readState(id, defaultOpen));
+  const [open, setOpen] = useExclusiveExpansion('dashboard-sections', id);
 
   useEffect(() => {
     try {
@@ -53,7 +56,7 @@ export function CollapsibleSection({
 
   return (
     <section className={cn('rounded-xl border border-border/60 bg-card/40', className)} dir="rtl">
-      <button
+      <Button variant="ghost"
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
@@ -69,8 +72,8 @@ export function CollapsibleSection({
         <ChevronDown
           className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')}
         />
-      </button>
-      {open && <div className="px-1 pb-1">{children}</div>}
+       </Button>
+       <AnimatedExpansion open={open}><div className="px-1 pb-1">{children}</div></AnimatedExpansion>
     </section>
   );
 }
