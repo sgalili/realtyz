@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { fbGroupUrlFrom } from "@/lib/fbGroupUrl";
 import { safeUtf8 } from "@/lib/utf8Text";
 import { supabase } from "@/integrations/supabase/client";
+import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 
 export const EXT_GROUPS_STORAGE_KEY = "rz-ext-fb-groups";
 export const EXT_GROUPS_MESSAGE = "RZ_FB_GROUPS";
@@ -502,7 +503,7 @@ export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedE
     const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
     const { data, error } = await (supabase as any)
       .from("campaign_activity_queue")
-      .select("id, status, last_error, scheduled_for, created_at, payload, target_ref, target_label, result")
+      .select("id, status, last_error, scheduled_for, created_at, payload, target_ref, target_label")
       .eq("workspace_owner_id", workspaceOwnerId)
       .in("activity_type", ["fb_group_post", "fb_comment"])
       .neq("status", "cancelled")
@@ -529,8 +530,8 @@ export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedE
       out.push({
         ...(job as QueuedExtensionPost),
         workspaceOwnerId,
-        postUrl: row.result?.post_url || job.postUrl,
-        postId: row.result?.post_id || job.postId,
+        postUrl: payload.fb_post_url || job.postUrl,
+        postId: payload.fb_post_id || job.postId,
         ...(row.payload?.campaign_log_id ? { campaignLogId: row.payload.campaign_log_id } : {}),
         cloudId: row.id as string,
         status: LOCAL_STATUS(row.status),
@@ -667,6 +668,10 @@ const sameQueue = (a: QueuedExtensionPost[], b: QueuedExtensionPost[]) => {
 
 export const useExtensionQueue = (workspaceOwnerId?: string | null): QueuedExtensionPost[] => {
   const [queue, setQueue] = useState<QueuedExtensionPost[]>(() => readPostQueue(workspaceOwnerId));
+  useGroupQueueLive(workspaceOwnerId, () => {
+    // Notification is scoped to this workspace; the effect owns cancellation.
+    document.dispatchEvent(new CustomEvent('rz:cloud-queue-change', { detail: workspaceOwnerId }));
+  });
 
   useEffect(() => {
     setQueue(readPostQueue(workspaceOwnerId));
@@ -730,11 +735,16 @@ export const useExtensionQueue = (workspaceOwnerId?: string | null): QueuedExten
     void pullCloud();
     const cloudBeat = window.setInterval(pullCloud, 4000);
     window.addEventListener('focus', pullCloud);
+    const onCloudChange = (event: Event) => {
+      if ((event as CustomEvent).detail === workspaceOwnerId) void pullCloud();
+    };
+    document.addEventListener('rz:cloud-queue-change', onCloudChange);
 
     return () => {
       alive = false;
       window.clearInterval(cloudBeat);
       window.removeEventListener('focus', pullCloud);
+      document.removeEventListener('rz:cloud-queue-change', onCloudChange);
       window.clearInterval(beat);
       window.removeEventListener('focus', rebroadcast);
       document.removeEventListener(EXT_QUEUE_EVENT, onCustom as EventListener);

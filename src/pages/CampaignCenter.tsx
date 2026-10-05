@@ -6252,7 +6252,7 @@ const PublishedFeed = ({
         // is a static clock, not an indefinitely spinning fetch indicator.
         const cardGroupResults = legacyMetaError ? {} : groupResultMap(r.provider_response?.group_results);
         const bodyKey = (text: string) => String(text || '').replace(/\s+/g, ' ').trim();
-        const targetIds = new Set((r.group_ids || []).map((id: string) => groupKeyFrom(id)));
+        const targetIds = new Set<string>((r.group_ids || []).map((id: string) => groupKeyFrom(id)));
         const matchingJobs = extensionQueue.filter((job) => job.type !== 'page_first_comment' &&
           (job.id === r._groupJobId || job.campaignLogId === (r._parentCampaignId || r.id) ||
             (!job.campaignLogId && bodyKey(r.message_body) && bodyKey(job.sourceText || job.text || '') === bodyKey(r.message_body))));
