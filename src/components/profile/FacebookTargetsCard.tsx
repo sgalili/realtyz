@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2 } from 'lucide-react';
@@ -12,6 +12,7 @@ import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCa
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
+import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean; blocked?: boolean; blockedReason?: string | null };
 
@@ -65,25 +66,36 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState<'active' | 'blocked'>('active');
   const [discoverOpen, setDiscoverOpen] = useState(false);
+  const scopeRef = useRef(workspaceOwnerId);
+  scopeRef.current = workspaceOwnerId;
+  const requestRef = useRef(0);
 
   // Never keep another workspace's groups in local storage.
-  useEffect(() => { purgeForeignCaches(workspaceOwnerId); setMarkedIds(new Set()); }, [workspaceOwnerId]);
+  useEffect(() => {
+    purgeForeignCaches(workspaceOwnerId);
+    setGroups(readCache(workspaceOwnerId)?.groups ?? []);
+    setLoading(true);
+    setMarkedIds(new Set());
+  }, [workspaceOwnerId]);
 
 
   const load = useCallback(async () => {
-    if (!workspaceOwnerId) return;
+    if (!workspaceOwnerId) { setLoading(false); return; }
+    const request = ++requestRef.current;
     try {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('fb_user_groups')
         .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked, blocked_reason')
         // Workspace-scoped so shared Facebook groups are identical for every member.
         .eq('workspace_owner_id', workspaceOwnerId)
         .order('group_name', { ascending: true });
+      if (scopeRef.current !== workspaceOwnerId || request !== requestRef.current) return;
+      if (error) throw error;
       // TENANT ISOLATION: hide groups bound to a Facebook page this workspace is
       // no longer connected to.
       const connectedPage = pageBinding?.pageId ?? null;
       const visible = ((data ?? []) as any[]).filter(
-        (r) => !r?.page_id || !connectedPage || String(r.page_id) === connectedPage,
+        (r) => r.is_blocked || !r?.page_id || !connectedPage || String(r.page_id) === connectedPage,
       );
       const nextGroups: GroupTarget[] = visible.map((r) => ({
         id: String(r.id),
@@ -100,12 +112,19 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
       try {
         localStorage.setItem(cacheKeyFor(workspaceOwnerId), JSON.stringify({ groups: nextGroups }));
       } catch { /* noop */ }
+    } catch (error) {
+      if (scopeRef.current === workspaceOwnerId) toast.error('טעינת הקבוצות נכשלה');
     } finally {
-      setLoading(false);
+      if (scopeRef.current === workspaceOwnerId && request === requestRef.current) setLoading(false);
     }
   }, [workspaceOwnerId, pageBinding?.pageId]);
 
   useEffect(() => { void load(); }, [load]);
+  useGroupQueueLive(workspaceOwnerId, () => void load());
+  useEffect(() => {
+    const timer = window.setInterval(() => void load(), 5000);
+    return () => window.clearInterval(timer);
+  }, [load]);
 
   const toggleGroup = async (target: GroupTarget) => {
     const next = !target.selected;
@@ -180,7 +199,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
       .eq('workspace_owner_id', workspaceOwnerId)
       .eq('id', target.id);
     if (error) { toast.error('שחרור הקבוצה נכשל', { description: error.message }); void load(); }
-    else toast.success('הקבוצה הוחזרה לרשימה הפעילה');
+    else { toast.success('הקבוצה הוחזרה לרשימה הפעילה'); void load(); }
   };
 
   const blockGroup = async (target: GroupTarget) => {
@@ -191,6 +210,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
       .eq('workspace_owner_id', workspaceOwnerId)
       .eq('id', target.id);
     if (error) { toast.error('חסימת הקבוצה נכשלה', { description: error.message }); void load(); }
+    else void load();
   };
 
 
@@ -220,14 +240,14 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
               />
             )}
             <div role="tablist" className="flex min-w-0 flex-1 rounded-lg bg-muted p-0.5">
-              <button type="button" role="tab" aria-selected={tab === 'active'} onClick={() => { setTab('active'); setDeleteMode(false); }}
+              <Button variant="ghost" type="button" role="tab" aria-selected={tab === 'active'} onClick={() => { setTab('active'); setDeleteMode(false); }}
                 className={cn('flex-1 rounded-md px-2 py-1 font-semibold', TEXT_SM, tab === 'active' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
                 פעילות ({groups.length})
-              </button>
-              <button type="button" role="tab" aria-selected={tab === 'blocked'} onClick={() => { setTab('blocked'); setDeleteMode(false); }}
+              </Button>
+              <Button variant="ghost" type="button" role="tab" aria-selected={tab === 'blocked'} onClick={() => { setTab('blocked'); setDeleteMode(false); }}
                 className={cn('flex-1 rounded-md px-2 py-1 font-semibold', TEXT_SM, tab === 'blocked' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
-                חסומות ({blockedGroups.length})
-              </button>
+                קבוצות חסומות ({blockedGroups.length})
+              </Button>
             </div>
           </div>
           <GroupDiscoveryDialog
@@ -247,12 +267,12 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                     <Ban className="h-4 w-4 shrink-0 text-destructive" />
                     <div className={cn('min-w-0 flex-1 text-right', TEXT_MD)}>
                       <span title={g.name} className="block truncate">{shortenName(g.name)}</span>
-                      {g.blockedReason && <span title={g.blockedReason} className={cn('block truncate text-muted-foreground', TEXT_SM)}>{g.blockedReason}</span>}
+                      {g.blockedReason && <span title={g.blockedReason} className={cn('block break-words text-muted-foreground', TEXT_SM)}>{g.blockedReason.replace(/^group_post_rejected:\s*|^group_blocked:\s*/g, '')}</span>}
                     </div>
-                    <button type="button" onClick={() => void unblock(g)} title="החזר לרשימה הפעילה"
+                    <Button variant="ghost" size="sm" type="button" onClick={() => void unblock(g)} title="החזר לרשימה הפעילה"
                       className={cn('inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 font-semibold text-primary hover:bg-muted', TEXT_SM)}>
                       <Undo2 className="h-3.5 w-3.5" /> שחרור
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>

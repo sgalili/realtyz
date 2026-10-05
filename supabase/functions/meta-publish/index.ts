@@ -544,17 +544,18 @@ Deno.serve(async (req) => {
     const groupIds: string[] = await (async () => {
       if (requestedGroupIds.length === 0 || !ownerId) return requestedGroupIds;
       try {
-        const { data } = await db
+        const { data, error } = await db
           .from("fb_user_groups")
-          .select("group_id, is_selected")
-          .eq("workspace_owner_id", ownerId)
-          .in("group_id", requestedGroupIds);
+          .select("group_id, is_selected, is_blocked")
+          .eq("workspace_owner_id", ownerId);
+        if (error) throw error;
         const excluded = new Set(
-          ((data ?? []) as any[]).filter((r) => r?.is_selected === false).map((r) => String(r.group_id)),
+          ((data ?? []) as any[]).filter((r) => r?.is_selected === false || r?.is_blocked)
+            .map((r) => String(r.group_id).replace(/^(ext:|manual:)/, '')),
         );
         return requestedGroupIds.filter((g) => !excluded.has(g));
       } catch {
-        return requestedGroupIds;
+        throw new Error('לא ניתן לבדוק את הקבוצות החסומות כרגע. נסה שוב.');
       }
     })();
 

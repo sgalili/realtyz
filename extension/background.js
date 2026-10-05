@@ -314,6 +314,22 @@ async function runJobInner(token, job) {
   if (BLOCKED_URL.test(url)) return report(token, job, false, 'הפעולה בוטלה: היעד אינו קבוצת פייסבוק');
   if (!(await automationEnabled())) return report(token, job, false, 'האוטומציה בדפדפן מושבתת');
   if (!String(job.message || '').trim()) return report(token, job, false, 'תוכן הפוסט ריק');
+  // Every path (instant, mirrored or claimed) must check the workspace's durable
+  // blocklist before opening Facebook. Offline/unpaired checks fail closed.
+  const workspaceOwner = job.workspaceOwnerId || (await local([ACTIVE_WORKSPACE_KEY]))[ACTIVE_WORKSPACE_KEY];
+  if (!token || !workspaceOwner) {
+    lastJobReason = 'חבר את התוסף לסביבת העבודה לפני פרסום';
+    return DEFERRED;
+  }
+  job = { ...job, workspaceOwnerId: workspaceOwner };
+  try {
+    const { json } = await api('ext-group-guard', { token, workspace_owner_id: workspaceOwner, group: url });
+    if (json.ok !== true) { lastJobReason = 'בדיקת הקבוצות החסומות נכשלה'; return DEFERRED; }
+    if (json.blocked) {
+      await report(token, job, false, `group_blocked: ${json.reason || 'הקבוצה חסומה'}`);
+      return false;
+    }
+  } catch (e) { lastJobReason = 'לא ניתן לבדוק קבוצות חסומות ללא חיבור'; return DEFERRED; }
   const prior = await alreadyDone(job);
   if (prior === 'posted') return report(token, job, true, null, null);
   if (prior) return report(token, job, false, 'ניסיון קודם לא אומת — בדוק בקבוצה לפני פרסום חוזר');
@@ -361,7 +377,7 @@ async function runJobInner(token, job) {
       },
     );
 
-    const requiredCommentFailed = Boolean(job.first_comment) && result.first_comment_ok !== true;
+    const requiredCommentFailed = result.ok === true && Boolean(job.first_comment) && result.first_comment_ok !== true;
     const posted = result.ok === true && result.submitted === true && result.verified_in_feed === true;
     const verified = posted && !requiredCommentFailed;
     // Once Facebook accepted the post, never auto-repost it (even if feed
@@ -466,6 +482,14 @@ async function runPageFirstComment(token, entry) {
 
 async function report(token, job, ok, reason, postUrl) {
   lastJobReason = ok ? null : (reason || 'פרסום בדפדפן נכשל');
+  // Local jobs must also persist a rejection immediately, without waiting for
+  // an open app tab to mirror Chrome storage back to the database.
+  if (!ok && token && job.workspaceOwnerId && String(reason || '').startsWith('group_post_rejected:')) {
+    const { json } = await api('ext-group-guard', {
+      token, workspace_owner_id: job.workspaceOwnerId, group: groupUrl(job), rejection: reason,
+    });
+    if (json.ok !== true) throw new Error('שמירת חסימת הקבוצה נכשלה');
+  }
 
   // Local (app-triggered) jobs have no backend queue row — skip the report call.
   if (token && !job.local) {
@@ -643,6 +667,7 @@ async function drainQueue() {
           id: `queue-${entry.id}`,
           dedupe_key: String(entry.id),
           local: true,
+          workspaceOwnerId: entry.workspaceOwnerId,
           group_id: '',
           group_url: entry.groupUrl,
           message: String(entry.text || ''),
@@ -744,7 +769,7 @@ async function poll() {
     const jobs = Array.isArray(json.jobs) ? json.jobs : [];
     for (const job of jobs) {
       try {
-        await withTimeout(runJob(token, job), POLL_JOB_TIMEOUT_MS, 'job_timeout');
+        await withTimeout(runJob(token, { ...job, workspaceOwnerId: json.workspace_owner_id }), POLL_JOB_TIMEOUT_MS, 'job_timeout');
       } catch (e) {
         // Don't report: the job may still finish; the in-flight lock prevents a local duplicate.
         await setState({ last_error: 'פרסום אחד נמשך זמן רב, ממשיכים לקבוצה הבאה' });
