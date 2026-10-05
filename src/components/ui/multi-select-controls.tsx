@@ -1,4 +1,4 @@
-import { Check, List } from 'lucide-react';
+import { Check, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -24,7 +24,7 @@ export const SelectModeToggle = ({
       className,
     )}
   >
-    <List className="h-4 w-4" />
+    <ListChecks className="h-4 w-4" />
     {count > 0 && (
       <span className="absolute -top-1 -left-1 min-w-[16px] h-4 rounded-full bg-primary px-1 text-[10px] font-bold leading-4 text-primary-foreground tabular-nums">
         {count}
