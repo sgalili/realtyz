@@ -1497,6 +1497,10 @@ export function ResultTable({
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { notesByListing } = usePropertyNotesByListing();
+  // Publisher column only matters in partner mode: in broker mode every row
+  // already belongs to the user's own workspace.
+  const { isPartnerMode } = useAppMode();
+  const showPublisherColumn = isPartnerMode;
 
   // Partner sharing lives in ONE unified first column. Saved properties get it
   // automatically; callers may override the cell with their own control.
