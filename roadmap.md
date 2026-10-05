@@ -62,4 +62,4 @@
 - [x] 6. Rita chat: skip name/phone form, open WhatsApp with message referencing the ad, Rita asks name
 - [x] 7. Show action buttons per priced lead type on public ads
 - [x] 8. Signed-out "share ad": affiliate onboarding flow, then share the original property
-- [~] 9. (cap + stop + no-charge done; affiliate discount input & leftover purchase screen open) Daily lead cap in bids dialog, stop promotion at cap, leftover-lead discount (% or fixed)
+- [x] 9. Daily lead cap, stop promotion + FB group posts at cap, partner leftover discount (% or fixed), leftover purchase screen, WhatsApp partner attribution via referral code

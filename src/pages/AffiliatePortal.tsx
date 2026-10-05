@@ -4,6 +4,7 @@
 // browses broker-approved properties, sees exactly what they earn per closing,
 // and generates a personal tracking link to market with.
 import { useEffect, useMemo, useState } from 'react';
+import LeftoverDiscountButton from '@/components/affiliate/LeftoverDiscountButton';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -194,6 +195,7 @@ function PartnerListingActions({ listing, referralId }: { listing: MarketplaceLi
       {/* Icon-only action: the title carries the meaning, no text label. */}
       <PropertyShareMenu results={[result]} iconOnly />
       <SubmitLeadDialog listing={listing} />
+      {referralId ? <LeftoverDiscountButton referralId={referralId} /> : null}
       {referralId ? <RemoveFromMarketingButton referralId={referralId} /> : null}
     </div>
   );

@@ -29,7 +29,7 @@ const str = (v: unknown, max = 120) => String(v ?? "").replace(/\s+/g, " ").trim
  * first three add 10 ILS each — priced inside charge_lead_commission().
  */
 // deno-lint-ignore no-explicit-any
-async function chargeLead(admin: any, listingId: string, tier: number, refCode: string) {
+async function chargeLead(admin: any, listingId: string, tier: number, refCode: string, leadId: string | null = null) {
   let affiliateId: string | null = null;
   if (refCode) {
     const { data } = await admin
@@ -43,7 +43,7 @@ async function chargeLead(admin: any, listingId: string, tier: number, refCode: 
     _listing_id: listingId,
     _tier: tier,
     _affiliate_id: affiliateId,
-    _reference_id: null,
+    _reference_id: leadId,
   });
   if (error) {
     console.error("[public-lead-gate] charge failed", error);
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
       });
 
       // Level 1 (digital lead) settles immediately against the publisher wallet.
-      const billing = await chargeLead(admin, listing.id, 1, str(body?.ref, 40));
+      const billing = await chargeLead(admin, listing.id, 1, str(body?.ref, 40), leadId ?? null);
 
       return json({
         token: accessToken,
@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
       }
 
       // Level 3 (phone conversation lead).
-      const billing = await chargeLead(admin, listing.id, 3, refCode);
+      const billing = await chargeLead(admin, listing.id, 3, refCode, leadId ?? null);
       // Always a success for the visitor.
       return json({ success: true, lead_id: leadId, billing });
     }
@@ -279,7 +279,7 @@ Deno.serve(async (req) => {
 
       // Level 2 (WhatsApp / chat screening) is billed on the first real turn.
       if (!interest.rita_engaged_at) {
-        await chargeLead(admin, interest.listing_id, 2, str(body?.ref, 40));
+        await chargeLead(admin, interest.listing_id, 2, str(body?.ref, 40), interest.lead_id ?? null);
       }
 
 
