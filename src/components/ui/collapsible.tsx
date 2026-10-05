@@ -14,7 +14,11 @@ const Collapsible = React.forwardRef<React.ElementRef<typeof CollapsiblePrimitiv
     if (open !== previous.current && open !== undefined) setExpanded(open);
     previous.current = open;
   }, [open, setExpanded]);
-  React.useEffect(() => { if (open === true && !expanded) onOpenChange?.(false); }, [expanded]);
+  const wasExpanded = React.useRef(expanded);
+  React.useEffect(() => {
+    if (wasExpanded.current && !expanded && open === true) onOpenChange?.(false);
+    wasExpanded.current = expanded;
+  }, [expanded, open, onOpenChange]);
   return <CollapsiblePrimitive.Root {...props} ref={ref} open={expanded} onOpenChange={(next) => { setExpanded(next); onOpenChange?.(next); }}><PeerContext.Provider value={`collapsible:${id}`}>{children}</PeerContext.Provider></CollapsiblePrimitive.Root>;
 });
 Collapsible.displayName = 'Collapsible';
