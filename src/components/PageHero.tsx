@@ -309,6 +309,7 @@ export function PageHero() {
   const { user } = useAuth();
   const { isPartnerMode } = useAppMode();
   const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
+  const isMyAdsPage = location.pathname.startsWith("/my-ads");
   const myListingsPath = "/my-ads";
   const { isSuperAdmin, isAffiliate, isTeamMember, isPropertyOwner } = useUserRole();
   const { activeWorkspaceId } = useWorkspace();
@@ -395,7 +396,7 @@ export function PageHero() {
           )}
           {/* Yad2 scraping balance — owners / super admins, and ONLY on /properties. */}
           {canSeeBalance && location.pathname.startsWith("/properties") && <BrightDataHeroPill />}
-          {(location.pathname === "/" || location.pathname.startsWith("/public-listings")) && <PublicListingPublisher autoResume />}
+          {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}
@@ -405,6 +406,18 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {isMyAdsPage && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => navigate("/public-listings")}
+              aria-label="חזרה ללוח נדל״ן שיתופי"
+              title="חזרה ללוח נדל״ן שיתופי"
+              className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+            >
+              <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
+            </Button>
+          )}
           {isPublicBoard && user && canSeeMyAds && (
             <Button
               asChild
