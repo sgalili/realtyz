@@ -45,7 +45,8 @@ export async function resolveMetaPage(
   ownerId: string | null,
 ): Promise<MetaPage | null> {
   if (!ownerId) return null;
-  return (await resolveOwnMetaPage(db, ownerId)) ?? (await resolveSharedMetaPage(db));
+  // Strict workspace isolation: no shared/platform fallback.
+  return await resolveOwnMetaPage(db, ownerId);
 }
 
 /** The platform-shared Page binding, available to every workspace. */
@@ -129,10 +130,6 @@ export async function resolveMetaPageCandidates(
     .order("is_selected", { ascending: false })
     .order("updated_at", { ascending: false });
   const own = (data ?? []).filter((r: any) => r?.page_id && r?.page_access_token);
-  if (own.length === 0) {
-    const shared = await resolveSharedMetaPage(db);
-    if (shared) return [{ ...shared, scope: "workspace" as const }];
-  }
   return own
     .map((r: any) => ({
       pageId: String(r.page_id),
