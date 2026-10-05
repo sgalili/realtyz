@@ -118,3 +118,29 @@ export async function saveRitaState(
     await admin.from("leads").update({ preferences: prefs }).eq("id", leadId);
   } catch (_) { /* soft-fail */ }
 }
+
+// ---------- inquiry intent ----------
+// Product = asking about Realtyz itself (the tool, how it works, the marketing post).
+// Property = explicit wish to buy / rent / sell / let a property.
+const PRODUCT_RE = /realty\s?z|ריאלטי\s?ז|ריאלטיז|הכלי|המערכת|האפליקציה|התוכנה|איך\s+(זה|הכלי|המערכת)\s+עובד|איך\s+זה\s+עובד|הדגמה|דמו|\bdemo\b|מנוי|כמה\s+עולה\s+(המערכת|הכלי|המנוי)|למתווכים|אוטומציה|ראיתי\s+את\s+הפוסט|לגבי\s+הפוסט|על\s+הפוסט/i;
+const PROPERTY_RE = /(מחפש|מחפשת|מחפשים|רוצה|רוצים|מעוניין|מעוניינת|מעוניינים)\s+(ל)?(לקנות|קנות|לשכור|לשכירות|לרכוש|דירה|בית|נכס|למכור|להשכיר)|לקנות\s+דירה|לשכור\s+דירה|למכור\s+(את\s+)?(ה)?(דירה|בית|נכס)|להשכיר\s+(את\s+)?(ה)?(דירה|בית|נכס)|דירת\s+\d|\d(\.\d)?\s*חדרים|תקציב\s+של|עד\s+\d[\d,.]*\s*(אלף|מיליון|מליון|₪|ש"ח)|יש\s+לי\s+(דירה|נכס|בית)\s+(למכירה|להשכרה)/i;
+
+export type InquiryIntent = "product" | "property" | "unknown";
+
+/** Deterministic intent: explicit property wishes win; otherwise Realtyz/tool questions are product inquiries. */
+export function classifyInquiryIntent(text: string, history: Msg[] = []): InquiryIntent {
+  const t = String(text ?? "");
+  if (PROPERTY_RE.test(t)) return "property";
+  if (PRODUCT_RE.test(t)) return "product";
+  // Follow-ups ("כן", "מעניין") inherit the thread: last contact turns about the product.
+  const prior = history.filter((m) => m.role === "user").slice(-4).map((m) => String(m.content ?? "")).join("\n");
+  if (PROPERTY_RE.test(prior)) return "property";
+  if (PRODUCT_RE.test(prior)) return "product";
+  return "unknown";
+}
+
+/** Prompt block forcing the Realtyz product answer (no buyer qualification). */
+export const PRODUCT_INQUIRY_BLOCK =
+  "\n\n[INTENT: REALTYZ PRODUCT INQUIRY] איש הקשר שואל על Realtyz עצמה (הכלי, איך זה עובד, הפוסט השיווקי), לא על נכס. " +
+  "אסור לשאול על חדרים, תקציב, אזור, מועד כניסה או סיור. הסבירי בקצרה ש-Realtyz היא מערכת AI לשיווק ואוטומציית קמפיינים למתווכי נדל\"ן: " +
+  "פרסום בקבוצות ובעמודים, מענה אוטומטי לפניות מסביב לשעון, ניהול אנשי קשר ונכסים במקום אחד. סיימי בהזמנה ידידותית להדגמה קצרה בזום.";

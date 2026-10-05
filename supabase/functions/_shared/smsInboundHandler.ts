@@ -23,7 +23,7 @@ import { corsHeaders } from "./cors.ts";
 import { sendSms019, toLocalIL } from "./sms019.ts";
 import { logIntegrationError } from "./logIntegrationError.ts";
 import { renderFocusPropertyBlock } from "./focusProperty.ts";
-import { answerPropertyFact, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState } from "./ritaIntel.ts";
+import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState } from "./ritaIntel.ts";
 import { generateFastReply } from "./waFastReply.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -468,13 +468,26 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
 
     // Same property resolution as WhatsApp: current text, earlier messages,
     // then the contact's linked listing.
-    const focusRow = await resolveFocusListing(admin as any, workspaceOwnerId, bodyText, history, (lead as any).interest_tag ?? null);
+    const isProductInquiry = classifyInquiryIntent(bodyText, history) === "product";
+    const focusRow = isProductInquiry ? null : await resolveFocusListing(admin as any, workspaceOwnerId, bodyText, history, (lead as any).interest_tag ?? null);
     const focusBlock = renderFocusPropertyBlock(focusRow as any);
-    const stateBlock = renderRitaStateBlock(readRitaState((lead as any).preferences));
-    const factAnswer = answerPropertyFact(bodyText, focusRow as any);
+    const stateBlock = isProductInquiry ? PRODUCT_INQUIRY_BLOCK : renderRitaStateBlock(readRitaState((lead as any).preferences));
+    const factAnswer = isProductInquiry ? null : answerPropertyFact(bodyText, focusRow as any);
     if (factAnswer) reply = factAnswer;
 
-    if (!reply) try {
+    // Realtyz product questions: answer about the tool + demo invite, never buyer qualification.
+    if (!reply && isProductInquiry) {
+      const product = await generateFastReply({
+        lead: { id: lead.id, full_name: realName, preferences: (lead as any).preferences ?? null },
+        inboundText: bodyText,
+        history,
+        contextBlock: `[CHANNEL: SMS] תשובה קצרה, בלי קישורים ובלי אימוג׳י.${PRODUCT_INQUIRY_BLOCK}`,
+        recruitment: true,
+      } as any).catch(() => ({ text: "" }));
+      reply = String((product as any)?.text ?? "").trim();
+    }
+
+    if (!reply && !isProductInquiry) try {
       const aiRes = await fetch(`${SUPABASE_URL}/functions/v1/ai-agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
@@ -528,10 +541,11 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
         history,
         contextBlock: `[CHANNEL: SMS] תשובה קצרה, בלי קישורים ובלי אימוג׳י.${stateBlock}`,
         focusProperty: focusBlock || null,
-      }).catch(() => ({ text: "" }));
+        recruitment: isProductInquiry,
+      } as any).catch(() => ({ text: "" }));
       if (fresh.text) reply = fresh.text;
     }
-    if (reply) void saveRitaState(admin as any, lead.id, (lead as any).preferences, bodyText, reply);
+    if (reply && !isProductInquiry) void saveRitaState(admin as any, lead.id, (lead as any).preferences, bodyText, reply);
 
     if (!reply) {
       reply = `קיבלנו את ההודעה שלך ונחזור אליך עם תשובה מדויקת.`;

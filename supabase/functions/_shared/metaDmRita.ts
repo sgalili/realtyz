@@ -3,7 +3,7 @@
 // guard → send on the SAME channel → store outbound.
 import { logIntegrationError } from "./logIntegrationError.ts";
 import { renderFocusPropertyBlock } from "./focusProperty.ts";
-import { answerPropertyFact, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState } from "./ritaIntel.ts";
+import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState } from "./ritaIntel.ts";
 import { generateFastReply } from "./waFastReply.ts";
 import { type InboundDm, resolveDmLead, sendDm } from "./metaDm.ts";
 import type { MetaPage } from "./metaPage.ts";
@@ -59,13 +59,14 @@ export async function runRitaForDm(admin: any, ownerId: string, page: MetaPage, 
   const channelLabel = dm.platform === "instagram" ? "Instagram" : "Messenger";
   const rawName = String(lead.full_name ?? "").trim();
   const realName = rawName && !/^(Messenger|Instagram) \w{6}$/.test(rawName) ? rawName : null;
-  const focusRow = await resolveFocusListing(admin, ownerId, dm.text, history, lead.interest_tag ?? null);
+  const isProductInquiry = classifyInquiryIntent(dm.text, history) === "product";
+  const focusRow = isProductInquiry ? null : await resolveFocusListing(admin, ownerId, dm.text, history, lead.interest_tag ?? null);
   const focusBlock = renderFocusPropertyBlock(focusRow as any);
-  const stateBlock = renderRitaStateBlock(readRitaState(lead.preferences));
-  const factAnswer = answerPropertyFact(dm.text, focusRow as any);
+  const stateBlock = isProductInquiry ? PRODUCT_INQUIRY_BLOCK : renderRitaStateBlock(readRitaState(lead.preferences));
+  const factAnswer = isProductInquiry ? null : answerPropertyFact(dm.text, focusRow as any);
   let reply = factAnswer ?? "";
 
-  if (!reply) {
+  if (!reply && !isProductInquiry) {
     try {
       const aiRes = await fetch(`${SUPABASE_URL}/functions/v1/ai-agent`, {
         method: "POST",
@@ -117,11 +118,12 @@ export async function runRitaForDm(admin: any, ownerId: string, page: MetaPage, 
       history,
       contextBlock: `[CHANNEL: ${channelLabel}] תשובה קצרה וטבעית.${stateBlock}`,
       focusProperty: focusBlock || null,
+      recruitment: isProductInquiry,
     } as any).catch(() => ({ text: "" }));
     if ((fresh as any)?.text) reply = (fresh as any).text;
   }
   if (!reply) return; // stay silent rather than send a canned line
-  void saveRitaState(admin, leadId, lead.preferences, dm.text, reply);
+  if (!isProductInquiry) void saveRitaState(admin, leadId, lead.preferences, dm.text, reply);
 
   const sent = await sendDm(page, dm.platform, dm.senderId, reply);
   if (!sent.ok) {

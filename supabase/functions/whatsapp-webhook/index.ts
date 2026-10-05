@@ -30,7 +30,7 @@ import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
 import { FOCUS_COLUMNS, matchListingFromText, renderFocusPropertyBlock } from "../_shared/focusProperty.ts";
-import { answerPropertyFact, isRepeatReply, readRitaState, renderRitaStateBlock, saveRitaState } from "../_shared/ritaIntel.ts";
+import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, saveRitaState } from "../_shared/ritaIntel.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
 import {
@@ -1116,11 +1116,14 @@ async function handleLeadInboxInbound(
   // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
   // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
   // instead of property talk. Internal staff are never in recruitment mode.
+  // Deterministic intent: a question about Realtyz itself never enters buyer qualification.
+  const productInquiry = !staffSender && classifyInquiryIntent(stripRefTag(inboundText)) === "product";
   const recruitmentMode =
     !staffSender &&
     (BROKER_RECRUITMENT_WORKSPACE ||
       String(leadPrefs.lead_kind ?? "") === "broker" ||
-      opts?.recruitment === true);
+      opts?.recruitment === true ||
+      productInquiry);
 
 
 
@@ -1319,8 +1322,9 @@ async function handleLeadInboxInbound(
         });
       }
     }
-    const focusProperty = renderFocusPropertyBlock(focusRow as any);
+    const focusProperty = productInquiry ? "" : renderFocusPropertyBlock(focusRow as any);
     contextBlock += ritaStateBlock;
+    if (productInquiry) contextBlock += PRODUCT_INQUIRY_BLOCK;
     rescueContextBlock = contextBlock;
     rescueFocusProperty = focusProperty;
     // Direct fact questions ("כמה חדרים?") are answered straight from the listing.
