@@ -25,6 +25,7 @@ import {
 } from '@/lib/publicListingDraft';
 import { setPendingSignupRole } from '@/lib/signupRole';
 import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutocomplete';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
@@ -65,6 +66,7 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
 
 export function PublicListingPublisher({ autoResume = false, disabled = false }: { autoResume?: boolean; disabled?: boolean }) {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const { isPropertyOwner, refetch: refetchRoles } = useUserRole();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -78,6 +80,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const [publishStage, setPublishStage] = useState('');
   const [publishError, setPublishError] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<Record<string, any> | null>(null);
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
@@ -103,7 +108,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         if (error) throw error;
         await refetchRoles();
       }
-      const photos: string[] = [];
+       const photos: string[] = Array.isArray(imported?.photos) ? imported.photos.filter((url: unknown): url is string => typeof url === 'string' && url.startsWith('https://')) : [];
       const clips: string[] = [];
       for (const file of [...draftFiles, ...draftVideos]) {
         setPublishStage(`העלאת ${file.name}`);
@@ -123,7 +128,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       const title = `${draftFields.propertyType.trim()} · ${draftFields.city.trim()}${draftFields.neighborhood.trim() ? ` · ${draftFields.neighborhood.trim()}` : ''}`;
       setPublishStage('שמירת פרטי הנכס');
       const { data, error } = await supabase.from('listings').insert({
-        user_id: user.id, workspace_owner_id: user.id, owner_id: user.id,
+         user_id: user.id, workspace_owner_id: activeWorkspaceId || user.id, owner_id: user.id,
         slug: slugFor(user.id), property_title: title, description: draftFields.description.trim() || title, asking_price: toNum(draftFields.price) ?? 0,
         city: draftFields.city.trim(), neighborhood: draftFields.neighborhood.trim() || null, address,
         house_number: draftFields.houseNumber.trim() || null,
@@ -131,7 +136,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
          deal_type: draftFields.dealType, rooms: toNum(draftFields.rooms),
         sqm: toNum(draftFields.sqm) ?? toNum(draftFields.builtSqm),
          floor: draftFields.floor === 'קרקע' ? 0 : toInt(draftFields.floor),
-        features: {
+         source_url: imported?.source_url || null,
+         source_metadata: imported?.source_metadata || {},
+         features: {
+           ...(imported ? { source_details: imported } : {}),
           property_type: draftFields.propertyType.trim(),
           publisher_type: draftFields.publisherType,
           street: street || null,
@@ -153,21 +161,20 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           contact_whatsapp: draftFields.contactWhatsapp || null,
         },
         media_photos: photos, image_url: photos[0] ?? null,
-        status: 'live', source: 'manual', is_published: true, affiliate_enabled: true,
+         status: 'live', source: imported ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
       } as never).select('id').single();
       if (error) throw error;
       await clearPublicListingDraft();
       void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
+       void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
       toast.success('הנכס פורסם בלוח השיתופי');
-       setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0);
+        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0); setImported(null); setImportUrl('');
        navigate('/public-listings', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
     } catch (error) {
       const e = error as { message?: string; details?: string; hint?: string } | null;
       const message = (error instanceof Error ? error.message : [e?.message, e?.details, e?.hint].filter(Boolean).join(' · ')) || 'שגיאה לא ידועה';
       console.error('public listing publish failed', error);
-      const friendly = message.includes('one active property')
-        ? `בעל נכס פרטי יכול לפרסם נכס פעיל אחד בלבד (${message})`
-        : message.includes('row-level security') || message.includes('permission')
+       const friendly = message.includes('row-level security') || message.includes('permission')
           ? `אין הרשאה לפרסם את הנכס בחשבון הזה (${message})`
           : message;
       const detailedError = `${publishStage || 'פרסום'}: ${friendly}`;
@@ -250,6 +257,25 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
 
   const isLast = step === STEP_TITLES.length - 1;
 
+  const importYad2 = async () => {
+    if (!user) { navigate('/auth'); return; }
+    let url: URL;
+    try { url = new URL(importUrl.trim()); } catch { setPublishError('יש להדביק קישור תקין למודעה ביד2'); return; }
+    if (url.protocol !== 'https:' || !['yad2.co.il', 'www.yad2.co.il'].includes(url.hostname) || !/^\/realestate\/item\/[a-z0-9]+\/?$/i.test(url.pathname)) { setPublishError('יש להדביק קישור למודעת נדל״ן פעילה ביד2'); return; }
+    setImporting(true); setPublishError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-listing-text', { body: { text: url.toString() } });
+      if (error || !data?.ok || !data?.data) throw new Error(data?.message || 'לא ניתן לטעון את המודעה מיד2 כרגע');
+      const d = data.data as Record<string, any>;
+      if (!d.city || !d.price || !d.address) throw new Error('במודעה חסרים עיר, כתובת או מחיר. ניתן להשלים אותם בפרסום ידני.');
+      const types: Record<string, string> = { apartment: 'דירה', garden_apartment: 'דירת גן', penthouse: 'פנטהאוז', duplex: 'דופלקס', private_house: 'בית פרטי', cottage: 'בית פרטי', studio: 'סטודיו', commercial: 'משרד', land: 'מגרש', loft: 'דירה', other: 'דירה' };
+      setImported({ ...d, source_url: url.toString() });
+      setFields(current => ({ ...current, city: d.city, address: d.address, neighborhood: d.neighborhood || '', price: String(d.price), propertyType: types[d.property_type] || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? '' : String(d.rooms), sqm: d.sqm == null ? '' : String(d.sqm), floor: d.floor == null ? '' : String(d.floor), totalFloors: d.total_floors == null ? '' : String(d.total_floors), description: d.description || '', elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
+      setStep(7);
+    } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
+    finally { setImporting(false); }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -266,9 +292,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         <div className="space-y-4">
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {step === 0 && (
+            <div className="space-y-4">
+              <div className="space-y-2"><Label htmlFor="yad2-import-url">קישור למודעה ביד2</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/item/..." /><Button type="button" disabled={importing || !importUrl.trim()} onClick={() => void importYad2()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ייבוא מודעה'}</Button></div></div>
             <div className="grid grid-cols-2 gap-2">
                <Button type="button" variant="outline" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
                <Button type="button" variant="outline" onClick={() => void pickAndAdvance('publisherType', 'private')}>פרטי</Button>
+            </div>
             </div>
           )}
 
@@ -377,6 +406,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
 
           {step === 7 && (
             <div className="space-y-3">
+              {imported && <div className="space-y-2">{imported.photos?.[0] && <img src={imported.photos[0]} alt="הנכס המיובא" className="aspect-video w-full rounded-md object-cover" />}<p className="font-semibold">{fields.propertyType} · {fields.address} · {fields.city}</p><p>₪{Number(fields.price).toLocaleString('he-IL')}</p></div>}
               <div><Label>השם שלך *</Label><Input value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
               <div><Label>מספר ווטסאפ *</Label><Input inputMode="tel" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
@@ -385,7 +415,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
               </label>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} />
-                  <span>אני מאשר/ת את <a href="/terms" target="_blank" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" className="font-semibold text-primary underline">מדיניות הפרטיות</a></span>
+                  <span>אני מאשר/ת את <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">מדיניות הפרטיות</a> ומצהיר/ה שיש לי הרשאה לפרסם את הנכס והתמונות</span>
               </label>
             </div>
           )}
