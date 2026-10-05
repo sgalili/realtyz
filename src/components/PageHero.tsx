@@ -418,6 +418,7 @@ export function PageHero() {
               <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
           )}
+          {isPublicBoard && user && canSeeMyAds && (
             <Button
               asChild
               variant="link"
