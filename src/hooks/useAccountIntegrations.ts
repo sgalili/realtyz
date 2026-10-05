@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export type AccountIntegrations = {
   facebook: {
@@ -19,16 +20,16 @@ export type AccountIntegrations = {
 export const ACCOUNT_INTEGRATIONS_KEY = 'account-integrations';
 
 /**
- * Account-level (cross-workspace) integration status: Facebook / Instagram,
- * official WhatsApp (WBA), Green API and Yad2 are connected once per user and
- * stay active in every workspace. Everything else stays workspace-isolated,
- * so this hook deliberately has NO workspace key.
+ * Integration status for the ACTIVE workspace only. The server resolves the
+ * active workspace; the query key includes it so switching workspaces never
+ * shows the previous workspace's connections.
  */
 export function useAccountIntegrations() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   return useQuery<AccountIntegrations>({
-    queryKey: [ACCOUNT_INTEGRATIONS_KEY, user?.id],
-    enabled: !!user?.id,
+    queryKey: [ACCOUNT_INTEGRATIONS_KEY, user?.id, workspaceOwnerId],
+    enabled: !!user?.id && !!workspaceOwnerId,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
@@ -42,7 +43,7 @@ export function useAccountIntegrations() {
               pageName: fb.page_name ?? null,
               pageAvatarUrl: fb.page_avatar_url ?? null,
               hasToken: !!fb.has_token,
-              isShared: !!fb.is_shared,
+              isShared: false,
             }
           : null,
         waPhone: row.wa_phone ?? null,

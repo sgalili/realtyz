@@ -26,7 +26,7 @@ export function useMetaPageBinding() {
 
   return useQuery<MetaPageBinding | null>({
     queryKey: [META_PAGE_BINDING_KEY, workspaceOwnerId],
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!workspaceOwnerId,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc('get_effective_meta_page', { _owner: workspaceOwnerId });
