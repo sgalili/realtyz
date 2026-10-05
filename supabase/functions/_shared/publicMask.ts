@@ -122,4 +122,4 @@ export function toPublicCard(row: Record<string, any>): PublicCard {
 }
 
 export const PUBLIC_CARD_COLUMNS =
-  "id, slug, property_title, address, house_number, apartment_number, city, neighborhood, deal_type, rooms, sqm, floor, features, asking_price, description, short_description, long_description, image_url, media_photos, contact_options, created_at, is_published, status, affiliate_enabled";
+  "id, slug, property_title, address, house_number, apartment_number, city, neighborhood, deal_type, rooms, sqm, floor, features, asking_price, description, short_description, long_description, image_url, media_photos, contact_options, created_at, is_published, status, affiliate_enabled, daily_lead_cap";
