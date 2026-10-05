@@ -133,7 +133,7 @@ const Table = React.forwardRef<
   }, [children, sortable, sort]);
 
   return (
-    <div className="relative w-full overflow-auto">
+    <div className="relative w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
       <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props}>
         {decorated}
       </table>
