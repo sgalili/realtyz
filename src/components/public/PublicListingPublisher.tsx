@@ -108,7 +108,15 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         if (error) throw error;
         await refetchRoles();
       }
-       const photos: string[] = Array.isArray(imported?.photos) ? imported.photos.filter((url: unknown): url is string => typeof url === 'string' && url.startsWith('https://')) : [];
+       const source = draftFields.importedListing || imported;
+       const photos: string[] = [];
+       for (const url of Array.isArray(source?.photos) ? source.photos : []) {
+         if (typeof url !== 'string' || !url.startsWith('https://')) continue;
+         setPublishStage('שמירת תמונות המודעה');
+         const { data: mirrored, error: mirrorError } = await supabase.functions.invoke('mirror-external-image', { body: { url } });
+         if (mirrorError || !mirrored?.public_url) throw new Error('לא ניתן לשמור את תמונות המודעה מיד2. הטיוטה נשמרה.');
+         photos.push(mirrored.public_url);
+       }
       const clips: string[] = [];
       for (const file of [...draftFiles, ...draftVideos]) {
         setPublishStage(`העלאת ${file.name}`);
@@ -136,10 +144,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
          deal_type: draftFields.dealType, rooms: toNum(draftFields.rooms),
         sqm: toNum(draftFields.sqm) ?? toNum(draftFields.builtSqm),
          floor: draftFields.floor === 'קרקע' ? 0 : toInt(draftFields.floor),
-         source_url: imported?.source_url || null,
-         source_metadata: imported?.source_metadata || {},
+         source_url: source?.source_url || null,
+         source_metadata: source?.source_metadata || {},
+         additional_details: source || {},
          features: {
-           ...(imported ? { source_details: imported } : {}),
+           ...(source ? { source_details: source } : {}),
           property_type: draftFields.propertyType.trim(),
           publisher_type: draftFields.publisherType,
           street: street || null,
@@ -161,7 +170,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           contact_whatsapp: draftFields.contactWhatsapp || null,
         },
         media_photos: photos, image_url: photos[0] ?? null,
-         status: 'live', source: imported ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
+         status: 'live', source: source ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
       } as never).select('id').single();
       if (error) throw error;
       await clearPublicListingDraft();
@@ -270,7 +279,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       if (!d.city || !d.price || !d.address) throw new Error('במודעה חסרים עיר, כתובת או מחיר. ניתן להשלים אותם בפרסום ידני.');
       const types: Record<string, string> = { apartment: 'דירה', garden_apartment: 'דירת גן', penthouse: 'פנטהאוז', duplex: 'דופלקס', private_house: 'בית פרטי', cottage: 'בית פרטי', studio: 'סטודיו', commercial: 'משרד', land: 'מגרש', loft: 'דירה', other: 'דירה' };
       setImported({ ...d, source_url: url.toString() });
-      setFields(current => ({ ...current, city: d.city, address: d.address, neighborhood: d.neighborhood || '', price: String(d.price), propertyType: types[d.property_type] || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? '' : String(d.rooms), sqm: d.sqm == null ? '' : String(d.sqm), floor: d.floor == null ? '' : String(d.floor), totalFloors: d.total_floors == null ? '' : String(d.total_floors), description: d.description || '', elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
+      setFields(current => ({ ...current, importedListing: { ...d, source_url: url.toString() }, city: d.city, address: d.address, street: '', houseNumber: '', neighborhood: d.neighborhood || '', price: String(d.price), propertyType: types[d.property_type] || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? '' : String(d.rooms), sqm: d.sqm == null ? '' : String(d.sqm), floor: d.floor == null ? '' : String(d.floor), totalFloors: d.total_floors == null ? '' : String(d.total_floors), description: d.description || '', elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
       setStep(7);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
     finally { setImporting(false); }

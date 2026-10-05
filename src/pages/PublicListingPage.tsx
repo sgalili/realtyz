@@ -235,7 +235,13 @@ function PublicListingContent() {
     void (supabase as any).rpc('track_affiliate_click', { _code: code });
   }, []);
   const slug = typeof params.slug === 'string' ? params.slug : '';
-  useEffect(() => { if (slug) void (supabase as any).rpc('track_listing_view', { _id_or_slug: slug }); }, [slug]);
+  useEffect(() => {
+    if (!slug) return;
+    const key = `realtyz:listing-view:${slug}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    void supabase.rpc('track_listing_referral_view', { _id_or_slug: slug, _code: new URLSearchParams(window.location.search).get('ref') });
+  }, [slug]);
   const [refCode, setRefCode] = useState<string | null>(null);
   const [slide, setSlide] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);

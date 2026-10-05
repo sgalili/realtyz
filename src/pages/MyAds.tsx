@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +24,18 @@ const labels: Record<string, string> = { view: 'צפייה במודעה', click:
 function AdDetails({ listingId }: { listingId: string }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
+  const history = useInfiniteQuery({
+    queryKey: ['my-ad-history', user?.id, activeWorkspaceId, listingId],
+    initialPageParam: 0,
+    refetchInterval: 30_000,
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await supabase.rpc('get_my_ad_history', { _listing_id: listingId, _offset: pageParam });
+      if (error) throw error;
+      return data as unknown as { items: History[]; total: number };
+    },
+    getNextPageParam: (last, pages) => { const count = pages.reduce((total, p) => total + p.items.length, 0); return count < last.total ? count : undefined; },
+  });
+  const events = history.data?.pages.flatMap(p => p.items) ?? [];
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['my-ad-details', user?.id, activeWorkspaceId, listingId],
     refetchInterval: 30_000, refetchOnWindowFocus: true,
@@ -48,10 +60,10 @@ function AdDetails({ listingId }: { listingId: string }) {
     <section className="space-y-2">
       <h3 className="font-semibold">היסטוריית פעילות</h3>
       <p className="text-sm text-muted-foreground">צפיות וקליקים מהעבר נכללים במונים; פירוט לפי זמן זמין מתחילת תיעוד ההיסטוריה{data?.history_started_at ? ` (${date(data.history_started_at)})` : ''}.</p>
-      {!data?.history.length ? <p className="text-sm text-muted-foreground">אין עדיין פעילות מתועדת</p> : <ol className="max-h-80 divide-y overflow-y-auto">
-        {data.history.map(h => <li key={h.id + h.type} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"><div className="flex flex-wrap items-center gap-2"><span className="font-medium">{labels[h.type] || 'פעילות'}</span>{h.name && <span className="text-muted-foreground">{h.name}</span>}{(h.type === 'view' || h.type === 'click') && h.amount > 1 && <span>×{number(h.amount)}</span>}{h.type === 'purchase' && <span className="text-success">₪{number(h.amount)}</span>}</div><time className="text-muted-foreground" dateTime={h.at}>{date(h.at)}</time></li>)}
+      {history.isError ? <p role="alert">לא ניתן לטעון את ההיסטוריה <Button variant="link" onClick={() => void history.refetch()}>ניסיון נוסף</Button></p> : history.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : !events.length ? <p className="text-sm text-muted-foreground">אין עדיין פעילות מתועדת</p> : <ol className="max-h-80 divide-y overflow-y-auto">
+        {events.map(h => <li key={h.id + h.type} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"><div className="flex flex-wrap items-center gap-2"><span className="font-medium">{labels[h.type] || 'פעילות'}</span>{h.name && <span className="text-muted-foreground">{h.name}</span>}{(h.type === 'view' || h.type === 'click') && h.amount > 1 && <span>×{number(h.amount)}</span>}{h.type === 'purchase' && <span className="text-success">₪{number(h.amount)}</span>}</div><time className="text-muted-foreground" dateTime={h.at}>{date(h.at)}</time></li>)}
       </ol>}
-      {data?.has_older_history && <p className="text-sm text-muted-foreground">מוצגות 200 הפעולות האחרונות; המונים כוללים את כל הפעילות.</p>}
+      {history.hasNextPage && <Button variant="ghost" disabled={history.isFetchingNextPage} onClick={() => void history.fetchNextPage()}>פעילות קודמת</Button>}
     </section>
   </div>;
 }
