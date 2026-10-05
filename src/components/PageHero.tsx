@@ -27,6 +27,7 @@ import { useAffiliatePreferences } from "@/hooks/useAffiliate";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { RealtyzWave } from "@/components/RealtyzWave";
+import { PublicListingPublisher } from "@/components/public/PublicListingPublisher";
 import { BrightDataHeroPill } from "@/components/BrightDataHeroPill";
 import { AiResponseToggle } from "@/components/AiResponseToggle";
 // CreditBalancePill moved to /billing (Packages & Payments page).
@@ -236,7 +237,8 @@ function CampaignsHeroSyncButton() {
 }
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
-  { match: /^\/$/, title: "משימות" },
+  { match: /^\/$/, title: "לוח נדל״ן שיתופי" },
+  { match: /^\/public-listings/, title: "לוח נדל״ן שיתופי" },
   { match: /^\/(command-center|tasks)/, title: "משימות" },
   { match: /^\/dashboard$/, title: "לוח בקרה" },
   { match: /^\/lead-crm/, title: "אנשי קשר" },
@@ -379,6 +381,7 @@ export function PageHero() {
           )}
           {/* Yad2 scraping balance — owners / super admins, and ONLY on /properties. */}
           {canSeeBalance && location.pathname.startsWith("/properties") && <BrightDataHeroPill />}
+          {(location.pathname === "/" || location.pathname.startsWith("/public-listings")) && <PublicListingPublisher autoResume />}
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}

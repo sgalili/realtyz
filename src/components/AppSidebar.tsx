@@ -351,6 +351,20 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         <SidebarGroup className="pt-3">
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* Shared public board: always the first menu entry. */}
+              <SidebarMenuItem key="public-listings">
+                <SidebarMenuButton asChild isActive={location.pathname === '/' || location.pathname.startsWith('/public-listings')}>
+                  <NavLink
+                    to="/public-listings"
+                    onClick={handleNavClick}
+                    className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
+                    activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
+                  >
+                    <Globe className="h-4 w-4 shrink-0 text-sky-600" />
+                    {!collapsed && <span className="text-sm font-medium">לוח נדל״ן שיתופי</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               {navItems.map((item) => {
                 const active = isActive(item);
                 const tutorialActive =
@@ -391,21 +405,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           </SidebarGroupContent>
         </SidebarGroup>
 
-
-        {/* Quick jump to the shared public board, always at the bottom. */}
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupContent className="px-3 pb-3">
-            <NavLink
-              to="/public-listings"
-              onClick={handleNavClick}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-              title="לוח נדל״ן שיתופי"
-            >
-              <Globe className="h-4 w-4 shrink-0 text-sky-600" />
-              {!collapsed && <span>לוח נדל״ן שיתופי</span>}
-            </NavLink>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
         {/* Super admin section moved BELOW the menu */}
         {isSuperAdmin && (
