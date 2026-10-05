@@ -745,14 +745,23 @@ function BrokerAffiliateNetwork() {
                     });
                   if (!tierTexts.length) return null;
                   return (
-                    <div className="space-y-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
+                    <button
+                      type="button"
+                      title="עריכת מחירי העמלות וההגדרות"
+                      aria-label="עריכת מחירי העמלות וההגדרות"
+                      className="space-y-0.5 rounded-md px-1 py-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEditing(listing);
+                      }}
+                    >
                       {tierTexts.map(({ value, label, Icon }) => (
                         <div key={label} className="flex items-center justify-start gap-1" title={label}>
                           <Icon className="h-3 w-3" />
                           <bdi dir="ltr">{value}</bdi>
                         </div>
                       ))}
-                    </div>
+                    </button>
                   );
                 }}
               />

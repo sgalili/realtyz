@@ -1577,7 +1577,11 @@ export function ResultTable({
   );
 
   return (
-    <Card className="max-w-full w-full overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]">
+    <Card className="max-w-full w-full min-w-0">
+      <div
+        className="w-full max-w-full overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]"
+        dir="rtl"
+      >
       <table className="w-full min-w-max text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
