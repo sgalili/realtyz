@@ -537,7 +537,7 @@ function BrokerAffiliateNetwork() {
     <>
       {/* Tabs sit at the same height as on the inbox and campaigns pages:
           no local page title block, matching top offset. */}
-      <div className="-mt-[25px] space-y-5" dir="rtl">
+      <div className="-mt-[25px] w-full max-w-full min-w-0 space-y-5" dir="rtl">
         <AffiliateAutomationCards />
         <Tabs defaultValue="rewards">
           <div className="flex items-center gap-2">
