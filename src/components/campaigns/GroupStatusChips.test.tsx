@@ -115,3 +115,11 @@ it('places the current status before the compact subpost name and updates it on 
   expect(target.firstElementChild).toHaveAttribute('aria-label', 'מוגבל לפרסום');
   expect(screen.queryByLabelText('פורסם')).toBeNull();
 });
+it('uses a bold unframed green check and send-clock for target status', () => {
+  render(<GroupStatusChips groupIds={['123', '456']} results={{ '123': { state: 'published' }, '456': { state: 'pending' } }} />);
+  const published = screen.getByLabelText('פורסם');
+  expect(published).toHaveClass('text-success');
+  expect(published.querySelector('svg')).toHaveAttribute('stroke-width', '3.5');
+  expect(published.querySelector('circle')).toBeNull();
+  expect(screen.getByLabelText('ממתין לאישור').querySelector('path')).not.toBeNull();
+});

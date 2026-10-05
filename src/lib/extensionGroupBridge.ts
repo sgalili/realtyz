@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { fbGroupUrlFrom } from "@/lib/fbGroupUrl";
 import { safeUtf8 } from "@/lib/utf8Text";
 import { supabase } from "@/integrations/supabase/client";
+import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 
 export const EXT_GROUPS_STORAGE_KEY = "rz-ext-fb-groups";
 export const EXT_GROUPS_MESSAGE = "RZ_FB_GROUPS";
@@ -502,7 +503,7 @@ export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedE
     const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
     const { data, error } = await (supabase as any)
       .from("campaign_activity_queue")
-      .select("id, status, last_error, scheduled_for, created_at, payload")
+      .select("id, status, last_error, scheduled_for, created_at, payload, target_ref, target_label, activity_type")
       .eq("workspace_owner_id", workspaceOwnerId)
       .in("activity_type", ["fb_group_post", "fb_comment"])
       .neq("status", "cancelled")
@@ -512,10 +513,26 @@ export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedE
     if (error || !Array.isArray(data)) return [];
     const out: QueuedExtensionPost[] = [];
     for (const row of data) {
-      const job = (row?.payload as any)?.job;
-      if (!job || typeof job !== "object" || !job.id) continue;
+      const payload = row.payload ?? {};
+      if (!payload.job?.id && row.activity_type !== 'fb_group_post') continue;
+      // Server-created jobs store their content directly in payload, not payload.job.
+      const job = payload.job?.id ? payload.job : {
+        id: row.id,
+        type: 'group_post',
+        text: payload.outbound_text || payload.body || '',
+        sourceText: payload.source_text || payload.body || '',
+        groupUrl: fbGroupUrlFrom(payload.group_url, row.target_ref),
+        groupName: row.target_label,
+        images: payload.media_urls || (payload.image_url ? [payload.image_url] : []),
+        firstComment: payload.first_comment,
+        createdAt: new Date(row.created_at).getTime(),
+      };
+      if (!job.id) continue;
       out.push({
         ...(job as QueuedExtensionPost),
+        workspaceOwnerId,
+        postUrl: payload.fb_post_url || job.postUrl,
+        postId: payload.fb_post_id || job.postId,
         ...(row.payload?.campaign_log_id ? { campaignLogId: row.payload.campaign_log_id } : {}),
         cloudId: row.id as string,
         status: LOCAL_STATUS(row.status),
@@ -534,17 +551,16 @@ const mergeQueues = (
   local: QueuedExtensionPost[],
   cloud: QueuedExtensionPost[],
 ): QueuedExtensionPost[] => {
-  const rank: Record<QueuedExtensionPost["status"], number> = {
-    pending: 0, posting: 1, failed: 2, completed: 3,
-  };
   const byKey = new Map<string, QueuedExtensionPost>();
   const keyOf = (j: QueuedExtensionPost) => j.id || j.cloudId || "";
-  for (const j of [...cloud, ...local]) {
+  for (const j of [...local, ...cloud]) {
     const k = keyOf(j);
     if (!k) continue;
     const prev = byKey.get(k);
     if (!prev) { byKey.set(k, j); continue; }
-    const winner = (rank[j.status] ?? 0) >= (rank[prev.status] ?? 0) ? j : prev;
+    // Persisted retries can move failed/processing back to pending. Preserve
+    // confirmed completion, but otherwise allow the latest cloud state through.
+    const winner = prev.status === 'completed' && j.status !== 'completed' ? prev : j;
     byKey.set(k, { ...prev, ...winner, cloudId: winner.cloudId ?? prev.cloudId });
   }
   return Array.from(byKey.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
@@ -652,8 +668,13 @@ const sameQueue = (a: QueuedExtensionPost[], b: QueuedExtensionPost[]) => {
 
 export const useExtensionQueue = (workspaceOwnerId?: string | null): QueuedExtensionPost[] => {
   const [queue, setQueue] = useState<QueuedExtensionPost[]>(() => readPostQueue(workspaceOwnerId));
+  useGroupQueueLive(workspaceOwnerId, () => {
+    // Notification is scoped to this workspace; the effect owns cancellation.
+    document.dispatchEvent(new CustomEvent('rz:cloud-queue-change', { detail: workspaceOwnerId }));
+  });
 
   useEffect(() => {
+    setQueue(readPostQueue(workspaceOwnerId));
     if (workspaceOwnerId) {
       try {
         window.postMessage({ source: 'realtyz-app', type: EXT_WORKSPACE_MESSAGE, workspaceOwnerId }, '*');
@@ -712,13 +733,18 @@ export const useExtensionQueue = (workspaceOwnerId?: string | null): QueuedExten
       });
     };
     void pullCloud();
-    const cloudBeat = window.setInterval(pullCloud, 20000);
+    const cloudBeat = window.setInterval(pullCloud, 4000);
     window.addEventListener('focus', pullCloud);
+    const onCloudChange = (event: Event) => {
+      if ((event as CustomEvent).detail === workspaceOwnerId) void pullCloud();
+    };
+    document.addEventListener('rz:cloud-queue-change', onCloudChange);
 
     return () => {
       alive = false;
       window.clearInterval(cloudBeat);
       window.removeEventListener('focus', pullCloud);
+      document.removeEventListener('rz:cloud-queue-change', onCloudChange);
       window.clearInterval(beat);
       window.removeEventListener('focus', rebroadcast);
       document.removeEventListener(EXT_QUEUE_EVENT, onCustom as EventListener);

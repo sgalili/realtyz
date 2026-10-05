@@ -1,6 +1,7 @@
 // Unframed group names with static per-target status; overflow stays portaled.
 import { useState, type ReactNode } from 'react';
-import { Ban, CheckCircle2, ChevronDown, Clock, XCircle } from 'lucide-react';
+import { Ban, Check, ChevronDown, XCircle } from 'lucide-react';
+import { SendClockIcon } from './SendClockIcon';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { groupPostDestination, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
@@ -36,7 +37,7 @@ export function groupResultMap(raw: unknown): Record<string, GroupResult> {
 }
 
 const STATE_STYLE: Record<GroupChipState, string> = {
-  published: 'text-primary',
+  published: 'text-success',
   pending: 'text-muted-foreground',
   failed: 'text-destructive',
   restricted: 'text-destructive',
@@ -51,9 +52,9 @@ const STATE_LABEL: Record<GroupChipState, string> = {
 
 const StateIcon = ({ state }: { state: GroupChipState }) => {
   if (state === 'restricted') return <Ban className="h-3.5 w-3.5" />;
-  if (state === 'published') return <CheckCircle2 className="h-3.5 w-3.5" />;
+  if (state === 'published') return <Check className="h-3.5 w-3.5" strokeWidth={3.5} />;
   if (state === 'failed') return <XCircle className="h-3.5 w-3.5" />;
-  return <Clock className="h-3.5 w-3.5" />;
+  return <SendClockIcon className="h-3.5 w-3.5" />;
 }
 
 export function GroupStatusChips({
@@ -155,6 +156,16 @@ export function GroupStatusChips({
     const pillClass = 'h-7 shrink-0 gap-1 rounded-full border-border bg-background px-2 text-[11px] text-foreground';
     // Series cards expand inline; single multi-group cards open a portaled list
     // so the overlay is never clipped by the card.
+    if (!onExpandedChange && children) {
+      return <div className="min-w-0">
+        <Button type="button" variant="outline" size="sm" aria-expanded={detailsOpen} aria-controls={detailsId}
+          onClick={(e) => { e.stopPropagation(); toggleDetails(); }} className={pillClass}>
+          {ids.length} קבוצות
+          <ChevronDown className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
+        </Button>
+        {detailsOpen && <div id={detailsId} className="mt-2 min-w-0 space-y-2">{children}</div>}
+      </div>;
+    }
     if (!onExpandedChange) {
       return (
         <Popover open={open} onOpenChange={setOpen}>

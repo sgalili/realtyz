@@ -6252,9 +6252,10 @@ const PublishedFeed = ({
         // is a static clock, not an indefinitely spinning fetch indicator.
         const cardGroupResults = legacyMetaError ? {} : groupResultMap(r.provider_response?.group_results);
         const bodyKey = (text: string) => String(text || '').replace(/\s+/g, ' ').trim();
-        const targetIds = new Set((r.group_ids || []).map((id: string) => groupKeyFrom(id)));
+        const targetIds = new Set<string>((r.group_ids || []).map((id: string) => groupKeyFrom(id)));
         const matchingJobs = extensionQueue.filter((job) => job.type !== 'page_first_comment' &&
-          (job.campaignLogId === r.id || (bodyKey(r.message_body) && bodyKey(job.sourceText || job.text || '') === bodyKey(r.message_body))));
+          (job.id === r._groupJobId || job.campaignLogId === (r._parentCampaignId || r.id) ||
+            (!job.campaignLogId && bodyKey(r.message_body) && bodyKey(job.sourceText || job.text || '') === bodyKey(r.message_body))));
         for (const gid of targetIds) {
           const job = matchingJobs.filter((j) => groupKeyFrom(j.groupUrl || '') === gid)
             .sort((a, b) => b.createdAt - a.createdAt)[0];
@@ -6270,8 +6271,40 @@ const PublishedFeed = ({
         const exactGroupPost = Object.values(cardGroupResults).map((g: any) => g?.post_url).find(isPermalink) || null;
         const nativeGroupPostUrl = exactGroupPost;
 
-        const seriesSlots = r._seriesSlots;
+        // Persisted target list determines the children, including jobs created
+        // server-side and targets not present in this browser's local queue.
+        const seriesSlots = inGroupOverlay !== true && targetIds.size > 1
+          ? [...targetIds].map((gid) => {
+            const job = matchingJobs.filter((j) => groupKeyFrom(j.groupUrl || '') === gid)
+              .sort((a, b) => b.createdAt - a.createdAt)[0];
+            const oldSlot = r._seriesSlots?.find((slot: CampaignRow) => slot.group_ids?.some((g) => groupKeyFrom(g) === gid));
+            const result = cardGroupResults[gid];
+            const state = result?.state || (result?.ok === true ? 'published' : result?.ok === false ? 'failed' : 'pending');
+            return {
+              ...r, ...oldSlot,
+              id: `${r.id}:group:${gid}`, _parentCampaignId: r.id,
+              _groupJobId: job?.id, _seriesSlots: undefined,
+              group_ids: [gid], message_body: job?.text || oldSlot?.message_body || r.message_body,
+              media_urls: job?.images?.length ? job.images : oldSlot?.media_urls || r.media_urls,
+              status: state === 'published' ? 'sent' : state === 'failed' || state === 'restricted' ? 'failed' : job?.status === 'posting' ? 'publishing' : 'queued',
+              sent_at: job ? new Date(job.scheduledTime).toISOString() : oldSlot?.sent_at || r.sent_at,
+              provider_response: { group_results: [{ ...result, group_id: gid }] },
+              failure_reason: result?.reason || null,
+              provider_message_id: job?.postId || result?.post_id || null,
+              external_url: job?.postUrl || result?.post_url || null,
+              like_count: 0, share_count: 0, comment_count: 0,
+            };
+          }) : r._seriesSlots;
         const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
+        const progressResults = [...targetIds].map((gid) => cardGroupResults[gid]);
+        const fallbackProgress = hasGroupTargets ? {
+          total: targetIds.size,
+          completed: progressResults.filter((result) => result?.state === 'published' || result?.ok === true).length,
+          processing: matchingJobs.filter((job) => targetIds.has(groupKeyFrom(job.groupUrl || '')) && job.status === 'posting').length,
+          failed: progressResults.filter((result) => result?.state === 'failed' || result?.state === 'restricted').length,
+          stalled: 0,
+          pending: progressResults.filter((result) => result?.state === 'pending' || !result).length,
+        } : undefined;
         // Emergency override: never treat rows as paused in the UI so the
         // protection banner and yellow/red countdown are fully bypassed.
         const isPaused = false;
@@ -6400,8 +6433,8 @@ const PublishedFeed = ({
                     />
                   </div>
                 )}
-                {hasGroupTargets && <ContinuePostingButton post={r} />}
-                {hasGroupTargets && !r._optimistic && <ResumePostingButton campaignLogId={r.id} />}
+                {hasGroupTargets && inGroupOverlay !== true && <ContinuePostingButton post={r} />}
+                {hasGroupTargets && inGroupOverlay !== true && <ResumePostingButton campaignLogId={r.id} fallbackProgress={fallbackProgress} />}
                 <div className="ms-auto flex shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2"
                   title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
                   {!scheduled && (
@@ -6486,7 +6519,7 @@ const PublishedFeed = ({
                            candidates={uniqueMedia}
                            className="h-full w-full rounded-lg object-cover border border-border"
                            fallbackClassName="h-full w-full" />
-                      <button
+                       {!r._parentCampaignId && <button
                         type="button"
                         title="הסר תמונה"
                         aria-label="הסר תמונה"
@@ -6497,7 +6530,7 @@ const PublishedFeed = ({
                         className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                       </button>}
                     </div>
                   );
                   return (
@@ -6544,7 +6577,7 @@ const PublishedFeed = ({
 
                     {/* Attachment indicator removed from published cards. */}
                   </div>
-                  <div className="flex items-center gap-2">
+                  {!r._parentCampaignId && <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" title="ערוך ופרסם מחדש" aria-label="ערוך ופרסם מחדש"
                             onClick={(e) => { e.stopPropagation(); setEditRepostRow(r); }}>
                       <Pencil className="h-4 w-4" />
@@ -6554,17 +6587,17 @@ const PublishedFeed = ({
                             className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  </div>
+                  </div>}
                 </div>
 
-                {!r.is_external && (
+                {!r.is_external && !r._parentCampaignId && (
                   <CampaignGroupBreakdown
                     workspaceOwnerId={workspaceOwnerId}
                     campaignBody={bodyText}
                     campaignCreatedAt={r.created_at}
                   />
                 )}
-                <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                {!r._parentCampaignId && <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <CampaignCommentsStream
                     userId={userId ?? ''}
                     campaign={r}
@@ -6611,7 +6644,7 @@ const PublishedFeed = ({
                     }}
                     onRefreshComplete={handleRefreshComplete}
                   />
-                </div>
+                </div>}
 
               </>
             )}

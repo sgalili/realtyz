@@ -3,6 +3,8 @@
 - Group selection uses one accessible checkbox action per row, immutable deduplicated snapshots and guarded no-op updates; external links are siblings to prevent duplicate activation and render cascades.
 
 - Campaign feed metadata uses one nonwrapping RTL row ordered platform, date, group target, repost and engagement; shrinkable names open full-name popovers, and inline bordered series retain per-target statuses inside their parent to avoid clipping and mobile overflow.
+- Multi-target campaign expansion derives one child per persisted target and reuses the feed card renderer with campaign/group keys; synthetic children never submit campaign-level actions, preventing duplicate queue operations.
+- Queue progress and card mirrors share a stable workspace-filtered live subscription with polling fallback; normalize both server payloads and browser job payloads so every active card reflects persisted jobs.
 - Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
 - Posting continuation uses the full campaign composer and an atomic workspace-authorized edited-repost operation; active original jobs block replacement and completed jobs require explicit resubmission.
 

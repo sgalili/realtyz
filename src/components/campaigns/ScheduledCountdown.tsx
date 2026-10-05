@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Clock } from 'lucide-react';
+import { SendClockIcon } from './SendClockIcon';
 
 /**
  * Strict dd/hh/mm/ss countdown to a scheduled broadcast. No labels, no wording —
@@ -26,7 +26,7 @@ export function ScheduledCountdown({ iso, className }: { iso: string; className?
   return (
     <div className={`flex flex-wrap items-center gap-2 text-xs ${className ?? ''}`} dir="rtl">
       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 font-semibold tabular-nums text-primary" dir="ltr">
-        <Clock className="h-3 w-3" />
+        <SendClockIcon className="h-3 w-3" />
         {countdown}
       </span>
     </div>

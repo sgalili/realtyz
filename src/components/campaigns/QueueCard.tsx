@@ -5,7 +5,8 @@
 //
 // No preview body text, excerpts or sub-text is ever rendered here.
 import { useEffect, useState, type ReactNode } from 'react';
-import { AlertTriangle, Calendar as CalendarIcon, CheckCircle2, ChevronDown, ChevronUp, Facebook, Loader2 } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronUp, Facebook, Loader2 } from 'lucide-react';
+import { SendClockIcon } from './SendClockIcon';
 import { cn } from '@/lib/utils';
 import { GroupStatusChips, type GroupChipState, type GroupResult } from '@/components/campaigns/GroupStatusChips';
 import type { FbGroupMeta } from '@/hooks/useFbGroupMeta';
@@ -13,7 +14,7 @@ import type { FbGroupMeta } from '@/hooks/useFbGroupMeta';
 export type QueueCardStatus = 'published' | 'scheduled' | 'draft' | 'failed' | 'publishing';
 
 const STATUS_PILL: Record<QueueCardStatus, string> = {
-  published: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+  published: 'text-success',
   scheduled: 'bg-amber-100 text-amber-800 ring-amber-200',
   draft: 'bg-muted text-muted-foreground ring-border',
   failed: 'bg-destructive/10 text-destructive ring-destructive/30',
@@ -128,11 +129,11 @@ export function QueueCard({
             </span>
           )}
           <span className="flex-1" />
-          <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1', STATUS_PILL[status])} title={STATUS_LABEL[status]} aria-label={STATUS_LABEL[status]}>
-            {status === 'published' && <CheckCircle2 className="h-3 w-3" />}
+          <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold', status !== 'published' && 'rounded-full ring-1', STATUS_PILL[status])} title={STATUS_LABEL[status]} aria-label={STATUS_LABEL[status]}>
+            {status === 'published' && <Check className="h-3 w-3" strokeWidth={3.5} />}
             {status === 'failed' && <AlertTriangle className="h-3 w-3" />}
             {status === 'publishing' && <Loader2 className="h-3 w-3 animate-spin" />}
-            {status === 'scheduled' && <CalendarIcon className="h-3 w-3" />}
+            {status === 'scheduled' && <SendClockIcon className="h-3 w-3" />}
             {countdown ? <span className="tabular-nums" dir="ltr">{countdown}</span> : status === 'draft' ? <span className="sr-only">{STATUS_LABEL[status]}</span> : null}
           </span>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{actions}</div>
