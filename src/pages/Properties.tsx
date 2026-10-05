@@ -1790,6 +1790,7 @@ export function ResultTable({
           })}
         </tbody>
       </table>
+      </div>
     </Card>
   );
 }
