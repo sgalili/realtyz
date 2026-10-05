@@ -6,6 +6,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { pokeExtension } from '@/lib/extensionPairing';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 
 type Progress = { total: number; completed: number; pending: number; processing: number; stalled: number; failed: number };
