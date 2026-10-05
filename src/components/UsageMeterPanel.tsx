@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -28,7 +30,7 @@ function formatNumber(n: number): string {
 export function UsageMeterPanel() {
   const { user } = useAuth();
   const { isDemoMode } = useDemoMode();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useExclusiveExpansion('dashboard-sections');
 
 
   const monthStart = useMemo(() => {
@@ -112,7 +114,7 @@ export function UsageMeterPanel() {
         </div>
       </CardHeader>
 
-      {open && (
+      <AnimatedExpansion open={open}>
       <CardContent className="space-y-4">
 
         {overSoft.length > 0 && (
@@ -175,7 +177,7 @@ export function UsageMeterPanel() {
           המגבלה ניתנת להגדרה לכל שירות. הספים מתאפסים בתחילת כל חודש קלנדרי.
         </p>
       </CardContent>
-      )}
+      </AnimatedExpansion>
 
     </Card>
   );

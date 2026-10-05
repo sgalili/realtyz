@@ -4,6 +4,7 @@
 // campaign log has a provider_message_id, otherwise falls back to a time-
 // windowed lookup around the campaign's created_at.
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1574,11 +1575,11 @@ function CommentBubble({
           )}
         </div>
 
-        {expanded && (
+        <AnimatedExpansion open={expanded}>
           <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
             {editor}
           </div>
-        )}
+        </AnimatedExpansion>
       </div>
     </div>
   );

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useQuery } from '@tanstack/react-query';
 import { Minus, Plus, TrendingUp, Users, Mic, MessageSquare, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -129,7 +131,7 @@ export function StrategicGrowthSlider() {
   // interaction. The selector itself NEVER changes size.
   // Each click on +/- resets the timer. Long-press on the window pauses the
   // timer until release. Open/close uses a smooth rubber slide (no bounce).
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useExclusiveExpansion('dashboard-sections');
   const [closing, setClosing] = useState(false);
   const idleTimerRef = useRef<number | null>(null);
   const closeTimerRef = useRef<number | null>(null);
@@ -325,16 +327,13 @@ export function StrategicGrowthSlider() {
         {/* Magic breakdown + CTA - shown after interaction; auto-collapses after 10s idle.
             Long-press anywhere on the window pauses the timer until release.
             Smooth rubber slide (no bounce), GPU-accelerated for 60fps. */}
-        {(expanded || closing) && (
+        <AnimatedExpansion open={expanded && !closing}>
           <div
             onPointerDown={holdStart}
             onPointerUp={holdEnd}
             onPointerCancel={holdEnd}
             onPointerLeave={holdEnd}
-            className={cn(
-              'origin-top overflow-hidden will-change-[transform,opacity,max-height] [backface-visibility:hidden] [transform:translateZ(0)]',
-              closing ? 'animate-slide-up-smooth' : 'animate-slide-down-smooth',
-            )}
+            className="min-w-0"
           >
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Stat
@@ -400,7 +399,7 @@ export function StrategicGrowthSlider() {
               </div>
             )}
           </div>
-        )}
+        </AnimatedExpansion>
 
       </div>
       </div>
