@@ -157,7 +157,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </div>
             <div className="flex w-full items-center justify-between gap-2">
               <div className="relative min-w-[200px] max-w-md flex-1">
-                <div className="inline-flex rounded-md border bg-background p-1">
+                <div className="inline-flex rounded-md bg-background p-1">
                 {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5', deals[value] ? 'font-semibold text-foreground' : 'text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
                 </div>
               </div>
