@@ -43,13 +43,10 @@ export default function PropertyContactActions({
   const settings = options ?? {};
   // A listing exposes one publisher-defined path only. Prefer the highest
   // configured tier when old records contain more than one true value.
-  const primaryMode: 'digital' | 'whatsapp' | 'phone' | null = settings.phone === true
-    ? 'phone'
-    : settings.whatsapp === true
-      ? 'whatsapp'
-      : settings.digital === true
-        ? 'digital'
-        : null;
+  // Every lead type the publisher priced gets its own button.
+  const showWhatsapp = settings.whatsapp === true;
+  const showPhone = settings.phone === true;
+  const showDigital = settings.digital === true && !showWhatsapp;
   const [mode, setMode] = useState<'digital' | 'phone' | 'whatsapp' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -88,6 +85,15 @@ export default function PropertyContactActions({
     }
   };
 
+  // WhatsApp already knows the visitor's number, so skip the form: open the
+  // chat at once with a message about this property; Rita asks for the name.
+  const openRita = () => {
+    void supabase.functions.invoke('public-lead-gate', {
+      body: { action: 'wa_click', listing_id: listingId, intent: 'whatsapp', ref },
+    }).catch(() => undefined);
+    window.open(officialWaLink(waMessage), '_blank', 'noopener,noreferrer');
+  };
+
   const submit = async () => {
     if (!name.trim() || phone.replace(/\D/g, '').length < 9) {
       toast.error('יש למלא שם מלא ומספר טלפון תקין');
@@ -123,8 +129,8 @@ export default function PropertyContactActions({
   return (
     <>
       <div onClick={(event) => event.stopPropagation()} className={compact ? 'flex w-full items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
-        {primaryMode === 'whatsapp' && (
-          <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90" onClick={() => setMode('whatsapp')}>
+        {showWhatsapp && (
+          <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90" onClick={openRita}>
             <>
               <WhatsAppIcon className="h-5 w-5" />
               שיחה עם ריטה
@@ -133,12 +139,12 @@ export default function PropertyContactActions({
             </>
           </Button>
         )}
-        {primaryMode === 'phone' && (
+        {showPhone && (
           <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('phone')}>
             <Phone className="h-4 w-4" />חייגו אליי
           </Button>
         )}
-        {primaryMode === 'digital' && (
+        {showDigital && (
           <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('digital')}>
             <ClipboardList className="h-4 w-4" />השארת פרטים
           </Button>
