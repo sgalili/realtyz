@@ -51,21 +51,15 @@ export function ResumePostingButton({ campaignLogId }: { campaignLogId: string }
     } finally { setBusy(false); }
   };
 
-  const label = `${data.completed}/${data.total} קבוצות`;
   return (
-    <span className="inline-flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      <span className="whitespace-nowrap text-[10px] font-semibold tabular-nums text-muted-foreground sm:text-[11px]"
-        title={`פורסמו ${data.completed} · ממתינות ${active} · נעצרו ${resumable}`}>
-        {label}
-      </span>
-      {(
-        <Button type="button" variant="outline" size="icon"
-          className="h-7 w-7 shrink-0 rounded-md border-primary/40 bg-background text-primary"
-          title={`המשך פרסום ל-${data.total - data.completed} קבוצות שנותרו`} aria-label="המשך פרסום מהקבוצה שנעצרה"
-          disabled={busy} onClick={() => void resume()}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-        </Button>
-      )}
+    <span className="inline-flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>
+      <Button type="button" variant="outline" size="icon"
+        className="h-7 w-7 shrink-0 rounded-md border-primary/40 bg-background text-primary"
+        title={`המשך פרסום ל-${data.total - data.completed} קבוצות שנותרו · פורסמו ${data.completed}/${data.total}`}
+        aria-label="המשך פרסום מהקבוצה שנעצרה"
+        disabled={busy} onClick={() => void resume()}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+      </Button>
     </span>
   );
 }
