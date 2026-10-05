@@ -65,16 +65,21 @@ export function ResumePostingButton({ campaignLogId }: { campaignLogId: string }
   const resume = async () => {
     if (busy || !owner) return;
     setBusy(true);
+    // Instant feedback so the click never feels dead.
+    toast.loading('מחדש את תור הפרסום...', { id: `resume-${campaignLogId}` });
+    // Wake the extension right away — it will pick up the re-queued jobs.
+    try { pokeExtension(); } catch { /* extension may be absent */ }
     try {
       const { data: n, error } = await (supabase.rpc as any)('resume_group_posting', { _campaign_log_id: campaignLogId });
       if (error) throw error;
-      // Wake the extension immediately instead of waiting for its 1-minute alarm.
+      // Poke again after the server re-queued, so the extension polls fresh state.
       try { pokeExtension(); } catch { /* extension may be absent */ }
-      toast.success(n > 0 ? `הפרסום ימשיך ב-${n} קבוצות שנותרו` : 'אין קבוצות לחידוש');
+      toast.success(n > 0 ? `הפרסום ימשיך ב-${n} קבוצות שנותרו` : 'אין קבוצות לחידוש', { id: `resume-${campaignLogId}` });
       await qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: ['extension-queue'] });
     } catch (e: any) {
-      toast.error(e?.message || 'החידוש נכשל');
+      console.error('[resume_group_posting]', e);
+      toast.error(e?.message || 'החידוש נכשל', { id: `resume-${campaignLogId}` });
     } finally { setBusy(false); }
   };
 
