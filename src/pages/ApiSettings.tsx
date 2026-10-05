@@ -948,7 +948,7 @@ const ApiSettings = () => {
 
       <SectionShell title="אינטגרציות חיצוניות · מפתחות API" subtitle="Homely, Gemini, Meta, WhatsApp, n8n, SMS, Mapbox">
 
-        <Accordion type="multiple" className="-space-y-px">
+        <Accordion type="single" collapsible className="-space-y-px">
 
       {/* Homely API */}
       <ServiceCard

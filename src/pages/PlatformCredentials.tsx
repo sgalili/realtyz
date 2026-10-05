@@ -257,7 +257,7 @@ export default function PlatformCredentials() {
         const configured = !!rows[platform.id]?.api_key;
         return (
           <Card key={platform.id} className="overflow-hidden">
-            <Collapsible open={isOpen} onOpenChange={(v) => setOpen((s) => ({ ...s, [platform.id]: v }))}>
+            <Collapsible open={isOpen} onOpenChange={(v) => setOpen(v ? { [platform.id]: true } : {})}>
               <CollapsibleTrigger asChild>
                 <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
                   <div className="flex items-center justify-between gap-3">

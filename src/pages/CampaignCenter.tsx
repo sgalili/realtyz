@@ -2,6 +2,7 @@ import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_C
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { resolvePosterDestination, applyContactCta } from '@/lib/posterDestination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { shortenName } from "@/lib/shortenName";
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -6357,7 +6358,7 @@ const PublishedFeed = ({
           >
             <header
               className="p-4 space-y-2 cursor-pointer"
-              onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+              onClick={() => setExpanded((s) => inGroupOverlay === true ? { ...s, [r.id]: !isOpen } : !isOpen ? { [r.id]: true } : {})}
             >
 
               {/* Row 1: thumbnail + post title */}
@@ -6442,7 +6443,7 @@ const PublishedFeed = ({
                       collapsedCounter
                       showStatus={inGroupOverlay === true}
                       expanded={isSeries ? seriesOpen : undefined}
-                      onExpandedChange={isSeries ? (open) => setExpanded((s) => ({ ...s, [seriesKey]: open })) : undefined}
+                      onExpandedChange={isSeries ? (open) => setExpanded(open ? { [seriesKey]: true } : {}) : undefined}
                       detailsId={`campaign-series-${r.id}`}
                       groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
                       meta={fbGroupMeta}
@@ -6520,7 +6521,7 @@ const PublishedFeed = ({
             )}
 
 
-            {isOpen && (
+            <AnimatedExpansion open={isOpen}>
               <>
                 {isSeries && seriesSlots && !hasGroupTargets && (
                   <div className="mx-4 mb-3" dir="rtl">
@@ -6669,15 +6670,15 @@ const PublishedFeed = ({
                 </div>}
 
               </>
-            )}
+            </AnimatedExpansion>
             {/* Expanded sub-posts: nested inside the card border with a
                 complementary muted shade so they clearly belong to the card. */}
-            {inGroupOverlay !== true && seriesOpen && isSeries && seriesSlots && (
+            <AnimatedExpansion open={inGroupOverlay !== true && seriesOpen && isSeries && !!seriesSlots}>
               <div id={`campaign-series-${r.id}`} role="region" aria-label="פוסטים בקבוצות"
                 className="mx-2 mb-2 min-w-0 space-y-2 rounded-lg border border-border bg-muted/60 p-2 sm:mx-3 sm:mb-3 sm:space-y-3 sm:p-3" dir="rtl">
-                {seriesSlots.map((slot) => renderFeedCard(slot, undefined, true))}
+                {seriesSlots?.map((slot) => renderFeedCard(slot, undefined, true))}
               </div>
-            )}
+            </AnimatedExpansion>
           </article>
           </div>
         );

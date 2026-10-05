@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Copy, ExternalLink, Users, Check, Timer, Lock, Trash2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
@@ -198,7 +199,7 @@ export function CustomGroupsQuickShare({
       if (r.status === 'ready' && r.target_ref && !autoExpandedRef.current.has(r.target_ref)) {
         autoExpandedRef.current.add(r.target_ref);
         const gid = r.target_ref;
-        setExpandedIds((prev) => prev.has(gid) ? prev : new Set(prev).add(gid));
+        setExpandedIds((prev) => prev.size ? prev : new Set([gid]));
       }
     }
   }, [queue]);
@@ -318,9 +319,7 @@ export function CustomGroupsQuickShare({
 
   const toggleExpand = (gid: string) => {
     setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(gid)) next.delete(gid); else next.add(gid);
-      return next;
+      return prev.has(gid) ? new Set<string>() : new Set([gid]);
     });
     // First-open generator: if no draft exists for this group, spin one now.
     const g = groups.find((x) => x.id === gid);
@@ -386,7 +385,7 @@ export function CustomGroupsQuickShare({
           .eq('id', row.id);
         setQueue((q) => q.map((r) => r.id === row.id ? { ...r, payload: newPayload } : r));
       }
-      setExpandedIds((p) => new Set(p).add(g.id));
+      setExpandedIds(new Set([g.id]));
       toast.success('נוצרה גרסה חלופית לקבוצה זו');
     } catch (e: any) {
       toast.error(`חידוש נכשל: ${e?.message ?? e}`);
@@ -518,7 +517,7 @@ export function CustomGroupsQuickShare({
 
 
               {/* Collapsible body */}
-              {isExpanded ? (
+              <AnimatedExpansion open={isExpanded}>
                 <div className="border-t border-border/60">
                   <div className="flex items-center gap-1 truncate px-3 py-1.5 text-[10px] text-muted-foreground" dir="ltr">
                     <ExternalLink className="h-3 w-3" />
@@ -566,7 +565,7 @@ export function CustomGroupsQuickShare({
                   </div>
 
                 </div>
-              ) : null}
+              </AnimatedExpansion>
             </div>
           );
         })}
