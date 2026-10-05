@@ -6373,9 +6373,12 @@ const PublishedFeed = ({
                   )}
                 </span>
                 <span title={scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
-                  className="min-w-0 shrink-0 whitespace-nowrap text-[10px] text-muted-foreground sm:text-[11px]">
-                  <span className="sm:hidden" dir="ltr">{dt.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })} {dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="hidden sm:inline">{dateStr}</span>
+                  className="shrink-0 whitespace-nowrap text-[10px] tabular-nums text-muted-foreground sm:text-[11px]"
+                  dir="ltr">
+                  {(() => {
+                    const p = (n: number) => String(n).padStart(2, '0');
+                    return `${p(dt.getDate())}.${p(dt.getMonth() + 1)}.${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+                  })()}
                 </span>
                 {hasGroupTargets && (
                   <div className="min-w-0 flex-1">
