@@ -6397,8 +6397,8 @@ const PublishedFeed = ({
                     />
                   </div>
                 )}
-                {hasGroupTargets && !r._optimistic && <ResumePostingButton campaignLogId={r.id} />}
                 {hasGroupTargets && <ContinuePostingButton post={r} />}
+                {hasGroupTargets && !r._optimistic && <ResumePostingButton campaignLogId={r.id} />}
                 <div className="ms-auto flex shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2"
                   title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
                   {!scheduled && (
