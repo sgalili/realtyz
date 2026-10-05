@@ -7421,6 +7421,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      group_post_lineage_jobs: {
+        Args: { _log_id: string; _owner: string }
+        Returns: {
+          job_id: string
+          own: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
