@@ -152,19 +152,36 @@ export function GroupStatusChips({
 
   const hasDetails = (ids.length > 1 && !!children) || ids.length > max;
   if (collapsedCounter && ids.length > 1) {
-    // No aggregate status icon on the main card — status lives on each sub-post.
-    return (
-      <div className="min-w-0">
-      <span className="inline-flex min-w-0 items-center gap-1.5">
-            <Button type="button" variant="outline" size="sm" aria-expanded={detailsOpen} aria-controls={detailsId}
-              onClick={(e) => { e.stopPropagation(); toggleDetails(); }}
-              className="h-7 shrink-0 gap-1 rounded-full border-border bg-background px-2 text-[11px] text-foreground">
+    const pillClass = 'h-7 shrink-0 gap-1 rounded-full border-border bg-background px-2 text-[11px] text-foreground';
+    // Series cards expand inline; single multi-group cards open a portaled list
+    // so the overlay is never clipped by the card.
+    if (!onExpandedChange) {
+      return (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="sm" aria-expanded={open} aria-controls={detailsId}
+              onClick={(e) => e.stopPropagation()} className={pillClass}>
               {ids.length} קבוצות
-              <ChevronDown className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
             </Button>
-      </span>
-      {!onExpandedChange && detailsOpen && children && <div className="mt-3 w-full min-w-0 space-y-3" dir="rtl">{children}</div>}
-      </div>
+          </PopoverTrigger>
+          <PopoverContent id={detailsId} align="start" side="bottom" collisionPadding={12} dir="rtl"
+            className="z-50 w-[min(22rem,calc(100vw-2rem))] p-2"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="max-h-[50vh] overflow-y-auto">
+              <div className="flex min-w-0 flex-col items-stretch">{ids.map((gid) => renderGroup(gid, true))}</div>
+            </div>
+            {children && <div className="mt-2 flex items-center justify-end gap-2 border-t border-border pt-2">{children}</div>}
+          </PopoverContent>
+        </Popover>
+      );
+    }
+    return (
+      <Button type="button" variant="outline" size="sm" aria-expanded={detailsOpen} aria-controls={detailsId}
+        onClick={(e) => { e.stopPropagation(); toggleDetails(); }} className={pillClass}>
+        {ids.length} קבוצות
+        <ChevronDown className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
+      </Button>
     );
   }
   if (collapsedCounter && ids.length === 1) {
