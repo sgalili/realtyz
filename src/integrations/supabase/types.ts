@@ -3868,7 +3868,10 @@ export type Database = {
           gross: number
           id: string
           is_leftover: boolean
+          lead_id: string | null
           listing_id: string
+          purchase_price: number | null
+          purchased_at: string | null
           tier: number
           workspace_owner_id: string
         }
@@ -3878,7 +3881,10 @@ export type Database = {
           gross?: number
           id?: string
           is_leftover?: boolean
+          lead_id?: string | null
           listing_id: string
+          purchase_price?: number | null
+          purchased_at?: string | null
           tier: number
           workspace_owner_id: string
         }
@@ -3888,7 +3894,10 @@ export type Database = {
           gross?: number
           id?: string
           is_leftover?: boolean
+          lead_id?: string | null
           listing_id?: string
+          purchase_price?: number | null
+          purchased_at?: string | null
           tier?: number
           workspace_owner_id?: string
         }
@@ -6869,6 +6878,10 @@ export type Database = {
         Returns: boolean
       }
       affiliate_tier3_eligible: { Args: { _user_id: string }; Returns: boolean }
+      attribute_whatsapp_referral: {
+        Args: { _name?: string; _phone: string; _ref: string }
+        Returns: Json
+      }
       bulk_update_leads: {
         Args: {
           lead_ids: string[]
@@ -7513,6 +7526,22 @@ export type Database = {
         Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
         Returns: string[]
       }
+      leftover_lead_price: { Args: { _charge_id: string }; Returns: number }
+      list_leftover_leads: {
+        Args: never
+        Returns: {
+          created_at: string
+          gross: number
+          id: string
+          lead_name: string
+          lead_phone: string
+          listing_id: string
+          listing_label: string
+          price: number
+          purchased_at: string
+          tier: number
+        }[]
+      }
       listing_daily_cap_reached: {
         Args: { _listing_id: string }
         Returns: boolean
@@ -7597,6 +7626,7 @@ export type Database = {
         Returns: number
       }
       post_media_source_key: { Args: { _url: string }; Returns: string }
+      purchase_leftover_lead: { Args: { _charge_id: string }; Returns: Json }
       queue_autopilot_messages: {
         Args: {
           p_campaign_id?: string
@@ -7612,6 +7642,7 @@ export type Database = {
           queued_count: number
         }[]
       }
+      queue_listing_capped: { Args: { _payload: Json }; Returns: boolean }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
@@ -7677,6 +7708,10 @@ export type Database = {
       set_homely_password: {
         Args: { _password: string; _user_id: string }
         Returns: undefined
+      }
+      set_referral_leftover_discount: {
+        Args: { _referral_id: string; _type: string; _value: number }
+        Returns: Json
       }
       set_workspace_email_alias: { Args: { p_alias: string }; Returns: string }
       set_workspace_email_provider: {
