@@ -30,7 +30,7 @@ import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddr
 import PropertyContactActions, { type ContactOptions } from '@/components/public/PropertyContactActions';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 
-type PublicListing = {
+export type PublicListing = {
   id: string | null;
   slug: string | null;
   title: string;
@@ -178,7 +178,7 @@ function collectPhotos(row: any): string[] {
 }
 
 /** Never throws: turns any DB row shape into safe display values. */
-function normalizeListing(row: any, attribution?: any): PublicListing {
+export function normalizeListing(row: any, attribution?: any): PublicListing {
   const city = typeof row?.city === 'string' ? row.city : '';
   // Complete address: street + house number + apartment, neighborhood, city.
   const address = streetLine(row ?? {});
@@ -218,7 +218,7 @@ function normalizeListing(row: any, attribution?: any): PublicListing {
   };
 }
 
-function formatPrice(value: number, dealType: PublicListing['dealType']): string {
+export function formatPrice(value: number, dealType: PublicListing['dealType']): string {
   if (!value) return 'לפרטים';
   const amount = `₪${value.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
   return dealType === 'rent' ? `${amount} לחודש` : amount;

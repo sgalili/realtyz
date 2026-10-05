@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
+import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
 import type { LeadContactOptions } from '@/lib/leadTiers';
@@ -57,7 +58,20 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
-  const [deal, setDeal] = useState<'all' | 'sale' | 'rent'>('all');
+  const [deals, setDeals] = useState({ sale: true, rent: true });
+  const deal: 'all' | 'sale' | 'rent' = deals.sale && deals.rent ? 'all' : deals.sale ? 'sale' : 'rent';
+  const toggleDeal = (key: 'sale' | 'rent') => setDeals((cur) => { const next = { ...cur, [key]: !cur[key] }; return next.sale || next.rent ? next : cur; });
+  const tableWrapRef = useRef<HTMLDivElement | null>(null);
+  const [wrapWidth, setWrapWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const el = tableWrapRef.current;
+    if (!el) return;
+    const update = () => setWrapWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   const [grid, setGrid] = useState(false);
   const [gate, setGate] = useState<{ card: PublicCard; intent: GateIntent } | null>(null);
   const [form, setForm] = useState({ name: '', phone: '' });
@@ -128,7 +142,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
       <header className="border-b bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
-          {embedded ? <div className="flex items-center justify-between gap-3"><h1 className="text-xl font-bold text-foreground">לוח נדל״ן שיתופי</h1><PublicListingPublisher autoResume /></div> : <div className="relative flex min-h-11 items-center justify-between gap-3">
+          {embedded ? null : <div className="relative flex min-h-11 items-center justify-between gap-3">
             <PublicListingPublisher autoResume />
             <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
             <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
@@ -136,15 +150,15 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           <div className="mt-5 space-y-2">
             <div className="flex max-w-md items-center gap-2">
               <div className="relative min-w-0 flex-1">
-                <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש חופשי" className="pe-11" />
-                <LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} className="absolute end-1 top-1/2 -translate-y-1/2" />
+                <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש חופשי" className="ps-11" />
+                <span className="absolute start-2 top-1/2 flex -translate-y-1/2"><LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} /></span>
               </div>
               {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
             </div>
             <div className="flex w-full items-center justify-between gap-2">
               <div className="relative min-w-[200px] max-w-md flex-1">
                 <div className="inline-flex rounded-md border bg-background p-1">
-                {([['all', 'הכול'], ['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant={deal === value ? 'default' : 'ghost'} onClick={() => setDeal(value)}>{label}</Button>)}
+                {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5', deals[value] ? 'font-semibold text-foreground' : 'text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? 'bg-primary' : 'bg-muted-foreground/30')} />{label}</Button>)}
                 </div>
               </div>
               {user ? <Button asChild className="shrink-0" size="sm" variant="outline"><a href="/owner/properties">עריכת המודעות שלי</a></Button> : null}
@@ -194,7 +208,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             })}
           </div>
           ) : (
-            <div className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
+            <div ref={tableWrapRef} className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
               <table className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
@@ -226,13 +240,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                         <td className="p-2"><ChevronDown className={cn('h-5 w-5 transition-transform', open && 'rotate-180')} /></td>
                       </tr>,
                       open ? <tr key={`${card.id}-x`} className="border-t bg-muted/10">
-                        <td colSpan={8} className="p-3">
-                          <div className="grid gap-3 sm:grid-cols-[280px_1fr]">
+                        <td colSpan={8} className="p-0">
+                          <div className="sticky right-0 grid min-w-0 gap-3 p-3 sm:grid-cols-[280px_minmax(0,1fr)]" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
-                            <div className="space-y-3">
-                              {card.description && <p className="whitespace-pre-line text-sm text-foreground">{card.description}</p>}
+                            <div className="min-w-0 space-y-3">
+                              <ExpandedPropertyDetails idOrSlug={card.slug || card.id} />
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact shareUrl={publicUrl(propertyPath)} showShare />
-                              <Button variant="link" className="h-auto p-0" onClick={(e) => { e.stopPropagation(); navigate(propertyPath); }}>לעמוד הנכס המלא</Button>
                             </div>
                           </div>
                         </td>
