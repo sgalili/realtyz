@@ -6163,7 +6163,7 @@ const PublishedFeed = ({
               <RefreshCw className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
             <p className="min-w-0 truncate text-xs text-muted-foreground">
-              {extSync.state === 'running' && 'התוסף קורא את עמוד הפייסבוק…'}
+              {extSync.state === 'running' && 'מסנכרן פוסטים מעמוד הפייסבוק…'}
               {extSync.state === 'done' && `סונכרנו ${extSync.count} פוסטים בהצלחה`}
               {extSync.state === 'no_extension' && 'התקן את תוסף Realtyz כדי לסנכרן פוסטים ומדדים'}
               {extSync.state === 'empty' && 'לא נמצאו פוסטים — ודא שאתה מחובר לפייסבוק בדפדפן'}
