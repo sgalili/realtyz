@@ -65,6 +65,7 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
 import { AffiliateShareCell } from '@/components/properties/AffiliateShareCell';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
+import { useAppMode } from '@/hooks/useAppMode';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
