@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAppMode } from '@/hooks/useAppMode';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
@@ -44,7 +45,7 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
       <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
       <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label="שמירה במועדפים" className="absolute left-2 top-2 h-9 w-9 bg-transparent text-destructive shadow-none hover:bg-background/30"><Heart className="h-5 w-5" /></Button>
       {photos.length > 1 && <>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={(event) => { event.stopPropagation(); move(-1); }} className="absolute start-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={(event) => { event.stopPropagation(); move(-1); }} className="absolute start-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
         <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={(event) => { event.stopPropagation(); move(1); }} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
         <span className="absolute top-2 right-2 rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>
       </>}
@@ -54,6 +55,8 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
 
 export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
+  const { isPartnerMode } = useAppMode();
+  const myListingsPath = isPartnerMode ? '/affiliate-network' : '/properties';
   const { user } = useAuth();
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,29 +143,29 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
 
   return (
     <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
-      <header className="border-b bg-card">
+      <header className="bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
-          {embedded ? null : <div className="relative flex min-h-11 items-center justify-between gap-3">
+          <div className="relative flex min-h-11 items-center justify-between gap-3">
             <PublicListingPublisher autoResume />
             <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
-            {user ? <Button asChild variant="link" className="h-auto shrink-0 p-0 text-sm font-semibold text-primary"><a href="/owner/properties">המודעות שלי</a></Button> : null}
-            <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
-          </div>}
-          <div className="-mx-2.5 mt-5 flex w-full items-center justify-between gap-0">
-            <div className="inline-flex shrink-0 rounded-md bg-background py-1 pe-0 ps-1">
-              {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5', value === 'rent' && 'pe-0', deals[value] ? 'font-semibold text-foreground' : 'text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
+            {user ? <Button asChild variant="link" className="h-auto shrink-0 p-0 text-sm font-semibold text-primary"><Link to={myListingsPath}>המודעות שלי</Link></Button> : null}
+            {embedded ? null : <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />}
+          </div>
+          <div className="-ms-2.5 mt-5 flex items-center gap-2">
+            <div className="inline-flex shrink-0 rounded-md bg-background py-1 ps-1">
+              {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5 px-2', deals[value] ? 'font-semibold text-foreground' : 'text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
             </div>
             <div className="relative min-w-0 max-w-md flex-1">
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש חופשי" className="ps-11" />
-              <span className="absolute start-2 top-1/2 flex -translate-y-1/2"><LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} /></span>
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש חופשי" className="ps-9" />
+              <span className="absolute start-1 top-1/2 flex -translate-y-1/2"><LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} /></span>
             </div>
             {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
-            <Button className="me-0 ms-2 shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
+            <Button className="ms-auto shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6">
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
@@ -202,7 +205,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             })}
           </div>
           ) : (
-            <div ref={tableWrapRef} className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain rounded-lg border border-t-0 bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
+            <div ref={tableWrapRef} className="w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
               <table className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
