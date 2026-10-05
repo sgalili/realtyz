@@ -629,7 +629,7 @@ Deno.serve(async (req) => {
           target_label: gid,
           scheduled_for: nowIso,
           status: "pending",
-          publication_status: "scheduled",
+          publication_status: "pending_time_bank",
           variation_index: 0,
           variations: [{ body: groupText }],
           payload: {
