@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import type { LucideIcon } from 'lucide-react';
 import {
   Accessibility, Armchair, Award, BadgeCheck, Banknote, Bath, Building, Building2, Bus, CalendarDays, Car, CarFront,
@@ -58,6 +60,7 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
 }
 
 export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string }) {
+  useEffect(() => { void (supabase as any).rpc('track_listing_view', { _id_or_slug: idOrSlug }); }, [idOrSlug]);
   const { data, isLoading } = useQuery({
     queryKey: ['public-listing-expanded', idOrSlug],
     staleTime: 5 * 60 * 1000,

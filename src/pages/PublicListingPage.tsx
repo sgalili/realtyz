@@ -235,6 +235,7 @@ function PublicListingContent() {
     void (supabase as any).rpc('track_affiliate_click', { _code: code });
   }, []);
   const slug = typeof params.slug === 'string' ? params.slug : '';
+  useEffect(() => { if (slug) void (supabase as any).rpc('track_listing_view', { _id_or_slug: slug }); }, [slug]);
   const [refCode, setRefCode] = useState<string | null>(null);
   const [slide, setSlide] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
