@@ -576,23 +576,24 @@ function BrokerAffiliateNetwork() {
                 title="בחירה מרובה"
                 className="h-5 w-5 shrink-0"
               />
-              {/* Magnifier at the start of the field, filter button at the end. */}
-              <div className="flex h-10 max-w-sm flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
-                <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
+              {/* Filter button at the start of the field, like the public board. */}
+              <div className="relative flex h-10 max-w-sm flex-1 items-center rounded-md border border-input bg-background">
+                <span className="absolute start-2 top-1/2 z-10 flex -translate-y-1/2">
+                  <LeadTypeFilterButton
+                    state={leadFilter}
+                    onChange={setLeadFilter}
+                    propertyState={propertyFilter}
+                    onPropertyChange={setPropertyFilter}
+                    cities={filterCities}
+                    neighborhoods={filterNeighborhoods}
+                    propertyTypes={[]}
+                  />
+                </span>
                 <Input
                   placeholder="חיפוש נכס"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-                />
-                <LeadTypeFilterButton
-                  state={leadFilter}
-                  onChange={setLeadFilter}
-                  propertyState={propertyFilter}
-                  onPropertyChange={setPropertyFilter}
-                  cities={filterCities}
-                  neighborhoods={filterNeighborhoods}
-                  propertyTypes={[]}
+                  className="h-8 flex-1 border-0 bg-transparent ps-11 pe-3 shadow-none focus-visible:ring-0"
                 />
               </div>
               <div className="ms-auto inline-flex items-center">
