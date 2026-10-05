@@ -151,12 +151,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </div>
           )}
           <div className={cn('-ms-2.5 flex items-center gap-2', embedded ? '' : 'mt-5')}>
-            <div className="inline-flex shrink-0 rounded-md bg-background py-1 ps-1">
-              {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5 px-2', deals[value] ? 'font-semibold text-foreground' : 'text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
-            </div>
             <div className="relative min-w-0 max-w-md flex-1">
               <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש חופשי" className="ps-9" />
               <span className="absolute start-1 top-1/2 flex -translate-y-1/2"><LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} /></span>
+            </div>
+            <div className="inline-flex shrink-0 rounded-md bg-background py-1 ps-1">
+              {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5 px-2', deals[value] ? 'font-semibold text-foreground' : 'text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
             </div>
             {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
             <Button className="ms-auto shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
