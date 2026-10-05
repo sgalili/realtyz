@@ -6386,8 +6386,8 @@ const PublishedFeed = ({
                       inline
                       collapsedCounter
                       showStatus={inGroupOverlay === true}
-                      expanded={seriesOpen}
-                      onExpandedChange={(open) => setExpanded((s) => ({ ...s, [seriesKey]: open }))}
+                      expanded={isSeries ? seriesOpen : undefined}
+                      onExpandedChange={isSeries ? (open) => setExpanded((s) => ({ ...s, [seriesKey]: open })) : undefined}
                       detailsId={`campaign-series-${r.id}`}
                       groupIds={((r as any).group_ids as any[]).map((g) => String(g))}
                       meta={fbGroupMeta}

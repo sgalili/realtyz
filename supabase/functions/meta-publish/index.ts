@@ -931,10 +931,22 @@ Deno.serve(async (req) => {
         },
       };
       const reuseId = await findReusableRow(db, ownerId, ch, hashes[ch], ["failed"]);
-      const { error: writeErr } = reuseId
-        ? await db.from("campaign_logs").update(attemptRow).eq("id", reuseId)
-        : await db.from("campaign_logs").insert(attemptRow);
+      const { data: written, error: writeErr } = reuseId
+        ? await db.from("campaign_logs").update(attemptRow).eq("id", reuseId).select("id").maybeSingle()
+        : await db.from("campaign_logs").insert(attemptRow).select("id").maybeSingle();
       if (writeErr) console.warn("[meta-publish] campaign_logs write", writeErr.message);
+      // Link queued extension jobs to their card so progress + resume can find them.
+      const logId = (written as any)?.id;
+      const queueIds = groupResults.map((r: any) => r?.queue_id).filter(Boolean);
+      if (ch === "facebook" && logId && queueIds.length > 0 && ownerId) {
+        const { data: qrows } = await db.from("campaign_activity_queue").select("id,payload")
+          .eq("workspace_owner_id", ownerId).in("id", queueIds);
+        for (const q of (qrows ?? []) as any[]) {
+          await db.from("campaign_activity_queue")
+            .update({ payload: { ...(q.payload ?? {}), campaign_log_id: logId } })
+            .eq("id", q.id).eq("workspace_owner_id", ownerId);
+        }
+      }
     }
 
 
