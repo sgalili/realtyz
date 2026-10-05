@@ -551,9 +551,6 @@ const mergeQueues = (
   local: QueuedExtensionPost[],
   cloud: QueuedExtensionPost[],
 ): QueuedExtensionPost[] => {
-  const rank: Record<QueuedExtensionPost["status"], number> = {
-    pending: 0, posting: 1, failed: 2, completed: 3,
-  };
   const byKey = new Map<string, QueuedExtensionPost>();
   const keyOf = (j: QueuedExtensionPost) => j.id || j.cloudId || "";
   for (const j of [...local, ...cloud]) {
