@@ -55,8 +55,6 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
 
 export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
-  const { isPartnerMode } = useAppMode();
-  const myListingsPath = isPartnerMode ? '/affiliate-network' : '/properties';
   const { user } = useAuth();
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
