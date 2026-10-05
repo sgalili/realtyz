@@ -5,6 +5,7 @@
 // Tab 2 "אנשי קשר משותפים" — full tracking CRM of every affiliate-generated
 //   referral: status funnel, source affiliate, linked lead, and settlement.
 import { useEffect, useMemo, useState } from "react";
+import LeftoverLeadsDialog from "@/components/affiliate/LeftoverLeadsDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ViewModeSwitch } from "@/components/ui/view-mode-switch";
@@ -560,6 +561,7 @@ function BrokerAffiliateNetwork() {
               לידים ({submissions.length})
             </TabsTrigger>
           </TabsList>
+          <LeftoverLeadsDialog />
           </div>
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
