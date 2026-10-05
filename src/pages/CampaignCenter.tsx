@@ -5365,7 +5365,6 @@ const PublishedFeed = ({
   // the feed never depends on an expiring CDN signature. Fire-and-forget.
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
-    let cancelled = false;
     if (!scope) return;
     const key = `realtyz.fb_media_resync.${scope}`;
     try {
