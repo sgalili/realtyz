@@ -92,7 +92,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
     if (!user?.id || publishing) return;
     if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !draftFields.price) {
-      toast.error('יש למלא סוג נכס, עיר, כתובת ומחיר');
       return;
     }
     setPublishing(true);
@@ -231,7 +230,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
 
   const submit = async () => {
     if (!fields.city.trim() || !(fields.street.trim() || fields.address.trim()) || !fields.propertyType.trim() || !fields.price) {
-      toast.error('יש למלא סוג נכס, עיר, כתובת ומחיר'); return;
+      return;
     }
     if (!fields.contactName.trim() || fields.contactWhatsapp.replace(/\D/g, '').length < 9) {
       toast.error('יש למלא שם ומספר ווטסאפ'); return;
