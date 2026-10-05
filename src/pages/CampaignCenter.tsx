@@ -6358,7 +6358,11 @@ const PublishedFeed = ({
           >
             <header
               className="p-4 space-y-2 cursor-pointer"
-              onClick={() => setExpanded((s) => inGroupOverlay === true ? { ...s, [r.id]: !isOpen } : !isOpen ? { [r.id]: true } : {})}
+              onClick={() => setExpanded((s) => {
+                if (inGroupOverlay !== true) return !isOpen ? { [r.id]: true } : {};
+                const parents = Object.fromEntries(Object.entries(s).filter(([key]) => key.startsWith('series:')));
+                return !isOpen ? { ...parents, [r.id]: true } : parents;
+              })}
             >
 
               {/* Row 1: thumbnail + post title */}

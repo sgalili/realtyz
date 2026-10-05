@@ -39,6 +39,12 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const url = String((body as { url?: unknown }).url ?? "").trim();
     if (!/^https?:\/\//i.test(url)) return json({ ok: false, error: "bad_url" }, 400);
+    const yad2Import = (body as { source?: string }).source === 'yad2';
+    if (yad2Import) {
+      const parsed = new URL(url);
+      const trustedHost = ['yad2.co.il', 'yad2cdn.com', 'yad2.com'].some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
+      if (parsed.protocol !== 'https:' || !trustedHost || parsed.port || parsed.username || parsed.password) return json({ ok: false, error: 'untrusted_yad2_image' }, 400);
+    }
 
     let origin = "";
     try { origin = new URL(url).origin; } catch { /* noop */ }
@@ -49,7 +55,7 @@ Deno.serve(async (req) => {
         Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
         ...(origin ? { Referer: origin + "/" } : {}),
       },
-      redirect: "follow",
+      redirect: yad2Import ? "error" : "follow",
     });
     if (!res.ok) return json({ ok: false, error: `fetch_failed_${res.status}` }, 502);
     let ct = (res.headers.get("content-type") || "").toLowerCase();

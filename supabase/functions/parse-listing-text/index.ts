@@ -6,7 +6,7 @@
  * - If input is plain text, run LLM extraction directly.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders } from '../_shared/cors.ts';
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");

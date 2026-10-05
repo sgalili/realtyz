@@ -113,7 +113,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
        for (const url of Array.isArray(source?.photos) ? source.photos : []) {
          if (typeof url !== 'string' || !url.startsWith('https://')) continue;
          setPublishStage('שמירת תמונות המודעה');
-         const { data: mirrored, error: mirrorError } = await supabase.functions.invoke('mirror-external-image', { body: { url } });
+          const { data: mirrored, error: mirrorError } = await supabase.functions.invoke('mirror-external-image', { body: { url, source: 'yad2' } });
          if (mirrorError || !mirrored?.public_url) throw new Error('לא ניתן לשמור את תמונות המודעה מיד2. הטיוטה נשמרה.');
          photos.push(mirrored.public_url);
        }
@@ -415,7 +415,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
 
           {step === 7 && (
             <div className="space-y-3">
-              {imported && <div className="space-y-2">{imported.photos?.[0] && <img src={imported.photos[0]} alt="הנכס המיובא" className="aspect-video w-full rounded-md object-cover" />}<p className="font-semibold">{fields.propertyType} · {fields.address} · {fields.city}</p><p>₪{Number(fields.price).toLocaleString('he-IL')}</p></div>}
+               {fields.importedListing && <div className="space-y-2">{fields.importedListing.photos?.[0] && <img src={fields.importedListing.photos[0]} alt="הנכס המיובא" className="aspect-video w-full rounded-md object-cover" />}<p className="font-semibold">{fields.propertyType} · {fields.address} · {fields.city}</p><p>₪{Number(fields.price).toLocaleString('he-IL')}</p></div>}
               <div><Label>השם שלך *</Label><Input value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
               <div><Label>מספר ווטסאפ *</Label><Input inputMode="tel" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
