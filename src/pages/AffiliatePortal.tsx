@@ -34,7 +34,6 @@ import {
   MapPin,
   Megaphone,
   MousePointerClick,
-  Search,
   SlidersHorizontal,
   Sparkles,
   TrendingUp,
@@ -966,19 +965,20 @@ export default function AffiliatePortal() {
             title="בחירה מרובה"
             className="h-5 w-5 shrink-0"
           />
-          {/* Magnifier at the start of the field, filter button at the end. */}
-          <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
-            <Search className="h-4 w-4 shrink-0 text-slate-400" />
-            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" />
-            <LeadTypeFilterButton
-              state={leadFilter}
-              onChange={setLeadFilter}
-              propertyState={inlinePropertyFilter}
-              onPropertyChange={setInlinePropertyFilter}
-              cities={cities}
-              neighborhoods={inlineNeighborhoods}
-              propertyTypes={propertyTypes}
-            />
+          {/* Filter button at the start of the field, before the placeholder. */}
+          <div className="relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background">
+            <span className="absolute start-2 top-1/2 flex -translate-y-1/2">
+              <LeadTypeFilterButton
+                state={leadFilter}
+                onChange={setLeadFilter}
+                propertyState={inlinePropertyFilter}
+                onPropertyChange={setInlinePropertyFilter}
+                cities={cities}
+                neighborhoods={inlineNeighborhoods}
+                propertyTypes={propertyTypes}
+              />
+            </span>
+            <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-10 h-8 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0" />
           </div>
         </div>
 
