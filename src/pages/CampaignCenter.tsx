@@ -90,6 +90,7 @@ import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/S
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { startMetaPageConnect, FACEBOOK_PAGE_PROVIDER } from '@/lib/facebookPageConnect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
+import { FacebookGroupsIcon } from '@/components/icons/FacebookGroupsIcon';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useRefreshMetaPageBinding, useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 
@@ -4969,7 +4970,7 @@ const PublishedFeed = ({
     // they are a member of.
     const { data, error: feedReadError } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids, series_id, publish_to_page')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, failure_reason, sent_at, group_ids, series_id')
       .eq('workspace_owner_id', ownerScope)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -5486,9 +5487,9 @@ const PublishedFeed = ({
     const scope = workspaceOwnerId ?? userId;
     let cancelled = false;
     const runFullSync = async () => {
-      if (fullSyncRunningRef.current) return;
-      fullSyncRunningRef.current = true;
       const toastId = 'campaigns-hero-sync';
+      if (fullSyncRunningRef.current) { toast.loading('הסנכרון כבר רץ…', { id: toastId }); return; }
+      fullSyncRunningRef.current = true;
       toast.loading('מסנכרן פוסטים מעמוד הפייסבוק…', { id: toastId });
       let ok = false;
       let hadTransientIssue = false;
@@ -5507,6 +5508,8 @@ const PublishedFeed = ({
           } else {
             setExtSync({ state: res.status, count: 0, at: Date.now() });
             hadTransientIssue = true;
+            console.warn('[campaign] manual sync not completed', res);
+            refreshWarning = res.status === 'no_extension' ? 'יש להתקין ולחבר את תוסף Realtyz כדי לסנכרן' : 'הסנכרון לא הושלם, נסה שוב';
           }
         }
         // Repaint only from persisted rows. mergeRowsById keeps existing cards
@@ -5514,7 +5517,7 @@ const PublishedFeed = ({
         await load({ skipFbImport: true });
         ok = refreshWarning === null;
         if (ok && !hadTransientIssue) toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
-        else if (hadTransientIssue) toast.dismiss(toastId);
+        else if (hadTransientIssue) toast.warning(refreshWarning || 'הסנכרון לא הושלם', { id: toastId });
         else toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
       } catch (err) {
         console.warn('[campaign] manual facebook sync failed', err);
@@ -6401,6 +6404,22 @@ const PublishedFeed = ({
 
               {/* One RTL metadata/action row; only date and group name may shrink. */}
               <div data-campaign-action-bar className="flex w-full min-w-0 flex-nowrap items-center gap-1 sm:gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
+                {String(r.channel || '').toLowerCase() === 'facebook' ? (() => {
+                  // Destination icons replace the generic platform icon:
+                  // Page icon only for Page posts, Groups icon only for group
+                  // posts, both when the post went to both.
+                  const toGroups = hasGroupTargets;
+                  const toPage = !toGroups || Boolean(r.provider_message_id);
+                  const label = toGroups && toPage ? 'פורסם בעמוד ובקבוצות' : toGroups ? 'פורסם בקבוצות' : 'פורסם בעמוד הפייסבוק';
+                  return (
+                    <span title={label} aria-label={label} className="inline-flex shrink-0 items-center gap-0.5">
+                      {toPage && (
+                        <BrandIcon name="facebook" className={cn('h-4 w-4 sm:h-5 sm:w-5', BRAND_COLOR.facebook ?? 'text-primary')} />
+                      )}
+                      {toGroups && <FacebookGroupsIcon className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    </span>
+                  );
+                })() : (
                 <span className="inline-flex shrink-0 items-center justify-center">
                   {platformMeta?.brand ? (
                     <BrandIcon name={platformMeta.brand} className={cn('h-4 w-4 sm:h-5 sm:w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
@@ -6410,6 +6429,7 @@ const PublishedFeed = ({
                     <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
                   )}
                 </span>
+                )}
                 <span title={scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                   className="shrink-0 whitespace-nowrap text-[10px] tabular-nums text-muted-foreground sm:text-[11px]"
                   dir="ltr">
@@ -6418,35 +6438,6 @@ const PublishedFeed = ({
                     return `${p(dt.getDate())}.${p(dt.getMonth() + 1)}.${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
                   })()}
                 </span>
-                {String(r.channel || '').toLowerCase() === 'facebook' && (() => {
-                  const toGroups = hasGroupTargets;
-                  const toPage = r.publish_to_page === true || (!toGroups && r.publish_to_page !== false);
-                  const kind = toGroups && toPage ? 'both' : toGroups ? 'groups' : 'page';
-                  const label = kind === 'both' ? 'פורסם בעמוד ובקבוצות' : kind === 'groups' ? 'פורסם בקבוצות' : 'פורסם בעמוד הפייסבוק';
-                  const cls = kind === 'both'
-                    ? 'bg-warning/15 text-warning-foreground'
-                    : kind === 'groups'
-                      ? 'bg-success/10 text-success'
-                      : 'bg-primary/10 text-primary';
-                  return (
-                    <span
-                      title={label}
-                      aria-label={label}
-                      className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full', cls)}
-                    >
-                      {kind === 'groups' ? (
-                        <Users className="h-3 w-3" />
-                      ) : kind === 'both' ? (
-                        <span className="relative inline-flex h-3 w-3 items-center justify-center">
-                          <BrandIcon name="facebook" className="absolute -right-1 h-2.5 w-2.5" />
-                          <Users className="absolute -left-1 h-2.5 w-2.5" />
-                        </span>
-                      ) : (
-                        <BrandIcon name="facebook" className="h-3 w-3" />
-                      )}
-                    </span>
-                  );
-                })()}
                 {hasGroupTargets && (
                   <div className="min-w-0 flex-1">
                     <GroupStatusChips

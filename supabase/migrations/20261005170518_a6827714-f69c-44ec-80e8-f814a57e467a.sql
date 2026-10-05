@@ -1,0 +1,2 @@
+UPDATE public.campaign_logs SET created_at = '2026-09-29 17:45:00+00', sent_at = '2026-09-29 17:45:00+00' WHERE id = '1694dc60-60e0-4cf7-9d4e-e02659e54ff9';
+UPDATE public.campaign_logs SET created_at = '2026-09-29 17:21:00+00', sent_at = '2026-09-29 17:21:00+00' WHERE id = '2ea55496-44bf-4329-bfd0-9892204f98e5';
