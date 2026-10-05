@@ -503,7 +503,7 @@ export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedE
     const since = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
     const { data, error } = await (supabase as any)
       .from("campaign_activity_queue")
-      .select("id, status, last_error, scheduled_for, created_at, payload, target_ref, target_label")
+      .select("id, status, last_error, scheduled_for, created_at, payload, target_ref, target_label, activity_type")
       .eq("workspace_owner_id", workspaceOwnerId)
       .in("activity_type", ["fb_group_post", "fb_comment"])
       .neq("status", "cancelled")
@@ -514,6 +514,7 @@ export const fetchCloudQueue = async (workspaceOwnerId: string): Promise<QueuedE
     const out: QueuedExtensionPost[] = [];
     for (const row of data) {
       const payload = row.payload ?? {};
+      if (!payload.job?.id && row.activity_type !== 'fb_group_post') continue;
       // Server-created jobs store their content directly in payload, not payload.job.
       const job = payload.job?.id ? payload.job : {
         id: row.id,
@@ -555,12 +556,14 @@ const mergeQueues = (
   };
   const byKey = new Map<string, QueuedExtensionPost>();
   const keyOf = (j: QueuedExtensionPost) => j.id || j.cloudId || "";
-  for (const j of [...cloud, ...local]) {
+  for (const j of [...local, ...cloud]) {
     const k = keyOf(j);
     if (!k) continue;
     const prev = byKey.get(k);
     if (!prev) { byKey.set(k, j); continue; }
-    const winner = (rank[j.status] ?? 0) >= (rank[prev.status] ?? 0) ? j : prev;
+    // Persisted retries can move failed/processing back to pending. Preserve
+    // confirmed completion, but otherwise allow the latest cloud state through.
+    const winner = prev.status === 'completed' && j.status !== 'completed' ? prev : j;
     byKey.set(k, { ...prev, ...winner, cloudId: winner.cloudId ?? prev.cloudId });
   }
   return Array.from(byKey.values()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
