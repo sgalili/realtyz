@@ -38,6 +38,29 @@ const coerceDateValue = (value: unknown): string | null => {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 };
 
+const HE_MONTHS: Record<string, number> = {
+  "ינואר": 0, "פברואר": 1, "מרץ": 2, "מרס": 2, "אפריל": 3, "מאי": 4, "יוני": 5,
+  "יולי": 6, "אוגוסט": 7, "ספטמבר": 8, "אוקטובר": 9, "נובמבר": 10, "דצמבר": 11,
+};
+
+/** Parse Facebook's visible Hebrew date label (e.g. "27 בספטמבר ב-20:53"),
+ *  interpreted in Israel time. Returns null when the label is relative/unknown. */
+export const parseFbDateText = (value: unknown): string | null => {
+  const s = typeof value === "string" ? value.trim() : "";
+  if (!s) return null;
+  const m = s.match(/(\d{1,2})\s+ב?([\u0590-\u05FF]+)(?:\s+(\d{4}))?(?:\s+ב-?\s*(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const month = HE_MONTHS[m[2]];
+  if (month === undefined) return null;
+  const now = new Date();
+  let year = m[3] ? Number(m[3]) : now.getUTCFullYear();
+  const build = (y: number) =>
+    Date.UTC(y, month, Number(m[1]), Number(m[4] ?? 12), Number(m[5] ?? 0)) - 3 * 3600_000;
+  let ts = build(year);
+  if (!m[3] && ts > now.getTime() + 86400_000) ts = build(--year);
+  return Number.isFinite(ts) ? new Date(ts).toISOString() : null;
+};
+
 const firstValidDate = (...values: unknown[]): string | null => {
   for (const value of values) {
     const parsed = coerceDateValue(value);
@@ -310,7 +333,9 @@ const normalizePost = (raw: RawPost) => {
     it.platforms?.facebook?.createdTime,
     it.platforms?.facebook?.publishedAt,
     it.platforms?.facebook?.created_time,
-  ) ?? new Date().toISOString();
+  ) ?? parseFbDateText(it.created_time_text ?? it.created_timeText);
+  // NOTE: no "now" fallback. A post without a known date must never be
+  // stamped with the sync time; the upsert keeps any previously stored date.
   const media = collectMediaUrls(it);
   const url = it.postUrl || it.permalink_url ||
     it.platforms?.facebook?.postUrl || null;
