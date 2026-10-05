@@ -151,7 +151,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="flex max-w-md items-center gap-2">
               <div className="relative min-w-0 flex-1">
                 <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש חופשי" className="ps-11" />
-                <LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} className="absolute start-1 top-1/2 -translate-y-1/2" />
+                <span className="absolute start-2 top-1/2 flex -translate-y-1/2"><LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} /></span>
               </div>
               {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
             </div>
