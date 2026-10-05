@@ -333,6 +333,8 @@ export type Database = {
           created_at: string
           id: string
           lead_id: string | null
+          leftover_discount_type: string
+          leftover_discount_value: number
           listing_id: string | null
           notes: string | null
           reward_amount: number
@@ -355,6 +357,8 @@ export type Database = {
           created_at?: string
           id?: string
           lead_id?: string | null
+          leftover_discount_type?: string
+          leftover_discount_value?: number
           listing_id?: string | null
           notes?: string | null
           reward_amount?: number
@@ -377,6 +381,8 @@ export type Database = {
           created_at?: string
           id?: string
           lead_id?: string | null
+          leftover_discount_type?: string
+          leftover_discount_value?: number
           listing_id?: string | null
           notes?: string | null
           reward_amount?: number
@@ -3855,6 +3861,47 @@ export type Database = {
           },
         ]
       }
+      listing_lead_charges: {
+        Row: {
+          affiliate_id: string | null
+          created_at: string
+          gross: number
+          id: string
+          is_leftover: boolean
+          listing_id: string
+          tier: number
+          workspace_owner_id: string
+        }
+        Insert: {
+          affiliate_id?: string | null
+          created_at?: string
+          gross?: number
+          id?: string
+          is_leftover?: boolean
+          listing_id: string
+          tier: number
+          workspace_owner_id: string
+        }
+        Update: {
+          affiliate_id?: string | null
+          created_at?: string
+          gross?: number
+          id?: string
+          is_leftover?: boolean
+          listing_id?: string
+          tier?: number
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_lead_charges_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           additional_details: Json
@@ -3877,6 +3924,7 @@ export type Database = {
           city: string | null
           contact_options: Json
           created_at: string
+          daily_lead_cap: number | null
           deal_type: string | null
           description: string
           elevator: boolean | null
@@ -3942,6 +3990,7 @@ export type Database = {
           city?: string | null
           contact_options?: Json
           created_at?: string
+          daily_lead_cap?: number | null
           deal_type?: string | null
           description: string
           elevator?: boolean | null
@@ -4007,6 +4056,7 @@ export type Database = {
           city?: string | null
           contact_options?: Json
           created_at?: string
+          daily_lead_cap?: number | null
           deal_type?: string | null
           description?: string
           elevator?: boolean | null
@@ -7462,6 +7512,10 @@ export type Database = {
       lead_identity_keys: {
         Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
         Returns: string[]
+      }
+      listing_daily_cap_reached: {
+        Args: { _listing_id: string }
+        Returns: boolean
       }
       listing_embedding_text: {
         Args: { l: Database["public"]["Tables"]["listings"]["Row"] }
