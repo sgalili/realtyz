@@ -28,7 +28,7 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
     },
     refetchInterval: (q) => {
       const p = q.state.data as Progress | null | undefined;
-      return !p || (p.pending + p.processing) > 0 ? 4_000 : 60_000;
+      return !p || p.total < 1 || (p.pending + p.processing) > 0 ? 4_000 : 60_000;
     },
   });
   useGroupQueueLive(owner, () => { void qc.invalidateQueries({ queryKey: key }); });
@@ -70,12 +70,12 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
       ? `${data.processing > 0 ? `מפרסם לקבוצה ${Math.min(data.completed + 1, data.total)} מתוך ${data.total}` : `ממתין לפרסום · ${data.completed}/${data.total}`} · לחיצה תחדש את התור`
       : `פורסמו ${data.completed}/${data.total} · לחיצה תמשיך ל-${remaining} קבוצות שנותרו`;
   return (
-    <Button type="button" variant="ghost"
+    <Button type="button" variant="ghost" size="sm"
       onClick={(e) => { e.stopPropagation(); void resume(); }}
       disabled={busy}
       title={title}
       aria-label={`${title}`}
-      className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70">
+      className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] font-medium text-primary tabular-nums transition-colors hover:bg-primary/20 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-70">
       {busy ? (
         <Loader2 className="h-3 w-3 animate-spin" />
       ) : running ? (

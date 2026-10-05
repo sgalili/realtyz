@@ -6519,7 +6519,7 @@ const PublishedFeed = ({
                            candidates={uniqueMedia}
                            className="h-full w-full rounded-lg object-cover border border-border"
                            fallbackClassName="h-full w-full" />
-                      <button
+                       {!r._parentCampaignId && <button
                         type="button"
                         title="הסר תמונה"
                         aria-label="הסר תמונה"
@@ -6530,7 +6530,7 @@ const PublishedFeed = ({
                         className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                       </button>}
                     </div>
                   );
                   return (
@@ -6577,7 +6577,7 @@ const PublishedFeed = ({
 
                     {/* Attachment indicator removed from published cards. */}
                   </div>
-                  <div className="flex items-center gap-2">
+                  {!r._parentCampaignId && <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" title="ערוך ופרסם מחדש" aria-label="ערוך ופרסם מחדש"
                             onClick={(e) => { e.stopPropagation(); setEditRepostRow(r); }}>
                       <Pencil className="h-4 w-4" />
@@ -6587,10 +6587,10 @@ const PublishedFeed = ({
                             className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  </div>
+                  </div>}
                 </div>
 
-                {!r.is_external && (
+                {!r.is_external && !r._parentCampaignId && (
                   <CampaignGroupBreakdown
                     workspaceOwnerId={workspaceOwnerId}
                     campaignBody={bodyText}
