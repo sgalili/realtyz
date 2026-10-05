@@ -389,7 +389,10 @@ async function runJobInner(token, job) {
       : !posted
         ? (result.reason || 'הפוסט לא אומת בקבוצה')
         : null;
-    await report(token, job, verified, reason, result.post_url || null);
+    // The group post itself is live once Facebook accepted it: log it as a
+    // success so the campaign counter advances, even if the first comment failed.
+    await report(token, job, posted, posted ? null : reason, result.post_url || null);
+    if (posted && requiredCommentFailed) await setState({ last_error: reason, last_error_at: Date.now() });
     return verified;
   } catch (e) {
     // A timeout after the composer was filled is ambiguous: the post may be
@@ -480,6 +483,35 @@ async function runPageFirstComment(token, entry) {
   }
 }
 
+/* Durable success/failure reporting: every result is retried immediately and
+ * kept in an outbox until the backend confirms, so the counter never misses a post. */
+const OUTBOX_KEY = 'rzReportOutbox';
+async function postReport(body) {
+  for (let i = 0; i < 3; i++) {
+    try {
+      const { status, json } = await api('ext-queue-report', body);
+      if (json && json.ok === true) return true;
+      if (status === 400 || status === 401) return true; // permanent: never retry
+    } catch (e) { /* network */ }
+    await sleep(1000 * (i + 1));
+  }
+  return false;
+}
+async function sendReport(body) {
+  if (await postReport(body)) return;
+  const r = await local([OUTBOX_KEY]);
+  const box = Array.isArray(r[OUTBOX_KEY]) ? r[OUTBOX_KEY] : [];
+  await localSet({ [OUTBOX_KEY]: [...box.filter((b) => b.job_id !== body.job_id), body].slice(-200) });
+}
+async function flushReports() {
+  const r = await local([OUTBOX_KEY]);
+  const box = Array.isArray(r[OUTBOX_KEY]) ? r[OUTBOX_KEY] : [];
+  if (!box.length) return;
+  const left = [];
+  for (const b of box) if (!(await postReport(b))) left.push(b);
+  await localSet({ [OUTBOX_KEY]: left });
+}
+
 async function report(token, job, ok, reason, postUrl) {
   lastJobReason = ok ? null : (reason || 'פרסום בדפדפן נכשל');
   // Local jobs must also persist a rejection immediately, without waiting for
@@ -493,7 +525,7 @@ async function report(token, job, ok, reason, postUrl) {
 
   // Local (app-triggered) jobs have no backend queue row — skip the report call.
   if (token && !job.local) {
-    await api('ext-queue-report', {
+    await sendReport({
       token,
       job_id: job.id,
       ok: !!ok,
@@ -741,6 +773,7 @@ async function poll() {
   runningSince = Date.now();
   pollAgain = false;
   try {
+    try { await flushReports(); } catch (e) { /* retried next poll */ }
     // The local browser queue runs regardless of Realtyz pairing.
     await drainQueue();
     const token = await getToken();
