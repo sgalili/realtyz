@@ -7325,6 +7325,18 @@ export type Database = {
             }[]
           }
       get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
+      get_group_posting_progress: {
+        Args: { _campaign_log_ids: string[] }
+        Returns: {
+          campaign_log_id: string
+          completed: number
+          failed: number
+          pending: number
+          processing: number
+          stalled: number
+          total: number
+        }[]
+      }
       get_growth_analytics: { Args: never; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
@@ -7568,6 +7580,10 @@ export type Database = {
         Returns: undefined
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
+      resume_group_posting: {
+        Args: { _campaign_log_id: string }
+        Returns: number
+      }
       review_affiliate_license: {
         Args: { _approve: boolean; _reason?: string; _user_id: string }
         Returns: Json
