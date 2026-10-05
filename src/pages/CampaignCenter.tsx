@@ -90,7 +90,7 @@ import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/S
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { startMetaPageConnect, FACEBOOK_PAGE_PROVIDER } from '@/lib/facebookPageConnect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
-import { FacebookGroupsIcon } from '@/components/icons/FacebookGroupsIcon';
+import { PageAvatarIcon } from '@/components/campaigns/PageAvatarIcon';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useRefreshMetaPageBinding, useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 
@@ -6410,13 +6410,10 @@ const PublishedFeed = ({
                   // posts, both when the post went to both.
                   const toGroups = hasGroupTargets;
                   const toPage = !toGroups || Boolean(r.provider_message_id);
-                  const label = toGroups && toPage ? 'פורסם בעמוד ובקבוצות' : toGroups ? 'פורסם בקבוצות' : 'פורסם בעמוד הפייסבוק';
+                  if (!toPage) return null;
                   return (
-                    <span title={label} aria-label={label} className="inline-flex shrink-0 items-center gap-0.5">
-                      {toPage && (
-                        <BrandIcon name="facebook" className={cn('h-4 w-4 sm:h-5 sm:w-5', BRAND_COLOR.facebook ?? 'text-primary')} />
-                      )}
-                      {toGroups && <FacebookGroupsIcon className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    <span title="פורסם בעמוד הפייסבוק" aria-label="פורסם בעמוד הפייסבוק" className="inline-flex shrink-0 items-center">
+                      <PageAvatarIcon className="h-5 w-5" />
                     </span>
                   );
                 })() : (
@@ -6439,7 +6436,7 @@ const PublishedFeed = ({
                   })()}
                 </span>
                 {hasGroupTargets && (
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 shrink">
                     <GroupStatusChips
                       inline
                       collapsedCounter

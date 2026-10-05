@@ -1,6 +1,7 @@
 // Unframed group names with static per-target status; overflow stays portaled.
-import { useState, type ReactNode } from 'react';
-import { Ban, Check, ChevronDown, XCircle } from 'lucide-react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Ban, Check, ChevronDown, ExternalLink, XCircle } from 'lucide-react';
+import { FacebookGroupsIcon } from '@/components/icons/FacebookGroupsIcon';
 import { SendClockIcon } from './SendClockIcon';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -160,7 +161,7 @@ export function GroupStatusChips({
       return <div className="min-w-0">
         <Button type="button" variant="outline" size="sm" aria-expanded={detailsOpen} aria-controls={detailsId}
           onClick={(e) => { e.stopPropagation(); toggleDetails(); }} className={pillClass}>
-          {ids.length} קבוצות
+          <FacebookGroupsIcon className="h-3.5 w-3.5 shrink-0" />{ids.length} קבוצות
           <ChevronDown className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
         </Button>
         {detailsOpen && <div id={detailsId} className="mt-2 min-w-0 space-y-2">{children}</div>}
@@ -172,7 +173,7 @@ export function GroupStatusChips({
           <PopoverTrigger asChild>
             <Button type="button" variant="outline" size="sm" aria-expanded={open} aria-controls={detailsId}
               onClick={(e) => e.stopPropagation()} className={pillClass}>
-              {ids.length} קבוצות
+              <FacebookGroupsIcon className="h-3.5 w-3.5 shrink-0" />{ids.length} קבוצות
               <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
             </Button>
           </PopoverTrigger>
@@ -190,7 +191,7 @@ export function GroupStatusChips({
     return (
       <Button type="button" variant="outline" size="sm" aria-expanded={detailsOpen} aria-controls={detailsId}
         onClick={(e) => { e.stopPropagation(); toggleDetails(); }} className={pillClass}>
-        {ids.length} קבוצות
+        <FacebookGroupsIcon className="h-3.5 w-3.5 shrink-0" />{ids.length} קבוצות
         <ChevronDown className={`h-3 w-3 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
       </Button>
     );
@@ -199,22 +200,10 @@ export function GroupStatusChips({
     const gid = ids[0];
     const name = nameOf(gid);
     const state = stateOf(gid);
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" size="sm" aria-label={`הצגת שם הקבוצה המלא: ${name}`}
-            title={name} onClick={(e) => e.stopPropagation()}
-            className="h-7 w-full min-w-0 max-w-full flex-nowrap justify-start gap-1 overflow-hidden rounded-full border-border bg-background px-2 text-[11px]">
-            {showStatus && <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span>}
-            <span className="min-w-0 flex-1 truncate text-right">{shortenName(name)}</span>
-            <ChevronDown className="h-3 w-3 shrink-0" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" dir="rtl" className="w-[min(20rem,calc(100vw-2rem))] break-words p-3 text-sm" onClick={(e) => e.stopPropagation()}>
-          {name}
-        </PopoverContent>
-      </Popover>
-    );
+    const result = results?.[gid] ?? results?.[groupKeyFrom(gid)];
+    const url = groupPostDestination(result, fbGroupUrlFrom(lookup(gid)?.url, groupKeyFrom(gid)));
+    return <SingleGroupPill name={name} url={url}
+      status={showStatus ? <span className={`shrink-0 ${STATE_STYLE[state]}`} aria-label={STATE_LABEL[state]}><StateIcon state={state} /></span> : null} />;
   }
   return (
     <div className={`${inline ? '' : 'mt-1.5 '}flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-0.5`} dir="rtl">
@@ -231,6 +220,45 @@ export function GroupStatusChips({
           {children && <div className="w-full min-w-0 space-y-3">{children}</div>}
         </PopoverContent>
       </Popover>}
+    </div>
+  );
+}
+
+/** One group: full name opens the post; truncated names add a chevron popover with a post link. */
+function SingleGroupPill({ name, url, status }: { name: string; url: string; status: ReactNode }) {
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    const check = () => setTruncated(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [name]);
+  return (
+    <div className="flex h-7 min-w-0 max-w-full items-center gap-1 overflow-hidden rounded-full border border-border bg-background px-2 text-[11px]">
+      {status}
+      <button type="button" title={name} onClick={(e) => { e.stopPropagation(); openExternal(url); }}
+        className="min-w-0 flex-1 text-right hover:underline">
+        <span ref={textRef} className="block overflow-hidden text-ellipsis whitespace-nowrap">{name}</span>
+      </button>
+      {truncated && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" aria-label={`הצגת שם הקבוצה המלא: ${name}`} onClick={(e) => e.stopPropagation()} className="shrink-0">
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" dir="rtl" className="w-[min(20rem,calc(100vw-2rem))] p-3 text-sm" onClick={(e) => e.stopPropagation()}>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 break-words text-primary hover:underline">
+              <span className="min-w-0 flex-1">{name}</span>
+              <ExternalLink className="mt-0.5 h-4 w-4 shrink-0" />
+            </a>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 }
