@@ -88,9 +88,6 @@ export default function PropertyContactActions({
   // WhatsApp already knows the visitor's number, so skip the form: open the
   // chat at once with a message about this property; Rita asks for the name.
   const openRita = () => {
-    void supabase.functions.invoke('public-lead-gate', {
-      body: { action: 'wa_click', listing_id: listingId, intent: 'whatsapp', ref },
-    }).catch(() => undefined);
     window.open(officialWaLink(waMessage), '_blank', 'noopener,noreferrer');
   };
 
