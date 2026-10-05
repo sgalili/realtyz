@@ -161,7 +161,15 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   }, [onStatus, refreshHealth, refreshBinding, health?.pageConnected, binding?.hasToken]);
 
 
-  useEffect(() => { probe(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  // Re-probe on every workspace switch so the card always reflects the ACTIVE
+  // workspace's binding — never the previous tenant's page.
+  useEffect(() => {
+    setPage(null);
+    setStatus(null);
+    setBindings([]);
+    probe(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceOwnerId]);
 
   const loadPageOptions = useCallback(async () => {
     try {
