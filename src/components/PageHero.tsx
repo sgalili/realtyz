@@ -309,6 +309,7 @@ export function PageHero() {
   const { user } = useAuth();
   const { isPartnerMode } = useAppMode();
   const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
+  const isMyAdsPage = location.pathname.startsWith("/my-ads");
   const myListingsPath = "/my-ads";
   const { isSuperAdmin, isAffiliate, isTeamMember, isPropertyOwner } = useUserRole();
   const { activeWorkspaceId } = useWorkspace();
