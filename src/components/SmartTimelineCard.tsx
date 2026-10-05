@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -76,7 +77,7 @@ export default function SmartTimelineCard({
   useEffect(() => {
     if (collapsible && forceOpenKey > 0) {
       setNoteOpen(true);
-      setTimelineOpen(true);
+      setTimelineOpen(false);
     }
   }, [collapsible, forceOpenKey]);
 
@@ -306,13 +307,13 @@ export default function SmartTimelineCard({
   return (
     <div className={`space-y-4 ${className ?? ''}`} dir="rtl">
       <div className={`rounded-xl border border-border bg-card p-3 ${noteOpen ? 'space-y-3' : ''}`}>
-        <button type="button" className="flex w-full items-center justify-between gap-2 text-start" onClick={() => collapsible && setNoteOpen((value) => !value)} aria-expanded={noteOpen}>
+        <button type="button" className="flex w-full items-center justify-between gap-2 text-start" onClick={() => { if (collapsible) { setNoteOpen((value) => !value); setTimelineOpen(false); } }} aria-expanded={noteOpen}>
           <p className="flex items-center gap-2 text-sm font-bold text-foreground">
             <StickyNote className="h-4 w-4 text-primary" /> הערה מהירה
           </p>
           {collapsible && <ChevronDown className={`h-4 w-4 transition-transform ${noteOpen ? 'rotate-180' : ''}`} />}
         </button>
-        {noteOpen && <>
+        <AnimatedExpansion open={noteOpen}>
           <div className="flex items-center justify-end gap-2">
             <Select
               value={autoCategory ? 'auto' : category}
@@ -369,17 +370,17 @@ export default function SmartTimelineCard({
             </div>
           </div>
         )}
-        </>}
+        </AnimatedExpansion>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-3">
-        <button type="button" className={`flex w-full items-center gap-2 text-start text-sm font-semibold ${timelineOpen ? 'mb-3' : ''}`} onClick={() => collapsible && setTimelineOpen((value) => !value)} aria-expanded={timelineOpen}>
+        <button type="button" className={`flex w-full items-center gap-2 text-start text-sm font-semibold ${timelineOpen ? 'mb-3' : ''}`} onClick={() => { if (collapsible) { setTimelineOpen((value) => !value); setNoteOpen(false); } }} aria-expanded={timelineOpen}>
           <Clock className="h-4 w-4" /> {title}
           <Badge variant="outline" className="text-[10px] ms-auto">{events.length} אירועים</Badge>
           {collapsible && <ChevronDown className={`h-4 w-4 transition-transform ${timelineOpen ? 'rotate-180' : ''}`} />}
         </button>
 
-        {timelineOpen && <>
+        <AnimatedExpansion open={timelineOpen}>
         {isLoading && (
           <div className="flex justify-center py-6 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
         )}
@@ -430,7 +431,7 @@ export default function SmartTimelineCard({
             הצג עוד {events.length - limit} אירועים
           </Button>
         )}
-        </>}
+        </AnimatedExpansion>
       </div>
     </div>
   );

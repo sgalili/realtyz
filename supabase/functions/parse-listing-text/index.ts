@@ -5,11 +5,8 @@
  *   then ask the LLM to extract structured fields + photos.
  * - If input is plain text, run LLM extraction directly.
  */
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
@@ -22,12 +19,19 @@ const PROPERTY_TYPES = [
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const auth = req.headers.get('Authorization');
+  const url = Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!auth?.startsWith('Bearer ') || !url || !key) return json({ error: 'יש להתחבר כדי לייבא מודעה' }, 401);
+  const client = createClient(url, key, { global: { headers: { Authorization: auth } } });
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) return json({ error: 'יש להתחבר כדי לייבא מודעה' }, 401);
   if (!LOVABLE_API_KEY) return json({ error: "AI gateway not configured" }, 500);
 
   try {
     const body = await req.json().catch(() => ({}));
     const rawText = body.text || "";
-    if (!rawText || typeof rawText !== "string" || rawText.trim().length < 5) {
+    if (!rawText || typeof rawText !== "string" || rawText.trim().length < 5 || rawText.length > 30000) {
       return json({ error: "text is required" }, 400);
     }
 
@@ -41,6 +45,8 @@ Deno.serve(async (req) => {
     let scrapedPhotos: string[] = [...regexPhotos];
 
     if (isUrl) {
+      const requested = new URL(trimmed);
+      if (requested.protocol !== 'https:' || !['www.yad2.co.il', 'yad2.co.il', 'www.madlan.co.il', 'madlan.co.il'].includes(requested.hostname) || requested.username || requested.password) return json({ error: 'ניתן לייבא קישור מאתר יד2 או מדלן בלבד' }, 400);
       sourceUrl = trimmed;
       if (!FIRECRAWL_API_KEY) {
         return json({
