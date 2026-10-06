@@ -550,6 +550,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     }
   };
 
+  // The publish button stays disabled until every mandatory detail is complete.
+  const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || files.length > 0 || videos.length > 0;
+  const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia), [fields, hasMedia]);
+  const canPublish = missingPublish.length === 0;
+
   const renderStep = (step: number) => (
     <>
           {step === 0 && !importSlide && (
