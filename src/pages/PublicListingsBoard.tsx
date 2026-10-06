@@ -187,6 +187,41 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     };
   }, [expandedId]);
 
+  // Draggable scroll bar under the table header row: dragging the thumb slides the table sideways.
+  const thumbDrag = useRef<{ pointerId: number; startX: number; startNorm: number } | null>(null);
+  const onBarPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = tableWrapRef.current;
+    const track = e.currentTarget;
+    const thumb = track.querySelector<HTMLElement>('[data-thumb]');
+    if (!el || !thumb) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    if (maxScroll <= 0) return;
+    const trackW = track.clientWidth;
+    const thumbW = thumb.offsetWidth;
+    let norm = scrollIndicator.width >= 100 ? 0 : scrollIndicator.offset / Math.max(0.001, 100 - scrollIndicator.width);
+    if (!thumb.contains(e.target as Node)) {
+      const rect = track.getBoundingClientRect();
+      norm = Math.min(1, Math.max(0, (e.clientX - rect.left - thumbW / 2) / Math.max(1, trackW - thumbW)));
+      el.scrollLeft = -norm * maxScroll;
+    }
+    thumbDrag.current = { pointerId: e.pointerId, startX: e.clientX, startNorm: norm };
+    track.setPointerCapture(e.pointerId);
+  };
+  const onBarPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = thumbDrag.current;
+    const el = tableWrapRef.current;
+    if (!drag || !el || e.pointerId !== drag.pointerId) return;
+    const thumb = e.currentTarget.querySelector<HTMLElement>('[data-thumb]');
+    if (!thumb) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const span = Math.max(1, e.currentTarget.clientWidth - thumb.offsetWidth);
+    const norm = Math.min(1, Math.max(0, drag.startNorm - (e.clientX - drag.startX) / span));
+    el.scrollLeft = -norm * maxScroll;
+  };
+  const onBarPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (thumbDrag.current?.pointerId === e.pointerId) thumbDrag.current = null;
+  };
+
   const load = async () => {
     setLoading(true);
     const params = new URLSearchParams();
