@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Film, ImagePlus, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Film, HelpCircle, ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -50,7 +50,14 @@ const STEP_TITLES = [
   'תשלומים ומידות',
   'תמונות וסרטונים',
   'פרטי התקשרות',
+  'עמלות ומגבלה יומית',
 ];
+
+const LEAD_TYPES = [
+  { key: 'Form', label: 'פנייה בטופס' },
+  { key: 'Whatsapp', label: 'שיחה עם ריטה בווטסאפ' },
+  { key: 'Phone', label: 'שיחת טלפון' },
+] as const;
 
 function slugFor(userId: string) {
   return `owner-${userId.slice(0, 8)}-${Date.now().toString(36)}`;
@@ -240,6 +247,17 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         media_photos: photos, image_url: photos[0] ?? null,
          status: 'live', source: draftFields.listingId ? source?.source || 'manual' : source ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
       };
+      const commissions: Record<string, unknown> = {};
+      const cf = toNum(draftFields.commissionForm), cw = toNum(draftFields.commissionWhatsapp), cp = toNum(draftFields.commissionPhone);
+      if (cf != null) commissions.affiliate_tier1_amount = cf;
+      if (cw != null) commissions.affiliate_tier2_amount = cw;
+      if (cp != null) commissions.affiliate_tier3_amount = cp;
+      const limits = { form: toInt(draftFields.limitForm), whatsapp: toInt(draftFields.limitWhatsapp), phone: toInt(draftFields.limitPhone) };
+      const limitValues = Object.values(limits).filter((v): v is number => v != null);
+      if (limitValues.length) commissions.daily_lead_cap = limitValues.reduce((a, b) => a + b, 0);
+      Object.assign(payload, commissions);
+      (payload.features as Record<string, unknown>).lead_daily_limits = limits;
+      (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
       let request;
       if (draftFields.listingId && activeWorkspaceId) {
         const { data: existing, error: readError } = await supabase.from('listings').select('features, source_metadata, additional_details').eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId).single();
@@ -314,6 +332,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()) && fields.floor && fields.totalFloors);
     if (step === 4) return Boolean(fields.rooms && fields.condition && fields.airDirections);
     if (step === 5) return Boolean(fields.price && (fields.sqm || fields.builtSqm));
+    if (step === 8) return Boolean(fields.commissionTermsAccepted);
     return true;
   };
   const goNext = async () => {
@@ -361,6 +380,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       toast.error('יש למלא שם ומספר ווטסאפ'); return;
     }
     if (!fields.termsAccepted) { toast.error('יש לאשר את התקנון'); return; }
+    if (!fields.commissionTermsAccepted) { toast.error('יש לאשר שקראת והבנת את מנגנון העמלות'); return; }
     if (!confirming) { setConfirming(true); return; }
     if (user) publicationAudio.current = preparePublicationSound();
     try {
@@ -486,6 +506,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       case 5: return Boolean(f.price && (f.sqm || f.builtSqm));
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
       case 7: return Boolean(f.contactName?.trim() && f.contactWhatsapp.replace(/\D/g, '').length >= 9 && f.termsAccepted);
+      case 8: return Boolean(f.commissionTermsAccepted);
       default: return false;
     }
   };
@@ -623,6 +644,49 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               </label>
             </div>
           )}
+
+          {step === 8 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold">עמלה ומגבלה יומית לכל סוג פנייה</p>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="איך עובד מנגנון העמלות"><HelpCircle className="h-4 w-4" /></Button>
+                  </DialogTrigger>
+                  <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+                    <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
+                    <div className="space-y-3 text-sm leading-relaxed">
+                      <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשאיש קשר חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
+                      <ul className="list-disc space-y-1 ps-5">
+                        <li><b>פנייה בטופס:</b> איש הקשר השאיר פרטים בטופס המודעה.</li>
+                        <li><b>שיחה עם ריטה בווטסאפ:</b> איש הקשר פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
+                        <li><b>שיחת טלפון:</b> איש הקשר התקשר ישירות למספר שבמודעה.</li>
+                      </ul>
+                      <p><b>מגבלה יומית:</b> מספר הפניות המרבי שתחויב עליהן ביום מכל סוג. לאחר שהגעת למגבלה, המודעה ממשיכה להופיע אך לא תחויב על פניות נוספות מאותו סוג עד היום הבא.</p>
+                      <p>עמלה גבוהה יותר מעודדת שותפים לקדם את המודעה שלך. ניתן לשנות את הסכומים והמגבלות בכל עת מתוך המודעות שלי. שדה ריק משאיר את ההגדרה הקיימת או ללא עמלה.</p>
+                      <p>החיוב מתבצע רק על פנייה אמיתית שנרשמה במערכת, ולא על צפיות או קליקים.</p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="grid grid-cols-[1fr_6rem_6rem] items-end gap-2 text-sm">
+                <span className="text-xs text-muted-foreground">סוג פנייה</span>
+                <span className="text-xs text-muted-foreground">עמלה (₪)</span>
+                <span className="text-xs text-muted-foreground">מקס׳ ביום</span>
+                {LEAD_TYPES.map(({ key, label }) => (
+                  <div key={key} className="contents">
+                    <span className="self-center font-medium">{label}</span>
+                    <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
+                    <Input inputMode="numeric" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} />
+                  </div>
+                ))}
+              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <Checkbox checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
+                קראתי והבנתי את מנגנון העמלות
+              </label>
+            </div>
+          )}
     </>
   );
 
@@ -634,7 +698,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
           <DialogTitle>
-             {reviewMode ? 'פרטי המודעה' : step === 0 && importSlide ? 'ייבוא מודעה מיד 2' : step > 0 ? `${step} / 7 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
+             {reviewMode ? 'פרטי המודעה' : step === 0 && importSlide ? 'ייבוא מודעה מיד 2' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
         </DialogHeader>
 
@@ -646,7 +710,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
                   <AccordionTrigger className="gap-3 px-4 text-start hover:no-underline">
                     <span className="flex min-w-0 flex-1 items-center gap-3">
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i} מתוך 7`}>{i}</span>
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i} מתוך 8`}>{i}</span>
                       <span className="min-w-0 flex-1">{title}</span>
                       <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : 'חסרים פרטים'}</span>
                     </span>
