@@ -83,6 +83,20 @@ function LeadTypeHelp({ label, children }: { label: string; children: React.Reac
   );
 }
 
+/** Display Israeli mobile numbers as 05X-XXXXXXX. */
+function formatIlPhone(value: string) {
+  let digits = value.replace(/\D/g, '');
+  if (digits.startsWith('972')) digits = `0${digits.slice(3)}`;
+  digits = digits.slice(0, 10);
+  return digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits;
+}
+
+/** Store Israeli mobile numbers normalized as 9725XXXXXXXX. */
+function normalizeIlPhone(value: string) {
+  const digits = value.replace(/\D/g, '');
+  return digits.startsWith('05') ? `972${digits.slice(1)}` : digits;
+}
+
 function slugFor(userId: string) {
   return `owner-${userId.slice(0, 8)}-${Date.now().toString(36)}`;
 }
@@ -266,7 +280,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           entry_date: draftFields.entryDate || null,
           area: draftFields.area || null,
           contact_name: draftFields.contactName || null,
-          contact_whatsapp: draftFields.contactWhatsapp || null,
+          contact_whatsapp: normalizeIlPhone(draftFields.contactWhatsapp) || null,
+          contact_email: draftFields.contactEmail?.trim() || null,
         },
         media_photos: photos, image_url: photos[0] ?? null,
          status: 'live', source: draftFields.listingId ? source?.source || 'manual' : source ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
@@ -529,7 +544,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       case 4: return Boolean(f.rooms && f.condition && f.airDirections);
       case 5: return Boolean(f.price && (f.sqm || f.builtSqm));
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
-      case 7: return Boolean(f.contactName?.trim() && f.contactWhatsapp.replace(/\D/g, '').length >= 9 && f.termsAccepted);
+      case 7: return Boolean(f.contactName?.trim() && f.contactWhatsapp.replace(/\D/g, '').length >= 9);
       case 8: return Boolean(f.commissionTermsAccepted);
       default: return false;
     }
@@ -657,14 +672,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           {step === 7 && (
             <div className="space-y-3">
                <div><Label htmlFor="publisher-name">השם שלך *</Label><Input id="publisher-name" placeholder={publisherName} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
-               <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ *</Label><Input id="publisher-whatsapp" inputMode="tel" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
+                <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ *</Label><Input id="publisher-whatsapp" inputMode="tel" dir="ltr" placeholder="050-1234567" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
+                <div><Label htmlFor="publisher-email">אימייל (לא חובה)</Label><Input id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', Boolean(checked))} />
                 אני רוצה לקבל פניות ועדכונים שיווקיים
-              </label>
-              <label className="flex items-start gap-2 text-sm">
-                <Checkbox checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} />
-                  <span>אני מאשר/ת את <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">מדיניות הפרטיות</a> ומצהיר/ה שיש לי הרשאה לפרסם את הנכס והתמונות</span>
               </label>
             </div>
           )}
@@ -762,9 +774,15 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
           {reviewMode || isLast ? (
-            <Button type="button" disabled={publishing} onClick={() => void submit()} className="bg-success text-success-foreground hover:bg-success/90">
-              {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> מפרסם…</> : user ? 'פרסום הנכס' : 'הרשמה ופרסום'}
-            </Button>
+            <div className="flex items-center justify-end gap-3">
+              <label className="flex max-w-sm items-start gap-2 text-xs leading-snug">
+                <Checkbox checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} className="mt-0.5" />
+                <span>אני מאשר/ת את <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">מדיניות הפרטיות</a> ומצהיר/ה שיש לי הרשאה לפרסם את הנכס והתמונות</span>
+              </label>
+              <Button type="button" disabled={publishing} onClick={() => void submit()} className="shrink-0 bg-success text-success-foreground hover:bg-success/90">
+                {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> מפרסם…</> : user ? 'פרסום הנכס' : 'הרשמה ופרסום'}
+              </Button>
+            </div>
           ) : !reviewMode && step > 1 ? (
             <Button type="button" onClick={() => void goNext()}>לשלב הבא <ArrowLeft className="h-4 w-4" /></Button>
           ) : <span />}

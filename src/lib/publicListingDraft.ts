@@ -34,6 +34,7 @@ export type PublicListingDraftFields = {
   description: string;
   contactName: string;
   contactWhatsapp: string;
+  contactEmail: string;
   termsAccepted: boolean;
   marketingAccepted: boolean;
   commissionForm?: string;
@@ -75,6 +76,7 @@ export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
   description: '',
   contactName: '',
   contactWhatsapp: '',
+  contactEmail: '',
   termsAccepted: false,
   marketingAccepted: false,
   commissionForm: '',
