@@ -344,7 +344,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 {notJoinedGroups.map((g) => renderSimpleRow(g, (<>
                   <SelectBox checked={joinPicked.has(g.id)} label={g.name}
                     onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else n.add(g.id); return n; })} />
-                  {g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-amber-500" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
+                  {g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-primary" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
                 </>)))}
               </div>
             </>)

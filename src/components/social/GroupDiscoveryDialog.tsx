@@ -83,7 +83,7 @@ export function GroupDiscoveryDialog({
     try {
       const rows = await searchGroupsViaExtension(q);
       const seen = new Set<string>();
-      const fresh = rows.filter((g) => g?.group_id && !seen.has(g.group_id) && seen.add(g.group_id));
+      const fresh = rows.filter((g) => g?.group_id && !seen.has(g.group_id) && seen.add(g.group_id)).slice(0, 100);
       setResults(fresh);
       // Every new group found is pre-selected for automatic joining.
       const toJoin = fresh.filter((g) => !g.is_member && !knownIds?.has(g.group_id) && !blockedIds?.has(g.group_id));
@@ -108,7 +108,7 @@ export function GroupDiscoveryDialog({
   const saveGroup = async (g: DiscoveredGroup, joinStatus: 'joined' | 'pending' = 'joined') => {
     if (!workspaceOwnerId) return;
     const now = new Date().toISOString();
-    await (supabase as any).from("fb_user_groups").upsert({
+    const { error } = await (supabase as any).from("fb_user_groups").upsert({
       workspace_owner_id: workspaceOwnerId,
       group_id: `ext:${g.group_id}`,
       group_name: g.group_name,
@@ -122,6 +122,7 @@ export function GroupDiscoveryDialog({
       imported_at: now,
       updated_at: now,
     }, { onConflict: "workspace_owner_id,group_id" });
+    if (error && /group_limit_reached/.test(error.message)) toast.error("הגעת למגבלה של 100 קבוצות");
   };
 
   const joinBatch = (targets: DiscoveredGroup[]) => new Promise<number>((resolve) => {
