@@ -532,6 +532,7 @@ export default function Properties() {
   // gallery, description) and the user lands directly on the imported card.
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const pendingHistoryQuery = useRef<string | null>(null);
   const inventorySuggestions = useInventorySuggestions(q, activeWorkspaceId);
   const suggestions = inventorySuggestions.data ?? [];
   useEffect(() => { setSuggestionIndex(-1); }, [q]);
@@ -618,6 +619,12 @@ export default function Properties() {
     }
     void runSearch(raw);
    }, [q, runSearch, navigate, queryClient, activeWorkspaceId, rememberSearch]);
+
+  useEffect(() => {
+    if (pendingHistoryQuery.current !== q) return;
+    pendingHistoryQuery.current = null;
+    void submitQuery(q);
+  }, [q, submitQuery]);
 
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
@@ -925,7 +932,7 @@ export default function Properties() {
             </div>
              {suggestionsOpen && !q.trim() && searchHistory.length > 0 && (
                <div id="search-history" role="listbox" aria-label="חיפושים קודמים" className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
-                 {searchHistory.map(entry => <Button key={entry} role="option" aria-selected={false} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { setQ(entry); setSuggestionsOpen(false); void submitQuery(entry); }} className="h-auto w-full justify-start gap-2 p-2 text-right"><RefreshCw className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 truncate" dir="auto">{entry}</span></Button>)}
+                 {searchHistory.map(entry => <Button key={entry} role="option" aria-selected={false} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { pendingHistoryQuery.current = entry; setQ(entry); setSuggestionsOpen(false); }} className="h-auto w-full justify-start gap-2 p-2 text-right"><RefreshCw className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 truncate" dir="auto">{entry}</span></Button>)}
                </div>
              )}
              {suggestionsOpen && q.trim().length >= 2 && !/yad2\.co\.il|https?:\/\//i.test(q) && yad2Status?.tone !== 'busy' && (
