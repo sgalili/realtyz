@@ -1149,7 +1149,7 @@ async function rzJoinGroups(requestId, groups, senderTabId) {
         status = (r2 && r2.result) || 'requested';
       }
     } catch (e) { status = 'failed'; error = String(e && e.message || e); }
-    finally { if (tab) { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } } }
+    finally { if (tab && status !== 'needs_answers') { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } } }
     report({ groupId: g.group_id, status, error });
     // Human-like spacing between joins so the account is not flagged.
     if (i < list.length - 1) await rzWait(20000 + Math.floor(Math.random() * 20000));
