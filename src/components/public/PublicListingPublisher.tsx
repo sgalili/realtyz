@@ -310,12 +310,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       if (error || !data?.ok || !data?.data) throw new Error(data?.message || 'לא ניתן לטעון את המודעה מיד2 כרגע. אפשר להמשיך ולמלא ידנית.');
       const d = data.data as Record<string, any>;
       const types: Record<string, string> = { apartment: 'דירה', garden_apartment: 'דירת גן', penthouse: 'פנטהאוז', duplex: 'דופלקס', private_house: 'בית פרטי', cottage: 'בית פרטי', studio: 'סטודיו', commercial: 'משרד', land: 'מגרש', loft: 'דירה', other: 'דירה' };
-      const complete = Boolean(d.city && d.price && d.address);
-      setImported({ ...d, source_url: sourceUrl }); setImportSlide(false);
-      setFields(current => ({ ...current, importedListing: { ...d, source_url: sourceUrl }, city: d.city || current.city, address: d.address || current.address, street: '', houseNumber: '', neighborhood: d.neighborhood || '', price: d.price ? String(d.price) : current.price, propertyType: types[d.property_type] || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? '' : String(d.rooms), sqm: d.sqm == null ? '' : String(d.sqm), floor: d.floor == null ? '' : String(d.floor), totalFloors: d.total_floors == null ? '' : String(d.total_floors), description: d.description || '', elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
-      // Partial import: continue into the form so the missing fields can be filled manually.
-      // Land directly on the editable review screen; missing fields are completed there.
-      void complete; setStep(7);
+       setImported({ ...d, source_url: sourceUrl }); setImportSlide(false);
+       const addr = String(d.address || '').trim();
+       const m = addr.match(/^(.*?)[\s,]+(\d+[א-ת]?)\s*$/);
+       const street = m ? m[1].trim() : addr;
+       const houseNumber = m ? m[2] : '';
+       setFields(current => ({ ...current, importedListing: { ...d, source_url: sourceUrl }, city: d.city || current.city, address: addr || current.address, street: street || current.street, houseNumber: houseNumber || current.houseNumber, neighborhood: d.neighborhood || current.neighborhood, price: d.price ? String(d.price) : current.price, propertyType: types[d.property_type] || current.propertyType || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? current.rooms : String(d.rooms), sqm: d.sqm == null ? current.sqm : String(d.sqm), floor: d.floor == null ? current.floor : String(d.floor), totalFloors: d.total_floors == null ? current.totalFloors : String(d.total_floors), description: d.description || current.description, elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
+       // Keep the full wizard: start at the first step with all slides pre-filled for review.
+       setStep(1);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
     finally { setImporting(false); }
   };
