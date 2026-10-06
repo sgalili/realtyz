@@ -115,7 +115,7 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
     <div className="flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="icon" variant="ghost" className="h-8 w-8" title="ניהול המודעה שלי" aria-label="ניהול המודעה שלי">
+          <Button size="icon" variant="ghost" className="h-8 w-8 bg-transparent hover:bg-transparent" title="ניהול המודעה שלי" aria-label="ניהול המודעה שלי">
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>

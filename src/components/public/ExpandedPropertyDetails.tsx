@@ -182,8 +182,8 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode }>, { overlay }) : gallery;
 
   return (
-    <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-sm [container-type:inline-size]">
-      <header className="min-w-0 space-y-3 border-b pb-4">
+    <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-base [container-type:inline-size]">
+      <header className="min-w-0 space-y-3 pb-1">
         {onClose && (
           <div className="flex items-center justify-start">
             <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="סגירת פרטי הנכס" title="סגירה">
