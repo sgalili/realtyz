@@ -47,7 +47,7 @@ export async function processListingInquiry(admin: any, input: {
         if (validScreeningEvidence(questions, assessed, sanitizedVisitor)) {
           state.answers = assessed;
           const { error } = await admin.from('listing_inquiry_states').upsert(state, { onConflict: 'listing_id,lead_id,channel' });
-          if (!error && assessed.every((a) => a.satisfactory)) await admin.rpc('charge_lead_commission', { _listing_id: listing.id, _tier: input.channel === 'whatsapp' ? 2 : 3, _affiliate_id: input.affiliateId ?? null, _reference_id: lead.id });
+          if (error) return '';
         }
       }
     } catch { /* Fail closed: no evidence, no higher-tier charge. */ }

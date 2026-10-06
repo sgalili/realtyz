@@ -104,7 +104,7 @@ export default function PropertyContactActions({
     const callback = mode === 'phone';
     setSending(true);
     const { data, error } = await supabase.functions.invoke('public-lead-gate', {
-      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: mode, ref },
+      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: callback ? 'phone' : 'digital', ref },
     });
     setSending(false);
 
