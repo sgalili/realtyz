@@ -61,8 +61,8 @@ const STEP_TITLES = [
 
 const LEAD_TYPES = [
   { key: 'Form', label: 'פנייה בטופס' },
-  { key: 'Whatsapp', label: 'שיחה עם ריטה בווטסאפ' },
-  { key: 'Phone', label: 'שיחת טלפון' },
+  { key: 'Whatsapp', label: 'סינון בשיחת ווטסאפ' },
+  { key: 'Phone', label: 'סינון בשיחת טלפון' },
 ] as const;
 
 const LEAD_TYPE_VALIDITY = (
