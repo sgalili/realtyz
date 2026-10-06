@@ -700,7 +700,17 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <span className="text-xs text-muted-foreground">מקס׳ ביום</span>
                 {LEAD_TYPES.map(({ key, label }) => (
                   <div key={key} className="contents">
-                    <span className="self-center font-medium">{label}</span>
+                    <span className="flex items-center gap-1 self-center font-medium">
+                      {label}
+                      <LeadTypeHelp label={label}>
+                        <p>
+                          {key === 'Form' && 'איש הקשר ממלא את טופס המודעה ועונה על 3 שאלות הסינון שהגדרת; התשובות נשמרות יחד עם פרטי הפנייה.'}
+                          {key === 'Whatsapp' && 'איש הקשר פותח שיחת ווטסאפ וריטה שואלת את 3 שאלות הסינון שהגדרת; התמליל המלא של השיחה נשמר לצפייה.'}
+                          {key === 'Phone' && 'איש הקשר מתקשר למספר שבמודעה; השיחה מוקלטת ומתומללת, וכוללת את 3 שאלות הסינון שהגדרת.'}
+                        </p>
+                        {LEAD_TYPE_VALIDITY}
+                      </LeadTypeHelp>
+                    </span>
                     <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
                     <Input inputMode="numeric" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} />
                   </div>
