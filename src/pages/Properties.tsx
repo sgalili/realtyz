@@ -36,7 +36,6 @@ import { SelectModeToggle, SelectAllRow } from '@/components/ui/multi-select-con
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 import { useInventorySuggestions } from '@/hooks/useInventorySuggestions';
 import { usePropertySearchHistory } from '@/hooks/usePropertySearchHistory';
-import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -55,7 +54,6 @@ import { usePropertyNotesByListing } from '@/hooks/usePropertyNotes';
 import { searchAllSources, searchLocalListings, searchMarketPool, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { sourcePhotoCount } from '@/lib/photoCount';
-import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
 import { ensureFullPropertyImport, ensureMetadataImport } from '@/lib/propertyFullSync';
@@ -1554,7 +1552,6 @@ function neighborhoodOf(r: UnifiedResult): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-type SortCol = 'affiliate' | 'commission' | 'image' | 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'photos' | 'published' | 'publisher';
 
 /** Official Yad2 button — rendered only after the ad is verified as still live. */
 function Yad2AdButton({ url }: { url: string }) {
@@ -1587,8 +1584,6 @@ export function ResultTable({
   onEdit,
   propertyHref,
   hideDefaultActions = false,
-  affiliateSortValue,
-  commissionSortValue,
   publishedAt,
   publishedLabel = 'תאריך פרסום/עדכון',
   showPropertyNotes = true,
@@ -1626,8 +1621,6 @@ export function ResultTable({
   quickPromotion?: (r: UnifiedResult) => React.ReactNode;
 }) {
 
-  const [sortCol, setSortCol] = useState<SortCol | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { notesByListing } = usePropertyNotesByListing();
   // Publisher column only matters in partner mode: in broker mode every row
   // already belongs to the user's own workspace.
@@ -1649,73 +1642,21 @@ export function ResultTable({
   const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
   const allSelected = localIds.length > 0 && localIds.every((id) => selectedIds?.has(id));
 
-  const toggleSort = (col: SortCol) => {
-    if (sortCol === col) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortCol(col);
-      setSortDir('asc');
-    }
-  };
+  // Sorting, column reorder and hide/show are handled by the shared Table
+  // primitive (persisted per user/workspace/page). Cells that need numeric or
+  // date sorting expose it via data-sort-value on their content.
+  const sorted = results;
 
-  const sorted = useMemo(() => {
-    if (!sortCol) return results;
-    const arr = [...results];
-    const getVal = (r: UnifiedResult): string | number | null => {
-      switch (sortCol) {
-        case 'affiliate': return affiliateSortValue?.(r) ?? '';
-        case 'commission': return commissionSortValue?.(r) ?? null;
-        case 'image': return r.photos?.[0] ?? '';
-        case 'publisher': return (r.localId && publishers?.get(r.localId)?.name) || '';
-        case 'name': return formatStreetTypeTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
-        case 'neighborhood': return neighborhoodOf(r) || '';
-        case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
-        case 'apt_number': return Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || null;
-        case 'listing_type': return r.listing_type ?? '';
-        case 'price': return typeof r.price === 'number' ? r.price : null;
-        case 'city': return r.city ?? '';
-        case 'address': return stripAddressNumbers(r.address ?? '') || '';
-        case 'rooms': return typeof r.rooms === 'number' ? r.rooms : (r.rooms ? Number(r.rooms) : null);
-        case 'size_sqm': return typeof r.size_sqm === 'number' ? r.size_sqm : (r.size_sqm ? Number(r.size_sqm) : null);
-        case 'photos': return sourcePhotoCount(r, r.photos?.length ?? 0) || null;
-        case 'published': return publishedAt?.(r) ?? listingPublishedAt(r) ?? listingActivityAt(r);
-
-
-      }
-    };
-    const dir = sortDir === 'asc' ? 1 : -1;
-    arr.sort((a, b) => {
-      const av = getVal(a); const bv = getVal(b);
-      const aNull = av === null || av === undefined || av === '' || (typeof av === 'number' && Number.isNaN(av));
-      const bNull = bv === null || bv === undefined || bv === '' || (typeof bv === 'number' && Number.isNaN(bv));
-      if (aNull && bNull) return 0;
-      if (aNull) return 1;
-      if (bNull) return -1;
-      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
-      return String(av).localeCompare(String(bv), 'he') * dir;
-    });
-    return arr;
-  }, [affiliateSortValue, commissionSortValue, publishedAt, results, sortCol, sortDir]);
-
-  const HeaderCell = ({ col, label, extraClass }: { col: SortCol; label: string; extraClass?: string }) => (
-    <th
-      className={`px-2 py-2 font-semibold whitespace-nowrap cursor-pointer select-none hover:bg-muted ${extraClass ?? ''}`}
-      onClick={() => toggleSort(col)}
-    >
-      <span className="inline-flex items-center gap-1">
-        {label}
-        {sortCol === col ? (
-          <span className="text-xs opacity-70">{sortDir === 'asc' ? '▲' : '▼'}</span>
-        ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-40" />
-        )}
-      </span>
+  // Plain element factory (NOT a component): the shared Table primitive clones
+  // header cells with ref/sort/drag props, which function components swallow.
+  const headerCell = (label: string, extraClass?: string) => (
+    <th className={`px-2 py-2 font-semibold whitespace-nowrap select-none ${extraClass ?? ''}`}>
+      {label}
     </th>
   );
 
   return (
     <Card className="max-w-full w-full min-w-0">
-      <HorizontalTableScroll>
       <Table className="w-full min-w-max text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
@@ -1728,23 +1669,23 @@ export function ResultTable({
                 />
               </th>
             ) : null}
-            {showAffiliateColumn ? <HeaderCell col="affiliate" label="שותפים" /> : null}
-            {commissionCell ? <HeaderCell col="commission" label="עמלות" /> : null}
-            {showPublisherColumn ? <HeaderCell col="publisher" label="משרד מפרסם" /> : null}
-            <HeaderCell col="image" label="תמונה" extraClass="w-14" />
+            {showAffiliateColumn ? headerCell("שותפים") : null}
+            {commissionCell ? headerCell("עמלות") : null}
+            {showPublisherColumn ? headerCell("משרד מפרסם") : null}
+            {headerCell("תמונה", "w-14")}
 
-            <HeaderCell col="name" label="רחוב" />
+            {headerCell("רחוב")}
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
-            <HeaderCell col="house_number" label="בית" />
-            <HeaderCell col="apt_number" label="דירה" />
-            <HeaderCell col="neighborhood" label="שכונה" />
-            <HeaderCell col="listing_type" label="סוג" />
-            <HeaderCell col="price" label="מחיר" />
-            <HeaderCell col="city" label="עיר" />
-            <HeaderCell col="rooms" label="חדרים" />
-            <HeaderCell col="size_sqm" label='מ"ר' />
-            <HeaderCell col="photos" label="תמונות" />
-            <HeaderCell col="published" label={publishedLabel} />
+            {headerCell("בית")}
+            {headerCell("דירה")}
+            {headerCell("שכונה")}
+            {headerCell("סוג")}
+            {headerCell("מחיר")}
+            {headerCell("עיר")}
+            {headerCell("חדרים")}
+            {headerCell('מ"ר')}
+            {headerCell("תמונות")}
+            {headerCell(publishedLabel)}
             {!hideDefaultActions ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th> : null}
 
 
@@ -1843,14 +1784,14 @@ export function ResultTable({
                   })()}
 
                 </td>
-                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{houseNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums"><span data-sort-value={Number(houseNumberOf({ address: r.address, raw: r.raw })) || ''}>{houseNumberOf({ address: r.address, raw: r.raw }) || '—'}</span></td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums"><span data-sort-value={Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || ''}>{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap max-w-[10rem] truncate">{neighborhoodOf(r) || '—'}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
-                <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
+                <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}><span data-sort-value={typeof r.price === 'number' ? r.price : ''}>{r.price ? formatPrice(r.price) : '—'}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap"><span data-sort-value={r.rooms ?? ''}>{r.rooms ?? '—'}</span></td>
+                <td className="px-2 py-1.5 whitespace-nowrap"><span data-sort-value={r.size_sqm ?? ''}>{r.size_sqm ?? '—'}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap">
                   {(() => {
                     // Total images on the SOURCE ad, even before any import.
@@ -1858,6 +1799,7 @@ export function ResultTable({
                     if (!total) return <span className="text-muted-foreground">—</span>;
                     return (
                       <span
+                        data-sort-value={total}
                         className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground/80"
                         title={`${total} תמונות במודעת המקור`}
                       >
@@ -1868,7 +1810,9 @@ export function ResultTable({
                   })()}
                 </td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">
-                  {publishedAt ? (publishedAt(r) ? new Date(String(publishedAt(r))).toLocaleDateString('he-IL') : '—') : <ListingDateCell row={r} />}
+                  <span data-sort-value={publishedAt?.(r) ?? listingPublishedAt(r) ?? listingActivityAt(r) ?? ''}>
+                    {publishedAt ? (publishedAt(r) ? new Date(String(publishedAt(r))).toLocaleDateString('he-IL') : '—') : <ListingDateCell row={r} />}
+                  </span>
                 </td>
 
                 {!hideDefaultActions ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
@@ -1880,7 +1824,7 @@ export function ResultTable({
               </tr>
               {rowNotes && rowNotes.length > 0 && (
                 <tr className="border-t-0 bg-muted/20">
-                  <td className="px-2 pb-2" colSpan={13 + (showAffiliateColumn ? 1 : 0) + (commissionCell ? 1 : 0) + (selectionMode ? 1 : 0)}>
+                  <td className="px-2 pb-2" colSpan={30}>
                     <PropertyNotesBlock notes={rowNotes} />
                   </td>
                 </tr>
@@ -1891,7 +1835,6 @@ export function ResultTable({
           })}
         </tbody>
       </Table>
-      </HorizontalTableScroll>
     </Card>
   );
 }
