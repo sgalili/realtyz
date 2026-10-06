@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
+import { ChevronLeft, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
