@@ -1,4 +1,8 @@
 # Roadmap
+## Broker publication experience
+- [x] Identify brokers using active member role and current profile; signed-in skip, name/phone defaults and marketing checked verified; legal terms remain unchecked.
+- [x] Show first property image and summary in explicit confirmation; image, price, rooms, floor and area verified with local test input, then returned to editing.
+- [x] Add five-second fullscreen top-down celebration with gesture-prepared audio; isolated browser check confirmed canvas cleanup/audio closure and no errors. Real publication was not performed, and audible output depends on browser permissions.
 ## Inventory visibility and search layout
 - [x] Refresh active-workspace imported inventory, including saved partial Yad2 properties outside service cities; saved imported address verified in the signed-in table.
 - [x] Add workspace-specific search history with an initially empty field and conditional opposite-side search action; reopening history and redoing a search verified.

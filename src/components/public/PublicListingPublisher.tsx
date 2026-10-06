@@ -3,7 +3,7 @@
 // everything, sign up through /auth, and have the listing auto-published on return.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Check, Film, ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import { setPendingSignupRole } from '@/lib/signupRole';
 import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutocomplete';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { celebratePublication, preparePublicationSound } from '@/lib/publicationCelebration';
 
 const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
 const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
@@ -68,8 +69,21 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
 
 export function PublicListingPublisher({ autoResume = false, disabled = false }: { autoResume?: boolean; disabled?: boolean }) {
   const { user } = useAuth();
-  const { activeWorkspaceId, setActiveWorkspace, refresh: refreshWorkspaces } = useWorkspace();
-  const { isPropertyOwner, refetch: refetchRoles } = useUserRole();
+  const { activeWorkspaceId, activeWorkspace, setActiveWorkspace, refresh: refreshWorkspaces } = useWorkspace();
+  const { isPropertyOwner, isAgent, isSuperAdmin, refetch: refetchRoles } = useUserRole();
+  const { data: publisherProfile } = useQuery({
+    queryKey: ['publisher-profile', user?.id, activeWorkspaceId],
+    enabled: Boolean(user?.id && activeWorkspaceId),
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase.from('profiles').select('full_name, phone, broker_license_number').eq('id', user.id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const isBroker = Boolean(user && activeWorkspace && (isSuperAdmin || ['managing_broker', 'lead_agent', 'agent', 'junior_agent'].includes(activeWorkspace.role) || (activeWorkspace.is_self && (isAgent || publisherProfile?.broker_license_number))));
+  const publisherName = publisherProfile?.full_name || user?.user_metadata?.full_name || '';
+  const publisherPhone = publisherProfile?.phone || user?.phone || '';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -91,6 +105,17 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const importInFlight = useRef(false);
   const lastAutoImport = useRef('');
   const [importStage, setImportStage] = useState('');
+  const initializedPublisher = useRef('');
+  const publicationAudio = useRef<AudioContext | null>(null);
+  useEffect(() => {
+    if (!open || !isBroker) return;
+    const identity = `${user?.id}:${activeWorkspaceId}`;
+    const changedWorkspace = Boolean(initializedPublisher.current && initializedPublisher.current !== identity);
+    const first = initializedPublisher.current !== identity;
+    initializedPublisher.current = identity;
+    setFields(current => ({ ...current, publisherType: 'broker', contactName: changedWorkspace ? publisherName : current.contactName || publisherName, contactWhatsapp: changedWorkspace ? publisherPhone : current.contactWhatsapp || publisherPhone, marketingAccepted: first ? true : current.marketingAccepted }));
+    if (first && step === 0 && !reviewMode) setImportSlide(true);
+  }, [open, isBroker, user?.id, activeWorkspaceId, publisherName, publisherPhone, step, reviewMode]);
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
@@ -101,6 +126,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     () => [fields.street, fields.houseNumber].filter(Boolean).join(' ') || fields.address,
     [fields.street, fields.houseNumber, fields.address],
   );
+  // Confirmation follows the same image order that publication persists.
+  const primaryPhoto = fields.importedListing?.photos?.find((url: unknown) => typeof url === 'string' && url.startsWith('https://')) || previews.find(({ file }) => file.type.startsWith('image/'))?.url;
 
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
     if (!user?.id || publishing) return;
@@ -112,11 +139,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     try {
       setPublishStage('השלמת הרשאת מפרסם');
       // The account type follows what the poster picked: מתווך → broker, פרטי → private owner.
-      if (draftFields.publisherType === 'broker') {
+       if (draftFields.publisherType === 'broker' && !isBroker) {
         const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();
-      } else if (!isPropertyOwner) {
+       } else if (draftFields.publisherType === 'private' && !isPropertyOwner) {
         const { error } = await supabase.rpc('register_as_property_owner', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();
@@ -190,6 +217,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
        void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
       toast.success('הנכס פורסם בלוח השיתופי');
+       celebratePublication(publicationAudio.current);
+       publicationAudio.current = null;
+       initializedPublisher.current = '';
         setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0); setImportSlide(false); setImported(null); setImportUrl(''); setReviewMode(false);
       const publishedListingId = (data as { id?: string } | null)?.id;
       // Rita welcome WhatsApp for first-time posters (once per user, best-effort).
@@ -214,6 +244,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       } catch { /* workspace switch is best-effort; navigation still proceeds */ }
       navigate(draftFields.publisherType === 'private' ? '/my-ads' : '/dashboard', { replace: true, state: { publishedListingId } });
     } catch (error) {
+       void publicationAudio.current?.close().catch(() => {});
+       publicationAudio.current = null;
       const e = error as { message?: string; details?: string; hint?: string } | null;
       const message = (error instanceof Error ? error.message : [e?.message, e?.details, e?.hint].filter(Boolean).join(' · ')) || 'שגיאה לא ידועה';
       console.error('public listing publish failed', error);
@@ -289,6 +321,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     }
     if (!fields.termsAccepted) { toast.error('יש לאשר את התקנון'); return; }
     if (!confirming) { setConfirming(true); return; }
+    if (user) publicationAudio.current = preparePublicationSound();
     try {
       await savePublicListingDraft(fields, files, videos);
       if (!user) { setPendingSignupRole('property_owner'); navigate('/auth'); return; }
@@ -346,9 +379,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       const houseNumber = m ? m[2] : '';
       const str = (v: unknown) => (v == null || v === '' ? '' : String(v));
       const next: PublicListingDraftFields = { ...fields, importedListing: { ...src, source_url: sourceUrl }, city: src.city || fields.city, address: addr || fields.address, street: street || fields.street, houseNumber: houseNumber || fields.houseNumber, neighborhood: src.neighborhood || fields.neighborhood, price: str(src.price) || fields.price, propertyType: types[src.property_type] || src.property_type || fields.propertyType || '', dealType: src.listing_type === 'rent' ? 'rent' : 'sale', rooms: str(src.rooms) || fields.rooms, sqm: str(src.sqm) || fields.sqm, floor: str(src.floor) || fields.floor, totalFloors: str(src.total_floors) || fields.totalFloors, description: src.description || fields.description, elevator: Boolean(src.elevator), parking: Number(src.parking) > 0, contactWhatsapp: str(src.owner_phone) || fields.contactWhatsapp, contactName: str(src.owner_name) || fields.contactName || user.user_metadata?.full_name || '' };
+      if (isBroker) { next.publisherType = 'broker'; next.contactName = fields.contactName || publisherName; next.contactWhatsapp = fields.contactWhatsapp || publisherPhone; }
       setFields(next);
       setStep(0);
-      setReviewMode(true); setExpandedStep('step-0');
+      setReviewMode(true); setExpandedStep(isBroker ? 'step-1' : 'step-0');
       try { await savePublicListingDraft(next, files, videos); } catch { /* best effort */ }
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
     finally { importInFlight.current = false; setImporting(false); }
@@ -506,8 +540,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
 
           {step === 7 && (
             <div className="space-y-3">
-              <div><Label>השם שלך *</Label><Input value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
-              <div><Label>מספר ווטסאפ *</Label><Input inputMode="tel" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
+               <div><Label htmlFor="publisher-name">השם שלך *</Label><Input id="publisher-name" placeholder={publisherName} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
+               <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ *</Label><Input id="publisher-whatsapp" inputMode="tel" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', Boolean(checked))} />
                 אני רוצה לקבל פניות ועדכונים שיווקיים
@@ -529,7 +563,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
           <DialogTitle>
-            {reviewMode ? 'פרטי המודעה' : STEP_TITLES[step]}
+             {reviewMode ? 'פרטי המודעה' : step === 0 && importSlide ? 'ייבוא מודעה מיד 2' : STEP_TITLES[step]}
           </DialogTitle>
         </DialogHeader>
 
@@ -538,7 +572,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
-              {STEP_TITLES.map((title, i) => (
+               {STEP_TITLES.map((title, i) => isBroker && i === 0 ? null : (
                 <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
                   <AccordionTrigger className="gap-3 px-4 text-start hover:no-underline">
                     <span className="flex min-w-0 flex-1 items-center gap-3">
@@ -555,7 +589,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-2">
-           {!reviewMode && (step > 0 || importSlide) ? <Button type="button" variant="outline" onClick={() => { if (step === 0) setImportSlide(false); else setStep((current) => Math.max(0, current - 1)); }}>
+            {!reviewMode && (step > 0 || (importSlide && !isBroker)) ? <Button type="button" variant="outline" onClick={() => { if (step === 0) setImportSlide(false); else { setStep((current) => Math.max(0, current - 1)); if (isBroker && step === 1) setImportSlide(true); } }}>
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
           {reviewMode || isLast ? (
@@ -567,7 +601,21 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           ) : <span />}
         </div>
       </DialogContent>
-      <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="sm:max-w-lg"><DialogHeader><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader><div className="space-y-3">{previews[0] && <img src={previews[0].url} alt="תצוגת הנכס" className="aspect-video w-full rounded-md object-cover" />}<p className="text-lg font-bold">{fields.propertyType} · {[fields.street, fields.houseNumber, fields.city].filter(Boolean).join(' ')}</p><p className="font-bold text-primary">₪{Number(fields.price || 0).toLocaleString('he-IL')}</p><p className="text-sm text-muted-foreground">{[fields.rooms && `${fields.rooms} חדרים`, (fields.sqm || fields.builtSqm) && `${fields.sqm || fields.builtSqm} מ״ר`, fields.floor && `קומה ${fields.floor}`].filter(Boolean).join(' · ')}</p></div><div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div></DialogContent></Dialog>
+      <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          {primaryPhoto && <img src={primaryPhoto} alt="תמונת הנכס הראשית" className="aspect-video w-full rounded-md object-cover" />}
+          <p className="text-xs font-semibold text-muted-foreground">{fields.dealType === 'rent' ? 'להשכרה' : 'למכירה'} · {fields.propertyType}</p>
+          <p className="break-words text-lg font-bold">{[addressLine, fields.city].filter(Boolean).join(', ')}</p>
+          {fields.neighborhood && <p className="text-sm text-muted-foreground">{fields.neighborhood}</p>}
+          <p className="text-2xl font-bold text-primary">₪{Number(fields.price || 0).toLocaleString('he-IL')}</p>
+          <dl className="grid grid-cols-3 gap-2 border-y border-border py-3 text-center text-sm">
+            {fields.rooms && <div><dt className="text-xs text-muted-foreground">חדרים</dt><dd className="mt-1 font-semibold">{fields.rooms}</dd></div>}
+            {fields.floor && <div><dt className="text-xs text-muted-foreground">קומה</dt><dd className="mt-1 font-semibold">{fields.floor}{fields.totalFloors ? ` מתוך ${fields.totalFloors}` : ''}</dd></div>}
+            {(fields.sqm || fields.builtSqm) && <div><dt className="text-xs text-muted-foreground">שטח</dt><dd className="mt-1 font-semibold">{fields.sqm || fields.builtSqm} מ״ר</dd></div>}
+          </dl>
+        </div>
+        <div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div>
+      </DialogContent></Dialog>
     </Dialog>
   );
 }
