@@ -349,13 +349,30 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
-            {scrollIndicator.width < 99.5 && <div aria-hidden="true" className="mb-2 h-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} /></div>}
             <div ref={tableWrapRef} className="w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     {columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
                     <th className="w-10 p-2"><BoardColumnMenu controls={columns} /></th>
+                  </tr>
+                  <tr>
+                    <td colSpan={columns.visible.length + 1} className="p-0">
+                      <div className="sticky start-0 px-3 pb-2 pt-1" style={wrapWidth ? { width: wrapWidth } : undefined}>
+                        {scrollIndicator.width < 99.5 && (
+                          <div
+                            className="relative h-2 cursor-grab touch-none select-none active:cursor-grabbing"
+                            onPointerDown={onBarPointerDown}
+                            onPointerMove={onBarPointerMove}
+                            onPointerUp={onBarPointerUp}
+                            onPointerCancel={onBarPointerUp}
+                          >
+                            <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted-foreground/15" />
+                            <div data-thumb className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 </thead>
                 <tbody>
