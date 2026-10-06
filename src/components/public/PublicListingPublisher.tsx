@@ -1,3 +1,4 @@
+import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
 import { PriceInput } from "@/components/ui/price-input";
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
@@ -570,7 +571,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           )}
           {step === 0 && importSlide && (
             <div className="space-y-4">
-              <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (אופציונלי)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} placeholder="https://www.yad2.co.il/realestate/item/..." className="placeholder:text-muted-foreground/70" /><Button type="button" disabled={importing || !importUrl.trim()} onClick={() => { lastAutoImport.current = importUrl.trim(); void importYad2(); }}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ייבוא מודעה'}</Button></div></div>
+              <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (לא חובה)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} /></div></div>
+              {isBroker && <MyPropertiesPicker />}
               {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
               <Button type="button" variant="outline" className="w-full" onClick={() => { setPublishError(''); setImportSlide(false); setStep(1); setReviewMode(true); setExpandedStep('step-1'); }}>המשך ללא ייבוא <ArrowLeft className="h-4 w-4" /></Button>
             </div>
