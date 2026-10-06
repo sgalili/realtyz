@@ -17,7 +17,16 @@ export function celebratePublication(audio: AudioContext | null): void {
   document.body.appendChild(canvas);
   const burst = confetti.create(canvas, { resize: true });
   const tokens = getComputedStyle(document.documentElement);
-  const colors = ['--primary', '--success', '--sale', '--background'].map(token => `hsl(${tokens.getPropertyValue(token).trim()})`);
+  const sample = document.createElement('canvas');
+  sample.width = 1; sample.height = 1;
+  const sampler = sample.getContext('2d');
+  const colors = ['--primary', '--success', '--sale', '--background'].flatMap(token => {
+    if (!sampler) return [];
+    sampler.fillStyle = `hsl(${tokens.getPropertyValue(token).trim()})`;
+    sampler.fillRect(0, 0, 1, 1);
+    const rgb = sampler.getImageData(0, 0, 1, 1).data;
+    return [`#${Array.from(rgb).slice(0, 3).map(value => value.toString(16).padStart(2, '0')).join('')}`];
+  });
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const started = performance.now();
   let frame = 0;
