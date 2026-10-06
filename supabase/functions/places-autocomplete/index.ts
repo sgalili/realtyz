@@ -2,7 +2,6 @@
 // Public listing visitors can search before authentication. A valid project bearer
 // token is still required, and all Google calls go through the connector gateway.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/google_maps';
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY') ?? '';
@@ -30,16 +29,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization') ?? '';
-    const token = authHeader.replace('Bearer ', '').trim();
-    if (!token) return json({ error: 'unauthorized' }, 401);
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-    if (token !== anonKey) {
-      const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', anonKey);
-      const { data: userData, error: userError } = await supabase.auth.getUser(token);
-      if (userError || !userData?.user) return json({ error: 'unauthorized' }, 401);
-    }
-
+    // Public endpoint (pre-signup visitors). Stale/expired sessions on some devices
+    // previously caused 401s, so no user token is required here.
     if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY) return json({ error: 'maps_not_configured' }, 503);
 
     const body = await req.json().catch(() => ({}));

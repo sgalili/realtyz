@@ -33,9 +33,15 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
     const requestId = ++latest.current;
     const timer = setTimeout(async () => {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke('places-autocomplete', {
+      let { data, error } = await supabase.functions.invoke('places-autocomplete', {
         body: { action: 'autocomplete', input: query, sessionToken: sessionToken.current },
       });
+      if (error) {
+        // one retry for flaky mobile networks
+        ({ data, error } = await supabase.functions.invoke('places-autocomplete', {
+          body: { action: 'autocomplete', input: query, sessionToken: sessionToken.current },
+        }));
+      }
       if (requestId !== latest.current) return;
       setLoading(false);
       if (error || (data as { error?: string } | null)?.error) {

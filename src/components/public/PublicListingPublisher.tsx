@@ -72,6 +72,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
+  const [importSlide, setImportSlide] = useState(false);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
   const [files, setFiles] = useState<File[]>([]);
   const [videos, setVideos] = useState<File[]>([]);
@@ -177,7 +178,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
        void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
       toast.success('הנכס פורסם בלוח השיתופי');
-        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0); setImported(null); setImportUrl('');
+        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0); setImportSlide(false); setImported(null); setImportUrl('');
        navigate('/public-listings', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
     } catch (error) {
       const e = error as { message?: string; details?: string; hint?: string } | null;
@@ -221,6 +222,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     const nextFields = { ...fields, [key]: value };
     setFields(nextFields);
     try { await savePublicListingDraft(nextFields, files, videos); } catch { /* best effort */ }
+    if (key === 'publisherType') { setImportSlide(true); return; }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
   };
 
@@ -270,15 +272,15 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     if (!user) { navigate('/auth'); return; }
     let url: URL;
     try { url = new URL(importUrl.trim()); } catch { setPublishError('יש להדביק קישור תקין למודעה ביד2'); return; }
-    if (url.protocol !== 'https:' || !['yad2.co.il', 'www.yad2.co.il'].includes(url.hostname) || !/^\/realestate\/item\/[a-z0-9]+\/?$/i.test(url.pathname)) { setPublishError('יש להדביק קישור למודעת נדל״ן פעילה ביד2'); return; }
+    if (url.protocol !== 'https:' || !['yad2.co.il', 'www.yad2.co.il'].includes(url.hostname) || !/^\/realestate\/item\/(?:[a-z0-9-]+\/)?[a-z0-9]+\/?$/i.test(url.pathname)) { setPublishError('יש להדביק קישור למודעת נדל״ן פעילה ביד2'); return; }
     setImporting(true); setPublishError('');
     try {
-      const { data, error } = await supabase.functions.invoke('parse-listing-text', { body: { text: url.toString() } });
+      const { data, error } = await supabase.functions.invoke('parse-listing-text', { body: { text: `${url.origin}${url.pathname}` } });
       if (error || !data?.ok || !data?.data) throw new Error(data?.message || 'לא ניתן לטעון את המודעה מיד2 כרגע');
       const d = data.data as Record<string, any>;
       if (!d.city || !d.price || !d.address) throw new Error('במודעה חסרים עיר, כתובת או מחיר. ניתן להשלים אותם בפרסום ידני.');
       const types: Record<string, string> = { apartment: 'דירה', garden_apartment: 'דירת גן', penthouse: 'פנטהאוז', duplex: 'דופלקס', private_house: 'בית פרטי', cottage: 'בית פרטי', studio: 'סטודיו', commercial: 'משרד', land: 'מגרש', loft: 'דירה', other: 'דירה' };
-      setImported({ ...d, source_url: url.toString() });
+      setImported({ ...d, source_url: `${url.origin}${url.pathname}` }); setImportSlide(false);
       setFields(current => ({ ...current, importedListing: { ...d, source_url: url.toString() }, city: d.city, address: d.address, street: '', houseNumber: '', neighborhood: d.neighborhood || '', price: String(d.price), propertyType: types[d.property_type] || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? '' : String(d.rooms), sqm: d.sqm == null ? '' : String(d.sqm), floor: d.floor == null ? '' : String(d.floor), totalFloors: d.total_floors == null ? '' : String(d.total_floors), description: d.description || '', elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
       setStep(7);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
@@ -300,13 +302,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
 
         <div className="space-y-4">
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
-          {step === 0 && (
-            <div className="space-y-4">
-              <div className="space-y-2"><Label htmlFor="yad2-import-url">קישור למודעה ביד2</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/item/..." /><Button type="button" disabled={importing || !importUrl.trim()} onClick={() => void importYad2()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ייבוא מודעה'}</Button></div></div>
+          {step === 0 && !importSlide && (
             <div className="grid grid-cols-2 gap-2">
-               <Button type="button" variant="outline" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
-               <Button type="button" variant="outline" onClick={() => void pickAndAdvance('publisherType', 'private')}>פרטי</Button>
+              <Button type="button" variant="outline" className="h-auto p-6 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
+              <Button type="button" variant="outline" className="h-auto p-6 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>פרטי</Button>
             </div>
+          )}
+          {step === 0 && importSlide && (
+            <div className="space-y-4">
+              <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (אופציונלי)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/item/..." /><Button type="button" disabled={importing || !importUrl.trim()} onClick={() => void importYad2()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ייבוא מודעה'}</Button></div></div>
+              <Button type="button" variant="outline" className="w-full" onClick={() => { setPublishError(''); setImportSlide(false); setStep(1); }}>המשך ללא ייבוא <ArrowLeft className="h-4 w-4" /></Button>
             </div>
           )}
 
@@ -431,7 +436,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-2">
-           {step > 0 ? <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(0, current - 1))}>
+           {step > 0 || importSlide ? <Button type="button" variant="outline" onClick={() => { if (step === 0) setImportSlide(false); else setStep((current) => Math.max(0, current - 1)); }}>
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
           {isLast ? (
