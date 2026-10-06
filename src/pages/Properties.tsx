@@ -1626,8 +1626,6 @@ export function ResultTable({
   quickPromotion?: (r: UnifiedResult) => React.ReactNode;
 }) {
 
-  const [sortCol, setSortCol] = useState<SortCol | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { notesByListing } = usePropertyNotesByListing();
   // Publisher column only matters in partner mode: in broker mode every row
   // already belongs to the user's own workspace.
@@ -1649,73 +1647,19 @@ export function ResultTable({
   const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
   const allSelected = localIds.length > 0 && localIds.every((id) => selectedIds?.has(id));
 
-  const toggleSort = (col: SortCol) => {
-    if (sortCol === col) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortCol(col);
-      setSortDir('asc');
-    }
-  };
+  // Sorting, column reorder and hide/show are handled by the shared Table
+  // primitive (persisted per user/workspace/page). Cells that need numeric or
+  // date sorting expose it via data-sort-value on their content.
+  const sorted = results;
 
-  const sorted = useMemo(() => {
-    if (!sortCol) return results;
-    const arr = [...results];
-    const getVal = (r: UnifiedResult): string | number | null => {
-      switch (sortCol) {
-        case 'affiliate': return affiliateSortValue?.(r) ?? '';
-        case 'commission': return commissionSortValue?.(r) ?? null;
-        case 'image': return r.photos?.[0] ?? '';
-        case 'publisher': return (r.localId && publishers?.get(r.localId)?.name) || '';
-        case 'name': return formatStreetTypeTitle({ address: r.address, city: r.city, neighborhood: r.neighborhood, property_type: r.property_type, title: r.title, raw: r.raw }) || '';
-        case 'neighborhood': return neighborhoodOf(r) || '';
-        case 'house_number': return Number(houseNumberOf({ address: r.address, raw: r.raw })) || null;
-        case 'apt_number': return Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || null;
-        case 'listing_type': return r.listing_type ?? '';
-        case 'price': return typeof r.price === 'number' ? r.price : null;
-        case 'city': return r.city ?? '';
-        case 'address': return stripAddressNumbers(r.address ?? '') || '';
-        case 'rooms': return typeof r.rooms === 'number' ? r.rooms : (r.rooms ? Number(r.rooms) : null);
-        case 'size_sqm': return typeof r.size_sqm === 'number' ? r.size_sqm : (r.size_sqm ? Number(r.size_sqm) : null);
-        case 'photos': return sourcePhotoCount(r, r.photos?.length ?? 0) || null;
-        case 'published': return publishedAt?.(r) ?? listingPublishedAt(r) ?? listingActivityAt(r);
-
-
-      }
-    };
-    const dir = sortDir === 'asc' ? 1 : -1;
-    arr.sort((a, b) => {
-      const av = getVal(a); const bv = getVal(b);
-      const aNull = av === null || av === undefined || av === '' || (typeof av === 'number' && Number.isNaN(av));
-      const bNull = bv === null || bv === undefined || bv === '' || (typeof bv === 'number' && Number.isNaN(bv));
-      if (aNull && bNull) return 0;
-      if (aNull) return 1;
-      if (bNull) return -1;
-      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
-      return String(av).localeCompare(String(bv), 'he') * dir;
-    });
-    return arr;
-  }, [affiliateSortValue, commissionSortValue, publishedAt, results, sortCol, sortDir]);
-
-  const HeaderCell = ({ col, label, extraClass }: { col: SortCol; label: string; extraClass?: string }) => (
-    <th
-      className={`px-2 py-2 font-semibold whitespace-nowrap cursor-pointer select-none hover:bg-muted ${extraClass ?? ''}`}
-      onClick={() => toggleSort(col)}
-    >
-      <span className="inline-flex items-center gap-1">
-        {label}
-        {sortCol === col ? (
-          <span className="text-xs opacity-70">{sortDir === 'asc' ? '▲' : '▼'}</span>
-        ) : (
-          <ArrowUpDown className="h-3 w-3 opacity-40" />
-        )}
-      </span>
+  const HeaderCell = ({ label, extraClass }: { label: string; extraClass?: string }) => (
+    <th className={`px-2 py-2 font-semibold whitespace-nowrap select-none ${extraClass ?? ''}`}>
+      {label}
     </th>
   );
 
   return (
     <Card className="max-w-full w-full min-w-0">
-      <HorizontalTableScroll>
       <Table className="w-full min-w-max text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
