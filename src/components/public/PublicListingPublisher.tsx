@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Check, Film, ImagePlus, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Film, ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -639,16 +639,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         </DialogHeader>
 
         <div className="space-y-4">
-          {reviewMode && importStage && <p role="status" className="text-sm text-muted-foreground">{importStage}</p>}
-          {reviewMode && imported && (
-            <label className={`flex items-center gap-3 rounded-lg border p-3 text-sm font-bold ${myPropsSave === 'saved' ? 'border-primary/40 bg-primary/10' : 'border-border bg-muted/40'}`}>
-              <Checkbox checked={myPropsSave === 'saved'} disabled={myPropsSave === 'saving' || myPropsSave === 'saved'} onCheckedChange={(v) => { if (v) void saveToMyProperties(imported); }} aria-label="שמור נכס זה לנכסים שלי" />
-              <span className="flex-1">שמור נכס זה לנכסים שלי</span>
-              <span role="status" aria-live="polite" className="text-xs font-normal text-muted-foreground">
-                {myPropsSave === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : myPropsSave === 'saved' ? <span className="inline-flex items-center gap-1 text-primary"><Check className="h-4 w-4" />נשמר</span> : myPropsSave === 'error' ? 'השמירה נכשלה, סמן לניסיון חוזר' : ''}
-              </span>
-            </label>
-          )}
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
