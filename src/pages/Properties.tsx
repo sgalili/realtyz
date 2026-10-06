@@ -35,6 +35,7 @@ import { SelectModeToggle, SelectAllRow } from '@/components/ui/multi-select-con
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 import { useInventorySuggestions } from '@/hooks/useInventorySuggestions';
 import { usePropertySearchHistory } from '@/hooks/usePropertySearchHistory';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -338,7 +339,8 @@ export default function Properties() {
   useEffect(() => { searchTokenRef.current++; setSearching(false); setSearchProgress(null); setCompletedResults(null); }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, activeSources]);
   useEffect(() => () => { searchTokenRef.current++; }, []);
 
-  const runSearch = useCallback(async () => {
+  const runSearch = useCallback(async (override?: string) => {
+    const query = typeof override === 'string' ? override : q;
     const token = ++searchTokenRef.current;
     instantTokenRef.current++;
     setCompletedResults(null);
@@ -350,7 +352,7 @@ export default function Properties() {
       // Parse the free-text query into structured hints so external gateways
       // (Yad2, Homely, Webtiv) receive real filters instead of raw prose.
       const { parseSearchQuery, matchesAmenities } = await import('@/lib/parseSearchQuery');
-      const parsed = parseSearchQuery(q);
+      const parsed = parseSearchQuery(query);
       const explicitCity = city && city !== 'כל הערים' && city !== '__my_zones__' ? city : null;
       const effectiveCity = explicitCity ?? parsed.city;
       const effectiveRooms = rooms !== 'any' ? Number(rooms) : parsed.rooms;
@@ -362,7 +364,8 @@ export default function Properties() {
       const wantedAmenities = parsed.amenities;
 
       const filters: SearchFilters = {
-        q: (parsed.keywords || q.trim()) || undefined,
+        workspace_owner_id: activeWorkspaceId ?? undefined,
+        q: (parsed.keywords || query.trim()) || undefined,
         sources: activeSources,
         city: effectiveCity ?? undefined,
         neighborhood: parsed.neighborhood ?? undefined,
@@ -468,7 +471,7 @@ export default function Properties() {
         setSearchProgress(null);
       }
     }
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, activeSources, homelyConnected]);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, activeSources, homelyConnected, activeWorkspaceId]);
 
   // Warm the textual content of the first visible rows in the background, so
   // opening a property card renders its full text instantly instead of
@@ -613,7 +616,7 @@ export default function Properties() {
       setAddOpen(true);
       return;
     }
-    runSearch();
+    void runSearch(raw);
    }, [q, runSearch, navigate, queryClient, activeWorkspaceId, rememberSearch]);
 
   // Local rows navigate immediately. Starting a full source scrape here used
@@ -1690,10 +1693,7 @@ export function ResultTable({
 
   return (
     <Card className="max-w-full w-full min-w-0">
-      <div
-        className="w-full max-w-full overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]"
-        dir="rtl"
-      >
+      <HorizontalTableScroll>
       <table className="w-full min-w-max text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
@@ -1869,7 +1869,7 @@ export function ResultTable({
           })}
         </tbody>
       </table>
-      </div>
+      </HorizontalTableScroll>
     </Card>
   );
 }
