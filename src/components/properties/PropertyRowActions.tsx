@@ -60,11 +60,16 @@ export function PropertyRowActions({
           <Trash2 className="h-4 w-4" />
         </Button>
       ) : null}
-      {hideAffiliate ? null : onAffiliate ? (
-        <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => onAffiliate(r)}>
-          <Handshake className="h-4 w-4" />
-        </Button>
-      ) : null}
+      {hideAffiliate ? null : onAffiliate ? (() => {
+        const raw = (r as any).raw ?? {};
+        const active = !!raw.affiliate_enabled && Number(raw.affiliate_reward_amount ?? 0) > 0;
+        return (
+          <Button size="icon" variant="ghost" title={active ? 'שיווק שותפים פעיל' : 'הגדר שיווק שותפים'} aria-label={active ? 'שיווק שותפים פעיל' : 'הגדר שיווק שותפים'} onClick={() => onAffiliate(r)}
+            className={`h-8 w-8 ${active ? 'bg-success/15 text-success hover:bg-success/25 hover:text-success' : ''}`}>
+            <Handshake className="h-4 w-4" />
+          </Button>
+        );
+      })() : null}
     </div>
   );
 }
