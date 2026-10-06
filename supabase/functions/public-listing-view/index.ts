@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
         broker_name: name ?? (broker ? "מתווך" : "בעל הנכס"),
         office_name: office ?? (broker ? "משרד תיווך" : "מפרסם פרטי"),
         broker_license_number: licence,
-        agency_logo_url: null,
+        agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url),
       };
     };
     for (const row of [listing, ...(workspaceRows ?? [])]) (row as any).__attr = attributionFor(row as any);
