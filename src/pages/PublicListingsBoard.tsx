@@ -73,6 +73,20 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>([]);
+  // Listings the signed-in poster owns (marked with the "שלי" badge on the card image).
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!user?.id) { setOwnedIds(new Set()); return; }
+    let cancelled = false;
+    supabase.rpc('get_my_ads_stats').then(({ data }) => {
+      if (cancelled) return;
+      const ids = ((data ?? []) as Array<{ relation?: string; listing_id?: string }>)
+        .filter((r) => r.relation === 'owned' && r.listing_id)
+        .map((r) => r.listing_id as string);
+      setOwnedIds(new Set(ids));
+    }).catch(() => { if (!cancelled) setOwnedIds(new Set()); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [deals, setDeals] = useState({ sale: true, rent: true });
