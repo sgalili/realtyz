@@ -72,7 +72,8 @@ Deno.serve(async (req) => {
     if (Number.isFinite(duration) && duration > 0) patch.duration_seconds = Math.round(duration);
     if (type === "end-of-call-report") patch.ended_at = new Date().toISOString();
 
-    await admin.from("call_records").update(patch).eq("id", existing.id);
+    const { error: saveError } = await admin.from("call_records").update(patch).eq("id", existing.id);
+    if (saveError) return ok({ received: true, skipped: 'transcript_not_saved' });
     if (type === 'end-of-call-report' && !failed && existing.lead_id && existing.metadata?.listing_id && Array.isArray(transcript)) {
       const { data: lead } = await admin.from('leads').select('workspace_owner_id').eq('id', existing.lead_id).maybeSingle();
       const history = transcript.filter((turn: any) => ['user', 'assistant', 'bot'].includes(turn.role)).map((turn: any) => ({ role: turn.role === 'bot' ? 'assistant' : turn.role, content: String(turn.message ?? turn.content ?? '') }));

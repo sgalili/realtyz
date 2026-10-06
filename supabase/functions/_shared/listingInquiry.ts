@@ -27,6 +27,7 @@ export async function processListingInquiry(admin: any, input: {
   const state = { listing_id: listing.id, lead_id: lead.id, workspace_owner_id: input.ownerId, channel: input.channel, verified_name: name, questions, answers: prior?.questions && JSON.stringify(prior.questions) === JSON.stringify(questions) ? prior.answers : [], evidence_source: input.channel === 'phone' ? 'verified_provider_transcript' : 'stored_inbound_messages' };
   const { error: saveError } = await admin.from('listing_inquiry_states').upsert(state, { onConflict: 'listing_id,lead_id,channel' });
   if (saveError) return '';
+  await admin.from('leads').update({ full_name: name }).eq('id', lead.id).eq('workspace_owner_id', input.ownerId);
   await admin.rpc('charge_lead_commission', { _listing_id: listing.id, _tier: 1, _affiliate_id: input.affiliateId ?? null, _reference_id: lead.id });
   const key = Deno.env.get('LOVABLE_API_KEY');
   if (key && questions.length >= 3 && !(state.answers?.length === questions.length && state.answers.every((a: any) => a.satisfactory === true))) {
