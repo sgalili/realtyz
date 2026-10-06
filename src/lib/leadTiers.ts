@@ -45,7 +45,7 @@ export function deriveContactOptions(input: {
 }): LeadContactOptions {
   const hasTier2 = input.tier2 > 0;
   return {
-    digital: input.tier1 > 0 && !hasTier2,
+    digital: input.tier1 > 0,
     whatsapp: hasTier2,
     phone: input.tier3 > 0,
     questions: input.questions.filter((q) => q.trim()),

@@ -47,19 +47,19 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite }: { pho
           ))}
         </div>
         {onFavorite && (
-          <Button type="button" size="icon" variant="secondary" onClick={onFavorite} aria-label="שמירה במועדפים" className="absolute left-3 top-3 h-9 w-9 rounded-full bg-background/90 text-destructive shadow">
+          <Button type="button" size="icon" variant="secondary" onClick={onFavorite} aria-label="שמירה במועדפים" className="absolute left-3 top-3 h-9 w-9 rounded-full bg-background/50 text-destructive shadow hover:bg-background/50">
             <Heart className="h-5 w-5" />
           </Button>
         )}
         {photos.length > 1 && (
           <>
-            <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={() => goTo(index - 1)} className="absolute right-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/90 shadow-md">
+            <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={() => goTo(index - 1)} className="absolute right-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/50 shadow-md hover:bg-background/50">
               <ChevronRight className="h-5 w-5" />
             </Button>
-            <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="absolute left-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/90 shadow-md">
+            <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="absolute left-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/50 shadow-md hover:bg-background/50">
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <span className="absolute bottom-3 right-3 rounded-full bg-background/90 px-2.5 py-1 text-xs font-bold tabular-nums text-foreground shadow">{index + 1}/{photos.length}</span>
+            <span className="absolute bottom-3 right-3 rounded-full bg-background/50 px-2.5 py-1 text-xs font-bold tabular-nums text-foreground shadow">{index + 1}/{photos.length}</span>
           </>
         )}
       </div>
