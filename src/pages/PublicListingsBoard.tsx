@@ -327,7 +327,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     const open = expandedId === card.id;
                     const toggle = () => setExpandedId(open ? null : card.id);
                     return [
-                      <tr key={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <tr key={card.id} id={`row-${card.id}`} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'font-semibold text-foreground', id === 'price' && 'whitespace-nowrap font-bold', id === 'floor' && 'whitespace-nowrap')}>
                           {id === 'photo' ? (
                           <div className="relative h-10 w-10">
@@ -356,7 +356,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                               {open && <PropertyGallerySlider photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} />}
                             </div>
                             <div className="min-w-0 space-y-3">
-                              <ExpandedPropertyDetails idOrSlug={card.slug || card.id} />
+                              <ExpandedPropertyDetails idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} onClose={() => { setExpandedId(null); requestAnimationFrame(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }} />
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact shareUrl={publicUrl(propertyPath)} showShare />
                             </div>
                           </div>
