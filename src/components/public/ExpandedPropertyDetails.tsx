@@ -110,7 +110,7 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
     payments && { icon: Banknote, label: 'תשלומים', value: String(payments) },
     hebrew(a.propertyCondition) && { icon: BadgeCheck, label: 'מצב הנכס', value: hebrew(a.propertyCondition) },
     num(a.shelterDistance) && { icon: ShieldCheck, label: 'מרחק למקלט', value: `${num(a.shelterDistance)} מ׳` },
-  ].filter((s) => s && (s as Spec).value) as Spec[]);
+  ].filter((s) => s && (s as Spec).value && !['חדרים', 'שטח כולל', 'קומה'].includes((s as Spec).label)) as Spec[]);
 
   const amenities = AMENITIES.filter(([key]) => a[key] === true).map(([, label, icon]) => ({ label, icon }));
   const features = asObj(raw.features);
