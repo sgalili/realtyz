@@ -182,8 +182,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       if (draft) {
         setFields(draft); setFiles(draft.files ?? []); setVideos(draft.videos ?? []);
         setImportUrl(draft.importUrl ?? ''); setPublishError(draft.publicationError || '');
-        setStep(draft.wizardStep ?? draft.resumeStep ?? 0); setReviewMode(Boolean(draft.reviewMode)); setImportSlide(Boolean(draft.importSlide));
-        setExpandedStep(draft.expandedStep || `step-${draft.resumeStep || 0}`);
+        const started = Boolean(draft.reviewMode || (draft.wizardStep ?? draft.resumeStep ?? 0) > 0 || draft.dealType || draft.city || draft.importedListing);
+        setStep(started ? 1 : 0); setReviewMode(started); setImportSlide(!started && Boolean(draft.importSlide));
+        setExpandedStep('');
         if (draft.importedListing) setImported(draft.importedListing);
       }
       restoredScope.current = draftScope;
@@ -595,7 +596,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (לא חובה)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} /></div></div>
               {isBroker && <MyPropertiesPicker />}
               {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
-              <Button type="button" variant="outline" className="w-full" onClick={() => { setPublishError(''); setImportSlide(false); setStep(1); setReviewMode(true); setExpandedStep('step-1'); }}>המשך ללא ייבוא <ArrowLeft className="h-4 w-4" /></Button>
+              <Button type="button" variant="outline" className="w-full" onClick={() => { setPublishError(''); setImportSlide(false); setStep(1); setReviewMode(true); setExpandedStep(''); }}>המשך ללא ייבוא <ArrowLeft className="h-4 w-4" /></Button>
             </div>
           )}
 
@@ -637,8 +638,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 })); }}
               />
               {addressResolved && <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)] gap-2">
-                <div className="min-w-0"><Label htmlFor="wizard-city">עיר *</Label><Input id="wizard-city" className="min-w-0 px-2 text-base" value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
-                <div className="min-w-0"><Label htmlFor="wizard-street">רחוב *</Label><Input id="wizard-street" className="min-w-0 px-2 text-base" value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
+                <div className="min-w-0"><Label htmlFor="wizard-city">עיר<span className="text-destructive"> *</span></Label><Input id="wizard-city" className="min-w-0 px-2 text-base" value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
+                <div className="min-w-0"><Label htmlFor="wizard-street">רחוב<span className="text-destructive"> *</span></Label><Input id="wizard-street" className="min-w-0 px-2 text-base" value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
                 <div className="min-w-0"><Label htmlFor="wizard-house">מספר בית</Label><Input id="wizard-house" className="min-w-0 px-2 text-base" inputMode="text" value={fields.houseNumber} onChange={(e) => set('houseNumber', e.target.value)} /></div>
               </div>}
               {addressResolved && <div className="grid grid-cols-2 gap-3">
@@ -646,8 +647,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 {fields.area && <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
               </div>}
               <div className="grid grid-cols-2 gap-2">
-                <div><Label htmlFor="wizard-floor">קומה *</Label><Select value={fields.floor} onValueChange={(value) => set('floor', value)}><SelectTrigger id="wizard-floor"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label htmlFor="wizard-total-floors">מתוך *</Label><Select value={fields.totalFloors} onValueChange={(value) => set('totalFloors', value)}><SelectTrigger id="wizard-total-floors"><SelectValue placeholder="מתוך" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} קומות</SelectItem>)}</SelectContent></Select></div>
+                <div><Label htmlFor="wizard-floor">קומה<span className="text-destructive"> *</span></Label><Select value={fields.floor} onValueChange={(value) => set('floor', value)}><SelectTrigger id="wizard-floor"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label htmlFor="wizard-total-floors">מתוך<span className="text-destructive"> *</span></Label><Select value={fields.totalFloors} onValueChange={(value) => set('totalFloors', value)}><SelectTrigger id="wizard-total-floors"><SelectValue placeholder="מתוך" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} קומות</SelectItem>)}</SelectContent></Select></div>
               </div>
             </div>
           )}
@@ -663,7 +664,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </label>
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-3"><div><Label>מצב הנכס *</Label><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div><div><Label>כיווני אוויר *</Label><Select value={fields.airDirections} onValueChange={(value) => set('airDirections', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{AIR_DIRECTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div></div>
+              <div className="grid grid-cols-2 gap-3"><div><Label>מצב הנכס<span className="text-destructive"> *</span></Label><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div><div><Label>כיווני אוויר<span className="text-destructive"> *</span></Label><Select value={fields.airDirections} onValueChange={(value) => set('airDirections', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{AIR_DIRECTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div></div>
               <div><Label>תיאור הנכס</Label><Textarea rows={3} value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
             </div>
           )}
@@ -674,8 +675,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               <div><Label>ועד בית</Label><Input inputMode="numeric" value={fields.vaadBayit} onChange={(e) => set('vaadBayit', e.target.value.replace(/\D/g, ''))} /></div>
               <div><Label>מ״ר בנוי</Label><Input inputMode="decimal" value={fields.builtSqm} onChange={(e) => set('builtSqm', decimalInput(e.target.value))} /></div>
               <div><Label>מ״ר גינה</Label><Input inputMode="numeric" value={fields.gardenSqm} onChange={(e) => set('gardenSqm', e.target.value.replace(/\D/g, ''))} /></div>
-              <div><Label>גודל במ״ר סך הכל</Label><Input inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
-              <div><Label>{fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'}</Label><PriceInput value={fields.price} onChange={(e) => set('price', e.target.value)} /></div>
+              <div><Label>גודל במ״ר סך הכל<span className="text-destructive"> *</span></Label><Input inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
+              <div><Label>{fields.dealType === 'rent' ? 'שכירות חודשית' : 'מחיר מכירה'}<span className="text-destructive"> *</span></Label><PriceInput value={fields.price} onChange={(e) => set('price', e.target.value)} /></div>
               <div><Label>תאריך כניסה</Label><Input type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} /></div>
             </div>
           )}
@@ -699,8 +700,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 7 && (
             <div className="space-y-3">
-               <div><Label htmlFor="publisher-name">השם שלך *</Label><Input id="publisher-name" placeholder={publisherName} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
-                <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ *</Label><Input id="publisher-whatsapp" inputMode="tel" dir="ltr" placeholder="050-1234567" className="text-right" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
+               <div><Label htmlFor="publisher-name">השם שלך<span className="text-destructive"> *</span></Label><Input id="publisher-name" placeholder={publisherName} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
+                <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ<span className="text-destructive"> *</span></Label><Input id="publisher-whatsapp" inputMode="tel" dir="ltr" placeholder="050-1234567" className="text-right" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
                 <div><Label htmlFor="publisher-email">אימייל</Label><Input id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', Boolean(checked))} />
@@ -785,7 +786,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     <span className="flex min-w-0 flex-1 items-center gap-3">
                       <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i} מתוך 8`}>{i}</span>
                       <span className="min-w-0 flex-1">{title}</span>
-                      <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : 'חסרים פרטים'}</span>
+                      <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : <>חסרים פרטים<span className="text-destructive"> *</span></>}</span>
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="px-4">{renderStep(i)}</AccordionContent>
