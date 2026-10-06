@@ -579,7 +579,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   type="button"
                   variant={fields.dealType === value ? 'default' : 'outline'}
                   onClick={() => void pickAndAdvance('dealType', value)}
-                  className="h-auto p-6 text-center text-base font-bold"
+                  className={cn(
+                    'h-5 p-0 px-2 text-center text-base font-bold leading-none',
+                    fields.dealType === value && (value === 'rent'
+                      ? 'border-sale bg-sale text-sale-foreground'
+                      : 'border-success bg-success text-success-foreground'),
+                  )}
                 >
                   {label}
                 </Button>
