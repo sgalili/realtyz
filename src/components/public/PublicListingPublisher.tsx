@@ -310,9 +310,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       if (error || !data?.ok || !data?.data) throw new Error(data?.message || 'לא ניתן לטעון את המודעה מיד2 כרגע. אפשר להמשיך ולמלא ידנית.');
       const d = data.data as Record<string, any>;
       const types: Record<string, string> = { apartment: 'דירה', garden_apartment: 'דירת גן', penthouse: 'פנטהאוז', duplex: 'דופלקס', private_house: 'בית פרטי', cottage: 'בית פרטי', studio: 'סטודיו', commercial: 'משרד', land: 'מגרש', loft: 'דירה', other: 'דירה' };
-      setImported({ ...d, source_url: `${url.origin}${url.pathname}` }); setImportSlide(false);
-      setFields(current => ({ ...current, importedListing: { ...d, source_url: url.toString() }, city: d.city, address: d.address, street: '', houseNumber: '', neighborhood: d.neighborhood || '', price: String(d.price), propertyType: types[d.property_type] || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? '' : String(d.rooms), sqm: d.sqm == null ? '' : String(d.sqm), floor: d.floor == null ? '' : String(d.floor), totalFloors: d.total_floors == null ? '' : String(d.total_floors), description: d.description || '', elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
-      setStep(7);
+      const complete = Boolean(d.city && d.price && d.address);
+      setImported({ ...d, source_url: sourceUrl }); setImportSlide(false);
+      setFields(current => ({ ...current, importedListing: { ...d, source_url: sourceUrl }, city: d.city || current.city, address: d.address || current.address, street: '', houseNumber: '', neighborhood: d.neighborhood || '', price: d.price ? String(d.price) : current.price, propertyType: types[d.property_type] || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? '' : String(d.rooms), sqm: d.sqm == null ? '' : String(d.sqm), floor: d.floor == null ? '' : String(d.floor), totalFloors: d.total_floors == null ? '' : String(d.total_floors), description: d.description || '', elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
+      // Partial import: continue into the form so the missing fields can be filled manually.
+      setStep(complete ? 7 : 1);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
     finally { setImporting(false); }
   };
