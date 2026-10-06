@@ -153,7 +153,7 @@ function LeadsHeroAddButton() {
   );
 }
 
-function CampaignsHeroAddButton() {
+function CampaignsHeroAddButton({ onBackToOrigin }: { onBackToOrigin?: () => void }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get("tab") ?? "published";
   const isCreate = tab === "create";
@@ -162,6 +162,10 @@ function CampaignsHeroAddButton() {
   // strictly return there instead of the default sent feed.
   const cameFromCalendar = isCreate && (searchParams.has("schedule") || searchParams.has("properties"));
   const handleClick = () => {
+    if (isCreate && onBackToOrigin) {
+      onBackToOrigin();
+      return;
+    }
     if (isCalendar) {
       const next = new URLSearchParams(searchParams);
       next.set("tab", "published");
@@ -183,7 +187,9 @@ function CampaignsHeroAddButton() {
   const label = isCalendar
     ? "חזרה לדשבורד"
     : isCreate
-      ? cameFromCalendar
+      ? onBackToOrigin
+        ? "חזרה למסך הקודם"
+        : cameFromCalendar
         ? "חזרה ללוח השנה"
         : "חזרה לקמפיינים"
       : "יצירת קמפיין חדש";
@@ -506,8 +512,8 @@ export function PageHero() {
           {location.pathname === "/properties" && <PropertiesHeroAddButton />}
           {location.pathname.startsWith("/lead-crm") && <LeadsHeroAddButton />}
           {isPostsPage && !isCampaignsCreate && <CampaignsHeroSyncButton />}
-          {isPostsPage && <CampaignsHeroAddButton />}
-          {origin && !isPropertyDetail && (
+          {isPostsPage && <CampaignsHeroAddButton onBackToOrigin={origin ? goBackToOrigin : undefined} />}
+          {origin && !isPropertyDetail && !isPostsPage && (
             <Button
               size="icon"
               variant="ghost"
