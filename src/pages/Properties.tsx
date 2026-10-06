@@ -31,7 +31,9 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { useListingPublishers } from '@/hooks/useListingPublishers';
-import { SelectModeToggle } from '@/components/ui/multi-select-controls';
+import { SelectModeToggle, SelectAllRow } from '@/components/ui/multi-select-controls';
+import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
+import { useInventorySuggestions } from '@/hooks/useInventorySuggestions';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -519,6 +521,17 @@ export default function Properties() {
   // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,
   // gallery, description) and the user lands directly on the imported card.
   const { activeWorkspaceId } = useWorkspace();
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const inventorySuggestions = useInventorySuggestions(q, activeWorkspaceId);
+  const suggestions = inventorySuggestions.data ?? [];
+  useEffect(() => { setSuggestionIndex(-1); }, [q]);
+  useEffect(() => { setSuggestionsOpen(false); setSelectedListingIds(new Set()); }, [activeWorkspaceId]);
+  const markPublished = useCallback((ids: string[]) => {
+    setResults(current => current.map(row => row.localId && ids.includes(row.localId) ? { ...row, raw: { ...row.raw, is_published: true, status: 'live', affiliate_enabled: true } } : row));
+    setSelectedListingIds(current => new Set([...current].filter(id => !ids.includes(id))));
+    defaultPoolRef.current.clear();
+  }, []);
   const [yad2Status, setYad2Status] = useState<{ step: number; label: string; tone: 'busy' | 'ok' | 'error' } | null>(null);
   const yad2InFlight = useRef(false);
   const submitQuery = useCallback(async (override?: string) => {
@@ -819,8 +832,54 @@ export default function Properties() {
 
         {/* Row 1 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] */}
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
-          <div className="min-w-0 flex-1 overflow-hidden rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+          <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
+            <Button
+              type="button"
+              size="sm"
+               variant={searching || yad2Status?.tone === 'busy' ? 'destructive' : 'default'}
+               onClick={searching || yad2Status?.tone === 'busy' ? cancelSearch : () => submitQuery()}
+               aria-label={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
+               title={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
+               className="h-7 shrink-0 gap-1.5 px-3 text-xs"
+            >
+               {yad2Status?.tone === 'busy' ? <X className="h-3.5 w-3.5" /> : searching ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <SearchIcon className="h-3.5 w-3.5" />
+              )}
+               <span>{searching || yad2Status?.tone === 'busy' ? 'בטל' : 'חפש'}</span>
+            </Button>
+            </div>
+            {suggestionsOpen && q.trim().length >= 2 && !/yad2\.co\.il|https?:\/\//i.test(q) && yad2Status?.tone !== 'busy' && (
+              <div id="inventory-suggestions" role="listbox" aria-label="נכסי המשרד" className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
+                {inventorySuggestions.isFetching ? <div role="status" className="flex items-center gap-2 p-3 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />מחפש בנכסי המשרד…</div> : suggestions.length ? suggestions.map((row, index) => <Button key={row.key} id={`inventory-option-${index}`} role="option" aria-selected={suggestionIndex === index} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { setSuggestionsOpen(false); void handleSelect(row); }} className={`h-auto w-full justify-start gap-2 p-2 text-right ${suggestionIndex === index ? 'bg-accent text-accent-foreground' : ''}`}><MapPin className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1"><span className="block truncate">{row.address || row.title}</span><span className="block truncate text-xs text-muted-foreground">{[row.city, row.title].filter(Boolean).join(' · ')}</span></span>{row.price ? <span className="shrink-0 text-xs tabular-nums">{formatPrice(row.price)}</span> : null}</Button>) : <div className="p-3 text-sm text-muted-foreground">{inventorySuggestions.isError ? 'לא ניתן לטעון הצעות כרגע' : 'לא נמצאו נכסים במשרד'}</div>}
+              </div>
+            )}
+            {yad2Status && (
+              <div role="status" aria-live="polite" className={`min-w-0 border-t px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/30 text-destructive' : 'border-border text-muted-foreground'}`}>
+                <div className="flex min-w-0 items-start gap-2">
+                  {yad2Status.tone === 'busy' && <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" />}
+                  <span className="min-w-0 flex-1 break-words leading-5">{yad2Status.label}</span>
+                  {yad2Status.tone !== 'busy' && <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></Button>}
+                </div>
+                {yad2Status.tone !== 'error' && <div role="progressbar" aria-label="התקדמות ייבוא יד2" aria-valuemin={0} aria-valuemax={4} aria-valuenow={yad2Status.step} className="mt-2 grid h-1 grid-cols-4 gap-1 overflow-hidden rounded-full bg-muted">{[1, 2, 3, 4].map(step => <span key={step} className={`h-full transition-colors duration-300 motion-reduce:transition-none ${step <= yad2Status.step ? 'bg-primary' : 'bg-muted'}`} />)}</div>}
+              </div>
+            )}
+          </div>
+            {!searching && yad2Status?.tone !== 'busy' && completedResults !== null && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost"
+                    type="button"
+                    className="mt-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 text-primary transition-colors hover:bg-primary/20"
+                    aria-label="פירוט תוצאות לפי מקור"
+                    title="פירוט תוצאות לפי מקור"
+                  >
+                    <Database className="h-3.5 w-3.5" />
+                    {/* +4px vs the previous 10px badge → 14px = text-sm */}
+                    <span className="text-sm font-bold tabular-nums leading-none">{completedResults.length}</span>
+                  </Button>
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               <CollapsibleTrigger asChild>
                 <Button
@@ -854,7 +913,10 @@ export default function Properties() {
               <input
                 value={yad2Status?.tone === 'busy' ? '' : q}
                 readOnly={yad2Status?.tone === 'busy'}
-                onChange={(e) => { const value = e.target.value; setQ(value); if (/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)$/i.test(value.trim())) void submitQuery(value); }}
+                onFocus={() => setSuggestionsOpen(true)}
+                 onBlur={() => setSuggestionsOpen(false)}
+                 role="combobox" aria-autocomplete="list" aria-expanded={suggestionsOpen && q.trim().length >= 2 && suggestions.length > 0} aria-controls="inventory-suggestions" aria-activedescendant={suggestionIndex >= 0 ? `inventory-option-${suggestionIndex}` : undefined}
+                 onChange={(e) => { const value = e.target.value; setSuggestionsOpen(true); setQ(value); if (/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)$/i.test(value.trim())) void submitQuery(value); }}
                 onPaste={(e) => {
                   const pasted = e.clipboardData.getData('text');
                   if (/yad2\.co\.il\//i.test(pasted)) {
@@ -865,7 +927,9 @@ export default function Properties() {
                   }
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); submitQuery(); }
+                  if (e.key === 'Escape') { setSuggestionsOpen(false); return; }
+                   if (suggestionsOpen && suggestions.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); setSuggestionIndex(current => e.key === 'ArrowDown' ? (current + 1) % suggestions.length : (current <= 0 ? suggestions.length - 1 : current - 1)); return; }
+                   if (e.key === 'Enter') { e.preventDefault(); setSuggestionsOpen(false); if (suggestionIndex >= 0 && suggestions[suggestionIndex]) { void handleSelect(suggestions[suggestionIndex]); } else { void submitQuery(); } }
                   if (e.key === 'Backspace' && !q && filterChips.length) filterChips[filterChips.length - 1].clear();
                 }}
                 placeholder={yad2Status?.tone === 'busy' ? 'סורק פרטים…' : filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים או הדבקת קישור יד2'}
@@ -875,47 +939,7 @@ export default function Properties() {
                />
 
              </div>
-            <Button
-              type="button"
-              size="sm"
-               variant={searching || yad2Status?.tone === 'busy' ? 'destructive' : 'default'}
-               onClick={searching || yad2Status?.tone === 'busy' ? cancelSearch : () => submitQuery()}
-               aria-label={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
-               title={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
-               className="h-7 shrink-0 gap-1.5 px-3 text-xs"
-            >
-               {yad2Status?.tone === 'busy' ? <X className="h-3.5 w-3.5" /> : searching ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <SearchIcon className="h-3.5 w-3.5" />
-              )}
-               <span>{searching || yad2Status?.tone === 'busy' ? 'בטל' : 'חפש'}</span>
-            </Button>
-            </div>
-            {yad2Status && (
-              <div role="status" aria-live="polite" className={`min-w-0 border-t px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/30 text-destructive' : 'border-border text-muted-foreground'}`}>
-                <div className="flex min-w-0 items-start gap-2">
-                  {yad2Status.tone === 'busy' && <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" />}
-                  <span className="min-w-0 flex-1 break-words leading-5">{yad2Status.label}</span>
-                  {yad2Status.tone !== 'busy' && <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></Button>}
-                </div>
-                {yad2Status.tone !== 'error' && <div role="progressbar" aria-label="התקדמות ייבוא יד2" aria-valuemin={0} aria-valuemax={4} aria-valuenow={yad2Status.step} className="mt-2 grid h-1 grid-cols-4 gap-1 overflow-hidden rounded-full bg-muted">{[1, 2, 3, 4].map(step => <span key={step} className={`h-full transition-colors duration-300 motion-reduce:transition-none ${step <= yad2Status.step ? 'bg-primary' : 'bg-muted'}`} />)}</div>}
-              </div>
-            )}
-          </div>
-            {!searching && yad2Status?.tone !== 'busy' && completedResults !== null && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost"
-                    type="button"
-                    className="mt-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 text-primary transition-colors hover:bg-primary/20"
-                    aria-label="פירוט תוצאות לפי מקור"
-                    title="פירוט תוצאות לפי מקור"
-                  >
-                    <Database className="h-3.5 w-3.5" />
-                    {/* +4px vs the previous 10px badge → 14px = text-sm */}
-                    <span className="text-sm font-bold tabular-nums leading-none">{completedResults.length}</span>
-                  </Button>
+
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-60">
                   <DropdownMenuLabel className="text-xs">תוצאות לפי מקור</DropdownMenuLabel>
@@ -1036,14 +1060,15 @@ export default function Properties() {
           </div>
         </div>
 
-        {multiSelectMode && selectedListingIds.size > 0 ? (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
-            <span className="text-sm font-semibold">נבחרו {selectedListingIds.size} נכסים</span>
-            <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}>
-              <Trash2 className="h-4 w-4" /> מחיקת הנבחרים
-            </Button>
-          </div>
-        ) : null}
+        {multiSelectMode && <SelectAllRow total={new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : [])).size} selected={sortedResults.filter(row => row.localId && selectedListingIds.has(row.localId)).length} onToggle={() => {
+          const ids = [...new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : []))];
+          const all = ids.length > 0 && ids.every(id => selectedListingIds.has(id));
+          setSelectedListingIds(current => { const next = new Set(current); ids.forEach(id => { if (all) next.delete(id); else next.add(id); }); return next; });
+        }}>
+          <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
+          <Button size="sm" variant="ghost" className="gap-1.5 text-destructive" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" />מחיקת הנבחרים</Button>
+        </SelectAllRow>}
+
 
 
 
@@ -1158,6 +1183,7 @@ export default function Properties() {
                 importingKey={importingKey}
                 onSelect={handleSelect}
                 onCampaign={goToCampaign}
+                quickPromotion={(row) => row.localId ? <QuickPublicPromotion ids={[row.localId]} compact onPublished={markPublished} /> : null}
                 selectionMode={multiSelectMode}
                 selectedIds={selectedListingIds}
                 onToggleSelected={toggleSelectedListing}
@@ -1172,6 +1198,7 @@ export default function Properties() {
                     importing={importingKey === r.key}
                     onSelect={() => handleSelect(r)}
                     onCampaign={() => goToCampaign(r)}
+                    quickPromotion={r.localId ? <QuickPublicPromotion ids={[r.localId]} compact onPublished={markPublished} /> : null}
                     selectionMode={multiSelectMode}
                     selected={Boolean(r.localId && selectedListingIds.has(r.localId))}
                     onToggleSelected={r.localId ? () => toggleSelectedListing(r.localId as string) : undefined}
@@ -1228,6 +1255,7 @@ function ResultCard({
   selected = false,
   onToggleSelected,
   onDelete,
+  quickPromotion,
 }: {
   result: UnifiedResult;
   importing: boolean;
@@ -1237,6 +1265,7 @@ function ResultCard({
   selected?: boolean;
   onToggleSelected?: () => void;
   onDelete?: () => void;
+  quickPromotion?: React.ReactNode;
 }) {
 
   const [pulledPhotos, setPulledPhotos] = useState<string[] | null>(null);
@@ -1450,6 +1479,7 @@ function ResultCard({
                 <Trash2 className="h-4 w-4" />
               </Button>
             ) : null}
+            {quickPromotion}
             <PropertyShareMenu results={[result]} />
             {result.localId ? <AffiliateCommissionButton listingId={result.localId} /> : null}
             {onCampaign && (
@@ -1523,6 +1553,7 @@ export function ResultTable({
   selectedIds,
   onToggleSelected,
   onDelete,
+  quickPromotion,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
@@ -1549,6 +1580,7 @@ export function ResultTable({
   selectedIds?: Set<string>;
   onToggleSelected?: (id: string) => void;
   onDelete?: (r: UnifiedResult) => void;
+  quickPromotion?: (r: UnifiedResult) => React.ReactNode;
 }) {
 
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
@@ -1800,6 +1832,7 @@ export function ResultTable({
                 </td>
 
                 {!hideDefaultActions ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
+                  {quickPromotion?.(r)}
                   <PropertyRowActions r={r} importing={importing} onCampaign={(x) => (onCampaign ? onCampaign(x) : onSelect(x))} onEdit={onEdit} onDelete={onDelete} onAffiliate={onAffiliate} hideAffiliate={showAffiliateColumn} />
                 </td> : null}
 
