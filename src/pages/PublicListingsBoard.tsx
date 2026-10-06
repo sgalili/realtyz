@@ -180,9 +180,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     size="sm"
                     variant="outline"
                     onClick={goToAuth}
-                    className="hidden h-9 rounded-full px-4 text-sm font-semibold sm:inline-flex"
+                    className="h-8 rounded-full px-3 text-xs font-semibold sm:h-9 sm:px-4 sm:text-sm"
                   >
-                    הרשמה / התחברות
+                    <span className="sm:hidden">התחברות</span>
+                    <span className="hidden sm:inline">הרשמה / התחברות</span>
                   </Button>
                 )}
                 <img src={realtyzLogo} alt="Realtyz" className="h-8 w-auto object-contain sm:h-10" />
@@ -199,11 +200,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </div>
             {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
             <Button className="ms-auto shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
-            {!user && (
-              <Button size="sm" variant="outline" onClick={goToAuth} className="shrink-0 rounded-full px-3 text-xs font-semibold sm:hidden">
-                הרשמה / התחברות
-              </Button>
-            )}
           </div>
         </div>
       </header>
