@@ -334,7 +334,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         property_type: attrs.property_type ?? row.property_type,
         elevator: attrs.elevator, parking: attrs.parking,
       };
-      setImportStage(u.cached ? 'המודעה נטענה מהמאגר השמור' : 'פרטי המודעה נשמרו');
+      setImportStage(u.served_from === 'pool_stale' || u.served_from === 'item_cache_stale' ? 'מוצגים הפרטים האחרונים שנשמרו. רענון נוסף יהיה זמין בתום 24 שעות.' : u.cached ? 'המודעה נטענה מהמאגר השמור' : 'פרטי המודעה נשמרו');
       const types: Record<string, string> = { apartment: 'דירה', garden_apartment: 'דירת גן', penthouse: 'פנטהאוז', duplex: 'דופלקס', private_house: 'בית פרטי', cottage: 'בית פרטי', studio: 'סטודיו', commercial: 'משרד', land: 'מגרש', loft: 'דירה', other: 'דירה' };
       const src = d;
       setImported({ ...src, source_url: sourceUrl }); setImportSlide(false);
@@ -430,14 +430,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                    address: place.formatted_address,
                 }))}
               />
-              {fields.address && <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div><Label>עיר *</Label><Input value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
                 <div><Label>רחוב *</Label><Input value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
                 <div><Label>מספר בית</Label><Input inputMode="numeric" value={fields.houseNumber} onChange={(e) => set('houseNumber', e.target.value)} /></div>
                 <div><Label>מספר דירה</Label><Input inputMode="numeric" value={fields.apartmentNumber} onChange={(e) => set('apartmentNumber', e.target.value)} /></div>
                 {fields.neighborhood && <div><Label>שכונה</Label><Input value={fields.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} /></div>}
                 {fields.area && <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
-              </div>}
+              </div>
             </div>
           )}
 
@@ -532,6 +532,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         </DialogHeader>
 
         <div className="space-y-4">
+          {reviewMode && importStage && <p role="status" className="text-sm text-muted-foreground">{importStage}</p>}
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
