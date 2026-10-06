@@ -354,21 +354,21 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     {columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
-                    <th className="w-10 p-2"><BoardColumnMenu controls={columns} /></th>
+                    <th className="w-10 px-2 pb-0 pt-2"><BoardColumnMenu controls={columns} /></th>
                   </tr>
                   <tr>
                     <td colSpan={columns.visible.length + 1} className="p-0">
-                      <div className="sticky start-0 px-3 pb-2 pt-1" style={wrapWidth ? { width: wrapWidth } : undefined}>
+<div className="sticky start-0 px-3 pb-2 pt-[7px]" style={wrapWidth ? { width: wrapWidth } : undefined}>
                         {scrollIndicator.width < 99.5 && (
                           <div
-                            className="relative h-2 cursor-grab touch-none select-none active:cursor-grabbing"
+                            className="relative h-[7px] cursor-grab touch-none select-none active:cursor-grabbing"
                             onPointerDown={onBarPointerDown}
                             onPointerMove={onBarPointerMove}
                             onPointerUp={onBarPointerUp}
                             onPointerCancel={onBarPointerUp}
                           >
-                            <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted-foreground/15" />
-                            <div data-thumb className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
+<div className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-muted-foreground/15" />
+                            <div data-thumb className="absolute top-1/2 h-[5px] -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
                           </div>
                         )}
                       </div>
