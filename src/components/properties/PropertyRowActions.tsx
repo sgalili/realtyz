@@ -30,7 +30,7 @@ export function Yad2AdButton({ url }: { url: string }) {
 }
 
 export function PropertyRowActions({
-  r, importing = false, onCampaign, onEdit, onDelete, onAffiliate, hideAffiliate = false,
+  r, importing = false, onCampaign, onEdit, onDelete, onAffiliate, hideAffiliate = false, hideSharePublish = false,
 }: {
   r: UnifiedResult;
   importing?: boolean;
@@ -39,6 +39,7 @@ export function PropertyRowActions({
   onDelete?: (r: UnifiedResult) => void;
   onAffiliate?: (r: UnifiedResult) => void;
   hideAffiliate?: boolean;
+  hideSharePublish?: boolean;
 }) {
   const live = sourceYad2Url(r);
   return (
@@ -48,7 +49,7 @@ export function PropertyRowActions({
         onClick={(e) => { e.stopPropagation(); onCampaign(r); }} className="h-8 w-8">
         {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Megaphone className="h-3.5 w-3.5" />}
       </Button>
-      <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
+      <PropertyShareMenu results={[r]} iconOnly variant="ghost" hidePublish={hideSharePublish} />
       {onEdit ? (
         <Button size="icon" variant="ghost" className="h-8 w-8" title="עריכת הנכס" aria-label="עריכת הנכס" onClick={() => onEdit(r)}>
           <Pencil className="h-4 w-4" />
@@ -100,6 +101,7 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
       <div className="flex items-center gap-1.5">
         <PropertyRowActions
           r={row}
+          hideSharePublish
           onCampaign={(r) => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.localId}&listing=${r.localId}`)}
           onEdit={() => setEditOpen(true)}
           onDelete={() => setConfirm(true)}
