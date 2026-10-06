@@ -793,6 +793,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                 ))}
               </div>
             )}
+            {manualTokenSection}
           </div>
         )}
 
