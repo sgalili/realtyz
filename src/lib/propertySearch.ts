@@ -139,7 +139,10 @@ export async function searchMarketPool(f: SearchFilters, limit = 200): Promise<U
     console.warn('[propertySearch] market pool query failed', error.message);
     return [];
   }
-  return (data ?? []).map((row: any): UnifiedResult => {
+  return (data ?? []).map(mapPoolRow);
+}
+
+function mapPoolRow(row: any): UnifiedResult {
     const price = normPhone(row.price);
     return {
       key: `pool:${row.id}`,
@@ -163,7 +166,6 @@ export async function searchMarketPool(f: SearchFilters, limit = 200): Promise<U
       created_at: row.published_at ?? row.first_seen_at ?? null,
       raw: row,
     };
-  });
 }
 
 async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
@@ -194,7 +196,11 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
     throw error;
   }
 
-  return (data ?? []).map((row: any): UnifiedResult => {
+  return (data ?? []).map(mapLocalListingRow);
+}
+
+/** Maps a raw `listings` row to the unified search result shape. */
+export function mapLocalListingRow(row: any): UnifiedResult {
     const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
     // Keep the upstream provenance visible: a row scraped from Yad2 stays
     // badged as Yad2 even after it is hydrated locally, so the source counter
@@ -225,7 +231,6 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
       created_at: row.created_at ?? null,
       raw: row,
     };
-  });
 }
 
 async function invokeExternal(fn: string, body: any) {

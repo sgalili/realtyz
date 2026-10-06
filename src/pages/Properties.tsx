@@ -71,6 +71,7 @@ import { useAppMode } from '@/hooks/useAppMode';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
+import { PropertyRowActions } from '@/components/properties/PropertyRowActions';
 
 
 const PRICE_MIN = 0;
@@ -1745,43 +1746,7 @@ export function ResultTable({
                 </td>
 
                 {!hideDefaultActions ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
-                  <div className="inline-flex items-center gap-1.5">
-                    {/* Yad2 ad first, campaign second (swapped per workspace spec). */}
-                    {(() => {
-                      const live = sourceYad2Url(r);
-                      if (!live) return null;
-                      return <Yad2AdButton url={live} />;
-                    })()}
-
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title="צור קמפיין לנכס"
-                      aria-label="צור קמפיין לנכס"
-                      disabled={importing}
-                      onClick={(e) => { e.stopPropagation(); onCampaign ? onCampaign(r) : onSelect(r); }}
-                      className="h-8 w-8"
-                    >
-                      {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Megaphone className="h-3.5 w-3.5" />}
-                    </Button>
-
-                    <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
-                    {onEdit ? (
-                      <Button size="icon" variant="ghost" className="h-8 w-8" title="עריכת הנכס" aria-label="עריכת הנכס" onClick={() => onEdit(r)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    ) : null}
-                    {onDelete ? (
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" title="מחיקת נכס" aria-label="מחיקת נכס" onClick={() => onDelete(r)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : null}
-                    {showAffiliateColumn ? null : onAffiliate ? (
-                      <Button size="icon" variant="ghost" className="h-8 w-8" title="הגדר שיווק שותפים" aria-label="הגדר שיווק שותפים" onClick={() => onAffiliate(r)}>
-                        <Handshake className="h-4 w-4" />
-                      </Button>
-                    ) : null}
-                  </div>
+                  <PropertyRowActions r={r} importing={importing} onCampaign={(x) => (onCampaign ? onCampaign(x) : onSelect(x))} onEdit={onEdit} onDelete={onDelete} onAffiliate={onAffiliate} hideAffiliate={showAffiliateColumn} />
                 </td> : null}
 
 
