@@ -11,7 +11,9 @@
  *    degrades to a friendly card instead of a white page.
  */
 import { useEffect, useMemo, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { attributeCards } from '@/components/public/propertyAttributes';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bed, Building2, ImageIcon, Layers, Loader2, Ruler } from 'lucide-react';
@@ -48,6 +50,8 @@ export type PublicListing = {
   brokerLicenceNumber: string | null;
   agencyLogoUrl: string | null;
   details: Array<{ label: string; value: string }>;
+  /** Yad2-style translated attribute cards (icon + Hebrew label + value). */
+  attributes: Array<{ icon: LucideIcon; label: string; value: string }>;
   /** Rich data grouped into readable blocks (features, environment, source…). */
   groups: Array<{ title: string; rows: Array<{ label: string; value: string }> }>;
   latitude: number | null;
