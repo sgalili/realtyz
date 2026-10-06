@@ -327,7 +327,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-full w-full rounded object-cover" loading="lazy" /> : <div className="h-full w-full rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex rounded-full bg-background/90 p-0.5 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="w-72 max-w-[18rem]"><PublicCardSummary card={card} /></div>
+                          ) : id === 'address' ? <div className="w-72 max-w-[18rem]"><PublicCardSummary card={card} showBroker={false} /></div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs font-semibold', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? shekel(card.price)
                           : id === 'rooms' ? card.rooms || ''
