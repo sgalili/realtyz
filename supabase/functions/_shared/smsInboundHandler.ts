@@ -471,7 +471,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
     const isProductInquiry = classifyInquiryIntent(bodyText, history) === "product";
     const focusRow = isProductInquiry ? null : await resolveFocusListing(admin as any, workspaceOwnerId, bodyText, history, (lead as any).interest_tag ?? null);
     const focusBlock = renderFocusPropertyBlock(focusRow as any);
-    const stateBlock = isProductInquiry ? PRODUCT_INQUIRY_BLOCK : renderRitaStateBlock(readRitaState((lead as any).preferences));
+    const stateBlock = isProductInquiry ? PRODUCT_INQUIRY_BLOCK : renderRitaStateBlock(readRitaState((lead as any).preferences)) + (!focusRow && textNamesAddress(bodyText) ? ADDRESS_NOT_FOUND_BLOCK : "");
     const factAnswer = isProductInquiry ? null : answerPropertyFact(bodyText, focusRow as any);
     if (factAnswer) reply = factAnswer;
 

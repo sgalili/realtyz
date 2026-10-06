@@ -29,7 +29,7 @@ import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
-import { FOCUS_COLUMNS, matchListingFromText, renderFocusPropertyBlock } from "../_shared/focusProperty.ts";
+import { FOCUS_COLUMNS, matchListingFromText, renderFocusPropertyBlock, textNamesAddress, ADDRESS_NOT_FOUND_BLOCK } from "../_shared/focusProperty.ts";
 import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, saveRitaState } from "../_shared/ritaIntel.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
