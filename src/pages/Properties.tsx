@@ -1802,6 +1802,7 @@ export function ResultTable({
                     if (!total) return <span className="text-muted-foreground">—</span>;
                     return (
                       <span
+                        data-sort-value={total}
                         className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground/80"
                         title={`${total} תמונות במודעת המקור`}
                       >
@@ -1812,7 +1813,9 @@ export function ResultTable({
                   })()}
                 </td>
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums text-muted-foreground">
-                  {publishedAt ? (publishedAt(r) ? new Date(String(publishedAt(r))).toLocaleDateString('he-IL') : '—') : <ListingDateCell row={r} />}
+                  <span data-sort-value={publishedAt?.(r) ?? listingPublishedAt(r) ?? listingActivityAt(r) ?? ''}>
+                    {publishedAt ? (publishedAt(r) ? new Date(String(publishedAt(r))).toLocaleDateString('he-IL') : '—') : <ListingDateCell row={r} />}
+                  </span>
                 </td>
 
                 {!hideDefaultActions ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
