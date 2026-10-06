@@ -1,4 +1,7 @@
 # Roadmap
+## Original Yad2 advertiser branding
+- [ ] Trace and save original advertiser logos from source publisher sections and gallery branding, without using affiliate identity.
+- [ ] Hide unverified license numbers and verify extraction/persistence/public rendering.
 ## List expansion cleanup
 - [x] Remove inline close button, move expansion arrow before address and show expanded title/price once. Signed-in narrow-table expansion/collapse and horizontal scroll verified without runtime errors; container layout stays readable, build OK.
 ## Public ad presentation refinement
