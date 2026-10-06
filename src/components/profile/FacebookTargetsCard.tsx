@@ -24,6 +24,10 @@ const bareId = (id: string) => id.replace(/^(ext:|manual:)/, '');
 /** Minimum readable font size across this card. */
 const TEXT_SM = 'text-[14px]';
 const TEXT_MD = 'text-[15px]';
+const MAX_GROUPS = 100;
+const JOIN_BATCH = 5;
+const sortByPopularity = <T extends { members: number | null }>(list: T[]) =>
+  [...list].sort((a, b) => (b.members ?? -1) - (a.members ?? -1));
 
 /** Local cache so groups render instantly on the next visit. */
 const CACHE_KEY_BASE = 'realtyz_fb_targets_cache';
@@ -225,14 +229,20 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   };
 
 
-  const joinTargets = async (targets: GroupTarget[]) => {
-    if (!targets.length || joining || !workspaceOwnerId) return;
+  const joinTargets = async (picked: GroupTarget[]) => {
+    if (!picked.length || joining || !workspaceOwnerId) return;
     if (!isExtensionInstalled()) { toast.error('כדי להצטרף לקבוצות יש להתקין את תוסף Realtyz'); return; }
+    // Safety: never exceed 100 joined groups; most popular groups first.
+    const capacity = Math.max(0, MAX_GROUPS - groups.length);
+    if (capacity === 0) { toast.error(`הגעת למגבלה של ${MAX_GROUPS} קבוצות פעילות`); return; }
+    const targets = sortByPopularity(picked).slice(0, capacity);
+    if (targets.length < picked.length) toast.info(`ההצטרפות הוגבלה ל-${targets.length} הקבוצות הפופולריות ביותר (מגבלה של ${MAX_GROUPS})`);
     setJoining(true);
     const owner = workspaceOwnerId;
     let ok = 0;
-    for (let i = 0; i < targets.length; i += 15) {
-      const batch = targets.slice(i, i + 15);
+    for (let i = 0; i < targets.length; i += JOIN_BATCH) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 120000 + Math.floor(Math.random() * 120000)));
+      const batch = targets.slice(i, i + JOIN_BATCH);
       const byBare = new Map(batch.map((g) => [bareId(g.groupId), g]));
       setJoinProgress((p) => ({ ...p, ...Object.fromEntries(batch.map((g) => [g.id, 'בתור'])) }));
       const run = joinGroupsViaExtension(
