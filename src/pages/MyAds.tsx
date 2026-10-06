@@ -104,7 +104,11 @@ export default function MyAds() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [resumeDraft, setResumeDraft] = useState<PublicListingDraft>();
-  useEffect(() => { setResumeDraft(undefined); }, [activeWorkspaceId, user?.id]);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  useEffect(() => { setResumeDraft(undefined); setSelectMode(false); setSelected(new Set()); }, [activeWorkspaceId, user?.id]);
   const recovery = useQuery({
     queryKey: ['my-ad-recovery', user?.id, activeWorkspaceId], enabled: Boolean(user?.id && activeWorkspaceId), refetchOnMount: 'always', refetchOnWindowFocus: true,
     queryFn: async () => {
