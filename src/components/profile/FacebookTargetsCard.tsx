@@ -22,6 +22,14 @@ const bareId = (id: string) => id.replace(/^(ext:|manual:)/, '');
 
 /** Minimum readable font size across this card. */
 const TEXT_SM = 'text-[14px]';
+
+// Compact numeric member counter: 16.1K / 2.9K / 1.2M — no surrounding text.
+const formatMemberCount = (n: number): string => {
+  const trim = (v: number) => (v >= 100 ? Math.round(v).toString() : v.toFixed(1).replace(/\.0$/, ''));
+  if (n >= 1_000_000) return `${trim(n / 1_000_000)}M`;
+  if (n >= 1_000) return `${trim(n / 1_000)}K`;
+  return String(n);
+};
 const TEXT_MD = 'text-[15px]';
 const MAX_GROUPS = 100;
 const JOIN_BATCH = 5;
