@@ -2598,6 +2598,12 @@ Deno.serve(async (req) => {
     if (claimedItem && claimedToken) {
       const admin = createClient(SUPABASE_URL, SERVICE_KEY);
       await admin.from("yad2_item_cache").update({ claim_token: null }).eq("item_id", claimedItem).eq("claim_token", claimedToken);
+      const pooled = await readMarketPool(admin, {}, 1, `https://www.yad2.co.il/realestate/item/${claimedItem}`);
+      if (pooled[0]) {
+        const { data: original } = await admin.from("market_listings").select("last_seen_at").eq("source", "yad2").eq("external_id", claimedItem).limit(1).maybeSingle();
+        await admin.from("yad2_item_cache").update({ payload: pooled[0], fetched_at: original?.last_seen_at ?? null }).eq("item_id", claimedItem);
+        return json({ success: true, cached: true, stale: true, served_from: "pool_stale", results: pooled, detail: "לא ניתן לרענן כרגע; מוצגים הפרטים האחרונים שנשמרו." });
+      }
     }
     console.error("[yad2-unlocker] error", e);
     return json({ source: "yad2", connected: false, error: "scrape_failed", results: [], detail: String(e?.message ?? e), bd_trace: bdTrace });
