@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
+import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
@@ -241,6 +242,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           <div className="sticky right-0 grid min-w-0 gap-3 p-3 sm:grid-cols-[280px_minmax(0,1fr)]" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
                             <div className="min-w-0 space-y-3">
+                              {open && user ? <OwnerListingActions listingId={card.id} /> : null}
                               <ExpandedPropertyDetails idOrSlug={card.slug || card.id} />
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact shareUrl={publicUrl(propertyPath)} showShare />
                             </div>
