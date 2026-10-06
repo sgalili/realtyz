@@ -1325,10 +1325,11 @@ async function handleLeadInboxInbound(
       }
     }
     const focusProperty = productInquiry ? "" : renderFocusPropertyBlock(focusRow as any);
+    let listingScreeningQuestion = '';
     if (!staffSender && !productInquiry && focusRow?.id) {
       try {
-        const screeningQuestion = await processListingInquiry(admin, { listingId: focusRow.id, leadId: lead.id, ownerId: aiOwnerId, channel: 'whatsapp', history: aiMessages, affiliateId: referral?.affiliate_id ?? (lead.preferences as any)?.affiliate_id ?? null });
-        if (screeningQuestion) contextBlock += `\n[LISTING_SCREENING] Answer property questions directly and offer a visit first. Then ask this exact next question, without extra generic qualification: ${screeningQuestion}\n`;
+        listingScreeningQuestion = await processListingInquiry(admin, { listingId: focusRow.id, leadId: lead.id, ownerId: aiOwnerId, channel: 'whatsapp', history: aiMessages, affiliateId: referral?.affiliate_id ?? (lead.preferences as any)?.affiliate_id ?? null });
+        if (listingScreeningQuestion) contextBlock += `\n[LISTING_SCREENING] Answer property questions directly and offer a visit first. Then ask this exact next question, without extra generic qualification: ${listingScreeningQuestion}\n`;
       } catch { /* Inquiry processing cannot interrupt the conversation. */ }
     }
     contextBlock += ritaStateBlock;
@@ -1339,7 +1340,7 @@ async function handleLeadInboxInbound(
     // Direct fact questions ("כמה חדרים?") are answered straight from the listing.
     const factAnswer = !staffSender && !recruitmentMode ? answerPropertyFact(promptInboundText, focusRow as any, aiMessages as any) : null;
     if (factAnswer) {
-      reply = factAnswer;
+      reply = [factAnswer, listingScreeningQuestion].filter(Boolean).join('\n\n');
       console.log("[autopilot] deterministic property-fact answer", { lead_id: lead.id });
     }
 
