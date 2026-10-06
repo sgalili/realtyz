@@ -99,9 +99,12 @@ Deno.serve(async (req) => {
       const name = txt(m.broker_name) ?? txt(m.contact_name) ?? txt(m.owner_name) ?? txt(ownerMap.get(row.owner_id));
       const office = txt(m.agency_name) ?? txt(m.office_name) ?? txt(m.merchant_name);
       const licence = txt(m.broker_license) ?? txt(m.broker_license_number) ?? txt(m.license_number);
+      // "בלעדיות" on Yad2 means a broker/agency posted the ad, never a private owner.
+      const exclusive = [row.additional_details, row.attributes].some((d: any) => d?.isAssetExclusive === true);
+      const broker = exclusive || !!licence || !!office || m.publisher_kind === "broker";
       return {
-        broker_name: name ?? (office ? "מתווך" : "בעל הנכס"),
-        office_name: office ?? (licence ? "שם המשרד לא צוין" : "מפרסם פרטי"),
+        broker_name: name ?? (broker ? "מתווך" : "בעל הנכס"),
+        office_name: office ?? (broker ? "משרד תיווך" : "מפרסם פרטי"),
         broker_license_number: licence,
         agency_logo_url: null,
       };

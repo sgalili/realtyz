@@ -1,0 +1,2 @@
+UPDATE public.listings SET source_metadata = coalesce(source_metadata,'{}'::jsonb) || jsonb_build_object('broker_name','עדן ויטמן','agency_name','אנגלו סכסון הרצליה','broker_license','3251745','publisher_kind','broker') WHERE id = 'daa23f06-8e09-49eb-9ecf-e73bf28368b3';
+UPDATE public.crm_profiles SET profile_type = 'Broker', professional_info = coalesce(professional_info,'{}'::jsonb) || jsonb_build_object('role','broker','agency_name','אנגלו סכסון הרצליה','broker_license','3251745') WHERE id = '7b5cfe8c-5e76-4aae-a66a-740109302c44';
