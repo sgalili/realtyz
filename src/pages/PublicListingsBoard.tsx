@@ -260,21 +260,13 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         <div className="mx-auto max-w-6xl px-4 pb-0 pt-5">
           {embedded ? null : (
             <div className="relative flex min-h-11 items-center justify-between gap-2">
-              <PublicListingPublisher autoResume />
+              <div className="flex items-center gap-2">
+                <PublicListingPublisher autoResume />
+                {!user && <Button size="sm" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" className="h-8 border-0 bg-transparent px-1 text-xs font-semibold shadow-none hover:bg-transparent sm:text-sm">הרשמה / התחברות</Button>}
+              </div>
               <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-base font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                {!user && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={goToAuth}
-                    className="h-8 rounded-full px-3 text-xs font-semibold sm:h-9 sm:px-4 sm:text-sm"
-                  >
-                    <span className="sm:hidden">התחברות</span>
-                    <span className="hidden sm:inline">הרשמה / התחברות</span>
-                  </Button>
-                )}
-                <img src={realtyzLogo} alt="Realtyz" className="h-8 w-auto object-contain sm:h-10" />
+                <img src={realtyzLogo} alt="Realtyz" className="h-[41.6px] w-auto object-contain sm:h-[52px]" />
               </div>
             </div>
           )}
@@ -299,17 +291,17 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             {filtered.map((card) => {
               const title = cleanTitle(card);
               const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
-              return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className={cn('cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
+              return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <div className="p-3"><div className="flex items-start gap-1"><div className="min-w-0 flex-1"><PublicCardSummary card={card} price={shekel(card.price)} /></div>{user ? <div className="-me-2 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div></div>
                 <PhotoCarousel card={card} photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} />
-                <div className="space-y-2 p-4">
+                <div className="flex flex-1 flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     {!!card.rooms && <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5 text-primary" />{card.rooms} חדרים</span>}
                     {!!card.sqm && <span className="inline-flex items-center gap-1"><Ruler className="h-3.5 w-3.5 text-primary" />{card.sqm} מ״ר</span>}
                     {card.floor != null && <span className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{card.floor === 0 ? 'קרקע' : `קומה ${card.floor}`}{card.total_floors ? ` מתוך ${card.total_floors}` : ''}</span>}
                   </div>
                   {publicAdDescription(card.description, card.title) && <p className="line-clamp-3 text-xs text-muted-foreground">{publicAdDescription(card.description, card.title)}</p>}
-                   <div className="pt-1">
+                   <div data-card-contact-actions className="mt-auto pt-1">
                      <PropertyContactActions
                        listingId={card.id}
                        title={title}

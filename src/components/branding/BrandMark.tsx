@@ -59,7 +59,7 @@ export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz A
           <img
             src={realtyzLogo}
             alt="Realtyz AI"
-            className="h-7 w-auto max-w-[140px] object-contain"
+            className="h-[36.4px] w-auto max-w-[182px] object-contain"
             loading="eager"
           />
         )

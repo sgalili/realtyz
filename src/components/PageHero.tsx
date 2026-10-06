@@ -463,14 +463,14 @@ export function PageHero() {
           {isPublicBoard && !user && (
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
               onClick={() =>
                 navigate('/auth', {
                   state: { returnTo: location.pathname + location.search },
                 })
               }
               aria-label="הרשמה או התחברות"
-              className="h-8 rounded-full border-white/50 bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/20 hover:text-white"
+              className="h-8 border-0 bg-transparent px-1 text-sm font-semibold text-primary-foreground shadow-none hover:bg-transparent hover:text-primary-foreground/80"
             >
               הרשמה / התחברות
             </Button>
