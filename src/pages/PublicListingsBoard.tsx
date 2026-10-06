@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
+import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
 import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
@@ -278,14 +279,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={8} className="p-0">
                           <AnimatedExpansion open={open}>
-                          <div ref={open ? ownerSectionRef : undefined} className="sticky right-0 grid min-w-0 gap-3 p-3 sm:grid-cols-[280px_minmax(0,1fr)]" style={wrapWidth ? { width: wrapWidth } : undefined}>
+                          <div ref={open ? ownerSectionRef : undefined} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0">
                               {open && user ? (
                                 <div ref={open ? ownerBarRef : undefined} className="mb-3">
                                   <OwnerListingActions listingId={card.id} />
                                 </div>
                               ) : null}
-                              <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
+                              {open && <PropertyGallerySlider photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />}
                             </div>
                             <div className="min-w-0 space-y-3">
                               <ExpandedPropertyDetails idOrSlug={card.slug || card.id} />
