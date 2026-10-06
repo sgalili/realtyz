@@ -67,12 +67,13 @@ Deno.serve(async (req) => {
         }, 200);
       };
       try {
-        const fcRes = await fetch("https://api.firecrawl.dev/v2/scrape", {
+        // Support both direct (fc-) keys and gateway (lovc_) connection keys.
+        const viaGateway = FIRECRAWL_API_KEY.startsWith("lovc_");
+        const fcRes = await fetch(viaGateway ? "https://connector-gateway.lovable.dev/firecrawl/v2/scrape" : "https://api.firecrawl.dev/v2/scrape", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-            "Content-Type": "application/json",
-          },
+          headers: viaGateway
+            ? { Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": FIRECRAWL_API_KEY, "Content-Type": "application/json" }
+            : { Authorization: `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             url: trimmed,
             formats: ["markdown", "html"],
