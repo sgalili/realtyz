@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Ban, Clock, ExternalLink, Loader2, Search, Trash2, Undo2, UserPlus, Users } from 'lucide-react';
+import { Ban, Hourglass, ExternalLink, Loader2, Search, Trash2, Undo2, UserPlus, Users } from 'lucide-react';
 import { isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
 import { joinGroupsViaExtension, type JoinStatus } from '@/lib/extensionGroupDiscovery';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
@@ -47,6 +47,7 @@ function GroupThumb({ src }: { src?: string | null }) {
   );
 }
 const TEXT_MD = 'text-[15px]';
+const exactMembers = (n: number) => n.toLocaleString('he-IL');
 const MAX_GROUPS = 100;
 const JOIN_BATCH = 5;
 const sortByPopularity = <T extends { members: number | null }>(list: T[]) =>
@@ -148,7 +149,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
         name: String(r.group_name || r.group_id),
         icon: r.group_icon ?? null,
         url: r.group_url ?? null,
-        members: typeof r.member_count === 'number' ? r.member_count : null,
+        members: typeof r.member_count === 'number' ? r.member_count : memberCountFromText(r.group_name),
         selected: r.is_selected !== false && !r.is_blocked,
         blocked: !!r.is_blocked,
         blockedReason: r.blocked_reason ?? null,
@@ -338,7 +339,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
         {shortenName(g.name)}
       </span>
       {typeof g.members === 'number' && g.members > 0 && (
-        <span className={cn('shrink-0 text-muted-foreground tabular-nums', TEXT_SM)} dir="ltr">{formatMemberCount(g.members)}</span>
+        <span className={cn('shrink-0 text-muted-foreground tabular-nums', TEXT_SM)} dir="ltr">{exactMembers(g.members)}</span>
       )}
       <button type="button" aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`} title="צפה בקבוצה בלשונית חדשה"
         onClick={(e) => { e.stopPropagation(); openExternal(fbGroupUrlFrom(g.url, g.groupId)); }}
@@ -412,7 +413,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                     onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else if (n.size < MAX_GROUPS) n.add(g.id); else toast.info(`ניתן לבחור עד ${MAX_GROUPS} קבוצות`); return n; })} />
                   {joinProgress[g.id] === 'מצטרף…' ? (
                     <Loader2 role="status" className="h-4 w-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" aria-label="הצטרפות בתהליך" />
-                  ) : g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-primary" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
+                  ) : g.joinStatus === 'pending' ? <span role="status" aria-label="בקשה ממתינה לאישור" className="relative flex h-4 w-4 shrink-0 items-center justify-center"><span className="absolute inset-0 animate-ping rounded-full bg-primary/30 motion-reduce:animate-none" /><Hourglass className="relative h-3.5 w-3.5 text-primary" /></span> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
                 </>)))}
               </div>
             </>)
@@ -486,7 +487,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                   </span>
                   {typeof g.members === 'number' && g.members > 0 && (
                     <span className={cn('shrink-0 text-muted-foreground tabular-nums', TEXT_SM)} dir="ltr">
-                      {formatMemberCount(g.members)}
+                      {exactMembers(g.members)}
                     </span>
                   )}
                   {!deleteMode && (

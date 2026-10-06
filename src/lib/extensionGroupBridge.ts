@@ -36,6 +36,8 @@ export type ExtensionGroup = {
   member_count: number | null;
 };
 
+import { cleanGroupName, memberCountFromText } from "./fbGroupText";
+
 const parseMemberCount = (raw: any): number | null => {
   const value = raw?.member_count ?? raw?.memberCount ?? raw?.members ?? raw?.members_count;
   if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.round(value));
@@ -56,10 +58,10 @@ const normalizeOne = (raw: any): ExtensionGroup | null => {
   const id = String(rawId);
   return {
     group_id: id.startsWith("ext:") ? id : `ext:${id}`,
-    group_name: String(raw.group_name ?? raw.name ?? raw.title ?? id),
+    group_name: cleanGroupName(raw.group_name ?? raw.name ?? raw.title) ?? id,
     group_icon: raw.group_icon ?? raw.icon ?? raw.image ?? null,
     group_url: fbGroupUrlFrom(url, id) ?? "",
-    member_count: parseMemberCount(raw),
+    member_count: parseMemberCount(raw) ?? memberCountFromText(raw.group_name ?? raw.name ?? raw.title),
   };
 };
 
