@@ -139,7 +139,11 @@ export async function searchMarketPool(f: SearchFilters, limit = 200): Promise<U
     console.warn('[propertySearch] market pool query failed', error.message);
     return [];
   }
-  return (data ?? []).map((row: any): UnifiedResult => {
+  return (data ?? []).map(mapLocalListingRow);
+}
+
+/** Maps a raw `listings` row to the unified search result shape. */
+export function mapLocalListingRow(row: any): UnifiedResult {
     const price = normPhone(row.price);
     return {
       key: `pool:${row.id}`,
@@ -225,7 +229,6 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
       created_at: row.created_at ?? null,
       raw: row,
     };
-  });
 }
 
 async function invokeExternal(fn: string, body: any) {
