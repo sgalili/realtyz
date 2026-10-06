@@ -410,6 +410,7 @@ function RewardDialog({
                   {
                     onSuccess: () => {
                       toast.success("התגמול נשמר");
+                      if (listing) { try { localStorage.removeItem(`affiliate-settings-draft:${listing.id}`); } catch { /* noop */ } }
                       onOpenChange(false);
                     },
                     onError: () => toast.error("השמירה נכשלה"),

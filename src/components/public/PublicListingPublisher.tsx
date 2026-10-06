@@ -185,6 +185,19 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       toast.success('הנכס פורסם בלוח השיתופי');
         setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0); setImportSlide(false); setImported(null); setImportUrl('');
       const publishedListingId = (data as { id?: string } | null)?.id;
+      // Rita welcome WhatsApp for first-time posters (once per user, best-effort).
+      try {
+        const welcomeKey = `rita-welcome-sent:${user.id}`;
+        const phone = (draftFields.contactWhatsapp || user.phone || '').replace(/\D/g, '');
+        if (phone.length >= 9 && !localStorage.getItem(welcomeKey)) {
+          localStorage.setItem(welcomeKey, '1');
+          const name = draftFields.contactName.trim() || 'שלום';
+          const address = [draftFields.street, draftFields.city].filter(Boolean).join(', ');
+          const message = `היי ${name}, ברוכים הבאים ל-Realtyz!\n\nהנכס שלך${address ? ` ב${address}` : ''} פורסם וכבר מופיע בלוח הנדל״ן השיתופי.\n\nסטטוס פרסום ראשוני:\n• לוח שיתופי: פעיל\n• שותפים: הנכס פתוח לקידום על ידי שותפים\n• הפצה לקבוצות: ממתין לתור ההפצה לאחר חיבור קבוצות הפייסבוק בחשבון\n\nלכל שאלה אפשר לענות כאן. רינה, Realtyz`;
+          void supabase.functions.invoke('send-whatsapp', { body: { phone_number: phone, message, listing_id: publishedListingId } })
+            .then(({ error: waErr }) => { if (waErr) console.warn('welcome whatsapp failed', waErr); });
+        }
+      } catch { /* never block posting */ }
       // First-time posters land inside their own signed-in workspace with the
       // full app shell, instead of staying on the public board.
       const targetWorkspace = activeWorkspaceId || user.id;
