@@ -279,9 +279,9 @@ function PublicListingContent() {
       if (!payload?.property) return null;
       const workspaceProperties = Array.isArray(payload.workspace_properties) ? payload.workspace_properties : [];
       return {
-        property: normalizeListing(payload.property, payload.attribution),
+        property: normalizeListing(payload.property, payload.property?.attribution ?? payload.attribution),
         properties: [payload.property, ...workspaceProperties]
-          .map((row: unknown) => normalizeListing(row, payload.attribution)),
+          .map((row: any) => normalizeListing(row, row?.attribution ?? payload.attribution)),
       };
     },
   });
