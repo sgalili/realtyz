@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send } from 'lucide-react';
@@ -21,6 +21,7 @@ import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
 import PublicCardSummary from '@/components/public/PublicCardSummary';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -186,6 +187,41 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     };
   }, [expandedId]);
 
+  // Draggable scroll bar under the table header row: dragging the thumb slides the table sideways.
+  const thumbDrag = useRef<{ pointerId: number; startX: number; startNorm: number } | null>(null);
+  const onBarPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = tableWrapRef.current;
+    const track = e.currentTarget;
+    const thumb = track.querySelector<HTMLElement>('[data-thumb]');
+    if (!el || !thumb) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    if (maxScroll <= 0) return;
+    const trackW = track.clientWidth;
+    const thumbW = thumb.offsetWidth;
+    let norm = scrollIndicator.width >= 100 ? 0 : scrollIndicator.offset / Math.max(0.001, 100 - scrollIndicator.width);
+    if (!thumb.contains(e.target as Node)) {
+      const rect = track.getBoundingClientRect();
+      norm = Math.min(1, Math.max(0, (e.clientX - rect.left - thumbW / 2) / Math.max(1, trackW - thumbW)));
+      el.scrollLeft = -norm * maxScroll;
+    }
+    thumbDrag.current = { pointerId: e.pointerId, startX: e.clientX, startNorm: norm };
+    track.setPointerCapture(e.pointerId);
+  };
+  const onBarPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = thumbDrag.current;
+    const el = tableWrapRef.current;
+    if (!drag || !el || e.pointerId !== drag.pointerId) return;
+    const thumb = e.currentTarget.querySelector<HTMLElement>('[data-thumb]');
+    if (!thumb) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const span = Math.max(1, e.currentTarget.clientWidth - thumb.offsetWidth);
+    const norm = Math.min(1, Math.max(0, drag.startNorm - (e.clientX - drag.startX) / span));
+    el.scrollLeft = -norm * maxScroll;
+  };
+  const onBarPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (thumbDrag.current?.pointerId === e.pointerId) thumbDrag.current = null;
+  };
+
   const load = async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -313,13 +349,30 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
-            {scrollIndicator.width < 99.5 && <div aria-hidden="true" className="mb-2 h-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} /></div>}
             <div ref={tableWrapRef} className="w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     {columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
                     <th className="w-10 p-2"><BoardColumnMenu controls={columns} /></th>
+                  </tr>
+                  <tr>
+                    <td colSpan={columns.visible.length + 1} className="p-0">
+                      <div className="sticky start-0 px-3 pb-2 pt-1" style={wrapWidth ? { width: wrapWidth } : undefined}>
+                        {scrollIndicator.width < 99.5 && (
+                          <div
+                            className="relative h-2 cursor-grab touch-none select-none active:cursor-grabbing"
+                            onPointerDown={onBarPointerDown}
+                            onPointerMove={onBarPointerMove}
+                            onPointerUp={onBarPointerUp}
+                            onPointerCancel={onBarPointerUp}
+                          >
+                            <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted-foreground/15" />
+                            <div data-thumb className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 </thead>
                 <tbody>
@@ -336,14 +389,18 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-full w-full rounded object-cover" loading="lazy" /> : <div className="h-full w-full rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex rounded-full bg-background/90 p-0.5 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="flex w-72 max-w-[18rem] items-center gap-1"><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}><ChevronDown className={cn('h-5 w-5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} /></Button>{!open && <div className="min-w-0 flex-1"><PublicCardSummary card={card} showBroker={false} dense /></div>}</div>
+                          ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem]">{open ? <PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? (open ? null : shekel(card.price))
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
-                        <td className="p-2" />
+                        <td className="relative p-2 align-bottom">
+                          <Button type="button" variant="ghost" size="icon" className="absolute bottom-0.5 left-0.5 h-7 w-7 text-muted-foreground/70 hover:bg-transparent hover:text-foreground" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}>
+                            <ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')} />
+                          </Button>
+                        </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={columns.visible.length + 1} className="p-0">
