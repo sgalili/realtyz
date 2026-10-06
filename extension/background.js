@@ -1121,6 +1121,37 @@ function rzClickJoin() {
   join.click();
   return 'clicked';
 }
+/** Runs inside a group page — tries to fill membership questions and submit. */
+function rzAnswerQuestions() {
+  const dlg = [...document.querySelectorAll('div[role="dialog"]')].pop();
+  if (!dlg || !dlg.querySelector('textarea, input[type="text"], input[type="radio"], input[type="checkbox"], [role="radio"], [role="checkbox"]')) return 'none';
+  const ANSWER = 'מתווך נדל״ן מורשה, מעוניין לשתף נכסים רלוונטיים לחברי הקבוצה ולפעול לפי כללי הקבוצה.';
+  const setVal = (el, v) => {
+    const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, v);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  dlg.querySelectorAll('textarea, input[type="text"]').forEach((el) => { if (!el.value) setVal(el, ANSWER); });
+  dlg.querySelectorAll('[contenteditable="true"]').forEach((el) => {
+    if ((el.innerText || '').trim()) return;
+    el.focus(); document.execCommand('insertText', false, ANSWER);
+  });
+  // First option of every radio group; every agreement checkbox.
+  const seen = new Set();
+  dlg.querySelectorAll('input[type="radio"], [role="radio"]').forEach((r) => {
+    const g = r.getAttribute('name') || r.closest('[role="radiogroup"]') || r.parentElement;
+    if (seen.has(g)) return; seen.add(g); r.click();
+  });
+  dlg.querySelectorAll('input[type="checkbox"], [role="checkbox"]').forEach((c) => {
+    if (c.checked || c.getAttribute('aria-checked') === 'true') return; c.click();
+  });
+  const submit = [...dlg.querySelectorAll('div[role="button"], button')]
+    .find((b) => /^(Submit|שליחה|שלח|Send|Done|סיום)$/i.test(((b.getAttribute('aria-label') || b.innerText || '')).trim()));
+  if (!submit || submit.getAttribute('aria-disabled') === 'true') return 'stuck';
+  submit.click();
+  return 'submitted';
+}
 function rzJoinOutcome() {
   if (document.querySelector('div[role="dialog"] textarea, div[role="dialog"] input[type="text"], div[role="dialog"] input[type="radio"]')) return 'needs_answers';
   const text = document.body.innerText || '';
