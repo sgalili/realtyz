@@ -371,7 +371,7 @@ function PublicListingContent() {
               {data.dealType ? `${data.dealType === 'rent' ? 'להשכרה' : 'למכירה'} ב${data.title}` : data.title}
             </h1>
             <p
-              className={`shrink-0 whitespace-nowrap text-[19px] font-normal leading-tight md:text-[25px] ${data.dealType === 'rent' ? 'text-sale' : 'text-success'}`}
+              className={`shrink-0 whitespace-nowrap text-[19px] font-black leading-tight md:text-[25px] ${data.dealType === 'rent' ? 'text-sale' : 'text-success'}`}
               dir="ltr"
             >
               {formatPrice(data.price, data.dealType)}
