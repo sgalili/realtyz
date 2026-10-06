@@ -870,22 +870,18 @@ export default function Properties() {
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
-            {(q.trim() || yad2Status?.tone === 'busy') && <Button
+            {yad2Status?.tone === 'busy' && <Button
               type="button"
               size="sm"
-               variant={searching || yad2Status?.tone === 'busy' ? 'destructive' : 'default'}
-               onClick={searching || yad2Status?.tone === 'busy' ? cancelSearch : () => submitQuery()}
-               aria-label={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
-               title={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
-                className="order-last h-7 shrink-0 gap-1.5 px-3 text-xs"
+              variant="destructive"
+              onClick={cancelSearch}
+              aria-label="בטל חיפוש"
+              title="בטל חיפוש"
+              className="order-last h-7 shrink-0 gap-1.5 px-3 text-xs"
             >
-               {yad2Status?.tone === 'busy' ? <X className="h-3.5 w-3.5" /> : searching ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <SearchIcon className="h-3.5 w-3.5" />
-              )}
-               <span>{searching || yad2Status?.tone === 'busy' ? 'בטל' : 'חפש'}</span>
-             </Button>}
+              <X className="h-3.5 w-3.5" />
+              <span>בטל</span>
+            </Button>}
 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               <CollapsibleTrigger asChild>
                 <Button
@@ -944,6 +940,19 @@ export default function Properties() {
                 className="h-7 min-w-0 flex-1 bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground"
                 dir="rtl"
                />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                disabled={!q.trim()}
+                aria-label="חפש"
+                title="חפש"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { setSuggestionsOpen(false); void submitQuery(); }}
+                className="h-7 w-7 shrink-0 rounded-md text-muted-foreground hover:bg-transparent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              >
+                <SearchIcon className="h-4 w-4" />
+              </Button>
 
              </div>
             </div>
