@@ -136,18 +136,63 @@ export default function MyAds() {
       <div className="max-w-full overflow-x-auto"><TabsList className="w-max min-w-full"><TabsTrigger value="ads">המודעות שלי</TabsTrigger><TabsTrigger value="failed">טיוטות{Boolean(recovery.data?.length) && <span className="ms-2 text-xs">({recovery.data?.length})</span>}</TabsTrigger><TabsTrigger value="favorites">המועדפים שלי</TabsTrigger></TabsList></div>
       <TabsContent value="favorites" className="pt-3"><MyFavoriteAds /></TabsContent>
       <TabsContent value="failed" className="space-y-3 pt-3">
-        {recovery.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : recovery.isError ? <p role="alert">לא ניתן לטעון טיוטות <Button variant="link" onClick={() => void recovery.refetch()}>ניסיון נוסף</Button></p> : !recovery.data?.length ? <p className="py-10 text-center text-muted-foreground">אין מודעות שנכשלו או טיוטות חסרות.</p> : recovery.data.map((draft, i) => {
-          const title = [draft.street || draft.address, draft.city].filter(Boolean).join(', ') || draft.propertyType || 'טיוטת מודעה';
-          const photo = draft.importedListing?.photos?.[0];
-          const missing = missingAdFields(draft);
-          return <article key={draft.listingId || `local-${i}`} className="rounded-lg border bg-card p-3 space-y-3">
-            <div className="flex min-w-0 gap-3"><div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">{typeof photo === 'string' ? <img src={photo} alt={title} className="h-full w-full object-cover" /> : <ImageIcon className="h-6 w-6 text-muted-foreground" />}</div><div className="min-w-0 flex-1"><h2 className="break-words font-semibold">{title}</h2><p className={`text-sm ${draft.publicationError ? 'text-destructive' : 'text-muted-foreground'}`}>{draft.publicationError ? 'הפרסום נכשל' : 'טיוטה שלא הושלמה'}</p><time className="text-xs text-muted-foreground">{date(new Date(draft.savedAt).toISOString())}</time></div></div>
-            {draft.publicationError && <p className="break-words text-sm text-destructive">{draft.publicationError}</p>}
-            {missing.length > 0 && <p className="break-words text-sm text-muted-foreground">להשלמה: {missing.join(' · ')}</p>}
-            {!draft.listingId && <p className="text-xs text-muted-foreground">טיוטה שמורה בדפדפן הזה</p>}
-            <Button variant="outline" onClick={() => setResumeDraft(draft)}>המשך עריכה ופרסום</Button>
-          </article>;
-        })}
+        {recovery.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : recovery.isError ? <p role="alert">לא ניתן לטעון טיוטות <Button variant="link" onClick={() => void recovery.refetch()}>ניסיון נוסף</Button></p> : !recovery.data?.length ? <p className="py-10 text-center text-muted-foreground">אין מודעות שנכשלו או טיוטות חסרות.</p> : (() => {
+          const drafts = recovery.data;
+          const keys = drafts.map((d, i) => d.listingId || `local-${i}`);
+          const toggle = (key: string) => setSelected(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+          const deleteSelected = async () => {
+            setDeleting(true);
+            try {
+              const ids = drafts.filter((d, i) => selected.has(keys[i]) && d.listingId).map(d => d.listingId as string);
+              if (ids.length) {
+                const { error } = await supabase.from('listings').delete().in('id', ids).eq('workspace_owner_id', activeWorkspaceId!);
+                if (error) throw error;
+              }
+              if (drafts.some((d, i) => selected.has(keys[i]) && !d.listingId)) await clearPublicListingDraft(`${user!.id}:${activeWorkspaceId}`);
+              setSelected(new Set()); setSelectMode(false); setConfirmDelete(false);
+              await recovery.refetch();
+            } finally { setDeleting(false); }
+          };
+          return <>
+            <div className="flex items-center justify-between gap-2">
+              <SelectModeToggle active={selectMode} count={selected.size} onToggle={() => { setSelectMode(v => !v); setSelected(new Set()); }} />
+              {selectMode && selected.size > 0 && <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4" />מחיקת {selected.size} טיוטות</Button>}
+            </div>
+            {selectMode && <SelectAllRow total={keys.length} selected={selected.size} onToggle={() => setSelected(selected.size === keys.length ? new Set() : new Set(keys))} />}
+            {drafts.map((draft, i) => {
+              const key = keys[i];
+              const title = [draft.street || draft.address, draft.city].filter(Boolean).join(', ') || draft.propertyType || 'טיוטת מודעה';
+              const photo = draft.importedListing?.photos?.[0];
+              const missing = missingAdFields(draft);
+              return <article key={key} className="rounded-lg border bg-card p-3 space-y-3">
+                <div className="flex min-w-0 gap-3">
+                  {selectMode && <SelectBox checked={selected.has(key)} onChange={() => toggle(key)} label={`בחר ${title}`} className="mt-1" />}
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">{typeof photo === 'string' ? <img src={photo} alt={title} className="h-full w-full object-cover" /> : <ImageIcon className="h-6 w-6 text-muted-foreground" />}</div>
+                  <div className="min-w-0 flex-1"><h2 className="break-words font-semibold">{title}</h2><p className={`text-sm ${draft.publicationError ? 'text-destructive' : 'text-muted-foreground'}`}>{draft.publicationError ? 'הפרסום נכשל' : 'טיוטה שלא הושלמה'}</p><time className="text-xs text-muted-foreground">{date(new Date(draft.savedAt).toISOString())}</time></div>
+                </div>
+                {draft.publicationError && <p className="break-words text-sm text-destructive">{draft.publicationError}</p>}
+                {missing.length > 0 && <p className="break-words text-sm text-muted-foreground">להשלמה: {missing.join(' · ')}</p>}
+                {!draft.listingId && <p className="text-xs text-muted-foreground">טיוטה שמורה בדפדפן הזה</p>}
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => setResumeDraft(draft)}>המשך עריכה ופרסום</Button>
+                  {selectMode && <Button variant="ghost" size="sm" className="gap-1.5 text-destructive" onClick={() => { setSelected(new Set([key])); setConfirmDelete(true); }}><Trash2 className="h-4 w-4" />מחיקה</Button>}
+                </div>
+              </article>;
+            })}
+            <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+              <AlertDialogContent dir="rtl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>מחיקת {selected.size} טיוטות</AlertDialogTitle>
+                  <AlertDialogDescription>הטיוטות הנבחרות יימחקו לצמיתות ולא ניתן יהיה לשחזר אותן. להמשיך?</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>ביטול</AlertDialogCancel>
+                  <AlertDialogAction disabled={deleting} onClick={e => { e.preventDefault(); void deleteSelected(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{deleting ? 'מוחק…' : 'מחיקה לצמיתות'}</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>;
+        })()}
       </TabsContent>
       <TabsContent value="ads" className="space-y-6 pt-3">
     {isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות שפרסמת או נכסים שאתה מקדם.</p> : (['owned', 'promoting'] as const).map(relation => {
