@@ -11,7 +11,9 @@
  *    degrades to a friendly card instead of a white page.
  */
 import { useEffect, useMemo, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { attributeCards } from '@/components/public/propertyAttributes';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bed, Building2, ImageIcon, Layers, Loader2, Ruler } from 'lucide-react';
@@ -48,6 +50,8 @@ export type PublicListing = {
   brokerLicenceNumber: string | null;
   agencyLogoUrl: string | null;
   details: Array<{ label: string; value: string }>;
+  /** Yad2-style translated attribute cards (icon + Hebrew label + value). */
+  attributes: Array<{ icon: LucideIcon; label: string; value: string }>;
   /** Rich data grouped into readable blocks (features, environment, source…). */
   groups: Array<{ title: string; rows: Array<{ label: string; value: string }> }>;
   latitude: number | null;
@@ -83,7 +87,7 @@ const VALUE_LABELS: Record<string, string> = {
   new: 'חדש', renovated: 'משופץ', good: 'שמור', needs_renovation: 'דורש שיפוץ', true: 'כן', false: 'לא',
 };
 
-const HIDDEN_PUBLIC_KEYS = new Set(['office_notes', 'internal_notes', 'owner_phone', 'owner_name', 'owner_email', 'id', 'url', 'sources', 'source', 'source_url', 'external_id', 'removed_photo_keys', 'media_vision_checked', 'media_vision_at', 'metadata_backfilled_at', 'fetched_at', 'created_at', 'updated_at']);
+const HIDDEN_PUBLIC_KEYS = new Set(['office_notes', 'internal_notes', 'owner_phone', 'owner_name', 'owner_email', 'id', 'url', 'sources', 'source', 'source_url', 'external_id', 'removed_photo_keys', 'media_vision_checked', 'media_vision_at', 'metadata_backfilled_at', 'fetched_at', 'created_at', 'updated_at', 'publisher_type', 'contact_whatsapp', 'contact_name', 'contact_email', 'contact_phone', 'lead_daily_limits', 'commission_terms_accepted_at', 'media_videos', 'media_photos', 'workspace_owner_id', 'user_id', 'slug', 'textEng']);
 
 function cleanDate(value: unknown): string | null {
   const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -124,10 +128,6 @@ function detailRows(row: any): Array<{ label: string; value: string }> {
 /** Every remaining rich block from the DB / original ad, kept human-readable. */
 function detailGroups(row: any): Array<{ title: string; rows: Array<{ label: string; value: string }> }> {
   const sources: Array<[string, unknown]> = [
-    ['מאפיינים', row?.features],
-    ['נתוני הנכס', row?.attributes],
-    ['פרטים נוספים', row?.additional_details],
-    ['ריהוט', row?.furniture_details],
     ['הסביבה', row?.area_perks],
     ['היסטוריית מחיר', row?.price_history],
   ];
@@ -209,6 +209,7 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
     brokerLicenceNumber: typeof attribution?.broker_license_number === 'string' ? attribution.broker_license_number : null,
     agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
     details: detailRows(row),
+    attributes: attributeCards(row ?? {}),
     groups: detailGroups(row),
     latitude: Number.isFinite(Number(row?.latitude)) && Number(row?.latitude) !== 0 ? Number(row.latitude) : null,
     longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
@@ -431,15 +432,21 @@ function PublicListingContent() {
               <p className="whitespace-pre-line text-base leading-7 text-foreground">{data.description}</p>
             )}
 
-            {data.details.length > 0 && (
-              <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t pt-4 sm:grid-cols-2">
-                {data.details.map((detail, index) => (
-                  <div key={`${detail.label}-${index}`} className="min-w-0">
-                    <dt className="text-xs font-semibold text-muted-foreground">{detail.label}</dt>
-                    <dd className="mt-1 break-words text-sm text-foreground">{detail.value}</dd>
-                  </div>
-                ))}
-              </dl>
+            {data.attributes.length > 0 && (
+              <div className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-bold text-foreground">נתוני הנכס</h2>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                  {data.attributes.map((card) => (
+                    <div key={card.label} className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-background/70 p-2.5" dir="rtl">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><card.icon className="h-4 w-4" /></span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-muted-foreground">{card.label}</p>
+                        <p className="break-words text-sm font-semibold text-foreground">{card.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {data.groups.map((group) => (
