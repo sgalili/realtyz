@@ -14,12 +14,11 @@ import { useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { attributeCards } from '@/components/public/propertyAttributes';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bed, Building2, ImageIcon, Layers, Loader2, Ruler } from 'lucide-react';
+import { Bed, Building2, Heart, ImageIcon, Layers, Loader2, Ruler, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import { officialWaLink } from '@/lib/officialWa';
@@ -31,6 +30,9 @@ import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesM
 import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddress';
 import PropertyContactActions, { type ContactOptions } from '@/components/public/PropertyContactActions';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
+import { useAuth } from '@/hooks/useAuth';
+import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
 
 export type PublicListing = {
   id: string | null;
@@ -184,7 +186,7 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
   const address = streetLine(row ?? {});
   const location = fullPropertyAddress(row ?? {});
   const sourceTitle = typeof row?.property_title === 'string' ? row.property_title.trim() : '';
-  const title = location || sourceTitle || 'נכס';
+  const title = publicAdTitle(row ?? {});
   const dealType = row?.deal_type === 'rent' ? 'rent' : row?.deal_type === 'sale' ? 'sale' : null;
   const floorRaw = Number(row?.floor);
   return {
@@ -198,11 +200,11 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
     rooms: toNumber(row?.rooms),
     sqm: toNumber(row?.sqm),
     floor: Number.isFinite(floorRaw) ? floorRaw : null,
-    description:
+    description: publicAdDescription(
        (typeof row?.long_description === 'string' && row.long_description.trim()) ||
        (typeof row?.short_description === 'string' && row.short_description.trim()) ||
       (typeof row?.description === 'string' && row.description.trim()) ||
-      '',
+      '', sourceTitle),
     photos: collectPhotos(row),
     brokerName: typeof attribution?.broker_name === 'string' ? attribution.broker_name : 'שם המתווך לא צוין',
     officeName: typeof attribution?.office_name === 'string' ? attribution.office_name : 'שם המשרד לא צוין',
@@ -227,6 +229,13 @@ export function formatPrice(value: number, dealType: PublicListing['dealType']):
 
 function PublicListingContent() {
   const params = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const closeDetails = () => {
+    if (typeof window.history.state?.idx === 'number' && window.history.state.idx > 0) navigate(-1);
+    else navigate('/public-listings', { replace: true });
+  };
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('ref');
     if (!code || !/^[a-z0-9]{6,32}$/i.test(code)) return;
@@ -276,6 +285,31 @@ function PublicListingContent() {
     },
   });
   const data = payload?.properties.find((property) => property.id === selectedId) ?? payload?.property ?? null;
+  const { data: favorite = false, refetch: refetchFavorite } = useQuery({
+    queryKey: ['public-listing-favorite', user?.id, data?.id],
+    enabled: !!user?.id && !!data?.id,
+    queryFn: async () => {
+      if (!user?.id || !data?.id) return false;
+      const { data: saved, error } = await supabase.from('listing_favorites').select('listing_id').eq('user_id', user.id).eq('listing_id', data.id).maybeSingle();
+      if (error) throw error;
+      return !!saved;
+    },
+  });
+  const toggleFavorite = async () => {
+    if (!data?.id || favoriteBusy) return;
+    if (!user?.id) { navigate('/auth', { state: { returnTo: window.location.pathname + window.location.search } }); return; }
+    setFavoriteBusy(true);
+    try {
+      const { error } = favorite
+        ? await supabase.from('listing_favorites').delete().eq('user_id', user.id).eq('listing_id', data.id)
+        : await supabase.from('listing_favorites').insert({ user_id: user.id, listing_id: data.id });
+      if (error) throw error;
+      await refetchFavorite();
+      toast.success(favorite ? 'הנכס הוסר מהמועדפים' : 'הנכס נשמר במועדפים');
+    } catch { toast.error('שמירת המועדף נכשלה, נסו שוב'); }
+    finally { setFavoriteBusy(false); }
+  };
+
 
   const shareUrl = useMemo(() => {
     try {
@@ -335,6 +369,7 @@ function PublicListingContent() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-muted-foreground">
             <p>הנכס הוסר מהפרסום או שהקישור אינו תקין.</p>
+            <Button variant="ghost" onClick={closeDetails}><X className="h-4 w-4" />סגירה וחזרה</Button>
             <Button asChild variant="outline">
               <a href={officialWaLink('שלום, אשמח לעזרה במצוא נכס')} target="_blank" rel="noopener noreferrer">
                 <WhatsAppIcon className="h-4 w-4" /> דברו איתנו בוואטסאפ
@@ -367,17 +402,17 @@ function PublicListingContent() {
     <div className="min-h-screen bg-secondary pb-12" dir="rtl">
       <div className="mx-auto max-w-4xl space-y-5 px-4 pt-5">
         <Card className="overflow-hidden">
-          <div className="flex items-center justify-between gap-3 px-4 pt-4">
-            <h1 className="min-w-0 truncate text-[19px] font-black leading-tight md:text-[25px]">
-              {data.dealType ? `${data.dealType === 'rent' ? 'להשכרה' : 'למכירה'} ב${data.title}` : data.title}
-            </h1>
-            <p
-              className={`shrink-0 whitespace-nowrap text-[19px] font-black leading-tight md:text-[25px] ${data.dealType === 'rent' ? 'text-sale' : 'text-success'}`}
-              dir="ltr"
-            >
-              {formatPrice(data.price, data.dealType)}
-            </p>
+          <div className="flex items-center justify-between gap-3 px-4 pt-3">
+            <Button variant="ghost" size="sm" onClick={closeDetails} aria-label="סגירה וחזרה לעמוד הקודם"><X className="h-4 w-4" />סגירה וחזרה</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button>
+              {data.id && <PropertyContactActions listingId={data.id} title={data.title} shareUrl={shareUrl} compact shareOnly />}
+            </div>
           </div>
+          <div className="px-4 py-3">
+            <PublicAdHeading title={data.title} price={formatPrice(data.price, data.dealType)} dealType={data.dealType} />
+          </div>
+          <BrokerAttribution brokerName={data.brokerName} officeName={data.officeName} licenceNumber={data.brokerLicenceNumber} logoUrl={data.agencyLogoUrl} />
           <div className="relative mt-3 aspect-[16/10] w-full bg-muted">
             {cover ? (
               <img src={cover} alt={data.title} className="h-full w-full object-cover" loading="lazy" />
@@ -386,34 +421,28 @@ function PublicListingContent() {
                 <ImageIcon className="h-10 w-10" />
               </div>
             )}
-            {data.dealType && (
-              <Badge className={`absolute end-3 top-3 border-0 font-bold shadow-sm ${data.dealType === 'rent' ? 'bg-sale text-sale-foreground hover:bg-sale' : 'bg-success text-success-foreground'}`}>{data.dealType === 'rent' ? 'להשכרה' : 'למכירה'}</Badge>
-            )}
+
           </div>
 
           {data.photos.length > 1 && (
             <div className="flex gap-2 overflow-x-auto p-3">
               {data.photos.map((url, i) => (
-                <button
+                <Button
                   key={url}
                   type="button"
+                  variant="ghost"
+                  aria-label={`תמונה ${i + 1}`}
+                  aria-pressed={i === slide}
                   onClick={() => setSlide(i)}
-                  className={`h-14 w-20 shrink-0 overflow-hidden rounded-md border-2 ${
+                  className={`h-14 w-20 shrink-0 overflow-hidden rounded-md border-2 p-0 ${
                     i === slide ? 'border-primary' : 'border-transparent opacity-70'
                   }`}
                 >
                   <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                </button>
+                </Button>
               ))}
             </div>
           )}
-
-          <BrokerAttribution
-            brokerName={data.brokerName}
-            officeName={data.officeName}
-            licenceNumber={data.brokerLicenceNumber}
-            logoUrl={data.agencyLogoUrl}
-          />
 
           <CardContent className="space-y-4 pt-4 text-right">
             {specs.length > 0 && (
@@ -471,7 +500,7 @@ function PublicListingContent() {
             ) : null}
 
             {/* Share lives inside the contact row below, next to WhatsApp / call / form. */}
-            {data.id && <PropertyContactActions listingId={data.id} title={data.title} premsg={data.premsg} options={data.contactOptions} shareUrl={shareUrl} />}
+            {data.id && <PropertyContactActions listingId={data.id} title={data.title} premsg={data.premsg} options={data.contactOptions} showShare={false} />}
           </CardContent>
         </Card>
       </div>

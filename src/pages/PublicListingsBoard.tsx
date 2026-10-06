@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, LayoutGrid, List, Send } from 'lucide-react';
+import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import realtyzLogo from '@/assets/realtyz-logo.png';
@@ -20,6 +20,8 @@ import { OwnerListingActions } from '@/components/properties/PropertyRowActions'
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
+import PublicCardSummary from '@/components/public/PublicCardSummary';
+import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
@@ -34,23 +36,20 @@ export type PublicCard = {
 type GateIntent = 'favorite' | 'details';
 const shekel = (n: number | null) => typeof n === 'number' && n > 0 ? `₪${n.toLocaleString('he-IL')}` : 'מחיר לא צוין';
 const dealLabel = (t: string | null) => t === 'rent' ? 'להשכרה' : 'למכירה';
-function cleanTitle(card: PublicCard) {
-  const location = [card.street || null, card.neighborhood, card.city].filter(Boolean);
-  const rawParts = String(card.title ?? '').split(/[·|,]/).map((part) => part.trim()).filter(Boolean);
-  const unique = Array.from(new Set([...rawParts, ...location].map((part) => String(part).trim()).filter(Boolean)));
-  return unique.slice(0, 3).join(' · ') || 'נכס';
-}
+function cleanTitle(card: PublicCard) { return publicAdTitle(card); }
 
-function PhotoCarousel({ photos, alt, onFavorite, isMine = false, isFav = false }: { photos: string[]; alt: string; onFavorite: () => void; isMine?: boolean; isFav?: boolean }) {
+function PhotoCarousel({ photos, alt, card, onFavorite, isMine = false, isFav = false }: { photos: string[]; alt: string; card: PublicCard; onFavorite: () => void; isMine?: boolean; isFav?: boolean }) {
   const [index, setIndex] = useState(0);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swiped = useRef(false);
-  if (!photos.length) return <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">אין תמונות</div>;
   const move = (delta: number) => setIndex((current) => (current + delta + photos.length) % photos.length);
   return (
     <div className="group relative h-48 overflow-hidden bg-muted [touch-action:pan-y]" onTouchStart={(event) => { const touch = event.touches[0]; if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY }; swiped.current = false; }} onTouchEnd={(event) => { const start = touchStart.current; const touch = event.changedTouches[0]; touchStart.current = null; if (!start || !touch || photos.length < 2) return; const dx = touch.clientX - start.x; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(touch.clientY - start.y)) { swiped.current = true; move(dx > 0 ? 1 : -1); } }} onClickCapture={(event) => { if (swiped.current) { event.preventDefault(); event.stopPropagation(); swiped.current = false; } }}>
-      <img src={photos[index]} alt={alt} loading="lazy" draggable={false} className="h-full w-full object-cover" />
-      <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} className="absolute left-2 top-2 h-9 w-9 rounded-full bg-background/50 text-destructive shadow-sm hover:bg-background/50"><Heart className={cn('h-5 w-5 transition-colors', isFav && 'fill-current')} /></Button>
+      {photos.length ? <img src={photos[index]} alt={alt} loading="lazy" draggable={false} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">אין תמונות</div>}
+      <div className="absolute left-2 top-2 flex items-center gap-1.5">
+        <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={isFav} className="h-9 w-9 rounded-full bg-background/50 text-destructive shadow-sm hover:bg-background/50"><Heart className={cn('h-5 w-5 transition-colors', isFav && 'fill-current')} /></Button>
+        <PropertyContactActions listingId={card.id} title={alt} shareUrl={publicUrl(`/p/${encodeURIComponent(card.slug || card.id)}`)} compact shareOnly shareButtonClassName="h-9 w-9 rounded-full border-0 bg-background/50 text-foreground shadow-sm hover:bg-background/50" />
+      </div>
       {(isMine || photos.length > 1) && (
         <div className="absolute right-2 top-2 flex items-center gap-1.5">
           {photos.length > 1 && <span className="rounded-full bg-background/50 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>}
@@ -279,22 +278,16 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             {filtered.map((card) => {
               const title = cleanTitle(card);
               const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
-              return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className={cn('cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
-                <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} />
+              return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className={cn('cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
+                <div className="p-3"><PublicCardSummary card={card} price={shekel(card.price)} /></div>
+                <PhotoCarousel card={card} photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} />
                 <div className="space-y-2 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="w-full min-w-0 space-y-0.5">
-                      <p className="min-w-0 text-[17px] font-bold text-foreground">
-                        <span className="min-w-0 break-words">{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}${card.total_floors ? ` מתוך ${card.total_floors}` : ''}` : null].filter(Boolean).join(' · ')}</p>
-                    </div>
-                    <div className="flex w-full items-center justify-between gap-2">
-                      <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-sale text-sale-foreground shadow-sm' : 'bg-success text-success-foreground')}>{dealLabel(card.deal_type)}</span>
-                      <p className="mt-1 text-xl font-bold text-foreground">{shekel(card.price)}</p>
-                    </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {!!card.rooms && <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5 text-primary" />{card.rooms} חדרים</span>}
+                    {!!card.sqm && <span className="inline-flex items-center gap-1"><Ruler className="h-3.5 w-3.5 text-primary" />{card.sqm} מ״ר</span>}
+                    {card.floor != null && <span className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{card.floor === 0 ? 'קרקע' : `קומה ${card.floor}`}{card.total_floors ? ` מתוך ${card.total_floors}` : ''}</span>}
                   </div>
-                  {card.description && <p className="line-clamp-3 text-xs text-muted-foreground">{card.description}</p>}
+                  {publicAdDescription(card.description, card.title) && <p className="line-clamp-3 text-xs text-muted-foreground">{publicAdDescription(card.description, card.title)}</p>}
                    <div className="pt-1">
                      <PropertyContactActions
                        listingId={card.id}
@@ -303,7 +296,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                        options={card.contact_options}
                        compact
                         shareUrl={publicUrl(propertyPath)}
-                        showShare
+                        showShare={false}
                      />
                    </div>
                 </div>
@@ -334,8 +327,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-full w-full rounded object-cover" loading="lazy" /> : <div className="h-full w-full rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex rounded-full bg-background/90 p-0.5 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <span className="block max-w-[9rem] truncate sm:max-w-[14rem]" title={[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}>{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
-                          : id === 'deal' ? <span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold', card.deal_type === 'rent' ? 'bg-sale text-sale-foreground' : 'bg-success text-success-foreground')}>{dealLabel(card.deal_type)}</span>
+                          ) : id === 'address' ? <div className="w-72 max-w-[18rem]"><PublicCardSummary card={card} price={shekel(card.price)} /></div>
+                          : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs font-semibold', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? shekel(card.price)
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
@@ -353,11 +346,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                                   <OwnerListingActions listingId={card.id} />
                                 </div>
                               ) : null}
-                              {open && <PropertyGallerySlider photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} />}
                             </div>
                             <div className="min-w-0 space-y-3">
-                              <ExpandedPropertyDetails idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} onClose={() => { setExpandedId(null); requestAnimationFrame(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }} />
-                              <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact shareUrl={publicUrl(propertyPath)} showShare />
+                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} onClose={() => { setExpandedId(null); requestAnimationFrame(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }} />}
+                              <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact showShare={false} />
                             </div>
                           </div>
                           </AnimatedExpansion>

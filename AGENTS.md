@@ -1,4 +1,5 @@
 # Architecture rules
+- Public ads share title/publisher UI and public endpoint cache; never read private profiles for cards.
 - Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports and commissions; authorize publication in DB.
 - Drafts retain user/workspace steps/errors; explicit publish, current-member broker defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.
@@ -16,7 +17,7 @@
 - Multi-target campaign expansion derives one child per persisted target and reuses the feed card renderer with campaign/group keys; synthetic children never submit campaign-level actions.
 - Queue progress and card mirrors share a stable workspace-filtered live subscription with polling fallback; normalize both server payloads and browser job payloads so every active card reflects persisted jobs.
 - Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
-- Posting continuation uses the full campaign composer and an atomic workspace-authorized edited-repost operation; active original jobs block replacement and completed jobs require explicit resubmission.
+- Posting continuation uses full composer and atomic workspace-authorized edited-repost; active jobs block replacement, completed jobs need explicit resubmission.
 
 - Composer topic mode uses the active workspace; workspace drafts retain topics overriding property focus in AI generation.
 

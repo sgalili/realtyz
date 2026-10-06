@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -9,6 +9,10 @@ import {
   Navigation, Package, Receipt, Ruler, School, ShieldCheck, Snowflake, Sparkles, Store, Trees, Utensils, Wallet, Wrench,
 } from 'lucide-react';
 import { normalizeListing, formatPrice } from '@/pages/PublicListingPage';
+import BrokerAttribution from '@/components/properties/BrokerAttribution';
+import PublicAdHeading from './PublicAdHeading';
+import PropertyContactActions from './PropertyContactActions';
+import { publicUrl } from '@/lib/publicUrl';
 
 type Raw = Record<string, unknown>;
 type Spec = { icon: LucideIcon; label: string; value: string };
@@ -60,7 +64,7 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
   return 'other';
 }
 
-export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose }: { idOrSlug: string; isFav?: boolean; onFavorite?: () => void; onClose?: () => void }) {
+export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, gallery }: { idOrSlug: string; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; gallery?: ReactNode }) {
   useEffect(() => { void (supabase as any).rpc('track_listing_view', { _id_or_slug: idOrSlug }); }, [idOrSlug]);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['public-listing-expanded', idOrSlug],
@@ -158,9 +162,6 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const descTrim = (rawDesc || '').trim();
   const isStub = !descTrim || descTrim.length < 40 && /^[^\n]*\s·\s[^\n]*$/.test(descTrim);
   const description = !isStub && descTrim !== titleStr && descTrim !== listing.title ? descTrim : '';
-  const dealWord = listing.dealType === 'rent' ? 'להשכרה' : listing.dealType ? 'למכירה' : '';
-  const baseTitle = String(listing.title || '').replace(/\s*(למכירה|להשכרה)\s*/g, ' ').trim();
-  const titleText = dealWord ? (() => { const i = baseTitle.indexOf(' '); return i > 0 ? `${baseTitle.slice(0, i)} ${dealWord}${baseTitle.slice(i)}` : `${baseTitle} ${dealWord}`.trim(); })() : baseTitle;
   const hasCoords = listing.latitude !== null && listing.longitude !== null;
   const mapQuery = hasCoords ? `${listing.latitude},${listing.longitude}` : listing.addressForMap;
   const wazeUrl = hasCoords
@@ -169,19 +170,17 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapQuery)}`;
   const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&hl=iw&z=16&output=embed`;
 
-  const office = listing.officeName && !listing.officeName.includes('לא צוין') ? listing.officeName : '';
-  const agent = listing.brokerName && !listing.brokerName.includes('לא צוין') ? listing.brokerName : '';
-
   return (
     <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-sm">
       <header className="min-w-0 space-y-3 border-b pb-4">
         {(onFavorite || onClose) && (
           <div className="flex items-center justify-end gap-2">
             {onFavorite && (
-              <Button type="button" variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onFavorite(); }} aria-pressed={isFav} className="gap-1.5">
-                <Heart className={`h-4 w-4 text-destructive ${isFav ? 'fill-current' : ''}`} />{isFav ? 'במועדפים' : 'הוספה למועדפים'}
+              <Button type="button" variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); onFavorite(); }} aria-pressed={isFav} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים">
+                <Heart className={`h-4 w-4 text-destructive ${isFav ? 'fill-current' : ''}`} />
               </Button>
             )}
+            {listing.id && <PropertyContactActions listingId={listing.id} title={listing.title} shareUrl={publicUrl(`/p/${encodeURIComponent(listing.slug || listing.id)}`)} compact shareOnly />}
             {onClose && (
               <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onClose(); }} className="gap-1.5" aria-label="סגירת פרטי הנכס">
                 <X className="h-4 w-4" />סגירה
@@ -195,11 +194,12 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
               {a.isAssetExclusive === true && <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold text-foreground"><Award className="h-3.5 w-3.5 text-primary" />בבלעדיות</span>}
               {a.isImmediateEntrance === true && <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold text-foreground"><CalendarDays className="h-3.5 w-3.5 text-primary" />כניסה מיידית</span>}
             </div>
-            <p className="break-words text-lg font-bold text-foreground lg:text-xl">{titleText}</p>
             {oneLiner && <p className="break-words text-muted-foreground">{oneLiner}</p>}
           </div>
-          <p className="shrink-0 whitespace-nowrap text-base font-bold leading-7 text-primary lg:text-xl">{formatPrice(listing.price, listing.dealType)}</p>
         </div>
+        <PublicAdHeading title={listing.title} price={formatPrice(listing.price, listing.dealType)} dealType={listing.dealType} />
+        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} />
+        {gallery}
         {(rooms || total || floor) && (
           <div className="flex flex-wrap gap-2">
             {rooms && <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-semibold text-foreground"><DoorOpen className="h-4 w-4 text-primary" />{rooms} חדרים</span>}
@@ -286,20 +286,6 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
         </section>
       )}
 
-      {(office || agent) && (
-        <footer className="flex min-w-0 items-center gap-3 rounded-xl border bg-muted/40 p-3">
-          {listing.agencyLogoUrl
-            ? <img src={listing.agencyLogoUrl} alt={office || 'משרד'} className="h-10 w-10 shrink-0 rounded-md bg-background object-contain" />
-            : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><Building2 className="h-5 w-5" /></span>}
-          <div className="min-w-0">
-            {office && <p className="truncate font-semibold text-foreground">{office}</p>}
-            <p className="truncate text-xs text-muted-foreground">
-              {[agent, listing.brokerLicenceNumber ? `רישיון תיווך ${listing.brokerLicenceNumber}` : ''].filter(Boolean).join(' · ')}
-            </p>
-          </div>
-          {listing.brokerLicenceNumber && <BadgeCheck className="ms-auto h-5 w-5 shrink-0 text-primary" aria-label="מתווך מורשה" />}
-        </footer>
-      )}
       </aside>
       </div>
     </div>
