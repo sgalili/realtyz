@@ -28,6 +28,7 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
   const listId = useId();
   const sessionToken = useRef<string>(crypto.randomUUID());
   const latest = useRef(0);
+  const latestDetails = useRef(0);
 
   useEffect(() => { setText(value); setSelected(Boolean(value)); }, [value]);
   useEffect(() => {
@@ -35,14 +36,14 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
       if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
     };
     document.addEventListener('pointerdown', closeOutside);
-    return () => { document.removeEventListener('pointerdown', closeOutside); latest.current++; };
+    return () => { document.removeEventListener('pointerdown', closeOutside); latest.current++; latestDetails.current++; };
   }, []);
 
   useEffect(() => {
     const query = text.trim();
     const requestId = ++latest.current;
     setEmpty(false); setActiveIndex(-1);
-    if (selected || query.length < 2) { setSuggestions([]); setLoading(false); return; }
+    if (selected || query.length < 2) { setSuggestions([]); if (!selected) setLoading(false); return; }
     const timer = setTimeout(async () => {
       setLoading(true);
       let { data, error } = await supabase.functions.invoke('places-autocomplete', {
@@ -73,13 +74,14 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
 
   const choose = async (placeId: string, label: string) => {
     setSelected(true);
-    const requestId = ++latest.current;
+    latest.current++;
+    const requestId = ++latestDetails.current;
     setText(label); setOpen(false); setSuggestions([]);
     setLoading(true);
     const { data, error } = await supabase.functions.invoke('places-autocomplete', {
       body: { action: 'details', place_id: placeId, sessionToken: sessionToken.current },
     });
-    if (requestId !== latest.current) return;
+    if (requestId !== latestDetails.current) return;
     setLoading(false);
     sessionToken.current = crypto.randomUUID();
     const place = (data as { place?: ResolvedPlace })?.place;
@@ -111,7 +113,7 @@ export default function AddressAutocomplete({ value, onPick }: { value: string; 
         enterKeyHint="search"
         placeholder="חיפוש כתובת מלאה"
         className="ps-9 text-base"
-        onChange={(event) => { latest.current++; setLoading(false); setSelected(false); setText(event.target.value); }}
+        onChange={(event) => { latest.current++; latestDetails.current++; setLoading(false); setSelected(false); setText(event.target.value); }}
         onFocus={() => { if (suggestions.length) setOpen(true); }}
         onKeyDown={(event) => {
           if (event.key === 'Escape') { setOpen(false); return; }
