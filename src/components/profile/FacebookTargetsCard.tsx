@@ -341,8 +341,8 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
             notJoinedGroups.length === 0 ? (
               <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות בהמתנה.</p>
             ) : (<>
-              <SelectAllRow total={notJoinedGroups.length} selected={joinPicked.size}
-                onToggle={() => setJoinPicked(joinPicked.size === notJoinedGroups.length ? new Set() : new Set(notJoinedGroups.map((g) => g.id)))}
+              <SelectAllRow total={Math.min(notJoinedGroups.length, MAX_GROUPS)} selected={joinPicked.size}
+                onToggle={() => setJoinPicked(joinPicked.size > 0 ? new Set() : new Set(sortByPopularity(notJoinedGroups).slice(0, MAX_GROUPS).map((g) => g.id)))}
                 className="rounded-lg border border-border">
                 <Button type="button" size="sm" className="h-7 gap-1 text-[12px]" disabled={joinPicked.size === 0 || joining}
                   onClick={() => void joinTargets(notJoinedGroups.filter((g) => joinPicked.has(g.id)))}>
@@ -351,9 +351,9 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 </Button>
               </SelectAllRow>
               <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
-                {notJoinedGroups.map((g) => renderSimpleRow(g, (<>
+                {sortByPopularity(notJoinedGroups).map((g) => renderSimpleRow(g, (<>
                   <SelectBox checked={joinPicked.has(g.id)} label={g.name}
-                    onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else n.add(g.id); return n; })} />
+                    onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else if (n.size < MAX_GROUPS) n.add(g.id); else toast.info(`ניתן לבחור עד ${MAX_GROUPS} קבוצות`); return n; })} />
                   {g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-primary" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
                 </>)))}
               </div>
