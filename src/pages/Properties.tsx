@@ -1787,14 +1787,14 @@ export function ResultTable({
                   })()}
 
                 </td>
-                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{houseNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums"><span data-sort-value={Number(houseNumberOf({ address: r.address, raw: r.raw })) || ''}>{houseNumberOf({ address: r.address, raw: r.raw }) || '—'}</span></td>
+                <td className="px-2 py-1.5 whitespace-nowrap tabular-nums"><span data-sort-value={Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || ''}>{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap max-w-[10rem] truncate">{neighborhoodOf(r) || '—'}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
-                <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
+                <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}><span data-sort-value={typeof r.price === 'number' ? r.price : ''}>{r.price ? formatPrice(r.price) : '—'}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap"><span data-sort-value={r.rooms ?? ''}>{r.rooms ?? '—'}</span></td>
+                <td className="px-2 py-1.5 whitespace-nowrap"><span data-sort-value={r.size_sqm ?? ''}>{r.size_sqm ?? '—'}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap">
                   {(() => {
                     // Total images on the SOURCE ad, even before any import.
