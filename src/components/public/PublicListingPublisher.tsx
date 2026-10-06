@@ -30,6 +30,7 @@ import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutoc
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { celebratePublication, preparePublicationSound } from '@/lib/publicationCelebration';
+import { missingAdFields } from '@/lib/adRecovery';
 
 const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
 const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
@@ -107,7 +108,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [importStage, setImportStage] = useState('');
   const initializedPublisher = useRef('');
   const publicationAudio = useRef<AudioContext | null>(null);
+  const openedScope = useRef('');
   const draftScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'visitor';
+  useEffect(() => {
+    if (openedScope.current && openedScope.current !== draftScope && openedScope.current !== 'visitor') {
+      setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setPublishError('');
+    }
+    openedScope.current = draftScope;
+  }, [draftScope]);
   const saveDraft = (f = fields, images = files, clips = videos) => savePublicListingDraft({ ...f, publicationError: f.publicationError || publishError, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step }, images, clips, draftScope);
   useEffect(() => {
     if (!resumeDraft) return;
@@ -235,7 +243,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       } else request = supabase.from('listings').insert(payload as never);
       const { data, error } = await request.select('id').single();
       if (error) throw error;
-      await clearPublicListingDraft(draftScope);
+      await clearPublicListingDraft(draftScope).catch(() => {});
       void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] });
       onRecovered?.();
       void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
@@ -338,6 +346,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   };
 
   const submit = async () => {
+    const missing = missingAdFields(fields);
+    if (missing.length) { toast.error(`יש להשלים: ${missing.join(' · ')}`); return; }
     if (!fields.city.trim() || !(fields.street.trim() || fields.address.trim()) || !fields.propertyType.trim() || !fields.price) {
       return;
     }
