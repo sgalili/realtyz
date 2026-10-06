@@ -425,6 +425,10 @@ function PublicListingContent() {
               </div>
             )}
 
+            {data.description && (
+              <p className="whitespace-pre-line text-base leading-7 text-foreground">{data.description}</p>
+            )}
+
             {data.details.length > 0 && (
               <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t pt-4 sm:grid-cols-2">
                 {data.details.map((detail, index) => (
