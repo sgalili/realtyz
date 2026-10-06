@@ -389,7 +389,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-full w-full rounded object-cover" loading="lazy" /> : <div className="h-full w-full rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex rounded-full bg-background/90 p-0.5 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem]">{open ? <PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
+                          ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem]">{open ? <div className="flex items-center gap-1"><div className="min-w-0 flex-1"><PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /></div>{user ? <OwnerListingActions listingId={card.id} /> : null}</div> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? (open ? null : shekel(card.price))
                           : id === 'rooms' ? card.rooms || ''
@@ -406,13 +406,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                         <td colSpan={columns.visible.length + 1} className="p-0">
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} ref={open ? ownerSectionRef : undefined} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
-                            <div className="min-w-0">
-                              {open && user ? (
-                                <div ref={open ? ownerBarRef : undefined} className="mb-3">
-                                  <OwnerListingActions listingId={card.id} />
-                                </div>
-                              ) : null}
-                            </div>
                             <div className="min-w-0 space-y-3">
                               {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} />}
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact showShare={false} />
