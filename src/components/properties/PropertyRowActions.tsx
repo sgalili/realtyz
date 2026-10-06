@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
-import { EditPropertyDialog } from '@/components/properties/EditPropertyDialog';
 import { RewardDialog } from '@/pages/AffiliateNetwork';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
@@ -90,7 +89,6 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
   const [row, setRow] = useState<UnifiedResult | null>(null);
   const [raw, setRaw] = useState<any>(null);
   const [confirm, setConfirm] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [rewardOpen, setRewardOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -112,7 +110,7 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
   const rawAff = raw ?? {};
   const affiliateActive = !!rawAff.affiliate_enabled && Number(rawAff.affiliate_reward_amount ?? 0) > 0;
   return (
-    <div className="flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
+    <div className="relative flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="icon" variant="ghost" className="h-8 w-8 bg-transparent hover:bg-transparent" title="ניהול המודעה שלי" aria-label="ניהול המודעה שלי">
@@ -122,24 +120,24 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
         <DropdownMenuContent align="start" className="w-52" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuLabel className="text-xs">ניהול המודעה שלי</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {live ? (
-            <DropdownMenuItem asChild className="gap-2 text-sm">
-              <a href={live} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                <Yad2Icon className="h-4 w-4" /> פתח את המודעה ביד2
-              </a>
-            </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${row.localId}&listing=${row.localId}`, { state: returnState() })}>
-            <Megaphone className="h-4 w-4" /> צור קמפיין לנכס
-          </DropdownMenuItem>
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4" /> שתף נכס
           </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setEditOpen(true)}>
-            <Pencil className="h-4 w-4" /> עריכת הנכס
+          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${row.localId}&listing=${row.localId}`, { state: returnState() })}>
+            <Megaphone className="h-4 w-4" /> צור קמפיין לנכס
           </DropdownMenuItem>
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setRewardOpen(true)}>
             <Handshake className={`h-4 w-4 ${affiliateActive ? 'text-success' : ''}`} /> {affiliateActive ? 'שיווק שותפים פעיל' : 'הגדר שיווק שותפים'}
+          </DropdownMenuItem>
+          {live ? (
+            <DropdownMenuItem asChild className="gap-2 text-sm">
+              <a href={live} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                <Yad2Icon className="h-4 w-4" /> פתח ביד2
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/properties/${listingId}`, { state: { ...returnState(), returnTo: window.location.pathname + window.location.search, openEdit: true } })}>
+            <Pencil className="h-4 w-4" /> עריכת הנכס
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2 text-sm text-destructive focus:text-destructive" onSelect={() => setConfirm(true)}>
@@ -148,8 +146,6 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
         </DropdownMenuContent>
       </DropdownMenu>
       <PropertyShareMenu results={[row]} iconOnly variant="ghost" hidePublish hideTrigger open={shareOpen} onOpenChange={setShareOpen} />
-      <EditPropertyDialog property={raw} open={editOpen} onOpenChange={setEditOpen}
-        onSaved={() => { setReloadKey((k) => k + 1); window.dispatchEvent(new CustomEvent('realtyz:listing-updated', { detail: { id: listingId } })); }} />
       <RewardDialog listing={rewardOpen ? raw : null} open={rewardOpen}
         onOpenChange={(v) => { setRewardOpen(v); if (!v) setReloadKey((k) => k + 1); }} />
       <PropertyDeleteDialog count={1} open={confirm} deleting={del.isPending} onOpenChange={setConfirm}

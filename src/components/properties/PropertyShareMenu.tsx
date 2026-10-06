@@ -118,13 +118,13 @@ export function PropertyShareMenu({
           onClick={(e) => e.stopPropagation()}
           aria-label={iconOnly ? 'שתף נכס' : undefined}
           title="שתף נכס עם מתעניין"
-          className={`gap-1.5 ${iconOnly ? 'h-8 w-8' : ''} ${hideTrigger ? 'hidden' : ''} ${className ?? ''}`}
+          className={`gap-1.5 ${iconOnly ? 'h-8 w-8' : ''} ${hideTrigger ? 'pointer-events-none absolute inset-0 !h-full !w-full opacity-0' : ''} ${className ?? ''}`}
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
           {!iconOnly && <span>{count > 1 ? `${label} (${count})` : label}</span>}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuContent align="end" side="bottom" className="w-48" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel className="text-xs">
           {count > 1 ? `שיתוף ${count} נכסים` : 'שיתוף נכס'}
         </DropdownMenuLabel>
