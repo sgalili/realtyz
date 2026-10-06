@@ -1827,7 +1827,7 @@ export function ResultTable({
               </tr>
               {rowNotes && rowNotes.length > 0 && (
                 <tr className="border-t-0 bg-muted/20">
-                  <td className="px-2 pb-2" colSpan={13 + (showAffiliateColumn ? 1 : 0) + (commissionCell ? 1 : 0) + (selectionMode ? 1 : 0)}>
+                  <td className="px-2 pb-2" colSpan={30}>
                     <PropertyNotesBlock notes={rowNotes} />
                   </td>
                 </tr>
@@ -1838,7 +1838,6 @@ export function ResultTable({
           })}
         </tbody>
       </Table>
-      </HorizontalTableScroll>
     </Card>
   );
 }
