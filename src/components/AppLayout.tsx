@@ -531,7 +531,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
           <PageHero />
-          <main className={`realtyz-main-surface flex-1 overscroll-contain overflow-x-hidden px-3 sm:px-6 pt-[20px] ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
+          <main className={`realtyz-main-surface flex-1 overscroll-contain overflow-x-hidden px-3 sm:px-6 ${location.pathname.startsWith('/properties') ? 'pt-0' : 'pt-[20px]'} ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
             <div className={`w-full lg:mx-auto lg:w-[60vw] lg:max-w-[60vw] ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
               <FacebookConnectionBanner />
               {children}
