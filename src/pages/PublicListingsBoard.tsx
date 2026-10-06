@@ -169,10 +169,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       <header className="bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
           {embedded ? null : (
-            <div className="relative flex min-h-11 items-center justify-between gap-3">
+            <div className="relative flex min-h-11 items-center justify-between gap-2">
               <PublicListingPublisher autoResume />
-              <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
-              <div className="flex shrink-0 items-center gap-2">
+              <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-base font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {!user && (
                   <Button
                     size="sm"
@@ -182,12 +182,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                         state: { returnTo: location.pathname + location.search },
                       })
                     }
-                    className="h-9 rounded-full px-4 text-sm font-semibold"
+                    className="h-8 rounded-full px-3 text-xs font-semibold sm:h-9 sm:px-4 sm:text-sm"
                   >
                     הרשמה / התחברות
                   </Button>
                 )}
-                <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto object-contain sm:h-[42px]" />
+                <img src={realtyzLogo} alt="Realtyz" className="h-8 w-auto object-contain sm:h-10" />
               </div>
             </div>
           )}
