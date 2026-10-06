@@ -1164,7 +1164,7 @@ const rzJoinCancelled = new Set();
 
 async function rzJoinGroups(requestId, groups, senderTabId) {
   const report = (payload) => { if (senderTabId != null) chrome.tabs.sendMessage(senderTabId, { type: 'RZ_FB_GROUP_JOIN_PROGRESS', requestId, ...payload }, () => chrome.runtime.lastError); };
-  const list = groups.slice(0, 15);
+  const list = groups.slice(0, 5);
   for (let i = 0; i < list.length; i++) {
     const g = list[i];
     if (rzJoinCancelled.has(requestId)) break;
