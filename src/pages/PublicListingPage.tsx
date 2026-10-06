@@ -413,7 +413,7 @@ function PublicListingContent() {
           />
 
           <CardContent className="space-y-4 pt-4 text-right">
-            <p className="whitespace-pre-line text-base leading-7 text-foreground">{data.description}</p>
+            {specs.length > 0 && (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {specs.map((spec) => (
                   <div key={spec.label} className="rounded-lg border bg-background/70 p-3 text-center">
