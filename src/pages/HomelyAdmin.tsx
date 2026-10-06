@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,7 +134,7 @@ export default function HomelyAdmin() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs">
                 <tr>
                   <th className="text-start p-3">מתווך</th>
@@ -209,7 +210,7 @@ export default function HomelyAdmin() {
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
           </div>
         </CardContent>
       </Card>

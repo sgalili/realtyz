@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Inbox, Loader2 } from 'lucide-react';
@@ -57,7 +58,7 @@ export default function LeftoverLeadsDialog() {
             <p className="py-8 text-center text-sm text-muted-foreground">אין כרגע אנשי קשר נוספים</p>
           ) : (
             <div className="max-h-[60vh] overflow-auto">
-              <table className="w-full min-w-[520px] text-sm">
+              <Table className="w-full min-w-[520px] text-sm">
                 <thead><tr className="border-b text-muted-foreground"><th className="p-2 text-start">נכס</th><th className="p-2 text-start">איש קשר</th><th className="p-2 text-start">סוג</th><th className="p-2 text-start">מחיר</th><th className="p-2" /></tr></thead>
                 <tbody>
                   {rows.map((r) => (
@@ -79,7 +80,7 @@ export default function LeftoverLeadsDialog() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </div>
           )}
         </DialogContent>

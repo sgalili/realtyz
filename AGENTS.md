@@ -5,14 +5,14 @@
 - Facebook authentication and workspace extension groups are siblings; groups remain mounted so Page state cannot hide them or interrupt joining.
 - Auto-join indicators follow extension per-group events; workspace result overlays prevent polling from reversing tab migration before persistence.
 - Peer expansions use exclusive group-keyed animated height; nested utilities use separate groups.
-- Tables use min-content/native horizontal scrolling, no arrow overlays. Board columns share header/cell IDs and user/workspace-keyed local settings, never stored listing data.
+- Tables use the shared Table primitive for sort/reorder/hide (user/workspace/page-keyed local prefs, never listing data) with native horizontal scrolling and no arrow overlays, so behavior is identical everywhere.
 - My Ads uses workspace-keyed, property-authorized RPCs; partners see only their own external-listing results, never raw contact identity.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 
 - Group selection uses one checkbox per row, immutable deduplicated snapshots and no-op guards; sibling links prevent duplicate activation/cascades.
 
-- Campaign feed metadata uses one nonwrapping RTL row ordered platform, date, group target, repost and engagement; shrinkable names open full-name popovers, and inline bordered series retain per-target statuses inside their parent to avoid clipping and mobile overflow.
-- Multi-target campaign expansion derives one child per persisted target and reuses the feed card renderer with campaign/group keys; synthetic children never submit campaign-level actions, preventing duplicate queue operations.
+- Campaign feed metadata uses one nonwrapping RTL row ordered platform, date, group target, repost and engagement; shrinkable names open full-name popovers, and inline bordered series retain per-target statuses inside their parent.
+- Multi-target campaign expansion derives one child per persisted target and reuses the feed card renderer with campaign/group keys; synthetic children never submit campaign-level actions.
 - Queue progress and card mirrors share a stable workspace-filtered live subscription with polling fallback; normalize both server payloads and browser job payloads so every active card reflects persisted jobs.
 - Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
 - Posting continuation uses the full campaign composer and an atomic workspace-authorized edited-repost operation; active original jobs block replacement and completed jobs require explicit resubmission.

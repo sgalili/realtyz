@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -142,7 +143,7 @@ export function PropertyYad2SectionsCard({
       {deals.length > 0 && (
         <SectionShell icon={Handshake} title="עסקאות אחרונות שנמכרו באזור" count={deals.length}>
           <div className="overflow-x-auto">
-            <table className="w-full text-lg">
+            <Table className="w-full text-lg">
               <thead>
                 <tr className="border-b text-right text-base text-muted-foreground">
                   <th className="py-2 pe-2">תאריך</th>
@@ -167,7 +168,7 @@ export function PropertyYad2SectionsCard({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
         </SectionShell>
       )}

@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { returnState } from "@/lib/returnNav";
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
@@ -1706,7 +1707,7 @@ export function ResultTable({
   return (
     <Card className="max-w-full w-full min-w-0">
       <HorizontalTableScroll>
-      <table className="w-full min-w-max text-[15px]" dir="rtl">
+      <Table className="w-full min-w-max text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
             {selectionMode ? (
@@ -1880,7 +1881,7 @@ export function ResultTable({
 
           })}
         </tbody>
-      </table>
+      </Table>
       </HorizontalTableScroll>
     </Card>
   );

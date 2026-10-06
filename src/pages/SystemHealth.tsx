@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useEffect, useState } from 'react';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -247,7 +248,7 @@ export default function SystemHealth() {
           </CardHeader>
           <CardContent>
             <div className="overflow-hidden rounded-md border">
-              <table className="w-full text-xs">
+              <Table className="w-full text-xs">
                 <thead className="bg-muted/40 text-right">
                   <tr>
                     <th className="px-3 py-2 font-medium">זמן</th>
@@ -301,7 +302,7 @@ export default function SystemHealth() {
                   )}
 
                 </tbody>
-              </table>
+              </Table>
             </div>
           </CardContent>
         </Card>

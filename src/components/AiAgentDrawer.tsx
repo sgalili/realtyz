@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useQueryClient } from '@tanstack/react-query';
@@ -726,7 +727,7 @@ ${shareUrl}
                     })()}
 
                     <div className="overflow-x-auto max-h-48 rounded-lg border border-border/50 bg-background">
-                      <table className="w-full text-[15px]">
+                      <Table className="w-full text-[15px]">
                         <thead>
                           <tr className="bg-muted/50">
                             {Object.keys(msg.data[0]).slice(0, 5).map(key => (
@@ -745,7 +746,7 @@ ${shareUrl}
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                      </Table>
                       {msg.data.length > 10 && (
                         <p className="text-[14px] text-muted-foreground text-center py-1">+ {msg.data.length - 10} שורות נוספות</p>
                       )}
