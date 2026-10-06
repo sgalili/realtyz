@@ -780,11 +780,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
            </Button> : <span />}
           {reviewMode || isLast ? (
             <div className="flex items-center justify-end gap-3">
+              {!canPublish && <span className="hidden text-xs text-muted-foreground sm:inline" title={missingPublish.join(' · ')}>חסר: {missingPublish[0]}{missingPublish.length > 1 ? ` +${missingPublish.length - 1}` : ''}</span>}
               <label className="flex max-w-sm items-start gap-2 text-xs leading-snug">
                 <Checkbox checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} className="mt-0.5" />
                 <span>אני מאשר/ת את <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">מדיניות הפרטיות</a> ומצהיר/ה שיש לי הרשאה לפרסם את הנכס והתמונות</span>
               </label>
-              <Button type="button" disabled={publishing} onClick={() => void submit()} className="shrink-0 bg-success text-success-foreground hover:bg-success/90">
+              <Button type="button" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()} className="shrink-0 bg-success text-success-foreground hover:bg-success/90">
                 {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> מפרסם…</> : user ? 'פרסום הנכס' : 'הרשמה ופרסום'}
               </Button>
             </div>
@@ -806,7 +807,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             {(fields.sqm || fields.builtSqm) && <div><dt className="text-xs text-muted-foreground">שטח</dt><dd className="mt-1 font-semibold">{fields.sqm || fields.builtSqm} מ״ר</dd></div>}
           </dl>
         </div>
-        <div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div>
+        <div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div>
       </DialogContent></Dialog>
     </Dialog>
   );
