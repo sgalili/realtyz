@@ -651,7 +651,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <p className="text-sm font-bold">עמלה ומגבלה יומית לכל סוג פנייה</p>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="איך עובד מנגנון העמלות"><HelpCircle className="h-4 w-4" /></Button>
+                    <button type="button" className="text-sm font-semibold text-primary underline underline-offset-2 hover:text-primary/80">מנגנון העמלות</button>
                   </DialogTrigger>
                   <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
                     <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
