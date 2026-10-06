@@ -55,6 +55,7 @@ import { ensureFullPropertyImport, ensureMetadataImport } from '@/lib/propertyFu
 import { isNewListing, isOldListing } from '@/lib/listingFreshness';
 import { isRelevantListing } from '@/lib/listingRelevance';
 import { sourceYad2Url } from '@/lib/yad2Ad';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
 import { formatListingDate, listingActivityAt } from '@/lib/listingDates';
@@ -498,6 +499,7 @@ export default function Properties() {
 
   // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,
   // gallery, description) and the user lands directly on the imported card.
+  const { activeWorkspaceId } = useWorkspace();
   const [yad2Status, setYad2Status] = useState<{ step: number; label: string; tone: 'busy' | 'ok' | 'error' } | null>(null);
   const submitQuery = useCallback(async (override?: string) => {
     const raw = (typeof override === 'string' ? override : q).trim();
