@@ -366,7 +366,16 @@ function PublicListingContent() {
     <div className="min-h-screen bg-secondary pb-12" dir="rtl">
       <div className="mx-auto max-w-4xl space-y-5 px-4 pt-5">
         <Card className="overflow-hidden">
-          <div className="relative aspect-[16/10] w-full bg-muted">
+          <div className="flex items-center justify-between gap-3 px-4 pt-4">
+            <h1 className="min-w-0 truncate text-[14px] font-black leading-tight md:text-[20px]">{data.title}</h1>
+            <p
+              className={`shrink-0 whitespace-nowrap text-[14px] font-normal leading-tight ${data.dealType === 'rent' ? 'text-sale' : 'text-success'}`}
+              dir="ltr"
+            >
+              {formatPrice(data.price, data.dealType)}
+            </p>
+          </div>
+          <div className="relative mt-3 aspect-[16/10] w-full bg-muted">
             {cover ? (
               <img src={cover} alt={data.title} className="h-full w-full object-cover" loading="lazy" />
             ) : (
