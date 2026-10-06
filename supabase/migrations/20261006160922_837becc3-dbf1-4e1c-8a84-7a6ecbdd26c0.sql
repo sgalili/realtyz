@@ -1,0 +1,1 @@
+CREATE POLICY "superadmin_all_listings_full_access" ON public.listings FOR ALL TO authenticated USING (public.has_role(auth.uid(), 'super_admin'::app_role)) WITH CHECK (public.has_role(auth.uid(), 'super_admin'::app_role));
