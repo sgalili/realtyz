@@ -17,7 +17,7 @@ import {
   User,
   ArrowLeft,
   ArrowRight,
-  ChevronLeft,
+  ChevronRight,
   DownloadCloud,
   Loader2,
   RefreshCw,
