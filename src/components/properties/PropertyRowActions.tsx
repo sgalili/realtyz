@@ -16,6 +16,7 @@ import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { sourceYad2Url } from '@/lib/yad2Ad';
 import { mapLocalListingRow, type UnifiedResult } from '@/lib/propertySearch';
 
@@ -92,13 +93,17 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
   const [rewardOpen, setRewardOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  const { isSuperAdmin } = useUserRole();
   useEffect(() => {
-    if (!user?.id || !activeWorkspaceId) { setRow(null); return; }
+    if (!user?.id || (!activeWorkspaceId && !isSuperAdmin)) { setRow(null); return; }
     let alive = true;
-    void supabase.from('listings').select('*').eq('id', listingId).eq('workspace_owner_id', activeWorkspaceId).maybeSingle()
+    let q = supabase.from('listings').select('*').eq('id', listingId);
+    // Super admin manages every ad like its owner; others only their active workspace.
+    if (!isSuperAdmin) q = q.eq('workspace_owner_id', activeWorkspaceId as string);
+    void q.maybeSingle()
       .then(({ data }) => { if (alive && data) { setRaw(data); setRow(mapLocalListingRow(data)); } });
     return () => { alive = false; };
-  }, [listingId, user?.id, activeWorkspaceId, reloadKey]);
+  }, [listingId, user?.id, activeWorkspaceId, reloadKey, isSuperAdmin]);
 
   if (!row) return null;
   return (
