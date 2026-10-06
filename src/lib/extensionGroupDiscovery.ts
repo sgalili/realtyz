@@ -22,7 +22,7 @@ export type DiscoveredGroup = {
   activity_text: string | null;
 };
 
-export type JoinStatus = "joined" | "requested" | "already_member" | "needs_answers" | "failed";
+export type JoinStatus = "joining" | "joined" | "requested" | "already_member" | "needs_answers" | "failed";
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -63,7 +63,7 @@ export function joinGroupsViaExtension(
   const done = new Promise<void>((resolve) => {
     const onMsg = (e: MessageEvent) => {
       const d = e.data;
-      if (!d || d.source !== "realtyz-extension" || d.type !== "RZ_FB_GROUP_JOIN_PROGRESS" || d.requestId !== requestId) return;
+      if (e.source !== window || e.origin !== window.location.origin || !d || d.source !== "realtyz-extension" || d.type !== "RZ_FB_GROUP_JOIN_PROGRESS" || d.requestId !== requestId) return;
       if (d.groupId) onProgress(String(d.groupId), d.status as JoinStatus, d.error);
       if (d.done) { cleanup(); resolve(); }
     };

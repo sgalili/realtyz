@@ -83,6 +83,8 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   const scopeRef = useRef(workspaceOwnerId);
   scopeRef.current = workspaceOwnerId;
   const requestRef = useRef(0);
+  const joinOverrides = useRef(new Map<string, JoinState>());
+  const cancelJoinRef = useRef<(() => void) | null>(null);
 
   // Never keep another workspace's groups in local storage.
   useEffect(() => {
@@ -90,6 +92,11 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     setGroups(readCache(workspaceOwnerId)?.groups ?? []);
     setLoading(true);
     setMarkedIds(new Set());
+    setJoinPicked(new Set());
+    setJoinProgress({});
+    setJoining(false);
+    joinOverrides.current.clear();
+    return () => { cancelJoinRef.current?.(); cancelJoinRef.current = null; };
   }, [workspaceOwnerId]);
 
 
@@ -111,7 +118,11 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
       const visible = ((data ?? []) as any[]).filter(
         (r) => r.is_blocked || !r?.page_id || !connectedPage || String(r.page_id) === connectedPage,
       );
-      const nextGroups: GroupTarget[] = visible.map((r) => ({
+      const nextGroups: GroupTarget[] = visible.map((r) => {
+        const id = String(r.id);
+        const override = joinOverrides.current.get(id);
+        if (override === r.join_status) joinOverrides.current.delete(id);
+        return ({
         id: String(r.id),
         groupId: String(r.group_id),
         name: String(r.group_name || r.group_id),
@@ -121,8 +132,8 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         selected: r.is_selected !== false && !r.is_blocked,
         blocked: !!r.is_blocked,
         blockedReason: r.blocked_reason ?? null,
-        joinStatus: (r.join_status as JoinState) || 'pending',
-      }));
+        joinStatus: override ?? (r.join_status as JoinState) ?? 'pending',
+      }); });
       setGroups(nextGroups);
       try {
         localStorage.setItem(cacheKeyFor(workspaceOwnerId), JSON.stringify({ groups: nextGroups }));
@@ -242,6 +253,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     let ok = 0;
     for (let i = 0; i < targets.length; i += JOIN_BATCH) {
       if (i > 0) await new Promise((r) => setTimeout(r, 120000 + Math.floor(Math.random() * 120000)));
+      if (scopeRef.current !== owner) return;
       const batch = targets.slice(i, i + JOIN_BATCH);
       const byBare = new Map(batch.map((g) => [bareId(g.groupId), g]));
       setJoinProgress((p) => ({ ...p, ...Object.fromEntries(batch.map((g) => [g.id, 'בתור'])) }));
@@ -249,18 +261,38 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         batch.map((g) => ({ group_id: bareId(g.groupId), group_name: g.name, group_url: fbGroupUrlFrom(g.url, g.groupId) || '' })),
         (gid, status: JoinStatus) => {
           const g = byBare.get(gid);
-          if (!g) return;
+          if (!g || scopeRef.current !== owner) return;
+          if (status === 'joining') {
+            setJoinProgress((p) => ({ ...p, [g.id]: 'מצטרף…' }));
+            return;
+          }
           const next: JoinState | null = status === 'joined' || status === 'already_member' ? 'joined' : status === 'requested' ? 'pending' : null;
           setJoinProgress((p) => ({ ...p, [g.id]: next === 'joined' ? 'הצטרפת' : next === 'pending' ? 'בהמתנה' : status === 'needs_answers' ? 'דורש השלמה' : 'נכשל' }));
           if (next) {
             ok += 1;
+            joinOverrides.current.set(g.id, next);
+            ++requestRef.current;
             setGroups((prev) => prev.map((x) => (x.id === g.id ? { ...x, joinStatus: next } : x)));
+            setJoinPicked((prev) => { const updated = new Set(prev); updated.delete(g.id); return updated; });
             void (supabase as any).from('fb_user_groups').update({ join_status: next })
-              .eq('workspace_owner_id', owner).eq('id', g.id);
+              .eq('workspace_owner_id', owner).eq('id', g.id)
+              .then(({ error }: { error: { message: string } | null }) => {
+                if (scopeRef.current !== owner) return;
+                if (error) {
+                  joinOverrides.current.delete(g.id);
+                  toast.error('שמירת מצב ההצטרפות נכשלה');
+                }
+                void load();
+              });
           }
         },
       );
+      cancelJoinRef.current = run.cancel;
       await run.done;
+      if (scopeRef.current !== owner) return;
+      cancelJoinRef.current = null;
+      setJoinProgress((prev) => Object.fromEntries(Object.entries(prev).map(([id, label]) =>
+        [id, label === 'מצטרף…' || label === 'בתור' ? 'ההצטרפות לא הושלמה' : label])));
     }
     setJoining(false);
     setJoinPicked(new Set());
@@ -354,7 +386,9 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 {sortByPopularity(notJoinedGroups).map((g) => renderSimpleRow(g, (<>
                   <SelectBox checked={joinPicked.has(g.id)} label={g.name}
                     onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else if (n.size < MAX_GROUPS) n.add(g.id); else toast.info(`ניתן לבחור עד ${MAX_GROUPS} קבוצות`); return n; })} />
-                  {g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-primary" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
+                  {joinProgress[g.id] === 'מצטרף…' ? (
+                    <Loader2 role="status" className="h-4 w-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" aria-label="הצטרפות בתהליך" />
+                  ) : g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-primary" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
                 </>)))}
               </div>
             </>)
