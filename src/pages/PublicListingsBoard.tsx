@@ -327,7 +327,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     const open = expandedId === card.id;
                     const toggle = () => setExpandedId(open ? null : card.id);
                     return [
-                      <tr key={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <tr key={card.id} id={`row-${card.id}`} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'font-semibold text-foreground', id === 'price' && 'whitespace-nowrap font-bold', id === 'floor' && 'whitespace-nowrap')}>
                           {id === 'photo' ? (
                           <div className="relative h-10 w-10">
