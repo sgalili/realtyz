@@ -2,6 +2,7 @@
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
 // everything, sign up through /auth, and have the listing auto-published on return.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Film, HelpCircle, ImagePlus, Loader2, X } from 'lucide-react';
@@ -579,7 +580,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   type="button"
                   variant={fields.dealType === value ? 'default' : 'outline'}
                   onClick={() => void pickAndAdvance('dealType', value)}
-                  className="h-auto p-6 text-center text-base font-bold"
+                  className={cn(
+                    'h-5 p-0 px-2 text-center text-base font-bold leading-none',
+                    fields.dealType === value && (value === 'rent'
+                      ? 'border-sale bg-sale text-sale-foreground'
+                      : 'border-success bg-success text-success-foreground'),
+                  )}
                 >
                   {label}
                 </Button>
