@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import realtyzLogo from '@/assets/realtyz-logo.png';
@@ -39,7 +39,7 @@ function cleanTitle(card: PublicCard) {
   return unique.slice(0, 3).join(' · ') || 'נכס';
 }
 
-function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: string; onFavorite: () => void }) {
+function PhotoCarousel({ photos, alt, onFavorite, isMine = false }: { photos: string[]; alt: string; onFavorite: () => void; isMine?: boolean }) {
   const [index, setIndex] = useState(0);
   if (!photos.length) return <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">אין תמונות</div>;
   const move = (delta: number) => setIndex((current) => (current + delta + photos.length) % photos.length);
@@ -47,11 +47,17 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
     <div className="group relative h-48 overflow-hidden bg-muted">
       <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
       <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label="שמירה במועדפים" className="absolute left-2 top-2 h-9 w-9 bg-transparent text-destructive shadow-none hover:bg-background/30"><Heart className="h-5 w-5" /></Button>
-      {photos.length > 1 && <>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={(event) => { event.stopPropagation(); move(-1); }} className="absolute start-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={(event) => { event.stopPropagation(); move(1); }} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
-        <span className="absolute top-2 right-2 rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>
-      </>}
+      {(isMine || photos.length > 1) && (
+        <div className="absolute right-2 top-2 flex flex-col items-end gap-1.5">
+          {isMine && (
+            <span title="המודעה שלי" className="inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-bold text-primary shadow">
+              <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              שלי
+            </span>
+          )}
+          {photos.length > 1 && <span className="rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>}
+        </div>
+      )}
     </div>
   );
 }
