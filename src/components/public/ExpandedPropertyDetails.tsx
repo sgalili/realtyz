@@ -183,7 +183,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode }>, { overlay }) : gallery;
 
   return (
-    <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-sm">
+    <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-sm [container-type:inline-size]">
       <header className="min-w-0 space-y-3 border-b pb-4">
         {onClose && (
           <div className="flex items-center justify-start">
@@ -206,7 +206,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
         </div>
       </header>
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
+      <div className="grid min-w-0 gap-5 [@container(min-width:900px)]:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
       <div className="min-w-0 space-y-5">
       {(specs.length > 0 || rooms || total || floor) && (
         <section>
@@ -272,7 +272,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
       )}
 
       </div>
-      <aside className="min-w-0 space-y-5 lg:sticky lg:top-4 lg:self-start">
+      <aside className="min-w-0 space-y-5 [@container(min-width:900px)]:sticky [@container(min-width:900px)]:top-4 [@container(min-width:900px)]:self-start">
       {mapQuery && (
         <section>
           <h3 className="mb-2 text-xs font-bold text-muted-foreground">מיקום</h3>
