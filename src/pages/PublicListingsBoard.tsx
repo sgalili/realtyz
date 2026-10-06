@@ -389,14 +389,18 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-full w-full rounded object-cover" loading="lazy" /> : <div className="h-full w-full rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex rounded-full bg-background/90 p-0.5 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="flex w-72 max-w-[18rem] items-center gap-1"><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}><ChevronDown className={cn('h-5 w-5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} /></Button>{!open && <div className="min-w-0 flex-1"><PublicCardSummary card={card} showBroker={false} dense /></div>}</div>
+                          ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem]">{open ? <PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? (open ? null : shekel(card.price))
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
-                        <td className="p-2" />
+                        <td className="relative p-2 align-bottom">
+                          <Button type="button" variant="ghost" size="icon" className="absolute bottom-0.5 left-0.5 h-7 w-7 text-muted-foreground/70 hover:bg-transparent hover:text-foreground" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}>
+                            <ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')} />
+                          </Button>
+                        </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={columns.visible.length + 1} className="p-0">
