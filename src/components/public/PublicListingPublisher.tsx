@@ -30,7 +30,7 @@ import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutoc
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { celebratePublication, preparePublicationSound } from '@/lib/publicationCelebration';
-import { missingAdFields } from '@/lib/adRecovery';
+import { missingAdFields, missingPublishFields } from '@/lib/adRecovery';
 
 const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
 const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
