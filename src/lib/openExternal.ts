@@ -1,16 +1,21 @@
-export const EXTERNAL_WINDOW_FEATURES = 'noopener,noreferrer';
+export const EXTERNAL_WINDOW_FEATURES = 'width=1200,height=800,noopener,noreferrer';
 
 /**
- * Opens an external URL as a real top-level tab.
- *
- * A synthetic `<a target="_blank" rel="noopener noreferrer">` click is tried
- * first: inside the preview iframe this is the only path that reliably escapes
- * the restricted embedding context, so pages that refuse framing (Facebook)
- * no longer fail with ERR_BLOCKED_BY_RESPONSE. `window.open` stays as fallback.
+ * Opens an external URL in a true separate browser window (popup) so it is
+ * never loaded inside the preview iframe or intercepted by the router —
+ * prevents ERR_BLOCKED_BY_RESPONSE from sites that refuse framing.
+ * Falls back to a synthetic `_blank` anchor if popups are blocked.
  */
 export function openExternal(url: string | null | undefined): void {
   if (!url) return;
-
+  try {
+    // With noopener, window.open returns null even on success, so always
+    // treat the call as handled unless it throws.
+    window.open(url, '_blank', EXTERNAL_WINDOW_FEATURES);
+    return;
+  } catch {
+    /* fall through */
+  }
   try {
     const a = document.createElement('a');
     a.href = url;
@@ -20,13 +25,6 @@ export function openExternal(url: string | null | undefined): void {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    return;
-  } catch {
-    /* fall through to window.open */
-  }
-
-  try {
-    window.open(url, '_blank', EXTERNAL_WINDOW_FEATURES);
   } catch {
     /* nothing else we can do */
   }
