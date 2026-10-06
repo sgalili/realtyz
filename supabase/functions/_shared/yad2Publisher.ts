@@ -37,7 +37,7 @@ export function extractYad2Publisher(ad: any, sourceUrl: string): Record<string,
   const office = txt(ad?.agency_name, ad?.office_name, agency.name, agency.title, ad?.merchant_name);
   const name = txt(ad?.broker_name, ad?.contact_name, broker.name, broker.fullName);
   const number = licenseNumber(ad?.broker_license_number ?? ad?.broker_license ?? broker.licenseNumber ?? broker.license_number ?? broker.brokerLicenseNumber);
-  const logo = [ad?.office_logo_url, ad?.agency_logo_url, ad?.agencyLogo, agency.logo, agency.logoUrl, agency.image, broker.logo, broker.logoUrl, ad?.metaData?.agencyLogo].map(publisherImageUrl).find(Boolean);
+  const logo = [ad?.office_logo_url, ad?.office_logo, ad?.merchant_logo, ad?.agency_logo_url, ad?.agencyLogo, agency.logo, agency.logoUrl, agency.image, broker.logo, broker.logoUrl, ad?.metaData?.agencyLogo].map(publisherImageUrl).find(Boolean);
   const isBroker = !!office || !!number || ad?.publisher_kind === 'broker' || ad?.additionalDetails?.isAssetExclusive === true || ad?.attributes?.isAssetExclusive === true;
   return {
     ...(name ? { broker_name: name.trim() } : {}),

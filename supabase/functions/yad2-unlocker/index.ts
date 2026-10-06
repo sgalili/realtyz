@@ -1734,6 +1734,30 @@ async function upsertOwnerProfile(
 
 const MEDIA_BUCKET = "post-media-cache";
 
+async function traceGalleryPublisher(row: Scraped): Promise<void> {
+  const publisher = row.publisher ?? {};
+  if (publisher.office_logo_url || publisher.gallery_logo_checked || publisher.media_vision_paused_status) return;
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  const names = [publisher.office_name, publisher.broker_name, row.owner_name];
+  if (!apiKey || !names.some(Boolean) || !row.photos[0]) return;
+  try {
+    const verdict = await classifyListingMedia(row.photos[0], names.filter(Boolean).join(" / "), apiKey);
+    if (!verdict) return;
+    row.publisher = { ...publisher, gallery_logo_checked: true };
+    if (verdict.logo && verdict.publisher_logo && !verdict.person && matchesAdvertiser(verdict.branding_name, names)) {
+      Object.assign(row.publisher, {
+        office_logo_url: row.photos[0], office_logo_source_url: row.photos[0],
+        office_logo_evidence: { source: "source_gallery", source_url: row.source_url, branding_name: verdict.branding_name },
+      });
+      row.photos = row.photos.slice(1);
+    }
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 402 || status === 403) row.publisher = { ...publisher, media_vision_paused_status: status };
+    console.warn("[yad2-unlocker] publisher image check unavailable", status ?? "stream_error");
+  }
+}
+
 /**
  * Downloads every scraped photo and stores it permanently in the
  * `post-media-cache` bucket so cards never depend on Yad2's CDN.
@@ -2582,6 +2606,7 @@ Deno.serve(async (req) => {
     if (itemId && claimedToken) {
       rows = rows.filter((r) => String(r.external_id ?? "").toLowerCase() === itemId);
       if (!rows.length) throw new Error("לא ניתן לחלץ את המודעה המדויקת מהקישור. אפשר להמשיך ידנית.");
+      await traceGalleryPublisher(rows[0]);
       rows[0].photos = await mirrorPhotos(admin, itemId, rows[0].photos ?? []);
       const { error } = await admin.from("yad2_item_cache").update({ payload: rows[0], fetched_at: new Date().toISOString(), claim_token: null }).eq("item_id", itemId).eq("claim_token", claimedToken);
       if (error) throw new Error(`cache_save_failed: ${error.message}`);
