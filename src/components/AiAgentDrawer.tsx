@@ -804,7 +804,7 @@ ${shareUrl}
                               key={src.id}
                               href={resolvedUrl}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               className={commonCls}
                               title={title}
                             >
@@ -843,7 +843,7 @@ ${shareUrl}
                           key={ri}
                           href={rs.url}
                           target="_blank"
-                          rel="noreferrer"
+                          rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-[14px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors max-w-[200px]"
                           title={rs.url}
                         >
