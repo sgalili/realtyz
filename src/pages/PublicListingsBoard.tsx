@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
@@ -85,6 +86,28 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
   const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Owner action bar sticks to the viewport top while its expanded section is scrolled.
+  const ownerBarRef = useRef<HTMLDivElement | null>(null);
+  const ownerSectionRef = useRef<HTMLDivElement | null>(null);
+  const [ownerBarStuck, setOwnerBarStuck] = useState(false);
+  useEffect(() => {
+    if (!expandedId) { setOwnerBarStuck(false); return; }
+    const measure = () => {
+      const bar = ownerBarRef.current;
+      const section = ownerSectionRef.current;
+      if (!bar || !section) { setOwnerBarStuck(false); return; }
+      const barTop = bar.getBoundingClientRect().top;
+      const sectionBottom = section.getBoundingClientRect().bottom;
+      setOwnerBarStuck(barTop <= 0 && sectionBottom > 0);
+    };
+    document.addEventListener('scroll', measure, { passive: true, capture: true });
+    window.addEventListener('resize', measure);
+    measure();
+    return () => {
+      document.removeEventListener('scroll', measure, { capture: true } as any);
+      window.removeEventListener('resize', measure);
+    };
+  }, [expandedId]);
 
   const load = async () => {
     setLoading(true);
@@ -239,15 +262,29 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={8} className="p-0">
                           <AnimatedExpansion open={open}>
-                          <div className="sticky right-0 grid min-w-0 gap-3 p-3 sm:grid-cols-[280px_minmax(0,1fr)]" style={wrapWidth ? { width: wrapWidth } : undefined}>
-                            <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
+                          <div ref={open ? ownerSectionRef : undefined} className="sticky right-0 grid min-w-0 gap-3 p-3 sm:grid-cols-[280px_minmax(0,1fr)]" style={wrapWidth ? { width: wrapWidth } : undefined}>
+                            <div className="min-w-0">
+                              {open && user ? (
+                                <div ref={open ? ownerBarRef : undefined} className="mb-3">
+                                  <OwnerListingActions listingId={card.id} />
+                                </div>
+                              ) : null}
+                              <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
+                            </div>
                             <div className="min-w-0 space-y-3">
-                              {open && user ? <OwnerListingActions listingId={card.id} /> : null}
                               <ExpandedPropertyDetails idOrSlug={card.slug || card.id} />
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact shareUrl={publicUrl(propertyPath)} showShare />
                             </div>
                           </div>
                           </AnimatedExpansion>
+                          {open && user && ownerBarStuck && createPortal(
+                            <div dir="rtl" className="fixed inset-x-0 top-0 z-50 border-b bg-background/95 px-3 py-2 shadow-sm backdrop-blur-sm">
+                              <div className="mx-auto w-full max-w-xl">
+                                <OwnerListingActions listingId={card.id} />
+                              </div>
+                            </div>,
+                            document.body
+                          )}
                         </td>
                       </tr>,
                     ];
