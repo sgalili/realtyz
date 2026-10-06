@@ -6,7 +6,7 @@ import PublicAdHeading from './PublicAdHeading';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 
-export default function PublicCardSummary({ card, price }: { card: PublicCard; price: string }) {
+export default function PublicCardSummary({ card, price }: { card: PublicCard; price?: string }) {
   const { data } = useQuery({
     queryKey: ['public-listing-expanded', card.slug || card.id],
     staleTime: 5 * 60 * 1000,
