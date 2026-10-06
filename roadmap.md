@@ -1,4 +1,8 @@
 # Roadmap
+## Udi access and Yad2 inline review
+- [ ] Grant Udi full tenant management in Barak's workspace only, without global privileges.
+- [ ] Replace pasted Yad2 links atomically and replace the circle modal with eight inline editable accordion cards.
+- [ ] Verify paste replacement, inline editing, completion indicators, and authorized workspace access.
 ## Connection card refinements
 - [x] Reorder group buttons, update sync icon and active count, rename business Page, and immediately reflect saved direct Instagram association with Page-dependent actions. Signed-in header count matched Activity, connected IG badge rendered green, section switching passed, five regressions passed and build OK; a new IG save was not performed on the live account.
 ## Independent Facebook sections
