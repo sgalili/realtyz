@@ -60,7 +60,7 @@ export default function PropertyContactActions({
   const waMessage = premsg?.trim() || `היי ריטה, אשמח לקבל פרטים אודות ${title}.`;
   // The sharing partner's code travels inside the opener so the WhatsApp
   // contact is credited to them when the message arrives.
-  const waOpener = ref && /^[A-Za-z0-9_-]{4,40}$/.test(ref) ? `${waMessage}\n(קוד הפניה: ${ref})` : waMessage;
+  const waOpener = ref && /^[A-Za-z0-9_-]{4,40}$/.test(ref) ? `${waMessage}\n[ref:${ref}]` : waMessage;
 
   const shareDetails = () => {
     const url = shareUrl?.trim() || (typeof window !== 'undefined' ? window.location.href : '');

@@ -29,6 +29,7 @@ import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
+import { processListingInquiry } from "../_shared/listingInquiry.ts";
 import { FOCUS_COLUMNS, matchListingFromText, renderFocusPropertyBlock, textNamesAddress, ADDRESS_NOT_FOUND_BLOCK } from "../_shared/focusProperty.ts";
 import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, saveRitaState } from "../_shared/ritaIntel.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
@@ -1324,6 +1325,12 @@ async function handleLeadInboxInbound(
       }
     }
     const focusProperty = productInquiry ? "" : renderFocusPropertyBlock(focusRow as any);
+    if (!staffSender && !productInquiry && focusRow?.id) {
+      try {
+        const screeningQuestion = await processListingInquiry(admin, { listingId: focusRow.id, leadId: lead.id, ownerId: aiOwnerId, channel: 'whatsapp', history: aiMessages, affiliateId: referral?.affiliate_id ?? (lead.preferences as any)?.affiliate_id ?? null });
+        if (screeningQuestion) contextBlock += `\n[LISTING_SCREENING] Answer property questions directly and offer a visit first. Then ask this exact next question, without extra generic qualification: ${screeningQuestion}\n`;
+      } catch { /* Inquiry processing cannot interrupt the conversation. */ }
+    }
     contextBlock += ritaStateBlock;
     if (productInquiry) contextBlock += PRODUCT_INQUIRY_BLOCK;
     else if (!focusRow && textNamesAddress(promptInboundText)) contextBlock += ADDRESS_NOT_FOUND_BLOCK;

@@ -78,11 +78,11 @@ Deno.serve(async (req) => {
 
       const { data: listing, error: listingError } = await admin
         .from("listings")
-        .select("id, city, neighborhood, deal_type, asking_price, workspace_owner_id, user_id, is_published, affiliate_enabled")
+        .select("id, city, neighborhood, deal_type, asking_price, workspace_owner_id, user_id, is_published, affiliate_enabled, affiliate_tier1_amount")
         .eq("id", listingId)
         .maybeSingle();
       if (listingError) throw listingError;
-      if (!listing || !listing.affiliate_enabled) {
+      if (!listing || !(listing.is_published || listing.affiliate_enabled) || (intent === 'digital' && !(Number(listing.affiliate_tier1_amount) > 0))) {
         return json({ error: "הנכס אינו זמין" }, 404);
       }
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
@@ -148,7 +148,9 @@ Deno.serve(async (req) => {
         metadata: { listing_id: listing.id, lead_id: leadId, intent, comment: comment || null },
       });
 
-      // Level 1 (digital lead) settles immediately against the publisher wallet.
+      const { error: stateError } = await admin.from('listing_inquiry_states').upsert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, channel: 'web', verified_name: name, evidence_source: 'submitted_name_phone' }, { onConflict: 'listing_id,lead_id,channel' });
+      if (stateError) throw stateError;
+      // Only verified name + phone qualifies here, never a screened tier.
       const billing = await chargeLead(admin, listing.id, 1, str(body?.ref, 40), leadId ?? null);
 
       return json({
@@ -215,7 +217,8 @@ Deno.serve(async (req) => {
         metadata: { lead_id: leadId, listing_id: listing.id, phone, affiliate_id: affiliateId, origin: "public_phone_callback" },
       });
 
-      const questions = Array.isArray(listing.contact_options?.questions) ? listing.contact_options.questions.filter((q: unknown) => typeof q === "string").slice(0, 6) : [];
+      const rawQuestions = listing.contact_options?.questions_phone ?? listing.contact_options?.questions;
+      const questions = Array.isArray(rawQuestions) ? rawQuestions.filter((q: unknown) => typeof q === "string") : [];
       const instructions = ["השיחה מתייחסת אך ורק לנכס שנשלח אליך.", "שאל לפחות שלוש שאלות סינון לפני סיום השיחה.", ...questions.map((q: string, i: number) => `שאלה ${i + 1}: ${q}`)].join("\n");
 
       let callOk = false;
@@ -249,8 +252,10 @@ Deno.serve(async (req) => {
         await admin.from("integration_error_logs").insert({ integration: "vapi", function_name: "vapi-outbound-call", error_message: callError.slice(0, 500), context: { lead_id: leadId, listing_id: listing.id, workspace_owner_id: ownerId } }).then(() => {}, () => {});
       }
 
-      // Level 3 (phone conversation lead).
-      const billing = await chargeLead(admin, listing.id, 3, refCode, leadId ?? null);
+      const { error: stateError } = await admin.from('listing_inquiry_states').upsert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, channel: 'phone', verified_name: name, questions, answers: [], evidence_source: 'callback_identity_only' }, { onConflict: 'listing_id,lead_id,channel' });
+      if (stateError) throw stateError;
+      // A callback request is identity capture, NOT a satisfactory conversation.
+      const billing = await chargeLead(admin, listing.id, 1, refCode, leadId ?? null);
       // Always a success for the visitor.
       return json({ success: true, lead_id: leadId, billing });
     }
@@ -277,10 +282,7 @@ Deno.serve(async (req) => {
         })
         .eq("id", interest.id);
 
-      // Level 2 (WhatsApp / chat screening) is billed on the first real turn.
-      if (!interest.rita_engaged_at) {
-        await chargeLead(admin, interest.listing_id, 2, str(body?.ref, 40), interest.lead_id ?? null);
-      }
+      // A first chat turn does not prove satisfactory screening.
 
 
       let reply = "תודה, קיבלתי. הפרטים המלאים של הנכס נפתחו עבורך למעלה.";
