@@ -1761,9 +1761,9 @@ async function mirrorPhotos(admin: any, keyPrefix: string, urls: string[]): Prom
   return Array.from(new Set(out));
 }
 
-async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
+async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, retry = false): Promise<{ id: string; updated: boolean }> {
   const { data: existing } = await admin
-    .from("listings").select("id, slug, media_photos, source_metadata").eq("workspace_owner_id", workspaceOwnerId).eq("external_id", row.external_id).limit(1).maybeSingle();
+    .from("listings").select("id, slug, media_photos, source_metadata, asking_price, description, attributes").eq("workspace_owner_id", workspaceOwnerId).eq("source", "yad2").eq("external_id", row.external_id).limit(1).maybeSingle();
   const ownerId = await upsertOwnerProfile(admin, workspaceOwnerId, row.owner_name, row.owner_phone);
 
   // Full gallery, never a single thumbnail: merge whatever we already stored
@@ -1849,10 +1849,18 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
       ? (existing as any).source_metadata as Record<string, unknown>
       : {};
     updatePayload.source_metadata = {
+      ...prevMeta,
       ...(payload.source_metadata as Record<string, unknown>),
+      import_version: Number(prevMeta.import_version ?? 1) + 1,
+      previous_version: { asking_price: existing.asking_price, description: existing.description, attributes: existing.attributes, imported_at: prevMeta.scraped_at ?? null },
       published_at: row.published_at ?? prevMeta.published_at ?? null,
       updated_at_source: row.updated_at_source ?? prevMeta.updated_at_source ?? null,
     };
+    if (row.price == null) delete updatePayload.asking_price;
+    if (!row.description) delete updatePayload.description;
+    if (!row.attributes || !Object.keys(row.attributes).length) delete updatePayload.attributes;
+    if (!row.owner_name) (updatePayload.source_metadata as Record<string, unknown>).owner_name = prevMeta.owner_name;
+    if (!row.owner_phone) (updatePayload.source_metadata as Record<string, unknown>).owner_phone = prevMeta.owner_phone;
     for (const key of Object.keys(updatePayload)) {
       if (updatePayload[key] == null || updatePayload[key] === "") delete updatePayload[key];
     }
@@ -1879,6 +1887,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
   const slug = `yad2-${workspaceOwnerId.slice(0, 8)}-${row.external_id || crypto.randomUUID().slice(0, 8)}`;
   const { data: inserted, error: insErr } = await admin.from("listings")
     .insert({ ...payload, slug, is_published: false, status: "pending" }).select("id").maybeSingle();
+  if (insErr?.code === "23505" && !retry) return await saveListing(admin, workspaceOwnerId, row, true);
   if (insErr) throw new Error(`insert_failed(${row.source_url}): ${insErr.message}`);
   if (!inserted?.id) throw new Error(`insert_returned_no_row(${row.source_url})`);
   return { id: inserted.id, updated: false };
