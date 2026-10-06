@@ -1,4 +1,8 @@
 # Roadmap
+## Public card gallery and priced inquiries
+- [ ] Align image pills, 50% image-control backgrounds, horizontal swipe, larger price/title and renamed Rita action.
+- [ ] Show inline name/phone only for form-only ads; classify conversation contacts after real name capture and satisfactory screening without premature billing.
+- [ ] Verify gallery and inquiry states, plus focused qualification regressions.
 ## Public board table customization
 - [x] Add ascending/descending header sorting and mouse/keyboard/touch-capable draggable column order.
 - [x] Add minimal column visibility menu and user/workspace-local remembered preferences after refresh/exit.
