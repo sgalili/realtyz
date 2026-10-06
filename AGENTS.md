@@ -4,7 +4,7 @@
 - Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
 - Peer card expansions share a group-keyed exclusive state and animated height container; nested utility controls use separate groups so they never collapse their parent.
 - My ads statistics are read through property-authorized RPCs keyed by the active workspace; partners see only their own detailed results on external listings, and raw contact identity is never included.
-- Yad2 uses daily authenticated claims, service-only cache and separate scheduled feeds; workspace copies retain values and retry conflicts, never invent/publish on failure. Search dispatch/results share selected sources; Homely UI requires verified active-workspace status, with setup accessible. Counters use transient completed-search snapshots, not cached inventory.
+- Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 
 - Group selection uses one accessible checkbox action per row, immutable deduplicated snapshots and guarded no-op updates; external links are siblings to prevent duplicate activation and render cascades.
 

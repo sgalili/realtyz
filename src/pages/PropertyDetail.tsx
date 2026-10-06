@@ -902,6 +902,18 @@ export default function PropertyDetail() {
     if (editMode) setPhotos((list) => list.filter((item) => item !== url));
   };
 
+  const movePhoto = (url: string, offset: number) => {
+    setPhotos(list => {
+      const from = list.indexOf(url);
+      const to = from + offset;
+      if (from < 0 || to < 0 || to >= list.length) return list;
+      const next = [...list];
+      next.splice(from, 1);
+      next.splice(to, 0, url);
+      return next;
+    });
+  };
+
   /**
    * Incremental on-demand gallery import.
    * 1. Discover the source candidate list (single scrape).
@@ -1526,7 +1538,7 @@ export default function PropertyDetail() {
           {(photos.length > 1 || editMode) && (
             <div
               ref={thumbStripRef}
-              onMouseDown={onThumbDragStart}
+                onMouseDown={editMode ? undefined : onThumbDragStart}
               onMouseMove={onThumbDragMove}
               onMouseUp={onThumbDragEnd}
               onMouseLeave={onThumbDragEnd}
@@ -1534,6 +1546,7 @@ export default function PropertyDetail() {
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {photos.map((p, i) => (
+                <div key={p} className="w-32 shrink-0">
                 <button
                   key={`${p}-${i}`}
                   type="button"
@@ -1561,6 +1574,14 @@ export default function PropertyDetail() {
                     </span>
                   )}
                 </button>
+                {editMode && form?.photos.includes(p) && (
+                  <div className="flex items-center justify-between gap-1 pt-1">
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={form.photos.indexOf(p) === 0 || saving} onClick={() => movePhoto(p, -1)} aria-label={`העבר תמונה ${i + 1} ימינה`} title="העבר ימינה"><ChevronRight className="h-4 w-4" /></Button>
+                    <span className="text-xs text-muted-foreground tabular-nums">{i + 1}</span>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={form.photos.indexOf(p) === form.photos.length - 1 || saving} onClick={() => movePhoto(p, 1)} aria-label={`העבר תמונה ${i + 1} שמאלה`} title="העבר שמאלה"><ChevronLeft className="h-4 w-4" /></Button>
+                  </div>
+                )}
+                </div>
               ))}
             </div>
           )}

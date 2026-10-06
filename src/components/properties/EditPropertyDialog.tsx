@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Upload, X, Video } from 'lucide-react';
+import { Upload, X, Video, ArrowRight, ArrowLeft } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type PropertyType,
@@ -154,6 +154,18 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
 
   const { visible: visiblePhotos, markBroken } = useVisibleImageUrls(photos);
 
+  const movePhoto = (url: string, offset: number) => {
+    setPhotos(current => {
+      const from = current.indexOf(url);
+      const to = from + offset;
+      if (from < 0 || to < 0 || to >= current.length) return current;
+      const next = [...current];
+      next.splice(from, 1);
+      next.splice(to, 0, url);
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (visiblePhotos.length !== photos.length) setPhotos(visiblePhotos);
   }, [visiblePhotos, photos.length]);
@@ -289,24 +301,30 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
               <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={(e) => handleUpload(e.target.files, 'photo')} />
             </div>
             {visiblePhotos.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+              <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
                 {visiblePhotos.map((url, i) => (
                   <div key={`${url}-${i}`} className="relative group">
                     <img
                       src={url}
-                      alt={`photo-${i}`}
+                      alt={`תמונה ${i + 1}`}
                       className="aspect-square object-cover rounded-md border w-full"
                       loading="lazy"
                       onError={() => markBroken(url)}
                     />
-                    <button
+                     <Button
                       type="button"
+                       variant="destructive" size="icon"
                       onClick={() => setPhotos((prev) => prev.filter((u) => u !== url))}
-                      className="absolute top-1 left-1 h-5 w-5 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      aria-label="הסר תמונה"
+                       className="absolute top-1 left-1 h-6 w-6 rounded-full"
+                       aria-label={`הסר תמונה ${i + 1}`}
                     >
                       <X className="h-3 w-3" />
-                    </button>
+                     </Button>
+                     <div className="flex items-center justify-between gap-1 pt-1">
+                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" disabled={i === 0 || submitting} onClick={() => movePhoto(url, -1)} aria-label={`העבר תמונה ${i + 1} ימינה`} title="העבר ימינה"><ArrowRight className="h-3.5 w-3.5" /></Button>
+                       <span className="text-xs text-muted-foreground tabular-nums">{i + 1}</span>
+                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" disabled={i === visiblePhotos.length - 1 || submitting} onClick={() => movePhoto(url, 1)} aria-label={`העבר תמונה ${i + 1} שמאלה`} title="העבר שמאלה"><ArrowLeft className="h-3.5 w-3.5" /></Button>
+                     </div>
                   </div>
                 ))}
               </div>

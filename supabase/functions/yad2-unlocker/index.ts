@@ -1761,7 +1761,7 @@ async function mirrorPhotos(admin: any, keyPrefix: string, urls: string[]): Prom
   return Array.from(new Set(out));
 }
 
-async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, retry = false): Promise<{ id: string; updated: boolean }> {
+async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, retry = false, fetchedAt: string | null = new Date().toISOString()): Promise<{ id: string; updated: boolean }> {
   const { data: existing } = await admin
     .from("listings").select("id, slug, media_photos, source_metadata, asking_price, description, attributes").eq("workspace_owner_id", workspaceOwnerId).eq("source", "yad2").eq("external_id", row.external_id).limit(1).maybeSingle();
   const ownerId = await upsertOwnerProfile(admin, workspaceOwnerId, row.owner_name, row.owner_phone);
@@ -1774,7 +1774,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
     : [];
   const scrapedPhotos: string[] = [];
   const seenPhotoKeys = new Set<string>();
-  for (const url of [...(row.photos ?? []), ...previousPhotos]) {
+  for (const url of [...previousPhotos, ...(row.photos ?? [])]) {
     const u = String(url ?? "").trim();
     if (!u || !/^https?:\/\//i.test(u)) continue;
     if (/placeholder|default|no[-_]?image|logo|sprite/i.test(u)) continue;
@@ -1833,7 +1833,8 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
       owner_phone: row.owner_phone,
       house_number: row.house_number ?? null,
       apartment_number: row.apartment_number ?? null,
-      scraped_at: new Date().toISOString(),
+      scraped_at: fetchedAt,
+      source_fetched_at: fetchedAt,
       // Original "פורסם ב-" date from Yad2 (never the import date).
       published_at: row.published_at ?? null,
       updated_at_source: row.updated_at_source ?? null,
@@ -1887,7 +1888,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
   const slug = `yad2-${workspaceOwnerId.slice(0, 8)}-${row.external_id || crypto.randomUUID().slice(0, 8)}`;
   const { data: inserted, error: insErr } = await admin.from("listings")
     .insert({ ...payload, slug, is_published: false, status: "pending" }).select("id").maybeSingle();
-  if (insErr?.code === "23505" && !retry) return await saveListing(admin, workspaceOwnerId, row, true);
+  if (insErr?.code === "23505" && !retry) return await saveListing(admin, workspaceOwnerId, row, true, fetchedAt);
   if (insErr) throw new Error(`insert_failed(${row.source_url}): ${insErr.message}`);
   if (!inserted?.id) throw new Error(`insert_returned_no_row(${row.source_url})`);
   return { id: inserted.id, updated: false };
@@ -2158,7 +2159,22 @@ Deno.serve(async (req) => {
     }
     const cachedResponse = async (row: Scraped, servedFrom: string, fetchedAt: string | null) => {
       let listingId: string | null = null;
-      if (!previewOnly) listingId = (await saveListing(admin, workspaceOwnerId, row)).id;
+      // A cache read is not a new import: do not rewrite the workspace's edits,
+      // reorder its photos, increment its version or restart the freshness clock.
+      const { data: local } = await admin.from("listings").select("*")
+        .eq("workspace_owner_id", workspaceOwnerId).eq("source", "yad2").eq("external_id", row.external_id).limit(1).maybeSingle();
+      if (local) {
+        const meta = local.source_metadata ?? {};
+        const feature = (Array.isArray(local.features) ? local.features[0] : local.features) ?? {};
+        row = { ...row, title: local.property_title, price: local.asking_price,
+          description: local.description, long_description: local.description,
+          city: local.city, address: local.address, house_number: local.house_number,
+          neighborhood: local.neighborhood, rooms: local.rooms, sqm: local.sqm, floor: local.floor,
+          photos: local.media_photos ?? row.photos, deal_type: feature.listing_type ?? local.deal_type ?? row.deal_type,
+          attributes: { ...row.attributes, ...local.attributes, ...feature.extras, property_type: feature.property_type ?? meta.property_type ?? row.attributes?.property_type },
+          owner_name: meta.owner_name ?? row.owner_name, owner_phone: meta.owner_phone ?? row.owner_phone };
+        listingId = local.id;
+      } else if (!previewOnly) listingId = (await saveListing(admin, workspaceOwnerId, row, false, fetchedAt)).id;
       return json({ success: true, results: [row], served_from: servedFrom, cached: true, fetched_at: fetchedAt, listing_id: listingId, records_saved: listingId ? 1 : 0, resolved_url: inputUrl });
     };
     if (itemId) {

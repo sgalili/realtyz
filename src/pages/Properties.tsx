@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { useListingPublishers } from '@/hooks/useListingPublishers';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
@@ -534,6 +535,13 @@ export default function Properties() {
       setYad2Status({ step: 1, label: 'בודק מודעה שמורה או מייבא מיד2…', tone: 'busy' });
       const slow = window.setTimeout(() => setYad2Status((s) => s && s.tone === 'busy' ? { step: 2, label: 'סורק פרטים, תמונות, תיאור ומאפיינים…', tone: 'busy' } : s), 2500);
       try {
+        const saved = await readRecentYad2Listing(token, activeWorkspaceId);
+        if (saved) {
+          setYad2Status({ step: 4, label: 'הנכס נטען מהמאגר השמור', tone: 'ok' });
+          setQ('');
+          navigate(`/properties/${saved.listing_id}`, { state: { returnTo: '/properties' } });
+          return;
+        }
         const { data, error } = await supabase.functions.invoke('yad2-unlocker', {
           body: { url, limit: 1, pages: 1, import_item: true },
         });
