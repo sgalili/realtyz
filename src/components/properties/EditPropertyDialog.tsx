@@ -175,67 +175,6 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property, open]);
 
-  // 60s client-side debounce on the manual Homely sync — prevents accidental
-  // burst clicks from spamming the Homely API (the provider profile was
-  // permanently locked for monthly-unsuspension overuse from a similar storm).
-  const lastHomelySyncAtRef = useRef<number>(0);
-  const handleSyncFromHomely = async () => {
-    if (!property) return;
-    const now = Date.now();
-    const elapsed = now - lastHomelySyncAtRef.current;
-    if (lastHomelySyncAtRef.current > 0 && elapsed < 60_000) {
-      const wait = Math.ceil((60_000 - elapsed) / 1000);
-      toast.message(`סנכרון זמין שוב בעוד ${wait} שניות`);
-      return;
-    }
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
-        body: { listing_id: property.id },
-      });
-      if (error) throw error;
-      const payload = (data as any) ?? {};
-      if (payload.needs_setup) {
-        toast.message("יש לחבר תחילה את חשבון Homely", {
-          description: "עברו ל-הגדרות ← חיבורים והזינו את פרטי Homely (קוד משרד, משתמש וסיסמה).",
-        });
-        return;
-      }
-      // Graceful zero-state: edge fn returns { fallback: true } with HTTP 200
-      // when the broker has no active properties / serial isn't on Homely.
-      if (payload.fallback) {
-        if (payload.error === "property_not_found_in_broker_list" || payload.broker_active_count === 0) {
-          toast.message("אין נכסים פעילים בחשבון הומלי המחובר", {
-            description: "ודא שהנכס פעיל ב-Homely ולחץ שוב על סנכרון.",
-          });
-        } else {
-          toast.message("הנכס לא נמצא ב-Homely", { description: "נסה לסנכרן שוב מאוחר יותר." });
-        }
-        return;
-      }
-      if (payload.error) throw new Error(payload.error);
-      const u = payload.updated ?? {};
-      if (u.property_title) setTitle(u.property_title);
-      if (u.description) setDescription(u.description);
-      if (u.asking_price) setPrice(String(u.asking_price));
-      if (u.city) setCity(u.city);
-      if (u.address) setAddress(u.address);
-      if (u.rooms) setRooms(String(u.rooms));
-      if (u.sqm) setSqm(String(u.sqm));
-      if (u.floor != null) setFloor(String(u.floor));
-      const newPhotos = u?.source_metadata?.photos;
-      if (Array.isArray(newPhotos)) setPhotos(newPhotos);
-      toast.success(`נטענו ${payload.photo_count ?? 0} תמונות מ-Homely`);
-      onSaved?.();
-    } catch (e: any) {
-      toast.error(`סנכרון נכשל: ${e.message ?? e}`);
-    } finally {
-      // Cool-down starts at completion (success or fail), not at click time.
-      lastHomelySyncAtRef.current = Date.now();
-      setSyncing(false);
-    }
-  };
-
   const mapAddress = addressMapQuery({ address, city, neighborhood });
   const mapTitle = fullPropertyAddress({ address, city, neighborhood }) || title || 'נכס';
   const hasCoordinates = latitude !== null && longitude !== null;
