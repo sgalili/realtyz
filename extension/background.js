@@ -1170,6 +1170,7 @@ async function rzJoinGroups(requestId, groups, senderTabId) {
     if (rzJoinCancelled.has(requestId)) break;
     let status = 'failed', error;
     let tab;
+    report({ groupId: g.group_id, status: 'joining' });
     try {
       tab = await rzOpenAndWait(g.group_url || ('https://www.facebook.com/groups/' + g.group_id));
       const [r1] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzClickJoin });

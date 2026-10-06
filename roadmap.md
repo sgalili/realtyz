@@ -1,4 +1,6 @@
 # Roadmap
+## Live group joining indicators
+- [x] Show per-group extension-driven joining animation and immediately migrate confirmed joins to Activity without stale polling reversals; five focused tests passed, signed-in groups page checked and build OK. Updated extension requires reload; actual Facebook joins remain unverified.
 ## My ads and expansion updates
 - [x] Keep My ads available to signed-in private owners with ads and remove the private-owner posting cap.
 - [x] Add authorized Yad2 URL import with explicit publication, preserved draft details and mirrored trusted source images; live Yad2 extraction/publication remains unverified.

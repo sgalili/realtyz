@@ -128,20 +128,15 @@ export function GroupDiscoveryDialog({
   const joinBatch = (targets: DiscoveredGroup[]) => new Promise<number>((resolve) => {
     const byId = new Map(targets.map((g) => [g.group_id, g]));
     let ok = 0;
-    setProgress((prev) => ({ ...prev, ...Object.fromEntries(targets.map((g, i) => [g.group_id, i === 0 ? "joining" : "queued"])) }));
+    setProgress((prev) => ({ ...prev, ...Object.fromEntries(targets.map((g) => [g.group_id, "queued"])) }));
     const run = joinGroupsViaExtension(
       targets.map((g) => ({ group_id: g.group_id, group_url: g.group_url, group_name: g.group_name })),
       (gid, status) => {
-        setProgress((prev) => {
-          const next = { ...prev, [gid]: status };
-          const nextQueued = targets.find((t) => next[t.group_id] === "queued");
-          if (nextQueued) next[nextQueued.group_id] = "joining";
-          return next;
-        });
+        setProgress((prev) => ({ ...prev, [gid]: status }));
         const g = byId.get(gid);
         if (g && (status === "joined" || status === "already_member" || status === "requested")) {
           ok += 1;
-          void saveGroup(g, status === "requested" ? "pending" : "joined");
+           void saveGroup(g, status === "requested" ? "pending" : "joined").then(() => onJoined?.());
         }
       },
     );
@@ -252,7 +247,9 @@ export function GroupDiscoveryDialog({
                           )}
                           {activity && <span className="inline-flex items-center gap-1"><Activity className="h-3 w-3" />{activity}</span>}
                           {member && !st && <span className="text-primary">כבר חבר</span>}
-                          {st && <span className={cn(st === "failed" ? "text-destructive" : "text-primary")}>{STATUS_LABEL[st]}</span>}
+                           {st && <span className={cn("inline-flex items-center gap-1", st === "failed" ? "text-destructive" : "text-primary")}>
+                             {st === "joining" && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-label="הצטרפות בתהליך" />}
+                             {STATUS_LABEL[st]}</span>}
                         </span>
                       </span>
                     </button>
