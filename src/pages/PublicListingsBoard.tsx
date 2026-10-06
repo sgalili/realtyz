@@ -177,12 +177,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() =>
-                      navigate('/auth', {
-                        state: { returnTo: location.pathname + location.search },
-                      })
-                    }
-                    className="h-8 rounded-full px-3 text-xs font-semibold sm:h-9 sm:px-4 sm:text-sm"
+                    onClick={goToAuth}
+                    className="hidden h-9 rounded-full px-4 text-sm font-semibold sm:inline-flex"
                   >
                     הרשמה / התחברות
                   </Button>
