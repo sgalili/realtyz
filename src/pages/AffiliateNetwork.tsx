@@ -187,6 +187,24 @@ function RewardDialog({
     setQuestionsPhone(
       Array.isArray(options.questions_phone) && options.questions_phone.length ? options.questions_phone : base,
     );
+    // Restore any unsaved draft (typed before refresh / closing the dialog).
+    try {
+      const raw = localStorage.getItem(`affiliate-settings-draft:${listing.id}`);
+      const d = raw ? JSON.parse(raw) : null;
+      if (d && typeof d === "object") {
+        if (typeof d.enabled === "boolean") setEnabled(d.enabled);
+        if (d.rewardType) setRewardType(d.rewardType);
+        if (typeof d.amount === "string") setAmount(d.amount);
+        if (typeof d.tier1 === "string") setTier1(d.tier1);
+        if (typeof d.tier2 === "string") setTier2(d.tier2);
+        if (typeof d.tier3 === "string") setTier3(d.tier3);
+        if (d.tier4Type) setTier4Type(d.tier4Type);
+        if (typeof d.tier4 === "string") setTier4(d.tier4);
+        if (typeof d.dailyCap === "string") setDailyCap(d.dailyCap);
+        if (Array.isArray(d.questions)) setQuestions(d.questions);
+        if (Array.isArray(d.questionsPhone)) setQuestionsPhone(d.questionsPhone);
+      }
+    } catch { /* ignore corrupt draft */ }
     void supabase
       .rpc("get_lead_price_recommendation", {
         _city: listing.city || undefined,
