@@ -849,7 +849,7 @@ export default function Properties() {
       </header>
 
       {/* Compact unified control bar */}
-      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="!mt-0.5">
 
 
 
