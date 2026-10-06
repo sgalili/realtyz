@@ -118,7 +118,7 @@ export default function AffiliateCallAttemptsCard() {
                 </Badge>
                 {row.recording_url && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={row.recording_url} target="_blank" rel="noreferrer"><PlayCircle className="h-4 w-4" />הקלטה</a>
+                    <a href={row.recording_url} target="_blank" rel="noopener noreferrer"><PlayCircle className="h-4 w-4" />הקלטה</a>
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={() => setOpenLead(row)}>תמלול</Button>
@@ -165,7 +165,7 @@ export default function AffiliateCallAttemptsCard() {
                 (enrichment?.calls ?? []).map((call, index) => (
                   <div key={index} className="space-y-1 border-t border-slate-100 pt-2">
                     <div className="text-slate-500">{new Date(call.at).toLocaleString('he-IL')} · {STATUS_LABEL[String(call.status ?? '')] ?? call.status}</div>
-                    {call.recording_url && <a className="text-sky-600 underline" href={call.recording_url} target="_blank" rel="noreferrer">האזנה להקלטה</a>}
+                    {call.recording_url && <a className="text-sky-600 underline" href={call.recording_url} target="_blank" rel="noopener noreferrer">האזנה להקלטה</a>}
                     {call.summary && <p className="text-slate-700">{call.summary}</p>}
                     {call.transcript && <p className="whitespace-pre-wrap text-slate-600">{call.transcript}</p>}
                     {call.failure_reason && <p className="text-rose-600">{call.failure_reason}</p>}

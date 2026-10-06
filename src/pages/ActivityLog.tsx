@@ -209,7 +209,7 @@ export default function ActivityLog() {
                             <a
                               href={entry.live_post_url}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                             >
                               <ExternalLink className="h-4 w-4" /> צפייה בפוסט
                               החי

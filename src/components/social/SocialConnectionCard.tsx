@@ -133,7 +133,7 @@ export function SocialConnectionCard({ def, connection, onChange }: Props) {
           <a
             href={def.api_url}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
           >
             קבלת פרטי API
@@ -179,7 +179,7 @@ export function SocialConnectionCard({ def, connection, onChange }: Props) {
             <a
               href={def.api_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex w-fit items-center gap-1 text-xs font-medium text-primary hover:text-primary/80"
             >
               פתח מדריך לקבלת פרטי API

@@ -873,7 +873,7 @@ export function ManualConfigModal({ open, platform, displayName, isConnected, on
                     <a
                       href={consoleLink.url}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80"
                     >
                       <ExternalLink className="h-3 w-3" />

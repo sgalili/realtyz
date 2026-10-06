@@ -729,7 +729,7 @@ function BrokerAffiliateNetwork() {
                           <a
                             href={publicUrl(`/p/${listing.id}`)}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             onClick={(event) => event.stopPropagation()}
                           >
                             <SquareArrowOutUpLeft className="h-4 w-4" />

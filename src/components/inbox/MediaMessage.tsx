@@ -87,7 +87,7 @@ export function MediaMessage({ media }: { media: ChatMedia }) {
 
   if (media.kind === 'image' || media.kind === 'sticker') {
     return (
-      <a href={src} target="_blank" rel="noreferrer" className="block">
+      <a href={src} target="_blank" rel="noopener noreferrer" className="block">
         <img
           src={src}
           alt={kindLabel[media.kind]}
@@ -103,7 +103,7 @@ export function MediaMessage({ media }: { media: ChatMedia }) {
       <a
         href={src}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         className="flex items-center gap-2 text-sm underline-offset-2 hover:underline"
       >
         <FileText className="h-4 w-4 shrink-0" />

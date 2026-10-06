@@ -226,7 +226,7 @@ export default function ApprovalQueue() {
                     </div>
                   )}
                   {item.status === 'approved' && <div className="grid gap-2 md:grid-cols-[auto_1fr_auto]"><Button onClick={() => publishItem.mutate(item)}><Megaphone className="h-4 w-4" /> פרסום עכשיו</Button><Input type="datetime-local" value={scheduleAt[item.id] || ''} onChange={(e) => setScheduleAt((cur) => ({ ...cur, [item.id]: e.target.value }))} /><Button variant="outline" onClick={() => scheduleItem.mutate(item)}><CalendarClock className="h-4 w-4" /> תזמון</Button></div>}
-                  {item.live_post_url && <Button asChild variant="ghost" size="sm"><a href={item.live_post_url} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /> צפייה בפוסט החי</a></Button>}
+                  {item.live_post_url && <Button asChild variant="ghost" size="sm"><a href={item.live_post_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> צפייה בפוסט החי</a></Button>}
                 </CardContent>
               </Card>
             ))}

@@ -881,7 +881,7 @@ function CalculatorBody() {
                       info={
                         <>
                           שיחה אחת = 24 שעות תקשורת ללא הגבלה. Meta מעניקה {formatILS(WHATSAPP_FREE_TIER_PER_MONTH)} שיחות חינם בחודש. כל הסכום משולם ישירות למטא.
-                          <a href={META_WBA_PRICING_URL} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1 text-primary underline">
+                          <a href={META_WBA_PRICING_URL} target="_blank" rel="noopener noreferrer" className="mt-1.5 flex items-center gap-1 text-primary underline">
                             מחירון Meta הרשמי <ExternalLink className="h-3 w-3" />
                           </a>
                         </>
