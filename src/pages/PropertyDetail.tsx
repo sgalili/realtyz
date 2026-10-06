@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { returnState } from "@/lib/returnNav";
 import { ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1362,7 +1363,7 @@ export default function PropertyDetail() {
             {!isYad2Listing && !isHomelyListing && resolvedSourceUrl && (
               <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במקור" title="צפייה במקור" className="text-muted-foreground transition hover:text-primary"><ExternalLink className="h-5 w-5" /></a>
             )}
-            <Button size="icon" variant="ghost" onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)} aria-label="צור פוסט לנכס" title="צור פוסט לנכס" className="h-8 w-8 text-muted-foreground"><Megaphone className="h-5 w-5" /></Button>
+            <Button size="icon" variant="ghost" onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`, { state: returnState() })} aria-label="צור פוסט לנכס" title="צור פוסט לנכס" className="h-8 w-8 text-muted-foreground"><Megaphone className="h-5 w-5" /></Button>
             <PropertyShareMenu results={[{ key: property.id, localId: property.id, source: 'mine', title: property.title ?? null, address: property.address ?? null, city: property.city ?? null, price: typeof property.price === 'number' ? property.price : null, rooms: property.rooms ?? null, size_sqm: property.size_sqm ?? null, property_type: property.property_type ?? null, listing_type: Number(property.price) < 50_000 ? 'rent' : 'sale', photos } as any]} iconOnly variant="ghost" />
             <Button size="icon" variant="ghost" onClick={openCommunicationCards} aria-label="פתיחת הערות ותקשורת" title="פתיחת הערות ותקשורת" className="h-8 w-8 text-muted-foreground"><NotebookPen className="h-5 w-5" /></Button>
             <Button size="icon" variant="ghost" onClick={() => setEditMode(true)} aria-label="עריכת נכס" title="עריכת נכס" className="h-8 w-8 text-muted-foreground"><Pencil className="h-5 w-5" /></Button>

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { returnState } from "@/lib/returnNav";
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useNavigate, Link } from 'react-router-dom';
@@ -687,7 +688,7 @@ export default function Properties() {
         setImportingKey(null);
       }
     }
-    navigate(`/campaigns?tab=create&channel=facebook&properties=${id}&listing=${id}`);
+    navigate(`/campaigns?tab=create&channel=facebook&properties=${id}&listing=${id}`, { state: returnState() });
   }, [navigate]);
 
 

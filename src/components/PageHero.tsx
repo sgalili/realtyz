@@ -36,6 +36,7 @@ import { AiResponseToggle } from "@/components/AiResponseToggle";
 // CreditBalancePill moved to /billing (Packages & Payments page).
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { readReturn, type ReturnState } from "@/lib/returnNav";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -325,6 +326,24 @@ export function PageHero() {
   const title = resolvePageTitle(location.pathname);
   const isPostsPage = location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/posts");
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
+  // Remember where the user came from for this page, even after in-page
+  // query changes (tabs) drop router state.
+  const [origin, setOrigin] = React.useState<{ path: string; ret: ReturnState } | null>(null);
+  React.useEffect(() => {
+    const ret = readReturn(location.state);
+    if (ret) setOrigin({ path: location.pathname, ret });
+    else setOrigin((o) => (o && o.path === location.pathname ? o : null));
+  }, [location.pathname, location.state]);
+  React.useEffect(() => {
+    const y = (location.state as ReturnState | null)?.restoreScroll;
+    if (typeof y !== "number") return;
+    const ts = [50, 300, 800].map((d) => window.setTimeout(() => window.scrollTo({ top: y }), d));
+    return () => ts.forEach(clearTimeout);
+  }, [location.key]);
+  const goBackToOrigin = () => {
+    if (!origin) return;
+    navigate(origin.ret.returnTo!, { state: { restoreScroll: origin.ret.returnScroll ?? 0 } });
+  };
   const propertySuffix = usePropertyHeroSuffix(location.pathname);
   const campaignsTab = searchParams.get("tab") ?? "published";
   const isCampaignsCreate = isPostsPage && campaignsTab === "create";
@@ -488,6 +507,18 @@ export function PageHero() {
           {location.pathname.startsWith("/lead-crm") && <LeadsHeroAddButton />}
           {isPostsPage && !isCampaignsCreate && <CampaignsHeroSyncButton />}
           {isPostsPage && <CampaignsHeroAddButton />}
+          {origin && !isPropertyDetail && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={goBackToOrigin}
+              aria-label="חזרה למסך הקודם"
+              title="חזרה למסך הקודם"
+              className="h-10 w-10 rounded-full text-white hover:bg-white/15 hover:text-white"
+            >
+              <ArrowLeft className="!h-6 !w-6" strokeWidth={2.5} />
+            </Button>
+          )}
           {isPropertyDetail && (
             <Button
               size="icon"
