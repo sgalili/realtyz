@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send } from 'lucide-react';
@@ -21,6 +21,7 @@ import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
 import PublicCardSummary from '@/components/public/PublicCardSummary';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 import { useWorkspace } from '@/hooks/useWorkspace';
