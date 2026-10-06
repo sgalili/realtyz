@@ -6880,6 +6880,39 @@ export type Database = {
         }
         Relationships: []
       }
+      yad2_item_cache: {
+        Row: {
+          claim_token: string | null
+          created_at: string
+          fetched_at: string | null
+          item_id: string
+          last_attempt_at: string | null
+          payload: Json | null
+          source_url: string
+          updated_at: string
+        }
+        Insert: {
+          claim_token?: string | null
+          created_at?: string
+          fetched_at?: string | null
+          item_id: string
+          last_attempt_at?: string | null
+          payload?: Json | null
+          source_url: string
+          updated_at?: string
+        }
+        Update: {
+          claim_token?: string | null
+          created_at?: string
+          fetched_at?: string | null
+          item_id?: string
+          last_attempt_at?: string | null
+          payload?: Json | null
+          source_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       usage_monthly_summary: {
@@ -7006,6 +7039,10 @@ export type Database = {
         Returns: boolean
       }
       claim_market_scrape_slot: { Args: { _source?: string }; Returns: Json }
+      claim_yad2_item_import: {
+        Args: { _item: string; _url: string }
+        Returns: Json
+      }
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }

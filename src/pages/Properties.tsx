@@ -501,6 +501,7 @@ export default function Properties() {
   // gallery, description) and the user lands directly on the imported card.
   const { activeWorkspaceId } = useWorkspace();
   const [yad2Status, setYad2Status] = useState<{ step: number; label: string; tone: 'busy' | 'ok' | 'error' } | null>(null);
+  const yad2InFlight = useRef(false);
   const submitQuery = useCallback(async (override?: string) => {
     const raw = (typeof override === 'string' ? override : q).trim();
     const found = raw.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S*/i)?.[0];
@@ -509,12 +510,14 @@ export default function Properties() {
     const token = found?.match(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9]+)(?=[\/?#]|$)/i)?.[1] ?? null;
     const url = found ? (token ? `https://www.yad2.co.il/realestate/item/${token}` : (/^https?:/i.test(found) ? found : `https://${found}`)) : undefined;
     if (url) {
+      if (yad2InFlight.current) return;
+      yad2InFlight.current = true;
       setSearching(true);
-      setYad2Status({ step: 1, label: 'מתחבר לעמוד המודעה ביד2…', tone: 'busy' });
+      setYad2Status({ step: 1, label: 'בודק מודעה שמורה או מייבא מיד2…', tone: 'busy' });
       const slow = window.setTimeout(() => setYad2Status((s) => s && s.tone === 'busy' ? { step: 2, label: 'סורק פרטים, תמונות, תיאור ומאפיינים…', tone: 'busy' } : s), 2500);
       try {
         const { data, error } = await supabase.functions.invoke('yad2-unlocker', {
-          body: { url, limit: 1, pages: 1 },
+          body: { url, limit: 1, pages: 1, import_item: true },
         });
         if (error) throw error;
         if (data?.error) throw new Error(String(data.detail || data.error));
@@ -524,8 +527,8 @@ export default function Properties() {
         if (!row) throw new Error(results.length ? 'הנתונים שהתקבלו לא תואמים למודעה בקישור. נסה שוב בעוד רגע' : 'לא הצלחתי לחלץ נתונים מהעמוד הזה');
         setYad2Status({ step: 3, label: 'שומר את הנכס במאגר שלך…', tone: 'busy' });
 
-        let localId: string | null = null;
-        if (row.external_id) {
+        let localId: string | null = data?.listing_id ?? null;
+        if (!localId && row.external_id) {
           const { data: found } = await supabase
             .from('listings').select('id')
             .eq('source', 'yad2').eq('external_id', String(row.external_id))
@@ -540,7 +543,7 @@ export default function Properties() {
         }
         if (localId) {
           void ensureFullPropertyImport(localId, row.source_url ?? url).catch(() => {});
-          setYad2Status({ step: 4, label: 'הנכס יובא בהצלחה — פותח את כרטיס הנכס', tone: 'ok' });
+          setYad2Status({ step: 4, label: data?.cached ? 'הנכס נטען מהמאגר השמור' : 'הנכס יובא בהצלחה — פותח את כרטיס הנכס', tone: 'ok' });
           queryClient.invalidateQueries({ queryKey: ['properties-search'] });
           setQ('');
           navigate(`/properties/${localId}`, { state: { returnTo: '/properties' } });
@@ -551,6 +554,7 @@ export default function Properties() {
         setYad2Status({ step: 0, label: 'ייבוא מיד2 נכשל: ' + String(e?.message ?? 'שגיאה'), tone: 'error' });
       } finally {
         window.clearTimeout(slow);
+        yad2InFlight.current = false;
         setSearching(false);
       }
       return;
@@ -561,7 +565,7 @@ export default function Properties() {
       return;
     }
     runSearch();
-  }, [q, runSearch, navigate, queryClient]);
+  }, [q, runSearch, navigate, queryClient, activeWorkspaceId]);
 
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
@@ -830,7 +834,7 @@ export default function Properties() {
 
               <input
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => { const value = e.target.value; setQ(value); if (/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)$/i.test(value.trim())) void submitQuery(value); }}
                 onPaste={(e) => {
                   const pasted = e.clipboardData.getData('text');
                   if (/yad2\.co\.il\//i.test(pasted)) {

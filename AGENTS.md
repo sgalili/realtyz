@@ -4,7 +4,7 @@
 - Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
 - Peer card expansions share a group-keyed exclusive state and animated height container; nested utility controls use separate groups so they never collapse their parent.
 - My ads statistics are read through property-authorized RPCs keyed by the active workspace; partners see only their own detailed results on external listings, and raw contact identity is never included.
-- Public listing import reuses the structured listing parser and explicit confirmation before saving to the active workspace; third-party extraction failure must never publish invented data.
+- Yad2 item imports use the authenticated unlocker with a service-only original-source cache and atomic daily item claims; search feeds retain scheduled sync, previews cache without publication, and tenant copies are scoped to the server-selected workspace. Third-party failures never publish invented data or bypass the cache through another scraper.
 
 - Group selection uses one accessible checkbox action per row, immutable deduplicated snapshots and guarded no-op updates; external links are siblings to prevent duplicate activation and render cascades.
 

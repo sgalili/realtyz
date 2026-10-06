@@ -1,7 +1,7 @@
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
 // everything, sign up through /auth, and have the listing auto-published on return.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Check, Film, ImagePlus, Loader2, X } from 'lucide-react';
@@ -87,6 +87,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const [imported, setImported] = useState<Record<string, any> | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
   const [expandedStep, setExpandedStep] = useState('step-0');
+  const importInFlight = useRef(false);
+  const lastAutoImport = useRef('');
+  const [importStage, setImportStage] = useState('');
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
@@ -298,48 +301,40 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
 
   const isLast = step === STEP_TITLES.length - 1;
 
-  const importYad2 = async () => {
+  const importYad2 = async (value = importUrl) => {
+    if (importInFlight.current) return;
     if (!user) { navigate('/auth'); return; }
     let url: URL;
     // Accept any Yad2 link: standard ads, regional paths, short (/s/...) and share links, any subdomain.
-    const raw = importUrl.trim().match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S*/i)?.[0] ?? importUrl.trim();
+    const raw = value.trim().match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S*/i)?.[0] ?? value.trim();
     try { url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`); } catch { setPublishError('יש להדביק קישור תקין ליד2, או להמשיך ללא ייבוא'); return; }
     if (!/(^|\.)yad2\.co\.il$/i.test(url.hostname)) { setPublishError('יש להדביק קישור מיד2, או להמשיך ללא ייבוא'); return; }
     url.protocol = 'https:';
     const isItem = /\/realestate\/item\//i.test(url.pathname);
     const sourceUrl = isItem ? `${url.origin}${url.pathname}` : url.toString();
-    setImporting(true); setPublishError('');
+    importInFlight.current = true;
+    setImporting(true); setPublishError(''); setImportStage('בודק מודעה שמורה או מייבא פרטים מיד2…');
     try {
       const token = url.pathname.match(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9]+)(?=[\/?#]|$)/i)?.[1] ?? null;
-      let d: Record<string, any> | null = null;
-      // 1) Structured Yad2 scraper (proxy-backed). Only accept the exact ad token from the link.
-      try {
-        const target = token ? `https://www.yad2.co.il/realestate/item/${token}` : sourceUrl;
-        const { data: u } = await supabase.functions.invoke('yad2-unlocker', { body: { url: target, limit: 1, pages: 1 } });
-        const rows: any[] = Array.isArray(u?.results) ? u.results : [];
-        const row = rows.find((r) => !token || String(r?.external_id ?? '').toLowerCase() === token.toLowerCase() || String(r?.source_url ?? '').toLowerCase().includes(token.toLowerCase()));
-        if (row) {
-          const attrs = (row.attributes ?? {}) as Record<string, any>;
-          d = {
-            city: row.city ?? null, neighborhood: row.neighborhood ?? null,
-            address: [row.address, row.house_number].filter(Boolean).join(' ') || null,
-            price: row.price ?? null, rooms: row.rooms ?? null, sqm: row.sqm ?? null, floor: row.floor ?? null,
-            total_floors: attrs.total_floors ?? attrs.totalFloors ?? null,
-            description: row.long_description || row.description || row.short_description || null,
-            listing_type: row.deal_type === 'rent' ? 'rent' : 'sale',
-            property_type: attrs.property_type ?? null,
-            elevator: attrs.elevator ?? false, parking: attrs.parking ?? 0,
-            photos: Array.isArray(row.photos) ? row.photos : [],
-            external_id: row.external_id ?? token,
-          };
-        }
-      } catch { /* fall through to the text parser */ }
-      // 2) Fallback: generic page parser.
-      if (!d) {
-        const { data, error } = await supabase.functions.invoke('parse-listing-text', { body: { text: sourceUrl } });
-        if (error || !data?.ok || !data?.data) throw new Error(data?.message || 'לא ניתן לטעון את המודעה מיד2 כרגע. אפשר להמשיך ולמלא ידנית.');
-        d = data.data as Record<string, any>;
+      const target = token ? `https://www.yad2.co.il/realestate/item/${token}` : sourceUrl;
+      const { data: u, error } = await supabase.functions.invoke('yad2-unlocker', { body: { url: target, limit: 1, pages: 1, import_item: true } });
+      if (error || u?.error) {
+        const response = (error as { context?: Response } | null)?.context;
+        const details = response ? await response.clone().json().catch(() => null) : null;
+        throw new Error(details?.detail || u?.detail || 'לא ניתן לטעון את המודעה כרגע. אפשר להמשיך ולמלא ידנית.');
       }
+      const row = (Array.isArray(u?.results) ? u.results : []).find((r: any) => !token || String(r.external_id ?? '').toLowerCase() === token.toLowerCase());
+      if (!row) throw new Error('לא התקבלו פרטים למודעה הזאת. אפשר להמשיך ידנית.');
+      const attrs = row.attributes ?? {};
+      const d = { ...row,
+        address: [row.address, row.house_number].filter(Boolean).join(' '),
+        total_floors: attrs.total_floors ?? attrs.totalFloors,
+        description: row.long_description || row.description || row.short_description,
+        listing_type: row.deal_type,
+        property_type: attrs.property_type ?? row.property_type,
+        elevator: attrs.elevator, parking: attrs.parking,
+      };
+      setImportStage(u.served_from === 'pool_stale' || u.served_from === 'item_cache_stale' ? 'מוצגים הפרטים האחרונים שנשמרו. רענון נוסף יהיה זמין בתום 24 שעות.' : u.cached ? 'המודעה נטענה מהמאגר השמור' : 'פרטי המודעה נשמרו');
       const types: Record<string, string> = { apartment: 'דירה', garden_apartment: 'דירת גן', penthouse: 'פנטהאוז', duplex: 'דופלקס', private_house: 'בית פרטי', cottage: 'בית פרטי', studio: 'סטודיו', commercial: 'משרד', land: 'מגרש', loft: 'דירה', other: 'דירה' };
       const src = d;
       setImported({ ...src, source_url: sourceUrl }); setImportSlide(false);
@@ -348,14 +343,28 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       const street = m ? m[1].trim() : addr;
       const houseNumber = m ? m[2] : '';
       const str = (v: unknown) => (v == null || v === '' ? '' : String(v));
-      const next: PublicListingDraftFields = { ...fields, importedListing: { ...src, source_url: sourceUrl }, city: src.city || fields.city, address: addr || fields.address, street: street || fields.street, houseNumber: houseNumber || fields.houseNumber, neighborhood: src.neighborhood || fields.neighborhood, price: str(src.price) || fields.price, propertyType: types[src.property_type] || src.property_type || fields.propertyType || '', dealType: src.listing_type === 'rent' ? 'rent' : 'sale', rooms: str(src.rooms) || fields.rooms, sqm: str(src.sqm) || fields.sqm, floor: str(src.floor) || fields.floor, totalFloors: str(src.total_floors) || fields.totalFloors, description: src.description || fields.description, elevator: Boolean(src.elevator), parking: Number(src.parking) > 0, contactName: fields.contactName || user.user_metadata?.full_name || '' };
+      const next: PublicListingDraftFields = { ...fields, importedListing: { ...src, source_url: sourceUrl }, city: src.city || fields.city, address: addr || fields.address, street: street || fields.street, houseNumber: houseNumber || fields.houseNumber, neighborhood: src.neighborhood || fields.neighborhood, price: str(src.price) || fields.price, propertyType: types[src.property_type] || src.property_type || fields.propertyType || '', dealType: src.listing_type === 'rent' ? 'rent' : 'sale', rooms: str(src.rooms) || fields.rooms, sqm: str(src.sqm) || fields.sqm, floor: str(src.floor) || fields.floor, totalFloors: str(src.total_floors) || fields.totalFloors, description: src.description || fields.description, elevator: Boolean(src.elevator), parking: Number(src.parking) > 0, contactWhatsapp: str(src.owner_phone) || fields.contactWhatsapp, contactName: str(src.owner_name) || fields.contactName || user.user_metadata?.full_name || '' };
       setFields(next);
       setStep(0);
       setReviewMode(true); setExpandedStep('step-0');
       try { await savePublicListingDraft(next, files, videos); } catch { /* best effort */ }
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
-    finally { setImporting(false); }
+    finally { importInFlight.current = false; setImporting(false); }
   };
+
+  useEffect(() => {
+    if (!open || !importSlide || importing) return;
+    const value = importUrl.trim();
+    if (!/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)/i.test(value)) return;
+    if (lastAutoImport.current === value) return;
+    const timer = window.setTimeout(() => {
+      lastAutoImport.current = value;
+      void importYad2(value);
+    }, 180);
+    return () => window.clearTimeout(timer);
+    // Import callbacks read the current draft when a new URL is entered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importUrl, open, importSlide, importing]);
 
   const stepFilled = (i: number): boolean => {
     const f = fields;
@@ -383,7 +392,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           )}
           {step === 0 && importSlide && (
             <div className="space-y-4">
-              <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (אופציונלי)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); setImportUrl(pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted); setPublishError(''); }} placeholder="https://www.yad2.co.il/realestate/item/..." className="placeholder:text-muted-foreground/70" /><Button type="button" disabled={importing || !importUrl.trim()} onClick={() => void importYad2()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ייבוא מודעה'}</Button></div></div>
+              <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (אופציונלי)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} placeholder="https://www.yad2.co.il/realestate/item/..." className="placeholder:text-muted-foreground/70" /><Button type="button" disabled={importing || !importUrl.trim()} onClick={() => { lastAutoImport.current = importUrl.trim(); void importYad2(); }}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ייבוא מודעה'}</Button></div></div>
+              {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
               <Button type="button" variant="outline" className="w-full" onClick={() => { setPublishError(''); setImportSlide(false); setStep(1); setReviewMode(true); setExpandedStep('step-1'); }}>המשך ללא ייבוא <ArrowLeft className="h-4 w-4" /></Button>
             </div>
           )}
@@ -420,14 +430,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
                    address: place.formatted_address,
                 }))}
               />
-              {fields.address && <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div><Label>עיר *</Label><Input value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
                 <div><Label>רחוב *</Label><Input value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
                 <div><Label>מספר בית</Label><Input inputMode="numeric" value={fields.houseNumber} onChange={(e) => set('houseNumber', e.target.value)} /></div>
                 <div><Label>מספר דירה</Label><Input inputMode="numeric" value={fields.apartmentNumber} onChange={(e) => set('apartmentNumber', e.target.value)} /></div>
                 {fields.neighborhood && <div><Label>שכונה</Label><Input value={fields.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} /></div>}
                 {fields.area && <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
-              </div>}
+              </div>
             </div>
           )}
 
@@ -522,6 +532,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         </DialogHeader>
 
         <div className="space-y-4">
+          {reviewMode && importStage && <p role="status" className="text-sm text-muted-foreground">{importStage}</p>}
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
