@@ -236,9 +236,11 @@ async function resolveProvider(
       .eq("is_active", true)
       .eq("is_official", true)
       .order("updated_at", { ascending: false })
-      .limit(5);
+      .limit(50);
+    // Prefer authorized rows, but if none of them carry usable credentials fall
+    // back to any official row that does (the official number is platform-wide).
     const authorized = (rows ?? []).filter((row: any) => row?.config?.authorized !== false);
-    const hit = pick((authorized.length ? authorized : rows ?? []) as Array<{ config: Record<string, unknown> }>);
+    const hit = pick(authorized as Array<{ config: Record<string, unknown> }>) ?? pick((rows ?? []) as Array<{ config: Record<string, unknown> }>);
     if (hit) return hit;
   }
 
