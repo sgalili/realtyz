@@ -7761,6 +7761,8 @@ export type Database = {
         Args: { _approve: boolean; _reason?: string; _user_id: string }
         Returns: Json
       }
+      rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
+      rz_phone_label: { Args: { _p: string }; Returns: string }
       seed_demo_data: { Args: never; Returns: Json }
       select_my_affiliate_plan: {
         Args: { _billing_period?: string; _plan_slug: string }

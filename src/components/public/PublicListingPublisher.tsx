@@ -104,7 +104,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     setPublishError('');
     try {
       setPublishStage('השלמת הרשאת מפרסם');
-      if (!isPropertyOwner) {
+      // The account type follows what the poster picked: מתווך → broker, פרטי → private owner.
+      if (draftFields.publisherType === 'broker') {
+        const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
+        if (error) throw error;
+        await refetchRoles();
+      } else if (!isPropertyOwner) {
         const { error } = await supabase.rpc('register_as_property_owner', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();

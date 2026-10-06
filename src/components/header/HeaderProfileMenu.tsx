@@ -19,7 +19,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
-import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
+import { friendlyUserDisplayName, isSyntheticEmail } from '@/lib/friendlyUserDisplayName';
 
 type Item = {
   label: string;
@@ -123,7 +123,7 @@ export function HeaderProfileMenu() {
             )}
             <div className="border-b border-border/60 px-2.5 py-2 mb-1">
               <p className="truncate text-xs font-semibold text-[#0b3982]">{displayName}</p>
-              <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+              <p className="truncate text-[10px] text-muted-foreground">{isSyntheticEmail(user.email) ? '' : user.email}</p>
             </div>
             <div className="flex flex-col">
               {visibleItems.map((item) => {

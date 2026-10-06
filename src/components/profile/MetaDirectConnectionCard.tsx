@@ -733,11 +733,8 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
           </div>
         )}
 
-        {isConnected ? (
-          <FacebookTargetsCard key={`targets-${connectionEpoch}`} actions={actionButtons} />
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">{actionButtons}</div>
-        )}
+        {/* Sync / extension download / add groups stay available even without a connected Page. */}
+        <FacebookTargetsCard key={`targets-${connectionEpoch}`} actions={actionButtons} />
 
         <Dialog open={tokenHelpOpen} onOpenChange={setTokenHelpOpen}>
           <DialogContent dir="rtl" className="text-right sm:max-w-md">
