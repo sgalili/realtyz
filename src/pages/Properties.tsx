@@ -1672,23 +1672,23 @@ export function ResultTable({
                 />
               </th>
             ) : null}
-            {showAffiliateColumn ? <HeaderCell col="affiliate" label="שותפים" /> : null}
-            {commissionCell ? <HeaderCell col="commission" label="עמלות" /> : null}
-            {showPublisherColumn ? <HeaderCell col="publisher" label="משרד מפרסם" /> : null}
-            <HeaderCell col="image" label="תמונה" extraClass="w-14" />
+            {showAffiliateColumn ? <HeaderCell label="שותפים" /> : null}
+            {commissionCell ? <HeaderCell label="עמלות" /> : null}
+            {showPublisherColumn ? <HeaderCell label="משרד מפרסם" /> : null}
+            <HeaderCell label="תמונה" extraClass="w-14" />
 
-            <HeaderCell col="name" label="רחוב" />
+            <HeaderCell label="רחוב" />
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
-            <HeaderCell col="house_number" label="בית" />
-            <HeaderCell col="apt_number" label="דירה" />
-            <HeaderCell col="neighborhood" label="שכונה" />
-            <HeaderCell col="listing_type" label="סוג" />
-            <HeaderCell col="price" label="מחיר" />
-            <HeaderCell col="city" label="עיר" />
-            <HeaderCell col="rooms" label="חדרים" />
-            <HeaderCell col="size_sqm" label='מ"ר' />
-            <HeaderCell col="photos" label="תמונות" />
-            <HeaderCell col="published" label={publishedLabel} />
+            <HeaderCell label="בית" />
+            <HeaderCell label="דירה" />
+            <HeaderCell label="שכונה" />
+            <HeaderCell label="סוג" />
+            <HeaderCell label="מחיר" />
+            <HeaderCell label="עיר" />
+            <HeaderCell label="חדרים" />
+            <HeaderCell label='מ"ר' />
+            <HeaderCell label="תמונות" />
+            <HeaderCell label={publishedLabel} />
             {!hideDefaultActions ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th> : null}
 
 
