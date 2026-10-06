@@ -467,7 +467,7 @@ function PublicListingContent() {
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,150px),1fr))] gap-2">
                   {data.attributes.map((card) => (
                     <div key={card.label} className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-background/70 p-2.5" dir="rtl">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><card.icon className="h-4 w-4" /></span>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-primary"><card.icon className="h-[21px] w-[21px]" /></span>
                       <div className="min-w-0">
                         <p className="text-[11px] text-muted-foreground">{card.label}</p>
                         <p className="break-words text-sm font-semibold text-foreground">{card.value}</p>
