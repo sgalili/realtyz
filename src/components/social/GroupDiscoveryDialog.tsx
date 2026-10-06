@@ -64,6 +64,7 @@ export function GroupDiscoveryDialog({
   const [progress, setProgress] = useState<Record<string, JoinStatus | "queued" | "joining">>({});
   const [joining, setJoining] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
+  const cancelledRef = useRef(false);
 
   const visible = useMemo(
     () => sortDiscovered(results.filter((g) => !blockedIds?.has(g.group_id)), sortBy),
@@ -82,7 +83,10 @@ export function GroupDiscoveryDialog({
     try {
       const rows = await searchGroupsViaExtension(q);
       const seen = new Set<string>();
-      setResults(rows.filter((g) => g?.group_id && !seen.has(g.group_id) && seen.add(g.group_id)));
+      const fresh = rows.filter((g) => g?.group_id && !seen.has(g.group_id) && seen.add(g.group_id));
+      setResults(fresh);
+      // Every new group found is pre-selected for automatic joining.
+      setPicked(new Set(fresh.filter((g) => !g.is_member && !knownIds?.has(g.group_id) && !blockedIds?.has(g.group_id)).map((g) => g.group_id)));
       setSearched(true);
     } catch (e: any) {
       toast.error(e?.message === "timeout" ? "החיפוש לקח יותר מדי זמן. ודא שאתה מחובר לפייסבוק בדפדפן" : "החיפוש נכשל", { description: e?.message });
@@ -116,14 +120,10 @@ export function GroupDiscoveryDialog({
     }, { onConflict: "workspace_owner_id,group_id" });
   };
 
-  const runJoin = async () => {
-    const targets = visible.filter((g) => picked.has(g.group_id)).slice(0, MAX_JOIN_BATCH);
-    if (!targets.length) return;
-    if (picked.size > MAX_JOIN_BATCH) toast.info(`מצטרפים ל-${MAX_JOIN_BATCH} קבוצות בכל סבב כדי לשמור על החשבון`);
-    setJoining(true);
-    setProgress(Object.fromEntries(targets.map((g, i) => [g.group_id, i === 0 ? "joining" : "queued"])));
+  const joinBatch = (targets: DiscoveredGroup[]) => new Promise<number>((resolve) => {
     const byId = new Map(targets.map((g) => [g.group_id, g]));
     let ok = 0;
+    setProgress((prev) => ({ ...prev, ...Object.fromEntries(targets.map((g, i) => [g.group_id, i === 0 ? "joining" : "queued"])) }));
     const run = joinGroupsViaExtension(
       targets.map((g) => ({ group_id: g.group_id, group_url: g.group_url, group_name: g.group_name })),
       (gid, status) => {
@@ -140,14 +140,36 @@ export function GroupDiscoveryDialog({
         }
       },
     );
-    cancelRef.current = run.cancel;
-    await run.done;
+    cancelRef.current = () => { cancelledRef.current = true; run.cancel(); };
+    void run.done.then(() => resolve(ok));
+  });
+
+  const runJoin = async () => {
+    const all = visible.filter((g) => picked.has(g.group_id));
+    if (!all.length) return;
+    if (!isExtensionInstalled()) { toast.error("כדי להצטרף לקבוצות יש להתקין את תוסף Realtyz"); return; }
+    setJoining(true);
+    cancelledRef.current = false;
+    setProgress(Object.fromEntries(all.map((g) => [g.group_id, "queued"])));
+    let ok = 0;
+    for (let i = 0; i < all.length && !cancelledRef.current; i += MAX_JOIN_BATCH) {
+      ok += await joinBatch(all.slice(i, i + MAX_JOIN_BATCH));
+    }
     cancelRef.current = null;
     setJoining(false);
     setPicked(new Set());
-    toast.success(`הטיפול הסתיים: ${ok} מתוך ${targets.length} קבוצות`);
+    toast.success(`הטיפול הסתיים: ${ok} מתוך ${all.length} קבוצות`);
     onJoined?.();
   };
+
+  const completeManual = async (g: DiscoveredGroup) => {
+    await saveGroup(g);
+    setProgress((prev) => ({ ...prev, [g.group_id]: "requested" }));
+    toast.success("הקבוצה נשמרה");
+    onJoined?.();
+  };
+
+  const needsSteps = visible.filter((g) => progress[g.group_id] === "needs_answers" || progress[g.group_id] === "failed");
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!joining) onOpenChange(v); }}>
@@ -229,6 +251,12 @@ export function GroupDiscoveryDialog({
                         </span>
                       </span>
                     </button>
+                    {(st === "needs_answers" || st === "failed") && !joining && (
+                      <div className="flex shrink-0 gap-1">
+                        <Button type="button" size="sm" variant="outline" className="h-8 px-2 text-[13px]" onClick={() => openExternal(g.group_url)}>השלמה</Button>
+                        <Button type="button" size="sm" className="h-8 px-2 text-[13px]" onClick={() => void completeManual(g)}>סיימתי</Button>
+                      </div>
+                    )}
                     <Button type="button" variant="ghost" size="icon" title="פתח קבוצה בלשונית חדשה"
                       onClick={() => openExternal(g.group_url)} className="h-8 w-8 shrink-0 text-muted-foreground">
                       <ExternalLink className="h-4 w-4" />
@@ -240,11 +268,17 @@ export function GroupDiscoveryDialog({
           </div>
         )}
 
+        {needsSteps.length > 0 && !joining && (
+          <p className="rounded-lg bg-muted px-3 py-2 text-[14px] leading-relaxed">
+            {needsSteps.length} קבוצות דורשות צעד נוסף (שאלות או אישור). לחץ "השלמה" כדי לפתוח את הקבוצה, ענה על השאלות בפייסבוק ואז לחץ "סיימתי".
+          </p>
+        )}
+
         {visible.length > 0 && (
           <div className="flex gap-2">
             <Button type="button" className="flex-1 gap-1" disabled={joining || picked.size === 0} onClick={() => void runJoin()}>
               {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-              {picked.size > 0 ? `הצטרפות אוטומטית (${Math.min(picked.size, MAX_JOIN_BATCH)})` : "הצטרפות אוטומטית"}
+              {picked.size > 0 ? `הצטרפות אוטומטית (${picked.size})` : "הצטרפות אוטומטית"}
             </Button>
             {joining && <Button type="button" variant="outline" onClick={() => cancelRef.current?.()}>עצירה</Button>}
           </div>
