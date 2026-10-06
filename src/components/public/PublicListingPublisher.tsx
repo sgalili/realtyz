@@ -67,7 +67,7 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
   );
 }
 
-export function PublicListingPublisher({ autoResume = false, disabled = false }: { autoResume?: boolean; disabled?: boolean }) {
+export function PublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered }: { autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
   const { user } = useAuth();
   const { activeWorkspaceId, activeWorkspace, setActiveWorkspace, refresh: refreshWorkspaces } = useWorkspace();
   const { isPropertyOwner, isAgent, isSuperAdmin, refetch: refetchRoles } = useUserRole();
@@ -107,6 +107,19 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   const [importStage, setImportStage] = useState('');
   const initializedPublisher = useRef('');
   const publicationAudio = useRef<AudioContext | null>(null);
+  const draftScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'visitor';
+  const saveDraft = (f = fields, images = files, clips = videos) => savePublicListingDraft({ ...f, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step }, images, clips, draftScope);
+  useEffect(() => {
+    if (!resumeDraft) return;
+    setFields(resumeDraft); setFiles(resumeDraft.files || []); setVideos(resumeDraft.videos || []);
+    setPublishError(resumeDraft.publicationError || ''); setStep(resumeDraft.resumeStep || 0);
+    setReviewMode(true); setImportSlide(false); setExpandedStep(`step-${resumeDraft.resumeStep || 0}`); setOpen(true);
+  }, [resumeDraft]);
+  useEffect(() => {
+    if (!open || publishing || importing) return;
+    const timer = window.setTimeout(() => { void saveDraft().catch(() => {}); }, 350);
+    return () => window.clearTimeout(timer);
+  }, [fields, files, videos, step, expandedStep, open, draftScope, publishing, importing]);
   useEffect(() => {
     if (!open || !isBroker) return;
     const identity = `${user?.id}:${activeWorkspaceId}`;
@@ -175,7 +188,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       const address = [street, draftFields.houseNumber.trim()].filter(Boolean).join(' ') || draftFields.address.trim();
       const title = `${draftFields.propertyType.trim()} · ${draftFields.city.trim()}${draftFields.neighborhood.trim() ? ` · ${draftFields.neighborhood.trim()}` : ''}`;
       setPublishStage('שמירת פרטי הנכס');
-      const { data, error } = await supabase.from('listings').insert({
+      const payload = {
          user_id: user.id, workspace_owner_id: activeWorkspaceId || user.id, owner_id: user.id,
         slug: slugFor(user.id), property_title: title, description: draftFields.description.trim() || title, asking_price: toNum(draftFields.price) ?? 0,
         city: draftFields.city.trim(), neighborhood: draftFields.neighborhood.trim() || null, address,
@@ -211,9 +224,19 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
         },
         media_photos: photos, image_url: photos[0] ?? null,
          status: 'live', source: source ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
-      } as never).select('id').single();
+      };
+      let request;
+      if (draftFields.listingId && activeWorkspaceId) {
+        const { data: existing, error: readError } = await supabase.from('listings').select('features, source_metadata, additional_details').eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId).single();
+        if (readError) throw readError;
+        const { slug, user_id, owner_id, workspace_owner_id, affiliate_enabled, ...updates } = payload;
+        request = supabase.from('listings').update({ ...updates, features: { ...(existing.features as object || {}), ...payload.features }, source_metadata: { ...(existing.source_metadata as object || {}), publication_error: null }, additional_details: existing.additional_details } as never).eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId);
+      } else request = supabase.from('listings').insert(payload as never);
+      const { data, error } = await request.select('id').single();
       if (error) throw error;
-      await clearPublicListingDraft();
+      await clearPublicListingDraft(draftScope);
+      void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] });
+      onRecovered?.();
       void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
        void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
       toast.success('הנכס פורסם בלוח השיתופי');
@@ -254,6 +277,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           : message;
       const detailedError = `${publishStage || 'פרסום'}: ${friendly}`;
       setPublishError(detailedError);
+      await saveDraft({ ...draftFields, publicationError: detailedError }, draftFiles, draftVideos).catch(() => {});
       toast.error('פרסום הנכס נכשל והטיוטה נשמרה', { description: detailedError });
     } finally {
       setPublishing(false);
@@ -263,10 +287,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   useEffect(() => {
     if (!autoResume || !user?.id || resumed) return;
     setResumed(true);
-    void readPublicListingDraft().then((draft) => {
+    void readPublicListingDraft('visitor').then((draft) => {
       if (!draft) return;
       setFields(draft); setFiles(draft.files ?? []); setVideos(draft.videos ?? []);
-      void publish(draft, draft.files ?? [], draft.videos ?? []);
+      setReviewMode(true); setExpandedStep(`step-${draft.resumeStep || 0}`); setOpen(true);
     });
   }, [autoResume, user?.id, resumed]);
 
@@ -279,14 +303,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   };
   const goNext = async () => {
     if (!stepValid()) { toast.error('יש להשלים את שדות החובה לפני המעבר'); return; }
-    try { await savePublicListingDraft(fields, files, videos); } catch { /* draft saving is best-effort */ }
+    try { await saveDraft(); } catch { /* draft saving is best-effort */ }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
   };
 
   const pickAndAdvance = async <K extends 'publisherType' | 'dealType' | 'propertyType'>(key: K, value: PublicListingDraftFields[K]) => {
     const nextFields = { ...fields, [key]: value };
     setFields(nextFields);
-    try { await savePublicListingDraft(nextFields, files, videos); } catch { /* best effort */ }
+    try { await saveDraft(nextFields); } catch { /* best effort */ }
     if (reviewMode) return;
     if (key === 'publisherType') { setImportSlide(true); return; }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
@@ -323,7 +347,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     if (!confirming) { setConfirming(true); return; }
     if (user) publicationAudio.current = preparePublicationSound();
     try {
-      await savePublicListingDraft(fields, files, videos);
+      await saveDraft();
       if (!user) { setPendingSignupRole('property_owner'); navigate('/auth'); return; }
       await publish();
     } catch (error) {
@@ -383,7 +407,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       setFields(next);
       setStep(0);
       setReviewMode(true); setExpandedStep(isBroker ? 'step-1' : 'step-0');
-      try { await savePublicListingDraft(next, files, videos); } catch { /* best effort */ }
+      try { await saveDraft(next); } catch { /* best effort */ }
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
     finally { importInFlight.current = false; setImporting(false); }
   };
@@ -556,10 +580,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <Dialog open={open} onOpenChange={value => { if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
+      {!resumeDraft && <DialogTrigger asChild>
         <Button disabled={disabled} className="font-bold bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
-      </DialogTrigger>
+      </DialogTrigger>}
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
           <DialogTitle>
