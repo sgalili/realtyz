@@ -1,4 +1,4 @@
-import { Building2 } from 'lucide-react';
+import { Award, Building2 } from 'lucide-react';
 
 type BrokerAttributionProps = {
   brokerName?: string | null;
@@ -6,6 +6,7 @@ type BrokerAttributionProps = {
   licenceNumber?: string | null;
   logoUrl?: string | null;
   compact?: boolean;
+  exclusive?: boolean;
 };
 
 export default function BrokerAttribution({
@@ -14,6 +15,7 @@ export default function BrokerAttribution({
   licenceNumber,
   logoUrl,
   compact = false,
+  exclusive = false,
 }: BrokerAttributionProps) {
   const broker = brokerName?.trim() && !brokerName.includes('לא צוין') ? brokerName.trim() : '';
   const office = officeName?.trim() && !officeName.includes('לא צוין') ? officeName.trim() : '';
@@ -35,6 +37,11 @@ export default function BrokerAttribution({
           {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {license}</span>}
         </div>}
       </div>
+      {exclusive && (
+        <span className={`-me-1 flex shrink-0 items-center gap-1 self-start text-xs font-semibold text-foreground ${compact ? 'mt-2' : 'mt-3'}`}>
+          <Award className="h-3.5 w-3.5 text-primary" />בבלעדיות
+        </span>
+      )}
     </div>
   );
 }
