@@ -213,6 +213,17 @@ function RewardDialog({
       .then(({ data }) => setRecommendation((Array.isArray(data) ? data[0] : data) as typeof recommendation));
   }
 
+  // Persist every keystroke/selection so refresh or reopening never wipes inputs.
+  useEffect(() => {
+    if (!listing || hydratedFor !== listing.id) return;
+    try {
+      localStorage.setItem(
+        `affiliate-settings-draft:${listing.id}`,
+        JSON.stringify({ enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCap, questions, questionsPhone }),
+      );
+    } catch { /* storage full / disabled */ }
+  }, [listing, hydratedFor, enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCap, questions, questionsPhone]);
+
   const num = (v: string) => Number(v) || 0;
   const clean = (v: string) => v.replace(/[^\d.]/g, "");
 
