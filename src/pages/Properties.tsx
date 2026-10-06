@@ -55,6 +55,7 @@ import { ensureFullPropertyImport, ensureMetadataImport } from '@/lib/propertyFu
 import { isNewListing, isOldListing } from '@/lib/listingFreshness';
 import { isRelevantListing } from '@/lib/listingRelevance';
 import { sourceYad2Url } from '@/lib/yad2Ad';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
 import { formatListingDate, listingActivityAt } from '@/lib/listingDates';
@@ -498,11 +499,16 @@ export default function Properties() {
 
   // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,
   // gallery, description) and the user lands directly on the imported card.
+  const { activeWorkspaceId } = useWorkspace();
   const [yad2Status, setYad2Status] = useState<{ step: number; label: string; tone: 'busy' | 'ok' | 'error' } | null>(null);
   const submitQuery = useCallback(async (override?: string) => {
     const raw = (typeof override === 'string' ? override : q).trim();
-    const url = raw.match(/https?:\/\/\S+/i)?.[0];
-    if (url && /yad2\.co\.il/i.test(url)) {
+    const found = raw.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S*/i)?.[0];
+    // Exact ad token from /realestate/item/[region/]<token>; tracking params are dropped so the
+    // scraper loads that one ad, never a feed page that could return a different property.
+    const token = found?.match(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9]+)(?=[\/?#]|$)/i)?.[1] ?? null;
+    const url = found ? (token ? `https://www.yad2.co.il/realestate/item/${token}` : (/^https?:/i.test(found) ? found : `https://${found}`)) : undefined;
+    if (url) {
       setSearching(true);
       setYad2Status({ step: 1, label: 'מתחבר לעמוד המודעה ביד2…', tone: 'busy' });
       const slow = window.setTimeout(() => setYad2Status((s) => s && s.tone === 'busy' ? { step: 2, label: 'סורק פרטים, תמונות, תיאור ומאפיינים…', tone: 'busy' } : s), 2500);
@@ -512,20 +518,24 @@ export default function Properties() {
         });
         if (error) throw error;
         if (data?.error) throw new Error(String(data.detail || data.error));
-        const row = Array.isArray(data?.results) ? data.results[0] : null;
-        if (!row) throw new Error('לא הצלחתי לחלץ נתונים מהעמוד הזה');
+        const results: any[] = Array.isArray(data?.results) ? data.results : [];
+        const matches = (r: any) => !token || String(r?.external_id ?? '').toLowerCase() === token.toLowerCase() || String(r?.source_url ?? '').toLowerCase().includes(token.toLowerCase());
+        const row = results.find(matches) ?? null;
+        if (!row) throw new Error(results.length ? 'הנתונים שהתקבלו לא תואמים למודעה בקישור. נסה שוב בעוד רגע' : 'לא הצלחתי לחלץ נתונים מהעמוד הזה');
         setYad2Status({ step: 3, label: 'שומר את הנכס במאגר שלך…', tone: 'busy' });
 
         let localId: string | null = null;
         if (row.external_id) {
           const { data: found } = await supabase
             .from('listings').select('id')
-            .eq('source', 'yad2').eq('external_id', String(row.external_id)).limit(1);
+            .eq('source', 'yad2').eq('external_id', String(row.external_id))
+            .eq('workspace_owner_id', activeWorkspaceId as string).limit(1);
           localId = found?.[0]?.id ?? null;
         }
         if (!localId && row.source_url) {
           const { data: found } = await supabase
-            .from('listings').select('id').eq('source_url', row.source_url).limit(1);
+            .from('listings').select('id').eq('source_url', row.source_url)
+            .eq('workspace_owner_id', activeWorkspaceId as string).limit(1);
           localId = found?.[0]?.id ?? null;
         }
         if (localId) {
@@ -823,7 +833,7 @@ export default function Properties() {
                 onChange={(e) => setQ(e.target.value)}
                 onPaste={(e) => {
                   const pasted = e.clipboardData.getData('text');
-                  if (/yad2\.co\.il/i.test(pasted)) {
+                  if (/yad2\.co\.il\//i.test(pasted)) {
                     e.preventDefault();
                     const text = pasted.trim();
                     setQ(text);

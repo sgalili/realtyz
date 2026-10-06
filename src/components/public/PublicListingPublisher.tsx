@@ -314,7 +314,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
       setImported({ ...d, source_url: sourceUrl }); setImportSlide(false);
       setFields(current => ({ ...current, importedListing: { ...d, source_url: sourceUrl }, city: d.city || current.city, address: d.address || current.address, street: '', houseNumber: '', neighborhood: d.neighborhood || '', price: d.price ? String(d.price) : current.price, propertyType: types[d.property_type] || 'דירה', dealType: d.listing_type === 'rent' ? 'rent' : 'sale', rooms: d.rooms == null ? '' : String(d.rooms), sqm: d.sqm == null ? '' : String(d.sqm), floor: d.floor == null ? '' : String(d.floor), totalFloors: d.total_floors == null ? '' : String(d.total_floors), description: d.description || '', elevator: Boolean(d.elevator), parking: Number(d.parking) > 0, contactName: current.contactName || user.user_metadata?.full_name || '' }));
       // Partial import: continue into the form so the missing fields can be filled manually.
-      setStep(complete ? 7 : 1);
+      // Land directly on the editable review screen; missing fields are completed there.
+      void complete; setStep(7);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
     finally { setImporting(false); }
   };
@@ -342,7 +343,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           )}
           {step === 0 && importSlide && (
             <div className="space-y-4">
-              <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (אופציונלי)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/item/..." /><Button type="button" disabled={importing || !importUrl.trim()} onClick={() => void importYad2()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ייבוא מודעה'}</Button></div></div>
+              <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (אופציונלי)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/item/..." className="placeholder:text-muted-foreground/70" /><Button type="button" disabled={importing || !importUrl.trim()} onClick={() => void importYad2()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ייבוא מודעה'}</Button></div></div>
               <Button type="button" variant="outline" className="w-full" onClick={() => { setPublishError(''); setImportSlide(false); setStep(1); }}>המשך ללא ייבוא <ArrowLeft className="h-4 w-4" /></Button>
             </div>
           )}
@@ -452,7 +453,18 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
 
           {step === 7 && (
             <div className="space-y-3">
-               {fields.importedListing && <div className="space-y-2">{fields.importedListing.photos?.[0] && <img src={fields.importedListing.photos[0]} alt="הנכס המיובא" className="aspect-video w-full rounded-md object-cover" />}<p className="font-semibold">{fields.propertyType} · {fields.address} · {fields.city}</p><p>₪{Number(fields.price).toLocaleString('he-IL')}</p></div>}
+               {fields.importedListing && <div className="space-y-3 rounded-lg border p-3">
+                 {Array.isArray(fields.importedListing.photos) && fields.importedListing.photos.length > 0 && <div className="flex gap-2 overflow-x-auto">{fields.importedListing.photos.slice(0, 12).map((src: string) => <img key={src} src={src} alt="תמונת הנכס" className="h-24 w-32 shrink-0 rounded-md object-cover" />)}</div>}
+                 <div className="grid grid-cols-2 gap-2">
+                   <div><Label>סוג עסקה</Label><div className="mt-1 flex gap-1">{(['sale', 'rent'] as const).map(v => <Button key={v} type="button" size="sm" variant={fields.dealType === v ? 'default' : 'outline'} className="flex-1" onClick={() => set('dealType', v)}>{v === 'sale' ? 'למכירה' : 'להשכרה'}</Button>)}</div></div>
+                   <div><Label>סוג נכס</Label><Input value={fields.propertyType} onChange={(e) => set('propertyType', e.target.value)} /></div>
+                   <div><Label>עיר *</Label><Input value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
+                   <div><Label>כתובת *</Label><Input value={fields.address} onChange={(e) => set('address', e.target.value)} /></div>
+                   <div><Label>מחיר *</Label><Input inputMode="numeric" value={fields.price} onChange={(e) => set('price', e.target.value.replace(/[^\d]/g, ''))} /></div>
+                   <div><Label>חדרים</Label><Input inputMode="decimal" value={fields.rooms} onChange={(e) => set('rooms', e.target.value)} /></div>
+                 </div>
+                 <div><Label>תיאור</Label><Textarea rows={4} value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
+               </div>}
               <div><Label>השם שלך *</Label><Input value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
               <div><Label>מספר ווטסאפ *</Label><Input inputMode="tel" value={fields.contactWhatsapp} onChange={(e) => set('contactWhatsapp', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
