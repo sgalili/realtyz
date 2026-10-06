@@ -44,6 +44,11 @@ export type PublicListingDraftFields = {
   limitWhatsapp?: string;
   limitPhone?: string;
   commissionTermsAccepted?: boolean;
+  importUrl?: string;
+  reviewMode?: boolean;
+  importSlide?: boolean;
+  expandedStep?: string;
+  wizardStep?: number;
 };
 
 export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
