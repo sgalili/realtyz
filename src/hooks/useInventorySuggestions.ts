@@ -13,7 +13,7 @@ export function useInventorySuggestions(term: string, workspaceId: string | null
       if (!workspaceId) return [];
       const words = debounced.replace(/[,()%_*\\"']/g, ' ').split(/\s+/).filter(Boolean).slice(0, 6);
       if (!words.length) return [];
-      let query = supabase.from('listings').select('id,property_title,address,city,house_number,asking_price,deal_type,rooms,source,source_url,media_photos,created_at').eq('workspace_owner_id', workspaceId).neq('status', 'discarded').eq('is_demo', false);
+      let query = supabase.from('listings').select('id,property_title,address,city,house_number,asking_price,deal_type,rooms,source,source_url,media_photos,created_at').eq('workspace_owner_id', workspaceId).neq('status', 'discarded');
       for (const word of words) query = query.or(`property_title.ilike.%${word}%,address.ilike.%${word}%,city.ilike.%${word}%`);
       const { data, error } = await query.order('created_at', { ascending: false }).limit(8);
       if (error) throw error;

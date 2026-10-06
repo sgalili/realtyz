@@ -1,8 +1,9 @@
 # Architecture rules
-- Public listing review renders all eight existing step forms in a single-open accordion sharing one draft state; pasted import URLs replace the controlled input atomically to prevent concatenation.
+- Inventory suggestions and explicit bulk publication are active-workspace scoped; publication re-reads selected records, preserves commissions and excludes restricted properties.
+- Public listing review uses eight single-open accordion forms sharing one draft; pasted URLs replace the input atomically.
 - Connections renders Facebook authentication and extension groups as sibling sections; the workspace-scoped groups section stays mounted across section toggles so Page authentication cannot hide groups or interrupt joining.
 - Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
-- Peer card expansions share a group-keyed exclusive state and animated height container; nested utility controls use separate groups so they never collapse their parent.
+- Peer expansions share exclusive group-keyed animated height; nested utilities use separate groups.
 - My ads statistics are read through property-authorized RPCs keyed by the active workspace; partners see only their own detailed results on external listings, and raw contact identity is never included.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 
