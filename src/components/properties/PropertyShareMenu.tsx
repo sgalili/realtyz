@@ -25,6 +25,7 @@ export function PropertyShareMenu({
   label = 'שתף',
   className,
   disabled,
+  hidePublish = false,
 }: {
   results: UnifiedResult[];
   iconOnly?: boolean;
@@ -33,6 +34,8 @@ export function PropertyShareMenu({
   label?: string;
   className?: string;
   disabled?: boolean;
+  /** Hides the "פרסום ברשתות" item (used where a dedicated campaign button already exists). */
+  hidePublish?: boolean;
 }) {
   const navigate = useNavigate();
   const { isPartnerMode } = useAppMode();
@@ -118,10 +121,14 @@ export function PropertyShareMenu({
           {count > 1 ? `שיתוף ${count} נכסים` : 'שיתוף נכס'}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => void publishToSocial()} className="gap-2 text-sm">
-          <Megaphone className="h-4 w-4" /> פרסום ברשתות
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        {!hidePublish && (
+          <>
+            <DropdownMenuItem onSelect={() => void publishToSocial()} className="gap-2 text-sm">
+              <Megaphone className="h-4 w-4" /> פרסום ברשתות
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem onSelect={() => setRecipientMode('whatsapp')} className="gap-2 text-sm">
           <MessageCircle className="h-4 w-4" /> וואטסאפ
         </DropdownMenuItem>
