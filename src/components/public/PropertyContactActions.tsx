@@ -157,17 +157,17 @@ export default function PropertyContactActions({
           </form>
         )}
         {showWhatsapp && (
-          <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90" onClick={openRita}>
+          <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90 text-base" onClick={openRita}>
             <>
-              <WhatsAppIcon className="h-5 w-5" />
-              ווטסאפ עם ריטה
-              {/* RTL: Rita's picture sits on the opposite (left) side of the label. */}
+              {/* RTL: Rita's picture sits before the label, WA logo on the opposite (left) side. */}
               <RitaAvatar className="h-6 w-6 border-0 ring-0" />
+              בואו נדבר
+              <WhatsAppIcon className="h-5 w-5" />
             </>
           </Button>
         )}
         {showPhone && (
-          <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('phone')}>
+          <Button variant="outline" className="min-w-[8rem] flex-1 text-base" onClick={() => setMode('phone')}>
             <Phone className="h-4 w-4" />חייגו אליי
           </Button>
         )}
