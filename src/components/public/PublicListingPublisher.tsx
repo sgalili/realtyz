@@ -59,6 +59,30 @@ const LEAD_TYPES = [
   { key: 'Phone', label: 'שיחת טלפון' },
 ] as const;
 
+const LEAD_TYPE_VALIDITY = (
+  <ul className="list-disc space-y-1 ps-5">
+    <li>כל פנייה כוללת 3 שאלות סינון קצרות שהמפרסם קובע מראש.</li>
+    <li>כל פנייה מגיעה עם תמליל מלא של השיחה, ובשיחות טלפון גם עם הקלטה.</li>
+    <li>פנייה נספרת כפנייה תקפה (ונחייבת בעמלה) רק אם התשובות בשאלות הסינון חיוביות ומשביעות רצון.</li>
+  </ul>
+);
+
+function LeadTypeHelp({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button type="button" aria-label={`הסבר על פנייה: ${label}`} className="inline-flex shrink-0 text-muted-foreground hover:text-foreground">
+          <HelpCircle className="h-3.5 w-3.5" />
+        </button>
+      </DialogTrigger>
+      <DialogContent dir="rtl" className="sm:max-w-md">
+        <DialogHeader><DialogTitle className="text-right">{label}</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-sm leading-relaxed">{children}</div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function slugFor(userId: string) {
   return `owner-${userId.slice(0, 8)}-${Date.now().toString(36)}`;
 }
@@ -651,7 +675,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <p className="text-sm font-bold">עמלה ומגבלה יומית לכל סוג פנייה</p>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="איך עובד מנגנון העמלות"><HelpCircle className="h-4 w-4" /></Button>
+                    <button type="button" className="text-sm font-semibold text-primary underline underline-offset-2 hover:text-primary/80">מנגנון העמלות</button>
                   </DialogTrigger>
                   <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
                     <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
@@ -663,6 +687,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                         <li><b>שיחת טלפון:</b> איש הקשר התקשר ישירות למספר שבמודעה.</li>
                       </ul>
                       <p><b>מגבלה יומית:</b> מספר הפניות המרבי שתחויב עליהן ביום מכל סוג. לאחר שהגעת למגבלה, המודעה ממשיכה להופיע אך לא תחויב על פניות נוספות מאותו סוג עד היום הבא.</p>
+                      <p>כל פנייה נבדקת באמצעות 3 שאלות סינון קצרות שהמפרסם קובע מראש, וכוללת תמליל מלא של השיחה (ובשיחות טלפון גם הקלטה). פנייה נחשבת תקפה וחייבת לחיוב רק אם התשובות חיוביות ומשביעות רצון.</p>
                       <p>עמלה גבוהה יותר מעודדת שותפים לקדם את המודעה שלך. ניתן לשנות את הסכומים והמגבלות בכל עת מתוך המודעות שלי. שדה ריק משאיר את ההגדרה הקיימת או ללא עמלה.</p>
                       <p>החיוב מתבצע רק על פנייה אמיתית שנרשמה במערכת, ולא על צפיות או קליקים.</p>
                     </div>
@@ -675,7 +700,17 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <span className="text-xs text-muted-foreground">מקס׳ ביום</span>
                 {LEAD_TYPES.map(({ key, label }) => (
                   <div key={key} className="contents">
-                    <span className="self-center font-medium">{label}</span>
+                    <span className="flex items-center gap-1 self-center font-medium">
+                      {label}
+                      <LeadTypeHelp label={label}>
+                        <p>
+                          {key === 'Form' && 'איש הקשר ממלא את טופס המודעה ועונה על 3 שאלות הסינון שהגדרת; התשובות נשמרות יחד עם פרטי הפנייה.'}
+                          {key === 'Whatsapp' && 'איש הקשר פותח שיחת ווטסאפ וריטה שואלת את 3 שאלות הסינון שהגדרת; התמליל המלא של השיחה נשמר לצפייה.'}
+                          {key === 'Phone' && 'איש הקשר מתקשר למספר שבמודעה; השיחה מוקלטת ומתומללת, וכוללת את 3 שאלות הסינון שהגדרת.'}
+                        </p>
+                        {LEAD_TYPE_VALIDITY}
+                      </LeadTypeHelp>
+                    </span>
                     <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
                     <Input inputMode="numeric" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} />
                   </div>
