@@ -335,6 +335,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       } else request = supabase.from('listings').insert(payload as never);
       const { data, error } = await request.select('id').single();
       if (error) throw error;
+      if (data?.id) void supabase.functions.invoke('neighborhood-perks', { body: { listing_id: data.id, force: true } });
       await clearPublicListingDraft(draftScope).catch(() => {});
       void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] });
       onRecovered?.();

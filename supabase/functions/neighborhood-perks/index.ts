@@ -66,7 +66,7 @@ async function summarizeWithAI(payload: {
 }): Promise<{ perks: string[]; one_liner_he: string } | null> {
   if (!LOVABLE_API_KEY) return null;
   const sys = `אתה מתווך נדל"ן בכיר בישראל. סכם בעברית את היתרונות של הסביבה הקרובה לנכס בהתבסס אך ורק על קטעי הטקסט המצורפים. כללים:
-- החזר JSON תקין בלבד עם המפתחות perks (מערך 4-6 פריטים) ו-one_liner_he (משפט אחד 8-14 מילים).
+- החזר JSON תקין בלבד עם המפתחות perks (מערך 6-10 פריטים, כולל בתי ספר וגני ילדים בשמם, תחבורה, פארקים ומסחר) ו-one_liner_he (משפט אחד 8-14 מילים).
 - כל פריט: עד 7 מילים, קונקרטי (למשל "5 דקות הליכה לחוף", "סופר יוחננוף בכניסה לשכונה", "קו רכבת קלה בקרבת מקום", "פארק הרצליה במרחק 400 מ׳").
 - ללא אימוג'י, ללא קווים מפרידים (em dash/en dash), ללא "—" או "--".
 - אם אין מספיק מידע, החזר perks ריק ו-one_liner_he ריק.`;
@@ -86,7 +86,7 @@ async function summarizeWithAI(payload: {
     const content = j?.choices?.[0]?.message?.content ?? "{}";
     const parsed = JSON.parse(content);
     const perks: string[] = Array.isArray(parsed?.perks)
-      ? parsed.perks.map((p: any) => String(p).trim()).filter(Boolean).slice(0, 6)
+      ? parsed.perks.map((p: any) => String(p).trim()).filter(Boolean).slice(0, 10)
       : [];
     const one = typeof parsed?.one_liner_he === "string" ? parsed.one_liner_he.trim() : "";
     return { perks, one_liner_he: one };
@@ -120,18 +120,25 @@ Deno.serve(async (req) => {
     const user = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    const { data: listing, error: lerr } = await user
+    let { data: listing, error: lerr } = await user
       .from("listings")
       .select("id, user_id, property_title, address, neighborhood, city, area_perks")
       .eq("id", listingId)
       .maybeSingle();
+    let viaPublic = false;
+    if (!listing) {
+      // Public viewers may enrich only published, live listings (cached 30 days, never forced).
+      const pub = await admin.from("listings").select("id, user_id, property_title, address, neighborhood, city, area_perks")
+        .eq("id", listingId).eq("is_published", true).eq("status", "live").maybeSingle();
+      listing = pub.data as any; lerr = pub.error as any; viaPublic = true;
+    }
     if (lerr || !listing) {
       return new Response(JSON.stringify({ error: "listing not found or forbidden" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!force && isFresh((listing as any).area_perks)) {
+    if ((!force || viaPublic) && isFresh((listing as any).area_perks)) {
       return new Response(JSON.stringify({ ok: true, cached: true, area_perks: (listing as any).area_perks }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -151,6 +158,8 @@ Deno.serve(async (req) => {
       neighborhood && city ? `site:yad2.co.il ${neighborhood} ${city}` : null,
       neighborhood && city ? `${neighborhood} ${city} שכונה יתרונות בתי ספר תחבורה` : null,
       address && city ? `${address} ${city} סביבה פארק חניה תחבורה` : null,
+      city ? `בתי ספר גני ילדים ${neighborhood ?? address ?? ""} ${city}` : null,
+      city ? `${neighborhood ?? address ?? ""} ${city} מרכז מסחרי קניון סופר תחנת רכבת` : null,
     ].filter(Boolean) as string[];
 
     const results: Array<{ url: string; title?: string; description?: string; markdown?: string }> = [];
