@@ -10,21 +10,16 @@
 // Required secret: BRIGHTDATA_API_TOKEN
 // Optional secret: BRIGHTDATA_ZONE (defaults to "yad2")
 
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanSqm } from "../_shared/measures.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const BD_TOKEN = Deno.env.get("BRIGHTDATA_API_TOKEN") ?? "";
 // Two DIFFERENT Bright Data products are in play and they are not interchangeable:
 //   * Web Unlocker zone  -> REST https://api.brightdata.com/request  (default: "reatyz_yad2")
@@ -1767,7 +1762,7 @@ async function mirrorPhotos(admin: any, keyPrefix: string, urls: string[]): Prom
 
 async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
   const { data: existing } = await admin
-    .from("listings").select("id, slug, media_photos, source_metadata").eq("source_url", row.source_url).maybeSingle();
+    .from("listings").select("id, slug, media_photos, source_metadata").eq("workspace_owner_id", workspaceOwnerId).eq("external_id", row.external_id).limit(1).maybeSingle();
   const ownerId = await upsertOwnerProfile(admin, workspaceOwnerId, row.owner_name, row.owner_phone);
 
   // Full gallery, never a single thumbnail: merge whatever we already stored
@@ -1798,6 +1793,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
 
   const payload: Record<string, unknown> = {
     user_id: workspaceOwnerId,
+    workspace_owner_id: workspaceOwnerId,
     property_title: row.title || "מודעה מיד-2",
     description: row.description || row.title || "",
     asking_price: row.price ?? 0,
@@ -1856,6 +1852,9 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
       published_at: row.published_at ?? prevMeta.published_at ?? null,
       updated_at_source: row.updated_at_source ?? prevMeta.updated_at_source ?? null,
     };
+    for (const key of Object.keys(updatePayload)) {
+      if (updatePayload[key] == null || updatePayload[key] === "") delete updatePayload[key];
+    }
     if (updatePayload.latitude == null) delete updatePayload.latitude;
     if (updatePayload.longitude == null) delete updatePayload.longitude;
     // Keep previously resolved address numbers / description when this pass
@@ -1876,9 +1875,9 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     if (updErr) throw new Error(`update_failed(${existing.id}): ${updErr.message}`);
     return { id: existing.id, updated: true };
   }
-  const slug = `yad2-${row.external_id || crypto.randomUUID().slice(0, 8)}`;
+  const slug = `yad2-${workspaceOwnerId.slice(0, 8)}-${row.external_id || crypto.randomUUID().slice(0, 8)}`;
   const { data: inserted, error: insErr } = await admin.from("listings")
-    .insert({ ...payload, slug }).select("id").maybeSingle();
+    .insert({ ...payload, slug, is_published: false, status: "pending" }).select("id").maybeSingle();
   if (insErr) throw new Error(`insert_failed(${row.source_url}): ${insErr.message}`);
   if (!inserted?.id) throw new Error(`insert_returned_no_row(${row.source_url})`);
   return { id: inserted.id, updated: false };
@@ -2015,6 +2014,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  let claimedItem: string | null = null;
+  let claimedToken: string | null = null;
   try {
     const auth = req.headers.get("Authorization") || "";
     if (!auth.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
@@ -2109,14 +2110,68 @@ Deno.serve(async (req) => {
       return u.toString();
     }
 
-    const inputUrl = buildYad2Url();
+    let inputUrl = buildYad2Url();
+    const parsedUrl = new URL(inputUrl);
+    if (parsedUrl.protocol !== "https:" || !/(^|\.)yad2\.co\.il$/i.test(parsedUrl.hostname) || parsedUrl.username || parsedUrl.password) {
+      return json({ error: "invalid_yad2_url" }, 400);
+    }
+    // Resolve short/share links without a paid scrape, refusing foreign redirects.
+    if (rawUrl && !/\/realestate\/(?:item|forsale|rent|forrent)/i.test(parsedUrl.pathname)) {
+      for (let hop = 0; hop < 5; hop++) {
+        const response = await fetch(inputUrl, { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(8000) });
+        const location = response.headers.get("location");
+        if (!location) break;
+        const next = new URL(location, inputUrl);
+        if (next.protocol !== "https:" || !/(^|\.)yad2\.co\.il$/i.test(next.hostname) || next.username || next.password) return json({ error: "invalid_yad2_redirect" }, 400);
+        inputUrl = next.toString();
+        if (/\/realestate\/item\//i.test(next.pathname)) break;
+      }
+      if (!/\/realestate\/item\//i.test(new URL(inputUrl).pathname)) return json({ error: "unresolved_yad2_link", detail: "לא ניתן לפענח את קישור השיתוף. אפשר להדביק את קישור המודעה המלא או להמשיך ידנית." }, 422);
+    }
     if (!rawUrl && !freeText && !body?.city && !body?.rooms) {
       return json({ error: "url is required" }, 400);
     }
     console.log(`[yad2-unlocker] resolved URL -> ${inputUrl}`);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-    const isItemUrl = /\/realestate\/item\//.test(inputUrl);
+    const itemId = new URL(inputUrl).pathname.match(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9_-]+)\/?$/i)?.[1]?.toLowerCase() ?? null;
+    const isItemUrl = Boolean(itemId);
+    if (itemId) inputUrl = `https://www.yad2.co.il/realestate/item/${itemId}`;
+    let workspaceOwnerId = userId;
+    if (token !== SERVICE_KEY) {
+      const scoped = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
+      const { data: owner, error: scopeError } = await scoped.rpc("current_workspace_owner");
+      if (scopeError || !owner) return json({ error: "workspace_unavailable" }, 403);
+      const { data: allowed, error: accessError } = await scoped.rpc("ws_current_access", { _ws: owner });
+      if (accessError || !allowed) return json({ error: "workspace_forbidden" }, 403);
+      workspaceOwnerId = owner;
+    }
+    const cachedResponse = async (row: Scraped, servedFrom: string, fetchedAt: string | null) => {
+      let listingId: string | null = null;
+      if (!previewOnly) listingId = (await saveListing(admin, workspaceOwnerId, row)).id;
+      return json({ success: true, results: [row], served_from: servedFrom, cached: true, fetched_at: fetchedAt, listing_id: listingId, records_saved: listingId ? 1 : 0, resolved_url: inputUrl });
+    };
+    if (itemId) {
+      const { data: claim, error: claimError } = await admin.rpc("claim_yad2_item_import", { _item: itemId, _url: inputUrl });
+      if (claimError) throw new Error(`cache_claim_failed: ${claimError.message}`);
+      if (claim.state === "cached") return await cachedResponse(claim.payload, "item_cache", claim.fetched_at);
+      if (claim.state !== "claimed") {
+        if (claim.payload) return await cachedResponse(claim.payload, "item_cache_stale", claim.fetched_at);
+        return json({ error: claim.state === "busy" ? "import_in_progress" : "daily_import_limit", detail: claim.state === "busy" ? "ייבוא המודעה כבר מתבצע. הנתונים יופיעו מיד בסיום." : "כבר נעשה ניסיון ייבוא למודעה הזאת ב-24 השעות האחרונות. אפשר להמשיך ידנית.", retry_at: claim.retry_at }, claim.state === "busy" ? 409 : 429);
+      }
+      claimedItem = itemId; claimedToken = claim.token;
+      // A recent scheduled source record is also reusable, without scraper credits.
+      const { data: poolRow } = await admin.from("market_listings").select("last_seen_at").eq("source", "yad2").eq("external_id", itemId).order("last_seen_at", { ascending: false }).limit(1).maybeSingle();
+      if (poolRow?.last_seen_at && Date.parse(poolRow.last_seen_at) > Date.now() - 86400000) {
+        const pooled = await readMarketPool(admin, {}, 1, inputUrl);
+        if (pooled[0]) {
+          const row = pooled[0]; row.photos = await mirrorPhotos(admin, itemId, row.photos ?? []);
+          const { error } = await admin.from("yad2_item_cache").update({ payload: row, fetched_at: poolRow.last_seen_at, claim_token: null }).eq("item_id", itemId).eq("claim_token", claimedToken);
+          if (error) throw new Error(error.message);
+          return await cachedResponse(row, "pool", poolRow.last_seen_at);
+        }
+      }
+    }
 
     // ------------------------------------------------------------------
     // RATE LIMIT (HARD): Bright Data is reachable ONLY inside a claimed
@@ -2136,7 +2191,7 @@ Deno.serve(async (req) => {
       poolMode = Boolean(run?.id) && run?.status === "running";
       if (!poolMode) console.warn("[yad2-unlocker] scrape_token rejected — serving from pool");
     }
-    if (!poolMode) {
+    if (!poolMode && !isItemUrl) {
       const pooled = await readMarketPool(admin, body, limit, inputUrl);
       console.log(`[yad2-unlocker] pool mode → ${pooled.length} row(s), no external call`);
       return json({
@@ -2468,7 +2523,15 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (itemId && claimedToken) {
+      rows = rows.filter((r) => String(r.external_id ?? "").toLowerCase() === itemId);
+      if (!rows.length) throw new Error("לא ניתן לחלץ את המודעה המדויקת מהקישור. אפשר להמשיך ידנית.");
+      rows[0].photos = await mirrorPhotos(admin, itemId, rows[0].photos ?? []);
+      const { error } = await admin.from("yad2_item_cache").update({ payload: rows[0], fetched_at: new Date().toISOString(), claim_token: null }).eq("item_id", itemId).eq("claim_token", claimedToken);
+      if (error) throw new Error(`cache_save_failed: ${error.message}`);
+    }
     let saved = 0;
+    let listingId: string | null = null;
     const saveErrors: any[] = [];
     if (!previewOnly) {
       const saveOne = async (r: typeof rows[number]) => {
@@ -2476,7 +2539,7 @@ Deno.serve(async (req) => {
           // Scheduled runs write to the CENTRAL pool; `share_market_listings`
           // then distributes the rows to every workspace in the same city.
           if (poolMode) await saveMarketListing(admin, r);
-          else await saveListing(admin, userId, r);
+          else listingId = (await saveListing(admin, workspaceOwnerId, r)).id;
           saved++;
         } catch (e: any) {
           const msg = String(e?.message ?? e);
@@ -2504,6 +2567,8 @@ Deno.serve(async (req) => {
 
       records_scraped: rows.length,
       records_saved: saved,
+      listing_id: listingId,
+      cached: false,
       results: rows,
       save_errors: saveErrors,
       served_from: poolMode ? "brightdata_scheduled" : "brightdata",
@@ -2521,6 +2586,10 @@ Deno.serve(async (req) => {
       resolved_url: inputUrl,
     });
   } catch (e: any) {
+    if (claimedItem && claimedToken) {
+      const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+      await admin.from("yad2_item_cache").update({ claim_token: null }).eq("item_id", claimedItem).eq("claim_token", claimedToken);
+    }
     console.error("[yad2-unlocker] error", e);
     return json({ source: "yad2", connected: false, error: "scrape_failed", results: [], detail: String(e?.message ?? e), bd_trace: bdTrace });
   }
