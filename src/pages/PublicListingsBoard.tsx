@@ -41,14 +41,14 @@ function cleanTitle(card: PublicCard) {
   return unique.slice(0, 3).join(' · ') || 'נכס';
 }
 
-function PhotoCarousel({ photos, alt, onFavorite, isMine = false }: { photos: string[]; alt: string; onFavorite: () => void; isMine?: boolean }) {
+function PhotoCarousel({ photos, alt, onFavorite, isMine = false, isFav = false }: { photos: string[]; alt: string; onFavorite: () => void; isMine?: boolean; isFav?: boolean }) {
   const [index, setIndex] = useState(0);
   if (!photos.length) return <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">אין תמונות</div>;
   const move = (delta: number) => setIndex((current) => (current + delta + photos.length) % photos.length);
   return (
     <div className="group relative h-48 overflow-hidden bg-muted">
       <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
-      <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label="שמירה במועדפים" className="absolute left-2 top-2 h-9 w-9 bg-transparent text-destructive shadow-none hover:bg-background/30"><Heart className="h-5 w-5" /></Button>
+      <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} className="absolute left-2 top-2 h-9 w-9 rounded-full bg-background/70 text-destructive shadow-sm backdrop-blur-sm hover:bg-background/70"><Heart className={cn('h-5 w-5 transition-colors', isFav && 'fill-current')} /></Button>
       {(isMine || photos.length > 1) && (
         <div className="absolute right-2 top-2 flex flex-col items-end gap-1.5">
           {isMine && (
@@ -111,7 +111,39 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     ro.observe(el);
     return () => ro.disconnect();
   });
-  const [grid, setGrid] = useState(false);
+  const [grid, setGrid] = useState(() => {
+    try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; }
+  });
+  const toggleGrid = () => setGrid((value) => {
+    const next = !value;
+    try { localStorage.setItem('public-board-view', next ? 'grid' : 'list'); } catch { /* ignore */ }
+    return next;
+  });
+  // Favorite listings of the signed-in user (heart on the card image).
+  const [favIds, setFavIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!user?.id) { setFavIds(new Set()); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from('listing_favorites').select('listing_id').eq('user_id', user.id);
+      if (!cancelled) setFavIds(new Set(((data ?? []) as Array<{ listing_id: string }>).map((r) => r.listing_id)));
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+  const toggleFavorite = async (card: PublicCard) => {
+    if (!user?.id) { openGate(card, 'favorite'); return; }
+    const isFav = favIds.has(card.id);
+    setFavIds((cur) => { const next = new Set(cur); if (isFav) next.delete(card.id); else next.add(card.id); return next; });
+    const { error } = isFav
+      ? await supabase.from('listing_favorites').delete().eq('user_id', user.id).eq('listing_id', card.id)
+      : await supabase.from('listing_favorites').insert({ user_id: user.id, listing_id: card.id });
+    if (error) {
+      setFavIds((cur) => { const next = new Set(cur); if (isFav) next.add(card.id); else next.delete(card.id); return next; });
+      toast.error('שמירת המועדף נכשלה, נסו שוב');
+    } else {
+      toast.success(isFav ? 'הנכס הוסר מהמועדפים' : 'הנכס נשמר במועדפים');
+    }
+  };
   const [gate, setGate] = useState<{ card: PublicCard; intent: GateIntent } | null>(null);
   const [form, setForm] = useState({ name: '', phone: '' });
   const [sending, setSending] = useState(false);
