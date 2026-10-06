@@ -78,13 +78,18 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   useEffect(() => {
     if (!user?.id) { setOwnedIds(new Set()); return; }
     let cancelled = false;
-    supabase.rpc('get_my_ads_stats').then(({ data }) => {
-      if (cancelled) return;
-      const ids = ((data ?? []) as Array<{ relation?: string; listing_id?: string }>)
-        .filter((r) => r.relation === 'owned' && r.listing_id)
-        .map((r) => r.listing_id as string);
-      setOwnedIds(new Set(ids));
-    }).catch(() => { if (!cancelled) setOwnedIds(new Set()); });
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('get_my_ads_stats');
+        if (cancelled) return;
+        const ids = ((data ?? []) as Array<{ relation?: string; listing_id?: string }>)
+          .filter((r) => r.relation === 'owned' && r.listing_id)
+          .map((r) => r.listing_id as string);
+        setOwnedIds(new Set(ids));
+      } catch {
+        if (!cancelled) setOwnedIds(new Set());
+      }
+    })();
     return () => { cancelled = true; };
   }, [user?.id]);
   const [loading, setLoading] = useState(true);
