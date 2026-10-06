@@ -88,7 +88,7 @@ export async function matchListingFromText(
       .from("listings")
       .select(FOCUS_COLUMNS)
       .eq("workspace_owner_id", ownerId)
-      .not("status", "eq", "discarded")
+      .or("status.is.null,status.neq.discarded")
       .order("updated_at", { ascending: false })
       .limit(500);
     const rows = (data ?? []) as FocusRow[];

@@ -1330,7 +1330,7 @@ async function handleLeadInboxInbound(
     rescueContextBlock = contextBlock;
     rescueFocusProperty = focusProperty;
     // Direct fact questions ("כמה חדרים?") are answered straight from the listing.
-    const factAnswer = !staffSender && !recruitmentMode ? answerPropertyFact(promptInboundText, focusRow as any, history) : null;
+    const factAnswer = !staffSender && !recruitmentMode ? answerPropertyFact(promptInboundText, focusRow as any, aiMessages as any) : null;
     if (factAnswer) {
       reply = factAnswer;
       console.log("[autopilot] deterministic property-fact answer", { lead_id: lead.id });
