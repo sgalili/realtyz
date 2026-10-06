@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Ban, Clock, ExternalLink, Loader2, Search, Trash2, Undo2, UserPlus } from 'lucide-react';
+import { Ban, Clock, ExternalLink, Loader2, Search, Trash2, Undo2, UserPlus, Users } from 'lucide-react';
 import { isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
 import { joinGroupsViaExtension, type JoinStatus } from '@/lib/extensionGroupDiscovery';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
