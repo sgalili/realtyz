@@ -30,6 +30,22 @@ const formatMemberCount = (n: number): string => {
   if (n >= 1_000) return `${trim(n / 1_000)}K`;
   return String(n);
 };
+
+/** Square group thumbnail with a neutral placeholder when no image exists. */
+function GroupThumb({ src }: { src?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted" aria-hidden>
+        <Users className="h-4 w-4 text-muted-foreground" />
+      </span>
+    );
+  }
+  return (
+    <img src={src} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" loading="lazy"
+      referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+  );
+}
 const TEXT_MD = 'text-[15px]';
 const MAX_GROUPS = 100;
 const JOIN_BATCH = 5;
@@ -314,12 +330,16 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
   }, [loading, workspaceOwnerId, notJoinedGroups.length]);
 
   const renderSimpleRow = (g: GroupTarget, extra?: ReactNode) => (
-    <div key={g.id} className="flex flex-nowrap items-center gap-[11px] rounded-lg border border-border/70 px-2 py-1.5">
+    <div key={g.id} className="flex h-11 flex-nowrap items-center gap-[11px] overflow-hidden rounded-lg border border-border/70 px-2">
       {extra}
-      <div className={cn('min-w-0 flex-1 text-right', TEXT_MD)}>
-        <span title={g.name} className="block truncate">{shortenName(g.name)}</span>
-        {joinProgress[g.id] && <span className={cn('block text-primary', TEXT_SM)}>{joinProgress[g.id]}</span>}
-      </div>
+      <GroupThumb src={g.icon} />
+      <span title={joinProgress[g.id] ? `${g.name} · ${joinProgress[g.id]}` : g.name}
+        className={cn('min-w-0 flex-1 truncate whitespace-nowrap text-right', TEXT_MD)}>
+        {shortenName(g.name)}
+      </span>
+      {typeof g.members === 'number' && g.members > 0 && (
+        <span className={cn('shrink-0 text-muted-foreground tabular-nums', TEXT_SM)} dir="ltr">{formatMemberCount(g.members)}</span>
+      )}
       <button type="button" aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`} title="צפה בקבוצה בלשונית חדשה"
         onClick={(e) => { e.stopPropagation(); openExternal(fbGroupUrlFrom(g.url, g.groupId)); }}
         className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary">
@@ -448,7 +468,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                   // The publish checkbox is intentionally absent — tap the row to toggle,
                   // and selection boxes appear only in multi-select mode.
                   className={cn(
-                    'flex flex-nowrap items-center gap-[11px] rounded-lg border px-2 py-1.5 transition-colors',
+                    'flex h-11 flex-nowrap items-center gap-[11px] overflow-hidden rounded-lg border px-2 transition-colors',
                     g.selected ? 'border-primary/40 bg-primary/5' : 'border-border/70',
                   )}
                   onClick={() => (deleteMode ? toggleMark(g.id) : void toggleGroup(g))}
@@ -460,16 +480,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                       label={g.name}
                     />
                   )}
-                  {g.icon && (
-                    <img
-                      src={g.icon}
-                      alt=""
-                      className="h-8 w-8 shrink-0 rounded-md object-cover"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
+                  <GroupThumb src={g.icon} />
                   <span className={cn('min-w-0 flex-1 truncate whitespace-nowrap text-right', TEXT_MD)} title={g.name}>
                     {shortenName(g.name)}
                   </span>
