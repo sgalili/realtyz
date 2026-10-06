@@ -1,4 +1,8 @@
 # Roadmap
+## Signed-out board and source publisher refinements
+- [ ] Relocate borderless sign-in after Add ad, enlarge main Realtyz logo by 30%, bottom-align card actions and use a private-publisher silhouette.
+- [ ] Improve source-backed automatic Yad2 advertiser/logo classification without random reassignment of real advertisers.
+- [ ] Verify public board layout and advertiser regression tests; live source extraction remains subject to source access.
 ## Original Yad2 advertiser branding
 - [x] Save original advertiser metadata across item imports, source cache and market pool; inspect first gallery image before cleanup and retain matching branding separately. Four tests passed and real office-logo vision classification verified.
 - [x] Require source-ad license evidence for imported listings; real שדרות ח״ן public card verified with loaded office logo, no unsupported license label and no runtime errors. Updated functions deployed.
