@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { RefreshCw, Upload, X, Video } from 'lucide-react';
+import { Upload, X, Video } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type PropertyType,
@@ -83,7 +83,6 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   const handleUpload = async (files: FileList | null, kind: 'photo' | 'video') => {
     if (!files || files.length === 0) return;
@@ -174,67 +173,6 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property, open]);
-
-  // 60s client-side debounce on the manual Homely sync — prevents accidental
-  // burst clicks from spamming the Homely API (the provider profile was
-  // permanently locked for monthly-unsuspension overuse from a similar storm).
-  const lastHomelySyncAtRef = useRef<number>(0);
-  const handleSyncFromHomely = async () => {
-    if (!property) return;
-    const now = Date.now();
-    const elapsed = now - lastHomelySyncAtRef.current;
-    if (lastHomelySyncAtRef.current > 0 && elapsed < 60_000) {
-      const wait = Math.ceil((60_000 - elapsed) / 1000);
-      toast.message(`סנכרון זמין שוב בעוד ${wait} שניות`);
-      return;
-    }
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
-        body: { listing_id: property.id },
-      });
-      if (error) throw error;
-      const payload = (data as any) ?? {};
-      if (payload.needs_setup) {
-        toast.message("יש לחבר תחילה את חשבון Homely", {
-          description: "עברו ל-הגדרות ← חיבורים והזינו את פרטי Homely (קוד משרד, משתמש וסיסמה).",
-        });
-        return;
-      }
-      // Graceful zero-state: edge fn returns { fallback: true } with HTTP 200
-      // when the broker has no active properties / serial isn't on Homely.
-      if (payload.fallback) {
-        if (payload.error === "property_not_found_in_broker_list" || payload.broker_active_count === 0) {
-          toast.message("אין נכסים פעילים בחשבון הומלי המחובר", {
-            description: "ודא שהנכס פעיל ב-Homely ולחץ שוב על סנכרון.",
-          });
-        } else {
-          toast.message("הנכס לא נמצא ב-Homely", { description: "נסה לסנכרן שוב מאוחר יותר." });
-        }
-        return;
-      }
-      if (payload.error) throw new Error(payload.error);
-      const u = payload.updated ?? {};
-      if (u.property_title) setTitle(u.property_title);
-      if (u.description) setDescription(u.description);
-      if (u.asking_price) setPrice(String(u.asking_price));
-      if (u.city) setCity(u.city);
-      if (u.address) setAddress(u.address);
-      if (u.rooms) setRooms(String(u.rooms));
-      if (u.sqm) setSqm(String(u.sqm));
-      if (u.floor != null) setFloor(String(u.floor));
-      const newPhotos = u?.source_metadata?.photos;
-      if (Array.isArray(newPhotos)) setPhotos(newPhotos);
-      toast.success(`נטענו ${payload.photo_count ?? 0} תמונות מ-Homely`);
-      onSaved?.();
-    } catch (e: any) {
-      toast.error(`סנכרון נכשל: ${e.message ?? e}`);
-    } finally {
-      // Cool-down starts at completion (success or fail), not at click time.
-      lastHomelySyncAtRef.current = Date.now();
-      setSyncing(false);
-    }
-  };
 
   const mapAddress = addressMapQuery({ address, city, neighborhood });
   const mapTitle = fullPropertyAddress({ address, city, neighborhood }) || title || 'נכס';
@@ -339,16 +277,6 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
                 </button>
               ))}
             </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/15 bg-primary/5 p-2.5">
-            <div className="text-xs text-muted-foreground">
-              משוך את כל הנתונים והתמונות העדכניות מ-Homely
-            </div>
-            <Button type="button" size="sm" variant="outline" onClick={handleSyncFromHomely} disabled={syncing} className="gap-1.5">
-              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'מסנכרן…' : 'סנכרן מ-Homely'}
-            </Button>
           </div>
 
           <div className="space-y-2">
