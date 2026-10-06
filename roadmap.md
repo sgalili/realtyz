@@ -1,4 +1,6 @@
 # Roadmap
+## My Ads favorites
+- [x] Add personal favorites tab with public-safe previews and persistent removal; verified signed-in save/list/remove/refresh without runtime errors, automatic build passed.
 ## Public card gallery and priced inquiries
 - [x] Align image pills, 50% image-control backgrounds, horizontal swipe, larger price/title and renamed Rita action.
 - [x] Show inline name/phone only for form-only ads; classify conversation contacts after real name capture and satisfactory screening without premature billing.

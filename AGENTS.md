@@ -7,7 +7,7 @@
 - Peer expansions use exclusive group-keyed motion; nested utilities use separate groups.
 - Inquiry tiers require server-only workspace/listing identity and satisfactory screening evidence; first turns/callbacks never qualify screening. Atomic upgrades charge only unpaid differences to prevent duplicates.
 - Tables use the shared Table primitive for sort/reorder/hide (user/workspace/page-keyed local prefs, never listing data) with native horizontal scrolling and no arrow overlays, so behavior is identical everywhere.
-- My Ads uses workspace-keyed, property-authorized RPCs; partners see only their own external-listing results, never raw contact identity.
+- My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe, preventing private inventory/contact exposure.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 
 - Group selection uses one checkbox per row, immutable deduplicated snapshots and no-op guards; sibling links prevent duplicate activation/cascades.
