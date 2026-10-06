@@ -88,7 +88,7 @@ export async function matchListingFromText(
       .from("listings")
       .select(FOCUS_COLUMNS)
       .eq("workspace_owner_id", ownerId)
-      .not("address", "is", null)
+      .not("status", "eq", "discarded")
       .order("updated_at", { ascending: false })
       .limit(500);
     const rows = (data ?? []) as FocusRow[];
@@ -100,6 +100,11 @@ export async function matchListingFromText(
     for (const row of rows) {
       const r = row as Record<string, any>;
       const { street, house: addrHouse } = splitAddress(r.address);
+      const title = norm(r.property_title);
+      if (title.length >= 8 && haystack.includes(title)) {
+        if (!best || best.score < 10) best = { row, score: 10 };
+        continue;
+      }
       if (street.length < 3 || !haystack.includes(street)) continue;
       const city = norm(r.city);
       if (mentioned.length && (!city || !mentioned.some((c) => c === city || c.includes(city) || city.includes(c)))) continue;
