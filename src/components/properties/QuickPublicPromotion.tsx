@@ -16,7 +16,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false }: { id
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<PromotionRow[]>([]);
   const [accepted, setAccepted] = useState(false);
-  const allowed = ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin'].includes(activeWorkspace?.role ?? '');
+  const allowed = ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin', 'affiliate'].includes(activeWorkspace?.role ?? '');
   useEffect(() => { setOpen(false); setRows([]); setAccepted(false); }, [activeWorkspaceId]);
   if (!allowed || !activeWorkspaceId || !ids.length) return null;
   const eligible = rows.filter(row => row.status !== 'discarded' && !!row.city?.trim() && !!row.address?.trim() && Number(row.asking_price) > 0 && !(row.is_published && row.affiliate_enabled && row.status === 'live'));
