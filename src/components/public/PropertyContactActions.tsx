@@ -97,8 +97,8 @@ export default function PropertyContactActions({
   };
 
   const submit = async () => {
-    if (!name.trim() || phone.replace(/\D/g, '').length < 9) {
-      toast.error('יש למלא שם מלא ומספר טלפון תקין');
+    if ((!mode && !name.trim()) || phone.replace(/\D/g, '').length < 9) {
+      toast.error(mode === 'phone' ? 'יש למלא מספר טלפון תקין' : 'יש למלא שם מלא ומספר טלפון תקין');
       return;
     }
     const callback = mode === 'phone';
@@ -189,7 +189,6 @@ export default function PropertyContactActions({
         <DialogContent dir="rtl" className="sm:max-w-md">
           <DialogHeader><DialogTitle className="text-right">חזרה טלפונית</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>שם מלא *</Label><Input value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div><Label>טלפון *</Label><Input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
           </div>
           <DialogFooter className="flex-row items-center justify-between sm:justify-between"><Button variant="outline" onClick={() => setMode(null)}>ביטול</Button><Button disabled={sending} onClick={() => void submit()}>{sending && <Loader2 className="h-4 w-4 animate-spin" />}חייגו אליי</Button></DialogFooter>

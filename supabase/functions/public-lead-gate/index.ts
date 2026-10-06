@@ -169,9 +169,9 @@ Deno.serve(async (req) => {
     // is logged as a failed attempt that the partner can retry or call manually.
     if (action === "callback") {
       const listingId = str(body?.listing_id, 60);
-      const name = str(body?.name, 80);
+      const name = str(body?.name, 80) || 'פנייה טלפונית';
       const phone = normalizePhone(str(body?.phone, 30));
-      if (!listingId || !name || !phone) return json({ error: "שם וטלפון תקין הם שדות חובה" }, 400);
+      if (!listingId || !phone) return json({ error: "מספר טלפון תקין הוא שדה חובה" }, 400);
       const { data: listing } = await admin.from("listings").select("id, city, address, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published").eq("id", listingId).maybeSingle();
       if (!listing || !(listing.affiliate_enabled || listing.is_published) || listing.contact_options?.phone !== true) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
 
       const rawQuestions = listing.contact_options?.questions_phone ?? listing.contact_options?.questions;
       const questions = Array.isArray(rawQuestions) ? rawQuestions.filter((q: unknown) => typeof q === "string") : [];
-      const instructions = ["השיחה מתייחסת אך ורק לנכס שנשלח אליך.", "שאל לפחות שלוש שאלות סינון לפני סיום השיחה.", ...questions.map((q: string, i: number) => `שאלה ${i + 1}: ${q}`)].join("\n");
+      const instructions = ["השיחה מתייחסת אך ורק לנכס שנשלח אליך.", "בקש תחילה את השם המלא; מספר הטלפון כבר ידוע. לאחר מכן שאל את כל שאלות הסינון של המפרסם, אחת בכל פעם. תשובות חסרות, שליליות או לא ברורות אינן פנייה מסוננת.", ...questions.map((q: string, i: number) => `שאלה ${i + 1}: ${q}`)].join("\n");
 
       let callOk = false;
       let callError = "";
@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
         await admin.from("integration_error_logs").insert({ integration: "vapi", function_name: "vapi-outbound-call", error_message: callError.slice(0, 500), context: { lead_id: leadId, listing_id: listing.id, workspace_owner_id: ownerId } }).then(() => {}, () => {});
       }
 
-      const { error: stateError } = await admin.from('listing_inquiry_states').upsert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, channel: 'phone', verified_name: name, questions, answers: [], evidence_source: 'callback_identity_only' }, { onConflict: 'listing_id,lead_id,channel' });
+      const { error: stateError } = await admin.from('listing_inquiry_states').upsert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, channel: 'phone', verified_name: str(body?.name, 80) || null, questions, answers: [], evidence_source: 'callback_identity_only' }, { onConflict: 'listing_id,lead_id,channel' });
       if (stateError) throw stateError;
       // A callback request is identity capture, NOT a satisfactory conversation.
       const billing = await chargeLead(admin, listing.id, 1, refCode, leadId ?? null);

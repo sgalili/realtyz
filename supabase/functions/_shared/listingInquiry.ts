@@ -1,21 +1,6 @@
 // Real inbound evidence only: profile nicknames and callback requests do not
 // prove satisfactory screening.
-export function capturedInquiryName(history: Array<{ role: string; content: string }>): string | null {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const turn = history[i];
-    if (turn.role !== 'user') continue;
-    const explicit = turn.content.match(/(?:קוראים לי|השם שלי(?: הוא)?|שמי|אני נקרא(?:ת)?)\s+([א-תA-Za-z]+(?:\s+[א-תA-Za-z]+){0,2})/);
-    if (explicit?.[1]) return explicit[1].trim();
-    const previous = history[i - 1];
-    const text = turn.content.trim();
-    if (previous?.role === 'assistant' && /(?:מה|איך).{0,15}(?:שמ[ךכם]|קוראים לך)|שם מלא/.test(previous.content) && /^[א-תA-Za-z]+(?:\s+[א-תA-Za-z]+){0,2}$/.test(text) && !/^(כן|לא|תודה|שלום|בסדר|אולי)$/.test(text)) return text;
-  }
-  return null;
-}
-
-export function validScreeningEvidence(questions: string[], answers: unknown, visitorText: string): answers is Array<{ answer: string; satisfactory: boolean }> {
-  return Array.isArray(answers) && answers.length === questions.length && questions.length >= 3 && answers.every((item) => item && typeof item.answer === 'string' && typeof item.satisfactory === 'boolean' && (item.answer.trim() ? visitorText.includes(item.answer.trim()) : item.satisfactory === false));
-}
+import { capturedInquiryName, validScreeningEvidence } from './listingInquiryEvidence.ts';
 
 export async function processListingInquiry(admin: any, input: {
   listingId: string; leadId: string; ownerId: string; channel: 'whatsapp' | 'phone';
@@ -38,7 +23,7 @@ export async function processListingInquiry(admin: any, input: {
   const key = Deno.env.get('LOVABLE_API_KEY');
   if (key && questions.length >= 3 && !(state.answers?.length === questions.length && state.answers.every((a: any) => a.satisfactory === true))) {
     try {
-      const history = input.history.map((turn) => ({ ...turn, content: turn.content.replace(/(?:\+?972|0)[\d\s-]{8,14}/g, '[PHONE]').replace(/[\w.+-]+@[\w.-]+/g, '[EMAIL]').replaceAll(name, '[NAME]') }));
+      const history = input.history.map((turn) => ({ ...turn, content: turn.content.replace(/(?:\+?972|0)[\d\s-]{8,14}/g, '[PHONE]').replace(/[\w.+-]+@[\w.-]+/g, '[EMAIL]').split(name).join('[NAME]') }));
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
         body: JSON.stringify({ model: 'google/gemini-3-flash-preview', temperature: 0, response_format: { type: 'json_object' }, messages: [

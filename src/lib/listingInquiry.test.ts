@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capturedInquiryName, validScreeningEvidence } from '../../supabase/functions/_shared/listingInquiry';
+import { capturedInquiryName, validScreeningEvidence } from '../../supabase/functions/_shared/listingInquiryEvidence';
 import { deriveContactOptions } from './leadTiers';
 
 describe('priced listing inquiries', () => {
