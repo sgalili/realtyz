@@ -12,7 +12,7 @@ import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
 import { openExternal } from '@/lib/openExternal';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Facebook, Loader2, Unlink, KeyRound, ChevronDown } from 'lucide-react';
+import { Facebook, Loader2, Unlink, KeyRound } from 'lucide-react';
 
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
@@ -619,26 +619,26 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // each connected page row above.
   const actionButtons = null;
 
-  // Manual token fallback, rendered directly below the connect button in both
-  // connected and disconnected states; styled like the other outline buttons.
+  const manualTokenButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className={`shrink-0 ${isConnected ? 'h-9 w-9' : 'h-10 w-10'}`}
+      onClick={() => setManualOpen((v) => !v)}
+      aria-label="חיבור ידני באמצעות טוקן"
+      title="חיבור ידני באמצעות טוקן"
+      aria-expanded={manualOpen}
+      aria-controls="meta-manual-token-settings"
+    >
+      <KeyRound className="h-4 w-4 text-muted-foreground" />
+    </Button>
+  );
+
   const manualTokenSection = (
     <div className="space-y-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full justify-between gap-2 text-[12px]"
-        onClick={() => setManualOpen((v) => !v)}
-        aria-expanded={manualOpen}
-      >
-        <span className="flex items-center gap-2">
-          <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-          חיבור ידני באמצעות טוקן
-        </span>
-        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${manualOpen ? 'rotate-180' : ''}`} />
-      </Button>
       {manualOpen && (
-        <div className="space-y-3 rounded-lg border bg-muted/30 p-2">
+        <div id="meta-manual-token-settings" className="space-y-3 rounded-lg border bg-muted/30 p-2">
           <Button
             type="button"
             variant="outline"
@@ -749,15 +749,18 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
               ))}
             </div>
 
+            <div className="flex min-w-0 items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="w-full gap-2 text-[12px]"
+              className="min-w-0 flex-1 gap-2 text-[12px]"
               onClick={() => (connecting ? cancelConnecting() : void connect())}
             >
               {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
               {connecting ? 'בטל' : 'חבר חשבון או עמוד נוסף'}
             </Button>
+            {manualTokenButton}
+            </div>
             {manualTokenSection}
           </div>
         )}
@@ -767,14 +770,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             {/* Clicking the spinning button cancels the pending attempt. The
                 label never reads "בטל חיבור" while disconnected — that text is
                 reserved for an active connection. */}
+            <div className="flex min-w-0 items-center gap-2">
             <Button
               onClick={() => (connecting ? cancelConnecting() : void connect())}
               title={connecting ? 'לחיצה מבטלת את ניסיון ההתחברות' : undefined}
-              className="w-full gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/90"
+              className="min-w-0 flex-1 gap-2"
             >
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
               {'חבר עמוד פייסבוק'}
             </Button>
+            {manualTokenButton}
+            </div>
             {pageOptions.length > 0 && (
               <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2">
                 <p className="text-[14px] font-semibold">בחרו את עמוד הפרסום</p>
