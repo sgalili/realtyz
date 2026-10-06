@@ -14,7 +14,7 @@ export function capturedInquiryName(history: Array<{ role: string; content: stri
 }
 
 export function validScreeningEvidence(questions: string[], answers: unknown, visitorText: string): answers is Array<{ answer: string; satisfactory: boolean }> {
-  return Array.isArray(answers) && answers.length === questions.length && questions.length >= 3 && answers.every((item) => item && typeof item.answer === 'string' && item.answer.trim().length > 0 && visitorText.includes(item.answer.trim()) && typeof item.satisfactory === 'boolean');
+  return Array.isArray(answers) && answers.length === questions.length && questions.length >= 3 && answers.every((item) => item && typeof item.answer === 'string' && typeof item.satisfactory === 'boolean' && (item.answer.trim() ? visitorText.includes(item.answer.trim()) : item.satisfactory === false));
 }
 
 export async function processListingInquiry(admin: any, input: {
@@ -35,7 +35,6 @@ export async function processListingInquiry(admin: any, input: {
   const { error: saveError } = await admin.from('listing_inquiry_states').upsert(state, { onConflict: 'listing_id,lead_id,channel' });
   if (saveError) return '';
   await admin.rpc('charge_lead_commission', { _listing_id: listing.id, _tier: 1, _affiliate_id: input.affiliateId ?? null, _reference_id: lead.id });
-  const visitorText = input.history.filter((m) => m.role === 'user').map((m) => m.content).join('\n');
   const key = Deno.env.get('LOVABLE_API_KEY');
   if (key && questions.length >= 3 && !(state.answers?.length === questions.length && state.answers.every((a: any) => a.satisfactory === true))) {
     try {
