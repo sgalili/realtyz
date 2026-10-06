@@ -1,4 +1,8 @@
 # Roadmap
+## Address finder and publication steps
+- [ ] Refine Hebrew address selection and conditional city/street/house-number row; remove apartment input and relocate floor selectors.
+- [ ] Number publication sections 1–7 independently of setup, preserving saved draft step identities.
+- [ ] Verify address selection, edits and desktop/touch layout without publishing; report data coverage and iOS limitations.
 ## Failed ads and quick resume
 - [x] Add workspace-scoped failed/incomplete ads and local draft recovery with missing fields and saved failure notes; signed-in list showed ten incomplete records.
 - [x] Resume saved editing step and values; signed-in contact edit survived refresh and reopened at the contact section. Existing-record publication updates by workspace/id; actual publication was not performed.
