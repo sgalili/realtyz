@@ -728,7 +728,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="space-y-3">
-              <p className="text-sm font-bold">עמלה ומגבלה יומית לכל סוג פנייה</p>
+              <p className="text-sm font-bold">{"\n"}</p>
               <div className="grid grid-cols-[1fr_6rem_6rem] items-end gap-2 text-sm">
                 <span className="text-xs text-muted-foreground">סוג פנייה</span>
                 <span className="text-xs text-muted-foreground">עמלה (₪)</span>
