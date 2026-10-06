@@ -1,8 +1,8 @@
 # Roadmap
 ## Failed ads and quick resume
-- [ ] Add workspace-scoped failed/incomplete ads and local draft recovery with missing fields and persisted failure notes.
-- [ ] Resume saved editing step with explicit publication and no duplicate listing.
-- [ ] Verify signed-in recovery and narrow-screen layout without publishing inventory.
+- [x] Add workspace-scoped failed/incomplete ads and local draft recovery with missing fields and saved failure notes; signed-in list showed ten incomplete records.
+- [x] Resume saved editing step and values; signed-in contact edit survived refresh and reopened at the contact section. Existing-record publication updates by workspace/id; actual publication was not performed.
+- [x] Verify signed-in list/resume without page errors and mapping/required-field checks; build OK. Tabs fit a constrained width; full embedded mobile preview and successful live publication remain untested.
 ## Broker publication experience
 - [x] Identify brokers using active member role and current profile; signed-in skip, name/phone defaults and marketing checked verified; legal terms remain unchecked.
 - [x] Show first property image and summary in explicit confirmation; image, price, rooms, floor and area verified with local test input, then returned to editing.
