@@ -266,7 +266,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           property_type: draftFields.propertyType.trim(),
           publisher_type: draftFields.publisherType,
           street: street || null,
-           media_videos: [...(Array.isArray(source?.features?.media_videos) ? source.features.media_videos : []), ...clips],
+           media_videos: Array.from(new Set([...(Array.isArray(source?.features?.media_videos) ? source.features.media_videos : []), ...importedVideoUrls(source), ...clips])),
           total_floors: draftFields.totalFloors || null,
           elevator: draftFields.elevator,
           parking: draftFields.parking,
@@ -655,68 +655,36 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 6 && (
             <div className="grid gap-3 sm:grid-cols-2">
-              {Array.isArray(fields.importedListing?.photos) && fields.importedListing.photos.length > 0 && <div className="sm:col-span-2 flex gap-2 overflow-x-auto">{fields.importedListing.photos.map((src: string) => <img key={src} src={src} alt="תמונת הנכס" className="h-24 w-32 shrink-0 rounded-md object-cover" />)}</div>}
-              <div>
-                <Label htmlFor="wizard-photos" className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary">
-                  <ImagePlus className="h-6 w-6" />
-                  {files.length ? `${files.length} תמונות נבחרו` : 'לחיצה או גרירה להעלאת תמונות'}
+              {(() => { const items = [...(Array.isArray(fields.importedListing?.photos) ? fields.importedListing.photos.filter((s: string) => !isVideoUrl(s)) : []).map((s: string) => ({ s, v: false })), ...importedVideoUrls(fields.importedListing).map((s) => ({ s, v: true }))]; return items.length > 0 && <div className="sm:col-span-2 flex gap-2 overflow-x-auto">{items.map(({ s, v }) => v ? <video key={s} src={s} controls playsInline preload="metadata" className="h-24 w-32 shrink-0 rounded-md bg-muted object-cover" /> : <img key={s} src={s} alt="תמונת הנכס" className="h-24 w-32 shrink-0 rounded-md object-cover" />)}</div>; })()}
+              <div className="sm:col-span-2">
+                <Label htmlFor="wizard-media" className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary">
+                  <span className="flex items-center gap-2"><ImagePlus className="h-6 w-6" /><Film className="h-6 w-6" /></span>
+                  {files.length || videos.length ? `${files.length} תמונות · ${videos.length} סרטונים נבחרו` : 'לחיצה או גרירה להעלאת תמונות וסרטונים'}
                 </Label>
                 <input
-                  id="wizard-photos" type="file" accept="image/*" multiple className="sr-only"
-                   onChange={(e) => { addMedia(Array.from(e.target.files ?? []), 'image'); e.target.value = ''; }}
+                  id="wizard-media" type="file" accept="image/*,video/*" multiple className="sr-only"
+                  onChange={(e) => { const all = Array.from(e.target.files ?? []); const imgs = all.filter(f => f.type.startsWith('image/')); const vids = all.filter(f => f.type.startsWith('video/')); if (imgs.length) addMedia(imgs, 'image'); if (vids.length) addMedia(vids, 'video'); if (all.length > imgs.length + vids.length) toast.error('ניתן להעלות תמונות או סרטונים בלבד'); e.target.value = ''; }}
                 />
               </div>
-              <div>
-                <Label htmlFor="wizard-videos" className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary">
-                  <Film className="h-6 w-6" />
-                  {videos.length ? `${videos.length} סרטונים נבחרו` : 'לחיצה או גרירה להעלאת סרטון'}
-                </Label>
-                <input
-                  id="wizard-videos" type="file" accept="video/*" multiple className="sr-only"
-                   onChange={(e) => { addMedia(Array.from(e.target.files ?? []), 'video'); e.target.value = ''; }}
-                />
                {previews.length > 0 && <div className="sm:col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{previews.map(({ file, url }) => <div key={`${file.name}-${file.size}-${file.lastModified}`} className="relative aspect-video overflow-hidden rounded-md border bg-muted">{file.type.startsWith('video/') ? <video src={url} controls className="h-full w-full object-cover" /> : <img src={url} alt={file.name} className="h-full w-full object-cover" />}<Button type="button" size="icon" variant="secondary" className="absolute end-1 top-1 h-7 w-7" aria-label={`הסרת ${file.name}`} onClick={() => { setFiles((current) => current.filter((item) => item !== file)); setVideos((current) => current.filter((item) => item !== file)); }}><X className="h-4 w-4" /></Button></div>)}</div>}
-             </div>
             </div>
           )}
 
           {step === 7 && (
             <div className="space-y-3">
                <div><Label htmlFor="publisher-name">השם שלך *</Label><Input id="publisher-name" placeholder={publisherName} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
-                <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ *</Label><Input id="publisher-whatsapp" inputMode="tel" dir="ltr" placeholder="050-1234567" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
-                <div><Label htmlFor="publisher-email">אימייל (לא חובה)</Label><Input id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
+                <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ *</Label><Input id="publisher-whatsapp" inputMode="tel" dir="ltr" placeholder="050-1234567" className="text-right" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
+                <div><Label htmlFor="publisher-email">אימייל</Label><Input id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', Boolean(checked))} />
-                אני רוצה לקבל פניות ועדכונים שיווקיים
+                 אני רוצה לקבל פניות ועדכונים שיווקיים
               </label>
             </div>
           )}
 
           {step === 8 && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold">עמלה ומגבלה יומית לכל סוג פנייה</p>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button type="button" className="text-sm font-semibold text-primary underline underline-offset-2 hover:text-primary/80">מנגנון העמלות</button>
-                  </DialogTrigger>
-                  <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-                    <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
-                    <div className="space-y-3 text-sm leading-relaxed">
-                      <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשאיש קשר חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
-                      <ul className="list-disc space-y-1 ps-5">
-                        <li><b>פנייה בטופס:</b> איש הקשר השאיר פרטים בטופס המודעה.</li>
-                        <li><b>שיחה עם ריטה בווטסאפ:</b> איש הקשר פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
-                        <li><b>שיחת טלפון:</b> איש הקשר התקשר ישירות למספר שבמודעה.</li>
-                      </ul>
-                      <p><b>מגבלה יומית:</b> מספר הפניות המרבי שתחויב עליהן ביום מכל סוג. לאחר שהגעת למגבלה, המודעה ממשיכה להופיע אך לא תחויב על פניות נוספות מאותו סוג עד היום הבא.</p>
-                      <p>כל פנייה נבדקת באמצעות 3 שאלות סינון קצרות שהמפרסם קובע מראש, וכוללת תמליל מלא של השיחה (ובשיחות טלפון גם הקלטה). פנייה נחשבת תקפה וחייבת לחיוב רק אם התשובות חיוביות ומשביעות רצון.</p>
-                      <p>עמלה גבוהה יותר מעודדת שותפים לקדם את המודעה שלך. ניתן לשנות את הסכומים והמגבלות בכל עת מתוך המודעות שלי. שדה ריק משאיר את ההגדרה הקיימת או ללא עמלה.</p>
-                      <p>החיוב מתבצע רק על פנייה אמיתית שנרשמה במערכת, ולא על צפיות או קליקים.</p>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
+              <p className="text-sm font-bold">עמלה ומגבלה יומית לכל סוג פנייה</p>
               <div className="grid grid-cols-[1fr_6rem_6rem] items-end gap-2 text-sm">
                 <span className="text-xs text-muted-foreground">סוג פנייה</span>
                 <span className="text-xs text-muted-foreground">עמלה (₪)</span>
@@ -739,10 +707,30 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 ))}
               </div>
-              <label className="flex items-start gap-2 text-sm">
-                <Checkbox checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
-                קראתי והבנתי את מנגנון העמלות
-              </label>
+              <div className="flex items-start gap-2 text-sm">
+                <Checkbox id="commission-terms" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
+                <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button type="button" className="font-semibold text-blue-600 underline underline-offset-2">מנגנון העמלות</button>
+                  </DialogTrigger>
+                  <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+                    <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
+                    <div className="space-y-3 text-sm leading-relaxed">
+                      <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשאיש קשר חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
+                      <ul className="list-disc space-y-1 ps-5">
+                        <li><b>פנייה בטופס:</b> איש הקשר השאיר פרטים בטופס המודעה.</li>
+                        <li><b>שיחה עם ריטה בווטסאפ:</b> איש הקשר פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
+                        <li><b>שיחת טלפון:</b> איש הקשר התקשר ישירות למספר שבמודעה.</li>
+                      </ul>
+                      <p><b>מגבלה יומית:</b> מספר הפניות המרבי שתחויב עליהן ביום מכל סוג. לאחר שהגעת למגבלה, המודעה ממשיכה להופיע אך לא תחויב על פניות נוספות מאותו סוג עד היום הבא.</p>
+                      <p>כל פנייה נבדקת באמצעות 3 שאלות סינון קצרות שהמפרסם קובע מראש, וכוללת תמליל מלא של השיחה (ובשיחות טלפון גם הקלטה). פנייה נחשבת תקפה וחייבת לחיוב רק אם התשובות חיוביות ומשביעות רצון.</p>
+                      <p>עמלה גבוהה יותר מעודדת שותפים לקדם את המודעה שלך. ניתן לשנות את הסכומים והמגבלות בכל עת מתוך המודעות שלי. שדה ריק משאיר את ההגדרה הקיימת או ללא עמלה.</p>
+                      <p>החיוב מתבצע רק על פנייה אמיתית שנרשמה במערכת, ולא על צפיות או קליקים.</p>
+                    </div>
+                  </DialogContent>
+                </Dialog></span>
+              </div>
             </div>
           )}
     </>
