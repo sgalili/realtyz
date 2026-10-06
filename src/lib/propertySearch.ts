@@ -33,6 +33,7 @@ export type UnifiedResult = {
 };
 
 export type SearchFilters = {
+  workspace_owner_id?: string;
   sources?: PropertySource[];
   q?: string;
   city?: string | null;
@@ -177,6 +178,8 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
     .limit(200);
 
   // Tokenize free-text so "דירה בהרצליה 4 חדרים" matches on any word,
+  if (f.workspace_owner_id) q = q.eq('workspace_owner_id', f.workspace_owner_id);
+  q = q.neq('status', 'discarded');
   // not the whole phrase. Each token must appear in at least one text field.
   const tokens = tokenize(f.q);
   for (const t of tokens) {
