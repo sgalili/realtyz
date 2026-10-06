@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import realtyzLogo from '@/assets/realtyz-logo.png';
@@ -39,7 +39,7 @@ function cleanTitle(card: PublicCard) {
   return unique.slice(0, 3).join(' · ') || 'נכס';
 }
 
-function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: string; onFavorite: () => void }) {
+function PhotoCarousel({ photos, alt, onFavorite, isMine = false }: { photos: string[]; alt: string; onFavorite: () => void; isMine?: boolean }) {
   const [index, setIndex] = useState(0);
   if (!photos.length) return <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">אין תמונות</div>;
   const move = (delta: number) => setIndex((current) => (current + delta + photos.length) % photos.length);
@@ -47,10 +47,20 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
     <div className="group relative h-48 overflow-hidden bg-muted">
       <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
       <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label="שמירה במועדפים" className="absolute left-2 top-2 h-9 w-9 bg-transparent text-destructive shadow-none hover:bg-background/30"><Heart className="h-5 w-5" /></Button>
+      {(isMine || photos.length > 1) && (
+        <div className="absolute right-2 top-2 flex flex-col items-end gap-1.5">
+          {isMine && (
+            <span title="המודעה שלי" className="inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-bold text-primary shadow">
+              <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              שלי
+            </span>
+          )}
+          {photos.length > 1 && <span className="rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>}
+        </div>
+      )}
       {photos.length > 1 && <>
         <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={(event) => { event.stopPropagation(); move(-1); }} className="absolute start-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
         <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={(event) => { event.stopPropagation(); move(1); }} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
-        <span className="absolute top-2 right-2 rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>
       </>}
     </div>
   );
@@ -63,6 +73,25 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>([]);
+  // Listings the signed-in poster owns (marked with the "שלי" badge on the card image).
+  const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!user?.id) { setOwnedIds(new Set()); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('get_my_ads_stats');
+        if (cancelled) return;
+        const ids = ((data ?? []) as Array<{ relation?: string; listing_id?: string }>)
+          .filter((r) => r.relation === 'owned' && r.listing_id)
+          .map((r) => r.listing_id as string);
+        setOwnedIds(new Set(ids));
+      } catch {
+        if (!cancelled) setOwnedIds(new Set());
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [deals, setDeals] = useState({ sale: true, rent: true });
@@ -213,7 +242,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               const title = cleanTitle(card);
               const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
               return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className={cn('cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
-                <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />
+                <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} isMine={ownedIds.has(card.id)} />
                 <div className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-0.5">
