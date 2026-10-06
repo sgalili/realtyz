@@ -1,4 +1,7 @@
 export type PublicListingDraftFields = {
+  listingId?: string;
+  resumeStep?: number;
+  publicationError?: string;
   importedListing?: Record<string, any> | null;
   /** מתווך / פרטי */
   publisherType: 'broker' | 'private' | '';
@@ -91,11 +94,11 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-export async function savePublicListingDraft(fields: PublicListingDraftFields, files: File[], videos: File[] = []) {
+export async function savePublicListingDraft(fields: PublicListingDraftFields, files: File[], videos: File[] = [], scope = 'visitor') {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put({ ...fields, files, videos, savedAt: Date.now() }, KEY);
+    tx.objectStore(STORE).put({ ...fields, files, videos, savedAt: Date.now() }, `${KEY}:${scope}`);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -103,10 +106,10 @@ export async function savePublicListingDraft(fields: PublicListingDraftFields, f
   try { window.localStorage.setItem(PUBLIC_LISTING_RESUME_KEY, '1'); } catch { /* storage disabled */ }
 }
 
-export async function readPublicListingDraft(): Promise<PublicListingDraft | null> {
+export async function readPublicListingDraft(scope = 'visitor'): Promise<PublicListingDraft | null> {
   const db = await openDb();
   const value = await new Promise<PublicListingDraft | null>((resolve, reject) => {
-    const request = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY);
+    const request = db.transaction(STORE, 'readonly').objectStore(STORE).get(`${KEY}:${scope}`);
     request.onsuccess = () => resolve((request.result as PublicListingDraft | undefined) ?? null);
     request.onerror = () => reject(request.error);
   });
@@ -114,11 +117,11 @@ export async function readPublicListingDraft(): Promise<PublicListingDraft | nul
   return value ? { ...EMPTY_PUBLIC_LISTING_DRAFT, ...value } : null;
 }
 
-export async function clearPublicListingDraft() {
+export async function clearPublicListingDraft(scope = 'visitor') {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).delete(KEY);
+    tx.objectStore(STORE).delete(`${KEY}:${scope}`);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

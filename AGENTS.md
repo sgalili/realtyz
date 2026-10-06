@@ -1,11 +1,11 @@
 # Architecture rules
 - Inventory/history/publication are workspace-scoped. Reload all local rows on entry/focus; retain partial imports. Publication preserves commissions and relies on database authorization.
-- Public review shares one draft; broker defaults use current member role/profile, not owner identity. Success-only celebration owns its timed canvas/audio independently of navigation.
+- Public review scopes drafts by user/workspace and resumes saved steps/errors with explicit confirmation; broker defaults use current member role/profile, not owner identity. Celebration owns its timed canvas/audio.
 - Facebook authentication and workspace extension groups are siblings; groups remain mounted so Page state cannot hide them or interrupt joining.
 - Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
 - Peer expansions use exclusive group-keyed animated height; nested utilities use separate groups.
 - Shared tables use min-content width and horizontal arrow controls for narrow laptop previews.
-- My ads statistics are read through property-authorized RPCs keyed by the active workspace; partners see only their own detailed results on external listings, and raw contact identity is never included.
+- My Ads uses workspace-keyed, property-authorized RPCs; partners see only their own external-listing results, never raw contact identity.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 
 - Group selection uses one accessible checkbox action per row, immutable deduplicated snapshots and guarded no-op updates; external links are siblings to prevent duplicate activation and render cascades.

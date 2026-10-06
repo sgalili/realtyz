@@ -1,5 +1,10 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
+import { readPublicListingDraft, type PublicListingDraft } from '@/lib/publicListingDraft';
+import { listingToDraft, missingAdFields } from '@/lib/adRecovery';
 import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown, BadgeCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -93,15 +98,54 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
 export default function MyAds() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
+  const [resumeDraft, setResumeDraft] = useState<PublicListingDraft>();
+  useEffect(() => { setResumeDraft(undefined); }, [activeWorkspaceId, user?.id]);
+  const recovery = useQuery({
+    queryKey: ['my-ad-recovery', user?.id, activeWorkspaceId], enabled: Boolean(user?.id && activeWorkspaceId), refetchOnMount: 'always', refetchOnWindowFocus: true,
+    queryFn: async () => {
+      if (!user?.id || !activeWorkspaceId) return [];
+      const [local, result] = await Promise.all([readPublicListingDraft(`${user.id}:${activeWorkspaceId}`), supabase.from('listings').select('id, property_title, address, city, house_number, neighborhood, asking_price, deal_type, rooms, sqm, floor, description, long_description, features, attributes, elevator, parking, media_photos, image_url, status, is_published, source_metadata, extraction_metadata, updated_at').eq('workspace_owner_id', activeWorkspaceId).eq('is_published', false).neq('status', 'discarded').order('updated_at', { ascending: false })]);
+      if (result.error) throw result.error;
+      const rows = (result.data || []).flatMap(row => {
+        const draft = listingToDraft(row);
+        const missing = missingAdFields(draft).filter(field => !['שם מפרסם', 'מספר ווטסאפ', 'אישור התקנון'].includes(field));
+        if (!['pending', 'live'].includes(row.status)) return [];
+        if (row.status !== 'pending' && !draft.publicationError && !missing.length) return [];
+        return [{ ...draft, files: [], videos: [], savedAt: new Date(row.updated_at).getTime(), publicationError: draft.publicationError || (row.status === 'failed' ? 'הפרסום הקודם לא הושלם. לא נשמר פירוט שגיאה.' : '') } satisfies PublicListingDraft];
+      });
+      if (local && (local.city || local.propertyType || local.dealType || local.importedListing || local.publicationError || local.files.length)) return [local, ...rows.filter(row => !local.listingId || row.listingId !== local.listingId)];
+      return rows;
+    },
+  });
   const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId], enabled: !!user?.id && !!activeWorkspaceId,
     refetchInterval: 30_000, refetchOnWindowFocus: true,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
   });
   return <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
+    <Tabs defaultValue="ads" dir="rtl">
+      <TabsList className="max-w-full"><TabsTrigger value="ads">המודעות שלי</TabsTrigger><TabsTrigger value="failed">מודעות שנכשלו{Boolean(recovery.data?.length) && <span className="ms-2 text-xs">({recovery.data?.length})</span>}</TabsTrigger></TabsList>
+      <TabsContent value="failed" className="space-y-3 pt-3">
+        {recovery.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : recovery.isError ? <p role="alert">לא ניתן לטעון טיוטות <Button variant="link" onClick={() => void recovery.refetch()}>ניסיון נוסף</Button></p> : !recovery.data?.length ? <p className="py-10 text-center text-muted-foreground">אין מודעות שנכשלו או טיוטות חסרות.</p> : recovery.data.map((draft, i) => {
+          const title = [draft.street || draft.address, draft.city].filter(Boolean).join(', ') || draft.propertyType || 'טיוטת מודעה';
+          const photo = draft.importedListing?.photos?.[0];
+          const missing = missingAdFields(draft);
+          return <article key={draft.listingId || `local-${i}`} className="rounded-lg border bg-card p-3 space-y-3">
+            <div className="flex min-w-0 gap-3"><div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">{typeof photo === 'string' ? <img src={photo} alt={title} className="h-full w-full object-cover" /> : <ImageIcon className="h-6 w-6 text-muted-foreground" />}</div><div className="min-w-0 flex-1"><h2 className="break-words font-semibold">{title}</h2><p className={`text-sm ${draft.publicationError ? 'text-destructive' : 'text-muted-foreground'}`}>{draft.publicationError ? 'הפרסום נכשל' : 'טיוטה שלא הושלמה'}</p><time className="text-xs text-muted-foreground">{date(new Date(draft.savedAt).toISOString())}</time></div></div>
+            {draft.publicationError && <p className="break-words text-sm text-destructive">{draft.publicationError}</p>}
+            {missing.length > 0 && <p className="break-words text-sm text-muted-foreground">להשלמה: {missing.join(' · ')}</p>}
+            {!draft.listingId && <p className="text-xs text-muted-foreground">טיוטה שמורה בדפדפן הזה</p>}
+            <Button variant="outline" onClick={() => setResumeDraft(draft)}>המשך עריכה ופרסום</Button>
+          </article>;
+        })}
+      </TabsContent>
+      <TabsContent value="ads" className="space-y-6 pt-3">
     {isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות שפרסמת או נכסים שאתה מקדם.</p> : (['owned', 'promoting'] as const).map(relation => {
       const rows = data.filter(r => r.relation === relation);
       return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2><div className="space-y-3">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
     })}
+      </TabsContent>
+    </Tabs>
+    {resumeDraft && <PublicListingPublisher key={`${activeWorkspaceId}:${resumeDraft.listingId || resumeDraft.savedAt}`} resumeDraft={resumeDraft} onRecovered={() => { setResumeDraft(undefined); void recovery.refetch(); void refetch(); }} />}
   </div>;
 }
