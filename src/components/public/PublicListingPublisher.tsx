@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
+import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import {
   EMPTY_PUBLIC_LISTING_DRAFT,
@@ -317,7 +318,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
     try {
       const token = url.pathname.match(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9]+)(?=[\/?#]|$)/i)?.[1] ?? null;
       const target = token ? `https://www.yad2.co.il/realestate/item/${token}` : sourceUrl;
-      const { data: u, error } = await supabase.functions.invoke('yad2-unlocker', { body: { url: target, limit: 1, pages: 1, import_item: true } });
+      const saved = await readRecentYad2Listing(token, activeWorkspaceId);
+      const { data: u, error } = saved ? { data: saved, error: null } : await supabase.functions.invoke('yad2-unlocker', { body: { url: target, limit: 1, pages: 1, import_item: true } });
       if (error || u?.error) {
         const response = (error as { context?: Response } | null)?.context;
         const details = response ? await response.clone().json().catch(() => null) : null;

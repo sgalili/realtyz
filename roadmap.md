@@ -1,4 +1,7 @@
 # Roadmap
+## Photo order and local Yad2 reuse
+- [ ] Add accessible RTL photo-order arrows in property editing and verify saved order.
+- [ ] Check exact active-workspace Yad2 records before import requests; retain the server daily scrape safeguard and preserve saved edits.
 ## Search controls and conditional Homely
 - [x] Redesign dual deal toggles, borderless sorting and expandable colored source dots; signed-in desktop/narrow-screen checks passed.
 - [x] Gate operational Homely sources, badges, import actions, tabs, property links and status rows by verified active-workspace connection; preserve setup and administrative/legal surfaces. Disconnected workspace verified; connected workspace not tested.
