@@ -263,20 +263,18 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
                     {active && <Check className="h-3 w-3" />}
                   </div>}
                   {g.group_icon ? (
-                    <img src={g.group_icon} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                    <img src={g.group_icon} alt="" className="h-7 w-7 shrink-0 rounded-md object-cover" loading="lazy" referrerPolicy="no-referrer" />
                   ) : (
-                    <div className="h-7 w-7 shrink-0 rounded-full bg-muted flex items-center justify-center">
+                    <div className="h-7 w-7 shrink-0 rounded-md bg-muted flex items-center justify-center">
                       <Users className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                   )}
-                  <div className="min-w-0 flex-1 ps-[3px]">
-                    <div title={g.group_name} className="truncate text-[15px] font-medium text-foreground">{shortenName(g.group_name)}</div>
-                    {typeof g.member_count === "number" && g.member_count > 0 && (
-                      <div className="text-[13px] text-muted-foreground tabular-nums">
-                        {g.member_count.toLocaleString("he-IL")} חברים
-                      </div>
-                    )}
-                  </div>
+                  <div title={g.group_name} className="min-w-0 flex-1 truncate whitespace-nowrap ps-[3px] text-[15px] font-medium text-foreground">{shortenName(g.group_name)}</div>
+                  {typeof g.member_count === "number" && g.member_count > 0 && (
+                    <span dir="ltr" className="shrink-0 text-[13px] text-muted-foreground tabular-nums">
+                      {g.member_count >= 1e6 ? `${(g.member_count / 1e6).toFixed(1).replace(/\.0$/, '')}M` : g.member_count >= 1e3 ? `${(g.member_count / 1e3).toFixed(1).replace(/\.0$/, '')}K` : g.member_count}
+                    </span>
+                  )}
                   </Button>
                   {g.group_url && (
                     <Button variant="ghost" size="icon"
