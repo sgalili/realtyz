@@ -1647,7 +1647,9 @@ export function ResultTable({
   // date sorting expose it via data-sort-value on their content.
   const sorted = results;
 
-  const HeaderCell = ({ label, extraClass }: { label: string; extraClass?: string }) => (
+  // Plain element factory (NOT a component): the shared Table primitive clones
+  // header cells with ref/sort/drag props, which function components swallow.
+  const headerCell = (label: string, extraClass?: string) => (
     <th className={`px-2 py-2 font-semibold whitespace-nowrap select-none ${extraClass ?? ''}`}>
       {label}
     </th>
