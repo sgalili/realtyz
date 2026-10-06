@@ -1,4 +1,8 @@
 # Roadmap
+## Property search and duplicate-safe imports
+- [x] Update existing workspace Yad2 items safely, retain previous version details, and retry concurrent uniqueness conflicts without duplicates.
+- [x] Add default-selected source dots, remove microphone, align checklist/sort and source pill, and match public-board deal dots/filter icon.
+- [x] Signed-in browser verified all sources selected, last-selected safeguard, checklist and rent dots; repeat import opened the same property ID and database confirmed one copy per workspace with retained version metadata. Fresh extraction remains blocked as noted below.
 ## Automatic Yad2 imports and daily caching
 - [x] Automatically import valid pasted links with visible progress and no duplicate requests; browser verified eight editable cards with no page errors.
 - [x] Persist available source details and workspace-specific unpublished copies; atomic server-only item cache enforces one fresh attempt per 24 hours, including background-read credit protection.

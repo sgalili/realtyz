@@ -30,7 +30,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useListingPublishers } from '@/hooks/useListingPublishers';
-import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
+import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -160,6 +160,8 @@ export default function Properties() {
   const [sourceStatus, setSourceStatus] = useState<Record<string, SourceInfo>>({});
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
+  const [selectedSources, setSelectedSources] = useState<PropertySource[]>(['yad2', 'homely', 'mine']);
+  const toggleSource = (source: PropertySource) => { setSourceFilter(null); setSelectedSources(current => current.includes(source) ? (current.length > 1 ? current.filter(s => s !== source) : current) : [...current, source]); };
   const [searching, setSearching] = useState(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
@@ -341,6 +343,7 @@ export default function Properties() {
 
       const filters: SearchFilters = {
         q: (parsed.keywords || q.trim()) || undefined,
+        sources: selectedSources,
         city: effectiveCity ?? undefined,
         neighborhood: parsed.neighborhood ?? undefined,
         min_price: effectiveMinPrice,
@@ -441,7 +444,7 @@ export default function Properties() {
         setSearchProgress(null);
       }
     }
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool]);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, selectedSources]);
 
   // Warm the textual content of the first visible rows in the background, so
   // opening a property card renders its full text instantly instead of
@@ -630,16 +633,16 @@ export default function Properties() {
   const typeFiltered = useMemo(() => {
     // Blank / half-scraped rows never reach the screen.
     const relevant = results.filter(isRelevantListing);
-    const results_ = relevant;
+    const results_ = relevant.filter(r => (r.sources?.length ? r.sources : [r.source]).some(source => selectedSources.includes(source)));
     const bySource = sourceFilter
       ? results_.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
       : results_;
-    const base = sourceFilter && !bySource.length ? results_ : bySource;
+    const base = bySource;
     if (listingType === 'all') return base;
     const narrowed = base.filter((r) => r.listing_type === listingType);
     // Never let a toggle blank the table — keep the wider pool instead.
-    return narrowed.length ? narrowed : base;
-  }, [results, listingType, sourceFilter]);
+    return narrowed;
+  }, [results, listingType, sourceFilter, selectedSources]);
 
 
   const sortedResults = useMemo(() => {
@@ -795,24 +798,18 @@ export default function Properties() {
 
         {/* Row 1 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] */}
         <div className="flex items-center gap-2" dir="rtl">
-          <Checkbox
-            checked={multiSelectMode}
-            onCheckedChange={(checked) => { setMultiSelectMode(Boolean(checked)); if (!checked) setSelectedListingIds(new Set()); }}
-            aria-label="בחירה מרובה"
-            title="בחירה מרובה"
-            className="h-5 w-5 shrink-0"
-          />
-          <div className="relative flex-1 min-w-[200px]">
-            <div className="flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background ps-2 pe-24 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+          <div className="relative flex-1 min-w-0">
+            <div className="flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background ps-2 pe-20 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
               <CollapsibleTrigger asChild>
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   aria-label="סינון מתקדם"
                   title="סינון מתקדם"
                   className={`inline-flex shrink-0 items-center justify-center h-7 w-7 rounded-md transition-colors ${filtersOpen || filterChips.length ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                 >
-                  <Filter className="h-4 w-4" />
-                </button>
+                  <SlidersHorizontal className="h-4 w-4" />
+                </Button>
               </CollapsibleTrigger>
 
               {filterChips.map((chip) => (
@@ -853,12 +850,7 @@ export default function Properties() {
                 className="flex-1 min-w-[90px] bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground h-7"
                 dir="rtl"
                />
-              <VoiceInputButton
-                size="sm"
-                title="חיפוש קולי"
-                language="auto"
-                onTranscript={(value) => setQ((current) => current ? `${current} ${value}` : value)}
-              />
+
              </div>
             <Button
               type="button"
@@ -878,60 +870,6 @@ export default function Properties() {
             </Button>
 
           </div>
-          {yad2Status && (
-            <div role="status" aria-live="polite" dir="rtl" className={`mt-2 rounded-md border px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : yad2Status.tone === 'ok' ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-foreground'}`}>
-              <div className="flex items-center gap-2">
-                {yad2Status.tone === 'busy' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                <span className="flex-1 font-medium">{yad2Status.label}</span>
-                {yad2Status.tone !== 'busy' && (
-                  <button type="button" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></button>
-                )}
-              </div>
-              {yad2Status.tone !== 'error' && (
-                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-background">
-                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(yad2Status.step / 4) * 100}%` }} />
-                </div>
-              )}
-            </div>
-          )}
-
-
-
-        </div>
-
-
-
-        {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
-        <div className="flex items-center gap-2 mt-3" dir="rtl">
-          {/* Side A — sort + total-count dropdown */}
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 text-xs"
-                  aria-label="מיון"
-                  title="מיון"
-                >
-                  <ArrowUpDown className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{SORT_LABELS[sortBy]}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
-                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
-                      {SORT_LABELS[key]}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             {hasSearched && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -1003,24 +941,69 @@ export default function Properties() {
               </DropdownMenu>
             )}
 
+          {yad2Status && (
+            <div role="status" aria-live="polite" dir="rtl" className={`mt-2 rounded-md border px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : yad2Status.tone === 'ok' ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-foreground'}`}>
+              <div className="flex items-center gap-2">
+                {yad2Status.tone === 'busy' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <span className="flex-1 font-medium">{yad2Status.label}</span>
+                {yad2Status.tone !== 'busy' && (
+                  <button type="button" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></button>
+                )}
+              </div>
+              {yad2Status.tone !== 'error' && (
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-background">
+                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(yad2Status.step / 4) * 100}%` }} />
+                </div>
+              )}
+            </div>
+          )}
+
+
+
+        </div>
+
+
+
+        <div role="group" aria-label="מקורות חיפוש" className="mt-2 flex items-center gap-1">
+          {(['yad2', 'homely', 'mine'] as const).map(source => <Button key={source} variant="ghost" size="sm" aria-label={source === 'mine' ? 'realtyz' : source} aria-pressed={selectedSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 gap-1.5 px-2 hover:bg-transparent hover:text-inherit ${selectedSources.includes(source) ? 'text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${selectedSources.includes(source) ? 'bg-success' : 'bg-muted-foreground/30'}`} />{source === 'mine' ? 'realtyz' : source}</Button>)}
+        </div>
+
+        {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
+        <div className="flex flex-wrap items-center gap-2 mt-3" dir="rtl">
+          {/* Side A — sort + total-count dropdown */}
+          <div className="flex items-center gap-2">
+            <SelectModeToggle active={multiSelectMode} count={selectedListingIds.size} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  aria-label="מיון"
+                  title="מיון"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{SORT_LABELS[sortBy]}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
+                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
+                      {SORT_LABELS[key]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
                 between the results-count pill and the view toggle. */}
-            <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5" role="group" aria-label="סוג עסקה">
-              {(['all', 'rent', 'sale'] as Array<ListingType | 'all'>).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setListingType(t)}
-                  aria-pressed={listingType === t}
-                  className={`px-3 h-7 text-xs font-semibold rounded transition-colors ${
-                    listingType === t
-                      ? (t === 'all' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-deal-blue text-deal-blue-foreground shadow-sm')
-                      : (t === 'all' ? 'text-muted-foreground hover:text-foreground' : 'text-deal-blue hover:bg-deal-blue/10')
-                  }`}
-                >
-                  {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
-                </button>
-              ))}
+            <div className="inline-flex items-center" role="group" aria-label="סוג עסקה">
+              {(['all', 'rent', 'sale'] as const).map(t => <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(t)} aria-pressed={listingType === t} className={`h-8 gap-1.5 px-2 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${listingType === t ? 'font-semibold text-foreground hover:!text-foreground' : 'text-muted-foreground/60 hover:!text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${listingType === t ? (t === 'rent' ? 'bg-sale' : 'bg-success') : 'bg-muted-foreground/30'}`} />{t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}</Button>)}
             </div>
           </div>
 
