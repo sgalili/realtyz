@@ -1,4 +1,8 @@
 # Roadmap
+## Broker publication experience
+- [ ] Identify brokers and default connected-user contact details without replacing edits.
+- [ ] Show the first property image and complete summary in explicit publication confirmation.
+- [ ] Add a five-second fullscreen celebration with sound and verify without publishing real inventory.
 ## Inventory visibility and search layout
 - [x] Refresh active-workspace imported inventory, including saved partial Yad2 properties outside service cities; saved imported address verified in the signed-in table.
 - [x] Add workspace-specific search history with an initially empty field and conditional opposite-side search action; reopening history and redoing a search verified.
