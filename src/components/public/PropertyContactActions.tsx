@@ -125,7 +125,7 @@ export default function PropertyContactActions({
       return;
     }
     toast.success(callback ? 'תודה, נחזור אליכם טלפונית בהקדם' : 'הפרטים נשלחו בהצלחה');
-    setMode(null); setName(''); setPhone('');
+    setMode(null); setName(''); setPhone(''); setAnswers({});
   };
 
   return (

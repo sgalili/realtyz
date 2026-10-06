@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
 
       const { data: listing, error: listingError } = await admin
         .from("listings")
-        .select("id, city, neighborhood, deal_type, asking_price, workspace_owner_id, user_id, is_published, affiliate_enabled, affiliate_tier1_amount")
+        .select("id, city, neighborhood, deal_type, asking_price, workspace_owner_id, user_id, is_published, affiliate_enabled, affiliate_tier1_amount, contact_options")
         .eq("id", listingId)
         .maybeSingle();
       if (listingError) throw listingError;
@@ -86,6 +86,28 @@ Deno.serve(async (req) => {
         return json({ error: "הנכס אינו זמין" }, 404);
       }
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
+      // Publisher-defined extra form fields: validated against the stored
+      // definition only, never against anything the visitor claims.
+      const defs: any[] = Array.isArray((listing as any).contact_options?.form_fields) ? (listing as any).contact_options.form_fields.slice(0, 20) : [];
+      const given = new Map<string, unknown>((Array.isArray(body?.form_answers) ? body.form_answers : []).slice(0, 20).map((a: any) => [String(a?.id ?? ""), a?.value]));
+      const formAnswers: Array<{ label: string; value: string | string[] }> = [];
+      if (intent === "digital") {
+        for (const f of defs) {
+          const opts: string[] = Array.isArray(f?.options) ? f.options.map(String) : [];
+          const raw = given.get(String(f?.id ?? ""));
+          let value: string | string[] = "";
+          if (f?.type === "multi") value = (Array.isArray(raw) ? raw.map(String) : []).filter((v) => opts.includes(v));
+          else {
+            const v = typeof raw === "string" ? raw.trim().slice(0, 300) : "";
+            if (f?.type === "single") value = opts.includes(v) ? v : "";
+            else if (f?.type === "yesno") value = v === "כן" || v === "לא" ? v : "";
+            else value = v;
+          }
+          const empty = Array.isArray(value) ? value.length === 0 : !value;
+          if (f?.required && empty) return json({ error: `יש למלא: ${String(f?.label ?? "").slice(0, 120)}` }, 400);
+          if (!empty) formAnswers.push({ label: String(f?.label ?? "").slice(0, 120), value });
+        }
+      }
 
       // CRM contact inside the listing's workspace (never a global contact).
       const { data: existing } = await admin
@@ -145,10 +167,10 @@ Deno.serve(async (req) => {
         action_type: "lead_gate_registration",
         actor_type: "system",
         content: `מתעניין חדש מהלוח הציבורי: ${name} · ${phone}`,
-        metadata: { listing_id: listing.id, lead_id: leadId, intent, comment: comment || null },
+        metadata: { listing_id: listing.id, lead_id: leadId, intent, comment: comment || null, form_answers: formAnswers },
       });
 
-      const { error: stateError } = await admin.from('listing_inquiry_states').upsert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, channel: 'web', verified_name: name, evidence_source: 'submitted_name_phone' }, { onConflict: 'listing_id,lead_id,channel' });
+      const { error: stateError } = await admin.from('listing_inquiry_states').upsert({ listing_id: listing.id, lead_id: leadId, workspace_owner_id: ownerId, channel: 'web', verified_name: name, evidence_source: 'submitted_name_phone', answers: formAnswers }, { onConflict: 'listing_id,lead_id,channel' });
       if (stateError) throw stateError;
       // Only verified name + phone qualifies here, never a screened tier.
       const billing = await chargeLead(admin, listing.id, 1, str(body?.ref, 40), leadId ?? null);
