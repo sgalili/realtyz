@@ -584,10 +584,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   variant={fields.dealType === value ? 'default' : 'outline'}
                   onClick={() => void pickAndAdvance('dealType', value)}
                   className={cn(
-                    'h-5 p-0 px-2 text-center text-base font-bold leading-none',
+                    'h-auto px-2 py-[7px] text-center text-base font-bold leading-none hover:bg-transparent hover:text-inherit',
                     fields.dealType === value && (value === 'rent'
-                      ? 'border-sale bg-sale text-sale-foreground'
-                      : 'border-success bg-success text-success-foreground'),
+                      ? 'border-sale bg-sale text-sale-foreground hover:bg-sale hover:text-sale-foreground'
+                      : 'border-success bg-success text-success-foreground hover:bg-success hover:text-success-foreground'),
                   )}
                 >
                   {label}
@@ -651,7 +651,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               <div><Label>מ״ר בנוי</Label><Input inputMode="decimal" value={fields.builtSqm} onChange={(e) => set('builtSqm', decimalInput(e.target.value))} /></div>
               <div><Label>מ״ר גינה</Label><Input inputMode="numeric" value={fields.gardenSqm} onChange={(e) => set('gardenSqm', e.target.value.replace(/\D/g, ''))} /></div>
               <div><Label>גודל במ״ר סך הכל</Label><Input inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
-              <div><Label>מחיר *</Label><Input inputMode="numeric" value={fields.price} onChange={(e) => set('price', e.target.value.replace(/\D/g, ''))} /></div>
+              <div><Label>{fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'}</Label><Input inputMode="numeric" value={fields.price} onChange={(e) => set('price', e.target.value.replace(/\D/g, ''))} /></div>
               <div><Label>תאריך כניסה</Label><Input type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} /></div>
             </div>
           )}
