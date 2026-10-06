@@ -1,9 +1,9 @@
 # Roadmap
 ## Inventory visibility and search layout
-- [ ] Refresh active-workspace imported inventory, including saved partial Yad2 properties outside service cities.
-- [ ] Add workspace-specific search history with an initially empty field and conditional opposite-side search action.
-- [ ] Align compact orange/blue sources with deal toggles and a 10px tools gap; filter immediately.
-- [ ] Verify horizontal table scrolling and signed-in search controls.
+- [x] Refresh active-workspace imported inventory, including saved partial Yad2 properties outside service cities; saved imported address verified in the signed-in table.
+- [x] Add workspace-specific search history with an initially empty field and conditional opposite-side search action; reopening history and redoing a search verified.
+- [x] Align compact orange/blue sources with deal toggles and a 10px tools gap; immediate source filtering and exact gap verified.
+- [x] Verify signed-in controls and horizontal table scrolling in both directions using visible arrows; build OK, no page errors. Browser check used a constrained container, not the embedded Lovable mobile preview; fresh scraping was not tested.
 ## Inventory suggestions and quick public promotion
 - [x] Add live active-workspace address/title suggestions and move search action opposite the deal toggles; eight real suggestions and keyboard opening verified.
 - [x] Add explicit single/bulk public publication of existing workspace records, with database workspace authorization and completeness guards; prices/commissions preserved.
