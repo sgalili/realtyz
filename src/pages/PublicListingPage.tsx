@@ -87,7 +87,7 @@ const VALUE_LABELS: Record<string, string> = {
   new: 'חדש', renovated: 'משופץ', good: 'שמור', needs_renovation: 'דורש שיפוץ', true: 'כן', false: 'לא',
 };
 
-const HIDDEN_PUBLIC_KEYS = new Set(['office_notes', 'internal_notes', 'owner_phone', 'owner_name', 'owner_email', 'id', 'url', 'sources', 'source', 'source_url', 'external_id', 'removed_photo_keys', 'media_vision_checked', 'media_vision_at', 'metadata_backfilled_at', 'fetched_at', 'created_at', 'updated_at']);
+const HIDDEN_PUBLIC_KEYS = new Set(['office_notes', 'internal_notes', 'owner_phone', 'owner_name', 'owner_email', 'id', 'url', 'sources', 'source', 'source_url', 'external_id', 'removed_photo_keys', 'media_vision_checked', 'media_vision_at', 'metadata_backfilled_at', 'fetched_at', 'created_at', 'updated_at', 'publisher_type', 'contact_whatsapp', 'contact_name', 'contact_email', 'contact_phone', 'lead_daily_limits', 'commission_terms_accepted_at', 'media_videos', 'media_photos', 'workspace_owner_id', 'user_id', 'slug', 'textEng']);
 
 function cleanDate(value: unknown): string | null {
   const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -128,10 +128,6 @@ function detailRows(row: any): Array<{ label: string; value: string }> {
 /** Every remaining rich block from the DB / original ad, kept human-readable. */
 function detailGroups(row: any): Array<{ title: string; rows: Array<{ label: string; value: string }> }> {
   const sources: Array<[string, unknown]> = [
-    ['מאפיינים', row?.features],
-    ['נתוני הנכס', row?.attributes],
-    ['פרטים נוספים', row?.additional_details],
-    ['ריהוט', row?.furniture_details],
     ['הסביבה', row?.area_perks],
     ['היסטוריית מחיר', row?.price_history],
   ];
@@ -213,6 +209,7 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
     brokerLicenceNumber: typeof attribution?.broker_license_number === 'string' ? attribution.broker_license_number : null,
     agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
     details: detailRows(row),
+    attributes: attributeCards(row ?? {}),
     groups: detailGroups(row),
     latitude: Number.isFinite(Number(row?.latitude)) && Number(row?.latitude) !== 0 ? Number(row.latitude) : null,
     longitude: Number.isFinite(Number(row?.longitude)) && Number(row?.longitude) !== 0 ? Number(row.longitude) : null,
