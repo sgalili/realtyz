@@ -4,7 +4,7 @@
 - Facebook authentication and workspace extension groups are siblings; groups remain mounted so Page state cannot hide them or interrupt joining.
 - Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
 - Peer expansions use exclusive group-keyed animated height; nested utilities use separate groups.
-- Shared tables use min-content width and horizontal arrow controls for narrow laptop previews.
+- Shared tables use min-content width with native horizontal scrolling; no arrow-control overlays above tables.
 - My Ads uses workspace-keyed, property-authorized RPCs; partners see only their own external-listing results, never raw contact identity.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 

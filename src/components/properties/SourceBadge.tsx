@@ -8,8 +8,8 @@ export type PropertySource = 'mine' | 'homely' | 'webtiv' | 'yad2' | 'external';
 //   Yad2        → orange  #FF7A00
 //   Our storage → blue    #0E7EE6
 const META: Record<PropertySource, { label: string; short: string; color: string }> = {
-  mine: { label: 'הנכסים שלי', short: 'ש', color: 'hsl(var(--deal-blue))' },
-  homely: { label: 'הומלי', short: 'H', color: 'hsl(var(--deal-blue))' },
+  mine: { label: 'הנכסים שלי', short: 'ש', color: 'hsl(var(--brand-navy))' },
+  homely: { label: 'הומלי', short: 'H', color: 'hsl(var(--brand-navy))' },
   webtiv: { label: 'Webtiv', short: 'W', color: 'hsl(var(--social-sms))' },
   yad2: { label: 'יד 2', short: 'Y', color: 'hsl(var(--sale))' },
   external: { label: 'חיצוני', short: 'E', color: 'hsl(var(--muted-foreground))' },
@@ -52,5 +52,5 @@ export function sourceColor(source: PropertySource): string {
 }
 
 export function sourceDotClass(source: PropertySource): string {
-  return ({ mine: 'bg-deal-blue', homely: 'bg-deal-blue', yad2: 'bg-sale', webtiv: 'bg-social-sms', external: 'bg-muted-foreground' })[source] ?? 'bg-muted-foreground';
+  return ({ mine: 'bg-primary', homely: 'bg-primary', yad2: 'bg-sale', webtiv: 'bg-social-sms', external: 'bg-muted-foreground' })[source] ?? 'bg-muted-foreground';
 }

@@ -852,7 +852,20 @@ export default function Properties() {
 
 
 
-        {/* Row 1 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] */}
+        {/* Row 1 — source dots (left) + deal-type toggles (right) */}
+        <div data-testid="property-filter-row" className="mb-2 flex items-center justify-between gap-2">
+        <div role="group" aria-label="מקורות חיפוש" className="group/sources flex min-w-0 items-center gap-0">
+          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className="h-8 min-w-0 gap-0 px-1 hover:bg-transparent hover:text-inherit">
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
+            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 motion-reduce:transition-none group-hover/sources:max-w-28 group-hover/sources:ps-1.5 group-hover/sources:opacity-100 group-focus-within/sources:max-w-28 group-focus-within/sources:ps-1.5 group-focus-within/sources:opacity-100 group-data-[expanded=true]/sources:max-w-28 group-data-[expanded=true]/sources:ps-1.5 group-data-[expanded=true]/sources:opacity-100">{sourceLabel(source)}</span>
+          </Button>)}
+        </div>
+        <div className="inline-flex shrink-0 items-center" role="group" aria-label="סוג עסקה">
+          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1.5 px-2 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full bg-success ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
+        </div>
+        </div>
+
+        {/* Row 2 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] */}
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
@@ -1035,22 +1048,11 @@ export default function Properties() {
 
 
 
-        <div data-testid="property-filter-row" className="mt-2 flex items-center justify-between gap-2">
-        <div role="group" aria-label="מקורות חיפוש" className="group/sources flex min-w-0 items-center gap-0">
-          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className="h-8 min-w-0 gap-0 px-1 hover:bg-transparent hover:text-inherit">
-            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
-            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 motion-reduce:transition-none group-hover/sources:max-w-28 group-hover/sources:ps-1.5 group-hover/sources:opacity-100 group-focus-within/sources:max-w-28 group-focus-within/sources:ps-1.5 group-focus-within/sources:opacity-100 group-data-[expanded=true]/sources:max-w-28 group-data-[expanded=true]/sources:ps-1.5 group-data-[expanded=true]/sources:opacity-100">{sourceLabel(source)}</span>
-          </Button>)}
-        </div>
-        <div className="inline-flex shrink-0 items-center" role="group" aria-label="סוג עסקה">
-          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1.5 px-2 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${t === 'rent' ? 'bg-sale' : 'bg-success'} ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
-        </div>
-        </div>
 
         {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
         <div data-testid="property-tools-row" className="flex flex-wrap items-center gap-2 mt-[10px]" dir="rtl">
           {/* Side A — sort + total-count dropdown */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0">
             <SelectModeToggle active={multiSelectMode} count={selectedListingIds.size} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
