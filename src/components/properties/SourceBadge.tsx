@@ -52,5 +52,5 @@ export function sourceColor(source: PropertySource): string {
 }
 
 export function sourceDotClass(source: PropertySource): string {
-  return ({ mine: 'bg-deal-blue', homely: 'bg-deal-blue', yad2: 'bg-sale', webtiv: 'bg-social-sms', external: 'bg-muted-foreground' })[source] ?? 'bg-muted-foreground';
+  return ({ mine: 'bg-primary', homely: 'bg-primary', yad2: 'bg-sale', webtiv: 'bg-social-sms', external: 'bg-muted-foreground' })[source] ?? 'bg-muted-foreground';
 }
