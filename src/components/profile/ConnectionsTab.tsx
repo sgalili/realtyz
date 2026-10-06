@@ -14,6 +14,8 @@ import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { CalendarSyncCard } from '@/components/profile/CalendarSyncCard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { MetaDirectConnectionCard, type MetaStatus } from '@/components/profile/MetaDirectConnectionCard';
+import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
+import { FacebookGroupsIcon } from '@/components/icons/FacebookGroupsIcon';
 import { InstagramConnectionCard } from '@/components/profile/InstagramConnectionCard';
 import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
@@ -87,6 +89,7 @@ function ConnectionSection({
   headerAside,
   bodyClassName,
   restricted,
+  keepMounted,
 }: {
   title: string;
   titleAside?: ReactNode;
@@ -103,6 +106,7 @@ function ConnectionSection({
   bodyClassName?: string;
   /** Super-admin only section — marked with a red border. */
   restricted?: boolean;
+  keepMounted?: boolean;
 }) {
   return (
     <div
@@ -128,8 +132,9 @@ function ConnectionSection({
         </span>
         {headerAside ?? <StatusPill label={status} tone={tone} />}
       </button>
-      {open && (
+      {(open || keepMounted) && (
         <div
+          hidden={!open}
           className={cn(
             'border-t px-1 pb-1 pt-[10px] text-right',
             bodyClassName,
@@ -426,7 +431,7 @@ export function ConnectionsTab() {
   const sections: Array<{ id: string; title: string; titleAside?: ReactNode; titleLead?: ReactNode; titleNode?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
     {
       id: 'facebook',
-      title: 'פייסבוק',
+      title: 'חיבור לפייסבוק',
       titleLead: (
         <BrandIcon name="facebook" className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !fbConnected && 'grayscale opacity-40')} />
       ),
@@ -442,6 +447,15 @@ export function ConnectionsTab() {
         />
       ) : undefined,
       node: <MetaDirectConnectionCard onStatus={setMeta} />,
+    },
+    {
+      id: 'facebook-groups',
+      title: 'קבוצות פייסבוק',
+      titleLead: <FacebookGroupsIcon className="h-5 w-5" />,
+      status: '',
+      tone: 'idle',
+      headerAside: <span className="shrink-0 text-xs text-muted-foreground">עד 100 קבוצות</span>,
+      node: <div data-plain className="p-3"><FacebookTargetsCard /></div>,
     },
     {
       id: 'instagram',
@@ -636,6 +650,7 @@ export function ConnectionsTab() {
           headerAside={s.headerAside}
           bodyClassName={s.id === 'whatsapp' ? 'pt-0' : undefined}
           restricted={s.restricted}
+          keepMounted={s.id === 'facebook-groups'}
         >
           {s.node}
         </ConnectionSection>

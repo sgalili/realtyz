@@ -1,4 +1,5 @@
 # Architecture rules
+- Connections renders Facebook authentication and extension groups as sibling sections; the workspace-scoped groups section stays mounted across section toggles so Page authentication cannot hide groups or interrupt joining.
 - Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
 - Peer card expansions share a group-keyed exclusive state and animated height container; nested utility controls use separate groups so they never collapse their parent.
 - My ads statistics are read through property-authorized RPCs keyed by the active workspace; partners see only their own detailed results on external listings, and raw contact identity is never included.

@@ -1,4 +1,6 @@
 # Roadmap
+## Independent Facebook sections
+- [x] Separate Facebook authentication and extension group management, preserving tabs, limits and live joining independently of Page state; signed-in section switching verified, five regression tests passed and build OK. Existing over-limit legacy groups remain unchanged; no Facebook joins were initiated by the checks.
 ## Live group joining indicators
 - [x] Show per-group extension-driven joining animation and immediately migrate confirmed joins to Activity without stale polling reversals; five focused tests passed, signed-in groups page checked and build OK. Updated extension requires reload; actual Facebook joins remain unverified.
 ## My ads and expansion updates
