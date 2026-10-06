@@ -2,6 +2,7 @@ import * as React from "react";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { HorizontalTableScroll } from './horizontal-table-scroll';
 
 /* ------------------------------------------------------------------ *
  * Global interactive sorting
@@ -133,11 +134,11 @@ const Table = React.forwardRef<
   }, [children, sortable, sort]);
 
   return (
-    <div className="relative w-full max-w-full min-w-0 overflow-x-auto overflow-y-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props}>
+    <HorizontalTableScroll>
+      <table ref={ref} className={cn("w-full min-w-max caption-bottom text-sm", className)} {...props}>
         {decorated}
       </table>
-    </div>
+    </HorizontalTableScroll>
   );
 });
 Table.displayName = "Table";

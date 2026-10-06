@@ -1,9 +1,10 @@
 # Architecture rules
-- Inventory suggestions and explicit bulk publication are active-workspace scoped; publication reads selected records, preserves commissions and relies on database workspace authorization.
+- Inventory/history/publication are workspace-scoped. Reload all local rows on entry/focus; retain partial imports. Publication preserves commissions and relies on database authorization.
 - Public listing review uses eight single-open accordion forms sharing one draft; pasted URLs replace the input atomically.
-- Connections renders Facebook authentication and extension groups as sibling sections; the workspace-scoped groups section stays mounted across section toggles so Page authentication cannot hide groups or interrupt joining.
+- Facebook authentication and workspace extension groups are siblings; groups remain mounted so Page state cannot hide them or interrupt joining.
 - Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
-- Peer expansions share exclusive group-keyed animated height; nested utilities use separate groups.
+- Peer expansions use exclusive group-keyed animated height; nested utilities use separate groups.
+- Shared tables use min-content width and horizontal arrow controls for narrow laptop previews.
 - My ads statistics are read through property-authorized RPCs keyed by the active workspace; partners see only their own detailed results on external listings, and raw contact identity is never included.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 
