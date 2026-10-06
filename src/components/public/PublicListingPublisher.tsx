@@ -106,6 +106,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const importInFlight = useRef(false);
   const lastAutoImport = useRef('');
   const [importStage, setImportStage] = useState('');
+  const [myPropsSave, setMyPropsSave] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const initializedPublisher = useRef('');
   const publicationAudio = useRef<AudioContext | null>(null);
   const openedScope = useRef('');
@@ -370,6 +371,36 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   const isLast = step === STEP_TITLES.length - 1;
 
+  // Imported Yad2 ads are kept in the active workspace inventory so brokers never lose them.
+  const saveToMyProperties = async (row: Record<string, any>, knownId: string | null = null) => {
+    if (!activeWorkspaceId) { setMyPropsSave('error'); return; }
+    setMyPropsSave('saving');
+    try {
+      const findId = async () => {
+        if (row.external_id) {
+          const { data } = await supabase.from('listings').select('id').eq('source', 'yad2').eq('external_id', String(row.external_id)).eq('workspace_owner_id', activeWorkspaceId).limit(1);
+          if (data?.[0]?.id) return data[0].id as string;
+        }
+        if (row.source_url) {
+          const { data } = await supabase.from('listings').select('id').eq('source_url', String(row.source_url)).eq('workspace_owner_id', activeWorkspaceId).limit(1);
+          if (data?.[0]?.id) return data[0].id as string;
+        }
+        return null;
+      };
+      let id = knownId ?? await findId();
+      if (!id && row.source_url) {
+        await supabase.functions.invoke('yad2-unlocker', { body: { url: row.source_url, limit: 1, pages: 1, import_item: true } });
+        id = await findId();
+      }
+      if (!id) throw new Error('not_saved');
+      setMyPropsSave('saved');
+      queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+      toast.success('הנכס נשמר בנכסים שלי');
+    } catch {
+      setMyPropsSave('error');
+    }
+  };
+
   const importYad2 = async (value = importUrl) => {
     if (importInFlight.current) return;
     if (!user) { navigate('/auth'); return; }
@@ -419,6 +450,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       setStep(0);
       setReviewMode(true); setExpandedStep(isBroker ? 'step-1' : 'step-0');
       try { await saveDraft(next); } catch { /* best effort */ }
+      void saveToMyProperties({ ...src, source_url: sourceUrl }, u?.listing_id ?? null);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
     finally { importInFlight.current = false; setImporting(false); }
   };
@@ -604,6 +636,15 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
         <div className="space-y-4">
           {reviewMode && importStage && <p role="status" className="text-sm text-muted-foreground">{importStage}</p>}
+          {reviewMode && imported && (
+            <label className={`flex items-center gap-3 rounded-lg border p-3 text-sm font-bold ${myPropsSave === 'saved' ? 'border-primary/40 bg-primary/10' : 'border-border bg-muted/40'}`}>
+              <Checkbox checked={myPropsSave === 'saved'} disabled={myPropsSave === 'saving' || myPropsSave === 'saved'} onCheckedChange={(v) => { if (v) void saveToMyProperties(imported); }} aria-label="שמור נכס זה לנכסים שלי" />
+              <span className="flex-1">שמור נכס זה לנכסים שלי</span>
+              <span role="status" aria-live="polite" className="text-xs font-normal text-muted-foreground">
+                {myPropsSave === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : myPropsSave === 'saved' ? <span className="inline-flex items-center gap-1 text-primary"><Check className="h-4 w-4" />נשמר</span> : myPropsSave === 'error' ? 'השמירה נכשלה, סמן לניסיון חוזר' : ''}
+              </span>
+            </label>
+          )}
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
