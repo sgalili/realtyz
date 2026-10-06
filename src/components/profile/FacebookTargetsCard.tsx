@@ -62,15 +62,15 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   const cached = readCache(workspaceOwnerId);
   const [allGroups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   // פעילות = live joined groups only; pending / not-joined / blocked live in their own tabs.
-  const groups = allGroups.filter((g) => !g.blocked && (g.joinStatus ?? 'joined') === 'joined');
-  const notJoinedGroups = allGroups.filter((g) => !g.blocked && g.joinStatus === 'not_joined');
-  const pendingGroups = allGroups.filter((g) => !g.blocked && g.joinStatus === 'pending');
+  const groups = allGroups.filter((g) => !g.blocked && g.joinStatus === 'joined');
+  // בהמתנה = every non-blocked group that is not confirmed joined (not joined yet or request sent).
+  const notJoinedGroups = allGroups.filter((g) => !g.blocked && g.joinStatus !== 'joined');
   const blockedGroups = allGroups.filter((g) => g.blocked);
   const [loading, setLoading] = useState(!cached);
   const [deleteMode, setDeleteMode] = useState(false);
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
-  const [tab, setTab] = useState<'active' | 'not_joined' | 'pending' | 'blocked'>('active');
+  const [tab, setTab] = useState<'active' | 'not_joined' | 'blocked'>('active');
   const [joinPicked, setJoinPicked] = useState<Set<string>>(new Set());
   const [joinProgress, setJoinProgress] = useState<Record<string, string>>({});
   const [joining, setJoining] = useState(false);
@@ -117,7 +117,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         selected: r.is_selected !== false && !r.is_blocked,
         blocked: !!r.is_blocked,
         blockedReason: r.blocked_reason ?? null,
-        joinStatus: (r.join_status as JoinState) || 'joined',
+        joinStatus: (r.join_status as JoinState) || 'pending',
       }));
       setGroups(nextGroups);
       try {
@@ -316,8 +316,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
             )}
             <div role="tablist" className="flex min-w-0 flex-1 overflow-x-auto rounded-lg bg-muted p-0.5">
               {tabBtn('active', 'פעילות', groups.length)}
-              {tabBtn('not_joined', 'לא הצטרפתי', notJoinedGroups.length)}
-              {tabBtn('pending', 'בהמתנה', pendingGroups.length)}
+              {tabBtn('not_joined', 'בהמתנה', notJoinedGroups.length)}
               {tabBtn('blocked', 'חסומות', blockedGroups.length)}
             </div>
           </div>
@@ -330,7 +329,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
           />
           {tab === 'not_joined' ? (
             notJoinedGroups.length === 0 ? (
-              <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות שעדיין לא הצטרפת אליהן.</p>
+              <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות בהמתנה.</p>
             ) : (<>
               <SelectAllRow total={notJoinedGroups.length} selected={joinPicked.size}
                 onToggle={() => setJoinPicked(joinPicked.size === notJoinedGroups.length ? new Set() : new Set(notJoinedGroups.map((g) => g.id)))}
@@ -338,24 +337,17 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 <Button type="button" size="sm" className="h-7 gap-1 text-[12px]" disabled={joinPicked.size === 0 || joining}
                   onClick={() => void joinTargets(notJoinedGroups.filter((g) => joinPicked.has(g.id)))}>
                   {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-                  הצטרפות אוטומטית
+                  הצטרפות
                 </Button>
               </SelectAllRow>
               <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
-                {notJoinedGroups.map((g) => renderSimpleRow(g, (
+                {notJoinedGroups.map((g) => renderSimpleRow(g, (<>
                   <SelectBox checked={joinPicked.has(g.id)} label={g.name}
                     onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else n.add(g.id); return n; })} />
-                )))}
+                  {g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-amber-500" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
+                </>)))}
               </div>
             </>)
-          ) : tab === 'pending' ? (
-            pendingGroups.length === 0 ? (
-              <p className={cn('text-muted-foreground', TEXT_MD)}>אין בקשות הצטרפות בהמתנה.</p>
-            ) : (
-              <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
-                {pendingGroups.map((g) => renderSimpleRow(g, <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />))}
-              </div>
-            )
           ) : tab === 'blocked' ? (
             blockedGroups.length === 0 ? (
               <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות חסומות. קבוצות שהפרסום בהן נכשל או הוגבל יופיעו כאן ולא ייבחרו בקמפיינים.</p>
