@@ -1638,7 +1638,7 @@ export default function PropertyDetail() {
           <Card className="p-4 sm:p-5">
             <h2 className="text-[19px] font-bold text-primary mb-4">מאפייני הנכס</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <Field label="כותרת"><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
+                <Field label={<span className="inline-flex items-center gap-1"><Pencil className="h-3.5 w-3.5" />כותרת</span>}><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
                 <Field label="חדרים"><Input type="number" step="0.5" value={form.rooms} onChange={(e) => setField('rooms', e.target.value)} /></Field>
                 <Field label='שטח (מ"ר)'><Input type="number" value={form.sqm} onChange={(e) => setField('sqm', e.target.value)} /></Field>
                 <Field label="קומה"><Input type="number" value={form.floor} onChange={(e) => setField('floor', e.target.value)} /></Field>
@@ -1957,7 +1957,7 @@ function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: str
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <label className="text-[22px] text-muted-foreground uppercase tracking-wide block">{label}</label>
