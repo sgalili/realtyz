@@ -175,20 +175,20 @@ export function InstagramConnectionCard({ pageConnected = false }: { pageConnect
                 className="flex min-w-0 items-center gap-2"
                 title={`@${directHandle} באינסטגרם`}
               >
+                <span className="truncate text-[14px] font-medium text-primary">@{directHandle}</span>
                 {avatarFailed ? (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E4405F]/10">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#E4405F]/10">
                     <Instagram className="h-4 w-4 text-[#E4405F]" />
                   </span>
                 ) : (
                   <img
                     src={`https://unavatar.io/instagram/${encodeURIComponent(directHandle)}`}
                     alt={`@${directHandle}`}
-                    className="h-8 w-8 shrink-0 rounded-full bg-muted object-cover"
+                    className="h-8 w-8 shrink-0 rounded-md bg-muted object-cover"
                     loading="lazy"
                     onError={() => setAvatarFailed(true)}
                   />
                 )}
-                <span className="truncate text-[14px] font-medium text-primary">@{directHandle}</span>
               </a>
               <Button size="sm" variant="outline" className="h-8 text-[13px]" disabled={savingDirect} onClick={() => void saveDirect(true)}>נתק</Button>
             </div>
