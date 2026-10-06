@@ -1,4 +1,8 @@
 # Roadmap
+## Address finder and publication steps
+- [x] Refine Hebrew address selection and conditional city/street/house-number row; remove apartment input and relocate floor selectors.
+- [x] Number publication sections 1–7 independently of setup, preserving saved draft step identities.
+- [x] Verified live Hebrew searches in Tel Aviv and Haifa, keyboard/click selection and aligned 390px layout without publishing or runtime errors. Uses existing Google Places Israel/Hebrew integration; complete nationwide database coverage and real iOS devices remain unverified.
 ## Failed ads and quick resume
 - [x] Add workspace-scoped failed/incomplete ads and local draft recovery with missing fields and saved failure notes; signed-in list showed ten incomplete records.
 - [x] Resume saved editing step and values; signed-in contact edit survived refresh and reopened at the contact section. Existing-record publication updates by workspace/id; actual publication was not performed.

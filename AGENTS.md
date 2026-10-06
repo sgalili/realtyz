@@ -1,14 +1,15 @@
 # Architecture rules
 - Inventory/history/publication are workspace-scoped. Reload all local rows on entry/focus; retain partial imports. Publication preserves commissions and relies on database authorization.
-- Public review scopes drafts by user/workspace and resumes saved steps/errors with explicit confirmation; broker defaults use current member role/profile, not owner identity. Celebration owns its timed canvas/audio.
+- Public drafts are user/workspace-scoped with saved steps/errors and explicit confirmation; broker defaults use current member identity. Celebration owns canvas/audio.
+- Publisher numbering excludes setup but retains saved step keys; resolved/imported addresses reveal details and superseded searches cannot overwrite selections.
 - Facebook authentication and workspace extension groups are siblings; groups remain mounted so Page state cannot hide them or interrupt joining.
-- Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
+- Auto-join indicators follow extension per-group events; workspace result overlays prevent polling from reversing tab migration before persistence.
 - Peer expansions use exclusive group-keyed animated height; nested utilities use separate groups.
 - Shared tables use min-content width with native horizontal scrolling; no arrow-control overlays above tables.
 - My Ads uses workspace-keyed, property-authorized RPCs; partners see only their own external-listing results, never raw contact identity.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 
-- Group selection uses one accessible checkbox action per row, immutable deduplicated snapshots and guarded no-op updates; external links are siblings to prevent duplicate activation and render cascades.
+- Group selection uses one checkbox per row, immutable deduplicated snapshots and no-op guards; sibling links prevent duplicate activation/cascades.
 
 - Campaign feed metadata uses one nonwrapping RTL row ordered platform, date, group target, repost and engagement; shrinkable names open full-name popovers, and inline bordered series retain per-target statuses inside their parent to avoid clipping and mobile overflow.
 - Multi-target campaign expansion derives one child per persisted target and reuses the feed card renderer with campaign/group keys; synthetic children never submit campaign-level actions, preventing duplicate queue operations.

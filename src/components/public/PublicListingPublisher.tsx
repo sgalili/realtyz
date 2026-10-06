@@ -103,6 +103,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [imported, setImported] = useState<Record<string, any> | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
   const [expandedStep, setExpandedStep] = useState('step-0');
+  const [addressResolved, setAddressResolved] = useState(false);
   const importInFlight = useRef(false);
   const lastAutoImport = useRef('');
   const [importStage, setImportStage] = useState('');
@@ -148,6 +149,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     () => [fields.street, fields.houseNumber].filter(Boolean).join(' ') || fields.address,
     [fields.street, fields.houseNumber, fields.address],
   );
+  useEffect(() => {
+    if (fields.city.trim() && addressLine.trim()) setAddressResolved(true);
+    if (!fields.city && !addressLine) setAddressResolved(false);
+  }, [fields.city, addressLine]);
   // Confirmation follows the same image order that publication persists.
   const primaryPhoto = fields.importedListing?.photos?.find((url: unknown) => typeof url === 'string' && url.startsWith('https://')) || previews.find(({ file }) => file.type.startsWith('image/'))?.url;
 
@@ -306,8 +311,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   const stepValid = () => {
     if (step === 2) return Boolean(fields.propertyType);
-    if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()));
-    if (step === 4) return Boolean(fields.rooms && fields.floor && fields.totalFloors && fields.condition && fields.airDirections);
+    if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()) && fields.floor && fields.totalFloors);
+    if (step === 4) return Boolean(fields.rooms && fields.condition && fields.airDirections);
     if (step === 5) return Boolean(fields.price && (fields.sqm || fields.builtSqm));
     return true;
   };
@@ -476,8 +481,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       case 0: return Boolean(f.publisherType);
       case 1: return Boolean(f.dealType);
       case 2: return Boolean(f.propertyType);
-      case 3: return Boolean(f.city.trim() && (f.street.trim() || f.address.trim()));
-      case 4: return Boolean(f.rooms && f.floor && f.totalFloors && f.condition && f.airDirections);
+      case 3: return Boolean(f.city.trim() && (f.street.trim() || f.address.trim()) && f.floor && f.totalFloors);
+      case 4: return Boolean(f.rooms && f.condition && f.airDirections);
       case 5: return Boolean(f.price && (f.sqm || f.builtSqm));
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
       case 7: return Boolean(f.contactName?.trim() && f.contactWhatsapp.replace(/\D/g, '').length >= 9 && f.termsAccepted);
@@ -523,7 +528,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             <div className="space-y-3">
               <AddressAutocomplete
                 value={addressLine}
-                onPick={(place) => setFields((current) => ({
+                onPick={(place) => { setAddressResolved(true); setFields((current) => ({
                   ...current,
                    street: place.street,
                    houseNumber: place.house_number,
@@ -531,28 +536,27 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                    city: place.city,
                    area: place.area,
                    address: place.formatted_address,
-                }))}
+                })); }}
               />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div><Label>עיר *</Label><Input value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
-                <div><Label>רחוב *</Label><Input value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
-                <div><Label>מספר בית</Label><Input inputMode="numeric" value={fields.houseNumber} onChange={(e) => set('houseNumber', e.target.value)} /></div>
-                <div><Label>מספר דירה</Label><Input inputMode="numeric" value={fields.apartmentNumber} onChange={(e) => set('apartmentNumber', e.target.value)} /></div>
+              {addressResolved && <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)] gap-2">
+                <div className="min-w-0"><Label htmlFor="wizard-city">עיר *</Label><Input id="wizard-city" className="min-w-0 px-2 text-base" value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
+                <div className="min-w-0"><Label htmlFor="wizard-street">רחוב *</Label><Input id="wizard-street" className="min-w-0 px-2 text-base" value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
+                <div className="min-w-0"><Label htmlFor="wizard-house">מספר בית</Label><Input id="wizard-house" className="min-w-0 px-2 text-base" inputMode="text" value={fields.houseNumber} onChange={(e) => set('houseNumber', e.target.value)} /></div>
+              </div>}
+              {addressResolved && <div className="grid grid-cols-2 gap-3">
                 {fields.neighborhood && <div><Label>שכונה</Label><Input value={fields.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} /></div>}
                 {fields.area && <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
+              </div>}
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label htmlFor="wizard-floor">קומה *</Label><Select value={fields.floor} onValueChange={(value) => set('floor', value)}><SelectTrigger id="wizard-floor"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label htmlFor="wizard-total-floors">מתוך *</Label><Select value={fields.totalFloors} onValueChange={(value) => set('totalFloors', value)}><SelectTrigger id="wizard-total-floors"><SelectValue placeholder="מתוך" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} קומות</SelectItem>)}</SelectContent></Select></div>
               </div>
             </div>
           )}
 
           {step === 4 && (
             <div className="space-y-3">
-              <div><Label>קומות בבניין</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <Select value={fields.rooms} onValueChange={(value) => set('rooms', value)}><SelectTrigger><SelectValue placeholder="חדרים" /></SelectTrigger><SelectContent>{ROOM_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} חדרים</SelectItem>)}</SelectContent></Select>
-                <Select value={fields.floor} onValueChange={(value) => set('floor', value)}><SelectTrigger><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select>
-                <Select value={fields.totalFloors} onValueChange={(value) => set('totalFloors', value)}><SelectTrigger><SelectValue placeholder="מתוך" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} קומות</SelectItem>)}</SelectContent></Select>
-              </div>
-              </div>
+              <div><Label htmlFor="wizard-rooms">חדרים *</Label><Select value={fields.rooms} onValueChange={(value) => set('rooms', value)}><SelectTrigger id="wizard-rooms"><SelectValue placeholder="חדרים" /></SelectTrigger><SelectContent>{ROOM_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} חדרים</SelectItem>)}</SelectContent></Select></div>
               <div className="flex flex-wrap gap-4">
                 {([['elevator', 'מעלית'], ['parking', 'חניה'], ['balcony', 'מרפסת'], ['openView', 'נוף פתוח']] as const).map(([key, label]) => (
                   <label key={key} className="flex items-center gap-2 text-sm font-semibold">
@@ -630,7 +634,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
           <DialogTitle>
-             {reviewMode ? 'פרטי המודעה' : step === 0 && importSlide ? 'ייבוא מודעה מיד 2' : STEP_TITLES[step]}
+             {reviewMode ? 'פרטי המודעה' : step === 0 && importSlide ? 'ייבוא מודעה מיד 2' : step > 0 ? `${step} / 7 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
         </DialogHeader>
 
@@ -648,11 +652,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
-               {STEP_TITLES.map((title, i) => isBroker && i === 0 ? null : (
+               {STEP_TITLES.map((title, i) => i === 0 ? null : (
                 <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
                   <AccordionTrigger className="gap-3 px-4 text-start hover:no-underline">
                     <span className="flex min-w-0 flex-1 items-center gap-3">
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={stepFilled(i) ? 'הושלם' : 'חסרים פרטים'}>{stepFilled(i) ? <Check className="h-4 w-4" /> : i + 1}</span>
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i} מתוך 7`}>{i}</span>
                       <span className="min-w-0 flex-1">{title}</span>
                       <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : 'חסרים פרטים'}</span>
                     </span>
