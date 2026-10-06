@@ -59,6 +59,30 @@ const LEAD_TYPES = [
   { key: 'Phone', label: 'שיחת טלפון' },
 ] as const;
 
+const LEAD_TYPE_VALIDITY = (
+  <ul className="list-disc space-y-1 ps-5">
+    <li>כל פנייה כוללת 3 שאלות סינון קצרות שהמפרסם קובע מראש.</li>
+    <li>כל פנייה מגיעה עם תמליל מלא של השיחה, ובשיחות טלפון גם עם הקלטה.</li>
+    <li>פנייה נספרת כפנייה תקפה (ונחייבת בעמלה) רק אם התשובות בשאלות הסינון חיוביות ומשביעות רצון.</li>
+  </ul>
+);
+
+function LeadTypeHelp({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button type="button" aria-label={`הסבר על פנייה: ${label}`} className="inline-flex shrink-0 text-muted-foreground hover:text-foreground">
+          <HelpCircle className="h-3.5 w-3.5" />
+        </button>
+      </DialogTrigger>
+      <DialogContent dir="rtl" className="sm:max-w-md">
+        <DialogHeader><DialogTitle className="text-right">{label}</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-sm leading-relaxed">{children}</div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function slugFor(userId: string) {
   return `owner-${userId.slice(0, 8)}-${Date.now().toString(36)}`;
 }
