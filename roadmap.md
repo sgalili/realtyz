@@ -1,4 +1,6 @@
 # Roadmap
+## List expansion cleanup
+- [x] Remove inline close button, move expansion arrow before address and show expanded title/price once. Signed-in narrow-table expansion/collapse and horizontal scroll verified without runtime errors; container layout stays readable, build OK.
 ## Public ad presentation refinement
 - [x] Unify deal-prefixed title/price, public publisher attribution below title with office/license inline, and share beside favorites across grid/list/details; reuse existing public endpoint without private reads.
 - [x] Add safe close/back navigation; signed-in live grid/share/details/favorite-refresh/restore/list-close verified without page errors, three tests passed and automatic build OK. Narrow-container overflow checked; actual mobile device not tested. Missing public publisher details remain uninvented.

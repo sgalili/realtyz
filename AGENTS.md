@@ -1,5 +1,5 @@
 # Architecture rules
-- Public ads share title/publisher UI and public endpoint cache; never read private profiles for cards.
+- Public ads share headings/publishers/public cache, never private profiles; layouts use container width.
 - Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports and commissions; authorize publication in DB.
 - Drafts retain user/workspace steps/errors; explicit publish, current-member broker defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.

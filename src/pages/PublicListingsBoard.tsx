@@ -103,14 +103,22 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const toggleDeal = (key: 'sale' | 'rent') => setDeals((cur) => { const next = { ...cur, [key]: !cur[key] }; return next.sale || next.rent ? next : cur; });
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [wrapWidth, setWrapWidth] = useState<number | null>(null);
+  const [scrollIndicator, setScrollIndicator] = useState({ width: 100, offset: 0 });
   useEffect(() => {
     const el = tableWrapRef.current;
     if (!el) return;
-    const update = () => setWrapWidth(el.clientWidth);
+    const update = () => {
+      setWrapWidth(el.clientWidth);
+      const width = el.scrollWidth > 0 ? Math.min(100, el.clientWidth / el.scrollWidth * 100) : 100;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      setScrollIndicator({ width, offset: maxScroll > 0 ? Math.min(1, Math.abs(el.scrollLeft) / maxScroll) * (100 - width) : 0 });
+    };
     update();
+    el.addEventListener('scroll', update, { passive: true });
     const ro = new ResizeObserver(update);
     ro.observe(el);
-    return () => ro.disconnect();
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => { ro.disconnect(); el.removeEventListener('scroll', update); };
   });
   const [grid, setGrid] = useState(() => {
     try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; }
@@ -305,6 +313,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
+            {scrollIndicator.width < 99.5 && <div aria-hidden="true" className="mb-2 h-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} /></div>}
             <div ref={tableWrapRef} className="w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
@@ -320,26 +329,26 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     const open = expandedId === card.id;
                     const toggle = () => setExpandedId(open ? null : card.id);
                     return [
-                      <tr key={card.id} id={`row-${card.id}`} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <tr key={card.id} id={`row-${card.id}`} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'font-semibold text-foreground', id === 'price' && 'whitespace-nowrap font-bold', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap')}>
                           {id === 'photo' ? (
                           <div className="relative h-10 w-10">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-full w-full rounded object-cover" loading="lazy" /> : <div className="h-full w-full rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex rounded-full bg-background/90 p-0.5 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="w-72 max-w-[18rem]"><PublicCardSummary card={card} showBroker={false} /></div>
+                          ) : id === 'address' ? <div className="flex w-72 max-w-[18rem] items-center gap-1"><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}><ChevronDown className={cn('h-5 w-5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} /></Button>{!open && <div className="min-w-0 flex-1"><PublicCardSummary card={card} showBroker={false} /></div>}</div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs font-semibold', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
-                          : id === 'price' ? shekel(card.price)
+                          : id === 'price' ? (open ? null : shekel(card.price))
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
-                        <td className="p-2"><ChevronDown className={cn('h-5 w-5 transition-transform', open && 'rotate-180')} /></td>
+                        <td className="p-2" />
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={columns.visible.length + 1} className="p-0">
                           <AnimatedExpansion open={open}>
-                          <div ref={open ? ownerSectionRef : undefined} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
+                          <div id={`details-${card.id}`} ref={open ? ownerSectionRef : undefined} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0">
                               {open && user ? (
                                 <div ref={open ? ownerBarRef : undefined} className="mb-3">
@@ -348,7 +357,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                               ) : null}
                             </div>
                             <div className="min-w-0 space-y-3">
-                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} onClose={() => { setExpandedId(null); requestAnimationFrame(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }} />}
+                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} />}
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact showShare={false} />
                             </div>
                           </div>
