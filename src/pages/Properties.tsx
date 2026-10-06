@@ -850,37 +850,7 @@ export default function Properties() {
               )}
                <span>{searching || yad2Status?.tone === 'busy' ? 'בטל' : 'חפש'}</span>
             </Button>
-            </div>
-            {suggestionsOpen && q.trim().length >= 2 && !/yad2\.co\.il|https?:\/\//i.test(q) && yad2Status?.tone !== 'busy' && (
-              <div id="inventory-suggestions" role="listbox" aria-label="נכסי המשרד" className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
-                {inventorySuggestions.isFetching ? <div role="status" className="flex items-center gap-2 p-3 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />מחפש בנכסי המשרד…</div> : suggestions.length ? suggestions.map((row, index) => <Button key={row.key} id={`inventory-option-${index}`} role="option" aria-selected={suggestionIndex === index} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { setSuggestionsOpen(false); void handleSelect(row); }} className={`h-auto w-full justify-start gap-2 p-2 text-right ${suggestionIndex === index ? 'bg-accent text-accent-foreground' : ''}`}><MapPin className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1"><span className="block truncate">{row.address || row.title}</span><span className="block truncate text-xs text-muted-foreground">{[row.city, row.title].filter(Boolean).join(' · ')}</span></span>{row.price ? <span className="shrink-0 text-xs tabular-nums">{formatPrice(row.price)}</span> : null}</Button>) : <div className="p-3 text-sm text-muted-foreground">{inventorySuggestions.isError ? 'לא ניתן לטעון הצעות כרגע' : 'לא נמצאו נכסים במשרד'}</div>}
-              </div>
-            )}
-            {yad2Status && (
-              <div role="status" aria-live="polite" className={`min-w-0 border-t px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/30 text-destructive' : 'border-border text-muted-foreground'}`}>
-                <div className="flex min-w-0 items-start gap-2">
-                  {yad2Status.tone === 'busy' && <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" />}
-                  <span className="min-w-0 flex-1 break-words leading-5">{yad2Status.label}</span>
-                  {yad2Status.tone !== 'busy' && <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></Button>}
-                </div>
-                {yad2Status.tone !== 'error' && <div role="progressbar" aria-label="התקדמות ייבוא יד2" aria-valuemin={0} aria-valuemax={4} aria-valuenow={yad2Status.step} className="mt-2 grid h-1 grid-cols-4 gap-1 overflow-hidden rounded-full bg-muted">{[1, 2, 3, 4].map(step => <span key={step} className={`h-full transition-colors duration-300 motion-reduce:transition-none ${step <= yad2Status.step ? 'bg-primary' : 'bg-muted'}`} />)}</div>}
-              </div>
-            )}
-          </div>
-            {!searching && yad2Status?.tone !== 'busy' && completedResults !== null && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost"
-                    type="button"
-                    className="mt-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 text-primary transition-colors hover:bg-primary/20"
-                    aria-label="פירוט תוצאות לפי מקור"
-                    title="פירוט תוצאות לפי מקור"
-                  >
-                    <Database className="h-3.5 w-3.5" />
-                    {/* +4px vs the previous 10px badge → 14px = text-sm */}
-                    <span className="text-sm font-bold tabular-nums leading-none">{completedResults.length}</span>
-                  </Button>
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               <CollapsibleTrigger asChild>
                 <Button
                   variant="ghost"
@@ -939,6 +909,37 @@ export default function Properties() {
                />
 
              </div>
+            </div>
+            {suggestionsOpen && q.trim().length >= 2 && !/yad2\.co\.il|https?:\/\//i.test(q) && yad2Status?.tone !== 'busy' && (
+              <div id="inventory-suggestions" role="listbox" aria-label="נכסי המשרד" className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
+                {inventorySuggestions.isFetching ? <div role="status" className="flex items-center gap-2 p-3 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />מחפש בנכסי המשרד…</div> : suggestions.length ? suggestions.map((row, index) => <Button key={row.key} id={`inventory-option-${index}`} role="option" aria-selected={suggestionIndex === index} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { setSuggestionsOpen(false); void handleSelect(row); }} className={`h-auto w-full justify-start gap-2 p-2 text-right ${suggestionIndex === index ? 'bg-accent text-accent-foreground' : ''}`}><MapPin className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1"><span className="block truncate">{row.address || row.title}</span><span className="block truncate text-xs text-muted-foreground">{[row.city, row.title].filter(Boolean).join(' · ')}</span></span>{row.price ? <span className="shrink-0 text-xs tabular-nums">{formatPrice(row.price)}</span> : null}</Button>) : <div className="p-3 text-sm text-muted-foreground">{inventorySuggestions.isError ? 'לא ניתן לטעון הצעות כרגע' : 'לא נמצאו נכסים במשרד'}</div>}
+              </div>
+            )}
+            {yad2Status && (
+              <div role="status" aria-live="polite" className={`min-w-0 border-t px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/30 text-destructive' : 'border-border text-muted-foreground'}`}>
+                <div className="flex min-w-0 items-start gap-2">
+                  {yad2Status.tone === 'busy' && <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" />}
+                  <span className="min-w-0 flex-1 break-words leading-5">{yad2Status.label}</span>
+                  {yad2Status.tone !== 'busy' && <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></Button>}
+                </div>
+                {yad2Status.tone !== 'error' && <div role="progressbar" aria-label="התקדמות ייבוא יד2" aria-valuemin={0} aria-valuemax={4} aria-valuenow={yad2Status.step} className="mt-2 grid h-1 grid-cols-4 gap-1 overflow-hidden rounded-full bg-muted">{[1, 2, 3, 4].map(step => <span key={step} className={`h-full transition-colors duration-300 motion-reduce:transition-none ${step <= yad2Status.step ? 'bg-primary' : 'bg-muted'}`} />)}</div>}
+              </div>
+            )}
+          </div>
+            {!searching && yad2Status?.tone !== 'busy' && completedResults !== null && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost"
+                    type="button"
+                    className="mt-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 text-primary transition-colors hover:bg-primary/20"
+                    aria-label="פירוט תוצאות לפי מקור"
+                    title="פירוט תוצאות לפי מקור"
+                  >
+                    <Database className="h-3.5 w-3.5" />
+                    {/* +4px vs the previous 10px badge → 14px = text-sm */}
+                    <span className="text-sm font-bold tabular-nums leading-none">{completedResults.length}</span>
+                  </Button>
+              
 
 
                 </DropdownMenuTrigger>
