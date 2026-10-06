@@ -203,7 +203,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   return (
     <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
       <header className="bg-card">
-        <div className="mx-auto max-w-6xl px-4 py-5">
+        <div className="mx-auto max-w-6xl px-4 pb-0 pt-5">
           {embedded ? null : (
             <div className="relative flex min-h-11 items-center justify-between gap-2">
               <PublicListingPublisher autoResume />
