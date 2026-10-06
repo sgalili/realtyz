@@ -1,0 +1,1 @@
+CREATE POLICY listing_inquiry_service_only ON public.listing_inquiry_states FOR ALL TO service_role USING (true) WITH CHECK (true);
