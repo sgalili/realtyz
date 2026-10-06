@@ -1,5 +1,6 @@
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
-import { defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
+import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
+import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
 import { PriceInput } from "@/components/ui/price-input";
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
@@ -217,6 +218,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
   const [questionsOpen, setQuestionsOpen] = useState<'questionsWhatsapp' | 'questionsPhone' | null>(null);
+  const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
 
@@ -329,7 +331,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       Object.assign(payload, commissions);
       (payload.features as Record<string, unknown>).lead_daily_limits = limits;
       const qClean = (q?: string[]) => (q && q.length ? q : defaultQuestions(draftFields.dealType)).map(x => x.trim()).filter(Boolean);
-      const contactOpts = { ...(((payload as any).contact_options as object) || {}), questions: qClean(draftFields.questionsWhatsapp), questions_phone: qClean(draftFields.questionsPhone) };
+      const contactOpts = { ...(((payload as any).contact_options as object) || {}), questions: qClean(draftFields.questionsWhatsapp), questions_phone: qClean(draftFields.questionsPhone), form_fields: cleanFormFields(draftFields.formFields) };
       (payload as any).contact_options = contactOpts;
       (payload.features as Record<string, unknown>).screening_questions = { whatsapp: contactOpts.questions, phone: contactOpts.questions_phone };
       (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
@@ -746,6 +748,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     </span>
                     <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
                     <Input inputMode="numeric" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} />
+                    {key === 'Form' && (() => {
+                      const n = cleanFormFields(fields.formFields).length;
+                      return (
+                        <button type="button" className="col-span-3 -mt-1 mb-1 text-start text-xs font-semibold text-primary underline underline-offset-2" onClick={() => setFormFieldsOpen(true)}>
+                          שדות הטופס (שם + טלפון{n > 0 ? ` + ${n} נוספים · +₪${n * EXTRA_QUESTION_COST} לפנייה` : ''})
+                        </button>
+                      );
+                    })()}
                     {(key === 'Whatsapp' || key === 'Phone') && (() => {
                       const fk = key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone';
                       const qs = (fields as any)[fk] as string[] | undefined;
@@ -775,6 +785,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 </div>
               )}
+              <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
                 onOpenChange={(v) => { if (!v) setQuestionsOpen(null); }}
