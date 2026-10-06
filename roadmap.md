@@ -1,4 +1,6 @@
 # Roadmap
+## Connection card refinements
+- [ ] Reorder group buttons, update sync icon and active count, rename business Page, and immediately reflect saved direct Instagram connection with Page-dependent actions.
 ## Independent Facebook sections
 - [x] Separate Facebook authentication and extension group management, preserving tabs, limits and live joining independently of Page state; signed-in section switching verified, five regression tests passed and build OK. Existing over-limit legacy groups remain unchanged; no Facebook joins were initiated by the checks.
 ## Live group joining indicators

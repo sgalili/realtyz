@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Loader2, Users } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -184,16 +184,16 @@ export function ExtensionGroupSyncCard({
         className,
       )}
     >
-      <Button
+       <ExtensionDownloadButton />
+       <Button
         type="button"
         size="sm"
         variant="outline"
         className="h-8 gap-1 text-[12px]"
         onClick={() => setOpen(true)}
       >
-        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />} סנכרון
+         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} סנכרון
       </Button>
-      <ExtensionDownloadButton />
       {actions}
 
       <Dialog open={open} onOpenChange={setOpen}>
