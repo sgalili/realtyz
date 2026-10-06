@@ -86,7 +86,10 @@ export function GroupDiscoveryDialog({
       const fresh = rows.filter((g) => g?.group_id && !seen.has(g.group_id) && seen.add(g.group_id));
       setResults(fresh);
       // Every new group found is pre-selected for automatic joining.
-      setPicked(new Set(fresh.filter((g) => !g.is_member && !knownIds?.has(g.group_id) && !blockedIds?.has(g.group_id)).map((g) => g.group_id)));
+      const toJoin = fresh.filter((g) => !g.is_member && !knownIds?.has(g.group_id) && !blockedIds?.has(g.group_id));
+      setPicked(new Set(toJoin.map((g) => g.group_id)));
+      setSearching(false);
+      if (toJoin.length) void runJoin(toJoin);
       setSearched(true);
     } catch (e: any) {
       toast.error(e?.message === "timeout" ? "החיפוש לקח יותר מדי זמן. ודא שאתה מחובר לפייסבוק בדפדפן" : "החיפוש נכשל", { description: e?.message });
@@ -144,8 +147,8 @@ export function GroupDiscoveryDialog({
     void run.done.then(() => resolve(ok));
   });
 
-  const runJoin = async () => {
-    const all = visible.filter((g) => picked.has(g.group_id));
+  const runJoin = async (list?: DiscoveredGroup[]) => {
+    const all = list ?? visible.filter((g) => picked.has(g.group_id));
     if (!all.length) return;
     if (!isExtensionInstalled()) { toast.error("כדי להצטרף לקבוצות יש להתקין את תוסף Realtyz"); return; }
     setJoining(true);
