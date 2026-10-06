@@ -430,6 +430,21 @@ export function PageHero() {
               </Link>
             </Button>
           )}
+          {isPublicBoard && !user && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                navigate('/auth', {
+                  state: { returnTo: location.pathname + location.search },
+                })
+              }
+              aria-label="הרשמה או התחברות"
+              className="h-8 rounded-full border-white/50 bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/20 hover:text-white"
+            >
+              הרשמה / התחברות
+            </Button>
+          )}
           {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
             <Button
               size="icon"

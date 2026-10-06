@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
@@ -57,7 +57,10 @@ function PhotoCarousel({ photos, alt, onFavorite }: { photos: string[]; alt: str
 
 export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const goToAuth = () =>
+    navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -168,10 +171,23 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       <header className="bg-card">
         <div className="mx-auto max-w-6xl px-4 py-5">
           {embedded ? null : (
-            <div className="relative flex min-h-11 items-center justify-between gap-3">
+            <div className="relative flex min-h-11 items-center justify-between gap-2">
               <PublicListingPublisher autoResume />
-              <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
-              <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
+              <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-base font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                {!user && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={goToAuth}
+                    className="h-8 rounded-full px-3 text-xs font-semibold sm:h-9 sm:px-4 sm:text-sm"
+                  >
+                    <span className="sm:hidden">התחברות</span>
+                    <span className="hidden sm:inline">הרשמה / התחברות</span>
+                  </Button>
+                )}
+                <img src={realtyzLogo} alt="Realtyz" className="h-8 w-auto object-contain sm:h-10" />
+              </div>
             </div>
           )}
           <div className={cn('-ms-2.5 flex items-center gap-2', embedded ? '' : 'mt-5')}>
