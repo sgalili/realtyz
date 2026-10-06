@@ -12,11 +12,13 @@ export function publicPropertyType(row: Record<string, unknown>): string {
   const features = object(row.features);
   const attributes = object(row.attributes);
   const additional = object(row.additional_details);
-  const raw = text(row.property_type) || text(features.property_type) || text(attributes.text) || text(additional.text);
+  const generic = (v: string) => (v === 'כללי' || v.toLowerCase() === 'general' ? '' : v);
+  const raw = generic(text(row.property_type) || text(features.property_type) || text(attributes.text) || text(additional.text));
   if (PROPERTY_TYPES[raw.toLowerCase()]) return PROPERTY_TYPES[raw.toLowerCase()];
   if (raw && /[\u0590-\u05FF]/.test(raw)) return raw;
   const title = text(row.property_title) || text(row.title);
-  return title.match(/^(דירת גן|דירת גג|בית פרטי|נכס מסחרי|דירה|פנטהאוז|דופלקס|קוטג׳|סטודיו|מגרש|וילה)(?=\s|$)/)?.[1] || 'נכס';
+  return title.match(/^(דירת גן|דירת גג|בית פרטי|נכס מסחרי|דירה|פנטהאוז|דופלקס|קוטג׳|סטודיו|מגרש|וילה)(?=\s|$)/)?.[1]
+    || (Number(additional.roomsCount ?? row.rooms) > 0 ? 'דירה' : 'נכס');
 }
 
 export function publicAdTitle(row: Record<string, unknown>): string {
