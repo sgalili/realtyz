@@ -63,7 +63,7 @@ export async function runRitaForDm(admin: any, ownerId: string, page: MetaPage, 
   const focusRow = isProductInquiry ? null : await resolveFocusListing(admin, ownerId, dm.text, history, lead.interest_tag ?? null);
   const focusBlock = renderFocusPropertyBlock(focusRow as any);
   const stateBlock = isProductInquiry ? PRODUCT_INQUIRY_BLOCK : renderRitaStateBlock(readRitaState(lead.preferences)) + (!focusRow && textNamesAddress(dm.text) ? ADDRESS_NOT_FOUND_BLOCK : "");
-  const factAnswer = isProductInquiry ? null : answerPropertyFact(dm.text, focusRow as any);
+  const factAnswer = isProductInquiry ? null : answerPropertyFact(dm.text, focusRow as any, history);
   let reply = factAnswer ?? "";
 
   if (!reply && !isProductInquiry) {

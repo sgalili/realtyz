@@ -53,14 +53,45 @@ const FACTS: Array<{ key: string; re: RegExp; render: (l: any) => string | null 
 ];
 
 /** Deterministic answer for direct fact questions about the property in focus. */
-export function answerPropertyFact(text: string, row: FocusRow | null): string | null {
+export function answerPropertyFact(text: string, row: FocusRow | null, history?: Msg[]): string | null {
   if (!row || !text) return null;
   const l = row as any;
   const parts = FACTS.filter((f) => f.re.test(text)).map((f) => f.render(l)).filter(Boolean) as string[];
-  if (!parts.length) return null;
+  if (!parts.length) return history ? answerPropertyIntro(text, row, history) : null;
   const place = [l.address, l.house_number].filter(Boolean).join(" ");
   const lead = place ? `לגבי ${place}${l.city ? `, ${l.city}` : ""}: ` : "";
   return `${lead}${parts.join(", ")}.`;
+}
+
+/**
+ * When the contact's message itself names this listing (address or title) and
+ * Rita has not described it yet, answer with the real listing facts and offer
+ * a visit, instead of generic qualification questions.
+ */
+export function answerPropertyIntro(text: string, row: FocusRow | null, history: Msg[]): string | null {
+  if (!row || !text) return null;
+  const l = row as any;
+  const t = String(text).replace(/["'`״׳]/g, "");
+  const street = String(l.address ?? "").replace(/["'`״׳]/g, "").replace(/\d.*$/, "").trim();
+  const title = String(l.property_title ?? "").replace(/["'`״׳]/g, "").trim();
+  const named = (street.length >= 3 && t.includes(street)) || (title.length >= 8 && t.includes(title));
+  if (!named) return null;
+  const place = [l.address, l.house_number].filter(Boolean).join(" ") || title;
+  const already = history.some((m) => m.role === "assistant" && street.length >= 3 && String(m.content ?? "").includes(street));
+  if (already) return null;
+  const facts: string[] = [];
+  if (l.rooms) facts.push(`${l.rooms} חדרים`);
+  if (l.sqm) facts.push(`${l.sqm} מ"ר`);
+  if (l.floor !== null && l.floor !== undefined && l.floor !== "") facts.push(`קומה ${l.floor}`);
+  if (l.asking_price) facts.push(`מחיר ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח${l.deal_type === "rent" ? " לחודש" : ""}`);
+  const kind = l.deal_type === "rent" ? "להשכרה" : l.deal_type === "sale" ? "למכירה" : "";
+  const desc = l.description ? String(l.description).replace(/\s+/g, " ").trim() : "";
+  const shortDesc = desc ? (desc.length > 220 ? `${desc.slice(0, 220).replace(/\s\S*$/, "")}...` : desc) : "";
+  let out = `לגבי ${place}${l.city ? `, ${l.city}` : ""}${kind ? ` (${kind})` : ""}:`;
+  if (facts.length) out += ` ${facts.join(", ")}.`;
+  if (shortDesc) out += `\n${shortDesc}`;
+  out += `\nאשמח לתאם לך סיור בנכס. מתי נוח לך?`;
+  return out;
 }
 
 const normalize = (v: string) => String(v ?? "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
