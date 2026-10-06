@@ -36,6 +36,13 @@ export type PublicListingDraftFields = {
   contactWhatsapp: string;
   termsAccepted: boolean;
   marketingAccepted: boolean;
+  commissionForm?: string;
+  commissionWhatsapp?: string;
+  commissionPhone?: string;
+  limitForm?: string;
+  limitWhatsapp?: string;
+  limitPhone?: string;
+  commissionTermsAccepted?: boolean;
 };
 
 export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
@@ -70,6 +77,13 @@ export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
   contactWhatsapp: '',
   termsAccepted: false,
   marketingAccepted: false,
+  commissionForm: '',
+  commissionWhatsapp: '',
+  commissionPhone: '',
+  limitForm: '',
+  limitWhatsapp: '',
+  limitPhone: '',
+  commissionTermsAccepted: false,
 };
 
 export type PublicListingDraft = PublicListingDraftFields & {
