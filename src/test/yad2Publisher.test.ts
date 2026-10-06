@@ -4,6 +4,13 @@ import { matchesAdvertiser } from '../../supabase/functions/_shared/listingMedia
 
 const source = 'https://www.yad2.co.il/realestate/item/abc123';
 describe('original Yad2 publisher evidence', () => {
+  it('uses explicit source buckets and never infers private from missing data', () => {
+    expect(extractYad2Publisher({ _source_bucket: 'agency' }, source).publisher_kind).toBe('broker');
+    expect(extractYad2Publisher({ _source_bucket: 'private' }, source).publisher_kind).toBe('private');
+    expect(extractYad2Publisher({}, source).publisher_kind).toBeUndefined();
+    expect(extractYad2Publisher({ _source_bucket: 'private', office_name: 'משרד מקור' }, source).publisher_kind).toBe('broker');
+    expect(extractYad2Publisher({ contact_info: { logo: 'https://img.yad2.co.il/source-office.png' } }, source).office_logo_url).toBe('https://img.yad2.co.il/source-office.png');
+  });
   it('retains explicit publisher logo and licensed advertiser, never related advertisers', () => {
     const metadata = extractYad2Publisher({ customer: { name: 'עדן ויטמן', licenseNumber: '3251745', logo: 'https://img.yad2.co.il/office-logo.png' }, related: [{ agency: { name: 'Wrong office' } }] }, source);
     expect(metadata.broker_name).toBe('עדן ויטמן');

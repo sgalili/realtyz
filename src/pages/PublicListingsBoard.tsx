@@ -259,12 +259,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       <header className="bg-card">
         <div className="mx-auto max-w-6xl px-4 pb-0 pt-5">
           {embedded ? null : (
-            <div className="relative flex min-h-11 items-center justify-between gap-2">
+            <div className="relative flex min-h-11 flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
               <div className="flex items-center gap-2">
                 <PublicListingPublisher autoResume />
                 {!user && <Button size="sm" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" className="h-8 border-0 bg-transparent px-1 text-xs font-semibold shadow-none hover:bg-transparent sm:text-sm">הרשמה / התחברות</Button>}
               </div>
-              <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-base font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
+              <h1 className="pointer-events-none order-3 w-full text-center text-base font-bold text-foreground sm:absolute sm:left-1/2 sm:top-1/2 sm:order-none sm:w-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:text-2xl">לוח נדל״ן שיתופי</h1>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <img src={realtyzLogo} alt="Realtyz" className="h-[41.6px] w-auto object-contain sm:h-[52px]" />
               </div>

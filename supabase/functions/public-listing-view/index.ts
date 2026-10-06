@@ -102,10 +102,10 @@ Deno.serve(async (req) => {
       const licence = verifiedSourceLicense(m);
       // "בלעדיות" on Yad2 means a broker/agency posted the ad, never a private owner.
       const exclusive = [row.additional_details, row.attributes].some((d: any) => d?.isAssetExclusive === true);
-      const broker = exclusive || !!licence || !!office || m.publisher_kind === "broker";
+      const broker = exclusive || !!licence || !!office || ["broker", "agency"].includes(m.publisher_kind);
       return {
         broker_name: name ?? (broker ? "מתווך" : "בעל הנכס"),
-        office_name: office ?? (broker ? "משרד תיווך" : "מפרסם פרטי"),
+        office_name: office ?? (broker ? "משרד תיווך" : m.publisher_kind === "private" ? "מפרסם פרטי" : null),
         broker_license_number: licence,
         agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url),
       };
