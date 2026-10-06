@@ -66,7 +66,7 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
 
 export function PublicListingPublisher({ autoResume = false, disabled = false }: { autoResume?: boolean; disabled?: boolean }) {
   const { user } = useAuth();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, setActiveWorkspace, refresh: refreshWorkspaces } = useWorkspace();
   const { isPropertyOwner, refetch: refetchRoles } = useUserRole();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -179,7 +179,15 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
        void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
       toast.success('הנכס פורסם בלוח השיתופי');
         setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0); setImportSlide(false); setImported(null); setImportUrl('');
-       navigate('/public-listings', { replace: true, state: { publishedListingId: (data as { id?: string } | null)?.id } });
+      const publishedListingId = (data as { id?: string } | null)?.id;
+      // First-time posters land inside their own signed-in workspace with the
+      // full app shell, instead of staying on the public board.
+      const targetWorkspace = activeWorkspaceId || user.id;
+      try {
+        await refreshWorkspaces();
+        await setActiveWorkspace(targetWorkspace);
+      } catch { /* workspace switch is best-effort; navigation still proceeds */ }
+      navigate(draftFields.publisherType === 'private' ? '/my-ads' : '/dashboard', { replace: true, state: { publishedListingId } });
     } catch (error) {
       const e = error as { message?: string; details?: string; hint?: string } | null;
       const message = (error instanceof Error ? error.message : [e?.message, e?.details, e?.hint].filter(Boolean).join(' · ')) || 'שגיאה לא ידועה';
