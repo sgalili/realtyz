@@ -46,6 +46,7 @@ import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { BrandIcon } from '@/components/BrandIcon';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { getDemoCandidateMessages, getDemoCandidateVoters } from '@/lib/demoData';
@@ -501,6 +502,7 @@ function EditableInlineText({
 
 
 const LeadCRM = () => {
+  const { connected: homelyConnected } = useHomelyConnection();
   const { user } = useAuth();
   const { recruitmentMode, listingsEnabled } = useWorkspaceFeatures();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
@@ -575,7 +577,7 @@ const LeadCRM = () => {
   const [homelySyncing, setHomelySyncing] = useState(false);
 
   const handleHomelySync = async () => {
-    if (homelySyncing) return;
+    if (homelySyncing || !homelyConnected) return;
     setHomelySyncing(true);
     window.dispatchEvent(new Event('leads:busy:on'));
     const t = toast.loading('מסנכרן אנשי קשר מהומלי...');
@@ -664,12 +666,12 @@ const LeadCRM = () => {
       const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' | 'avatars' }>).detail?.action;
       if (action === 'manual') setAddVoterOpen(true);
       else if (action === 'import') fileInputRef.current?.click();
-      else if (action === 'homely') handleHomelySync();
+      else if (action === 'homely' && homelyConnected) handleHomelySync();
       else if (action === 'avatars') handleSyncProfilePictures();
     };
     window.addEventListener('leads:add', handler);
     return () => window.removeEventListener('leads:add', handler);
-  }, []);
+  }, [homelyConnected]);
 
 
   useRealtimeSubscription('messages', [['lead-messages', selectedVoterId ?? '']]);
@@ -2603,7 +2605,7 @@ const LeadCRM = () => {
                       // The injected label uses the global Hebrew dictionaries so legacy
                       // tokens like `webtiv_stream` / `new_lead` never leak through.
                       const hasMatch = !!value && options.some((o) => o.v === value);
-                      const dictLabel = SOURCE_LABEL_HE[value] || STAGE_LABEL_HE[value] || value;
+                      const dictLabel = value === 'homely' && !homelyConnected ? 'מקור חיצוני' : SOURCE_LABEL_HE[value] || STAGE_LABEL_HE[value] || value;
                       const mergedOptions = !value || hasMatch
                         ? options
                         : [{ v: value, l: dictLabel }, ...options];
@@ -2935,7 +2937,7 @@ const LeadCRM = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <HomelyBulkSyncDialog
+      {homelyConnected && <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
         onImported={() => {
@@ -2945,7 +2947,7 @@ const LeadCRM = () => {
           supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 2000, owner_id: activeWorkspaceId } }).catch(() => {});
         }}
         mode="contacts"
-      />
+      />}
 
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={(o) => { if (!deleting) setDeleteDialogOpen(o); }}>

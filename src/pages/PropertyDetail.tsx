@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { returnState } from "@/lib/returnNav";
 import { ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
@@ -224,6 +225,7 @@ async function invokeWithTimeout<T>(
 }
 
 export default function PropertyDetail() {
+  const { connected: homelyConnected } = useHomelyConnection();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1357,7 +1359,7 @@ export default function PropertyDetail() {
               </a>
             )}
 
-            {isHomelyListing && resolvedSourceUrl && (
+            {homelyConnected && isHomelyListing && resolvedSourceUrl && (
               <a href={resolvedSourceUrl} target="_blank" rel="noopener noreferrer" aria-label="צפייה במודעה המקורית ב-Homely" title="צפייה במודעה המקורית ב-Homely" className="inline-flex h-7 w-7 items-center justify-center rounded border border-primary text-sm font-extrabold text-primary transition hover:bg-primary hover:text-primary-foreground">H</a>
             )}
             {!isYad2Listing && !isHomelyListing && resolvedSourceUrl && (

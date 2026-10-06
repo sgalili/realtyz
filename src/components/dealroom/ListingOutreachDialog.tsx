@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -67,6 +69,8 @@ export function ListingOutreachDialog({
   defaultListingId,
   defaultSource,
 }: ListingOutreachDialogProps) {
+  const { connected: homelyConnected } = useHomelyConnection();
+  const workspaceId = useActiveWorkspaceOwnerId();
   const [source, setSource] = useState<'internal' | 'homely'>(defaultSource ?? 'internal');
   const [leadId, setLeadId] = useState<string>('');
   const [listingId, setListingId] = useState<string>('');
@@ -128,8 +132,8 @@ export function ListingOutreachDialog({
   });
 
   const { data: homelyListings, isLoading: loadingHomely, error: homelyError } = useQuery({
-    queryKey: ['outreach-homely-listings'],
-    enabled: open && source === 'homely',
+    queryKey: ['outreach-homely-listings', workspaceId],
+    enabled: open && source === 'homely' && homelyConnected,
     retry: false,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('call-homely-api', {
@@ -296,14 +300,14 @@ export function ListingOutreachDialog({
         </div>
 
         {/* Listing source tabs */}
-        <Tabs value={source} onValueChange={(v) => { setSource(v as any); setListingId(''); }}>
-          <TabsList className="grid grid-cols-2 w-full">
+        <Tabs value={homelyConnected ? source : 'internal'} onValueChange={(v) => { setSource(v as any); setListingId(''); }}>
+          <TabsList className={`grid w-full ${homelyConnected ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <TabsTrigger value="internal" className="gap-1.5">
               <Home className="h-4 w-4" /> הנכסים שלי
             </TabsTrigger>
-            <TabsTrigger value="homely" className="gap-1.5">
+            {homelyConnected && <TabsTrigger value="homely" className="gap-1.5">
               <Globe className="h-4 w-4" /> Homely
-            </TabsTrigger>
+            </TabsTrigger>}
           </TabsList>
 
           <TabsContent value="internal" className="mt-3">
@@ -345,7 +349,7 @@ export function ListingOutreachDialog({
             )}
           </TabsContent>
 
-          <TabsContent value="homely" className="mt-3">
+          {homelyConnected && <TabsContent value="homely" className="mt-3">
             {loadingHomely ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -360,7 +364,7 @@ export function ListingOutreachDialog({
               <p className="text-sm text-muted-foreground py-6 text-center">לא הוחזרו נכסי Homely.</p>
             ) : (
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                {homelyListings!.map((l) => (
+                {(homelyListings ?? []).map((l) => (
                   <Card
                     key={l.id}
                     className={cn(
@@ -386,7 +390,7 @@ export function ListingOutreachDialog({
                 ))}
               </div>
             )}
-          </TabsContent>
+          </TabsContent>}
         </Tabs>
 
         <div className="space-y-2">

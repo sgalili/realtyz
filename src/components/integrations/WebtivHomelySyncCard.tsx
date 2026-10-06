@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,7 @@ type State = {
 };
 
 export function WebtivHomelySyncCard() {
+  const { connected } = useHomelyConnection();
   const { user } = useAuth();
   const [state, setState] = useState<State | null>(null);
   const [buyers, setBuyers] = useState(DEFAULT_BUYERS);
@@ -102,6 +104,7 @@ export function WebtivHomelySyncCard() {
     return <Badge variant="outline">טרם הופעל</Badge>;
   };
 
+  if (!connected) return null;
   return (
     <div className="mt-4 rounded-lg border border-border/40 bg-muted/20 p-3 space-y-3">
       <div className="flex items-start justify-between gap-3">
