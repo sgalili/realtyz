@@ -174,6 +174,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   }, [draftScope]);
   const restoredScope = useRef('');
   const saveDraft = (f = fields, images = files, clips = videos) => restoredScope.current !== draftScope ? Promise.resolve() : savePublicListingDraft({ ...f, publicationError: f.publicationError || publishError, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step, importUrl, reviewMode, importSlide, expandedStep, wizardStep: step }, images, clips, draftScope);
+  const resetAll = () => {
+    restoredScope.current = draftScope;
+    void clearPublicListingDraft(draftScope).catch(() => {});
+    setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]);
+    setImportUrl(''); setImported(null); setPublishError(''); setConfirming(false);
+    setReviewMode(false); setExpandedStep('step-0'); setStep(0); setImportSlide(true);
+    setAddressResolved(false); setMyPropsSave('idle'); lastAutoImport.current = '';
+  };
   // Always restore the last saved draft (all slides, media, step) for this user/workspace when the wizard opens.
   useEffect(() => {
     if (!open || resumeDraft || restoredScope.current === draftScope) return;
@@ -829,6 +837,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         <Button disabled={disabled} className="h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
       </DialogTrigger>}
       <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6">
+        <Button type="button" variant="ghost" size="icon" aria-label="איפוס והתחלה מחדש" title="איפוס והתחלה מחדש" disabled={publishing || importing} onClick={resetAll} className="absolute left-4 top-4 h-8 w-8 text-muted-foreground hover:text-foreground">
+          <RotateCcw className="h-4 w-4" />
+        </Button>
         <DialogHeader className="text-right">
           <DialogTitle>
              {reviewMode ? 'פרסום מודעה' : step === 0 && importSlide ? 'יצירת מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
