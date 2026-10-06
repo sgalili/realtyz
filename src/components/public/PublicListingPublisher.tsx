@@ -629,7 +629,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   return (
     <Dialog open={open} onOpenChange={value => { if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       {!resumeDraft && <DialogTrigger asChild>
-        <Button disabled={disabled} className="h-9 whitespace-nowrap text-[28px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
+        <Button disabled={disabled} className="h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
       </DialogTrigger>}
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
