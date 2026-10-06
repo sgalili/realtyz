@@ -541,6 +541,24 @@ export function PublicListingPublisher({ autoResume = false, disabled = false }:
           ) : <span />}
         </div>
       </DialogContent>
+      <Dialog open={overviewOpen} onOpenChange={setOverviewOpen}>
+        <DialogContent dir="rtl" className="sm:max-w-lg">
+          <DialogHeader><DialogTitle className="text-right">המודעה יובאה מיד2 · סקירת שלבים</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">ירוק: מולא מהייבוא. אפור: חסרים פרטים. לחצו על שלב כדי לעבור אליו.</p>
+          <div className="grid grid-cols-4 gap-3 py-2">
+            {STEP_TITLES.map((title, i) => {
+              const ok = stepFilled(i);
+              return (
+                <button key={title} type="button" onClick={() => { setImportSlide(false); setStep(i); setOverviewOpen(false); }} className="flex flex-col items-center gap-1 text-center">
+                  <span className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-bold transition-colors ${ok ? 'border-success bg-success text-success-foreground' : 'border-border bg-muted text-muted-foreground'}`}>{i + 1}</span>
+                  <span className="text-[11px] leading-tight">{title}</span>
+                </button>
+              );
+            })}
+          </div>
+          <Button type="button" onClick={() => { const first = STEP_TITLES.findIndex((_, i) => !stepFilled(i)); setImportSlide(false); setStep(first === -1 ? 7 : first); setOverviewOpen(false); }}>המשך לשלב הבא שחסר</Button>
+        </DialogContent>
+      </Dialog>
       <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="sm:max-w-lg"><DialogHeader><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader><div className="space-y-3">{previews[0] && <img src={previews[0].url} alt="תצוגת הנכס" className="aspect-video w-full rounded-md object-cover" />}<p className="text-lg font-bold">{fields.propertyType} · {[fields.street, fields.houseNumber, fields.city].filter(Boolean).join(' ')}</p><p className="font-bold text-primary">₪{Number(fields.price || 0).toLocaleString('he-IL')}</p><p className="text-sm text-muted-foreground">{[fields.rooms && `${fields.rooms} חדרים`, (fields.sqm || fields.builtSqm) && `${fields.sqm || fields.builtSqm} מ״ר`, fields.floor && `קומה ${fields.floor}`].filter(Boolean).join(' · ')}</p></div><div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div></DialogContent></Dialog>
     </Dialog>
   );
