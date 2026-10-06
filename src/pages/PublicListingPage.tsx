@@ -432,15 +432,21 @@ function PublicListingContent() {
               <p className="whitespace-pre-line text-base leading-7 text-foreground">{data.description}</p>
             )}
 
-            {data.details.length > 0 && (
-              <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t pt-4 sm:grid-cols-2">
-                {data.details.map((detail, index) => (
-                  <div key={`${detail.label}-${index}`} className="min-w-0">
-                    <dt className="text-xs font-semibold text-muted-foreground">{detail.label}</dt>
-                    <dd className="mt-1 break-words text-sm text-foreground">{detail.value}</dd>
-                  </div>
-                ))}
-              </dl>
+            {data.attributes.length > 0 && (
+              <div className="border-t pt-4">
+                <h2 className="mb-2 text-sm font-bold text-foreground">נתוני הנכס</h2>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                  {data.attributes.map((card) => (
+                    <div key={card.label} className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-background/70 p-2.5" dir="rtl">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><card.icon className="h-4 w-4" /></span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-muted-foreground">{card.label}</p>
+                        <p className="break-words text-sm font-semibold text-foreground">{card.value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {data.groups.map((group) => (
