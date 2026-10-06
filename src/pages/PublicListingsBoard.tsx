@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
@@ -164,28 +163,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
   const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  // Owner action bar sticks to the viewport top while its expanded section is scrolled.
-  const ownerBarRef = useRef<HTMLDivElement | null>(null);
-  const ownerSectionRef = useRef<HTMLDivElement | null>(null);
-  const [ownerBarStuck, setOwnerBarStuck] = useState(false);
-  useEffect(() => {
-    if (!expandedId) { setOwnerBarStuck(false); return; }
-    const measure = () => {
-      const bar = ownerBarRef.current;
-      const section = ownerSectionRef.current;
-      if (!bar || !section) { setOwnerBarStuck(false); return; }
-      const barTop = bar.getBoundingClientRect().top;
-      const sectionBottom = section.getBoundingClientRect().bottom;
-      setOwnerBarStuck(barTop <= 0 && sectionBottom > 0);
-    };
-    document.addEventListener('scroll', measure, { passive: true, capture: true });
-    window.addEventListener('resize', measure);
-    measure();
-    return () => {
-      document.removeEventListener('scroll', measure, { capture: true } as any);
-      window.removeEventListener('resize', measure);
-    };
-  }, [expandedId]);
 
   // Draggable scroll bar under the table header row: dragging the thumb slides the table sideways.
   const thumbDrag = useRef<{ pointerId: number; startX: number; startNorm: number } | null>(null);
@@ -405,21 +382,13 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={columns.visible.length + 1} className="p-0">
                           <AnimatedExpansion open={open}>
-                          <div id={`details-${card.id}`} ref={open ? ownerSectionRef : undefined} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
+                          <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
                               {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} />}
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact showShare={false} />
                             </div>
                           </div>
                           </AnimatedExpansion>
-                          {open && user && ownerBarStuck && createPortal(
-                            <div dir="rtl" className="fixed inset-x-0 top-0 z-50 border-b bg-background/95 px-3 py-2 shadow-sm backdrop-blur-sm">
-                              <div className="mx-auto w-full max-w-xl">
-                                <OwnerListingActions listingId={card.id} />
-                              </div>
-                            </div>,
-                            document.body
-                          )}
                         </td>
                       </tr>,
                     ];
