@@ -1,4 +1,8 @@
 # Roadmap
+## Public board table customization
+- [ ] Add ascending/descending header sorting and draggable column order.
+- [ ] Add minimal column visibility menu and remember preferences after refresh/exit.
+- [ ] Verify sorting, dragging, hiding, persistence and expanded rows on real listings.
 ## Address finder and publication steps
 - [x] Refine Hebrew address selection and conditional city/street/house-number row; remove apartment input and relocate floor selectors.
 - [x] Number publication sections 1–7 independently of setup, preserving saved draft step identities.
