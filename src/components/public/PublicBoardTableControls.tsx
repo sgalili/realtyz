@@ -77,7 +77,7 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const label = BOARD_COLUMNS.find(c => c.id === id)?.label;
   const sorted = controls.sort?.id === id;
-  return <th ref={setNodeRef} data-column={id} aria-sort={sorted ? controls.sort?.descending ? 'descending' : 'ascending' : 'none'} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group/column p-2 text-right font-semibold ${isDragging ? 'relative z-10 bg-muted opacity-80' : ''}`}>
+  return <th ref={setNodeRef} data-column={id} aria-sort={sorted ? controls.sort?.descending ? 'descending' : 'ascending' : 'none'} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group/column px-2 pb-0 pt-2 text-right font-semibold ${isDragging ? 'relative z-10 bg-muted opacity-80' : ''}`}>
     <div className="flex items-center gap-0.5 whitespace-nowrap">
       <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-7 gap-1 px-0 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
         {label}{sorted && (controls.sort?.descending ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />)}

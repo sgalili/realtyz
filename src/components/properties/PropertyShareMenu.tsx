@@ -26,6 +26,9 @@ export function PropertyShareMenu({
   className,
   disabled,
   hidePublish = false,
+  open,
+  onOpenChange,
+  hideTrigger = false,
 }: {
   results: UnifiedResult[];
   iconOnly?: boolean;
@@ -36,6 +39,11 @@ export function PropertyShareMenu({
   disabled?: boolean;
   /** Hides the "פרסום ברשתות" item (used where a dedicated campaign button already exists). */
   hidePublish?: boolean;
+  /** Controlled open state — lets a parent menu item open this menu. */
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  /** Hides the built-in trigger button (use with controlled open). */
+  hideTrigger?: boolean;
 }) {
   const navigate = useNavigate();
   const { isPartnerMode } = useAppMode();
@@ -101,7 +109,7 @@ export function PropertyShareMenu({
 
   return (
     <>
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           size={iconOnly ? 'icon' : size}
@@ -110,7 +118,7 @@ export function PropertyShareMenu({
           onClick={(e) => e.stopPropagation()}
           aria-label={iconOnly ? 'שתף נכס' : undefined}
           title="שתף נכס עם מתעניין"
-          className={`gap-1.5 ${iconOnly ? 'h-8 w-8' : ''} ${className ?? ''}`}
+          className={`gap-1.5 ${iconOnly ? 'h-8 w-8' : ''} ${hideTrigger ? 'hidden' : ''} ${className ?? ''}`}
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
           {!iconOnly && <span>{count > 1 ? `${label} (${count})` : label}</span>}

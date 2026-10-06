@@ -3,7 +3,8 @@
 import { returnState } from "@/lib/returnNav";
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Handshake, Loader2, Megaphone, Pencil, Trash2 } from 'lucide-react';
+import { Handshake, Loader2, Megaphone, MoreVertical, Pencil, Share2, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,6 +92,7 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
   const [confirm, setConfirm] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [rewardOpen, setRewardOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   const { isSuperAdmin } = useUserRole();
@@ -106,19 +108,46 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
   }, [listingId, user?.id, activeWorkspaceId, reloadKey, isSuperAdmin]);
 
   if (!row) return null;
+  const live = sourceYad2Url(row);
+  const rawAff = raw ?? {};
+  const affiliateActive = !!rawAff.affiliate_enabled && Number(rawAff.affiliate_reward_amount ?? 0) > 0;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
-      <span className="text-xs font-semibold text-muted-foreground">ניהול המודעה שלי</span>
-      <div className="flex items-center gap-1.5">
-        <PropertyRowActions
-          r={row}
-          hideSharePublish
-          onCampaign={(r) => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.localId}&listing=${r.localId}`, { state: returnState() })}
-          onEdit={() => setEditOpen(true)}
-          onDelete={() => setConfirm(true)}
-          onAffiliate={() => setRewardOpen(true)}
-        />
-      </div>
+    <div className="flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="icon" variant="ghost" className="h-8 w-8" title="ניהול המודעה שלי" aria-label="ניהול המודעה שלי">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-52" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuLabel className="text-xs">ניהול המודעה שלי</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {live ? (
+            <DropdownMenuItem asChild className="gap-2 text-sm">
+              <a href={live} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                <Yad2Icon className="h-4 w-4" /> פתח את המודעה ביד2
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${row.localId}&listing=${row.localId}`, { state: returnState() })}>
+            <Megaphone className="h-4 w-4" /> צור קמפיין לנכס
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setShareOpen(true)}>
+            <Share2 className="h-4 w-4" /> שתף נכס
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4" /> עריכת הנכס
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setRewardOpen(true)}>
+            <Handshake className={`h-4 w-4 ${affiliateActive ? 'text-success' : ''}`} /> {affiliateActive ? 'שיווק שותפים פעיל' : 'הגדר שיווק שותפים'}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="gap-2 text-sm text-destructive focus:text-destructive" onSelect={() => setConfirm(true)}>
+            <Trash2 className="h-4 w-4" /> מחיקת נכס
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <PropertyShareMenu results={[row]} iconOnly variant="ghost" hidePublish hideTrigger open={shareOpen} onOpenChange={setShareOpen} />
       <EditPropertyDialog property={raw} open={editOpen} onOpenChange={setEditOpen}
         onSaved={() => { setReloadKey((k) => k + 1); window.dispatchEvent(new CustomEvent('realtyz:listing-updated', { detail: { id: listingId } })); }} />
       <RewardDialog listing={rewardOpen ? raw : null} open={rewardOpen}

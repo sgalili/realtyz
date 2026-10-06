@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
@@ -164,28 +163,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
   const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  // Owner action bar sticks to the viewport top while its expanded section is scrolled.
-  const ownerBarRef = useRef<HTMLDivElement | null>(null);
-  const ownerSectionRef = useRef<HTMLDivElement | null>(null);
-  const [ownerBarStuck, setOwnerBarStuck] = useState(false);
-  useEffect(() => {
-    if (!expandedId) { setOwnerBarStuck(false); return; }
-    const measure = () => {
-      const bar = ownerBarRef.current;
-      const section = ownerSectionRef.current;
-      if (!bar || !section) { setOwnerBarStuck(false); return; }
-      const barTop = bar.getBoundingClientRect().top;
-      const sectionBottom = section.getBoundingClientRect().bottom;
-      setOwnerBarStuck(barTop <= 0 && sectionBottom > 0);
-    };
-    document.addEventListener('scroll', measure, { passive: true, capture: true });
-    window.addEventListener('resize', measure);
-    measure();
-    return () => {
-      document.removeEventListener('scroll', measure, { capture: true } as any);
-      window.removeEventListener('resize', measure);
-    };
-  }, [expandedId]);
 
   // Draggable scroll bar under the table header row: dragging the thumb slides the table sideways.
   const thumbDrag = useRef<{ pointerId: number; startX: number; startNorm: number } | null>(null);
@@ -354,21 +331,21 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     {columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
-                    <th className="w-10 p-2"><BoardColumnMenu controls={columns} /></th>
+                    <th className="w-10 px-2 pb-0 pt-2"><BoardColumnMenu controls={columns} /></th>
                   </tr>
                   <tr>
                     <td colSpan={columns.visible.length + 1} className="p-0">
-                      <div className="sticky start-0 px-3 pb-2 pt-1" style={wrapWidth ? { width: wrapWidth } : undefined}>
+<div className="sticky start-0 px-3 pb-2 pt-[7px]" style={wrapWidth ? { width: wrapWidth } : undefined}>
                         {scrollIndicator.width < 99.5 && (
                           <div
-                            className="relative h-2 cursor-grab touch-none select-none active:cursor-grabbing"
+                            className="relative h-[7px] cursor-grab touch-none select-none active:cursor-grabbing"
                             onPointerDown={onBarPointerDown}
                             onPointerMove={onBarPointerMove}
                             onPointerUp={onBarPointerUp}
                             onPointerCancel={onBarPointerUp}
                           >
-                            <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-muted-foreground/15" />
-                            <div data-thumb className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
+<div className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-muted-foreground/15" />
+                            <div data-thumb className="absolute top-1/2 h-[5px] -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
                           </div>
                         )}
                       </div>
@@ -389,7 +366,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-full w-full rounded object-cover" loading="lazy" /> : <div className="h-full w-full rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex rounded-full bg-background/90 p-0.5 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem]">{open ? <PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
+                          ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem]">{open ? <div className="flex items-center gap-1"><div className="min-w-0 flex-1"><PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /></div>{user ? <OwnerListingActions listingId={card.id} /> : null}</div> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? (open ? null : shekel(card.price))
                           : id === 'rooms' ? card.rooms || ''
@@ -405,28 +382,13 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={columns.visible.length + 1} className="p-0">
                           <AnimatedExpansion open={open}>
-                          <div id={`details-${card.id}`} ref={open ? ownerSectionRef : undefined} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
-                            <div className="min-w-0">
-                              {open && user ? (
-                                <div ref={open ? ownerBarRef : undefined} className="mb-3">
-                                  <OwnerListingActions listingId={card.id} />
-                                </div>
-                              ) : null}
-                            </div>
+                          <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
                               {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} />}
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact showShare={false} />
                             </div>
                           </div>
                           </AnimatedExpansion>
-                          {open && user && ownerBarStuck && createPortal(
-                            <div dir="rtl" className="fixed inset-x-0 top-0 z-50 border-b bg-background/95 px-3 py-2 shadow-sm backdrop-blur-sm">
-                              <div className="mx-auto w-full max-w-xl">
-                                <OwnerListingActions listingId={card.id} />
-                              </div>
-                            </div>,
-                            document.body
-                          )}
                         </td>
                       </tr>,
                     ];
