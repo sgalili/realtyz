@@ -1,4 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,6 +26,52 @@ export function InstagramConnectionCard() {
   const refreshHealth = useRefreshFacebookHealth();
   const [helpOpen, setHelpOpen] = useState(false);
   const [checking, setChecking] = useState(false);
+  const { user } = useAuth();
+  const wsId = useActiveWorkspaceOwnerId();
+  const qc = useQueryClient();
+  const directKey = ['ig-direct', wsId];
+  const { data: direct } = useQuery({
+    queryKey: directKey,
+    enabled: !!wsId,
+    queryFn: async () => {
+      const { data } = await supabase.from('social_connections').select('id, credentials, is_connected')
+        .eq('workspace_owner_id', wsId!).eq('platform', 'instagram_direct').maybeSingle();
+      return data as { id: string; credentials: Record<string, string>; is_connected: boolean } | null;
+    },
+  });
+  const directHandle = direct?.is_connected ? direct.credentials?.username ?? null : null;
+  const [handleInput, setHandleInput] = useState('');
+  const [savingDirect, setSavingDirect] = useState(false);
+  useEffect(() => { if (directHandle) setHandleInput(directHandle); }, [directHandle]);
+
+  const parseHandle = (raw: string) => {
+    let v = raw.trim();
+    const m = v.match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+    if (m) v = m[1];
+    v = v.replace(/^@/, '').replace(/\/.*$/, '');
+    return /^[A-Za-z0-9._]{1,30}$/.test(v) ? v.toLowerCase() : null;
+  };
+
+  const saveDirect = async (disconnect = false) => {
+    const username = disconnect ? null : parseHandle(handleInput);
+    if (!disconnect && !username) { toast.error('שם משתמש או קישור אינסטגרם לא תקין'); return; }
+    setSavingDirect(true);
+    try {
+      const payload = {
+        platform: 'instagram_direct', display_name: 'Instagram (ישיר)',
+        credentials: username ? { username, profile_url: `https://instagram.com/${username}` } : {},
+        is_connected: !!username, created_by: user?.id, workspace_owner_id: wsId,
+      };
+      const { error } = direct
+        ? await supabase.from('social_connections').update(payload as never).eq('id', direct.id)
+        : await supabase.from('social_connections').upsert(payload as never, { onConflict: 'workspace_owner_id,platform' });
+      if (error) throw error;
+      toast.success(username ? `אינסטגרם @${username} חובר` : 'החיבור הישיר נותק');
+      if (!username) setHandleInput('');
+      qc.invalidateQueries({ queryKey: directKey });
+    } catch (e: any) { toast.error(e?.message ?? 'שמירה נכשלה'); }
+    finally { setSavingDirect(false); }
+  };
 
   // STRICT true-state: verified Page token AND a linked IG account.
   const igConnected =
@@ -106,6 +157,23 @@ export function InstagramConnectionCard() {
             </Button>
           </div>
         )}
+
+        <div className="space-y-2 rounded-xl border p-3">
+          <p className="text-[13px] font-semibold">חיבור ישיר (ללא תלות בפייסבוק)</p>
+          {directHandle ? (
+            <div className="flex items-center justify-between gap-2">
+              <a href={`https://instagram.com/${directHandle}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="truncate text-[14px] font-medium text-primary">@{directHandle}</a>
+              <Button size="sm" variant="outline" className="h-8 text-[13px]" disabled={savingDirect} onClick={() => void saveDirect(true)}>נתק</Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input dir="ltr" value={handleInput} onChange={(e) => setHandleInput(e.target.value)} placeholder="@username או קישור לפרופיל" className="h-9 text-[14px]" />
+              <Button size="sm" className="h-9" disabled={savingDirect || !handleInput.trim()} onClick={() => void saveDirect()}>
+                {savingDirect ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'חבר'}
+              </Button>
+            </div>
+          )}
+        </div>
 
         <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
           <DialogContent dir="rtl" className="text-right sm:max-w-md">
