@@ -361,6 +361,8 @@ function PropertyCard({
 
 /** Property Snippet card — also exported for reuse inside the chat draft preview. */
 export function PropertySnippet({ property }: { property: PropertyResult }) {
+  const { connected } = useHomelyConnection();
+  if (property.source === 'homely' && !connected) return null;
   return (
     <div className={cn(
       'rounded-lg border bg-card overflow-hidden',

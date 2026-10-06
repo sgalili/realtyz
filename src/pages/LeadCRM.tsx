@@ -2574,7 +2574,7 @@ const LeadCRM = () => {
                       { v: 'closed', l: 'סגר עסקה' },
                     ];
                     const sourceOpts = [
-                      { v: 'homely', l: 'הומלי' },
+                      ...(homelyConnected ? [{ v: 'homely', l: 'הומלי' }] : []),
                       { v: 'shortlink', l: 'פוסט פייסבוק' },
                       { v: 'facebook_groups', l: 'פייסבוק קבוצות' }, { v: 'facebook', l: 'פייסבוק' },
                       { v: 'instagram', l: 'אינסטגרם' }, { v: 'whatsapp', l: 'וואטסאפ' },

@@ -419,8 +419,11 @@ export default function Properties() {
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
       searchCities.forEach((c, i) => perCity.set(c, responses[i].results));
       const respSources = mergeSourceStatuses(responses.map((r) => (r.sources ?? {}) as Record<string, SourceInfo>));
-      const filtered = paint();
-      setCompletedResults(filtered.filter(isRelevantListing).filter(r => r.source !== 'homely' || homelyConnected));
+      const filtered = paint().filter(isRelevantListing).filter(r =>
+        (r.source !== 'homely' || homelyConnected) &&
+        (r.sources?.length ? r.sources : [r.source]).some(source => activeSources.includes(source)) &&
+        (effectiveListing === 'all' || !effectiveListing || r.listing_type === effectiveListing));
+      setCompletedResults(filtered);
       if (filtered.length) {
         setResults(filtered);
         setShowingFallback(false);

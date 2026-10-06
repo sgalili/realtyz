@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/AppLayout';
@@ -63,6 +64,7 @@ const INTEGRATION_LABEL: Record<string, string> = {
 };
 
 export default function SystemHealth() {
+  const { connected: homelyConnected } = useHomelyConnection();
   const qc = useQueryClient();
 
   const { data: settings } = useQuery({
@@ -156,7 +158,7 @@ export default function SystemHealth() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {(status ?? []).map((r: any) => (
+              {(status ?? []).filter((r: any) => r.integration !== 'homely' || homelyConnected).map((r: any) => (
                 <div
                   key={r.integration}
                   className="flex items-center justify-between rounded-md border bg-card p-3"
@@ -256,7 +258,7 @@ export default function SystemHealth() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(logs ?? []).map((l) => {
+                  {(logs ?? []).filter(l => l.integration !== 'homely' || homelyConnected).map((l) => {
                     const cat = parseErrorCode(l.error_code);
                     return (
                       <tr key={l.id} className="border-t">
