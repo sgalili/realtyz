@@ -24,6 +24,10 @@ const bareId = (id: string) => id.replace(/^(ext:|manual:)/, '');
 /** Minimum readable font size across this card. */
 const TEXT_SM = 'text-[14px]';
 const TEXT_MD = 'text-[15px]';
+const MAX_GROUPS = 100;
+const JOIN_BATCH = 5;
+const sortByPopularity = <T extends { members: number | null }>(list: T[]) =>
+  [...list].sort((a, b) => (b.members ?? -1) - (a.members ?? -1));
 
 /** Local cache so groups render instantly on the next visit. */
 const CACHE_KEY_BASE = 'realtyz_fb_targets_cache';
@@ -225,14 +229,20 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   };
 
 
-  const joinTargets = async (targets: GroupTarget[]) => {
-    if (!targets.length || joining || !workspaceOwnerId) return;
+  const joinTargets = async (picked: GroupTarget[]) => {
+    if (!picked.length || joining || !workspaceOwnerId) return;
     if (!isExtensionInstalled()) { toast.error('כדי להצטרף לקבוצות יש להתקין את תוסף Realtyz'); return; }
+    // Safety: never exceed 100 joined groups; most popular groups first.
+    const capacity = Math.max(0, MAX_GROUPS - groups.length);
+    if (capacity === 0) { toast.error(`הגעת למגבלה של ${MAX_GROUPS} קבוצות פעילות`); return; }
+    const targets = sortByPopularity(picked).slice(0, capacity);
+    if (targets.length < picked.length) toast.info(`ההצטרפות הוגבלה ל-${targets.length} הקבוצות הפופולריות ביותר (מגבלה של ${MAX_GROUPS})`);
     setJoining(true);
     const owner = workspaceOwnerId;
     let ok = 0;
-    for (let i = 0; i < targets.length; i += 15) {
-      const batch = targets.slice(i, i + 15);
+    for (let i = 0; i < targets.length; i += JOIN_BATCH) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 120000 + Math.floor(Math.random() * 120000)));
+      const batch = targets.slice(i, i + JOIN_BATCH);
       const byBare = new Map(batch.map((g) => [bareId(g.groupId), g]));
       setJoinProgress((p) => ({ ...p, ...Object.fromEntries(batch.map((g) => [g.id, 'בתור'])) }));
       const run = joinGroupsViaExtension(
@@ -331,8 +341,8 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
             notJoinedGroups.length === 0 ? (
               <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות בהמתנה.</p>
             ) : (<>
-              <SelectAllRow total={notJoinedGroups.length} selected={joinPicked.size}
-                onToggle={() => setJoinPicked(joinPicked.size === notJoinedGroups.length ? new Set() : new Set(notJoinedGroups.map((g) => g.id)))}
+              <SelectAllRow total={Math.min(notJoinedGroups.length, MAX_GROUPS)} selected={joinPicked.size}
+                onToggle={() => setJoinPicked(joinPicked.size > 0 ? new Set() : new Set(sortByPopularity(notJoinedGroups).slice(0, MAX_GROUPS).map((g) => g.id)))}
                 className="rounded-lg border border-border">
                 <Button type="button" size="sm" className="h-7 gap-1 text-[12px]" disabled={joinPicked.size === 0 || joining}
                   onClick={() => void joinTargets(notJoinedGroups.filter((g) => joinPicked.has(g.id)))}>
@@ -341,9 +351,9 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 </Button>
               </SelectAllRow>
               <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
-                {notJoinedGroups.map((g) => renderSimpleRow(g, (<>
+                {sortByPopularity(notJoinedGroups).map((g) => renderSimpleRow(g, (<>
                   <SelectBox checked={joinPicked.has(g.id)} label={g.name}
-                    onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else n.add(g.id); return n; })} />
+                    onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else if (n.size < MAX_GROUPS) n.add(g.id); else toast.info(`ניתן לבחור עד ${MAX_GROUPS} קבוצות`); return n; })} />
                   {g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-primary" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
                 </>)))}
               </div>

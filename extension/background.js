@@ -1164,7 +1164,7 @@ const rzJoinCancelled = new Set();
 
 async function rzJoinGroups(requestId, groups, senderTabId) {
   const report = (payload) => { if (senderTabId != null) chrome.tabs.sendMessage(senderTabId, { type: 'RZ_FB_GROUP_JOIN_PROGRESS', requestId, ...payload }, () => chrome.runtime.lastError); };
-  const list = groups.slice(0, 15);
+  const list = groups.slice(0, 5);
   for (let i = 0; i < list.length; i++) {
     const g = list[i];
     if (rzJoinCancelled.has(requestId)) break;
@@ -1188,8 +1188,11 @@ async function rzJoinGroups(requestId, groups, senderTabId) {
     } catch (e) { status = 'failed'; error = String(e && e.message || e); }
     finally { if (tab && status !== 'needs_answers') { try { await chrome.tabs.remove(tab.id); } catch (e) { /* noop */ } } }
     report({ groupId: g.group_id, status, error });
-    // Human-like spacing between joins so the account is not flagged.
-    if (i < list.length - 1) await rzWait(20000 + Math.floor(Math.random() * 20000));
+    // Strictly sequential, human-like spacing: 30-75s between joins, plus a 3-6 min rest every 5 joins.
+    if (i < list.length - 1) {
+      await rzWait(30000 + Math.floor(Math.random() * 45000));
+      if ((i + 1) % 5 === 0) await rzWait(180000 + Math.floor(Math.random() * 180000));
+    }
   }
   rzJoinCancelled.delete(requestId);
   report({ done: true });

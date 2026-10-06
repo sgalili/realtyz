@@ -33,7 +33,7 @@ const STATUS_LABEL: Record<JoinStatus | "queued" | "joining", string> = {
 };
 
 /** Hard cap per run so Facebook does not flag the account. */
-const MAX_JOIN_BATCH = 15;
+const MAX_JOIN_BATCH = 5;
 
 const fmtActivity = (n: number | null) => {
   if (n === null) return null;
@@ -150,7 +150,7 @@ export function GroupDiscoveryDialog({
   });
 
   const runJoin = async (list?: DiscoveredGroup[]) => {
-    const all = list ?? visible.filter((g) => picked.has(g.group_id));
+    const all = [...(list ?? visible.filter((g) => picked.has(g.group_id)))].sort((a, b) => (b.member_count ?? -1) - (a.member_count ?? -1)).slice(0, 100);
     if (!all.length) return;
     if (!isExtensionInstalled()) { toast.error("כדי להצטרף לקבוצות יש להתקין את תוסף Realtyz"); return; }
     setJoining(true);
