@@ -33,6 +33,7 @@ export type UnifiedResult = {
 };
 
 export type SearchFilters = {
+  sources?: PropertySource[];
   q?: string;
   city?: string | null;
   neighborhood?: string | null;
@@ -456,44 +457,20 @@ export async function searchAllSources(
   };
 
   const collected: Array<{ label: PropertySource; results: UnifiedResult[] }> = [];
-  const local = await localTask();
-  collected.push(local);
-  const localResults = mergeSettled(collected);
-  onPartial?.({
-    results: localResults,
-    sources: { ...sources },
-    progress: { done: 1, total: 3, loaded: localResults.length, pending: ['yad2', 'homely'] },
-  });
-
-  // Yad2 is the PRIMARY external source: it always runs first. Homely is only
-  // queried when Yad2 produced nothing for this query (no Yad2 page exists),
-  // which also saves Homely API calls on every ordinary search.
-  const yad2Result = await yad2Task();
-  collected.push(yad2Result);
-  const afterYad2 = mergeSettled(collected);
-  onPartial?.({
-    results: afterYad2,
-    sources: { ...sources },
-    progress: { done: 2, total: 3, loaded: afterYad2.length, pending: yad2Result.results.length ? [] : ['homely'] },
-  });
-
-  if (yad2Result.results.length === 0) {
-    const homelyResult = await homelyTask();
-    collected.push(homelyResult);
-    const afterHomely = mergeSettled(collected);
-    onPartial?.({
-      results: afterHomely,
-      sources: { ...sources },
-      progress: { done: 3, total: 3, loaded: afterHomely.length, pending: [] },
-    });
-  }
-
-
+  const enabled = f.sources ?? ['mine', 'yad2', 'homely'];
+  const tasks = [{ label: 'mine' as const, run: localTask }, { label: 'yad2' as const, run: yad2Task }, { label: 'homely' as const, run: homelyTask }].filter(task => enabled.includes(task.label));
+  const pending = new Set(tasks.map(task => task.label));
+  await Promise.all(tasks.map(async task => {
+    collected.push(await task.run());
+    pending.delete(task.label);
+    const rows = mergeSettled(collected);
+    onPartial?.({ results: rows, sources: { ...sources }, progress: { done: tasks.length - pending.size, total: tasks.length, loaded: rows.length, pending: [...pending] } });
+  }));
 
   const filtered = mergeSettled(collected);
   return {
     results: filtered,
     sources,
-    progress: { done: 3, total: 3, loaded: filtered.length, pending: [] },
+    progress: { done: tasks.length, total: tasks.length, loaded: filtered.length, pending: [] },
   };
 }
