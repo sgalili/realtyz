@@ -34,6 +34,7 @@ import { useListingPublishers } from '@/hooks/useListingPublishers';
 import { SelectModeToggle, SelectAllRow } from '@/components/ui/multi-select-controls';
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 import { useInventorySuggestions } from '@/hooks/useInventorySuggestions';
+import { usePropertySearchHistory } from '@/hooks/usePropertySearchHistory';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -146,9 +147,11 @@ export default function Properties() {
   const queryClient = useQueryClient();
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
+  const { entries: searchHistory, remember: rememberSearch } = usePropertySearchHistory(user?.id, activeWorkspaceId);
   const cached = useMemo(() => loadCache(), []);
 
-  const [q, setQ] = useState<string>(cached?.q ?? '');
+  const [q, setQ] = useState<string>('');
   const [listingType, setListingType] = useState<ListingType | 'all'>('all');
   const [city, setCity] = useState<string>(cached?.city ?? 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>(cached?.propertyType ?? 'all');
@@ -160,21 +163,20 @@ export default function Properties() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
-  const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
+  const [results, setResults] = useState<UnifiedResult[]>([]);
   const [sourceStatus, setSourceStatus] = useState<Record<string, SourceInfo>>({});
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
   const [selectedSources, setSelectedSources] = useState<PropertySource[]>(['yad2', 'homely', 'mine']);
   const { connected: homelyConnected } = useHomelyConnection();
   const availableSources = useMemo<PropertySource[]>(() => homelyConnected ? ['yad2', 'homely', 'mine'] : ['yad2', 'mine'], [homelyConnected]);
-  const activeSources = useMemo(() => { const sources = selectedSources.filter(source => availableSources.includes(source)); return sources.length ? sources : availableSources; }, [selectedSources, availableSources]);
-  const [sourcesExpanded, setSourcesExpanded] = useState(false);
+  const activeSources = useMemo(() => selectedSources.filter(source => availableSources.includes(source)), [selectedSources, availableSources]);
   const [completedResults, setCompletedResults] = useState<UnifiedResult[] | null>(null);
-  const toggleSource = (source: PropertySource) => { setSourceFilter(null); setSelectedSources(current => { const visible = current.filter(s => availableSources.includes(s)); return visible.includes(source) ? (visible.length > 1 ? visible.filter(s => s !== source) : visible) : [...visible, source]; }); };
+  const toggleSource = (source: PropertySource) => { setSourceFilter(null); setSelectedSources(current => current.includes(source) ? current.filter(s => s !== source) : [...current, source]); };
   const [searching, setSearching] = useState(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
-  const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
+  const [hasSearched, setHasSearched] = useState<boolean>(false);
   // True when the current table is the default pool shown because the user's
   // own search returned nothing. The grid is never allowed to be empty.
   const [showingFallback, setShowingFallback] = useState(false);
@@ -229,17 +231,14 @@ export default function Properties() {
   // inventory arrives through the twice-daily background sync job.
   const defaultPoolRef = useRef<Map<string, UnifiedResult[]>>(new Map());
   const loadDefaultPool = useCallback(async (type: ListingType | 'all' = 'all'): Promise<UnifiedResult[]> => {
-    const cacheKey = type;
-    const hit = defaultPoolRef.current.get(cacheKey);
-    if (hit) return hit;
+    if (!activeWorkspaceId) return [];
+    const cacheKey = `${activeWorkspaceId}:${type}`;
     const cities = (isConfigured && coveredCities.length ? coveredCities : DEFAULT_CITIES).slice(0, 6);
     // Own inventory + the SHARED market pool for the same cities. The pool is
     // refreshed twice a day by the scheduled job, so any workspace working in
     // these cities sees the fresh Yad2 inventory without an API call.
     const batches = await Promise.all([
-      ...cities.map((c) =>
-        searchLocalListings({ city: c, listing_type: 'all' }).catch(() => [] as UnifiedResult[]),
-      ),
+      searchLocalListings({ workspace_owner_id: activeWorkspaceId, listing_type: 'all' }).catch(() => [] as UnifiedResult[]),
       ...cities.map((c) =>
         searchMarketPool({ city: c, listing_type: 'all' }, 100).catch(() => [] as UnifiedResult[]),
       ),
@@ -256,7 +255,7 @@ export default function Properties() {
     });
     // Safety net: if the workspace cities hold nothing yet, show all stored inventory.
     if (!all.length) {
-      all = await searchLocalListings({ listing_type: 'all' }).catch(() => [] as UnifiedResult[]);
+      all = await searchLocalListings({ workspace_owner_id: activeWorkspaceId, listing_type: 'all' }).catch(() => [] as UnifiedResult[]);
       if (!all.length) all = await searchMarketPool({ listing_type: 'all' }, 200).catch(() => [] as UnifiedResult[]);
     }
     const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
@@ -269,7 +268,7 @@ export default function Properties() {
     defaultPoolRef.current.set(cacheKey, pool);
     return pool;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConfigured, coveredCities.join('|')]);
+   }, [isConfigured, coveredCities.join('|'), activeWorkspaceId]);
 
 
   // The table is NEVER empty: whenever the query box is blank we repaint the
@@ -296,6 +295,13 @@ export default function Properties() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadDefaultPool, listingType, q]);
 
+  useEffect(() => {
+    const refresh = () => { if (!q.trim()) void loadDefaultPool(listingType).then(setResults); };
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 30_000);
+    return () => { window.removeEventListener('focus', refresh); window.clearInterval(timer); };
+  }, [loadDefaultPool, listingType, q]);
+
   // INSTANT LOCAL FILTER — from the 3rd typed character we paint matching rows
   // straight out of our own `listings` table. Zero external calls, zero cost,
   // no waiting: external gateways only run when the user submits the search.
@@ -308,6 +314,7 @@ export default function Properties() {
     const timer = setTimeout(async () => {
       try {
         const rows = await searchLocalListings({
+          workspace_owner_id: activeWorkspaceId ?? undefined,
           q: term,
           listing_type: listingType === 'all' ? 'all' : listingType,
         });
@@ -322,7 +329,7 @@ export default function Properties() {
     }, 180);
     return () => { clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, listingType]);
+   }, [q, listingType, activeWorkspaceId]);
 
 
   // Monotonic token — bumping it aborts the in-flight search: late partials
@@ -520,13 +527,12 @@ export default function Properties() {
 
   // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,
   // gallery, description) and the user lands directly on the imported card.
-  const { activeWorkspaceId } = useWorkspace();
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
   const inventorySuggestions = useInventorySuggestions(q, activeWorkspaceId);
   const suggestions = inventorySuggestions.data ?? [];
   useEffect(() => { setSuggestionIndex(-1); }, [q]);
-  useEffect(() => { setSuggestionsOpen(false); setSelectedListingIds(new Set()); }, [activeWorkspaceId]);
+  useEffect(() => { setQ(''); setResults([]); defaultPoolRef.current.clear(); setSuggestionsOpen(false); setSelectedListingIds(new Set()); }, [activeWorkspaceId]);
   const markPublished = useCallback((ids: string[]) => {
     setResults(current => current.map(row => row.localId && ids.includes(row.localId) ? { ...row, raw: { ...row.raw, is_published: true, status: 'live', affiliate_enabled: true } } : row));
     setSelectedListingIds(current => new Set([...current].filter(id => !ids.includes(id))));
@@ -536,12 +542,15 @@ export default function Properties() {
   const yad2InFlight = useRef(false);
   const submitQuery = useCallback(async (override?: string) => {
     const raw = (typeof override === 'string' ? override : q).trim();
+    rememberSearch(raw);
+    setSuggestionsOpen(false);
     const found = raw.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S*/i)?.[0];
     // Exact ad token from /realestate/item/[region/]<token>; tracking params are dropped so the
     // scraper loads that one ad, never a feed page that could return a different property.
     const token = found?.match(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9]+)(?=[\/?#]|$)/i)?.[1] ?? null;
     const url = found ? (token ? `https://www.yad2.co.il/realestate/item/${token}` : (/^https?:/i.test(found) ? found : `https://${found}`)) : undefined;
     if (url) {
+      if (!activeWorkspaceId) return;
       if (yad2InFlight.current) return;
       yad2InFlight.current = true;
       setSearching(true);
@@ -550,6 +559,7 @@ export default function Properties() {
       try {
         const saved = await readRecentYad2Listing(token, activeWorkspaceId);
         if (saved) {
+          defaultPoolRef.current.clear();
           setYad2Status({ step: 4, label: 'הנכס נטען מהמאגר השמור', tone: 'ok' });
           setQ('');
           navigate(`/properties/${saved.listing_id}`, { state: { returnTo: '/properties' } });
@@ -581,7 +591,7 @@ export default function Properties() {
           localId = found?.[0]?.id ?? null;
         }
         if (localId) {
-          void ensureFullPropertyImport(localId, row.source_url ?? url).catch(() => {});
+          defaultPoolRef.current.clear();
           setYad2Status({ step: 4, label: data?.cached ? 'הנכס נטען מהמאגר השמור' : 'הנכס יובא בהצלחה — פותח את כרטיס הנכס', tone: 'ok' });
           queryClient.invalidateQueries({ queryKey: ['properties-search'] });
           setQ('');
@@ -604,7 +614,7 @@ export default function Properties() {
       return;
     }
     runSearch();
-  }, [q, runSearch, navigate, queryClient, activeWorkspaceId]);
+   }, [q, runSearch, navigate, queryClient, activeWorkspaceId, rememberSearch]);
 
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
@@ -668,7 +678,7 @@ export default function Properties() {
   // search re-runs in parallel through the effect below).
   const typeFiltered = useMemo(() => {
     // Blank / half-scraped rows never reach the screen.
-    const relevant = results.filter(isRelevantListing);
+    const relevant = results.filter(r => !!r.localId || isRelevantListing(r));
     const results_ = relevant.filter(r => (r.source !== 'homely' || homelyConnected) && (r.sources?.length ? r.sources : [r.source]).some(source => activeSources.includes(source)));
     const bySource = sourceFilter
       ? results_.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
