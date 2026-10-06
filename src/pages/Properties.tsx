@@ -843,7 +843,7 @@ export default function Properties() {
 
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
+    <div className="p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
