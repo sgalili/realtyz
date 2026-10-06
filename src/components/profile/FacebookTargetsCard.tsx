@@ -290,7 +290,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   );
 
   return (
-    <div dir="rtl" className={cn('rounded-xl border border-border bg-background p-3 space-y-3', className)}>
+    <div dir="rtl" className={cn('space-y-3', className)}>
       {/* Extension/sync row — "הוספת קבוצות" sits at the card's far edge. */}
       <div className="flex items-center justify-between gap-2">
         <ExtensionGroupSyncCard onSynced={() => void load()} actions={actions} className="min-w-0 flex-1" />
