@@ -83,7 +83,6 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
 
   const handleUpload = async (files: FileList | null, kind: 'photo' | 'video') => {
     if (!files || files.length === 0) return;
