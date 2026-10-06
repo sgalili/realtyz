@@ -517,7 +517,7 @@ export default function Properties() {
       const slow = window.setTimeout(() => setYad2Status((s) => s && s.tone === 'busy' ? { step: 2, label: 'סורק פרטים, תמונות, תיאור ומאפיינים…', tone: 'busy' } : s), 2500);
       try {
         const { data, error } = await supabase.functions.invoke('yad2-unlocker', {
-          body: { url, limit: 1, pages: 1 },
+          body: { url, limit: 1, pages: 1, import_item: true },
         });
         if (error) throw error;
         if (data?.error) throw new Error(String(data.detail || data.error));

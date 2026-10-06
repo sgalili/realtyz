@@ -77,7 +77,7 @@ export async function autoImportResult(result: UnifiedResult): Promise<string> {
 
   if (result.source === 'yad2') {
     if (!result.url) throw new Error('missing_source_url');
-    const { error } = await supabase.functions.invoke('yad2-unlocker', { body: { url: result.url } });
+    const { error } = await supabase.functions.invoke('yad2-unlocker', { body: { url: result.url, import_item: true } });
     if (error) throw new Error(error.message || 'yad2_import_failed');
   } else if (result.source === 'homely' || result.source === 'webtiv') {
     // Homely/Webtiv single-item import — no URL required. Pass the raw

@@ -1585,16 +1585,17 @@ async function scrapingBrowserHarvest(
     // il-geolocated exit node instead.
 
     console.log(`[yad2-unlocker] scraping-browser: goto ${pageUrl}`);
-    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 35_000 });
+    if (/captcha|bot manager|access denied/i.test(await page.title())) throw new Error("Yad2 requires browser verification; manual entry remains available");
     await page
-      .waitForSelector('a[href*="/item/"], [data-testid="feed-item"], article', { timeout: 40_000 })
+      .waitForSelector('a[href*="/item/"], [data-testid="feed-item"], article', { timeout: 10_000 })
       .catch(() => {});
     // Yad2 hydrates the feed after the first paint; wait for real item anchors
     // rather than the shell, otherwise the RSC payload we parse is still empty.
     await page
       .waitForFunction(
         () => document.querySelectorAll('a[href*="/item/"]').length > 0,
-        { timeout: 25_000, polling: 500 },
+        { timeout: 8_000, polling: 500 },
       )
       .catch(() => {});
 
@@ -2152,6 +2153,14 @@ Deno.serve(async (req) => {
       return json({ success: true, results: [row], served_from: servedFrom, cached: true, fetched_at: fetchedAt, listing_id: listingId, records_saved: listingId ? 1 : 0, resolved_url: inputUrl });
     };
     if (itemId) {
+      // Background hydration and ordinary page reads must never spend credits.
+      if (body?.import_item !== true && !body?.scrape_token) {
+        const { data: existing } = await admin.from("yad2_item_cache").select("payload,fetched_at").eq("item_id", itemId).maybeSingle();
+        if (existing?.payload) return await cachedResponse(existing.payload, "item_cache", existing.fetched_at);
+        const pooled = await readMarketPool(admin, body, 1, inputUrl);
+        if (pooled[0]) return await cachedResponse(pooled[0], "pool", null);
+        return json({ success: true, results: [], served_from: "pool", records_saved: 0 });
+      }
       const { data: claim, error: claimError } = await admin.rpc("claim_yad2_item_import", { _item: itemId, _url: inputUrl });
       if (claimError) throw new Error(`cache_claim_failed: ${claimError.message}`);
       if (claim.state === "cached") return await cachedResponse(claim.payload, "item_cache", claim.fetched_at);
