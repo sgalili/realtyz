@@ -1,9 +1,10 @@
+import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Accessibility, Armchair, Award, BadgeCheck, Banknote, Bath, Building, Building2, Bus, CalendarDays, Car, CarFront,
+  Heart, X, Accessibility, Armchair, Award, BadgeCheck, Banknote, Bath, Building, Building2, Bus, CalendarDays, Car, CarFront,
   CheckCircle2, Compass, DoorOpen, Dog, Fence, Flame, GraduationCap, Home, Layers, Loader2, MapPin, Maximize2,
   Navigation, Package, Receipt, Ruler, School, ShieldCheck, Snowflake, Sparkles, Store, Trees, Utensils, Wallet, Wrench,
 } from 'lucide-react';
@@ -59,7 +60,7 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
   return 'other';
 }
 
-export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string }) {
+export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose }: { idOrSlug: string; isFav?: boolean; onFavorite?: () => void; onClose?: () => void }) {
   useEffect(() => { void (supabase as any).rpc('track_listing_view', { _id_or_slug: idOrSlug }); }, [idOrSlug]);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['public-listing-expanded', idOrSlug],
@@ -154,7 +155,12 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
 
   const rawDesc = hebrew(a.description) && hebrew(a.description).length > listing.description.length ? hebrew(a.description) : listing.description;
   const titleStr = typeof raw.property_title === 'string' ? raw.property_title.trim() : '';
-  const description = rawDesc && rawDesc !== titleStr && rawDesc !== listing.title ? rawDesc : '';
+  const descTrim = (rawDesc || '').trim();
+  const isStub = !descTrim || descTrim.length < 40 && /^[^\n]*\s·\s[^\n]*$/.test(descTrim);
+  const description = !isStub && descTrim !== titleStr && descTrim !== listing.title ? descTrim : '';
+  const dealWord = listing.dealType === 'rent' ? 'להשכרה' : listing.dealType ? 'למכירה' : '';
+  const baseTitle = String(listing.title || '').replace(/\s*(למכירה|להשכרה)\s*/g, ' ').trim();
+  const titleText = dealWord ? (() => { const i = baseTitle.indexOf(' '); return i > 0 ? `${baseTitle.slice(0, i)} ${dealWord}${baseTitle.slice(i)}` : `${baseTitle} ${dealWord}`.trim(); })() : baseTitle;
   const hasCoords = listing.latitude !== null && listing.longitude !== null;
   const mapQuery = hasCoords ? `${listing.latitude},${listing.longitude}` : listing.addressForMap;
   const wazeUrl = hasCoords
@@ -169,21 +175,30 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
   return (
     <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-sm">
       <header className="min-w-0 space-y-3 border-b pb-4">
-        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              {listing.dealType && (
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${listing.dealType === 'rent' ? 'bg-sale text-sale-foreground' : 'bg-success text-success-foreground'}`}>
-                  {listing.dealType === 'rent' ? 'להשכרה' : 'למכירה'}
-                </span>
-              )}
+        {(onFavorite || onClose) && (
+          <div className="flex items-center justify-end gap-2">
+            {onFavorite && (
+              <Button type="button" variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onFavorite(); }} aria-pressed={isFav} className="gap-1.5">
+                <Heart className={`h-4 w-4 text-destructive ${isFav ? 'fill-current' : ''}`} />{isFav ? 'במועדפים' : 'הוספה למועדפים'}
+              </Button>
+            )}
+            {onClose && (
+              <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onClose(); }} className="gap-1.5" aria-label="סגירת פרטי הנכס">
+                <X className="h-4 w-4" />סגירה
+              </Button>
+            )}
+          </div>
+        )}
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2 empty:hidden">
               {a.isAssetExclusive === true && <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold text-foreground"><Award className="h-3.5 w-3.5 text-primary" />בבלעדיות</span>}
               {a.isImmediateEntrance === true && <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold text-foreground"><CalendarDays className="h-3.5 w-3.5 text-primary" />כניסה מיידית</span>}
             </div>
-            <p className="break-words text-lg font-bold text-foreground lg:text-xl">{listing.title}</p>
+            <p className="break-words text-lg font-bold text-foreground lg:text-xl">{titleText}</p>
             {oneLiner && <p className="break-words text-muted-foreground">{oneLiner}</p>}
           </div>
-          <p className="shrink-0 text-xl font-bold text-primary lg:text-2xl">{formatPrice(listing.price, listing.dealType)}</p>
+          <p className="shrink-0 whitespace-nowrap text-base font-bold leading-7 text-primary lg:text-xl">{formatPrice(listing.price, listing.dealType)}</p>
         </div>
         {(rooms || total || floor) && (
           <div className="flex flex-wrap gap-2">
@@ -261,10 +276,10 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
             <iframe title="מפת הנכס" src={embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-56 w-full border-0" />
             <div className="grid grid-cols-2 gap-px bg-border">
               <a href={wazeUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center justify-center gap-2 bg-card py-2.5 font-semibold text-foreground transition-colors hover:bg-muted">
-                <Navigation className="h-4 w-4 text-primary" />ניווט ב-Waze
+                <Navigation className="h-4 w-4 text-primary" />ניווט בוויז
               </a>
               <a href={gmapsUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center justify-center gap-2 bg-card py-2.5 font-semibold text-foreground transition-colors hover:bg-muted">
-                <MapPin className="h-4 w-4 text-success" />Google Maps
+                <MapPin className="h-4 w-4 text-success" />גוגל מפות
               </a>
             </div>
           </div>

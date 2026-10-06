@@ -356,7 +356,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                               {open && <PropertyGallerySlider photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} />}
                             </div>
                             <div className="min-w-0 space-y-3">
-                              <ExpandedPropertyDetails idOrSlug={card.slug || card.id} />
+                              <ExpandedPropertyDetails idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} onClose={() => { setExpandedId(null); requestAnimationFrame(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); }} />
                               <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact shareUrl={publicUrl(propertyPath)} showShare />
                             </div>
                           </div>
