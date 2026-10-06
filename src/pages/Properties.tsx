@@ -1669,23 +1669,23 @@ export function ResultTable({
                 />
               </th>
             ) : null}
-            {showAffiliateColumn ? <HeaderCell label="שותפים" /> : null}
-            {commissionCell ? <HeaderCell label="עמלות" /> : null}
-            {showPublisherColumn ? <HeaderCell label="משרד מפרסם" /> : null}
-            <HeaderCell label="תמונה" extraClass="w-14" />
+            {showAffiliateColumn ? headerCell("שותפים") : null}
+            {commissionCell ? headerCell("עמלות") : null}
+            {showPublisherColumn ? headerCell("משרד מפרסם") : null}
+            {headerCell("תמונה", "w-14")}
 
-            <HeaderCell label="רחוב" />
+            {headerCell("רחוב")}
             {/* Internal-only: house & apartment numbers never leave the workspace. */}
-            <HeaderCell label="בית" />
-            <HeaderCell label="דירה" />
-            <HeaderCell label="שכונה" />
-            <HeaderCell label="סוג" />
-            <HeaderCell label="מחיר" />
-            <HeaderCell label="עיר" />
-            <HeaderCell label="חדרים" />
-            <HeaderCell label='מ"ר' />
-            <HeaderCell label="תמונות" />
-            <HeaderCell label={publishedLabel} />
+            {headerCell("בית")}
+            {headerCell("דירה")}
+            {headerCell("שכונה")}
+            {headerCell("סוג")}
+            {headerCell("מחיר")}
+            {headerCell("עיר")}
+            {headerCell("חדרים")}
+            {headerCell('מ"ר')}
+            {headerCell("תמונות")}
+            {headerCell(publishedLabel)}
             {!hideDefaultActions ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th> : null}
 
 
