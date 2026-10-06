@@ -32,6 +32,8 @@ export default function PropertyContactActions({
   shareUrl,
   compact = false,
   showShare = true,
+  shareOnly = false,
+  shareButtonClassName,
 }: {
   listingId: string;
   title: string;
@@ -40,13 +42,15 @@ export default function PropertyContactActions({
   shareUrl?: string | null;
   compact?: boolean;
   showShare?: boolean;
+  shareOnly?: boolean;
+  shareButtonClassName?: string;
 }) {
   const settings = options ?? {};
   // Preserve priced identity capture, but avoid a redundant form when a
   // configured conversation can collect it itself.
-  const showWhatsapp = settings.whatsapp === true;
-  const showPhone = settings.phone === true;
-  const showDigital = settings.digital === true && !showWhatsapp && !showPhone;
+  const showWhatsapp = !shareOnly && settings.whatsapp === true;
+  const showPhone = !shareOnly && settings.phone === true;
+  const showDigital = !shareOnly && settings.digital === true && !showWhatsapp && !showPhone;
   const [mode, setMode] = useState<'digital' | 'phone' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -118,7 +122,7 @@ export default function PropertyContactActions({
 
   return (
     <>
-      <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={compact ? 'flex w-full flex-wrap items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
+      <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={shareOnly ? 'inline-flex shrink-0' : compact ? 'flex w-full flex-wrap items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
         {showDigital && (
           <form className="flex w-full flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
@@ -142,14 +146,14 @@ export default function PropertyContactActions({
           </Button>
         )}
         {showShare && !user && (
-          <Button variant="outline" size={compact ? 'icon' : 'default'} className={compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'} aria-label="שיתוף נכס" onClick={() => setJoinOpen(true)}>
+          <Button variant="outline" size={compact ? 'icon' : 'default'} className={shareButtonClassName || (compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1')} aria-label="שיתוף נכס" title="שיתוף נכס" onClick={() => setJoinOpen(true)}>
             <Share2 className="h-4 w-4" />{compact ? null : 'שיתוף'}
           </Button>
         )}
         {showShare && user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size={compact ? 'icon' : 'default'} className={compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'} aria-label="שיתוף נכס">
+              <Button variant="outline" size={compact ? 'icon' : 'default'} className={shareButtonClassName || (compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1')} aria-label="שיתוף נכס" title="שיתוף נכס">
                 <Share2 className="h-4 w-4" />{compact ? null : 'שיתוף'}
               </Button>
             </DropdownMenuTrigger>
