@@ -782,7 +782,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 questions={questionsOpen ? (((fields as any)[questionsOpen] as string[] | undefined)?.length ? (fields as any)[questionsOpen] : defaultQuestions(fields.dealType)) : []}
                 onChange={(next) => questionsOpen && set(questionsOpen, next)}
               />
-              <p className="text-xs text-muted-foreground">יש להגדיר עמלה לפחות לסוג פנייה אחד. השארת "מקס׳ ביום" ריק = ללא הגבלה.</p>
+              <p className="text-xs text-muted-foreground">{"\n"}</p>
               <div className="flex items-start gap-2 text-sm">
                 <Checkbox id="commission-terms" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
                 <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
