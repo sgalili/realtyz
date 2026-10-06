@@ -168,6 +168,10 @@ function attrReadable(key: string, value: unknown): string {
       .filter(Boolean).join(' · ');
   }
   const n = Number(value);
+  if (key === 'area') { // non-numeric "area" is a city/region name — already in the address
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? `${n} מ״ר` : '';
+  }
   const unit = SUFFIX_UNITS[key];
   if (unit && Number.isFinite(n) && n > 0) return unit(n);
   if (key === 'air_directions' || key === 'airdirections' || key === 'exposure') {
