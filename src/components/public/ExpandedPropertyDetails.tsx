@@ -8,9 +8,8 @@ import {
   CheckCircle2, Compass, DoorOpen, Dog, Fence, Flame, GraduationCap, Home, Layers, Loader2, MapPin, Maximize2,
   Navigation, Package, Receipt, Ruler, School, ShieldCheck, Snowflake, Sparkles, Store, Trees, Utensils, Wallet, Wrench,
 } from 'lucide-react';
-import { normalizeListing, formatPrice } from '@/pages/PublicListingPage';
+import { normalizeListing } from '@/pages/PublicListingPage';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
-import PublicAdHeading from './PublicAdHeading';
 import PropertyContactActions from './PropertyContactActions';
 import { publicUrl } from '@/lib/publicUrl';
 
@@ -192,7 +191,6 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
             </Button>
           </div>
         )}
-        <PublicAdHeading title={listing.title} price={formatPrice(listing.price, listing.dealType)} dealType={listing.dealType} />
         <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} />
         {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">
