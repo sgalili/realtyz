@@ -110,7 +110,7 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
     payments && { icon: Banknote, label: 'תשלומים', value: String(payments) },
     hebrew(a.propertyCondition) && { icon: BadgeCheck, label: 'מצב הנכס', value: hebrew(a.propertyCondition) },
     num(a.shelterDistance) && { icon: ShieldCheck, label: 'מרחק למקלט', value: `${num(a.shelterDistance)} מ׳` },
-  ].filter((s) => s && (s as Spec).value) as Spec[]);
+  ].filter((s) => s && (s as Spec).value && !['חדרים', 'שטח כולל', 'קומה'].includes((s as Spec).label)) as Spec[]);
 
   const amenities = AMENITIES.filter(([key]) => a[key] === true).map(([, label, icon]) => ({ label, icon }));
   const features = asObj(raw.features);
@@ -142,18 +142,39 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
 
   return (
     <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-sm">
-      <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="break-words text-base font-bold text-foreground">{listing.title}</p>
-          {oneLiner && <p className="mt-0.5 break-words text-muted-foreground">{oneLiner}</p>}
+      <header className="min-w-0 space-y-3 border-b pb-4">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              {listing.dealType && (
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${listing.dealType === 'rent' ? 'bg-sale text-sale-foreground' : 'bg-success text-success-foreground'}`}>
+                  {listing.dealType === 'rent' ? 'להשכרה' : 'למכירה'}
+                </span>
+              )}
+              {a.isAssetExclusive === true && <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold text-foreground"><Award className="h-3.5 w-3.5 text-primary" />בבלעדיות</span>}
+              {a.isImmediateEntrance === true && <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold text-foreground"><CalendarDays className="h-3.5 w-3.5 text-primary" />כניסה מיידית</span>}
+            </div>
+            <p className="break-words text-lg font-bold text-foreground lg:text-xl">{listing.title}</p>
+            {listing.addressForMap && <p className="flex items-start gap-1.5 break-words text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{listing.addressForMap}</p>}
+            {oneLiner && <p className="break-words text-muted-foreground">{oneLiner}</p>}
+          </div>
+          <p className="shrink-0 text-xl font-bold text-primary lg:text-2xl">{formatPrice(listing.price, listing.dealType)}</p>
         </div>
-        <p className="shrink-0 text-lg font-bold text-primary">{formatPrice(listing.price, listing.dealType)}</p>
-      </div>
+        {(rooms || total || floor) && (
+          <div className="flex flex-wrap gap-2">
+            {rooms && <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-semibold text-foreground"><DoorOpen className="h-4 w-4 text-primary" />{rooms} חדרים</span>}
+            {total && <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-semibold text-foreground"><Maximize2 className="h-4 w-4 text-primary" />{total} מ״ר</span>}
+            {floor && <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-semibold text-foreground"><Layers className="h-4 w-4 text-primary" />קומה {floor}</span>}
+          </div>
+        )}
+      </header>
 
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
+      <div className="min-w-0 space-y-5">
       {specs.length > 0 && (
         <section>
           <h3 className="mb-2 text-xs font-bold text-muted-foreground">נתוני הנכס</h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
             {specs.map((s) => (
               <div key={s.label} className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-background p-2.5">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><s.icon className="h-4 w-4" /></span>
@@ -188,23 +209,6 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
         </section>
       )}
 
-      {mapQuery && (
-        <section>
-          <h3 className="mb-2 text-xs font-bold text-muted-foreground">מיקום</h3>
-          <div className="overflow-hidden rounded-xl border">
-            <iframe title="מפת הנכס" src={embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-56 w-full border-0" />
-            <div className="grid grid-cols-2 gap-px bg-border">
-              <a href={wazeUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center justify-center gap-2 bg-card py-2.5 font-semibold text-foreground transition-colors hover:bg-muted">
-                <Navigation className="h-4 w-4 text-primary" />ניווט ב-Waze
-              </a>
-              <a href={gmapsUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center justify-center gap-2 bg-card py-2.5 font-semibold text-foreground transition-colors hover:bg-muted">
-                <MapPin className="h-4 w-4 text-success" />Google Maps
-              </a>
-            </div>
-          </div>
-        </section>
-      )}
-
       {perkSections.length > 0 && (
         <section>
           <h3 className="mb-2 text-xs font-bold text-muted-foreground">הסביבה</h3>
@@ -223,6 +227,25 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
         </section>
       )}
 
+      </div>
+      <aside className="min-w-0 space-y-5 lg:sticky lg:top-4 lg:self-start">
+      {mapQuery && (
+        <section>
+          <h3 className="mb-2 text-xs font-bold text-muted-foreground">מיקום</h3>
+          <div className="overflow-hidden rounded-xl border">
+            <iframe title="מפת הנכס" src={embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-56 w-full border-0" />
+            <div className="grid grid-cols-2 gap-px bg-border">
+              <a href={wazeUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center justify-center gap-2 bg-card py-2.5 font-semibold text-foreground transition-colors hover:bg-muted">
+                <Navigation className="h-4 w-4 text-primary" />ניווט ב-Waze
+              </a>
+              <a href={gmapsUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center justify-center gap-2 bg-card py-2.5 font-semibold text-foreground transition-colors hover:bg-muted">
+                <MapPin className="h-4 w-4 text-success" />Google Maps
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
+
       {(office || agent) && (
         <footer className="flex min-w-0 items-center gap-3 rounded-xl border bg-muted/40 p-3">
           {listing.agencyLogoUrl
@@ -237,6 +260,8 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
           {listing.brokerLicenceNumber && <BadgeCheck className="ms-auto h-5 w-5 shrink-0 text-primary" aria-label="מתווך מורשה" />}
         </footer>
       )}
+      </aside>
+      </div>
     </div>
   );
 }
