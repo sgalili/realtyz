@@ -1,3 +1,4 @@
+import { PriceInput } from "@/components/ui/price-input";
 /**
  * OwnerPropertyGrid
  * -----------------
@@ -147,7 +148,7 @@ export default function OwnerPropertyGrid({ lead }: { lead: Lead & Record<string
             placeholder="—" className="h-7 text-sm" />
         </Cell>
         <Cell label="מחיר (₪)">
-          <Input type="number" value={String(v('asking_price') ?? '')}
+          <PriceInput value={String(v('asking_price') ?? '')}
             onChange={(e) => setBuf((b) => ({ ...b, asking_price: e.target.value }))}
             onBlur={(e) => commit('asking_price', e.target.value, true)}
             placeholder="—" className="h-7 text-sm" />
