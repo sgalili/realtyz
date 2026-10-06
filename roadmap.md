@@ -1,8 +1,8 @@
 # Roadmap
 ## Search controls and conditional Homely
-- [ ] Redesign dual deal toggles, borderless sorting and expandable colored source dots.
-- [ ] Hide Homely data and references unless connected in the active workspace; preserve connection setup.
-- [ ] Reset result counter on refresh/exit and show only completed active-search totals; verify signed-in controls.
+- [x] Redesign dual deal toggles, borderless sorting and expandable colored source dots; signed-in desktop/narrow-screen checks passed.
+- [x] Gate operational Homely sources, badges, import actions, tabs, property links and status rows by verified active-workspace connection; preserve setup and administrative/legal surfaces. Disconnected workspace verified; connected workspace not tested.
+- [x] Counter uses relevant completed-search snapshot (13 matching results and 0 for no match verified), hides on refresh/exit, no page errors; build OK.
 ## Property search and duplicate-safe imports
 - [x] Update existing workspace Yad2 items safely, retain previous version details, and retry concurrent uniqueness conflicts without duplicates.
 - [x] Add default-selected source dots, remove microphone, align checklist/sort and source pill, and match public-board deal dots/filter icon.

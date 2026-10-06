@@ -87,9 +87,10 @@ export function ListingOutreachDialog({
   useEffect(() => {
     if (open && defaultListingId) {
       setListingId(defaultListingId);
-      if (defaultSource) setSource(defaultSource);
+      if (defaultSource) setSource(defaultSource === 'homely' && !homelyConnected ? 'internal' : defaultSource);
     }
-  }, [open, defaultListingId, defaultSource]);
+  }, [open, defaultListingId, defaultSource, homelyConnected]);
+  useEffect(() => { if (!homelyConnected && source === 'homely') { setSource('internal'); setListingId(''); setDraft(null); } }, [homelyConnected, source]);
 
   // Reset on close
   useEffect(() => {
