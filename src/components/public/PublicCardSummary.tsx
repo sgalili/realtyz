@@ -6,7 +6,7 @@ import PublicAdHeading from './PublicAdHeading';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 
-export default function PublicCardSummary({ card, price, showBroker = true }: { card: PublicCard; price?: string; showBroker?: boolean }) {
+export default function PublicCardSummary({ card, price, showBroker = true, dense = false }: { card: PublicCard; price?: string; showBroker?: boolean; dense?: boolean }) {
   const { data } = useQuery({
     queryKey: ['public-listing-expanded', card.slug || card.id],
     staleTime: 5 * 60 * 1000,
@@ -17,7 +17,7 @@ export default function PublicCardSummary({ card, price, showBroker = true }: { 
     },
   });
   return <div className="space-y-2">
-    <PublicAdHeading compact title={data?.listing.title || publicAdTitle(card)} price={price} dealType={card.deal_type} />
+    <PublicAdHeading compact dense={dense} title={data?.listing.title || publicAdTitle(card)} price={price} dealType={card.deal_type} />
     {showBroker && <BrokerAttribution compact brokerName={data?.listing.brokerName} officeName={data?.listing.officeName} licenceNumber={data?.listing.brokerLicenceNumber} logoUrl={data?.listing.agencyLogoUrl} />}
   </div>;
 }
