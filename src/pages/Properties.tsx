@@ -864,6 +864,22 @@ export default function Properties() {
             </Button>
 
           </div>
+          {yad2Status && (
+            <div role="status" aria-live="polite" dir="rtl" className={`mt-2 rounded-md border px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : yad2Status.tone === 'ok' ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-foreground'}`}>
+              <div className="flex items-center gap-2">
+                {yad2Status.tone === 'busy' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <span className="flex-1 font-medium">{yad2Status.label}</span>
+                {yad2Status.tone !== 'busy' && (
+                  <button type="button" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></button>
+                )}
+              </div>
+              {yad2Status.tone !== 'error' && (
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-background">
+                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(yad2Status.step / 4) * 100}%` }} />
+                </div>
+              )}
+            </div>
+          )}
 
 
 
