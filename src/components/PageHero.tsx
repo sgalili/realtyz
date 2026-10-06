@@ -433,8 +433,8 @@ export function PageHero() {
               className="h-auto gap-1 p-0 text-sm font-semibold text-white hover:text-white/90"
             >
               <Link to={myListingsPath}>
+                <ChevronRight className="!h-4 !w-4" strokeWidth={2.5} />
                 המודעות שלי
-                 <ChevronRight className="!h-4 !w-4" strokeWidth={2.5} />
               </Link>
             </Button>
           )}
