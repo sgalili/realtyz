@@ -498,12 +498,14 @@ export default function Properties() {
 
   // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,
   // gallery, description) and the user lands directly on the imported card.
-  const submitQuery = useCallback(async () => {
-    const raw = q.trim();
+  const [yad2Status, setYad2Status] = useState<{ step: number; label: string; tone: 'busy' | 'ok' | 'error' } | null>(null);
+  const submitQuery = useCallback(async (override?: string) => {
+    const raw = (typeof override === 'string' ? override : q).trim();
     const url = raw.match(/https?:\/\/\S+/i)?.[0];
     if (url && /yad2\.co\.il/i.test(url)) {
-      const toastId = toast.loading('סורק את עמוד יד2 ומייבא את כל הפרטים…');
       setSearching(true);
+      setYad2Status({ step: 1, label: 'מתחבר לעמוד המודעה ביד2…', tone: 'busy' });
+      const slow = window.setTimeout(() => setYad2Status((s) => s && s.tone === 'busy' ? { step: 2, label: 'סורק פרטים, תמונות, תיאור ומאפיינים…', tone: 'busy' } : s), 2500);
       try {
         const { data, error } = await supabase.functions.invoke('yad2-unlocker', {
           body: { url, limit: 1, pages: 1 },
@@ -512,6 +514,7 @@ export default function Properties() {
         if (data?.error) throw new Error(String(data.detail || data.error));
         const row = Array.isArray(data?.results) ? data.results[0] : null;
         if (!row) throw new Error('לא הצלחתי לחלץ נתונים מהעמוד הזה');
+        setYad2Status({ step: 3, label: 'שומר את הנכס במאגר שלך…', tone: 'busy' });
 
         let localId: string | null = null;
         if (row.external_id) {
@@ -525,12 +528,19 @@ export default function Properties() {
             .from('listings').select('id').eq('source_url', row.source_url).limit(1);
           localId = found?.[0]?.id ?? null;
         }
-        toast.success('הנכס יובא מיד2', { id: toastId });
-        if (localId) { navigate(`/properties/${localId}`); return; }
-        toast.info('הנכס נסרק אך לא נשמר במאגר — נסה שוב', { id: toastId });
+        if (localId) {
+          void ensureFullPropertyImport(localId, row.source_url ?? url).catch(() => {});
+          setYad2Status({ step: 4, label: 'הנכס יובא בהצלחה — פותח את כרטיס הנכס', tone: 'ok' });
+          queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+          setQ('');
+          navigate(`/properties/${localId}`, { state: { returnTo: '/properties' } });
+          return;
+        }
+        setYad2Status({ step: 3, label: 'הנכס נסרק אך לא נשמר במאגר — נסה שוב', tone: 'error' });
       } catch (e: any) {
-        toast.error('ייבוא מיד2 נכשל: ' + String(e?.message ?? 'שגיאה'), { id: toastId });
+        setYad2Status({ step: 0, label: 'ייבוא מיד2 נכשל: ' + String(e?.message ?? 'שגיאה'), tone: 'error' });
       } finally {
+        window.clearTimeout(slow);
         setSearching(false);
       }
       return;
@@ -541,7 +551,7 @@ export default function Properties() {
       return;
     }
     runSearch();
-  }, [q, runSearch, navigate]);
+  }, [q, runSearch, navigate, queryClient]);
 
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
