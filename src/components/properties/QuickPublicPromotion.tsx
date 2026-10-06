@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-type PromotionRow = { id: string; property_title: string | null; address: string | null; city: string | null; asking_price: number | null; status: string | null; is_published: boolean | null; affiliate_enabled: boolean | null };
+type PromotionRow = { id: string; property_title: string | null; address: string | null; house_number: string | null; city: string | null; asking_price: number | null; status: string | null; is_published: boolean | null; affiliate_enabled: boolean | null };
 export function QuickPublicPromotion({ ids, onPublished, compact = false }: { ids: string[]; onPublished: (ids: string[]) => void; compact?: boolean }) {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const qc = useQueryClient();
@@ -19,11 +19,11 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false }: { id
   const allowed = ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin'].includes(activeWorkspace?.role ?? '');
   useEffect(() => { setOpen(false); setRows([]); setAccepted(false); }, [activeWorkspaceId]);
   if (!allowed || !activeWorkspaceId || !ids.length) return null;
-  const eligible = rows.filter(row => row.status !== 'discarded' && !!row.city?.trim() && !!row.address?.trim() && Number(row.asking_price) > 0 && !/עגנון\s*72/.test(row.address ?? '') && !(row.is_published && row.affiliate_enabled && row.status === 'live'));
+  const eligible = rows.filter(row => row.status !== 'discarded' && !!row.city?.trim() && !!row.address?.trim() && Number(row.asking_price) > 0 && !(/עגנון/.test([row.address, row.property_title].join(' ')) && /\b72\b/.test([row.address, row.house_number, row.property_title].join(' '))) && !(row.is_published && row.affiliate_enabled && row.status === 'live'));
   const prepare = async () => {
     setBusy(true); setAccepted(false);
     try {
-      const { data, error } = await supabase.from('listings').select('id,property_title,address,city,asking_price,status,is_published,affiliate_enabled').eq('workspace_owner_id', activeWorkspaceId).in('id', [...new Set(ids)]);
+      const { data, error } = await supabase.from('listings').select('id,property_title,address,house_number,city,asking_price,status,is_published,affiliate_enabled').eq('workspace_owner_id', activeWorkspaceId).in('id', [...new Set(ids)]);
       if (error) throw error;
       setRows(data ?? []); setOpen(true);
     } catch { toast.error('לא ניתן להכין את הנכסים לפרסום'); }

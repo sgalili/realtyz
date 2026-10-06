@@ -1,8 +1,8 @@
 # Roadmap
 ## Inventory suggestions and quick public promotion
-- [ ] Add live active-workspace address/title suggestions and move search action opposite the deal toggles.
-- [ ] Reuse explicit public-publication flow for single and bulk selection with workspace-safe eligibility.
-- [ ] Verify signed-in suggestions, selection, publication result and layout without publishing live inventory unintentionally.
+- [x] Add live active-workspace address/title suggestions and move search action opposite the deal toggles; eight real suggestions and keyboard opening verified.
+- [x] Add explicit single/bulk public publication of existing workspace records, with authorization, completeness and restricted-property guards; prices/commissions preserved.
+- [x] Signed-in multi-selection, confirmation gating, cancellation and 435px layout verified without errors/overflow; build OK. Live publication/readback not exercised to avoid publishing actual inventory unintentionally.
 ## Photo order and local Yad2 reuse
 - [x] Add accessible RTL photo-order arrows in both property editors; signed-in thumbnail swap verified and reversed without changing live records. Existing explicit-save path persists the ordered array; a live save was not performed.
 - [x] Check exact active-workspace Yad2 records before import requests; signed-in controlled recent-timestamp test opened the saved record without a fresh-import request. Server cache reads preserve edits/order/timestamps; daily scrape safeguard retained and function deployed.
