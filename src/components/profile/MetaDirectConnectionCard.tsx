@@ -758,6 +758,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
               {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
               {connecting ? 'בטל' : 'חבר חשבון או עמוד נוסף'}
             </Button>
+            {manualTokenSection}
           </div>
         )}
 
