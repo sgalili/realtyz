@@ -837,15 +837,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         <Button disabled={disabled} className="h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
       </DialogTrigger>}
       <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6">
-        <div className="flex flex-row-reverse items-center gap-2 self-start">
+        <div className="relative flex flex-row-reverse items-center justify-between gap-2 self-start">
           <Button type="button" variant="ghost" size="icon" aria-label="איפוס והתחלה מחדש" title="איפוס והתחלה מחדש" disabled={publishing || importing} onClick={resetAll} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
             <RotateCcw className="h-4 w-4" />
           </Button>
-          <DialogHeader className="min-w-0 flex-1 items-stretch text-right">
-            <DialogTitle>
+          <DialogHeader className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 flex-1 items-stretch text-right">
+            <DialogTitle className="mx-auto w-fit max-w-[70%] text-center">
               {reviewMode ? 'פרסום מודעה' : step === 0 && importSlide ? 'יצירת מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
             </DialogTitle>
           </DialogHeader>
+          <span className="h-8 w-8 shrink-0" aria-hidden="true" />
         </div>
 
         <div className="space-y-4">
