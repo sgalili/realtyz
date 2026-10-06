@@ -817,7 +817,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       {!resumeDraft && <DialogTrigger asChild>
         <Button disabled={disabled} className="h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
       </DialogTrigger>}
-      <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6">
         <DialogHeader className="text-right">
           <DialogTitle>
              {reviewMode ? 'פרטי המודעה' : step === 0 && importSlide ? 'יצירת מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
