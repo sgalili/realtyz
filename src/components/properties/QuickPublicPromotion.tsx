@@ -19,7 +19,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false }: { id
   const allowed = ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin'].includes(activeWorkspace?.role ?? '');
   useEffect(() => { setOpen(false); setRows([]); setAccepted(false); }, [activeWorkspaceId]);
   if (!allowed || !activeWorkspaceId || !ids.length) return null;
-  const eligible = rows.filter(row => row.status !== 'discarded' && !!row.city?.trim() && !!row.address?.trim() && Number(row.asking_price) > 0 && !(/עגנון/.test([row.address, row.property_title].join(' ')) && /\b72\b/.test([row.address, row.house_number, row.property_title].join(' '))) && !(row.is_published && row.affiliate_enabled && row.status === 'live'));
+  const eligible = rows.filter(row => row.status !== 'discarded' && !!row.city?.trim() && !!row.address?.trim() && Number(row.asking_price) > 0 && !(row.is_published && row.affiliate_enabled && row.status === 'live'));
   const prepare = async () => {
     setBusy(true); setAccepted(false);
     try {
