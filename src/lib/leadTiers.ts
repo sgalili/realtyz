@@ -12,12 +12,26 @@
 /** Extra screening questions beyond the first three cost this much each. */
 export const EXTRA_QUESTION_COST = 10;
 
+export type LeadFormFieldType = 'text' | 'yesno' | 'single' | 'multi' | 'number' | 'date';
+export type LeadFormField = { id: string; label: string; type: LeadFormFieldType; required: boolean; options?: string[] };
+export const FORM_FIELD_TYPE_LABELS: Record<LeadFormFieldType, string> = {
+  text: 'טקסט חופשי', yesno: 'כן / לא', single: 'בחירה יחידה', multi: 'בחירה מרובה', number: 'מספר', date: 'תאריך',
+};
+
+/** Keep only complete fields (label, and at least two options for choices). */
+export function cleanFormFields(fields: LeadFormField[] | undefined | null): LeadFormField[] {
+  return (fields ?? []).map((f) => ({ ...f, label: f.label.trim(), options: (f.options ?? []).map((o) => o.trim()).filter(Boolean) }))
+    .filter((f) => f.label && (!(f.type === 'single' || f.type === 'multi') || (f.options?.length ?? 0) >= 2))
+    .slice(0, 20);
+}
+
 export type LeadContactOptions = {
   digital?: boolean;
   whatsapp?: boolean;
   phone?: boolean;
   questions?: string[];
   questions_phone?: string[];
+  form_fields?: LeadFormField[];
 };
 
 export function defaultQuestions(dealType: string | null | undefined): string[] {

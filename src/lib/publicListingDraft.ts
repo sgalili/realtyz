@@ -47,6 +47,7 @@ export type PublicListingDraftFields = {
   limitPhone?: string;
   questionsWhatsapp?: string[];
   questionsPhone?: string[];
+  formFields?: import('./leadTiers').LeadFormField[];
   commissionTermsAccepted?: boolean;
   importUrl?: string;
   reviewMode?: boolean;

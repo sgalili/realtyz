@@ -12,7 +12,7 @@ import { officialWaLink, openWhatsAppContactPicker } from '@/lib/officialWa';
 import { openExternal } from '@/lib/openExternal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import type { LeadContactOptions } from '@/lib/leadTiers';
+import { cleanFormFields, type LeadContactOptions } from '@/lib/leadTiers';
 
 export type ContactOptions = LeadContactOptions;
 
@@ -55,6 +55,9 @@ export default function PropertyContactActions({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
+  const extraFields = cleanFormFields(settings.form_fields);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const setAnswer = (id: string, value: string | string[]) => setAnswers((a) => ({ ...a, [id]: value }));
   const { user } = useAuth();
   const [joinOpen, setJoinOpen] = useState(false);
   const ref = new URLSearchParams(window.location.search).get('ref');
@@ -106,9 +109,14 @@ export default function PropertyContactActions({
       return;
     }
     const callback = mode === 'phone';
+    if (!callback) {
+      const missing = extraFields.find((f) => { const v = answers[f.id]; return f.required && (Array.isArray(v) ? v.length === 0 : !String(v ?? '').trim()); });
+      if (missing) { toast.error(`יש למלא: ${missing.label}`); return; }
+    }
     setSending(true);
+    const formAnswers = callback ? undefined : extraFields.map((f) => ({ id: f.id, value: answers[f.id] ?? '' }));
     const { data, error } = await supabase.functions.invoke('public-lead-gate', {
-      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: callback ? 'phone' : 'digital', ref },
+      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: callback ? 'phone' : 'digital', ref, form_answers: formAnswers },
     });
     setSending(false);
 
@@ -117,7 +125,7 @@ export default function PropertyContactActions({
       return;
     }
     toast.success(callback ? 'תודה, נחזור אליכם טלפונית בהקדם' : 'הפרטים נשלחו בהצלחה');
-    setMode(null); setName(''); setPhone('');
+    setMode(null); setName(''); setPhone(''); setAnswers({});
   };
 
   return (
@@ -127,7 +135,25 @@ export default function PropertyContactActions({
           <form className="flex w-full flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`phone-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`phone-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} placeholder="05x-xxxxxxx" maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, "").replace(/^972/, "0").slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>
-            <Button type="submit" size="icon" aria-label="שליחת פרטים" disabled={sending || !name.trim() || phone.replace(/\D/g, '').length < 9}>{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronLeft className="h-4 w-4" />}</Button>
+            {extraFields.map((f) => {
+              const v = answers[f.id];
+              const id = `ff-${listingId}-${f.id}`;
+              const chip = (label: string, on: boolean, onClick: () => void) => (
+                <button key={label} type="button" onClick={onClick} className={`rounded-full border px-3 py-1 text-xs ${on ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}>{label}</button>
+              );
+              return (
+                <div key={f.id} className="w-full space-y-1">
+                  <Label htmlFor={id}>{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
+                  {f.type === 'text' && <Input id={id} maxLength={300} value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value)} />}
+                  {f.type === 'number' && <Input id={id} inputMode="decimal" value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value.replace(/[^\d.]/g, ''))} />}
+                  {f.type === 'date' && <Input id={id} type="date" value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value)} />}
+                  {f.type === 'yesno' && <div className="flex gap-2">{['כן', 'לא'].map((o) => chip(o, v === o, () => setAnswer(f.id, o)))}</div>}
+                  {f.type === 'single' && <div className="flex flex-wrap gap-2">{(f.options ?? []).map((o) => chip(o, v === o, () => setAnswer(f.id, o)))}</div>}
+                  {f.type === 'multi' && <div className="flex flex-wrap gap-2">{(f.options ?? []).map((o) => { const arr = Array.isArray(v) ? v : []; return chip(o, arr.includes(o), () => setAnswer(f.id, arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o])); })}</div>}
+                </div>
+              );
+            })}
+            <Button type="submit" size={extraFields.length ? 'default' : 'icon'} className={extraFields.length ? 'w-full' : undefined} aria-label="שליחת פרטים" disabled={sending || !name.trim() || phone.replace(/\D/g, '').length < 9}>{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : extraFields.length ? 'שליחת פרטים' : <ChevronLeft className="h-4 w-4" />}</Button>
           </form>
         )}
         {showWhatsapp && (
