@@ -1,5 +1,6 @@
 // The /properties action bar (Yad2 ad, campaign, share, edit, delete, affiliate).
 // Shared by the workspace table and the public board's owner-only expansion.
+import { returnState } from "@/lib/returnNav";
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Handshake, Loader2, Megaphone, Pencil, Trash2 } from 'lucide-react';
@@ -107,7 +108,7 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
         <PropertyRowActions
           r={row}
           hideSharePublish
-          onCampaign={(r) => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.localId}&listing=${r.localId}`)}
+          onCampaign={(r) => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.localId}&listing=${r.localId}`, { state: returnState() })}
           onEdit={() => setEditOpen(true)}
           onDelete={() => setConfirm(true)}
           onAffiliate={() => setRewardOpen(true)}

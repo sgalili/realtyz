@@ -4,6 +4,7 @@
 //   set the reward (fixed ILS or percent of commission) paid on a signed deal.
 // Tab 2 "אנשי קשר משותפים" — full tracking CRM of every affiliate-generated
 //   referral: status funnel, source affiliate, linked lead, and settlement.
+import { returnState } from "@/lib/returnNav";
 import { useEffect, useMemo, useState } from "react";
 import LeftoverLeadsDialog from "@/components/affiliate/LeftoverLeadsDialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -687,6 +688,7 @@ function BrokerAffiliateNetwork() {
                   if (result.localId)
                     navigate(
                       `/campaigns?tab=create&channel=facebook&properties=${result.localId}&listing=${result.localId}`,
+                      { state: returnState() },
                     );
                 }}
                 onEdit={(result) => {
