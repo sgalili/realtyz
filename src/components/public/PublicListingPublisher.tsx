@@ -364,7 +364,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         await refreshWorkspaces();
         await setActiveWorkspace(targetWorkspace);
       } catch { /* workspace switch is best-effort; navigation still proceeds */ }
-      navigate(draftFields.publisherType === 'private' ? '/my-ads' : '/dashboard', { replace: true, state: { publishedListingId } });
+      // Celebrate first; redirect to the public listings board only after the
+      // confetti (and its sound) have finished playing.
+      window.setTimeout(() => {
+        navigate('/public-listings', { replace: true, state: { publishedListingId } });
+      }, 5000);
     } catch (error) {
        void publicationAudio.current?.close().catch(() => {});
        publicationAudio.current = null;
