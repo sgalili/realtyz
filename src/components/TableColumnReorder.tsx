@@ -121,6 +121,7 @@ export default function TableColumnReorder() {
     const scan = () => {
       scheduled = false;
       document.querySelectorAll<HTMLTableElement>("table").forEach((t) => {
+        if (t.dataset.columnManaged === 'true') return;
         if (!headerRow(t)) return;
         wire(t);
         applyTable(t);

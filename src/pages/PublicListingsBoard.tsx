@@ -21,6 +21,8 @@ import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
 import type { LeadContactOptions } from '@/lib/leadTiers';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -70,6 +72,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>([]);
@@ -193,6 +196,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   };
 
   const filtered = useMemo(() => cards.filter((card) => matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter)), [cards, propFilter]);
+  const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, filtered);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
   const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
@@ -274,44 +278,40 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             })}
           </div>
           ) : (
+            <BoardColumnDragArea controls={columns}>
             <div ref={tableWrapRef} className="w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
-              <table className="w-max min-w-full text-sm">
+              <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
-                    <th className="w-14 p-2" />
-                    <th className="p-2 text-right font-semibold">כתובת</th>
-                    <th className="p-2 text-right font-semibold">עסקה</th>
-                    <th className="p-2 text-right font-semibold">מחיר</th>
-                    <th className="p-2 text-right font-semibold">חדרים</th>
-                    <th className="p-2 text-right font-semibold">מ״ר</th>
-                    <th className="p-2 text-right font-semibold">קומה</th>
-                    <th className="w-10 p-2" />
+                    {columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
+                    <th className="w-10 p-2"><BoardColumnMenu controls={columns} /></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((card) => {
+                  {columns.sorted.map((card) => {
                     const title = cleanTitle(card);
                     const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
                     const open = expandedId === card.id;
                     const toggle = () => setExpandedId(open ? null : card.id);
                     return [
                       <tr key={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        <td className="p-2">
+                        {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'font-semibold text-foreground', id === 'price' && 'whitespace-nowrap font-bold', id === 'floor' && 'whitespace-nowrap')}>
+                          {id === 'photo' ? (
                           <div className="relative h-10 w-10">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-full w-full rounded object-cover" loading="lazy" /> : <div className="h-full w-full rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex rounded-full bg-background/90 p-0.5 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
                           </div>
-                        </td>
-                        <td className="p-2 font-semibold text-foreground"><span className="block max-w-[9rem] truncate sm:max-w-[14rem]" title={[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}>{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span></td>
-                        <td className="p-2"><span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold', card.deal_type === 'rent' ? 'bg-sale text-sale-foreground' : 'bg-success text-success-foreground')}>{dealLabel(card.deal_type)}</span></td>
-                        <td className="p-2 whitespace-nowrap font-bold">{shekel(card.price)}</td>
-                        <td className="p-2">{card.rooms || ''}</td>
-                        <td className="p-2">{card.sqm || ''}</td>
-                        <td className="p-2 whitespace-nowrap">{card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}</td>
+                          ) : id === 'address' ? <span className="block max-w-[9rem] truncate sm:max-w-[14rem]" title={[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}>{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
+                          : id === 'deal' ? <span className={cn('inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold', card.deal_type === 'rent' ? 'bg-sale text-sale-foreground' : 'bg-success text-success-foreground')}>{dealLabel(card.deal_type)}</span>
+                          : id === 'price' ? shekel(card.price)
+                          : id === 'rooms' ? card.rooms || ''
+                          : id === 'sqm' ? card.sqm || ''
+                          : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
+                        </td>)}
                         <td className="p-2"><ChevronDown className={cn('h-5 w-5 transition-transform', open && 'rotate-180')} /></td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
-                        <td colSpan={8} className="p-0">
+                        <td colSpan={columns.visible.length + 1} className="p-0">
                           <AnimatedExpansion open={open}>
                           <div ref={open ? ownerSectionRef : undefined} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0">
@@ -343,6 +343,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 </tbody>
               </table>
             </div>
+            </BoardColumnDragArea>
           )
         )}
       </main>

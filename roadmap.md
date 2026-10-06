@@ -1,4 +1,8 @@
 # Roadmap
+## Public board table customization
+- [x] Add ascending/descending header sorting and mouse/keyboard/touch-capable draggable column order.
+- [x] Add minimal column visibility menu and user/workspace-local remembered preferences after refresh/exit.
+- [x] Verified numeric sorting in both directions, mouse/keyboard reordering, hiding and refresh persistence with real listings; expanded-row spans match visible columns, no runtime errors. Real touch-device testing remains unverified.
 ## Address finder and publication steps
 - [x] Refine Hebrew address selection and conditional city/street/house-number row; remove apartment input and relocate floor selectors.
 - [x] Number publication sections 1–7 independently of setup, preserving saved draft step identities.
