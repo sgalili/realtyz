@@ -1,6 +1,6 @@
 # Architecture rules
 - Inventory/history/publication are workspace-scoped. Reload all local rows on entry/focus; retain partial imports. Publication preserves commissions and relies on database authorization.
-- Public review shares one draft; broker defaults use current member role/profile, not owner identity. Success-only celebration owns its timed canvas/audio independently of navigation.
+- Public review scopes drafts by user/workspace and resumes saved steps/errors with explicit confirmation; broker defaults use current member role/profile, not owner identity. Celebration owns its timed canvas/audio.
 - Facebook authentication and workspace extension groups are siblings; groups remain mounted so Page state cannot hide them or interrupt joining.
 - Group auto-join indicators follow extension per-group start/result events; workspace-scoped result overlays prevent polling from reversing immediate tab migration before persistence catches up.
 - Peer expansions use exclusive group-keyed animated height; nested utilities use separate groups.

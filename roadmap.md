@@ -1,4 +1,8 @@
 # Roadmap
+## Failed ads and quick resume
+- [ ] Add workspace-scoped failed/incomplete ads and local draft recovery with missing fields and persisted failure notes.
+- [ ] Resume saved editing step with explicit publication and no duplicate listing.
+- [ ] Verify signed-in recovery and narrow-screen layout without publishing inventory.
 ## Broker publication experience
 - [x] Identify brokers using active member role and current profile; signed-in skip, name/phone defaults and marketing checked verified; legal terms remain unchecked.
 - [x] Show first property image and summary in explicit confirmation; image, price, rooms, floor and area verified with local test input, then returned to editing.
