@@ -325,7 +325,7 @@ export default function Properties() {
   // Monotonic token — bumping it aborts the in-flight search: late partials
   // and the final payload are ignored, so whatever was already painted stays.
   const searchTokenRef = useRef(0);
-  useEffect(() => { setCompletedResults(null); }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, activeSources]);
+  useEffect(() => { searchTokenRef.current++; setSearching(false); setSearchProgress(null); setCompletedResults(null); }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, activeSources]);
   useEffect(() => () => { searchTokenRef.current++; }, []);
 
   const runSearch = useCallback(async () => {
