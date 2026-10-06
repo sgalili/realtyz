@@ -2038,7 +2038,7 @@ const LeadCRM = () => {
                       ? 'cursor-pointer hover:bg-accent/40 transition-colors text-sm leading-snug [&>td]:!px-0 [&>td]:py-1.5'
                       : 'cursor-pointer hover:bg-accent/40 transition-colors text-base [&>td]:!px-0 [&>td]:py-2';
                     const prefs = (lead as any).preferences ?? {};
-                    const sourceLabel = prefs.homely_id || prefs.source === 'homely' ? 'הומלי' : 'Realtyz CRM';
+                    const sourceLabel = homelyConnected && (prefs.homely_id || prefs.source === 'homely') ? 'הומלי' : 'Realtyz CRM';
                     const sourceCls = prefs.homely_id || prefs.source === 'homely'
                       ? 'bg-blue-500/10 text-blue-700 border-blue-300'
                       : 'bg-primary/10 text-primary border-primary/30';

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 
 type StatusRow = {
   integration: string;
@@ -19,6 +20,7 @@ const LABEL: Record<string, string> = {
 };
 
 export function SystemStatus() {
+  const { connected: homelyConnected } = useHomelyConnection();
   const { data } = useQuery({
     queryKey: ['system-status'],
     queryFn: async () => {
@@ -30,7 +32,7 @@ export function SystemStatus() {
     staleTime: 30_000,
   });
 
-  const rows = data ?? [];
+  const rows = (data ?? []).filter(row => row.integration !== 'homely' || homelyConnected);
   const overall: StatusRow['status'] =
     rows.some((r) => r.status === 'degraded')
       ? 'degraded'

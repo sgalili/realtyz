@@ -37,6 +37,7 @@ import { UserPlus } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type DealType = 'sale' | 'rent';
@@ -85,6 +86,7 @@ interface Props {
 }
 
 export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale', onCreated }: Props) {
+  const { connected: homelyConnected } = useHomelyConnection();
   const queryClient = useQueryClient();
   const { checkInArea, isConfigured, serviceAreas } = useServiceAreas();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
@@ -477,7 +479,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
                 <SelectItem value="inbound_call">שיחה נכנסת</SelectItem>
                 <SelectItem value="yad2">יד2</SelectItem>
                 <SelectItem value="website">אתר</SelectItem>
-                <SelectItem value="homely">הומלי</SelectItem>
+                {homelyConnected && <SelectItem value="homely">הומלי</SelectItem>}
               </SelectContent>
             </Select>
           </div>

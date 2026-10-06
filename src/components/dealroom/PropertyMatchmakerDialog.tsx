@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { supabase } from '@/integrations/supabase/client';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import {
@@ -87,6 +88,7 @@ export function PropertyMatchmakerDialog({
   onShareDraft: (args: { draft: string; property: PropertyResult }) => void;
 }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const { connected: homelyConnected } = useHomelyConnection();
   const [results, setResults] = useState<PropertyResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<'homely' | 'listings' | null>(null);
@@ -179,7 +181,7 @@ export function PropertyMatchmakerDialog({
           <DialogTitle className="flex items-center gap-2">
             <Home className="h-5 w-5 text-primary" />
             התאמת נכסים חכמה
-            {source && (
+            {source && (source !== 'homely' || homelyConnected) && (
               <Badge variant="outline" className="ml-2 text-[10px] uppercase tracking-wide">
                 {source === 'homely' ? 'Homely' : 'נכסים מקומיים'}
               </Badge>
@@ -233,7 +235,7 @@ export function PropertyMatchmakerDialog({
                     אין נכסים עדיין — עדכנו את הפילטרים מעל וחפשו.
                   </div>
                 )}
-                {!loading && results.map((r) => (
+                {!loading && results.filter(r => r.source !== 'homely' || homelyConnected).map((r) => (
                   <PropertyCard key={`${r.source}-${r.id}`} property={r} onSelect={() => setSelected(r)} />
                 ))}
               </div>
