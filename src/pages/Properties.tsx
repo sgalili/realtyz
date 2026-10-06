@@ -309,6 +309,7 @@ export default function Properties() {
   const instantTokenRef = useRef(0);
   useEffect(() => {
     const term = q.trim();
+    if (!activeWorkspaceId) return;
     if (term.length < 3) return;
     if (/^https?:\/\//i.test(term)) return; // URL paste → import flow
     const token = ++instantTokenRef.current;
@@ -340,6 +341,7 @@ export default function Properties() {
   useEffect(() => () => { searchTokenRef.current++; }, []);
 
   const runSearch = useCallback(async (override?: string) => {
+    if (!activeWorkspaceId) return;
     const query = typeof override === 'string' ? override : q;
     const token = ++searchTokenRef.current;
     instantTokenRef.current++;

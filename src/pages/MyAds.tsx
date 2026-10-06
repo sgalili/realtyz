@@ -7,6 +7,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { Button } from '@/components/ui/button';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { formatPrice } from '@/pages/PublicListingPage';
 
 type Row = {
@@ -50,12 +51,12 @@ function AdDetails({ listingId }: { listingId: string }) {
   return <div className="space-y-5 bg-muted/20 p-4">
     <section className="space-y-2">
       <h3 className="font-semibold">{data?.owned ? 'תוצאות השותפים' : 'תוצאות הקידום שלי'}</h3>
-      {!data?.affiliates.length ? <p className="text-sm text-muted-foreground">אין עדיין שותפים מקדמים</p> : <div className="max-w-full overflow-x-auto">
+      {!data?.affiliates.length ? <p className="text-sm text-muted-foreground">אין עדיין שותפים מקדמים</p> : <HorizontalTableScroll>
         <table className="w-full min-w-[680px] text-right text-sm">
           <thead><tr className="text-muted-foreground">{['שותף', 'צפיות מתועדות', 'קליקים', 'אנשי קשר', 'רכישות בתשלום', 'סכום ששולם', 'תחילת קידום', 'פעילות אחרונה'].map(t => <th key={t} className="p-2 font-medium">{t}</th>)}</tr></thead>
           <tbody>{data.affiliates.map(a => <tr key={a.affiliate_id} className="border-t"><td className="p-2 font-semibold">{a.name}</td><td className="p-2">{number(a.views)}</td><td className="p-2">{number(a.clicks)}</td><td className="p-2">{number(a.leads)}</td><td className="p-2">{number(a.paid_count)}</td><td className="p-2 whitespace-nowrap">₪{number(a.paid_bids)}</td><td className="p-2 whitespace-nowrap">{date(a.since)}</td><td className="p-2 whitespace-nowrap">{date(a.last_activity)}</td></tr>)}</tbody>
         </table>
-      </div>}
+      </HorizontalTableScroll>}
     </section>
     <section className="space-y-2">
       <h3 className="font-semibold">היסטוריית פעילות</h3>

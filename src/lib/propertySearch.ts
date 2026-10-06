@@ -469,7 +469,8 @@ export async function searchAllSources(
   };
 
   const collected: Array<{ label: PropertySource; results: UnifiedResult[] }> = [];
-  const tasks = [{ label: 'mine' as const, run: localTask }, { label: 'yad2' as const, run: yad2Task }, { label: 'homely' as const, run: homelyTask }].filter(task => enabled.includes(task.label));
+  // Stored Yad2 rows must load even when only the Yad2 source is selected.
+  const tasks = [{ label: 'mine' as const, run: localTask }, { label: 'yad2' as const, run: yad2Task }, { label: 'homely' as const, run: homelyTask }].filter(task => task.label === 'mine' ? enabled.length > 0 : enabled.includes(task.label));
   const pending = new Set(tasks.map(task => task.label));
   await Promise.all(tasks.map(async task => {
     collected.push(await task.run());
