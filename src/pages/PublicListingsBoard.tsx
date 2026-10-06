@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
@@ -85,6 +86,28 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
   const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Owner action bar sticks to the viewport top while its expanded section is scrolled.
+  const ownerBarRef = useRef<HTMLDivElement | null>(null);
+  const ownerSectionRef = useRef<HTMLDivElement | null>(null);
+  const [ownerBarStuck, setOwnerBarStuck] = useState(false);
+  useEffect(() => {
+    if (!expandedId) { setOwnerBarStuck(false); return; }
+    const measure = () => {
+      const bar = ownerBarRef.current;
+      const section = ownerSectionRef.current;
+      if (!bar || !section) { setOwnerBarStuck(false); return; }
+      const barTop = bar.getBoundingClientRect().top;
+      const sectionBottom = section.getBoundingClientRect().bottom;
+      setOwnerBarStuck(barTop <= 0 && sectionBottom > 0);
+    };
+    document.addEventListener('scroll', measure, { passive: true, capture: true });
+    window.addEventListener('resize', measure);
+    measure();
+    return () => {
+      document.removeEventListener('scroll', measure, { capture: true } as any);
+      window.removeEventListener('resize', measure);
+    };
+  }, [expandedId]);
 
   const load = async () => {
     setLoading(true);
