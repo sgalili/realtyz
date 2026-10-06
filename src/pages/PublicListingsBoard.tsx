@@ -280,7 +280,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           ) : (
             <BoardColumnDragArea controls={columns}>
             <div ref={tableWrapRef} className="w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
-              <table className="w-max min-w-full text-sm">
+              <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     {columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
