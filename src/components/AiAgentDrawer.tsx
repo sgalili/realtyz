@@ -872,7 +872,7 @@ ${shareUrl}
                             setOpen(false);
                             navigate(`/properties/${r.id}`);
                           } else if (r.source_url) {
-                            window.open(r.source_url, '_blank', 'noopener,noreferrer');
+                            window.open(r.source_url, '_blank', 'width=1200,height=800,noopener,noreferrer');
                           } else {
                             toast.info('אין עמוד נכס זמין למקור הזה');
                           }

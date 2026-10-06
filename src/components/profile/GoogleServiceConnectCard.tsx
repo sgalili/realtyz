@@ -226,7 +226,7 @@ export function GoogleServiceConnectCard({
           description: friendly.message,
           duration: friendly.apiDisabled ? 15000 : 6000,
           action: friendly.enableUrl
-            ? { label: 'הפעלת ה-API', onClick: () => window.open(friendly.enableUrl!, '_blank', 'noopener,noreferrer') }
+            ? { label: 'הפעלת ה-API', onClick: () => window.open(friendly.enableUrl!, '_blank', 'width=1200,height=800,noopener,noreferrer') }
             : undefined,
         });
       }
@@ -405,7 +405,7 @@ export function GoogleServiceConnectCard({
                 size="sm"
                 variant="outline"
                 className="mt-2 h-7 gap-1 text-xs"
-                onClick={() => window.open('https://console.cloud.google.com/apis/credentials', '_blank', 'noopener,noreferrer')}
+                onClick={() => window.open('https://console.cloud.google.com/apis/credentials', '_blank', 'width=1200,height=800,noopener,noreferrer')}
               >
                 <ExternalLink className="h-3 w-3" /> פתיחת Google Cloud Console
               </Button>

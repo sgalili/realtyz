@@ -156,7 +156,7 @@ export default function BillingTab() {
       billingCycle === 'yearly'
         ? `היי, אני רוצה לשדרג את רילטיז לחבילת ${pkg.name} בתשלום שנתי (${fmtILS(yearlyPrice(pkg.monthlyPrice))} לשנה).`
         : `היי, אני רוצה לשדרג את רילטיז לחבילת ${pkg.name} (${fmtILS(pkg.monthlyPrice)} לחודש).`;
-    window.open(`https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'width=1200,height=800,noopener,noreferrer');
   };
 
   return (

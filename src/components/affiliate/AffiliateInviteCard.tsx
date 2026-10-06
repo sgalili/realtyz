@@ -42,7 +42,7 @@ export function AffiliateInviteCard() {
         return;
       } catch { /* user cancelled */ }
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'width=1200,height=800,noopener,noreferrer');
   };
 
   const metrics = [
@@ -140,7 +140,7 @@ export function AffiliateInviteCard() {
               size="sm"
               variant="ghost"
               disabled={!link}
-              onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}
+              onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'width=1200,height=800,noopener,noreferrer')}
             >
               <MessageCircle className="me-1.5 h-4 w-4" /> וואטסאפ
             </Button>

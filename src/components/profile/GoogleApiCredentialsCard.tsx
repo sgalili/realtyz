@@ -84,7 +84,7 @@ export function GoogleApiCredentialsCard() {
           size="sm"
           variant="outline"
           className="h-7 gap-1 text-xs"
-          onClick={() => window.open('https://console.cloud.google.com/apis/credentials', '_blank', 'noopener,noreferrer')}
+          onClick={() => window.open('https://console.cloud.google.com/apis/credentials', '_blank', 'width=1200,height=800,noopener,noreferrer')}
         >
           <ExternalLink className="h-3 w-3" /> Google Cloud Console
         </Button>

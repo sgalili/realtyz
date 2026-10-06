@@ -42,7 +42,7 @@ export function CreditBalancePill() {
   const sendWhatsApp = () => {
     const text = `היי, אשמח להטעין את החשבון שלי ברילטיז נדל"ן ב-${amount} ש"ח לטובת שירותי פרימיום.`;
     const url = `https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(url, '_blank', 'width=1200,height=800,noopener,noreferrer');
   };
 
   return (

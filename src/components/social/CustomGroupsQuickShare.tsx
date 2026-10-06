@@ -301,7 +301,7 @@ export function CustomGroupsQuickShare({
     } catch {
       toast.error('העתקה נכשלה — העתק ידנית');
     }
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(url, '_blank', 'width=1200,height=800,noopener,noreferrer');
     await (supabase as any)
       .from('campaign_activity_queue')
       .update({

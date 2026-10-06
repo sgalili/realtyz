@@ -189,7 +189,7 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
                   variant="ghost"
                   size="sm"
                   className="h-7 text-[13px] text-muted-foreground"
-                  onClick={() => window.open(row.google_event_link, '_blank', 'noopener')}
+                  onClick={() => window.open(row.google_event_link, '_blank', 'width=1200,height=800,noopener,noreferrer')}
                 >
                   <ExternalLink className="me-1.5 h-3.5 w-3.5" />
                   ביומן Google

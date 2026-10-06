@@ -31,7 +31,7 @@ export function WalletLockGate() {
           <bdi dir="ltr" className="font-semibold">{formatIls(due)}</bdi> כדי להמשיך להשתמש במערכת.
         </p>
         <div className="flex flex-col gap-2">
-          <Button onClick={() => window.open(`https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')}>
+          <Button onClick={() => window.open(`https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'width=1200,height=800,noopener,noreferrer')}>
             הטענת יתרה עכשיו
           </Button>
           <Button variant="outline" onClick={() => window.location.reload()}>שילמתי, רענון</Button>

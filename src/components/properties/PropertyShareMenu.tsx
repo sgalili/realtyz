@@ -68,7 +68,7 @@ export function PropertyShareMenu({
     setBusy(true);
     try {
       const url = await mintShareUrlForResult(results[0]);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.open(url, '_blank', 'width=1200,height=800,noopener,noreferrer');
       toast.success('הדף נפתח בלשונית חדשה');
     } catch (e: any) {
       toast.error(e?.message ?? 'פתיחת דף הנכס נכשלה');

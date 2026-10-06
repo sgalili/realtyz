@@ -1542,7 +1542,7 @@ const ApiSettings = () => {
         onDelete={existingMapbox ? () => deleteConfig.mutate(existingMapbox.id) : undefined}
         onTest={() => {
           if (mapboxToken || existingMapbox?.api_key) {
-            window.open('https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=' + (mapboxToken || existingMapbox?.api_key), '_blank', 'noopener,noreferrer');
+            window.open('https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=' + (mapboxToken || existingMapbox?.api_key), '_blank', 'width=1200,height=800,noopener,noreferrer');
           } else { toast.error('יש להזין Access Token'); }
         }}
         onSave={handleSaveMapbox}
