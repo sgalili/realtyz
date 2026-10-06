@@ -112,15 +112,6 @@ export function PropertyShareMenu({
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
-          className={hideTrigger ? 'hidden' : undefined}
-          aria-hidden={hideTrigger || undefined}
-          tabIndex={hideTrigger ? -1 : undefined}
-        >
-          <Share2 className="h-3.5 w-3.5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuTrigger asChild>
-        <Button
           size={iconOnly ? 'icon' : size}
           variant={variant}
           disabled={disabled || busy || count === 0}
