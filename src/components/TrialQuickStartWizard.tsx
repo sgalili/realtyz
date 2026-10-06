@@ -202,7 +202,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
     const url = `/social-connect?connect=${platform}&returnTo=${encodeURIComponent(
       `${window.location.pathname}?wizard=open`,
     )}`;
-    window.open(url, '_blank', 'noopener');
+    window.open(url, '_blank', 'width=1200,height=800,noopener,noreferrer');
     toast.message('פתיחת חלון חיבור חדש...', {
       description: 'אחרי שתאשר, החיבור יסומן אוטומטית במאסטר',
     });

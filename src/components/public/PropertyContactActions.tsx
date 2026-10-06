@@ -94,7 +94,7 @@ export default function PropertyContactActions({
   // WhatsApp already knows the visitor's number, so skip the form: open the
   // chat at once with a message about this property; Rita asks for the name.
   const openRita = () => {
-    window.open(officialWaLink(waOpener), '_blank', 'noopener,noreferrer');
+    window.open(officialWaLink(waOpener), '_blank', 'width=1200,height=800,noopener,noreferrer');
   };
 
   const submit = async () => {
@@ -108,7 +108,7 @@ export default function PropertyContactActions({
       void supabase.functions.invoke('public-lead-gate', {
         body: { action: 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: 'whatsapp', ref },
       });
-      window.open(officialWaLink(`${waMessage} (${name.trim()})`), '_blank', 'noopener,noreferrer');
+      window.open(officialWaLink(`${waMessage} (${name.trim()})`), '_blank', 'width=1200,height=800,noopener,noreferrer');
       setMode(null); setName(''); setPhone('');
       return;
     }

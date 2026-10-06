@@ -63,7 +63,7 @@ export function LeadSignatureCard({
       toast.error('פתיחת המסמך נכשלה');
       return;
     }
-    window.open(data.signedUrl, '_blank', 'noopener');
+    window.open(data.signedUrl, '_blank', 'width=1200,height=800,noopener,noreferrer');
   }
 
   return (

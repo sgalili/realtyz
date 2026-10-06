@@ -509,7 +509,7 @@ const ChannelGrid = ({
                       const url = profile.profileUrl || buildAccountUrl(c.id, profile.accountRef || profile.name);
                       const handleOpen = (e: React.MouseEvent) => {
                         e.stopPropagation();
-                        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                        if (url) window.open(url, '_blank', 'width=1200,height=800,noopener,noreferrer');
                       };
                       return (
                         <span key={profile.id} className="block min-w-0 max-w-full text-center">
@@ -544,7 +544,7 @@ const ChannelGrid = ({
                   const url = buildAccountUrl(c.id, raw);
                   const handleOpen = (e: React.MouseEvent) => {
                     e.stopPropagation();
-                    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                    if (url) window.open(url, '_blank', 'width=1200,height=800,noopener,noreferrer');
                   };
                   return (
                     <span
@@ -6596,7 +6596,7 @@ const PublishedFeed = ({
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" title="פתח פוסט" aria-label="פתח פוסט"
                             disabled={!postUrl}
-                            onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
+                            onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'width=1200,height=800,noopener,noreferrer'); }}>
                       <ExternalLink className="h-4 w-4" />
                     </Button>
                     {/* Comment refresh lives at the trailing edge of the

@@ -72,7 +72,7 @@ export function nativeWaLink(phone: string = OFFICIAL_WABA_PHONE, text?: string)
 /** Opens WhatsApp against the official WBA number only. */
 export async function openOfficialWhatsApp(text?: string): Promise<void> {
   const phone = await getOfficialWaNumber();
-  window.open(officialWaLink(text, phone), '_blank', 'noopener,noreferrer');
+  window.open(officialWaLink(text, phone), '_blank', 'width=1200,height=800,noopener,noreferrer');
 }
 
 /**
@@ -84,7 +84,7 @@ export async function openOfficialWhatsApp(text?: string): Promise<void> {
  * non-official sender identity: it is the device's own WhatsApp share sheet.
  */
 export function openWhatsAppContactPicker(text: string): void {
-  window.open(waMeLink(null, text), '_blank', 'noopener,noreferrer');
+  window.open(waMeLink(null, text), '_blank', 'width=1200,height=800,noopener,noreferrer');
 }
 
 
