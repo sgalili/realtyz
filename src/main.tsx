@@ -6,8 +6,10 @@ import { installRealtimeAuthSync } from "./lib/realtimeAuth";
 import { captureRefFromLocation } from "./lib/referralAttribution";
 import { installDomRemovalGuard } from "./lib/domRemovalGuard";
 import { purgeGhostQueueCache } from "./lib/extensionGroupBridge";
+import { installExternalLinkGuard } from "./lib/externalLinkGuard";
 
 installDomRemovalGuard();
+installExternalLinkGuard();
 purgeGhostQueueCache();
 enableGlobalSilentMode();
 installDemoToastFilter();

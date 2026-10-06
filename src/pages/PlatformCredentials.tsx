@@ -291,7 +291,7 @@ export default function PlatformCredentials() {
                           {platform.instructions.map((line, i) => <li key={i}>{line}</li>)}
                         </ol>
                         {platform.link && (
-                          <a href={platform.link.url} target="_blank" rel="noreferrer"
+                          <a href={platform.link.url} target="_blank" rel="noopener noreferrer"
                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                             <ExternalLink className="h-3 w-3" /> {platform.link.label}
                           </a>
