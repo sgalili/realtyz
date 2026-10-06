@@ -1,8 +1,9 @@
 # Roadmap
 ## Automatic Yad2 imports and daily caching
-- [ ] Automatically import valid pasted links with visible progress and no duplicate requests.
-- [ ] Persist complete imported records and reuse the exact item for 24 hours with server-side concurrency protection.
-- [ ] Verify cached imports, editing, and tenant-safe persistence without automatic publication.
+- [x] Automatically import valid pasted links with visible progress and no duplicate requests; browser verified eight editable cards with no page errors.
+- [x] Persist available source details and workspace-specific unpublished copies; atomic server-only item cache enforces one fresh attempt per 24 hours, including background-read credit protection.
+- [x] Verified cached import opens Properties and editable review; corrected legacy global source uniqueness to workspace-scoped uniqueness.
+- [ ] Verify complete fresh extraction with working Bright Data credentials (current token rejected with 401; browser fallback encounters Yad2 CAPTCHA). Existing stale data is explicitly labeled; missing fields remain editable.
 ## Udi access and Yad2 inline review
 - [x] Add Udi as managing_broker in Barak's workspace only, without granting global privileges; authorized workspace-list read confirmed membership.
 - [x] Replace pasted Yad2 links atomically and replace the circle modal with eight inline editable accordion cards.

@@ -210,9 +210,13 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         });
         });
-        await admin
-          .from("listings")
-          .upsert(upserts as any, { onConflict: "source,external_id" });
+        // Source identities are unique per workspace, never globally.
+        for (const row of upserts) {
+          const { data: existing } = await admin.from("listings").select("id")
+            .eq("user_id", user.id).eq("source", "yad2").eq("external_id", row.external_id).limit(1).maybeSingle();
+          if (existing) await admin.from("listings").update(row).eq("id", existing.id);
+          else await admin.from("listings").insert({ ...row, workspace_owner_id: user.id });
+        }
       } catch (e) {
         console.warn("[yad2-search] upsert failed", (e as Error).message);
       }
