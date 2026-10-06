@@ -6,7 +6,7 @@ import { PortalBrandGlyph } from '@/components/profile/PortalBrandGlyph';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspace, useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
@@ -176,17 +176,18 @@ export function ConnectionsTab() {
     }
   });
   const [meta, setMeta] = useState<MetaStatus | null>(null);
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [activeGroups, setActiveGroups] = useState<{ owner: string | null; count: number } | null>(null);
   const reportActiveGroups = useCallback((owner: string | null, count: number) => {
     setActiveGroups((previous) => previous?.owner === owner && previous.count === count ? previous : { owner, count });
   }, []);
   const { data: directInstagram } = useQuery({
-    queryKey: ['ig-direct', activeWorkspaceId],
-    enabled: !!activeWorkspaceId,
+    queryKey: ['ig-direct', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => {
-      if (!activeWorkspaceId) return null;
+      if (!workspaceOwnerId) return null;
       const { data, error } = await supabase.from('social_connections').select('id, credentials, is_connected')
-        .eq('workspace_owner_id', activeWorkspaceId).eq('platform', 'instagram_direct').maybeSingle();
+        .eq('workspace_owner_id', workspaceOwnerId).eq('platform', 'instagram_direct').maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -469,7 +470,7 @@ export function ConnectionsTab() {
       titleLead: <FacebookGroupsIcon className="h-5 w-5" />,
       status: '',
       tone: 'idle',
-      headerAside: <span className="shrink-0 text-xs text-muted-foreground">{activeGroups?.owner === activeWorkspaceId ? activeGroups.count : 0} קבוצות פעילות</span>,
+      headerAside: <span className="shrink-0 text-xs text-muted-foreground">{activeGroups?.owner === workspaceOwnerId ? activeGroups.count : 0} קבוצות פעילות</span>,
       node: <div data-plain className="p-3"><FacebookTargetsCard onActiveCount={reportActiveGroups} /></div>,
     },
     {
