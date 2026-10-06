@@ -341,16 +341,6 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/15 bg-primary/5 p-2.5">
-            <div className="text-xs text-muted-foreground">
-              משוך את כל הנתונים והתמונות העדכניות מ-Homely
-            </div>
-            <Button type="button" size="sm" variant="outline" onClick={handleSyncFromHomely} disabled={syncing} className="gap-1.5">
-              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'מסנכרן…' : 'סנכרן מ-Homely'}
-            </Button>
-          </div>
-
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">תמונות ({visiblePhotos.length})</Label>
