@@ -1,3 +1,4 @@
+import { PriceInput } from "@/components/ui/price-input";
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
 // everything, sign up through /auth, and have the listing auto-published on return.
@@ -651,7 +652,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               <div><Label>מ״ר בנוי</Label><Input inputMode="decimal" value={fields.builtSqm} onChange={(e) => set('builtSqm', decimalInput(e.target.value))} /></div>
               <div><Label>מ״ר גינה</Label><Input inputMode="numeric" value={fields.gardenSqm} onChange={(e) => set('gardenSqm', e.target.value.replace(/\D/g, ''))} /></div>
               <div><Label>גודל במ״ר סך הכל</Label><Input inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
-              <div><Label>{fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'}</Label><Input inputMode="numeric" value={fields.price} onChange={(e) => set('price', e.target.value.replace(/\D/g, ''))} /></div>
+              <div><Label>{fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'}</Label><PriceInput value={fields.price} onChange={(e) => set('price', e.target.value)} /></div>
               <div><Label>תאריך כניסה</Label><Input type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} /></div>
             </div>
           )}

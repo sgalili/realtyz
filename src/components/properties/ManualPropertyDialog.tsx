@@ -1,3 +1,4 @@
+import { PriceInput } from "@/components/ui/price-input";
 /**
  * ManualPropertyDialog
  * --------------------
@@ -296,7 +297,7 @@ export function ManualPropertyDialog({ open, onOpenChange, onCreated }: Props) {
               <Label className="text-xs font-semibold">מחיר</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">₪</span>
-                <Input type="number" inputMode="numeric" placeholder={listingType === 'rent' ? '7,500' : '1,500,000'} value={price} onChange={(e) => setPrice(e.target.value)} className="pl-7" />
+                <PriceInput placeholder={listingType === 'rent' ? '7,500' : '1,500,000'} value={price} onChange={(e) => setPrice(e.target.value)} className="pl-7" />
               </div>
             </div>
 

@@ -1,3 +1,4 @@
+import { PriceInput } from "@/components/ui/price-input";
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
@@ -195,12 +196,12 @@ export function PropertyMatchmakerDialog({
           <>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 px-6 py-4 border-b bg-muted/30">
               <FilterField label="מחיר מינ' (₪)">
-                <Input type="number" inputMode="numeric" value={filters.min_price}
+                <PriceInput value={filters.min_price}
                   onChange={(e) => setFilters((p) => ({ ...p, min_price: e.target.value }))}
                   placeholder="1,500,000" />
               </FilterField>
               <FilterField label="מחיר מקס' (₪)">
-                <Input type="number" inputMode="numeric" value={filters.max_price}
+                <PriceInput value={filters.max_price}
                   onChange={(e) => setFilters((p) => ({ ...p, max_price: e.target.value }))}
                   placeholder="3,000,000" />
               </FilterField>

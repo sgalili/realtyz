@@ -1,3 +1,4 @@
+import { PriceInput } from "@/components/ui/price-input";
 import { useState, useEffect, useRef } from 'react';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { returnState } from "@/lib/returnNav";
@@ -1425,7 +1426,7 @@ export default function PropertyDetail() {
         <div className="flex items-center justify-between gap-3 pt-1">
           <div className="flex min-w-0 flex-wrap items-baseline gap-3">
             {editMode && form ? (
-              <Input type="number" value={form.price} onChange={(e) => setField('price', e.target.value)} className="max-w-xs" />
+              <PriceInput value={form.price} onChange={(e) => setField('price', e.target.value)} className="max-w-xs" />
             ) : property.price > 0 ? (
               <>
                 <span className="text-[32px] leading-none font-normal text-success tabular-nums">

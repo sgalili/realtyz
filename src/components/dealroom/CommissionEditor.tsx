@@ -1,3 +1,4 @@
+import { PriceInput } from "@/components/ui/price-input";
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -73,12 +74,8 @@ export function CommissionEditor({ open, onOpenChange, lead, onSaved }: Commissi
         <div className="space-y-4 py-2">
           <div>
             <Label htmlFor="commission">עמלה משוערת (₪)</Label>
-            <Input
+            <PriceInput
               id="commission"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={500}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="לדוגמה 24000"

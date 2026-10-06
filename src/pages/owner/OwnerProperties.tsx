@@ -1,3 +1,4 @@
+import { PriceInput } from "@/components/ui/price-input";
 import { useState } from 'react';
 import { Home, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
@@ -117,7 +118,7 @@ export default function OwnerProperties() {
               <Input placeholder="שכונה" value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })} />
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <Input placeholder="מחיר" inputMode="numeric" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+              <PriceInput placeholder="מחיר" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
               <Input placeholder="חדרים" inputMode="decimal" value={form.rooms} onChange={(e) => setForm({ ...form, rooms: e.target.value })} />
               <Input placeholder="מ״ר" inputMode="numeric" value={form.sqm} onChange={(e) => setForm({ ...form, sqm: e.target.value })} />
             </div>
