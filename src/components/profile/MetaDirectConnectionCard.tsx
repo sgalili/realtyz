@@ -619,6 +619,68 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   // each connected page row above.
   const actionButtons = null;
 
+  // Manual token fallback, rendered directly below the connect button in both
+  // connected and disconnected states; styled like the other outline buttons.
+  const manualTokenSection = (
+    <div className="space-y-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full justify-between gap-2 text-[12px]"
+        onClick={() => setManualOpen((v) => !v)}
+        aria-expanded={manualOpen}
+      >
+        <span className="flex items-center gap-2">
+          <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+          חיבור ידני באמצעות טוקן
+        </span>
+        <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${manualOpen ? 'rotate-180' : ''}`} />
+      </Button>
+      {manualOpen && (
+        <div className="space-y-3 rounded-lg border bg-muted/30 p-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-[15px]"
+            onClick={() => setTokenHelpOpen(true)}
+          >
+            <KeyRound className="h-4 w-4" /> איך משיגים טוקן?
+          </Button>
+          <div className="space-y-1.5">
+            <Label htmlFor="meta-page-id" className="text-[15px]">Page ID</Label>
+            <Input
+              id="meta-page-id"
+              dir="ltr"
+              inputMode="numeric"
+              value={manualPageId}
+              placeholder="61580625810292"
+              onChange={(e) => setManualPageId(e.target.value)}
+              className="text-left"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="meta-page-token" className="text-[15px]">Page Access Token</Label>
+            <Input
+              id="meta-page-token"
+              dir="ltr"
+              type="password"
+              autoComplete="off"
+              value={manualToken}
+              onChange={(e) => setManualToken(e.target.value)}
+              className="text-left"
+            />
+          </div>
+          <Button size="sm" onClick={saveManual} disabled={savingManual} className="w-full gap-1.5">
+            {savingManual ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+            שמור טוקן ידני
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <Card ref={ref} dir="rtl" className="border-none bg-transparent text-right shadow-none">
       <CardHeader>
