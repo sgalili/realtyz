@@ -428,7 +428,7 @@ const ChannelGrid = ({
           {CHANNEL_CARDS.map((c) => {
             const Icon = c.icon;
             const isSelected = selectedIds.has(c.id);
-            const isConnected = connected.has(c.id);
+            const isConnected = connected.has(c.id) || c.id === 'facebook'; // Groups post via the extension even without a Page.
             // Selected = lit. A connected-but-unselected channel stays neutral
             // so nothing looks pre-picked when the screen opens.
             const lit = isSelected;
@@ -4191,7 +4191,7 @@ const GlobalSocialFeed = ({
   const Pill = ({ id, label, brand, icon: Icon }: { id: string; label: string; brand?: string; icon?: typeof Bot }) => {
     const active = activeChannel === id;
     const count = counts[id] ?? 0;
-    const isConnected = connectedChannels.has(id) || id === 'whatsapp';
+    const isConnected = connectedChannels.has(id) || id === 'whatsapp' || id === 'facebook';
     const handleClick = () => {
       if (!isConnected) { onConnectChannel(id); return; }
       onChannelChange(id);
