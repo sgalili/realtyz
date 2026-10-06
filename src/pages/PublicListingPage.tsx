@@ -413,15 +413,7 @@ function PublicListingContent() {
           />
 
           <CardContent className="space-y-4 pt-4 text-right">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-black leading-tight md:text-3xl">{data.title}</h1>
-            </div>
-
-            <p className="text-2xl font-black text-primary" dir="ltr">
-              {formatPrice(data.price, data.dealType)}
-            </p>
-
-            {specs.length > 0 && (
+            <p className="whitespace-pre-line text-base leading-7 text-foreground">{data.description}</p>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {specs.map((spec) => (
                   <div key={spec.label} className="rounded-lg border bg-background/70 p-3 text-center">
