@@ -744,19 +744,19 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                         {LEAD_TYPE_VALIDITY}
                       </LeadTypeHelp>
                     </span>
+                    <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
+                    <Input inputMode="numeric" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} />
                     {(key === 'Whatsapp' || key === 'Phone') && (() => {
                       const fk = key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone';
                       const qs = (fields as any)[fk] as string[] | undefined;
                       const list = qs && qs.length ? qs : defaultQuestions(fields.dealType);
                       const extra = Math.max(list.filter(q => q.trim()).length - 3, 0);
                       return (
-                        <button type="button" className="col-span-3 -mt-1 text-start text-xs font-semibold text-primary underline underline-offset-2" onClick={() => setQuestionsOpen(fk)}>
+                        <button type="button" className="col-span-3 -mt-1 mb-1 text-start text-xs font-semibold text-primary underline underline-offset-2" onClick={() => setQuestionsOpen(fk)}>
                           שאלות סינון ({list.filter(q => q.trim()).length}){extra > 0 ? ` · +₪${extra * EXTRA_QUESTION_COST} לפנייה` : ''}
                         </button>
                       );
                     })()}
-                    <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
-                    <Input inputMode="numeric" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} />
                   </div>
                 ))}
               </div>
