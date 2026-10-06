@@ -1,3 +1,5 @@
+import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
+import { defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
 import { PriceInput } from "@/components/ui/price-input";
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
@@ -214,6 +216,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
+  const [questionsOpen, setQuestionsOpen] = useState<'questionsWhatsapp' | 'questionsPhone' | null>(null);
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
 
@@ -325,6 +328,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       if (limitValues.length) commissions.daily_lead_cap = limitValues.reduce((a, b) => a + b, 0);
       Object.assign(payload, commissions);
       (payload.features as Record<string, unknown>).lead_daily_limits = limits;
+      const qClean = (q?: string[]) => (q && q.length ? q : defaultQuestions(draftFields.dealType)).map(x => x.trim()).filter(Boolean);
+      const contactOpts = { ...(((payload as any).contact_options as object) || {}), questions: qClean(draftFields.questionsWhatsapp), questions_phone: qClean(draftFields.questionsPhone) };
+      (payload as any).contact_options = contactOpts;
+      (payload.features as Record<string, unknown>).screening_questions = { whatsapp: contactOpts.questions, phone: contactOpts.questions_phone };
       (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
       let request;
       if (draftFields.listingId && activeWorkspaceId) {
@@ -737,6 +744,17 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                         {LEAD_TYPE_VALIDITY}
                       </LeadTypeHelp>
                     </span>
+                    {(key === 'Whatsapp' || key === 'Phone') && (() => {
+                      const fk = key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone';
+                      const qs = (fields as any)[fk] as string[] | undefined;
+                      const list = qs && qs.length ? qs : defaultQuestions(fields.dealType);
+                      const extra = Math.max(list.filter(q => q.trim()).length - 3, 0);
+                      return (
+                        <button type="button" className="col-span-3 -mt-1 text-start text-xs font-semibold text-primary underline underline-offset-2" onClick={() => setQuestionsOpen(fk)}>
+                          שאלות סינון ({list.filter(q => q.trim()).length}){extra > 0 ? ` · +₪${extra * EXTRA_QUESTION_COST} לפנייה` : ''}
+                        </button>
+                      );
+                    })()}
                     <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
                     <Input inputMode="numeric" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} />
                   </div>
@@ -757,6 +775,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 </div>
               )}
+              <LeadQuestionsDialog
+                open={questionsOpen !== null}
+                onOpenChange={(v) => { if (!v) setQuestionsOpen(null); }}
+                title={questionsOpen === 'questionsPhone' ? 'שאלות סינון בשיחת טלפון' : 'שאלות סינון בשיחת ווטסאפ'}
+                questions={questionsOpen ? (((fields as any)[questionsOpen] as string[] | undefined)?.length ? (fields as any)[questionsOpen] : defaultQuestions(fields.dealType)) : []}
+                onChange={(next) => questionsOpen && set(questionsOpen, next)}
+              />
               <p className="text-xs text-muted-foreground">יש להגדיר עמלה לפחות לסוג פנייה אחד. השארת "מקס׳ ביום" ריק = ללא הגבלה.</p>
               <div className="flex items-start gap-2 text-sm">
                 <Checkbox id="commission-terms" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
