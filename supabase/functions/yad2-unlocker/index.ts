@@ -2166,6 +2166,12 @@ Deno.serve(async (req) => {
       if (claim.state === "cached") return await cachedResponse(claim.payload, "item_cache", claim.fetched_at);
       if (claim.state !== "claimed") {
         if (claim.payload) return await cachedResponse(claim.payload, "item_cache_stale", claim.fetched_at);
+        const pooled = await readMarketPool(admin, {}, 1, inputUrl);
+        if (pooled[0]) {
+          const { data: original } = await admin.from("market_listings").select("last_seen_at").eq("source", "yad2").eq("external_id", itemId).limit(1).maybeSingle();
+          await admin.from("yad2_item_cache").update({ payload: pooled[0], fetched_at: original?.last_seen_at ?? null }).eq("item_id", itemId).is("payload", null);
+          return await cachedResponse(pooled[0], "pool_stale", original?.last_seen_at ?? null);
+        }
         return json({ error: claim.state === "busy" ? "import_in_progress" : "daily_import_limit", detail: claim.state === "busy" ? "ייבוא המודעה כבר מתבצע. הנתונים יופיעו מיד בסיום." : "כבר נעשה ניסיון ייבוא למודעה הזאת ב-24 השעות האחרונות. אפשר להמשיך ידנית.", retry_at: claim.retry_at }, claim.state === "busy" ? 409 : 429);
       }
       claimedItem = itemId; claimedToken = claim.token;
@@ -2183,10 +2189,8 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // RATE LIMIT (HARD): Bright Data is reachable ONLY inside a claimed
-    // twice-daily scrape slot (08:00 / 18:00 Asia/Jerusalem). Every other
-    // call — user searches, page loads, manual refreshes — is answered from
-    // the shared `market_listings` pool without spending a single credit.
+    // Search feeds retain twice-daily slots. Explicit item imports above
+    // require a daily atomic item claim; page hydration never spends credits.
     // ------------------------------------------------------------------
     const scrapeToken = typeof body?.scrape_token === "string" ? body.scrape_token : null;
     const sinceIso = typeof body?.since === "string" && body.since ? body.since : null;
