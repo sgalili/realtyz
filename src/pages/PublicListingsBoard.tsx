@@ -59,6 +59,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const goToAuth = () =>
+    navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -197,6 +199,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </div>
             {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
             <Button className="ms-auto shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
+            {!user && (
+              <Button size="sm" variant="outline" onClick={goToAuth} className="shrink-0 rounded-full px-3 text-xs font-semibold sm:hidden">
+                הרשמה / התחברות
+              </Button>
+            )}
           </div>
         </div>
       </header>
