@@ -43,7 +43,8 @@ export function InstagramConnectionCard({ pageConnected = false }: { pageConnect
   const directHandle = direct?.is_connected ? direct.credentials?.username ?? null : null;
   const [handleInput, setHandleInput] = useState('');
   const [savingDirect, setSavingDirect] = useState(false);
-  useEffect(() => { if (directHandle) setHandleInput(directHandle); }, [directHandle]);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  useEffect(() => { if (directHandle) setHandleInput(directHandle); setAvatarFailed(false); }, [directHandle]);
 
   const parseHandle = (raw: string) => {
     let v = raw.trim();
@@ -166,7 +167,29 @@ export function InstagramConnectionCard({ pageConnected = false }: { pageConnect
         <div className="space-y-2 rounded-xl border p-3">
           {directHandle ? (
             <div className="flex items-center justify-between gap-2">
-              <a href={`https://instagram.com/${directHandle}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="truncate text-[14px] font-medium text-primary">@{directHandle}</a>
+              <a
+                href={`https://instagram.com/${directHandle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                dir="ltr"
+                className="flex min-w-0 items-center gap-2"
+                title={`@${directHandle} באינסטגרם`}
+              >
+                {avatarFailed ? (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E4405F]/10">
+                    <Instagram className="h-4 w-4 text-[#E4405F]" />
+                  </span>
+                ) : (
+                  <img
+                    src={`https://unavatar.io/instagram/${encodeURIComponent(directHandle)}`}
+                    alt={`@${directHandle}`}
+                    className="h-8 w-8 shrink-0 rounded-full bg-muted object-cover"
+                    loading="lazy"
+                    onError={() => setAvatarFailed(true)}
+                  />
+                )}
+                <span className="truncate text-[14px] font-medium text-primary">@{directHandle}</span>
+              </a>
               <Button size="sm" variant="outline" className="h-8 text-[13px]" disabled={savingDirect} onClick={() => void saveDirect(true)}>נתק</Button>
             </div>
           ) : (
