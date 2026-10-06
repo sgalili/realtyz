@@ -43,7 +43,8 @@ export function InstagramConnectionCard({ pageConnected = false }: { pageConnect
   const directHandle = direct?.is_connected ? direct.credentials?.username ?? null : null;
   const [handleInput, setHandleInput] = useState('');
   const [savingDirect, setSavingDirect] = useState(false);
-  useEffect(() => { if (directHandle) setHandleInput(directHandle); }, [directHandle]);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  useEffect(() => { if (directHandle) setHandleInput(directHandle); setAvatarFailed(false); }, [directHandle]);
 
   const parseHandle = (raw: string) => {
     let v = raw.trim();
