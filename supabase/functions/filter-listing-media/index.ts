@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
     const { data: listing, error } = await admin
       .from("listings")
-      .select("id, media_photos, image_url, source_metadata")
+      .select("id, media_photos, image_url, source_metadata, source_url")
       .eq("id", listingId)
       .maybeSingle();
     if (error || !listing) return json({ ok: false, error: error?.message ?? "listing_not_found" }, 404);
@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       if (!meta.office_logo_url && verdict.logo && verdict.publisher_logo && !verdict.person && matchesAdvertiser(verdict.branding_name, advertiserNames)) {
         meta.office_logo_url = url;
         meta.office_logo_source_url = url;
-        meta.office_logo_evidence = { source: "source_gallery", source_url: meta.source_url ?? null, branding_name: verdict.branding_name };
+        meta.office_logo_evidence = { source: "source_gallery", source_url: listing.source_url ?? null, branding_name: verdict.branding_name };
       }
       if (verdict.logo || verdict.person) {
         blocked.push(url);

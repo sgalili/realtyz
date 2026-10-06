@@ -354,7 +354,7 @@ function normalizePhotoUrl(value: unknown): string | null {
   if (u.startsWith("//")) u = `https:${u}`;
   if (u.startsWith("/")) u = `https://www.yad2.co.il${u}`;
   if (!/^https?:\/\//i.test(u)) return null;
-  if (/placeholder|default|no[-_]?image|logo|sprite|icon|blank\.(gif|png|jpg)/i.test(u)) return null;
+  if (/placeholder|default|no[-_]?image|sprite|icon|yad2[-_]?logo|blank\.(gif|png|jpg)/i.test(u)) return null;
   const imageLike = /\.(?:jpe?g|png|webp|avif)(?:[?#]|$)/i.test(u) || /(?:img|images|assets)\.yad2\.co\.il/i.test(u);
   return imageLike ? u : null;
 }
@@ -1979,11 +1979,13 @@ async function saveMarketListing(admin: any, row: Scraped & Record<string, any>)
 
   const { data: existing } = await admin
     .from("market_listings")
-    .select("id")
+    .select("id, raw")
     .eq("source_url", row.source_url)
     .maybeSingle();
 
   if (existing?.id) {
+    const oldRaw = existing.raw ?? {};
+    payload.raw = { ...oldRaw, ...(payload.raw as Record<string, unknown>), publisher: { ...oldRaw.publisher, ...row.publisher } };
     const { error } = await admin.from("market_listings").update(payload).eq("id", existing.id);
     if (error) throw new Error(`pool_update_failed(${row.source_url}): ${error.message}`);
     return;
