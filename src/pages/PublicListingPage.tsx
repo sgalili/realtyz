@@ -29,6 +29,7 @@ import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddress';
 import PropertyContactActions, { type ContactOptions } from '@/components/public/PropertyContactActions';
+import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { useAuth } from '@/hooks/useAuth';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
@@ -89,7 +90,7 @@ const VALUE_LABELS: Record<string, string> = {
   new: 'חדש', renovated: 'משופץ', good: 'שמור', needs_renovation: 'דורש שיפוץ', true: 'כן', false: 'לא',
 };
 
-const HIDDEN_PUBLIC_KEYS = new Set(['office_notes', 'internal_notes', 'owner_phone', 'owner_name', 'owner_email', 'id', 'url', 'sources', 'source', 'source_url', 'external_id', 'removed_photo_keys', 'media_vision_checked', 'media_vision_at', 'metadata_backfilled_at', 'fetched_at', 'created_at', 'updated_at', 'publisher_type', 'contact_whatsapp', 'contact_name', 'contact_email', 'contact_phone', 'lead_daily_limits', 'commission_terms_accepted_at', 'media_videos', 'media_photos', 'workspace_owner_id', 'user_id', 'slug', 'textEng']);
+const HIDDEN_PUBLIC_KEYS = new Set(['office_notes', 'internal_notes', 'owner_phone', 'owner_name', 'owner_email', 'id', 'url', 'sources', 'source', 'source_url', 'external_id', 'removed_photo_keys', 'media_vision_checked', 'media_vision_at', 'metadata_backfilled_at', 'fetched_at', 'created_at', 'updated_at', 'publisher_type', 'contact_whatsapp', 'contact_name', 'contact_email', 'contact_phone', 'lead_daily_limits', 'commission_terms_accepted_at', 'media_videos', 'media_photos', 'workspace_owner_id', 'user_id', 'slug', 'textEng', 'one_liner_he', 'perks']);
 
 function cleanDate(value: unknown): string | null {
   const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -405,8 +406,8 @@ function PublicListingContent() {
           <div className="flex items-center justify-between gap-3 px-4 pt-3">
             <Button variant="ghost" size="sm" onClick={closeDetails} aria-label="סגירה וחזרה לעמוד הקודם"><X className="h-4 w-4" />סגירה וחזרה</Button>
             <div className="flex items-center gap-2">
+              {data.id && <OwnerListingActions listingId={data.id} />}
               <Button variant="outline" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button>
-              {data.id && <PropertyContactActions listingId={data.id} title={data.title} shareUrl={shareUrl} compact shareOnly />}
             </div>
           </div>
           <div className="px-4 py-3">
