@@ -844,14 +844,14 @@ export default function Properties() {
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
-            <Button
+            {(q.trim() || yad2Status?.tone === 'busy') && <Button
               type="button"
               size="sm"
                variant={searching || yad2Status?.tone === 'busy' ? 'destructive' : 'default'}
                onClick={searching || yad2Status?.tone === 'busy' ? cancelSearch : () => submitQuery()}
                aria-label={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
                title={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
-               className="h-7 shrink-0 gap-1.5 px-3 text-xs"
+                className="order-last h-7 shrink-0 gap-1.5 px-3 text-xs"
             >
                {yad2Status?.tone === 'busy' ? <X className="h-3.5 w-3.5" /> : searching ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -859,7 +859,7 @@ export default function Properties() {
                 <SearchIcon className="h-3.5 w-3.5" />
               )}
                <span>{searching || yad2Status?.tone === 'busy' ? 'בטל' : 'חפש'}</span>
-            </Button>
+             </Button>}
 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               <CollapsibleTrigger asChild>
                 <Button
@@ -895,7 +895,7 @@ export default function Properties() {
                 readOnly={yad2Status?.tone === 'busy'}
                 onFocus={() => setSuggestionsOpen(true)}
                  onBlur={() => setSuggestionsOpen(false)}
-                 role="combobox" aria-autocomplete="list" aria-expanded={suggestionsOpen && q.trim().length >= 2 && suggestions.length > 0} aria-controls="inventory-suggestions" aria-activedescendant={suggestionIndex >= 0 ? `inventory-option-${suggestionIndex}` : undefined}
+                  role="combobox" aria-autocomplete="list" aria-expanded={suggestionsOpen && (q.trim().length >= 2 ? suggestions.length > 0 : searchHistory.length > 0)} aria-controls={q.trim() ? 'inventory-suggestions' : 'search-history'} aria-activedescendant={suggestionIndex >= 0 ? `inventory-option-${suggestionIndex}` : undefined}
                  onChange={(e) => { const value = e.target.value; setSuggestionsOpen(true); setQ(value); if (/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)$/i.test(value.trim())) void submitQuery(value); }}
                 onPaste={(e) => {
                   const pasted = e.clipboardData.getData('text');
@@ -920,7 +920,12 @@ export default function Properties() {
 
              </div>
             </div>
-            {suggestionsOpen && q.trim().length >= 2 && !/yad2\.co\.il|https?:\/\//i.test(q) && yad2Status?.tone !== 'busy' && (
+             {suggestionsOpen && !q.trim() && searchHistory.length > 0 && (
+               <div id="search-history" role="listbox" aria-label="חיפושים קודמים" className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
+                 {searchHistory.map(entry => <Button key={entry} role="option" aria-selected={false} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { setQ(entry); setSuggestionsOpen(false); void submitQuery(entry); }} className="h-auto w-full justify-start gap-2 p-2 text-right"><RefreshCw className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 truncate" dir="auto">{entry}</span></Button>)}
+               </div>
+             )}
+             {suggestionsOpen && q.trim().length >= 2 && !/yad2\.co\.il|https?:\/\//i.test(q) && yad2Status?.tone !== 'busy' && (
               <div id="inventory-suggestions" role="listbox" aria-label="נכסי המשרד" className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
                 {inventorySuggestions.isFetching ? <div role="status" className="flex items-center gap-2 p-3 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />מחפש בנכסי המשרד…</div> : suggestions.length ? suggestions.map((row, index) => <Button key={row.key} id={`inventory-option-${index}`} role="option" aria-selected={suggestionIndex === index} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { setSuggestionsOpen(false); void handleSelect(row); }} className={`h-auto w-full justify-start gap-2 p-2 text-right ${suggestionIndex === index ? 'bg-accent text-accent-foreground' : ''}`}><MapPin className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1"><span className="block truncate">{row.address || row.title}</span><span className="block truncate text-xs text-muted-foreground">{[row.city, row.title].filter(Boolean).join(' · ')}</span></span>{row.price ? <span className="shrink-0 text-xs tabular-nums">{formatPrice(row.price)}</span> : null}</Button>) : <div className="p-3 text-sm text-muted-foreground">{inventorySuggestions.isError ? 'לא ניתן לטעון הצעות כרגע' : 'לא נמצאו נכסים במשרד'}</div>}
               </div>
@@ -1017,16 +1022,20 @@ export default function Properties() {
 
 
 
-        <div role="group" aria-label="מקורות חיפוש" data-expanded={sourcesExpanded} className="group/sources mt-2 flex min-w-0 items-center gap-1">
-          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className="h-8 min-w-8 gap-0 px-2 hover:bg-transparent hover:text-inherit">
+        <div data-testid="property-filter-row" className="mt-2 flex items-center justify-between gap-2">
+        <div role="group" aria-label="מקורות חיפוש" className="group/sources flex min-w-0 items-center gap-0">
+          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className="h-8 min-w-0 gap-0 px-1 hover:bg-transparent hover:text-inherit">
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
             <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 motion-reduce:transition-none group-hover/sources:max-w-28 group-hover/sources:ps-1.5 group-hover/sources:opacity-100 group-focus-within/sources:max-w-28 group-focus-within/sources:ps-1.5 group-focus-within/sources:opacity-100 group-data-[expanded=true]/sources:max-w-28 group-data-[expanded=true]/sources:ps-1.5 group-data-[expanded=true]/sources:opacity-100">{sourceLabel(source)}</span>
           </Button>)}
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent hover:text-inherit" aria-label="הרחב מקורות חיפוש" aria-expanded={sourcesExpanded} onClick={() => setSourcesExpanded(current => !current)}><ChevronDown className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${sourcesExpanded ? 'rotate-180' : ''}`} /></Button>
+        </div>
+        <div className="inline-flex shrink-0 items-center" role="group" aria-label="סוג עסקה">
+          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1.5 px-2 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${t === 'rent' ? 'bg-sale' : 'bg-success'} ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
+        </div>
         </div>
 
         {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
-        <div className="flex flex-wrap items-center gap-2 mt-3" dir="rtl">
+        <div data-testid="property-tools-row" className="flex flex-wrap items-center gap-2 mt-[10px]" dir="rtl">
           {/* Side A — sort + total-count dropdown */}
           <div className="flex items-center gap-2">
             <SelectModeToggle active={multiSelectMode} count={selectedListingIds.size} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
@@ -1065,9 +1074,6 @@ export default function Properties() {
 
           {/* Side B — single mutually-exclusive view switch */}
           <div className="ms-auto inline-flex items-center">
-             <div className="inline-flex items-center" role="group" aria-label="סוג עסקה">
-               {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1.5 px-2 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${t === 'rent' ? 'bg-sale' : 'bg-success'} ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
-             </div>
             <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
           </div>
         </div>
