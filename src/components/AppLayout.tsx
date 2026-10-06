@@ -506,7 +506,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               aria-label={`${headerName} - דף הבית`}
               className="pointer-events-auto fixed left-1/2 top-[env(safe-area-inset-top)] z-30 flex h-16 max-w-[calc(100vw-9rem)] -translate-x-1/2 items-center gap-1.5 overflow-hidden text-right leading-none"
             >
-              <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className="h-8 max-w-20 shrink-0 object-contain" />
+              <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className={headerLogo ? "h-8 max-w-20 shrink-0 object-contain" : "h-[41.6px] max-w-[104px] shrink-0 object-contain"} />
               <span className="flex min-w-0 flex-col items-start justify-center text-right leading-none">
                 <span className="min-w-0 truncate text-sm font-bold leading-[15px] text-foreground">{headerName}</span>
                 {headerUserName ? (

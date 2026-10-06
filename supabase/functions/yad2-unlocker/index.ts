@@ -1083,7 +1083,7 @@ function extractFeedItems(payload: any): any[] {
   // New "buckets" shape — merge them all so paid + private + agency all count.
   const bucketKeys = ["private", "agency", "platinum", "commercial", "projects", "yad1", "king", "results"];
   const merged: any[] = [];
-  for (const k of bucketKeys) if (Array.isArray(d?.[k])) merged.push(...d[k]);
+  for (const k of bucketKeys) if (Array.isArray(d?.[k])) merged.push(...d[k].map((item: any) => ({ ...item, ...(['private', 'agency'].includes(k) ? { _source_bucket: k } : {}) })));
   if (merged.length) candidates.push(merged);
   // Bare arrays as last resort.
   if (Array.isArray(d)) candidates.push(d);
@@ -1539,7 +1539,7 @@ function parseItem(html: string, srcUrl: string): Scraped | null {
     deal_type: dealType,
     owner_name: ownerName,
     owner_phone: ownerPhone,
-    publisher: { ...extractYad2Publisher(ad, srcUrl), ...extractYad2PublisherHtml($, srcUrl), ...(/בלעדיות|נכסים נוספים של המשרד/.test(text) ? { publisher_kind: "broker" } : {}) },
+    publisher: { ...extractYad2Publisher(ad, srcUrl), ...extractYad2PublisherHtml($, srcUrl) },
     description: about,
     short_description: clean(ad?.info_text ?? ad?.subtitle ?? null),
     long_description: about,
