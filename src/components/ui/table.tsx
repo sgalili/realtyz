@@ -164,11 +164,13 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
     };
 
     let content: React.ReactNode = children;
+    let headDone = false;
     if (sortable && n > 0) {
       content = React.Children.map(children, (child) => {
         if (!React.isValidElement(child)) return child;
         const el = child as React.ReactElement<any>;
-        if (el === headEl) {
+        if (el.type === headEl?.type && !headDone) {
+          headDone = true;
           const rows = elementsOf(el.props.children);
           const first = rows[0];
           const managed = visible.map((i) => (
