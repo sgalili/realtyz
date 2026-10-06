@@ -12,7 +12,6 @@ import { shortenName } from '@/lib/shortenName';
 import { openExternal } from '@/lib/openExternal';
 import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCard';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 
@@ -62,7 +61,6 @@ function readCache(owner: string | null): { groups: GroupTarget[] } | null {
  */
 export function FacebookTargetsCard({ className, actions }: { className?: string; actions?: ReactNode }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const { data: pageBinding } = useMetaPageBinding();
   const cached = readCache(workspaceOwnerId);
   const [allGroups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   // פעילות = live joined groups only; pending / not-joined / blocked live in their own tabs.
@@ -112,12 +110,9 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         .order('group_name', { ascending: true });
       if (scopeRef.current !== workspaceOwnerId || request !== requestRef.current) return;
       if (error) throw error;
-      // TENANT ISOLATION: hide groups bound to a Facebook page this workspace is
-      // no longer connected to.
-      const connectedPage = pageBinding?.pageId ?? null;
-      const visible = ((data ?? []) as any[]).filter(
-        (r) => r.is_blocked || !r?.page_id || !connectedPage || String(r.page_id) === connectedPage,
-      );
+       // The authorized workspace owns the group directory, independently of
+       // the current Page binding or Graph authentication state.
+       const visible = (data ?? []) as any[];
       const nextGroups: GroupTarget[] = visible.map((r) => {
         const id = String(r.id);
         const override = joinOverrides.current.get(id);
@@ -143,7 +138,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     } finally {
       if (scopeRef.current === workspaceOwnerId && request === requestRef.current) setLoading(false);
     }
-  }, [workspaceOwnerId, pageBinding?.pageId]);
+  }, [workspaceOwnerId]);
 
   useEffect(() => { void load(); }, [load]);
   useGroupQueueLive(workspaceOwnerId, () => void load());

@@ -16,7 +16,6 @@ import { Facebook, Loader2, Unlink, KeyRound } from 'lucide-react';
 
 import { useFacebookHealth, useRefreshFacebookHealth, useResetFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
-import { FacebookTargetsCard } from '@/components/profile/FacebookTargetsCard';
 
 import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
@@ -615,10 +614,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   };
 
 
-  // The sync row holds only the clean action buttons; page disconnect lives on
-  // each connected page row above.
-  const actionButtons = null;
-
   const manualTokenButton = (
     <Button
       type="button"
@@ -686,7 +681,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-right">
           <Facebook className="h-5 w-5 text-primary" />
-          <span>פייסבוק ואינסטגרם</span>
+          <span>חיבור לפייסבוק</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -802,9 +797,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
             {manualTokenSection}
           </div>
         )}
-
-        {/* Sync / extension download / add groups stay available even without a connected Page. */}
-        <FacebookTargetsCard key={`targets-${connectionEpoch}`} actions={actionButtons} />
 
         <Dialog open={tokenHelpOpen} onOpenChange={setTokenHelpOpen}>
           <DialogContent dir="rtl" className="text-right sm:max-w-md">
