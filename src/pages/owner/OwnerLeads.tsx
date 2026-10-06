@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useMemo } from 'react';
 import { Users } from 'lucide-react';
 import { useOwnerInterest, useOwnerListings } from '@/hooks/useOwnerListings';
@@ -35,7 +36,7 @@ export default function OwnerLeads() {
         <p className="py-10 text-center text-sm text-muted-foreground">אין מתעניינים עדיין</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-card">
-          <table className="w-full text-right text-xs">
+          <Table className="w-full text-right text-xs">
             <thead className="bg-muted/60 text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 font-semibold">שם</th>
@@ -62,7 +63,7 @@ export default function OwnerLeads() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </div>
       )}
     </div>

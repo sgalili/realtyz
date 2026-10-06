@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 /**
  * Detailed Bright Data usage & cost breakdown (Hebrew RTL).
  * Opened from the header balance badge. Shows the wallet state, per-line
@@ -187,7 +188,7 @@ export function BrightDataUsageDialog({
             <section className="space-y-2">
               <h4 className="text-sm font-semibold">פירוט חיובים שורה-שורה</h4>
               <div className="overflow-x-auto rounded-md border border-border/60">
-                <table className="w-full text-[12px]">
+                <Table className="w-full text-[12px]">
                   <thead className="bg-muted/50 text-muted-foreground">
                     <tr>
                       <th className="px-2 py-1.5 text-right">תאריך</th>
@@ -208,7 +209,7 @@ export function BrightDataUsageDialog({
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
             </section>
           )}

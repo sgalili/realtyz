@@ -1,3 +1,4 @@
+import { Table } from '@/components/ui/table';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -216,7 +217,7 @@ function NadlanPanel() {
               <p className="text-sm text-muted-foreground">אין עסקאות לתצוגה</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <Table className="w-full text-sm">
                   <thead>
                     <tr className="text-right text-xs text-muted-foreground border-b">
                       <th className="py-2 pr-2">תאריך</th>
@@ -237,7 +238,7 @@ function NadlanPanel() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </div>
             )}
           </Card>

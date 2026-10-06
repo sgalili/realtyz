@@ -6,7 +6,6 @@ import { AppSidebar } from '@/components/AppSidebar';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import TableColumnReorder from '@/components/TableColumnReorder';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -486,7 +485,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <KeepSidebarOpenAfterModeSwitch />
-      <TableColumnReorder />
       {/* A negative wallet locks the app until the balance is topped up. */}
       <WalletLockGate />
       <div className="realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background">
