@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 
 export const BOARD_COLUMNS = [
-  { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כתובת' },
+  { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' },
   { id: 'deal', label: 'עסקה' }, { id: 'price', label: 'מחיר' },
   { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
 ] as const;
