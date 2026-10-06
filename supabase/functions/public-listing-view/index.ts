@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanPayload } from "../_shared/cleanValues.ts";
 import { maskContactText, toPublicCard } from "../_shared/publicMask.ts";
+import { verifiedSourceLicense, licenseNumber } from "../_shared/yad2Publisher.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
     const ownAttribution = {
       broker_name: profile?.broker_byline || profile?.full_name || "שם המתווך לא צוין",
       office_name: brand?.agency_name || workspace?.workspace_name || "שם המשרד לא צוין",
-      broker_license_number: profile?.broker_license_number || null,
+      broker_license_number: licenseNumber(profile?.broker_license_number),
       agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || workspace?.workspace_logo_url || null,
     };
     // Imported ads (Yad2 etc.) always show the ORIGINAL advertiser, never the
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
       const txt = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
       const name = txt(m.broker_name) ?? txt(m.contact_name) ?? txt(m.owner_name) ?? txt(ownerMap.get(row.owner_id));
       const office = txt(m.agency_name) ?? txt(m.office_name) ?? txt(m.merchant_name);
-      const licence = txt(m.broker_license) ?? txt(m.broker_license_number) ?? txt(m.license_number);
+      const licence = verifiedSourceLicense(m);
       // "בלעדיות" on Yad2 means a broker/agency posted the ad, never a private owner.
       const exclusive = [row.additional_details, row.attributes].some((d: any) => d?.isAssetExclusive === true);
       const broker = exclusive || !!licence || !!office || m.publisher_kind === "broker";

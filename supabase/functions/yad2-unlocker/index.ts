@@ -16,6 +16,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
+import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2Publisher.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -1030,6 +1031,7 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     deal_type: dealType,
     owner_name: clean(it?.customer?.name ?? it?.merchant_name ?? null),
     owner_phone: clean(it?.customer?.phone ?? null),
+    publisher: extractYad2Publisher(it, href),
     description: longDesc ?? shortDesc,
     short_description: shortDesc,
     long_description: longDesc,
@@ -1151,6 +1153,7 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   base.available_from = pickAvailableFrom(ad) ?? base.available_from ?? null;
   base.attributes = { ...(base.attributes ?? {}), ...pickAttributes(ad) };
   base.photos = pickAllPhotos(base.photos, ad?.images, ad?.metaData?.images, ad?.gallery);
+  base.publisher = { ...base.publisher, ...extractYad2Publisher(ad, srcUrl) };
   base.description = base.long_description ?? base.short_description ?? base.description;
   const coords = pickCoords(ad);
   base.latitude = coords.lat ?? base.latitude ?? null;
@@ -1188,6 +1191,7 @@ type Scraped = {
   deal_type: DealType;
   owner_name: string | null;
   owner_phone: string | null;
+  publisher?: Record<string, unknown>;
   description: string | null;
   short_description?: string | null;
   long_description?: string | null;
@@ -1534,6 +1538,7 @@ function parseItem(html: string, srcUrl: string): Scraped | null {
     deal_type: dealType,
     owner_name: ownerName,
     owner_phone: ownerPhone,
+    publisher: { ...extractYad2Publisher(ad, srcUrl), ...extractYad2PublisherHtml($, srcUrl), ...(/בלעדיות|נכסים נוספים של המשרד/.test(text) ? { publisher_kind: "broker" } : {}) },
     description: about,
     short_description: clean(ad?.info_text ?? ad?.subtitle ?? null),
     long_description: about,
@@ -1674,6 +1679,7 @@ function mergeScraped(base: Scraped, extra: Scraped | null | undefined): Scraped
   for (const [k, v] of Object.entries(extra)) {
     if (v == null) continue;
     if (k === "photos") continue;
+    if (k === "publisher") { merged.publisher = { ...base.publisher, ...extra.publisher }; continue; }
     if (typeof v === "string" && !v.trim()) continue;
     if (typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length) continue;
     if (Array.isArray(v) && !v.length) continue;
@@ -1792,6 +1798,11 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
   );
 
 
+  const publisher = { ...(row.publisher ?? {}) };
+  if (typeof publisher.office_logo_url === "string") {
+    const mirrored = await mirrorPhotos(admin, `publisher/${row.external_id}`, [publisher.office_logo_url]);
+    publisher.office_logo_url = mirrored[0] ?? publisher.office_logo_url;
+  }
   const payload: Record<string, unknown> = {
     user_id: workspaceOwnerId,
     workspace_owner_id: workspaceOwnerId,
@@ -1823,6 +1834,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
     price_history: row.price_history ?? [],
     owner_id: ownerId,
     source_metadata: {
+      ...publisher,
       scraper: "yad2-unlocker",
       external_id: row.external_id,
       property_type: (row.attributes?.property_type ?? row.attributes?.propertyType ?? row.attributes?.subcategory ?? null),
@@ -1922,6 +1934,7 @@ async function saveMarketListing(admin: any, row: Scraped & Record<string, any>)
     photos: Array.isArray(row.photos) ? row.photos.slice(0, 40) : [],
     attributes: row.attributes ?? {},
     raw: {
+      publisher: row.publisher ?? {},
       short_description: row.short_description ?? null,
       furniture_details: row.furniture_details ?? {},
       additional_details: row.additional_details ?? {},
@@ -2014,6 +2027,7 @@ async function readMarketPool(
     additional_details: (r.raw ?? {}).additional_details ?? {},
     owner_name: (r.raw ?? {}).owner_name ?? null,
     owner_phone: (r.raw ?? {}).owner_phone ?? null,
+    publisher: (r.raw ?? {}).publisher ?? {},
     latitude: (r.raw ?? {}).latitude ?? null,
     longitude: (r.raw ?? {}).longitude ?? null,
   }));
@@ -2540,6 +2554,7 @@ Deno.serve(async (req) => {
           const full = parseItemJson(raw, r.source_url);
           if (full) {
             r.photos = pickAllPhotos(full.photos, r.photos);
+            r.publisher = { ...r.publisher, ...full.publisher };
             r.long_description = full.long_description ?? r.long_description ?? null;
             r.description = r.description || full.description || null;
             r.furniture_details = { ...(r.furniture_details ?? {}), ...(full.furniture_details ?? {}) };

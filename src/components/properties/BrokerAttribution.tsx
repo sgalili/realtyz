@@ -17,6 +17,7 @@ export default function BrokerAttribution({
 }: BrokerAttributionProps) {
   const broker = brokerName?.trim() && !brokerName.includes('לא צוין') ? brokerName.trim() : '';
   const office = officeName?.trim() && !officeName.includes('לא צוין') ? officeName.trim() : '';
+  const license = /^[1-9]\d{0,7}$/.test(licenceNumber?.trim() ?? '') ? licenceNumber?.trim() : '';
 
   return (
     <div data-publisher-attribution className={`flex min-w-0 items-center gap-3 border-y bg-muted/30 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
@@ -29,9 +30,9 @@ export default function BrokerAttribution({
       </div>
       <div className="min-w-0 flex-1 text-right">
         <p className={`${compact ? 'text-xs' : 'text-sm'} break-words font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
-        {(office || licenceNumber?.trim()) && <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        {(office || license) && <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
           {office && <span title={office} className="min-w-0 truncate">{office}</span>}
-          {licenceNumber?.trim() && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {licenceNumber.trim()}</span>}
+          {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {license}</span>}
         </div>}
       </div>
     </div>
