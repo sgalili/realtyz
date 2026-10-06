@@ -265,7 +265,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5 px-2 hover:bg-transparent hover:text-inherit focus-visible:bg-transparent', deals[value] ? 'font-semibold text-foreground hover:!text-foreground' : 'text-muted-foreground/60 hover:!text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
             </div>
             {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
-            <Button className="ms-auto shrink-0" size="icon" variant="outline" onClick={() => setGrid((value) => !value)} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
+            <Button className="ms-auto shrink-0" size="icon" variant="outline" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
           </div>
         </div>
       </header>
@@ -278,7 +278,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               const title = cleanTitle(card);
               const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
               return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className={cn('cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
-                <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} isMine={ownedIds.has(card.id)} />
+                <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} />
                 <div className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-0.5">
@@ -352,7 +352,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                                   <OwnerListingActions listingId={card.id} />
                                 </div>
                               ) : null}
-                              {open && <PropertyGallerySlider photos={card.photos} alt={title} onFavorite={() => openGate(card, 'favorite')} />}
+                              {open && <PropertyGallerySlider photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} />}
                             </div>
                             <div className="min-w-0 space-y-3">
                               <ExpandedPropertyDetails idOrSlug={card.slug || card.id} />
