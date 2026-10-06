@@ -630,7 +630,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 4 && (
             <div className="space-y-3">
-              <div><Label htmlFor="wizard-rooms">חדרים *</Label><Select value={fields.rooms} onValueChange={(value) => set('rooms', value)}><SelectTrigger id="wizard-rooms"><SelectValue placeholder="חדרים" /></SelectTrigger><SelectContent>{ROOM_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} חדרים</SelectItem>)}</SelectContent></Select></div>
+              <div><Label htmlFor="wizard-rooms"></Label><Select value={fields.rooms} onValueChange={(value) => set('rooms', value)}><SelectTrigger id="wizard-rooms"><SelectValue placeholder="חדרים" /></SelectTrigger><SelectContent>{ROOM_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} חדרים</SelectItem>)}</SelectContent></Select></div>
               <div className="flex flex-wrap gap-4">
                 {([['elevator', 'מעלית'], ['parking', 'חניה'], ['balcony', 'מרפסת'], ['openView', 'נוף פתוח']] as const).map(([key, label]) => (
                   <label key={key} className="flex items-center gap-2 text-sm font-semibold">
