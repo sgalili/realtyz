@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Ban, Clock, ExternalLink, Loader2, Search, Trash2, Undo2, UserPlus, Users } from 'lucide-react';
+import { Ban, Hourglass, ExternalLink, Loader2, Search, Trash2, Undo2, UserPlus, Users } from 'lucide-react';
 import { isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
 import { joinGroupsViaExtension, type JoinStatus } from '@/lib/extensionGroupDiscovery';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
@@ -14,6 +14,7 @@ import { ExtensionGroupSyncCard } from '@/components/social/ExtensionGroupSyncCa
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
+import { cleanGroupName, memberCountFromText } from '@/lib/fbGroupText';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean; blocked?: boolean; blockedReason?: string | null; joinStatus: JoinState };
 type JoinState = 'joined' | 'pending' | 'not_joined';
@@ -47,6 +48,7 @@ function GroupThumb({ src }: { src?: string | null }) {
   );
 }
 const TEXT_MD = 'text-[15px]';
+const exactMembers = (n: number) => n.toLocaleString('he-IL');
 const MAX_GROUPS = 100;
 const JOIN_BATCH = 5;
 const sortByPopularity = <T extends { members: number | null }>(list: T[]) =>
@@ -145,10 +147,10 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
         return ({
         id: String(r.id),
         groupId: String(r.group_id),
-        name: String(r.group_name || r.group_id),
+        name: cleanGroupName(r.group_name) || 'קבוצה ללא שם',
         icon: r.group_icon ?? null,
         url: r.group_url ?? null,
-        members: typeof r.member_count === 'number' ? r.member_count : null,
+        members: typeof r.member_count === 'number' ? r.member_count : memberCountFromText(r.group_name),
         selected: r.is_selected !== false && !r.is_blocked,
         blocked: !!r.is_blocked,
         blockedReason: r.blocked_reason ?? null,
@@ -338,7 +340,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
         {shortenName(g.name)}
       </span>
       {typeof g.members === 'number' && g.members > 0 && (
-        <span className={cn('shrink-0 text-muted-foreground tabular-nums', TEXT_SM)} dir="ltr">{formatMemberCount(g.members)}</span>
+        <span className={cn('shrink-0 text-muted-foreground tabular-nums', TEXT_SM)} dir="ltr">{exactMembers(g.members)}</span>
       )}
       <button type="button" aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`} title="צפה בקבוצה בלשונית חדשה"
         onClick={(e) => { e.stopPropagation(); openExternal(fbGroupUrlFrom(g.url, g.groupId)); }}
@@ -373,11 +375,11 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
         <div className="space-y-1.5">
           {/* Multi-select toggle leads the tab row (RTL: right of the tabs). */}
           <div className="flex min-w-0 items-center gap-2">
-            {groups.length > 0 && (
+            {(tab === 'not_joined' ? notJoinedGroups.length > 0 : tab === 'active' && groups.length > 0) && (
               <SelectModeToggle
                 active={deleteMode}
-                count={markedIds.size}
-                onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
+                count={tab === 'not_joined' ? joinPicked.size : markedIds.size}
+                onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); setJoinPicked(new Set()); }}
               />
             )}
             <div role="tablist" className="flex min-w-0 flex-1 overflow-x-auto rounded-lg bg-muted p-0.5">
@@ -397,7 +399,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
             notJoinedGroups.length === 0 ? (
               <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות בהמתנה.</p>
             ) : (<>
-              <SelectAllRow total={Math.min(notJoinedGroups.length, MAX_GROUPS)} selected={joinPicked.size}
+              {deleteMode && <SelectAllRow total={Math.min(notJoinedGroups.length, MAX_GROUPS)} selected={joinPicked.size}
                 onToggle={() => setJoinPicked(joinPicked.size > 0 ? new Set() : new Set(sortByPopularity(notJoinedGroups).slice(0, MAX_GROUPS).map((g) => g.id)))}
                 className="rounded-lg border border-border">
                 <Button type="button" size="sm" className="h-7 gap-1 text-[12px]" disabled={joinPicked.size === 0 || joining}
@@ -405,14 +407,14 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                   {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
                   הצטרפות
                 </Button>
-              </SelectAllRow>
+              </SelectAllRow>}
               <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
                 {sortByPopularity(notJoinedGroups).map((g) => renderSimpleRow(g, (<>
-                  <SelectBox checked={joinPicked.has(g.id)} label={g.name}
-                    onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else if (n.size < MAX_GROUPS) n.add(g.id); else toast.info(`ניתן לבחור עד ${MAX_GROUPS} קבוצות`); return n; })} />
+                  {deleteMode && <SelectBox checked={joinPicked.has(g.id)} label={g.name}
+                    onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else if (n.size < MAX_GROUPS) n.add(g.id); else toast.info(`ניתן לבחור עד ${MAX_GROUPS} קבוצות`); return n; })} />}
                   {joinProgress[g.id] === 'מצטרף…' ? (
                     <Loader2 role="status" className="h-4 w-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" aria-label="הצטרפות בתהליך" />
-                  ) : g.joinStatus === 'pending' ? <Clock className="h-4 w-4 shrink-0 text-primary" aria-label="בקשה ממתינה" /> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
+                  ) : g.joinStatus === 'pending' ? <span role="status" aria-label="בקשה ממתינה לאישור" className="relative flex h-4 w-4 shrink-0 items-center justify-center"><span className="absolute inset-0 animate-ping rounded-full bg-primary/30 motion-reduce:animate-none" /><Hourglass className="relative h-3.5 w-3.5 text-primary" /></span> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
                 </>)))}
               </div>
             </>)
@@ -486,7 +488,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                   </span>
                   {typeof g.members === 'number' && g.members > 0 && (
                     <span className={cn('shrink-0 text-muted-foreground tabular-nums', TEXT_SM)} dir="ltr">
-                      {formatMemberCount(g.members)}
+                      {exactMembers(g.members)}
                     </span>
                   )}
                   {!deleteMode && (
