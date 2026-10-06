@@ -15,11 +15,11 @@ export default function BrokerAttribution({
   logoUrl,
   compact = false,
 }: BrokerAttributionProps) {
-  const broker = brokerName?.trim() || 'שם המתווך לא צוין';
-  const office = officeName?.trim() || 'שם המשרד לא צוין';
+  const broker = brokerName?.trim() && !brokerName.includes('לא צוין') ? brokerName.trim() : '';
+  const office = officeName?.trim() && !officeName.includes('לא צוין') ? officeName.trim() : '';
 
   return (
-    <div className={`flex items-center gap-3 border-y bg-muted/30 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
+    <div data-publisher-attribution className={`flex min-w-0 items-center gap-3 border-y bg-muted/30 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
       <div className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
         {logoUrl ? (
           <img src={logoUrl} alt={`לוגו ${office}`} loading="lazy" className="h-full w-full object-contain p-1" />
@@ -27,12 +27,12 @@ export default function BrokerAttribution({
           <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         )}
       </div>
-      <div className="min-w-0 text-right">
-        <p className={`${compact ? 'text-xs' : 'text-sm'} truncate font-bold text-foreground`}>{broker}</p>
-        <p className="truncate text-xs font-medium text-muted-foreground">{office}</p>
-        {licenceNumber?.trim() ? (
-          <p className="truncate text-xs font-medium text-muted-foreground">רישיון תיווך {licenceNumber.trim()}</p>
-        ) : null}
+      <div className="min-w-0 flex-1 text-right">
+        <p className={`${compact ? 'text-xs' : 'text-sm'} break-words font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
+        {(office || licenceNumber?.trim()) && <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          {office && <span title={office} className="min-w-0 truncate">{office}</span>}
+          {licenceNumber?.trim() && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {licenceNumber.trim()}</span>}
+        </div>}
       </div>
     </div>
   );

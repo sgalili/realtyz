@@ -1,4 +1,7 @@
 # Roadmap
+## Public ad presentation refinement
+- [x] Unify deal-prefixed title/price, public publisher attribution below title with office/license inline, and share beside favorites across grid/list/details; reuse existing public endpoint without private reads.
+- [x] Add safe close/back navigation; signed-in live grid/share/details/favorite-refresh/restore/list-close verified without page errors, three tests passed and automatic build OK. Narrow-container overflow checked; actual mobile device not tested. Missing public publisher details remain uninvented.
 ## My Ads favorites
 - [x] Add personal favorites tab with public-safe previews and persistent removal; verified signed-in save/list/remove/refresh without runtime errors, automatic build passed.
 ## Public card gallery and priced inquiries
