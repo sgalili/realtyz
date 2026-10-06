@@ -17,6 +17,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
 import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2Publisher.ts";
+import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -1768,6 +1769,7 @@ async function mirrorPhotos(admin: any, keyPrefix: string, urls: string[]): Prom
 }
 
 async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, retry = false, fetchedAt: string | null = new Date().toISOString()): Promise<{ id: string; updated: boolean }> {
+  await traceGalleryPublisher(row);
   const { data: existing } = await admin
     .from("listings").select("id, slug, media_photos, source_metadata, asking_price, description, attributes").eq("workspace_owner_id", workspaceOwnerId).eq("source", "yad2").eq("external_id", row.external_id).limit(1).maybeSingle();
   const ownerId = await upsertOwnerProfile(admin, workspaceOwnerId, row.owner_name, row.owner_phone);
@@ -1911,6 +1913,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
 // written only by the twice-daily scheduled run and read by everybody else.
 
 async function saveMarketListing(admin: any, row: Scraped & Record<string, any>) {
+  await traceGalleryPublisher(row);
   const payload: Record<string, unknown> = {
     source: "yad2",
     external_id: row.external_id ?? null,
