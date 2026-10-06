@@ -135,7 +135,7 @@ function toUnifiedResult(listing: BrokerAffiliateListing): UnifiedResult {
   };
 }
 
-function RewardDialog({
+export function RewardDialog({
   listing,
   open,
   onOpenChange,
