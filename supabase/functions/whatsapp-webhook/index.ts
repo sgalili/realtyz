@@ -29,7 +29,7 @@ import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 import { generateFastReply } from "../_shared/waFastReply.ts";
-import { FOCUS_COLUMNS, matchListingFromText, renderFocusPropertyBlock } from "../_shared/focusProperty.ts";
+import { FOCUS_COLUMNS, matchListingFromText, renderFocusPropertyBlock, textNamesAddress, ADDRESS_NOT_FOUND_BLOCK } from "../_shared/focusProperty.ts";
 import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, saveRitaState } from "../_shared/ritaIntel.ts";
 import { resolveLeadGender } from "../_shared/hebrewGender.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
@@ -1281,6 +1281,7 @@ async function handleLeadInboxInbound(
         try {
           const matched = await matchListingFromText(admin as any, aiOwnerId, promptInboundText);
           if (matched) return matched;
+          if (textNamesAddress(promptInboundText)) return null;
           // Follow-ups ("כמה חדרים יש בדירה הזאת?") carry no address: keep the
           // property identified earlier in this thread in focus.
           const priorText = aiMessages
@@ -1325,6 +1326,7 @@ async function handleLeadInboxInbound(
     const focusProperty = productInquiry ? "" : renderFocusPropertyBlock(focusRow as any);
     contextBlock += ritaStateBlock;
     if (productInquiry) contextBlock += PRODUCT_INQUIRY_BLOCK;
+    else if (!focusRow && textNamesAddress(promptInboundText)) contextBlock += ADDRESS_NOT_FOUND_BLOCK;
     rescueContextBlock = contextBlock;
     rescueFocusProperty = focusProperty;
     // Direct fact questions ("כמה חדרים?") are answered straight from the listing.

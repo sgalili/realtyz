@@ -23,7 +23,7 @@ import { corsHeaders } from "./cors.ts";
 import { sendSms019, toLocalIL } from "./sms019.ts";
 import { logIntegrationError } from "./logIntegrationError.ts";
 import { renderFocusPropertyBlock } from "./focusProperty.ts";
-import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState } from "./ritaIntel.ts";
+import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState, ADDRESS_NOT_FOUND_BLOCK, textNamesAddress } from "./ritaIntel.ts";
 import { generateFastReply } from "./waFastReply.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -471,7 +471,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
     const isProductInquiry = classifyInquiryIntent(bodyText, history) === "product";
     const focusRow = isProductInquiry ? null : await resolveFocusListing(admin as any, workspaceOwnerId, bodyText, history, (lead as any).interest_tag ?? null);
     const focusBlock = renderFocusPropertyBlock(focusRow as any);
-    const stateBlock = isProductInquiry ? PRODUCT_INQUIRY_BLOCK : renderRitaStateBlock(readRitaState((lead as any).preferences));
+    const stateBlock = isProductInquiry ? PRODUCT_INQUIRY_BLOCK : renderRitaStateBlock(readRitaState((lead as any).preferences)) + (!focusRow && textNamesAddress(bodyText) ? ADDRESS_NOT_FOUND_BLOCK : "");
     const factAnswer = isProductInquiry ? null : answerPropertyFact(bodyText, focusRow as any);
     if (factAnswer) reply = factAnswer;
 
