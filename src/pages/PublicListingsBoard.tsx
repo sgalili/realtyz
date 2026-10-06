@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import realtyzLogo from '@/assets/realtyz-logo.png';
@@ -43,26 +43,28 @@ function cleanTitle(card: PublicCard) {
 
 function PhotoCarousel({ photos, alt, onFavorite, isMine = false, isFav = false }: { photos: string[]; alt: string; onFavorite: () => void; isMine?: boolean; isFav?: boolean }) {
   const [index, setIndex] = useState(0);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swiped = useRef(false);
   if (!photos.length) return <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">אין תמונות</div>;
   const move = (delta: number) => setIndex((current) => (current + delta + photos.length) % photos.length);
   return (
-    <div className="group relative h-48 overflow-hidden bg-muted">
-      <img src={photos[index]} alt={alt} loading="lazy" className="h-full w-full object-cover" />
-      <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} className="absolute left-2 top-2 h-9 w-9 rounded-full bg-background/70 text-destructive shadow-sm backdrop-blur-sm hover:bg-background/70"><Heart className={cn('h-5 w-5 transition-colors', isFav && 'fill-current')} /></Button>
+    <div className="group relative h-48 overflow-hidden bg-muted [touch-action:pan-y]" onTouchStart={(event) => { const touch = event.touches[0]; if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY }; swiped.current = false; }} onTouchEnd={(event) => { const start = touchStart.current; const touch = event.changedTouches[0]; touchStart.current = null; if (!start || !touch || photos.length < 2) return; const dx = touch.clientX - start.x; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(touch.clientY - start.y)) { swiped.current = true; move(dx > 0 ? 1 : -1); } }} onClickCapture={(event) => { if (swiped.current) { event.preventDefault(); event.stopPropagation(); swiped.current = false; } }}>
+      <img src={photos[index]} alt={alt} loading="lazy" draggable={false} className="h-full w-full object-cover" />
+      <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); onFavorite(); }} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} className="absolute left-2 top-2 h-9 w-9 rounded-full bg-background/50 text-destructive shadow-sm hover:bg-background/50"><Heart className={cn('h-5 w-5 transition-colors', isFav && 'fill-current')} /></Button>
       {(isMine || photos.length > 1) && (
-        <div className="absolute right-2 top-2 flex flex-col items-end gap-1.5">
+        <div className="absolute right-2 top-2 flex items-center gap-1.5">
+          {photos.length > 1 && <span className="rounded-full bg-background/50 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>}
           {isMine && (
-            <span title="המודעה שלי" className="inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-bold text-primary shadow">
+            <span title="המודעה שלי" className="inline-flex items-center gap-1 rounded-full bg-background/50 px-2 py-1 text-xs font-bold text-primary shadow">
               <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
               שלי
             </span>
           )}
-          {photos.length > 1 && <span className="rounded-full bg-background/90 px-2 py-1 text-xs font-bold tabular-nums text-foreground shadow">({index + 1}/{photos.length})</span>}
         </div>
       )}
       {photos.length > 1 && <>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={(event) => { event.stopPropagation(); move(-1); }} className="absolute start-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronRight className="h-5 w-5" /></Button>
-        <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={(event) => { event.stopPropagation(); move(1); }} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full shadow"><ChevronLeft className="h-5 w-5" /></Button>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={(event) => { event.stopPropagation(); move(-1); }} className="absolute start-1 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full bg-background/50 shadow hover:bg-background/50"><ChevronRight className="h-5 w-5" /></Button>
+        <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={(event) => { event.stopPropagation(); move(1); }} className="absolute end-2 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full bg-background/50 shadow hover:bg-background/50"><ChevronLeft className="h-5 w-5" /></Button>
       </>}
     </div>
   );
@@ -280,17 +282,16 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className={cn('cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
                 <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} />
                 <div className="space-y-2 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-foreground">
-                        <Home className="h-4 w-4 shrink-0 text-primary" />
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="w-full min-w-0 space-y-0.5">
+                      <p className="min-w-0 text-[17px] font-bold text-foreground">
                         <span className="min-w-0 break-words">{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}${card.total_floors ? ` מתוך ${card.total_floors}` : ''}` : null].filter(Boolean).join(' · ')}</p>
                     </div>
-                    <div className="shrink-0 text-left">
+                    <div className="flex w-full items-center justify-between gap-2">
                       <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-sale text-sale-foreground shadow-sm' : 'bg-success text-success-foreground')}>{dealLabel(card.deal_type)}</span>
-                      <p className="mt-1 text-sm font-bold text-foreground">{shekel(card.price)}</p>
+                      <p className="mt-1 text-xl font-bold text-foreground">{shekel(card.price)}</p>
                     </div>
                   </div>
                   {card.description && <p className="line-clamp-3 text-xs text-muted-foreground">{card.description}</p>}

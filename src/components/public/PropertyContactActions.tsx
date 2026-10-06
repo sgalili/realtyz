@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
+import { ChevronLeft, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -42,13 +42,12 @@ export default function PropertyContactActions({
   showShare?: boolean;
 }) {
   const settings = options ?? {};
-  // A listing exposes one publisher-defined path only. Prefer the highest
-  // configured tier when old records contain more than one true value.
-  // Every lead type the publisher priced gets its own button.
+  // Preserve priced identity capture, but avoid a redundant form when a
+  // configured conversation can collect it itself.
   const showWhatsapp = settings.whatsapp === true;
   const showPhone = settings.phone === true;
-  const showDigital = settings.digital === true && !showWhatsapp;
-  const [mode, setMode] = useState<'digital' | 'phone' | 'whatsapp' | null>(null);
+  const showDigital = settings.digital === true && !showWhatsapp && !showPhone;
+  const [mode, setMode] = useState<'digital' | 'phone' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
@@ -61,7 +60,7 @@ export default function PropertyContactActions({
   const waMessage = premsg?.trim() || `היי ריטה, אשמח לקבל פרטים אודות ${title}.`;
   // The sharing partner's code travels inside the opener so the WhatsApp
   // contact is credited to them when the message arrives.
-  const waOpener = ref && /^[A-Za-z0-9_-]{4,40}$/.test(ref) ? `${waMessage}\n(קוד הפניה: ${ref})` : waMessage;
+  const waOpener = ref && /^[A-Za-z0-9_-]{4,40}$/.test(ref) ? `${waMessage}\n[ref:${ref}]` : waMessage;
 
   const shareDetails = () => {
     const url = shareUrl?.trim() || (typeof window !== 'undefined' ? window.location.href : '');
@@ -98,30 +97,18 @@ export default function PropertyContactActions({
   };
 
   const submit = async () => {
-    if (!name.trim() || phone.replace(/\D/g, '').length < 9) {
-      toast.error('יש למלא שם מלא ומספר טלפון תקין');
-      return;
-    }
-    if (mode === 'whatsapp') {
-      // Save the contact in the background, then open the chat synchronously so
-      // the browser never blocks the new tab.
-      void supabase.functions.invoke('public-lead-gate', {
-        body: { action: 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: 'whatsapp', ref },
-      });
-      window.open(officialWaLink(`${waMessage} (${name.trim()})`), '_blank', 'width=1200,height=800,noopener,noreferrer');
-      setMode(null); setName(''); setPhone('');
+    if ((!mode && !name.trim()) || phone.replace(/\D/g, '').length < 9) {
+      toast.error(mode === 'phone' ? 'יש למלא מספר טלפון תקין' : 'יש למלא שם מלא ומספר טלפון תקין');
       return;
     }
     const callback = mode === 'phone';
     setSending(true);
     const { data, error } = await supabase.functions.invoke('public-lead-gate', {
-      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: mode, ref },
+      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: callback ? 'phone' : 'digital', ref },
     });
     setSending(false);
 
-    // Callback requests NEVER show a failure to the visitor: the contact is
-    // saved server-side and a failed AI call surfaces on the partner dashboard.
-    if (!callback && (error || (data as { error?: string } | null)?.error)) {
+    if (error || (data as { error?: string } | null)?.error) {
       toast.error('שליחת הפרטים נכשלה');
       return;
     }
@@ -131,12 +118,19 @@ export default function PropertyContactActions({
 
   return (
     <>
-      <div onClick={(event) => event.stopPropagation()} className={compact ? 'flex w-full items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
+      <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={compact ? 'flex w-full flex-wrap items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
+        {showDigital && (
+          <form className="flex w-full flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+            <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
+            <div className="min-w-[7rem] flex-1"><Label htmlFor={`phone-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`phone-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
+            <Button type="submit" size="icon" aria-label="שליחת פרטים" disabled={sending || !name.trim() || phone.replace(/\D/g, '').length < 9}>{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronLeft className="h-4 w-4" />}</Button>
+          </form>
+        )}
         {showWhatsapp && (
           <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90" onClick={openRita}>
             <>
               <WhatsAppIcon className="h-5 w-5" />
-              שיחה עם ריטה
+              ווטסאפ עם ריטה
               {/* RTL: Rita's picture sits on the opposite (left) side of the label. */}
               <RitaAvatar className="h-6 w-6 border-0 ring-0" />
             </>
@@ -145,11 +139,6 @@ export default function PropertyContactActions({
         {showPhone && (
           <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('phone')}>
             <Phone className="h-4 w-4" />חייגו אליי
-          </Button>
-        )}
-        {showDigital && (
-          <Button variant="outline" className="min-w-[8rem] flex-1" onClick={() => setMode('digital')}>
-            <ClipboardList className="h-4 w-4" />השארת פרטים
           </Button>
         )}
         {showShare && !user && (
@@ -198,12 +187,11 @@ export default function PropertyContactActions({
       </Dialog>
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent dir="rtl" className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="text-right">{mode === 'phone' ? 'חזרה טלפונית' : mode === 'whatsapp' ? 'שיחה עם ריטה' : 'השארת פרטים'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-right">חזרה טלפונית</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>שם מלא *</Label><Input value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div><Label>טלפון *</Label><Input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
           </div>
-          <DialogFooter className="flex-row items-center justify-between sm:justify-between"><Button variant="outline" onClick={() => setMode(null)}>ביטול</Button><Button disabled={sending} onClick={() => void submit()}>{sending && <Loader2 className="h-4 w-4 animate-spin" />}{mode === 'phone' ? 'חייגו אליי' : mode === 'whatsapp' ? 'פתיחת צ׳אט בווטסאפ' : 'שלחו לי פרטים נוספים'}</Button></DialogFooter>
+          <DialogFooter className="flex-row items-center justify-between sm:justify-between"><Button variant="outline" onClick={() => setMode(null)}>ביטול</Button><Button disabled={sending} onClick={() => void submit()}>{sending && <Loader2 className="h-4 w-4 animate-spin" />}חייגו אליי</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </>

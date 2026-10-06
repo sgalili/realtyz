@@ -3893,6 +3893,60 @@ export type Database = {
           },
         ]
       }
+      listing_inquiry_states: {
+        Row: {
+          answers: Json
+          channel: string
+          created_at: string
+          evidence_source: string | null
+          lead_id: string
+          listing_id: string
+          questions: Json
+          updated_at: string
+          verified_name: string | null
+          workspace_owner_id: string
+        }
+        Insert: {
+          answers?: Json
+          channel: string
+          created_at?: string
+          evidence_source?: string | null
+          lead_id: string
+          listing_id: string
+          questions?: Json
+          updated_at?: string
+          verified_name?: string | null
+          workspace_owner_id: string
+        }
+        Update: {
+          answers?: Json
+          channel?: string
+          created_at?: string
+          evidence_source?: string | null
+          lead_id?: string
+          listing_id?: string
+          questions?: Json
+          updated_at?: string
+          verified_name?: string | null
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_inquiry_states_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_inquiry_states_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_lead_charges: {
         Row: {
           affiliate_id: string | null
