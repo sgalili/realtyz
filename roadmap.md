@@ -1,8 +1,8 @@
 # Roadmap
 ## Public card gallery and priced inquiries
-- [ ] Align image pills, 50% image-control backgrounds, horizontal swipe, larger price/title and renamed Rita action.
-- [ ] Show inline name/phone only for form-only ads; classify conversation contacts after real name capture and satisfactory screening without premature billing.
-- [ ] Verify gallery and inquiry states, plus focused qualification regressions.
+- [x] Align image pills, 50% image-control backgrounds, horizontal swipe, larger price/title and renamed Rita action.
+- [x] Show inline name/phone only for form-only ads; classify conversation contacts after real name capture and satisfactory screening without premature billing.
+- [x] Verified live gallery arrows/swipe, inline form, 20px price and 17px title without runtime errors; three focused tests and automatic builds passed. Live WhatsApp/phone qualification and wallet billing were not exercised; 112 pre-existing database security findings remain outside this change.
 ## Public board table customization
 - [x] Add ascending/descending header sorting and mouse/keyboard/touch-capable draggable column order.
 - [x] Add minimal column visibility menu and user/workspace-local remembered preferences after refresh/exit.
