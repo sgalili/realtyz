@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 
 export type PropertySource = 'mine' | 'homely' | 'webtiv' | 'yad2' | 'external';
 
@@ -7,11 +8,11 @@ export type PropertySource = 'mine' | 'homely' | 'webtiv' | 'yad2' | 'external';
 //   Yad2        → orange  #FF7A00
 //   Our storage → blue    #0E7EE6
 const META: Record<PropertySource, { label: string; short: string; color: string }> = {
-  mine: { label: 'המאגר שלי', short: 'ש', color: '#0E7EE6' },
-  homely: { label: 'הומלי', short: 'H', color: '#000000' },
-  webtiv: { label: 'Webtiv', short: 'W', color: '#0d9488' },
-  yad2: { label: 'יד-2', short: 'Y', color: '#FF7A00' },
-  external: { label: 'חיצוני', short: 'E', color: '#52525b' },
+  mine: { label: 'הנכסים שלי', short: 'ש', color: 'hsl(var(--destructive))' },
+  homely: { label: 'הומלי', short: 'H', color: 'hsl(var(--deal-blue))' },
+  webtiv: { label: 'Webtiv', short: 'W', color: 'hsl(var(--social-sms))' },
+  yad2: { label: 'יד 2', short: 'Y', color: 'hsl(var(--success))' },
+  external: { label: 'חיצוני', short: 'E', color: 'hsl(var(--muted-foreground))' },
 };
 
 export function SourceBadge({
@@ -24,6 +25,8 @@ export function SourceBadge({
   /** kept for API compatibility — renders a slightly smaller dot */
   compact?: boolean;
 }) {
+  const { connected } = useHomelyConnection();
+  if (source === 'homely' && !connected) return null;
   const meta = META[source] ?? META.external;
   return (
     <span
@@ -31,7 +34,7 @@ export function SourceBadge({
       aria-label={meta.label}
       role="img"
       className={cn(
-        'inline-block shrink-0 rounded-full ring-1 ring-black/10',
+        'inline-block shrink-0 rounded-full ring-1 ring-border',
         compact ? 'h-2 w-2' : 'h-2.5 w-2.5',
         className,
       )}
@@ -48,6 +51,6 @@ export function sourceColor(source: PropertySource): string {
   return (META[source] ?? META.external).color;
 }
 
-export function sourceDotClass(_source: PropertySource): string {
-  return 'rounded-full';
+export function sourceDotClass(source: PropertySource): string {
+  return ({ mine: 'bg-destructive', homely: 'bg-deal-blue', yad2: 'bg-success', webtiv: 'bg-social-sms', external: 'bg-muted-foreground' })[source] ?? 'bg-muted-foreground';
 }

@@ -952,7 +952,7 @@ export default function DealRoom() {
                 )}
                 {factViolations.length > 0 && (
                   <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs">
-                    ⚠️ בדיקת עובדות נכשלה — אמת מול נכסי Homely:
+                    ⚠️ בדיקת עובדות נכשלה — אמת מול נתוני הנכס:
                     <ul className="list-disc me-4 mt-1 space-y-0.5">
                       {factViolations.map((v, i) => (<li key={i}><strong>{v.kind}:</strong> {v.value} — {v.reason}</li>))}
                     </ul>

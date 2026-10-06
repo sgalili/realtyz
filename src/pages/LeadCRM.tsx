@@ -46,6 +46,7 @@ import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { BrandIcon } from '@/components/BrandIcon';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { getDemoCandidateMessages, getDemoCandidateVoters } from '@/lib/demoData';
@@ -501,6 +502,7 @@ function EditableInlineText({
 
 
 const LeadCRM = () => {
+  const { connected: homelyConnected } = useHomelyConnection();
   const { user } = useAuth();
   const { recruitmentMode, listingsEnabled } = useWorkspaceFeatures();
   const activeWorkspaceId = useActiveWorkspaceOwnerId();
@@ -575,7 +577,7 @@ const LeadCRM = () => {
   const [homelySyncing, setHomelySyncing] = useState(false);
 
   const handleHomelySync = async () => {
-    if (homelySyncing) return;
+    if (homelySyncing || !homelyConnected) return;
     setHomelySyncing(true);
     window.dispatchEvent(new Event('leads:busy:on'));
     const t = toast.loading('מסנכרן אנשי קשר מהומלי...');
@@ -664,12 +666,12 @@ const LeadCRM = () => {
       const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' | 'avatars' }>).detail?.action;
       if (action === 'manual') setAddVoterOpen(true);
       else if (action === 'import') fileInputRef.current?.click();
-      else if (action === 'homely') handleHomelySync();
+      else if (action === 'homely' && homelyConnected) handleHomelySync();
       else if (action === 'avatars') handleSyncProfilePictures();
     };
     window.addEventListener('leads:add', handler);
     return () => window.removeEventListener('leads:add', handler);
-  }, []);
+  }, [homelyConnected]);
 
 
   useRealtimeSubscription('messages', [['lead-messages', selectedVoterId ?? '']]);
@@ -2036,7 +2038,7 @@ const LeadCRM = () => {
                       ? 'cursor-pointer hover:bg-accent/40 transition-colors text-sm leading-snug [&>td]:!px-0 [&>td]:py-1.5'
                       : 'cursor-pointer hover:bg-accent/40 transition-colors text-base [&>td]:!px-0 [&>td]:py-2';
                     const prefs = (lead as any).preferences ?? {};
-                    const sourceLabel = prefs.homely_id || prefs.source === 'homely' ? 'הומלי' : 'Realtyz CRM';
+                    const sourceLabel = homelyConnected && (prefs.homely_id || prefs.source === 'homely') ? 'הומלי' : 'Realtyz CRM';
                     const sourceCls = prefs.homely_id || prefs.source === 'homely'
                       ? 'bg-blue-500/10 text-blue-700 border-blue-300'
                       : 'bg-primary/10 text-primary border-primary/30';
@@ -2572,7 +2574,7 @@ const LeadCRM = () => {
                       { v: 'closed', l: 'סגר עסקה' },
                     ];
                     const sourceOpts = [
-                      { v: 'homely', l: 'הומלי' },
+                      ...(homelyConnected ? [{ v: 'homely', l: 'הומלי' }] : []),
                       { v: 'shortlink', l: 'פוסט פייסבוק' },
                       { v: 'facebook_groups', l: 'פייסבוק קבוצות' }, { v: 'facebook', l: 'פייסבוק' },
                       { v: 'instagram', l: 'אינסטגרם' }, { v: 'whatsapp', l: 'וואטסאפ' },
@@ -2603,7 +2605,7 @@ const LeadCRM = () => {
                       // The injected label uses the global Hebrew dictionaries so legacy
                       // tokens like `webtiv_stream` / `new_lead` never leak through.
                       const hasMatch = !!value && options.some((o) => o.v === value);
-                      const dictLabel = SOURCE_LABEL_HE[value] || STAGE_LABEL_HE[value] || value;
+                      const dictLabel = value === 'homely' && !homelyConnected ? 'מקור חיצוני' : SOURCE_LABEL_HE[value] || STAGE_LABEL_HE[value] || value;
                       const mergedOptions = !value || hasMatch
                         ? options
                         : [{ v: value, l: dictLabel }, ...options];
@@ -2935,7 +2937,7 @@ const LeadCRM = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <HomelyBulkSyncDialog
+      {homelyConnected && <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
         onImported={() => {
@@ -2945,7 +2947,7 @@ const LeadCRM = () => {
           supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 2000, owner_id: activeWorkspaceId } }).catch(() => {});
         }}
         mode="contacts"
-      />
+      />}
 
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={(o) => { if (!deleting) setDeleteDialogOpen(o); }}>

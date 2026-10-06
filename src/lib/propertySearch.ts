@@ -272,6 +272,12 @@ export async function searchAllSources(
   // paint matches from `listings` without waiting on any external gateway.
   onPartial?: (partial: SearchResponse) => void,
 ): Promise<SearchResponse> {
+  // UI search sources never inherit a connection from another workspace.
+  const { data: owner } = await supabase.rpc('current_workspace_owner');
+  const { data: connection } = owner ? await supabase.from('homely_broker_credentials')
+    .select('connection_status').eq('user_id', owner).maybeSingle() : { data: null };
+  const homelyConnected = connection?.connection_status === 'ok' || connection?.connection_status === 'manually_verified';
+  const enabled = (f.sources ?? ['mine', 'yad2', 'homely']).filter(source => source !== 'homely' || homelyConnected);
   const sources: SearchResponse['sources'] = {};
   const listingType = f.listing_type && f.listing_type !== 'all' ? f.listing_type : undefined;
   const body = {
@@ -421,11 +427,14 @@ export async function searchAllSources(
     for (const s of ordered) {
       if (!sources[s.label]) sources[s.label] = { status: s.results.length ? 'ok' : 'empty', count: s.results.length };
       for (const r of s.results) {
+        if (r.source === 'homely' && !homelyConnected) continue;
         if (f.listing_type && f.listing_type !== 'all' && r.listing_type !== f.listing_type) continue;
         const k = dedupeKey(r);
         const stripped = k.replace(/\|/g, '');
         if (stripped && byKey.has(k)) {
-          const existing = all[byKey.get(k)!];
+          const existingIndex = byKey.get(k);
+          const existing = existingIndex === undefined ? undefined : all[existingIndex];
+          if (!existing) continue;
           if (!existing.sources.includes(r.source)) existing.sources.push(r.source);
           // Prefer external URL/photos when the local row lacks them.
           if (!existing.url && r.url) existing.url = r.url;
@@ -457,7 +466,6 @@ export async function searchAllSources(
   };
 
   const collected: Array<{ label: PropertySource; results: UnifiedResult[] }> = [];
-  const enabled = f.sources ?? ['mine', 'yad2', 'homely'];
   const tasks = [{ label: 'mine' as const, run: localTask }, { label: 'yad2' as const, run: yad2Task }, { label: 'homely' as const, run: homelyTask }].filter(task => enabled.includes(task.label));
   const pending = new Set(tasks.map(task => task.label));
   await Promise.all(tasks.map(async task => {

@@ -29,6 +29,7 @@ import { useAppMode } from "@/hooks/useAppMode";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { RealtyzWave } from "@/components/RealtyzWave";
 import { PublicListingPublisher } from "@/components/public/PublicListingPublisher";
 import { BrightDataHeroPill } from "@/components/BrightDataHeroPill";
@@ -54,6 +55,7 @@ const SOURCE_LABELS_HE: Record<string, string> = {
 };
 
 function usePropertyHeroSuffix(pathname: string): string {
+  const { connected } = useHomelyConnection();
   const match = pathname.match(/^\/properties\/([^/]+)/);
   const id = match?.[1];
   const { data } = useQuery({
@@ -67,10 +69,12 @@ function usePropertyHeroSuffix(pathname: string): string {
   });
   if (!data) return "";
   const key = String(data).toLowerCase().trim();
+  if (key === 'homely' && !connected) return '';
   return SOURCE_LABELS_HE[key] || data;
 }
 
 function PropertiesHeroAddButton() {
+  const { connected } = useHomelyConnection();
   const dispatch = (action: "manual" | "import" | "homely") =>
     window.dispatchEvent(new CustomEvent("properties:add", { detail: { action } }));
   return (
@@ -92,15 +96,16 @@ function PropertiesHeroAddButton() {
         <DropdownMenuItem onClick={() => dispatch("import")} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" /> יבוא נכסים מאקסל
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => dispatch("homely")} className="gap-2">
+        {connected && <DropdownMenuItem onClick={() => dispatch("homely")} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" /> סנכרון מלא מהומלי
-        </DropdownMenuItem>
+        </DropdownMenuItem>}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
 function LeadsHeroAddButton() {
+  const { connected } = useHomelyConnection();
   const [busy, setBusy] = React.useState(false);
   React.useEffect(() => {
     const on = () => setBusy(true);
@@ -141,9 +146,9 @@ function LeadsHeroAddButton() {
         <DropdownMenuItem onClick={() => dispatch("import")} className="gap-2" disabled={busy}>
           <FileSpreadsheet className="h-4 w-4" /> ייבוא אנשי קשר
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => dispatch("homely")} className="gap-2" disabled={busy}>
+        {connected && <DropdownMenuItem onClick={() => dispatch("homely")} className="gap-2" disabled={busy}>
           <DownloadCloud className="h-4 w-4" /> משיכת אנשי קשר מ-Homely
-        </DropdownMenuItem>
+        </DropdownMenuItem>}
         <DropdownMenuItem onClick={() => dispatch("avatars")} className="gap-2" disabled={busy}>
           <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> סנכרון תמונות פרופיל
         </DropdownMenuItem>

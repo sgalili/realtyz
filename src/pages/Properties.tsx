@@ -24,7 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
-  ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
+   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon, ChevronDown,
    RefreshCw, Handshake, Pencil, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,7 +42,8 @@ import {
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { useAuth } from '@/hooks/useAuth';
-import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
+import { SourceBadge, sourceLabel, sourceDotClass, type PropertySource } from '@/components/properties/SourceBadge';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { PropertyNotesBlock } from '@/components/properties/PropertyNotesBlock';
 import { usePropertyNotesByListing } from '@/hooks/usePropertyNotes';
 import { searchAllSources, searchLocalListings, searchMarketPool, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
@@ -145,7 +146,7 @@ export default function Properties() {
   const cached = useMemo(() => loadCache(), []);
 
   const [q, setQ] = useState<string>(cached?.q ?? '');
-  const [listingType, setListingType] = useState<ListingType | 'all'>(cached?.listingType ?? 'all');
+  const [listingType, setListingType] = useState<ListingType | 'all'>('all');
   const [city, setCity] = useState<string>(cached?.city ?? 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>(cached?.propertyType ?? 'all');
   const [rooms, setRooms] = useState<string>(cached?.rooms ?? 'any');
@@ -161,7 +162,12 @@ export default function Properties() {
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
   const [selectedSources, setSelectedSources] = useState<PropertySource[]>(['yad2', 'homely', 'mine']);
-  const toggleSource = (source: PropertySource) => { setSourceFilter(null); setSelectedSources(current => current.includes(source) ? (current.length > 1 ? current.filter(s => s !== source) : current) : [...current, source]); };
+  const { connected: homelyConnected } = useHomelyConnection();
+  const availableSources = useMemo<PropertySource[]>(() => homelyConnected ? ['yad2', 'homely', 'mine'] : ['yad2', 'mine'], [homelyConnected]);
+  const activeSources = useMemo(() => { const sources = selectedSources.filter(source => availableSources.includes(source)); return sources.length ? sources : availableSources; }, [selectedSources, availableSources]);
+  const [sourcesExpanded, setSourcesExpanded] = useState(false);
+  const [completedResults, setCompletedResults] = useState<UnifiedResult[] | null>(null);
+  const toggleSource = (source: PropertySource) => { setSourceFilter(null); setSelectedSources(current => { const visible = current.filter(s => availableSources.includes(s)); return visible.includes(source) ? (visible.length > 1 ? visible.filter(s => s !== source) : visible) : [...visible, source]; }); };
   const [searching, setSearching] = useState(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
@@ -190,11 +196,11 @@ export default function Properties() {
       const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
       if (action === 'manual') setManualOpen(true);
       else if (action === 'import') setImportOpen(true);
-      else if (action === 'homely') setHomelyBulkOpen(true);
+      else if (action === 'homely' && homelyConnected) setHomelyBulkOpen(true);
     };
     window.addEventListener('properties:add', handler);
     return () => window.removeEventListener('properties:add', handler);
-  }, []);
+  }, [homelyConnected]);
 
   const [poolInfo, setPoolInfo] = useState<{ last: string | null; count: number } | null>(null);
   useEffect(() => {
@@ -319,11 +325,15 @@ export default function Properties() {
   // Monotonic token — bumping it aborts the in-flight search: late partials
   // and the final payload are ignored, so whatever was already painted stays.
   const searchTokenRef = useRef(0);
+  useEffect(() => { searchTokenRef.current++; setSearching(false); setSearchProgress(null); setCompletedResults(null); }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, activeSources]);
+  useEffect(() => () => { searchTokenRef.current++; }, []);
 
   const runSearch = useCallback(async () => {
     const token = ++searchTokenRef.current;
+    instantTokenRef.current++;
+    setCompletedResults(null);
     setSearching(true);
-    setSearchProgress({ done: 0, total: 3, loaded: 0, pending: ['mine', 'homely', 'yad2'] });
+    setSearchProgress({ done: 0, total: activeSources.length, loaded: 0, pending: activeSources });
 
     setHasSearched(true);
     try {
@@ -343,7 +353,7 @@ export default function Properties() {
 
       const filters: SearchFilters = {
         q: (parsed.keywords || q.trim()) || undefined,
-        sources: selectedSources,
+        sources: activeSources,
         city: effectiveCity ?? undefined,
         neighborhood: parsed.neighborhood ?? undefined,
         min_price: effectiveMinPrice,
@@ -409,7 +419,11 @@ export default function Properties() {
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
       searchCities.forEach((c, i) => perCity.set(c, responses[i].results));
       const respSources = mergeSourceStatuses(responses.map((r) => (r.sources ?? {}) as Record<string, SourceInfo>));
-      const filtered = paint();
+      const filtered = paint().filter(isRelevantListing).filter(r =>
+        (r.source !== 'homely' || homelyConnected) &&
+        (r.sources?.length ? r.sources : [r.source]).some(source => activeSources.includes(source)) &&
+        (effectiveListing === 'all' || !effectiveListing || r.listing_type === effectiveListing));
+      setCompletedResults(filtered);
       if (filtered.length) {
         setResults(filtered);
         setShowingFallback(false);
@@ -444,7 +458,7 @@ export default function Properties() {
         setSearchProgress(null);
       }
     }
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, selectedSources]);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, activeSources, homelyConnected]);
 
   // Warm the textual content of the first visible rows in the background, so
   // opening a property card renders its full text instantly instead of
@@ -487,6 +501,7 @@ export default function Properties() {
   // so far. Nothing is cleared.
   const cancelSearch = useCallback(() => {
     searchTokenRef.current++;
+    setCompletedResults(null);
     setSearching(false);
     setSearchProgress(null);
     toast.info('החיפוש בוטל — מוצגות התוצאות שנמצאו עד כה');
@@ -633,7 +648,7 @@ export default function Properties() {
   const typeFiltered = useMemo(() => {
     // Blank / half-scraped rows never reach the screen.
     const relevant = results.filter(isRelevantListing);
-    const results_ = relevant.filter(r => (r.sources?.length ? r.sources : [r.source]).some(source => selectedSources.includes(source)));
+    const results_ = relevant.filter(r => (r.source !== 'homely' || homelyConnected) && (r.sources?.length ? r.sources : [r.source]).some(source => activeSources.includes(source)));
     const bySource = sourceFilter
       ? results_.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
       : results_;
@@ -642,7 +657,7 @@ export default function Properties() {
     const narrowed = base.filter((r) => r.listing_type === listingType);
     // Never let a toggle blank the table — keep the wider pool instead.
     return narrowed;
-  }, [results, listingType, sourceFilter, selectedSources]);
+  }, [results, listingType, sourceFilter, activeSources, homelyConnected]);
 
 
   const sortedResults = useMemo(() => {
@@ -723,24 +738,25 @@ export default function Properties() {
   const sourceBreakdown = useMemo(() => {
     // Real, deduped counts of what the table actually holds per source.
     const buckets = new Map<string, number>();
-    results.forEach((r) => {
+    (completedResults ?? []).forEach((r) => {
       for (const s of (r.sources?.length ? r.sources : [r.source])) {
+        if (!activeSources.includes(s)) continue;
         buckets.set(s, (buckets.get(s) ?? 0) + 1);
       }
     });
-    const keys = new Set<string>([...Object.keys(sourceStatus), ...buckets.keys()]);
+    const keys = new Set<string>([...Object.keys(sourceStatus).filter(s => activeSources.includes(s as PropertySource)), ...buckets.keys()]);
     return Array.from(keys).map((src) => {
       const info = sourceStatus[src];
       const rendered = buckets.get(src) ?? 0;
       return {
         key: src as PropertySource,
         // Rendered rows win — the status count is only a hint before dedupe.
-        count: rendered || info?.count || 0,
+        count: rendered,
         status: info?.status ?? 'ok',
         error: info?.error,
       };
     }).sort((a, b) => b.count - a.count);
-  }, [sourceStatus, results]);
+  }, [sourceStatus, completedResults, activeSources]);
 
   const SORT_LABELS: Record<typeof sortBy, string> = {
     relevance: 'רלוונטיות',
@@ -786,9 +802,6 @@ export default function Properties() {
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-          חיפוש מאוחד — הומלי, יד-2 והמאגר שלך במקום אחד. לחץ על נכס לתצוגה מלאה, וסמן נכסים לייבוא קבוצתי.
-        </p>
       </header>
 
       {/* Compact unified control bar */}
@@ -870,10 +883,10 @@ export default function Properties() {
             </Button>
 
           </div>
-            {hasSearched && (
+            {!searching && completedResults !== null && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
+                  <Button variant="ghost"
                     type="button"
                     className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary px-3 h-8 hover:bg-primary/20 transition-colors"
                     aria-label="פירוט תוצאות לפי מקור"
@@ -881,8 +894,8 @@ export default function Properties() {
                   >
                     <Database className="h-3.5 w-3.5" />
                     {/* +4px vs the previous 10px badge → 14px = text-sm */}
-                    <span className="text-sm font-bold tabular-nums leading-none">{results.length}</span>
-                  </button>
+                    <span className="text-sm font-bold tabular-nums leading-none">{completedResults.length}</span>
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-60">
                   <DropdownMenuLabel className="text-xs">תוצאות לפי מקור</DropdownMenuLabel>
@@ -934,7 +947,7 @@ export default function Properties() {
                   )}
                   <DropdownMenuItem className="text-xs justify-between gap-3 font-semibold">
                     <span>סה״כ (לאחר איחוד)</span>
-                    <span className="tabular-nums">{results.length}</span>
+                    <span className="tabular-nums">{completedResults.length}</span>
                   </DropdownMenuItem>
 
                 </DropdownMenuContent>
@@ -964,8 +977,12 @@ export default function Properties() {
 
 
 
-        <div role="group" aria-label="מקורות חיפוש" className="mt-2 flex items-center gap-1">
-          {(['yad2', 'homely', 'mine'] as const).map(source => <Button key={source} variant="ghost" size="sm" aria-label={source === 'mine' ? 'realtyz' : source} aria-pressed={selectedSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 gap-1.5 px-2 hover:bg-transparent hover:text-inherit ${selectedSources.includes(source) ? 'text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${selectedSources.includes(source) ? 'bg-success' : 'bg-muted-foreground/30'}`} />{source === 'mine' ? 'realtyz' : source}</Button>)}
+        <div role="group" aria-label="מקורות חיפוש" data-expanded={sourcesExpanded} className="group/sources mt-2 flex min-w-0 items-center gap-1">
+          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className="h-8 min-w-8 gap-0 px-2 hover:bg-transparent hover:text-inherit">
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
+            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 motion-reduce:transition-none group-hover/sources:max-w-28 group-hover/sources:ps-1.5 group-hover/sources:opacity-100 group-focus-within/sources:max-w-28 group-focus-within/sources:ps-1.5 group-focus-within/sources:opacity-100 group-data-[expanded=true]/sources:max-w-28 group-data-[expanded=true]/sources:ps-1.5 group-data-[expanded=true]/sources:opacity-100">{sourceLabel(source)}</span>
+          </Button>)}
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent hover:text-inherit" aria-label="הרחב מקורות חיפוש" aria-expanded={sourcesExpanded} onClick={() => setSourcesExpanded(current => !current)}><ChevronDown className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${sourcesExpanded ? 'rotate-180' : ''}`} /></Button>
         </div>
 
         {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
@@ -977,9 +994,9 @@ export default function Properties() {
               <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
-                  variant="outline"
+                   variant="ghost"
                   size="sm"
-                  className="h-8 gap-1.5 text-xs"
+                   className="h-8 gap-1.5 border-0 bg-transparent text-xs shadow-none hover:bg-transparent hover:text-inherit"
                   aria-label="מיון"
                   title="מיון"
                 >
@@ -1002,15 +1019,15 @@ export default function Properties() {
 
             {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
                 between the results-count pill and the view toggle. */}
-            <div className="inline-flex items-center" role="group" aria-label="סוג עסקה">
-              {(['all', 'rent', 'sale'] as const).map(t => <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(t)} aria-pressed={listingType === t} className={`h-8 gap-1.5 px-2 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${listingType === t ? 'font-semibold text-foreground hover:!text-foreground' : 'text-muted-foreground/60 hover:!text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${listingType === t ? (t === 'rent' ? 'bg-sale' : 'bg-success') : 'bg-muted-foreground/30'}`} />{t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}</Button>)}
-            </div>
           </div>
 
 
 
           {/* Side B — single mutually-exclusive view switch */}
           <div className="ms-auto inline-flex items-center">
+             <div className="inline-flex items-center" role="group" aria-label="סוג עסקה">
+               {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1.5 px-2 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${t === 'rent' ? 'bg-sale' : 'bg-success'} ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
+             </div>
             <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
           </div>
         </div>
@@ -1180,7 +1197,7 @@ export default function Properties() {
       />
       <ManualPropertyDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={runSearch} />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={runSearch} />
-      <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={runSearch} mode="properties" />
+      {homelyConnected && <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={runSearch} mode="properties" />}
       <ImportProgressDialog
         open={progressOpen}
         onOpenChange={setProgressOpen}

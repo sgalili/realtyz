@@ -6,6 +6,7 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
+import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Database, X, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle, Share2, Copy, Trash2, Send, Home } from 'lucide-react';
@@ -267,6 +268,7 @@ function useVoiceInput(onResult: (text: string) => void) {
 }
 
 export default function AiAgentDrawer() {
+  const { connected: homelyConnected } = useHomelyConnection();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -855,7 +857,7 @@ ${shareUrl}
                   </div>
                 )}
 
-                {msg.role === 'assistant' && msg.webtiv_results && msg.webtiv_results.length > 0 && (
+                {homelyConnected && msg.role === 'assistant' && msg.webtiv_results && msg.webtiv_results.length > 0 && (
                   <div className="mt-3 pt-2 border-t border-border/30">
                     <p className="text-[14px] text-muted-foreground mb-2 flex items-center gap-1">
                       <Globe className="h-2.5 w-2.5" />
