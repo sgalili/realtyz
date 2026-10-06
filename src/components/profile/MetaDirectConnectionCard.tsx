@@ -620,7 +620,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   const actionButtons = null;
 
   return (
-    <Card ref={ref} dir="rtl" className="text-right">
+    <Card ref={ref} dir="rtl" className="border-none bg-transparent text-right shadow-none">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-right">
           <Facebook className="h-5 w-5 text-primary" />
