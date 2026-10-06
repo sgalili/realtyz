@@ -1281,6 +1281,7 @@ async function handleLeadInboxInbound(
         try {
           const matched = await matchListingFromText(admin as any, aiOwnerId, promptInboundText);
           if (matched) return matched;
+          if (textNamesAddress(promptInboundText)) return null;
           // Follow-ups ("כמה חדרים יש בדירה הזאת?") carry no address: keep the
           // property identified earlier in this thread in focus.
           const priorText = aiMessages
@@ -1325,6 +1326,7 @@ async function handleLeadInboxInbound(
     const focusProperty = productInquiry ? "" : renderFocusPropertyBlock(focusRow as any);
     contextBlock += ritaStateBlock;
     if (productInquiry) contextBlock += PRODUCT_INQUIRY_BLOCK;
+    else if (!focusRow && textNamesAddress(promptInboundText)) contextBlock += ADDRESS_NOT_FOUND_BLOCK;
     rescueContextBlock = contextBlock;
     rescueFocusProperty = focusProperty;
     // Direct fact questions ("כמה חדרים?") are answered straight from the listing.

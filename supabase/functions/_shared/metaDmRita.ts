@@ -3,7 +3,7 @@
 // guard → send on the SAME channel → store outbound.
 import { logIntegrationError } from "./logIntegrationError.ts";
 import { renderFocusPropertyBlock } from "./focusProperty.ts";
-import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState } from "./ritaIntel.ts";
+import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState, ADDRESS_NOT_FOUND_BLOCK, textNamesAddress } from "./ritaIntel.ts";
 import { generateFastReply } from "./waFastReply.ts";
 import { type InboundDm, resolveDmLead, sendDm } from "./metaDm.ts";
 import type { MetaPage } from "./metaPage.ts";

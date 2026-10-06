@@ -23,7 +23,7 @@ import { corsHeaders } from "./cors.ts";
 import { sendSms019, toLocalIL } from "./sms019.ts";
 import { logIntegrationError } from "./logIntegrationError.ts";
 import { renderFocusPropertyBlock } from "./focusProperty.ts";
-import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState } from "./ritaIntel.ts";
+import { answerPropertyFact, classifyInquiryIntent, PRODUCT_INQUIRY_BLOCK, isRepeatReply, readRitaState, renderRitaStateBlock, resolveFocusListing, saveRitaState, ADDRESS_NOT_FOUND_BLOCK, textNamesAddress } from "./ritaIntel.ts";
 import { generateFastReply } from "./waFastReply.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

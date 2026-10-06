@@ -44,10 +44,37 @@ function norm(value: unknown): string {
     .trim();
 }
 
+const KNOWN_CITIES = [
+  "תל אביב", "ירושלים", "חיפה", "הרצליה", "רעננה", "כפר סבא", "רמת גן", "גבעתיים", "נתניה",
+  "הוד השרון", "רמת השרון", "פתח תקווה", "ראשון לציון", "חולון", "בת ים", "רחובות", "אשדוד", "אשקלון",
+  "באר שבע", "מודיעין", "כפר שמריהו", "רמלה", "לוד", "נס ציונה", "קריית אונו", "אור יהודה", "יהוד",
+  "ראש העין", "חדרה", "עפולה", "נהריה", "עכו", "טבריה", "אילת", "בני ברק", "זכרון יעקב", "קיסריה", "אבן יהודה",
+];
+
+/** True when the message itself names a concrete address (street + house number). */
+export function textNamesAddress(text: string): boolean {
+  const t = norm(text);
+  return /(?:רחוב|ברחוב|ברח|רח)\s*[א-ת][א-ת\s-]{1,25}\s\d{1,4}/.test(t) ||
+    /[א-ת]{2,}\s\d{1,4}[א-ת]?\s*,?\s*ב?[א-ת]{3,}/.test(t) ||
+    /[a-z]{3,}\s\d{1,4},?\s*[a-z]{3,}/i.test(t);
+}
+
+/** Prompt block when the contact named an address that is not in the workspace. */
+export const ADDRESS_NOT_FOUND_BLOCK =
+  "\n\n[ADDRESS_NOT_FOUND] איש הקשר ציין כתובת שאינה קיימת במאגר הנכסים. אסור להציג או להציע נכס אחר מעיר או רחוב אחרים. " +
+  "השיבי בנימוס שלא מצאת נכס בכתובת הזו, ובקשי לוודא את שם הרחוב, מספר הבית והעיר או לשלוח קישור למודעה.";
+
+function splitAddress(address: unknown): { street: string; house: string } {
+  const a = norm(address).replace(/,.*$/, "");
+  const m = a.match(/^(.*?)\s+(\d{1,4}[א-ת]?)(?:\s+\d{1,4}[א-ת]?)?\s*$/);
+  return m ? { street: m[1].trim(), house: m[2] } : { street: a.replace(/\d+/g, "").trim(), house: "" };
+}
+
 /**
  * Finds the workspace listing the inbound text is talking about.
- * Deterministic scoring: street name match is mandatory, city and house number
- * only break ties. Returns null when nothing matches confidently.
+ * Strict: the street must appear; when the text names a city the listing must
+ * be in that city; when a house number follows the street it must match.
+ * Returns null rather than a near-miss from another city.
  */
 export async function matchListingFromText(
   admin: { from: (table: string) => any },
@@ -63,21 +90,28 @@ export async function matchListingFromText(
       .eq("workspace_owner_id", ownerId)
       .not("address", "is", null)
       .order("updated_at", { ascending: false })
-      .limit(300);
+      .limit(500);
+    const rows = (data ?? []) as FocusRow[];
+    const cityNames = new Set<string>(KNOWN_CITIES.map(norm));
+    for (const r of rows) { const c = norm((r as any).city); if (c.length >= 2) cityNames.add(c); }
+    const mentioned = [...cityNames].filter((c) => haystack.includes(c));
 
     let best: { row: FocusRow; score: number } | null = null;
-    for (const row of (data ?? []) as FocusRow[]) {
+    for (const row of rows) {
       const r = row as Record<string, any>;
-      const street = norm(r.address).replace(/\s*\d+[א-ת]?\s*$/, "");
+      const { street, house: addrHouse } = splitAddress(r.address);
       if (street.length < 3 || !haystack.includes(street)) continue;
-      let score = 2;
       const city = norm(r.city);
-      if (city && haystack.includes(city)) score += 2;
-      const house = norm(r.house_number);
-      if (house && new RegExp(`${street}\\s+${house}(?!\\d)`).test(haystack)) score += 2;
+      if (mentioned.length && (!city || !mentioned.some((c) => c === city || c.includes(city) || city.includes(c)))) continue;
+      const house = norm(r.house_number) || addrHouse;
+      const esc = street.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const asked = haystack.match(new RegExp(`${esc}\\s+(\\d{1,4}[א-ת]?)`))?.[1];
+      if (asked && house && asked !== house) continue;
+      let score = 2;
+      if (city && mentioned.length) score += 2;
+      if (asked && house === asked) score += 3;
       const hood = norm(r.neighborhood);
       if (hood && haystack.includes(hood)) score += 1;
-      // Longer street names are more specific, so they win ties.
       score += Math.min(street.length, 20) / 100;
       if (!best || score > best.score) best = { row, score };
     }

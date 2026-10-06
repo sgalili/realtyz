@@ -7,7 +7,8 @@
 //  4. Qualification state (leads.preferences.rita_state): which topics Rita
 //     already asked about and which the contact already answered.
 // ============================================================
-import { FOCUS_COLUMNS, matchListingFromText, type FocusRow } from "./focusProperty.ts";
+import { FOCUS_COLUMNS, matchListingFromText, textNamesAddress, type FocusRow } from "./focusProperty.ts";
+export { ADDRESS_NOT_FOUND_BLOCK, textNamesAddress } from "./focusProperty.ts";
 
 type Admin = { from: (table: string) => any };
 type Msg = { role: string; content: string };
@@ -23,6 +24,8 @@ export async function resolveFocusListing(
     if (ownerId) {
       const now = await matchListingFromText(admin, ownerId, currentText);
       if (now) return now;
+      // A concrete address that is not ours must never fall back to another property.
+      if (textNamesAddress(currentText)) return null;
       const prior = history
         .filter((m) => m.role === "user")
         .slice(-8)
