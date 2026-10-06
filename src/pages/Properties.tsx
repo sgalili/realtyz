@@ -904,6 +904,7 @@ export default function Properties() {
                 value={yad2Status?.tone === 'busy' ? '' : q}
                 readOnly={yad2Status?.tone === 'busy'}
                 onFocus={() => setSuggestionsOpen(true)}
+                onClick={() => setSuggestionsOpen(true)}
                  onBlur={() => setSuggestionsOpen(false)}
                   role="combobox" aria-autocomplete="list" aria-expanded={suggestionsOpen && (q.trim().length >= 2 ? suggestions.length > 0 : searchHistory.length > 0)} aria-controls={q.trim() ? 'inventory-suggestions' : 'search-history'} aria-activedescendant={suggestionIndex >= 0 ? `inventory-option-${suggestionIndex}` : undefined}
                  onChange={(e) => { const value = e.target.value; setSuggestionsOpen(true); setQ(value); if (/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)$/i.test(value.trim())) void submitQuery(value); }}
