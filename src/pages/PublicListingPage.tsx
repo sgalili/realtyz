@@ -464,7 +464,7 @@ function PublicListingContent() {
             {data.attributes.length > 0 && (
               <div className="border-t pt-4">
                 <h2 className="mb-2 text-sm font-bold text-foreground">נתוני הנכס</h2>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,150px),1fr))] gap-2">
                   {data.attributes.map((card) => (
                     <div key={card.label} className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-background/70 p-2.5" dir="rtl">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><card.icon className="h-4 w-4" /></span>

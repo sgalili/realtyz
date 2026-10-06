@@ -214,13 +214,13 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
       {specs.length > 0 && (
         <section>
           <h3 className="mb-2 text-xs font-bold text-muted-foreground">נתוני הנכס</h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,150px),1fr))] gap-2">
             {specs.map((s) => (
               <div key={s.label} className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-background p-2.5">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><s.icon className="h-4 w-4" /></span>
                 <div className="min-w-0">
                   <p className="text-[11px] text-muted-foreground">{s.label}</p>
-                  <p className="truncate font-semibold text-foreground">{s.value}</p>
+                  <p className="break-words font-semibold text-foreground">{s.value}</p>
                 </div>
               </div>
             ))}
