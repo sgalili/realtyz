@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown } from 'lucide-react';
+import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown, BadgeCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -67,14 +67,15 @@ function AdDetails({ listingId }: { listingId: string }) {
     </section>
   </div>;
 }
-function AdCard({ row: r }: { row: Row }) {
+function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
   const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = useExclusiveExpansion(`my-ads:${activeWorkspaceId}`, `${r.relation}:${r.listing_id}`);
   const title = [r.address, r.city].filter(Boolean).join(', ') || r.title || 'נכס';
   return <article className="min-w-0 overflow-hidden rounded-lg border bg-card" data-my-ad={r.listing_id}>
     <div className="flex min-w-0 gap-3 p-3">
-      <Link to={`/p/${r.slug || r.listing_id}`} className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
+      <Link to={`/p/${r.slug || r.listing_id}`} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
         {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-7 w-7 text-muted-foreground" />}
+        {owned && <span title="המודעה שלי" className="absolute right-1 top-1 rounded-full bg-background/90 p-1 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
       </Link>
       <div className="min-w-0 flex-1 space-y-1">
         <Link to={`/p/${r.slug || r.listing_id}`} className="block truncate font-semibold text-foreground" title={title}>{title}</Link>
@@ -99,7 +100,7 @@ export default function MyAds() {
   return <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
     {isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות שפרסמת או נכסים שאתה מקדם.</p> : (['owned', 'promoting'] as const).map(relation => {
       const rows = data.filter(r => r.relation === relation);
-      return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2><div className="space-y-3">{rows.map(r => <AdCard key={r.listing_id} row={r} />)}</div></section> : null;
+      return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2><div className="space-y-3">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
     })}
   </div>;
 }
