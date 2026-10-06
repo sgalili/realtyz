@@ -406,7 +406,7 @@ function PublicListingContent() {
           <div className="flex items-center justify-between gap-3 px-4 pt-3">
             <Button variant="ghost" size="sm" onClick={closeDetails} aria-label="סגירה וחזרה לעמוד הקודם"><X className="h-4 w-4" />סגירה וחזרה</Button>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button>
+              <Button variant="ghost" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button>
               {data.id && <OwnerListingActions listingId={data.id} />}
             </div>
           </div>
