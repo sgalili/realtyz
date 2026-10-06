@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
+import MyFavoriteAds from '@/components/public/MyFavoriteAds';
 import { readPublicListingDraft, type PublicListingDraft } from '@/lib/publicListingDraft';
 import { listingToDraft, missingAdFields } from '@/lib/adRecovery';
 import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown, BadgeCheck } from 'lucide-react';
@@ -125,7 +126,8 @@ export default function MyAds() {
   });
   return <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
     <Tabs defaultValue="ads" dir="rtl">
-      <TabsList className="max-w-full"><TabsTrigger value="ads">המודעות שלי</TabsTrigger><TabsTrigger value="failed">מודעות שנכשלו{Boolean(recovery.data?.length) && <span className="ms-2 text-xs">({recovery.data?.length})</span>}</TabsTrigger></TabsList>
+      <div className="max-w-full overflow-x-auto"><TabsList className="w-max min-w-full"><TabsTrigger value="ads">המודעות שלי</TabsTrigger><TabsTrigger value="failed">מודעות שנכשלו{Boolean(recovery.data?.length) && <span className="ms-2 text-xs">({recovery.data?.length})</span>}</TabsTrigger><TabsTrigger value="favorites">המועדפים שלי</TabsTrigger></TabsList></div>
+      <TabsContent value="favorites" className="pt-3"><MyFavoriteAds /></TabsContent>
       <TabsContent value="failed" className="space-y-3 pt-3">
         {recovery.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : recovery.isError ? <p role="alert">לא ניתן לטעון טיוטות <Button variant="link" onClick={() => void recovery.refetch()}>ניסיון נוסף</Button></p> : !recovery.data?.length ? <p className="py-10 text-center text-muted-foreground">אין מודעות שנכשלו או טיוטות חסרות.</p> : recovery.data.map((draft, i) => {
           const title = [draft.street || draft.address, draft.city].filter(Boolean).join(', ') || draft.propertyType || 'טיוטת מודעה';
