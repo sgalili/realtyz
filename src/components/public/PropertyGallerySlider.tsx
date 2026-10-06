@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Heart, ImageOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /** Horizontal snap slider with arrows, counter and thumbnail strip (RTL safe). */
-export default function PropertyGallerySlider({ photos, alt, onFavorite }: { photos: string[]; alt: string; onFavorite?: () => void }) {
+export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay }: { photos: string[]; alt: string; onFavorite?: () => void; overlay?: ReactNode }) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
 
@@ -46,7 +46,8 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite }: { pho
             </div>
           ))}
         </div>
-        {onFavorite && (
+        {overlay && <div className="absolute left-3 top-3 z-10 flex items-center gap-2">{overlay}</div>}
+        {onFavorite && !overlay && (
           <Button type="button" size="icon" variant="secondary" onClick={onFavorite} aria-label="שמירה במועדפים" className="absolute left-3 top-3 h-9 w-9 rounded-full bg-background/50 text-destructive shadow hover:bg-background/50">
             <Heart className="h-5 w-5" />
           </Button>
@@ -59,7 +60,7 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite }: { pho
             <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="absolute left-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/50 shadow-md hover:bg-background/50">
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <span className="absolute bottom-3 right-3 rounded-full bg-background/50 px-2.5 py-1 text-xs font-bold tabular-nums text-foreground shadow">{index + 1}/{photos.length}</span>
+            <span className="absolute right-3 top-3 rounded-full bg-background/50 px-2.5 py-1 text-xs font-bold tabular-nums text-foreground shadow">{index + 1}/{photos.length}</span>
           </>
         )}
       </div>

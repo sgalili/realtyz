@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, type ReactElement, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -170,24 +170,31 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapQuery)}`;
   const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&hl=iw&z=16&output=embed`;
 
+  const overlay = (onFavorite || listing.id) ? (
+    <>
+      {onFavorite && (
+        <Button type="button" variant="secondary" size="icon" onClick={(e) => { e.stopPropagation(); onFavorite(); }} aria-pressed={isFav} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" className="h-9 w-9 rounded-full bg-background/50 shadow hover:bg-background/70">
+          <Heart className={`h-4 w-4 text-destructive ${isFav ? 'fill-current' : ''}`} />
+        </Button>
+      )}
+      {listing.id && <div className="rounded-full bg-background/50 shadow [&_button]:rounded-full [&_button]:border-0 [&_button]:bg-transparent"><PropertyContactActions listingId={listing.id} title={listing.title} shareUrl={publicUrl(`/p/${encodeURIComponent(listing.slug || listing.id)}`)} compact shareOnly /></div>}
+    </>
+  ) : null;
+  const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode }>, { overlay }) : gallery;
+
   return (
     <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-sm">
       <header className="min-w-0 space-y-3 border-b pb-4">
-        {(onFavorite || onClose) && (
-          <div className="flex items-center justify-end gap-2">
-            {onFavorite && (
-              <Button type="button" variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); onFavorite(); }} aria-pressed={isFav} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים">
-                <Heart className={`h-4 w-4 text-destructive ${isFav ? 'fill-current' : ''}`} />
-              </Button>
-            )}
-            {listing.id && <PropertyContactActions listingId={listing.id} title={listing.title} shareUrl={publicUrl(`/p/${encodeURIComponent(listing.slug || listing.id)}`)} compact shareOnly />}
-            {onClose && (
-              <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onClose(); }} className="gap-1.5" aria-label="סגירת פרטי הנכס">
-                <X className="h-4 w-4" />סגירה
-              </Button>
-            )}
+        {onClose && (
+          <div className="flex items-center justify-start">
+            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="סגירת פרטי הנכס" title="סגירה">
+              <X className="h-5 w-5" />
+            </Button>
           </div>
         )}
+        <PublicAdHeading title={listing.title} price={formatPrice(listing.price, listing.dealType)} dealType={listing.dealType} />
+        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} />
+        {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2 empty:hidden">
@@ -197,27 +204,24 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
             {oneLiner && <p className="break-words text-muted-foreground">{oneLiner}</p>}
           </div>
         </div>
-        <PublicAdHeading title={listing.title} price={formatPrice(listing.price, listing.dealType)} dealType={listing.dealType} />
-        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} />
-        {gallery}
+      </header>
+
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
+      <div className="min-w-0 space-y-5">
+      {(specs.length > 0 || rooms || total || floor) && (
+        <section>
+          <h3 className="mb-2 text-xs font-bold text-muted-foreground">נתוני הנכס</h3>
         {(rooms || total || floor) && (
-          <div className="flex flex-wrap gap-2">
+          <div className="mb-3 flex flex-wrap gap-2">
             {rooms && <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-semibold text-foreground"><DoorOpen className="h-4 w-4 text-primary" />{rooms} חדרים</span>}
             {total && <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-semibold text-foreground"><Maximize2 className="h-4 w-4 text-primary" />{total} מ״ר</span>}
             {floor && <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-semibold text-foreground"><Layers className="h-4 w-4 text-primary" />קומה {floor}</span>}
           </div>
         )}
-      </header>
-
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
-      <div className="min-w-0 space-y-5">
-      {specs.length > 0 && (
-        <section>
-          <h3 className="mb-2 text-xs font-bold text-muted-foreground">נתוני הנכס</h3>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,150px),1fr))] gap-2">
             {specs.map((s) => (
               <div key={s.label} className="flex min-w-0 items-center gap-2.5 rounded-lg border bg-background p-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><s.icon className="h-4 w-4" /></span>
+                <s.icon className="h-5 w-5 shrink-0 text-primary" />
                 <div className="min-w-0">
                   <p className="text-[11px] text-muted-foreground">{s.label}</p>
                   <p className="break-words font-semibold text-foreground">{s.value}</p>
