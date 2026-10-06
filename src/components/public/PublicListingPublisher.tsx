@@ -108,7 +108,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const initializedPublisher = useRef('');
   const publicationAudio = useRef<AudioContext | null>(null);
   const draftScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'visitor';
-  const saveDraft = (f = fields, images = files, clips = videos) => savePublicListingDraft({ ...f, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step }, images, clips, draftScope);
+  const saveDraft = (f = fields, images = files, clips = videos) => savePublicListingDraft({ ...f, publicationError: f.publicationError || publishError, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step }, images, clips, draftScope);
   useEffect(() => {
     if (!resumeDraft) return;
     setFields(resumeDraft); setFiles(resumeDraft.files || []); setVideos(resumeDraft.videos || []);
@@ -161,12 +161,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         if (error) throw error;
         await refetchRoles();
       }
-       const source = draftFields.importedListing || imported;
+      const source = draftFields.importedListing || imported;
        const photos: string[] = [];
        for (const url of Array.isArray(source?.photos) ? source.photos : []) {
          if (typeof url !== 'string' || !url.startsWith('https://')) continue;
          setPublishStage('שמירת תמונות המודעה');
-          const { data: mirrored, error: mirrorError } = await supabase.functions.invoke('mirror-external-image', { body: { url, source: 'yad2' } });
+          if (draftFields.listingId) { photos.push(url); continue; }
+           const { data: mirrored, error: mirrorError } = await supabase.functions.invoke('mirror-external-image', { body: { url, source: 'yad2' } });
          if (mirrorError || !mirrored?.public_url) throw new Error('לא ניתן לשמור את תמונות המודעה מיד2. הטיוטה נשמרה.');
          photos.push(mirrored.public_url);
        }
@@ -205,7 +206,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           property_type: draftFields.propertyType.trim(),
           publisher_type: draftFields.publisherType,
           street: street || null,
-          media_videos: clips,
+           media_videos: [...(Array.isArray(source?.features?.media_videos) ? source.features.media_videos : []), ...clips],
           total_floors: draftFields.totalFloors || null,
           elevator: draftFields.elevator,
           parking: draftFields.parking,
@@ -223,7 +224,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           contact_whatsapp: draftFields.contactWhatsapp || null,
         },
         media_photos: photos, image_url: photos[0] ?? null,
-         status: 'live', source: source ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
+         status: 'live', source: draftFields.listingId ? source?.source || 'manual' : source ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
       };
       let request;
       if (draftFields.listingId && activeWorkspaceId) {

@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { readPublicListingDraft, type PublicListingDraft } from '@/lib/publicListingDraft';
@@ -99,6 +99,7 @@ export default function MyAds() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [resumeDraft, setResumeDraft] = useState<PublicListingDraft>();
+  useEffect(() => { setResumeDraft(undefined); }, [activeWorkspaceId, user?.id]);
   const recovery = useQuery({
     queryKey: ['my-ad-recovery', user?.id, activeWorkspaceId], enabled: Boolean(user?.id && activeWorkspaceId), refetchOnMount: 'always', refetchOnWindowFocus: true,
     queryFn: async () => {
@@ -108,7 +109,8 @@ export default function MyAds() {
       const rows = (result.data || []).flatMap(row => {
         const draft = listingToDraft(row);
         const missing = missingAdFields(draft).filter(field => !['שם מפרסם', 'מספר ווטסאפ', 'אישור התקנון'].includes(field));
-        if (!['draft', 'failed', 'incomplete', 'pending'].includes(row.status) && !draft.publicationError && !missing.length) return [];
+        if (!['pending', 'live'].includes(row.status)) return [];
+        if (row.status !== 'pending' && !draft.publicationError && !missing.length) return [];
         return [{ ...draft, files: [], videos: [], savedAt: new Date(row.updated_at).getTime(), publicationError: draft.publicationError || (row.status === 'failed' ? 'הפרסום הקודם לא הושלם. לא נשמר פירוט שגיאה.' : '') } satisfies PublicListingDraft];
       });
       if (local && (local.city || local.propertyType || local.dealType || local.importedListing || local.publicationError || local.files.length)) return [local, ...rows.filter(row => !local.listingId || row.listingId !== local.listingId)];
