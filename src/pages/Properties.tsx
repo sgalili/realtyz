@@ -498,12 +498,14 @@ export default function Properties() {
 
   // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,
   // gallery, description) and the user lands directly on the imported card.
-  const submitQuery = useCallback(async () => {
-    const raw = q.trim();
+  const [yad2Status, setYad2Status] = useState<{ step: number; label: string; tone: 'busy' | 'ok' | 'error' } | null>(null);
+  const submitQuery = useCallback(async (override?: string) => {
+    const raw = (typeof override === 'string' ? override : q).trim();
     const url = raw.match(/https?:\/\/\S+/i)?.[0];
     if (url && /yad2\.co\.il/i.test(url)) {
-      const toastId = toast.loading('סורק את עמוד יד2 ומייבא את כל הפרטים…');
       setSearching(true);
+      setYad2Status({ step: 1, label: 'מתחבר לעמוד המודעה ביד2…', tone: 'busy' });
+      const slow = window.setTimeout(() => setYad2Status((s) => s && s.tone === 'busy' ? { step: 2, label: 'סורק פרטים, תמונות, תיאור ומאפיינים…', tone: 'busy' } : s), 2500);
       try {
         const { data, error } = await supabase.functions.invoke('yad2-unlocker', {
           body: { url, limit: 1, pages: 1 },
@@ -512,6 +514,7 @@ export default function Properties() {
         if (data?.error) throw new Error(String(data.detail || data.error));
         const row = Array.isArray(data?.results) ? data.results[0] : null;
         if (!row) throw new Error('לא הצלחתי לחלץ נתונים מהעמוד הזה');
+        setYad2Status({ step: 3, label: 'שומר את הנכס במאגר שלך…', tone: 'busy' });
 
         let localId: string | null = null;
         if (row.external_id) {
@@ -525,12 +528,19 @@ export default function Properties() {
             .from('listings').select('id').eq('source_url', row.source_url).limit(1);
           localId = found?.[0]?.id ?? null;
         }
-        toast.success('הנכס יובא מיד2', { id: toastId });
-        if (localId) { navigate(`/properties/${localId}`); return; }
-        toast.info('הנכס נסרק אך לא נשמר במאגר — נסה שוב', { id: toastId });
+        if (localId) {
+          void ensureFullPropertyImport(localId, row.source_url ?? url).catch(() => {});
+          setYad2Status({ step: 4, label: 'הנכס יובא בהצלחה — פותח את כרטיס הנכס', tone: 'ok' });
+          queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+          setQ('');
+          navigate(`/properties/${localId}`, { state: { returnTo: '/properties' } });
+          return;
+        }
+        setYad2Status({ step: 3, label: 'הנכס נסרק אך לא נשמר במאגר — נסה שוב', tone: 'error' });
       } catch (e: any) {
-        toast.error('ייבוא מיד2 נכשל: ' + String(e?.message ?? 'שגיאה'), { id: toastId });
+        setYad2Status({ step: 0, label: 'ייבוא מיד2 נכשל: ' + String(e?.message ?? 'שגיאה'), tone: 'error' });
       } finally {
+        window.clearTimeout(slow);
         setSearching(false);
       }
       return;
@@ -541,7 +551,7 @@ export default function Properties() {
       return;
     }
     runSearch();
-  }, [q, runSearch, navigate]);
+  }, [q, runSearch, navigate, queryClient]);
 
   // Local rows navigate immediately. Starting a full source scrape here used
   // to compete with the detail query for bandwidth and backend capacity; the
@@ -811,6 +821,15 @@ export default function Properties() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData('text');
+                  if (/yad2\.co\.il/i.test(pasted)) {
+                    e.preventDefault();
+                    const text = pasted.trim();
+                    setQ(text);
+                    void submitQuery(text);
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { e.preventDefault(); submitQuery(); }
                   if (e.key === 'Backspace' && !q && filterChips.length) filterChips[filterChips.length - 1].clear();
@@ -831,7 +850,7 @@ export default function Properties() {
               type="button"
               size="sm"
               variant={searching ? 'destructive' : 'default'}
-              onClick={searching ? cancelSearch : submitQuery}
+              onClick={searching ? cancelSearch : () => submitQuery()}
               aria-label={searching ? 'בטל חיפוש' : 'חפש'}
               title={searching ? 'בטל חיפוש' : 'חפש'}
               className="absolute left-1.5 top-1.5 h-7 gap-1.5 px-3 text-xs"
@@ -845,6 +864,22 @@ export default function Properties() {
             </Button>
 
           </div>
+          {yad2Status && (
+            <div role="status" aria-live="polite" dir="rtl" className={`mt-2 rounded-md border px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : yad2Status.tone === 'ok' ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-foreground'}`}>
+              <div className="flex items-center gap-2">
+                {yad2Status.tone === 'busy' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <span className="flex-1 font-medium">{yad2Status.label}</span>
+                {yad2Status.tone !== 'busy' && (
+                  <button type="button" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></button>
+                )}
+              </div>
+              {yad2Status.tone !== 'error' && (
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-background">
+                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(yad2Status.step / 4) * 100}%` }} />
+                </div>
+              )}
+            </div>
+          )}
 
 
 
