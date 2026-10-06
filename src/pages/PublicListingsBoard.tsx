@@ -282,14 +282,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className={cn('cursor-pointer overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !grid && 'grid grid-cols-[120px_1fr] sm:grid-cols-[240px_1fr]')}>
                 <PhotoCarousel photos={card.photos} alt={title} onFavorite={() => toggleFavorite(card)} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} />
                 <div className="space-y-2 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-0.5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="w-full min-w-0 space-y-0.5">
                       <p className="min-w-0 text-[17px] font-bold text-foreground">
                         <span className="min-w-0 break-words">{[card.street, card.neighborhood, card.city].filter(Boolean).join(', ')}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">{[card.rooms ? `${card.rooms} חדרים` : null, card.sqm ? `${card.sqm} מ״ר` : null, card.floor != null ? `קומה ${card.floor}${card.total_floors ? ` מתוך ${card.total_floors}` : ''}` : null].filter(Boolean).join(' · ')}</p>
                     </div>
-                    <div className="shrink-0 text-left">
+                    <div className="flex w-full items-center justify-between gap-2">
                       <span className={cn('inline-flex rounded-full px-2 py-1 text-xs font-bold', card.deal_type === 'rent' ? 'bg-sale text-sale-foreground shadow-sm' : 'bg-success text-success-foreground')}>{dealLabel(card.deal_type)}</span>
                       <p className="mt-1 text-xl font-bold text-foreground">{shekel(card.price)}</p>
                     </div>
