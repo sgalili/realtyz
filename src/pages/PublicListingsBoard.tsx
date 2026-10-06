@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, Home, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
@@ -171,7 +171,23 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="relative flex min-h-11 items-center justify-between gap-3">
               <PublicListingPublisher autoResume />
               <h1 className="pointer-events-none absolute left-1/2 top-1/2 w-44 -translate-x-1/2 -translate-y-1/2 text-center text-xl font-bold text-foreground sm:w-auto sm:text-2xl">לוח נדל״ן שיתופי</h1>
-              <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto shrink-0 object-contain sm:h-[42px]" />
+              <div className="flex shrink-0 items-center gap-2">
+                {!user && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      navigate('/auth', {
+                        state: { returnTo: location.pathname + location.search },
+                      })
+                    }
+                    className="h-9 rounded-full px-4 text-sm font-semibold"
+                  >
+                    הרשמה / התחברות
+                  </Button>
+                )}
+                <img src={realtyzLogo} alt="Realtyz" className="h-10 w-auto object-contain sm:h-[42px]" />
+              </div>
             </div>
           )}
           <div className={cn('-ms-2.5 flex items-center gap-2', embedded ? '' : 'mt-5')}>
