@@ -16,6 +16,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
+import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2Publisher.ts";
+import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -352,7 +354,7 @@ function normalizePhotoUrl(value: unknown): string | null {
   if (u.startsWith("//")) u = `https:${u}`;
   if (u.startsWith("/")) u = `https://www.yad2.co.il${u}`;
   if (!/^https?:\/\//i.test(u)) return null;
-  if (/placeholder|default|no[-_]?image|logo|sprite|icon|blank\.(gif|png|jpg)/i.test(u)) return null;
+  if (/placeholder|default|no[-_]?image|sprite|icon|yad2[-_]?logo|blank\.(gif|png|jpg)/i.test(u)) return null;
   const imageLike = /\.(?:jpe?g|png|webp|avif)(?:[?#]|$)/i.test(u) || /(?:img|images|assets)\.yad2\.co\.il/i.test(u);
   return imageLike ? u : null;
 }
@@ -1030,6 +1032,7 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     deal_type: dealType,
     owner_name: clean(it?.customer?.name ?? it?.merchant_name ?? null),
     owner_phone: clean(it?.customer?.phone ?? null),
+    publisher: extractYad2Publisher(it, href),
     description: longDesc ?? shortDesc,
     short_description: shortDesc,
     long_description: longDesc,
@@ -1151,6 +1154,7 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   base.available_from = pickAvailableFrom(ad) ?? base.available_from ?? null;
   base.attributes = { ...(base.attributes ?? {}), ...pickAttributes(ad) };
   base.photos = pickAllPhotos(base.photos, ad?.images, ad?.metaData?.images, ad?.gallery);
+  base.publisher = { ...base.publisher, ...extractYad2Publisher(ad, srcUrl) };
   base.description = base.long_description ?? base.short_description ?? base.description;
   const coords = pickCoords(ad);
   base.latitude = coords.lat ?? base.latitude ?? null;
@@ -1188,6 +1192,7 @@ type Scraped = {
   deal_type: DealType;
   owner_name: string | null;
   owner_phone: string | null;
+  publisher?: Record<string, unknown>;
   description: string | null;
   short_description?: string | null;
   long_description?: string | null;
@@ -1534,6 +1539,7 @@ function parseItem(html: string, srcUrl: string): Scraped | null {
     deal_type: dealType,
     owner_name: ownerName,
     owner_phone: ownerPhone,
+    publisher: { ...extractYad2Publisher(ad, srcUrl), ...extractYad2PublisherHtml($, srcUrl), ...(/בלעדיות|נכסים נוספים של המשרד/.test(text) ? { publisher_kind: "broker" } : {}) },
     description: about,
     short_description: clean(ad?.info_text ?? ad?.subtitle ?? null),
     long_description: about,
@@ -1674,6 +1680,7 @@ function mergeScraped(base: Scraped, extra: Scraped | null | undefined): Scraped
   for (const [k, v] of Object.entries(extra)) {
     if (v == null) continue;
     if (k === "photos") continue;
+    if (k === "publisher") { merged.publisher = { ...base.publisher, ...extra.publisher }; continue; }
     if (typeof v === "string" && !v.trim()) continue;
     if (typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length) continue;
     if (Array.isArray(v) && !v.length) continue;
@@ -1727,6 +1734,30 @@ async function upsertOwnerProfile(
 
 const MEDIA_BUCKET = "post-media-cache";
 
+async function traceGalleryPublisher(row: Scraped): Promise<void> {
+  const publisher = row.publisher ?? {};
+  if (publisher.office_logo_url || publisher.gallery_logo_checked || publisher.media_vision_paused_status) return;
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  const names = [publisher.office_name, publisher.broker_name, row.owner_name];
+  if (!apiKey || !names.some(Boolean) || !row.photos[0]) return;
+  try {
+    const verdict = await classifyListingMedia(row.photos[0], names.filter(Boolean).join(" / "), apiKey);
+    if (!verdict) return;
+    row.publisher = { ...publisher, gallery_logo_checked: true };
+    if (verdict.logo && verdict.publisher_logo && !verdict.person && matchesAdvertiser(verdict.branding_name, names)) {
+      Object.assign(row.publisher, {
+        office_logo_url: row.photos[0], office_logo_source_url: row.photos[0],
+        office_logo_evidence: { source: "source_gallery", source_url: row.source_url, branding_name: verdict.branding_name },
+      });
+      row.photos = row.photos.slice(1);
+    }
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 402 || status === 403) row.publisher = { ...publisher, media_vision_paused_status: status };
+    console.warn("[yad2-unlocker] publisher image check unavailable", status ?? "stream_error");
+  }
+}
+
 /**
  * Downloads every scraped photo and stores it permanently in the
  * `post-media-cache` bucket so cards never depend on Yad2's CDN.
@@ -1762,6 +1793,7 @@ async function mirrorPhotos(admin: any, keyPrefix: string, urls: string[]): Prom
 }
 
 async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, retry = false, fetchedAt: string | null = new Date().toISOString()): Promise<{ id: string; updated: boolean }> {
+  await traceGalleryPublisher(row);
   const { data: existing } = await admin
     .from("listings").select("id, slug, media_photos, source_metadata, asking_price, description, attributes").eq("workspace_owner_id", workspaceOwnerId).eq("source", "yad2").eq("external_id", row.external_id).limit(1).maybeSingle();
   const ownerId = await upsertOwnerProfile(admin, workspaceOwnerId, row.owner_name, row.owner_phone);
@@ -1792,6 +1824,11 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
   );
 
 
+  const publisher = { ...(row.publisher ?? {}) };
+  if (typeof publisher.office_logo_url === "string") {
+    const mirrored = await mirrorPhotos(admin, `publisher/${row.external_id}`, [publisher.office_logo_url]);
+    publisher.office_logo_url = mirrored[0] ?? publisher.office_logo_url;
+  }
   const payload: Record<string, unknown> = {
     user_id: workspaceOwnerId,
     workspace_owner_id: workspaceOwnerId,
@@ -1823,6 +1860,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
     price_history: row.price_history ?? [],
     owner_id: ownerId,
     source_metadata: {
+      ...publisher,
       scraper: "yad2-unlocker",
       external_id: row.external_id,
       property_type: (row.attributes?.property_type ?? row.attributes?.propertyType ?? row.attributes?.subcategory ?? null),
@@ -1899,6 +1937,7 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped, r
 // written only by the twice-daily scheduled run and read by everybody else.
 
 async function saveMarketListing(admin: any, row: Scraped & Record<string, any>) {
+  await traceGalleryPublisher(row);
   const payload: Record<string, unknown> = {
     source: "yad2",
     external_id: row.external_id ?? null,
@@ -1922,6 +1961,7 @@ async function saveMarketListing(admin: any, row: Scraped & Record<string, any>)
     photos: Array.isArray(row.photos) ? row.photos.slice(0, 40) : [],
     attributes: row.attributes ?? {},
     raw: {
+      publisher: row.publisher ?? {},
       short_description: row.short_description ?? null,
       furniture_details: row.furniture_details ?? {},
       additional_details: row.additional_details ?? {},
@@ -1939,11 +1979,13 @@ async function saveMarketListing(admin: any, row: Scraped & Record<string, any>)
 
   const { data: existing } = await admin
     .from("market_listings")
-    .select("id")
+    .select("id, raw")
     .eq("source_url", row.source_url)
     .maybeSingle();
 
   if (existing?.id) {
+    const oldRaw = existing.raw ?? {};
+    payload.raw = { ...oldRaw, ...(payload.raw as Record<string, unknown>), publisher: { ...oldRaw.publisher, ...row.publisher } };
     const { error } = await admin.from("market_listings").update(payload).eq("id", existing.id);
     if (error) throw new Error(`pool_update_failed(${row.source_url}): ${error.message}`);
     return;
@@ -2014,6 +2056,7 @@ async function readMarketPool(
     additional_details: (r.raw ?? {}).additional_details ?? {},
     owner_name: (r.raw ?? {}).owner_name ?? null,
     owner_phone: (r.raw ?? {}).owner_phone ?? null,
+    publisher: (r.raw ?? {}).publisher ?? {},
     latitude: (r.raw ?? {}).latitude ?? null,
     longitude: (r.raw ?? {}).longitude ?? null,
   }));
@@ -2540,6 +2583,7 @@ Deno.serve(async (req) => {
           const full = parseItemJson(raw, r.source_url);
           if (full) {
             r.photos = pickAllPhotos(full.photos, r.photos);
+            r.publisher = { ...r.publisher, ...full.publisher };
             r.long_description = full.long_description ?? r.long_description ?? null;
             r.description = r.description || full.description || null;
             r.furniture_details = { ...(r.furniture_details ?? {}), ...(full.furniture_details ?? {}) };
@@ -2564,6 +2608,7 @@ Deno.serve(async (req) => {
     if (itemId && claimedToken) {
       rows = rows.filter((r) => String(r.external_id ?? "").toLowerCase() === itemId);
       if (!rows.length) throw new Error("לא ניתן לחלץ את המודעה המדויקת מהקישור. אפשר להמשיך ידנית.");
+      await traceGalleryPublisher(rows[0]);
       rows[0].photos = await mirrorPhotos(admin, itemId, rows[0].photos ?? []);
       const { error } = await admin.from("yad2_item_cache").update({ payload: rows[0], fetched_at: new Date().toISOString(), claim_token: null }).eq("item_id", itemId).eq("claim_token", claimedToken);
       if (error) throw new Error(`cache_save_failed: ${error.message}`);

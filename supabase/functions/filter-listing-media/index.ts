@@ -10,11 +10,12 @@
 // Response: { ok, checked, blocked: string[], removed_keys: string[] }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -35,48 +36,6 @@ const urlsFrom = (value: unknown): string[] => {
   return out;
 };
 
-async function classify(url: string): Promise<{ logo: boolean; person: boolean } | null> {
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
-      body: JSON.stringify({
-        model: "google/gemini-3.1-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content:
-              'You classify real-estate listing photos. Reply with ONLY compact JSON: {"logo":bool,"person":bool}. ' +
-              '"logo" = the image is a logo, watermark, brand card, agency banner, business card, text-only graphic or avatar/headshot placeholder. ' +
-              '"person" = any human face, head, or body is visible (even small or partial). Interior/exterior property photos, floor plans and maps are neither.',
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Classify this image." },
-              { type: "image_url", image_url: { url } },
-            ],
-          },
-        ],
-      }),
-    });
-    if (res.status === 429 || res.status >= 500) return null; // transient: leave the photo alone
-    if (!res.ok) {
-      console.error("[filter-listing-media] gateway error", res.status, await res.text().catch(() => ""));
-      return null;
-    }
-    const payload = await res.json();
-    const raw = String(payload?.choices?.[0]?.message?.content ?? "");
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    const parsed = JSON.parse(match[0]);
-    return { logo: !!parsed?.logo, person: !!parsed?.person };
-  } catch (e) {
-    console.error("[filter-listing-media] classify failed", e);
-    return null;
-  }
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -87,10 +46,17 @@ Deno.serve(async (req) => {
     const limit = Math.max(1, Math.min(30, Number(body?.limit) || 20));
     if (!listingId) return json({ ok: false, error: "listing_id is required" }, 400);
 
+    const authorization = req.headers.get("Authorization");
+    if (!authorization?.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
+    const client = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", { global: { headers: { Authorization: authorization } } });
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return json({ error: "unauthorized" }, 401);
+    const { data: accessible } = await client.from("listings").select("id").eq("id", listingId).maybeSingle();
+    if (!accessible) return json({ error: "not_found" }, 404);
     const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
     const { data: listing, error } = await admin
       .from("listings")
-      .select("id, media_photos, image_url, source_metadata")
+      .select("id, media_photos, image_url, source_metadata, source_url")
       .eq("id", listingId)
       .maybeSingle();
     if (error || !listing) return json({ ok: false, error: error?.message ?? "listing_not_found" }, 404);
@@ -117,12 +83,25 @@ Deno.serve(async (req) => {
       return !removed.includes(k) && !checked.includes(k);
     }).slice(0, limit);
 
+    if (meta.media_vision_paused_status) return json({ error: "media_vision_paused" }, Number(meta.media_vision_paused_status));
     const blocked: string[] = [];
+    const advertiserNames = [meta.office_name, meta.agency_name, meta.broker_name, meta.owner_name];
     for (const url of pending) {
-      const verdict = await classify(url);
+      let verdict;
+      try { verdict = await classifyListingMedia(url, advertiserNames.filter(Boolean).join(" / "), LOVABLE_API_KEY); }
+      catch (error) {
+        const status = (error as { status?: number }).status;
+        if (status === 402 || status === 403) await admin.from("listings").update({ source_metadata: { ...meta, media_vision_paused_status: status } }).eq("id", listingId);
+        return json({ error: "media_vision_failed" }, status ?? 502);
+      }
       const k = mediaKey(url);
       if (!verdict) continue; // transient failure — try again on a later run
       checked.push(k);
+      if (!meta.office_logo_url && verdict.logo && verdict.publisher_logo && !verdict.person && matchesAdvertiser(verdict.branding_name, advertiserNames)) {
+        meta.office_logo_url = url;
+        meta.office_logo_source_url = url;
+        meta.office_logo_evidence = { source: "source_gallery", source_url: listing.source_url ?? null, branding_name: verdict.branding_name };
+      }
       if (verdict.logo || verdict.person) {
         blocked.push(url);
         if (!removed.includes(k)) removed.push(k);
