@@ -1176,6 +1176,12 @@ async function rzJoinGroups(requestId, groups, senderTabId) {
       status = r1 && r1.result;
       if (status === 'clicked') {
         await rzWait(4000);
+        // Try to answer entry questions automatically (up to two dialog steps).
+        for (let step = 0; step < 2; step++) {
+          const [ra] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzAnswerQuestions });
+          if (!ra || ra.result !== 'submitted') break;
+          await rzWait(3500);
+        }
         const [r2] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: rzJoinOutcome });
         status = (r2 && r2.result) || 'requested';
       }
