@@ -810,9 +810,10 @@ export default function Properties() {
 
 
         {/* Row 1 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] */}
-        <div className="flex items-center gap-2" dir="rtl">
-          <div className="relative flex-1 min-w-0">
-            <div className="flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background ps-2 pe-20 py-1 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+        <div className="flex min-w-0 items-start gap-2" dir="rtl">
+          <div className="min-w-0 flex-1 overflow-hidden rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+            <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
               <CollapsibleTrigger asChild>
                 <Button
                   variant="ghost"
@@ -825,7 +826,7 @@ export default function Properties() {
                 </Button>
               </CollapsibleTrigger>
 
-              {filterChips.map((chip) => (
+              {yad2Status?.tone !== 'busy' && filterChips.map((chip) => (
                 <span
                   key={chip.key}
                   className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 text-xs font-semibold"
@@ -843,7 +844,8 @@ export default function Properties() {
               ))}
 
               <input
-                value={q}
+                value={yad2Status?.tone === 'busy' ? '' : q}
+                readOnly={yad2Status?.tone === 'busy'}
                 onChange={(e) => { const value = e.target.value; setQ(value); if (/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)$/i.test(value.trim())) void submitQuery(value); }}
                 onPaste={(e) => {
                   const pasted = e.clipboardData.getData('text');
@@ -858,9 +860,9 @@ export default function Properties() {
                   if (e.key === 'Enter') { e.preventDefault(); submitQuery(); }
                   if (e.key === 'Backspace' && !q && filterChips.length) filterChips[filterChips.length - 1].clear();
                 }}
-                placeholder={filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים או הדבקת קישור יד2'}
+                placeholder={yad2Status?.tone === 'busy' ? 'סורק פרטים…' : filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים או הדבקת קישור יד2'}
                 aria-label="חיפוש נכסים"
-                className="flex-1 min-w-[90px] bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground h-7"
+                className="h-7 min-w-0 flex-1 bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground"
                 dir="rtl"
                />
 
@@ -868,27 +870,37 @@ export default function Properties() {
             <Button
               type="button"
               size="sm"
-              variant={searching ? 'destructive' : 'default'}
-              onClick={searching ? cancelSearch : () => submitQuery()}
-              aria-label={searching ? 'בטל חיפוש' : 'חפש'}
-              title={searching ? 'בטל חיפוש' : 'חפש'}
-              className="absolute left-1.5 top-1.5 h-7 gap-1.5 px-3 text-xs"
+               variant={searching || yad2Status?.tone === 'busy' ? 'destructive' : 'default'}
+               onClick={searching || yad2Status?.tone === 'busy' ? cancelSearch : () => submitQuery()}
+               aria-label={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
+               title={searching || yad2Status?.tone === 'busy' ? 'בטל חיפוש' : 'חפש'}
+               className="h-7 shrink-0 gap-1.5 px-3 text-xs"
             >
-              {searching ? (
+               {yad2Status?.tone === 'busy' ? <X className="h-3.5 w-3.5" /> : searching ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <SearchIcon className="h-3.5 w-3.5" />
               )}
-              <span>{searching ? 'בטל' : 'חפש'}</span>
+               <span>{searching || yad2Status?.tone === 'busy' ? 'בטל' : 'חפש'}</span>
             </Button>
-
+            </div>
+            {yad2Status && (
+              <div role="status" aria-live="polite" className={`min-w-0 border-t px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/30 text-destructive' : 'border-border text-muted-foreground'}`}>
+                <div className="flex min-w-0 items-start gap-2">
+                  {yad2Status.tone === 'busy' && <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" />}
+                  <span className="min-w-0 flex-1 break-words leading-5">{yad2Status.label}</span>
+                  {yad2Status.tone !== 'busy' && <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></Button>}
+                </div>
+                {yad2Status.tone !== 'error' && <div role="progressbar" aria-label="התקדמות ייבוא יד2" aria-valuemin={0} aria-valuemax={4} aria-valuenow={yad2Status.step} className="mt-2 grid h-1 grid-cols-4 gap-1 overflow-hidden rounded-full bg-muted">{[1, 2, 3, 4].map(step => <span key={step} className={`h-full transition-colors duration-300 motion-reduce:transition-none ${step <= yad2Status.step ? 'bg-primary' : 'bg-muted'}`} />)}</div>}
+              </div>
+            )}
           </div>
-            {!searching && completedResults !== null && (
+            {!searching && yad2Status?.tone !== 'busy' && completedResults !== null && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost"
                     type="button"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary px-3 h-8 hover:bg-primary/20 transition-colors"
+                    className="mt-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 text-primary transition-colors hover:bg-primary/20"
                     aria-label="פירוט תוצאות לפי מקור"
                     title="פירוט תוצאות לפי מקור"
                   >
@@ -954,22 +966,6 @@ export default function Properties() {
               </DropdownMenu>
             )}
 
-          {yad2Status && (
-            <div role="status" aria-live="polite" dir="rtl" className={`mt-2 rounded-md border px-3 py-2 text-xs ${yad2Status.tone === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : yad2Status.tone === 'ok' ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-foreground'}`}>
-              <div className="flex items-center gap-2">
-                {yad2Status.tone === 'busy' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                <span className="flex-1 font-medium">{yad2Status.label}</span>
-                {yad2Status.tone !== 'busy' && (
-                  <button type="button" onClick={() => setYad2Status(null)} aria-label="סגירה"><X className="h-3.5 w-3.5" /></button>
-                )}
-              </div>
-              {yad2Status.tone !== 'error' && (
-                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-background">
-                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(yad2Status.step / 4) * 100}%` }} />
-                </div>
-              )}
-            </div>
-          )}
 
 
 
