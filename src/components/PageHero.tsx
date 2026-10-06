@@ -17,7 +17,7 @@ import {
   User,
   ArrowLeft,
   ArrowRight,
-  ChevronLeft,
+  ChevronRight,
   DownloadCloud,
   Loader2,
   RefreshCw,
@@ -426,7 +426,18 @@ export function PageHero() {
           )}
           {/* Yad2 scraping balance — owners / super admins, and ONLY on /properties. */}
           {canSeeBalance && location.pathname.startsWith("/properties") && <BrightDataHeroPill />}
-          {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
+          {isPublicBoard && user && canSeeMyAds && (
+            <Button
+              asChild
+              variant="link"
+              className="h-auto gap-1 p-0 text-sm font-semibold text-white hover:text-white/90"
+            >
+              <Link to={myListingsPath}>
+                המודעות שלי
+                 <ChevronRight className="!h-4 !w-4" strokeWidth={2.5} />
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}
@@ -448,18 +459,7 @@ export function PageHero() {
               <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
           )}
-          {isPublicBoard && user && canSeeMyAds && (
-            <Button
-              asChild
-              variant="link"
-              className="h-auto gap-1 p-0 text-sm font-semibold text-white hover:text-white/90"
-            >
-              <Link to={myListingsPath}>
-                המודעות שלי
-                 <ChevronLeft className="!h-4 !w-4" strokeWidth={2.5} />
-              </Link>
-            </Button>
-          )}
+          {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
           {isPublicBoard && !user && (
             <Button
               size="sm"
