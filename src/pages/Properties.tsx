@@ -36,7 +36,6 @@ import { SelectModeToggle, SelectAllRow } from '@/components/ui/multi-select-con
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 import { useInventorySuggestions } from '@/hooks/useInventorySuggestions';
 import { usePropertySearchHistory } from '@/hooks/usePropertySearchHistory';
-import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -55,7 +54,6 @@ import { usePropertyNotesByListing } from '@/hooks/usePropertyNotes';
 import { searchAllSources, searchLocalListings, searchMarketPool, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { sourcePhotoCount } from '@/lib/photoCount';
-import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle, formatInternalListingTitle, formatStreetTypeTitle } from '@/lib/formatListingTitle';
 import { houseNumberOf, apartmentNumberOf } from '@/lib/addressNumbers';
 import { ensureFullPropertyImport, ensureMetadataImport } from '@/lib/propertyFullSync';
@@ -1554,7 +1552,6 @@ function neighborhoodOf(r: UnifiedResult): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-type SortCol = 'affiliate' | 'commission' | 'image' | 'name' | 'neighborhood' | 'house_number' | 'apt_number' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm' | 'photos' | 'published' | 'publisher';
 
 /** Official Yad2 button — rendered only after the ad is verified as still live. */
 function Yad2AdButton({ url }: { url: string }) {
@@ -1587,8 +1584,6 @@ export function ResultTable({
   onEdit,
   propertyHref,
   hideDefaultActions = false,
-  affiliateSortValue,
-  commissionSortValue,
   publishedAt,
   publishedLabel = 'תאריך פרסום/עדכון',
   showPropertyNotes = true,
