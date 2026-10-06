@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
-import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
+import { EditPropertyDialog } from '@/components/properties/EditPropertyDialog';
+import { RewardDialog } from '@/pages/AffiliateNetwork';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';
@@ -78,16 +79,19 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
   const navigate = useNavigate();
   const del = useDeleteListings();
   const [row, setRow] = useState<UnifiedResult | null>(null);
+  const [raw, setRaw] = useState<any>(null);
   const [confirm, setConfirm] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [rewardOpen, setRewardOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    setRow(null);
-    if (!user?.id || !activeWorkspaceId) return;
+    if (!user?.id || !activeWorkspaceId) { setRow(null); return; }
     let alive = true;
     void supabase.from('listings').select('*').eq('id', listingId).eq('workspace_owner_id', activeWorkspaceId).maybeSingle()
-      .then(({ data }) => { if (alive && data) setRow(mapLocalListingRow(data)); });
+      .then(({ data }) => { if (alive && data) { setRaw(data); setRow(mapLocalListingRow(data)); } });
     return () => { alive = false; };
-  }, [listingId, user?.id, activeWorkspaceId]);
+  }, [listingId, user?.id, activeWorkspaceId, reloadKey]);
 
   if (!row) return null;
   return (
@@ -96,12 +100,16 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
       <div className="flex items-center gap-1.5">
         <PropertyRowActions
           r={row}
-          hideAffiliate
           onCampaign={(r) => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.localId}&listing=${r.localId}`)}
+          onEdit={() => setEditOpen(true)}
           onDelete={() => setConfirm(true)}
+          onAffiliate={() => setRewardOpen(true)}
         />
-        <AffiliateCommissionButton listingId={listingId} />
       </div>
+      <EditPropertyDialog property={raw} open={editOpen} onOpenChange={setEditOpen}
+        onSaved={() => { setReloadKey((k) => k + 1); window.dispatchEvent(new CustomEvent('realtyz:listing-updated', { detail: { id: listingId } })); }} />
+      <RewardDialog listing={rewardOpen ? raw : null} open={rewardOpen}
+        onOpenChange={(v) => { setRewardOpen(v); if (!v) setReloadKey((k) => k + 1); }} />
       <PropertyDeleteDialog count={1} open={confirm} deleting={del.isPending} onOpenChange={setConfirm}
         onConfirm={() => del.mutate([listingId], {
           onSuccess: () => { setConfirm(false); toast.success('הנכס נמחק'); window.location.reload(); },
