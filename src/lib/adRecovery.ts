@@ -4,6 +4,29 @@ export function missingAdFields(f: PublicListingDraftFields): string[] {
   return [!f.dealType && 'סוג עסקה', !f.propertyType && 'סוג נכס', !f.city.trim() && 'עיר', !(f.street.trim() || f.address.trim()) && 'כתובת', !(Number(f.price) > 0) && 'מחיר', !f.contactName.trim() && 'שם מפרסם', f.contactWhatsapp.replace(/\D/g, '').length < 9 && 'מספר ווטסאפ', !f.termsAccepted && 'אישור התקנון'].filter((v): v is string => Boolean(v));
 }
 
+/** Everything that must be complete before the publish button is enabled. */
+export function missingPublishFields(f: PublicListingDraftFields, hasMedia: boolean): string[] {
+  return [
+    !f.publisherType && 'סוג מפרסם',
+    !f.dealType && 'סוג עסקה',
+    !f.propertyType && 'סוג נכס',
+    !f.city.trim() && 'עיר',
+    !(f.street.trim() || f.address.trim()) && 'כתובת',
+    !(f.floor && f.totalFloors) && 'קומה',
+    !f.rooms && 'חדרים',
+    !f.condition && 'מצב הנכס',
+    !f.airDirections && 'כיווני אוויר',
+    !(Number(f.price) > 0) && 'מחיר',
+    !(Number(f.sqm) > 0 || Number(f.builtSqm) > 0) && 'שטח',
+    !hasMedia && 'תמונה או סרטון',
+    !f.contactName.trim() && 'שם מפרסם',
+    f.contactWhatsapp.replace(/\D/g, '').length < 9 && 'מספר ווטסאפ',
+    !(Number(f.commissionForm) > 0 || Number(f.commissionWhatsapp) > 0 || Number(f.commissionPhone) > 0) && 'עמלה לפחות לסוג פנייה אחד',
+    !f.termsAccepted && 'אישור התקנון',
+    !f.commissionTermsAccepted && 'אישור מנגנון העמלות',
+  ].filter((v): v is string => Boolean(v));
+}
+
 export function listingToDraft(row: Record<string, any>): PublicListingDraftFields {
   const f = row.features || {};
   const a = row.attributes || {};
