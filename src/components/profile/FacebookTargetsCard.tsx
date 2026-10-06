@@ -22,6 +22,14 @@ const bareId = (id: string) => id.replace(/^(ext:|manual:)/, '');
 
 /** Minimum readable font size across this card. */
 const TEXT_SM = 'text-[14px]';
+
+// Compact numeric member counter: 16.1K / 2.9K / 1.2M — no surrounding text.
+const formatMemberCount = (n: number): string => {
+  const trim = (v: number) => (v >= 100 ? Math.round(v).toString() : v.toFixed(1).replace(/\.0$/, ''));
+  if (n >= 1_000_000) return `${trim(n / 1_000_000)}M`;
+  if (n >= 1_000) return `${trim(n / 1_000)}K`;
+  return String(n);
+};
 const TEXT_MD = 'text-[15px]';
 const MAX_GROUPS = 100;
 const JOIN_BATCH = 5;
@@ -456,20 +464,20 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                     <img
                       src={g.icon}
                       alt=""
-                      className="h-8 w-8 shrink-0 rounded-full object-cover"
+                      className="h-8 w-8 shrink-0 rounded-md object-cover"
                       loading="lazy"
                       referrerPolicy="no-referrer"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
                   )}
-                  <div className={cn('min-w-0 flex-1 text-right', TEXT_MD)}>
-                    <span className="block truncate">{shortenName(g.name)}</span>
-                    {typeof g.members === 'number' && g.members > 0 && (
-                      <span className={cn('block text-muted-foreground tabular-nums', TEXT_SM)}>
-                        {g.members.toLocaleString('he-IL')} חברים
-                      </span>
-                    )}
-                  </div>
+                  <span className={cn('min-w-0 flex-1 truncate whitespace-nowrap text-right', TEXT_MD)} title={g.name}>
+                    {shortenName(g.name)}
+                  </span>
+                  {typeof g.members === 'number' && g.members > 0 && (
+                    <span className={cn('shrink-0 text-muted-foreground tabular-nums', TEXT_SM)} dir="ltr">
+                      {formatMemberCount(g.members)}
+                    </span>
+                  )}
                   {!deleteMode && (
                     <button type="button" aria-label={`חסימת הקבוצה ${g.name}`} title="העבר לקבוצות חסומות"
                       onClick={(e) => { e.stopPropagation(); void blockGroup(g); }}
