@@ -172,8 +172,8 @@ Deno.serve(async (req) => {
       const name = str(body?.name, 80) || 'פנייה טלפונית';
       const phone = normalizePhone(str(body?.phone, 30));
       if (!listingId || !phone) return json({ error: "מספר טלפון תקין הוא שדה חובה" }, 400);
-      const { data: listing } = await admin.from("listings").select("id, city, address, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published").eq("id", listingId).maybeSingle();
-      if (!listing || !(listing.affiliate_enabled || listing.is_published) || listing.contact_options?.phone !== true) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
+      const { data: listing } = await admin.from("listings").select("id, city, address, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published, affiliate_tier3_amount").eq("id", listingId).maybeSingle();
+      if (!listing || !(listing.affiliate_enabled || listing.is_published) || !(Number(listing.affiliate_tier3_amount) > 0)) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
       const refCode = str(body?.ref, 40);
       let affiliateId: string | null = null;
