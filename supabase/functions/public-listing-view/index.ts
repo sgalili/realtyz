@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!backendUrl || !serviceKey) throw new Error("missing backend configuration");
     const admin = createClient(backendUrl, serviceKey);
-    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, is_published, status, affiliate_enabled, workspace_owner_id, user_id";
+    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, is_published, status, affiliate_enabled, workspace_owner_id, user_id, source, source_metadata, owner_id";
 
     let query = admin.from("listings").select(columns).limit(1);
     query = UUID_RE.test(identifier) ? query.eq("id", identifier) : query.eq("slug", identifier);
@@ -78,15 +78,40 @@ Deno.serve(async (req) => {
     // debug keys from the ingestion pipeline are stripped here.
     const property = publicProperty(listing);
     const workspace_properties = (workspaceRows ?? []).map((row) => publicProperty(row));
+    const ownAttribution = {
+      broker_name: profile?.broker_byline || profile?.full_name || "שם המתווך לא צוין",
+      office_name: brand?.agency_name || workspace?.workspace_name || "שם המשרד לא צוין",
+      broker_license_number: profile?.broker_license_number || null,
+      agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || workspace?.workspace_logo_url || null,
+    };
+    // Imported ads (Yad2 etc.) always show the ORIGINAL advertiser, never the
+    // workspace or affiliate that imported/promotes them.
+    const ownerIds = [...new Set([listing, ...(workspaceRows ?? [])]
+      .filter((r: any) => r.source && r.source !== "manual" && r.owner_id).map((r: any) => r.owner_id))];
+    const { data: owners } = ownerIds.length
+      ? await admin.from("crm_profiles").select("id, full_name").in("id", ownerIds)
+      : { data: [] as any[] };
+    const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o.full_name]));
+    const attributionFor = (row: Record<string, any>) => {
+      if (!row.source || row.source === "manual") return ownAttribution;
+      const m = (row.source_metadata ?? {}) as Record<string, any>;
+      const txt = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+      const name = txt(m.broker_name) ?? txt(m.contact_name) ?? txt(m.owner_name) ?? txt(ownerMap.get(row.owner_id));
+      const office = txt(m.agency_name) ?? txt(m.office_name) ?? txt(m.merchant_name);
+      const licence = txt(m.broker_license) ?? txt(m.broker_license_number) ?? txt(m.license_number);
+      return {
+        broker_name: name ?? (office ? "מתווך" : "בעל הנכס"),
+        office_name: office ?? (licence ? "שם המשרד לא צוין" : "מפרסם פרטי"),
+        broker_license_number: licence,
+        agency_logo_url: null,
+      };
+    };
+    for (const row of [listing, ...(workspaceRows ?? [])]) (row as any).__attr = attributionFor(row as any);
+    const strip = (r: any) => { const { source_metadata: _m, owner_id: _o, __attr: _a, ...rest } = r; return rest; };
     return new Response(JSON.stringify({
-      property,
-      workspace_properties,
-      attribution: {
-        broker_name: profile?.broker_byline || profile?.full_name || "שם המתווך לא צוין",
-        office_name: brand?.agency_name || workspace?.workspace_name || "שם המשרד לא צוין",
-        broker_license_number: profile?.broker_license_number || null,
-        agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || workspace?.workspace_logo_url || null,
-      },
+      property: { ...strip(property), attribution: (listing as any).__attr },
+      workspace_properties: (workspaceRows ?? []).map((r: any, i: number) => ({ ...strip(workspace_properties[i]), attribution: r.__attr })),
+      attribution: (listing as any).__attr,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("[public-listing-view]", error);
