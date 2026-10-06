@@ -1,7 +1,8 @@
 # Roadmap
 ## Original Yad2 advertiser branding
-- [ ] Trace and save original advertiser logos from source publisher sections and gallery branding, without using affiliate identity.
-- [ ] Hide unverified license numbers and verify extraction/persistence/public rendering.
+- [x] Save original advertiser metadata across item imports, source cache and market pool; inspect first gallery image before cleanup and retain matching branding separately. Four tests passed and real office-logo vision classification verified.
+- [x] Require source-ad license evidence for imported listings; real שדרות ח״ן public card verified with loaded office logo, no unsupported license label and no runtime errors. Updated functions deployed.
+- [ ] Verify a new live Yad2 scrape and logo persistence end-to-end (blocked by the existing source-provider rejection/CAPTCHA; no new scraping attempt made).
 ## List expansion cleanup
 - [x] Remove inline close button, move expansion arrow before address and show expanded title/price once. Signed-in narrow-table expansion/collapse and horizontal scroll verified without runtime errors; container layout stays readable, build OK.
 ## Public ad presentation refinement
