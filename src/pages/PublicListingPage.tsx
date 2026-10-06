@@ -367,9 +367,11 @@ function PublicListingContent() {
       <div className="mx-auto max-w-4xl space-y-5 px-4 pt-5">
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between gap-3 px-4 pt-4">
-            <h1 className="min-w-0 truncate text-[14px] font-black leading-tight md:text-[20px]">{data.title}</h1>
+            <h1 className="min-w-0 truncate text-[19px] font-black leading-tight md:text-[25px]">
+              {data.dealType ? `${data.dealType === 'rent' ? 'להשכרה' : 'למכירה'} ב${data.title}` : data.title}
+            </h1>
             <p
-              className={`shrink-0 whitespace-nowrap text-[14px] font-normal leading-tight ${data.dealType === 'rent' ? 'text-sale' : 'text-success'}`}
+              className={`shrink-0 whitespace-nowrap text-[19px] font-normal leading-tight md:text-[25px] ${data.dealType === 'rent' ? 'text-sale' : 'text-success'}`}
               dir="ltr"
             >
               {formatPrice(data.price, data.dealType)}
