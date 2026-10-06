@@ -537,10 +537,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       const base: PublicListingDraftFields = { ...EMPTY_PUBLIC_LISTING_DRAFT, publisherType: fields.publisherType, contactName: fields.contactName, contactWhatsapp: fields.contactWhatsapp, contactEmail: fields.contactEmail };
       const next: PublicListingDraftFields = { ...base, importedListing: { ...src, source_url: sourceUrl }, city: src.city || base.city, address: addr || base.address, street: street || base.street, houseNumber: houseNumber || base.houseNumber, neighborhood: src.neighborhood || base.neighborhood, price: str(src.price) || base.price, propertyType: types[src.property_type] || src.property_type || base.propertyType || '', dealType: src.listing_type === 'rent' ? 'rent' : 'sale', rooms: str(src.rooms) || base.rooms, sqm: str(src.sqm) || base.sqm, floor: str(src.floor) || base.floor, totalFloors: str(src.total_floors) || base.totalFloors, description: src.description || base.description, elevator: Boolean(src.elevator), parking: Number(src.parking) > 0, contactWhatsapp: str(src.owner_phone) || base.contactWhatsapp, contactName: str(src.owner_name) || base.contactName || user.user_metadata?.full_name || '' };
       if (isBroker) { next.publisherType = 'broker'; next.contactName = fields.contactName || publisherName; next.contactWhatsapp = fields.contactWhatsapp || publisherPhone; }
-      setFields(next);
+      setFields(next); setFiles([]); setVideos([]);
       setStep(0);
       setReviewMode(true); setExpandedStep(isBroker ? 'step-1' : 'step-0');
-      try { await saveDraft(next); } catch { /* best effort */ }
+      try { await saveDraft(next, [], []); } catch { /* best effort */ }
       void saveToMyProperties({ ...src, source_url: sourceUrl }, u?.listing_id ?? null);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
     finally { importInFlight.current = false; setImporting(false); }
