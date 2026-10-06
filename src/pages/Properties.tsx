@@ -821,6 +821,15 @@ export default function Properties() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData('text');
+                  if (/yad2\.co\.il/i.test(pasted)) {
+                    e.preventDefault();
+                    const text = pasted.trim();
+                    setQ(text);
+                    void submitQuery(text);
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { e.preventDefault(); submitQuery(); }
                   if (e.key === 'Backspace' && !q && filterChips.length) filterChips[filterChips.length - 1].clear();
@@ -841,7 +850,7 @@ export default function Properties() {
               type="button"
               size="sm"
               variant={searching ? 'destructive' : 'default'}
-              onClick={searching ? cancelSearch : submitQuery}
+              onClick={searching ? cancelSearch : () => submitQuery()}
               aria-label={searching ? 'בטל חיפוש' : 'חפש'}
               title={searching ? 'בטל חיפוש' : 'חפש'}
               className="absolute left-1.5 top-1.5 h-7 gap-1.5 px-3 text-xs"
