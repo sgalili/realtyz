@@ -3080,6 +3080,7 @@ export type Database = {
           is_administrator: boolean
           is_blocked: boolean
           is_selected: boolean
+          join_status: string
           max_posts_per_day: number | null
           member_count: number | null
           page_id: string | null
@@ -3102,6 +3103,7 @@ export type Database = {
           is_administrator?: boolean
           is_blocked?: boolean
           is_selected?: boolean
+          join_status?: string
           max_posts_per_day?: number | null
           member_count?: number | null
           page_id?: string | null
@@ -3124,6 +3126,7 @@ export type Database = {
           is_administrator?: boolean
           is_blocked?: boolean
           is_selected?: boolean
+          join_status?: string
           max_posts_per_day?: number | null
           member_count?: number | null
           page_id?: string | null

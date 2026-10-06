@@ -81,6 +81,8 @@ export function ExtensionGroupSyncCard({
           // Bind every synced group to this workspace's connected Facebook page.
           page_id: pageBinding?.pageId ?? null,
           source: 'extension',
+          // The extension only lists groups the user already belongs to.
+          join_status: 'joined',
           is_selected: true,
           imported_at: now,
           updated_at: now,

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Ban, ExternalLink, Loader2, Search, Trash2, Undo2 } from 'lucide-react';
+import { Ban, Clock, ExternalLink, Loader2, Search, Trash2, Undo2, UserPlus } from 'lucide-react';
+import { isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
+import { joinGroupsViaExtension, type JoinStatus } from '@/lib/extensionGroupDiscovery';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { Button } from '@/components/ui/button';
 import { SelectModeToggle, SelectAllRow, SelectBox } from '@/components/ui/multi-select-controls';
@@ -14,7 +16,8 @@ import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 
-type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean; blocked?: boolean; blockedReason?: string | null };
+type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean; blocked?: boolean; blockedReason?: string | null; joinStatus: JoinState };
+type JoinState = 'joined' | 'pending' | 'not_joined';
 
 const bareId = (id: string) => id.replace(/^(ext:|manual:)/, '');
 
@@ -58,13 +61,20 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   const { data: pageBinding } = useMetaPageBinding();
   const cached = readCache(workspaceOwnerId);
   const [allGroups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
-  const groups = allGroups.filter((g) => !g.blocked);
+  // פעילות = live joined groups only; pending / not-joined / blocked live in their own tabs.
+  const groups = allGroups.filter((g) => !g.blocked && (g.joinStatus ?? 'joined') === 'joined');
+  const notJoinedGroups = allGroups.filter((g) => !g.blocked && g.joinStatus === 'not_joined');
+  const pendingGroups = allGroups.filter((g) => !g.blocked && g.joinStatus === 'pending');
   const blockedGroups = allGroups.filter((g) => g.blocked);
   const [loading, setLoading] = useState(!cached);
   const [deleteMode, setDeleteMode] = useState(false);
   const [markedIds, setMarkedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
-  const [tab, setTab] = useState<'active' | 'blocked'>('active');
+  const [tab, setTab] = useState<'active' | 'not_joined' | 'pending' | 'blocked'>('active');
+  const [joinPicked, setJoinPicked] = useState<Set<string>>(new Set());
+  const [joinProgress, setJoinProgress] = useState<Record<string, string>>({});
+  const [joining, setJoining] = useState(false);
+  const autoJoinRef = useRef<string | null>(null);
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const scopeRef = useRef(workspaceOwnerId);
   scopeRef.current = workspaceOwnerId;
@@ -85,7 +95,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     try {
       const { data, error } = await (supabase as any)
         .from('fb_user_groups')
-        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked, blocked_reason')
+        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked, blocked_reason, join_status')
         // Workspace-scoped so shared Facebook groups are identical for every member.
         .eq('workspace_owner_id', workspaceOwnerId)
         .order('group_name', { ascending: true });
@@ -107,6 +117,7 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
         selected: r.is_selected !== false && !r.is_blocked,
         blocked: !!r.is_blocked,
         blockedReason: r.blocked_reason ?? null,
+        joinStatus: (r.join_status as JoinState) || 'joined',
       }));
       setGroups(nextGroups);
       try {
@@ -214,6 +225,70 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
   };
 
 
+  const joinTargets = async (targets: GroupTarget[]) => {
+    if (!targets.length || joining || !workspaceOwnerId) return;
+    if (!isExtensionInstalled()) { toast.error('כדי להצטרף לקבוצות יש להתקין את תוסף Realtyz'); return; }
+    setJoining(true);
+    const owner = workspaceOwnerId;
+    let ok = 0;
+    for (let i = 0; i < targets.length; i += 15) {
+      const batch = targets.slice(i, i + 15);
+      const byBare = new Map(batch.map((g) => [bareId(g.groupId), g]));
+      setJoinProgress((p) => ({ ...p, ...Object.fromEntries(batch.map((g) => [g.id, 'בתור'])) }));
+      const run = joinGroupsViaExtension(
+        batch.map((g) => ({ group_id: bareId(g.groupId), group_name: g.name, group_url: fbGroupUrlFrom(g.url, g.groupId) || '' })),
+        (gid, status: JoinStatus) => {
+          const g = byBare.get(gid);
+          if (!g) return;
+          const next: JoinState | null = status === 'joined' || status === 'already_member' ? 'joined' : status === 'requested' ? 'pending' : null;
+          setJoinProgress((p) => ({ ...p, [g.id]: next === 'joined' ? 'הצטרפת' : next === 'pending' ? 'בהמתנה' : status === 'needs_answers' ? 'דורש השלמה' : 'נכשל' }));
+          if (next) {
+            ok += 1;
+            setGroups((prev) => prev.map((x) => (x.id === g.id ? { ...x, joinStatus: next } : x)));
+            void (supabase as any).from('fb_user_groups').update({ join_status: next })
+              .eq('workspace_owner_id', owner).eq('id', g.id);
+          }
+        },
+      );
+      await run.done;
+    }
+    setJoining(false);
+    setJoinPicked(new Set());
+    toast.success(`הטיפול הסתיים: ${ok} מתוך ${targets.length} קבוצות`);
+    void load();
+  };
+
+  // Auto-join imported groups once per workspace visit while the extension is open.
+  useEffect(() => {
+    if (loading || !workspaceOwnerId || autoJoinRef.current === workspaceOwnerId) return;
+    if (!notJoinedGroups.length || !isExtensionInstalled()) return;
+    autoJoinRef.current = workspaceOwnerId;
+    void joinTargets(notJoinedGroups);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, workspaceOwnerId, notJoinedGroups.length]);
+
+  const renderSimpleRow = (g: GroupTarget, extra?: ReactNode) => (
+    <div key={g.id} className="flex flex-nowrap items-center gap-[11px] rounded-lg border border-border/70 px-2 py-1.5">
+      {extra}
+      <div className={cn('min-w-0 flex-1 text-right', TEXT_MD)}>
+        <span title={g.name} className="block truncate">{shortenName(g.name)}</span>
+        {joinProgress[g.id] && <span className={cn('block text-primary', TEXT_SM)}>{joinProgress[g.id]}</span>}
+      </div>
+      <button type="button" aria-label={`פתח את הקבוצה ${g.name} בלשונית חדשה`} title="צפה בקבוצה בלשונית חדשה"
+        onClick={(e) => { e.stopPropagation(); openExternal(fbGroupUrlFrom(g.url, g.groupId)); }}
+        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-primary">
+        <ExternalLink className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  const tabBtn = (id: typeof tab, label: string, n: number) => (
+    <Button key={id} variant="ghost" type="button" role="tab" aria-selected={tab === id} onClick={() => { setTab(id); setDeleteMode(false); }}
+      className={cn('flex-1 whitespace-nowrap rounded-md px-1.5 py-1 font-semibold', TEXT_SM, tab === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
+      {label} ({n})
+    </Button>
+  );
+
   return (
     <div dir="rtl" className={cn('rounded-xl border border-border bg-background p-3 space-y-3', className)}>
       {/* Extension/sync row — "הוספת קבוצות" sits at the card's far edge. */}
@@ -239,25 +314,49 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
                 onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); }}
               />
             )}
-            <div role="tablist" className="flex min-w-0 flex-1 rounded-lg bg-muted p-0.5">
-              <Button variant="ghost" type="button" role="tab" aria-selected={tab === 'active'} onClick={() => { setTab('active'); setDeleteMode(false); }}
-                className={cn('flex-1 rounded-md px-2 py-1 font-semibold', TEXT_SM, tab === 'active' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
-                פעילות ({groups.length})
-              </Button>
-              <Button variant="ghost" type="button" role="tab" aria-selected={tab === 'blocked'} onClick={() => { setTab('blocked'); setDeleteMode(false); }}
-                className={cn('flex-1 rounded-md px-2 py-1 font-semibold', TEXT_SM, tab === 'blocked' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
-                קבוצות חסומות ({blockedGroups.length})
-              </Button>
+            <div role="tablist" className="flex min-w-0 flex-1 overflow-x-auto rounded-lg bg-muted p-0.5">
+              {tabBtn('active', 'פעילות', groups.length)}
+              {tabBtn('not_joined', 'לא הצטרפתי', notJoinedGroups.length)}
+              {tabBtn('pending', 'בהמתנה', pendingGroups.length)}
+              {tabBtn('blocked', 'חסומות', blockedGroups.length)}
             </div>
           </div>
           <GroupDiscoveryDialog
             open={discoverOpen}
             onOpenChange={setDiscoverOpen}
             blockedIds={new Set(blockedGroups.map((g) => bareId(g.groupId)))}
-            knownIds={new Set(groups.map((g) => bareId(g.groupId)))}
+            knownIds={new Set(allGroups.filter((g) => !g.blocked).map((g) => bareId(g.groupId)))}
             onJoined={() => void load()}
           />
-          {tab === 'blocked' ? (
+          {tab === 'not_joined' ? (
+            notJoinedGroups.length === 0 ? (
+              <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות שעדיין לא הצטרפת אליהן.</p>
+            ) : (<>
+              <SelectAllRow total={notJoinedGroups.length} selected={joinPicked.size}
+                onToggle={() => setJoinPicked(joinPicked.size === notJoinedGroups.length ? new Set() : new Set(notJoinedGroups.map((g) => g.id)))}
+                className="rounded-lg border border-border">
+                <Button type="button" size="sm" className="h-7 gap-1 text-[12px]" disabled={joinPicked.size === 0 || joining}
+                  onClick={() => void joinTargets(notJoinedGroups.filter((g) => joinPicked.has(g.id)))}>
+                  {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+                  הצטרפות אוטומטית
+                </Button>
+              </SelectAllRow>
+              <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
+                {notJoinedGroups.map((g) => renderSimpleRow(g, (
+                  <SelectBox checked={joinPicked.has(g.id)} label={g.name}
+                    onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else n.add(g.id); return n; })} />
+                )))}
+              </div>
+            </>)
+          ) : tab === 'pending' ? (
+            pendingGroups.length === 0 ? (
+              <p className={cn('text-muted-foreground', TEXT_MD)}>אין בקשות הצטרפות בהמתנה.</p>
+            ) : (
+              <div className="max-h-56 space-y-1 overflow-y-auto pe-1">
+                {pendingGroups.map((g) => renderSimpleRow(g, <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />))}
+              </div>
+            )
+          ) : tab === 'blocked' ? (
             blockedGroups.length === 0 ? (
               <p className={cn('text-muted-foreground', TEXT_MD)}>אין קבוצות חסומות. קבוצות שהפרסום בהן נכשל או הוגבל יופיעו כאן ולא ייבחרו בקמפיינים.</p>
             ) : (

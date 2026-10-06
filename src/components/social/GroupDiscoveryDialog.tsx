@@ -105,7 +105,7 @@ export function GroupDiscoveryDialog({
   });
   const toggleAll = () => setPicked(allPicked ? new Set() : new Set(selectable.map((g) => g.group_id)));
 
-  const saveGroup = async (g: DiscoveredGroup) => {
+  const saveGroup = async (g: DiscoveredGroup, joinStatus: 'joined' | 'pending' = 'joined') => {
     if (!workspaceOwnerId) return;
     const now = new Date().toISOString();
     await (supabase as any).from("fb_user_groups").upsert({
@@ -117,6 +117,7 @@ export function GroupDiscoveryDialog({
       ...(g.member_count !== null ? { member_count: g.member_count } : {}),
       page_id: pageBinding?.pageId ?? null,
       source: "extension",
+      join_status: joinStatus,
       is_selected: true,
       imported_at: now,
       updated_at: now,
@@ -139,7 +140,7 @@ export function GroupDiscoveryDialog({
         const g = byId.get(gid);
         if (g && (status === "joined" || status === "already_member" || status === "requested")) {
           ok += 1;
-          void saveGroup(g);
+          void saveGroup(g, status === "requested" ? "pending" : "joined");
         }
       },
     );
@@ -166,7 +167,7 @@ export function GroupDiscoveryDialog({
   };
 
   const completeManual = async (g: DiscoveredGroup) => {
-    await saveGroup(g);
+    await saveGroup(g, "pending");
     setProgress((prev) => ({ ...prev, [g.group_id]: "requested" }));
     toast.success("הקבוצה נשמרה");
     onJoined?.();
