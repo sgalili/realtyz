@@ -18,6 +18,6 @@ export default function PublicCardSummary({ card, price, showBroker = true }: { 
   });
   return <div className="space-y-2">
     <PublicAdHeading compact title={data?.listing.title || publicAdTitle(card)} price={price} dealType={card.deal_type} />
-    <BrokerAttribution compact brokerName={data?.listing.brokerName} officeName={data?.listing.officeName} licenceNumber={data?.listing.brokerLicenceNumber} logoUrl={data?.listing.agencyLogoUrl} />
+    {showBroker && <BrokerAttribution compact brokerName={data?.listing.brokerName} officeName={data?.listing.officeName} licenceNumber={data?.listing.brokerLicenceNumber} logoUrl={data?.listing.agencyLogoUrl} />}
   </div>;
 }
