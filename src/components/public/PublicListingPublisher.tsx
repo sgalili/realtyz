@@ -277,7 +277,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       setPublishStage('שמירת פרטי הנכס');
       const payload = {
          user_id: user.id, workspace_owner_id: activeWorkspaceId || user.id, owner_id: user.id,
-        slug: slugFor(user.id), property_title: title, description: draftFields.description.trim() || title, asking_price: toNum(draftFields.price) ?? 0,
+        slug: slugFor(user.id), property_title: title, description: draftFields.description.trim(), asking_price: toNum(draftFields.price) ?? 0,
         city: draftFields.city.trim(), neighborhood: draftFields.neighborhood.trim() || null, address,
         house_number: draftFields.houseNumber.trim() || null,
         apartment_number: draftFields.apartmentNumber.trim() || null,
@@ -318,6 +318,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       if (cf != null) commissions.affiliate_tier1_amount = cf;
       if (cw != null) commissions.affiliate_tier2_amount = cw;
       if (cp != null) commissions.affiliate_tier3_amount = cp;
+      const cd = toNum(draftFields.commissionDeal);
+      if (cd != null && draftFields.publisherType === 'broker') (payload.features as Record<string, unknown>).deal_closing_commission = { type: draftFields.commissionDealType === 'percent' ? 'percent' : 'fixed', value: cd };
       const limits = { form: toInt(draftFields.limitForm), whatsapp: toInt(draftFields.limitWhatsapp), phone: toInt(draftFields.limitPhone) };
       const limitValues = Object.values(limits).filter((v): v is number => v != null);
       if (limitValues.length) commissions.daily_lead_cap = limitValues.reduce((a, b) => a + b, 0);
@@ -333,6 +335,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       } else request = supabase.from('listings').insert(payload as never);
       const { data, error } = await request.select('id').single();
       if (error) throw error;
+      if (data?.id) void supabase.functions.invoke('neighborhood-perks', { body: { listing_id: data.id, force: true } });
       await clearPublicListingDraft(draftScope).catch(() => {});
       void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] });
       onRecovered?.();
@@ -597,7 +600,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           )}
           {step === 0 && importSlide && (
             <div className="space-y-4">
-              <div className="space-y-2"><Label htmlFor="yad2-import-url">ייבוא מודעה מיד2 (לא חובה)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} /></div></div>
+              <div className="space-y-2"><Label htmlFor="yad2-import-url">הדביקו כאן קישור למודעה ביד 2 (לא חובה)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="placeholder:text-muted-foreground/60" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} /></div></div>
               {isBroker && <MyPropertiesPicker />}
               {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
               <Button type="button" variant="outline" className="w-full" onClick={() => { setPublishError(''); setImportSlide(false); setStep(1); setReviewMode(true); setExpandedStep(''); }}>המשך ללא ייבוא <ArrowLeft className="h-4 w-4" /></Button>
@@ -739,6 +742,22 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 ))}
               </div>
+              {fields.publisherType === 'broker' && Boolean(publisherProfile?.broker_license_number || isSuperAdmin) && (
+                <div className="space-y-1.5 rounded-lg border p-2.5 text-sm">
+                  <span className="flex items-center gap-1 font-medium">סגירת עסקה (למתווכים מורשים)
+                    <LeadTypeHelp label="סגירת עסקה"><p>עמלה לשותף שהביא איש קשר שסגר עסקה בפועל על הנכס. ניתן להגדיר אחוז מהעסקה או סכום קבוע.</p></LeadTypeHelp>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 overflow-hidden rounded-md border">
+                      {(['percent', 'fixed'] as const).map(t => (
+                        <button key={t} type="button" onClick={() => set('commissionDealType', t)} className={`px-3 py-1.5 text-xs font-semibold ${(fields.commissionDealType || 'percent') === t ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}>{t === 'percent' ? '%' : '₪'}</button>
+                      ))}
+                    </div>
+                    <Input inputMode="decimal" aria-label="עמלה על סגירת עסקה" value={fields.commissionDeal || ''} onChange={(e) => set('commissionDeal', decimalInput(e.target.value))} />
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">יש להגדיר עמלה לפחות לסוג פנייה אחד. השארת "מקס׳ ביום" ריק = ללא הגבלה.</p>
               <div className="flex items-start gap-2 text-sm">
                 <Checkbox id="commission-terms" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
                 <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
@@ -776,7 +795,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader className="text-right">
           <DialogTitle>
-             {reviewMode ? 'פרטי המודעה' : step === 0 && importSlide ? 'ייבוא מודעה מיד 2' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
+             {reviewMode ? 'פרטי המודעה' : step === 0 && importSlide ? 'יצירת מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
         </DialogHeader>
 
@@ -811,7 +830,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <Checkbox checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} className="mt-0.5" />
                 <span>אני מאשר/ת את <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">מדיניות הפרטיות</a> ומצהיר/ה שיש לי הרשאה לפרסם את הנכס והתמונות</span>
               </label>
-              <Button type="button" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()} className="shrink-0 bg-success text-success-foreground hover:bg-success/90">
+              <Button type="button" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()} className="shrink-0 bg-success text-[18px] font-bold text-success-foreground hover:bg-success/90">
                 {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> מפרסם…</> : user ? 'פרסום הנכס' : 'הרשמה ופרסום'}
               </Button>
             </div>

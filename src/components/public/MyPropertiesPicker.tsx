@@ -13,6 +13,7 @@ type Row = { id: string; property_title: string | null; address: string | null; 
 export function MyPropertiesPicker() {
   const { activeWorkspaceId } = useWorkspace();
   const [q, setQ] = useState('');
+  const [opened, setOpened] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Map<string, Row>>(new Map());
 
@@ -37,9 +38,9 @@ export function MyPropertiesPicker() {
       <Label htmlFor="my-props-search">הוספה מהנכסים שלי</Label>
       <div className="relative">
         <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input id="my-props-search" value={q} onChange={e => setQ(e.target.value)} className="pr-9" autoComplete="off" />
+        <Input id="my-props-search" value={q} onChange={e => setQ(e.target.value)} onFocus={() => setOpened(true)} placeholder="חיפוש נכסים" className="pr-9" autoComplete="off" />
       </div>
-      {rows.length > 0 && (
+      {opened && rows.length > 0 && (
         <ul className="max-h-48 overflow-y-auto rounded-md border divide-y">
           {rows.map(r => (
             <li key={r.id}>

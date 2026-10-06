@@ -61,7 +61,7 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
 
 export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string }) {
   useEffect(() => { void (supabase as any).rpc('track_listing_view', { _id_or_slug: idOrSlug }); }, [idOrSlug]);
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['public-listing-expanded', idOrSlug],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
@@ -74,10 +74,32 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
     },
   });
 
+  const listingId = (data?.raw?.id as string | undefined) ?? null;
+  const hasPerks = Array.isArray(asObj(data?.raw?.area_perks).perks) && (asObj(data?.raw?.area_perks).perks as unknown[]).length > 0;
+  useEffect(() => {
+    if (!listingId || hasPerks) return;
+    const key = `realtyz:perks-req:${listingId}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    void supabase.functions.invoke('neighborhood-perks', { body: { listing_id: listingId } }).then(({ data: r }) => {
+      if ((r as any)?.area_perks) void refetch();
+    });
+  }, [listingId, hasPerks]);
   if (isLoading) return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!data) return null;
   const { listing, raw } = data;
-  const a: Raw = { ...asObj(raw.additional_details), ...asObj(raw.attributes) };
+  const f0 = asObj(raw.features);
+  // Map the publisher's own fields (manual ads) onto the same display keys Yad2 imports use.
+  const own: Raw = {};
+  const put = (k: string, v: unknown) => { if (v !== undefined && v !== null && v !== '') own[k] = v; };
+  put('text', f0.property_type); put('buildingTopFloor', f0.total_floors); put('propertyCondition', f0.condition);
+  put('arnona', f0.arnona); put('vaadBayit', f0.vaad_bayit); put('squareMeterBuild', f0.built_sqm); put('squareMeterGarden', f0.garden_sqm);
+  put('entranceDate', f0.entry_date); put('airDirections', f0.air_directions);
+  if (f0.elevator === true || raw.elevator === true) own.includeElevator = true;
+  if (f0.parking === true || raw.parking === true) own.includeParking = true;
+  if (f0.balcony === true) own.includeBalcony = true;
+  if (f0.open_view === true) own.openView = true;
+  const a: Raw = { ...own, ...asObj(raw.additional_details), ...asObj(raw.attributes) };
 
   const rooms = num(a.roomsCount) ?? num(raw.rooms);
   const total = num(a.squareMeter) ?? num(raw.sqm);
@@ -108,6 +130,8 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
     arnona && { icon: Receipt, label: 'ארנונה', value: `${ils(arnona)} לחודשיים` },
     vaad && { icon: Wallet, label: 'ועד בית', value: `${ils(vaad)} לחודש` },
     payments && { icon: Banknote, label: 'תשלומים', value: String(payments) },
+    hebrew(a.airDirections) && { icon: Compass, label: 'כיווני אוויר', value: hebrew(a.airDirections) },
+    a.openView === true && { icon: Sparkles, label: 'נוף', value: 'נוף פתוח' },
     hebrew(a.propertyCondition) && { icon: BadgeCheck, label: 'מצב הנכס', value: hebrew(a.propertyCondition) },
     num(a.shelterDistance) && { icon: ShieldCheck, label: 'מרחק למקלט', value: `${num(a.shelterDistance)} מ׳` },
   ].filter((s) => s && (s as Spec).value && !['חדרים', 'שטח כולל', 'קומה'].includes((s as Spec).label)) as Spec[]);
@@ -128,7 +152,9 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
     { title: 'יתרונות הסביבה', icon: Compass, items: perks.filter((p) => perkGroup(p) === 'other') },
   ].filter((s) => s.items.length);
 
-  const description = hebrew(a.description) && hebrew(a.description).length > listing.description.length ? hebrew(a.description) : listing.description;
+  const rawDesc = hebrew(a.description) && hebrew(a.description).length > listing.description.length ? hebrew(a.description) : listing.description;
+  const titleStr = typeof raw.property_title === 'string' ? raw.property_title.trim() : '';
+  const description = rawDesc && rawDesc !== titleStr && rawDesc !== listing.title ? rawDesc : '';
   const hasCoords = listing.latitude !== null && listing.longitude !== null;
   const mapQuery = hasCoords ? `${listing.latitude},${listing.longitude}` : listing.addressForMap;
   const wazeUrl = hasCoords
@@ -155,7 +181,6 @@ export default function ExpandedPropertyDetails({ idOrSlug }: { idOrSlug: string
               {a.isImmediateEntrance === true && <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold text-foreground"><CalendarDays className="h-3.5 w-3.5 text-primary" />כניסה מיידית</span>}
             </div>
             <p className="break-words text-lg font-bold text-foreground lg:text-xl">{listing.title}</p>
-            {listing.addressForMap && <p className="flex items-start gap-1.5 break-words text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{listing.addressForMap}</p>}
             {oneLiner && <p className="break-words text-muted-foreground">{oneLiner}</p>}
           </div>
           <p className="shrink-0 text-xl font-bold text-primary lg:text-2xl">{formatPrice(listing.price, listing.dealType)}</p>

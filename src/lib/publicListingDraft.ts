@@ -40,6 +40,8 @@ export type PublicListingDraftFields = {
   commissionForm?: string;
   commissionWhatsapp?: string;
   commissionPhone?: string;
+  commissionDeal?: string;
+  commissionDealType?: 'percent' | 'fixed';
   limitForm?: string;
   limitWhatsapp?: string;
   limitPhone?: string;
@@ -87,6 +89,8 @@ export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
   commissionForm: '',
   commissionWhatsapp: '',
   commissionPhone: '',
+  commissionDeal: '',
+  commissionDealType: 'percent',
   limitForm: '',
   limitWhatsapp: '',
   limitPhone: '',
