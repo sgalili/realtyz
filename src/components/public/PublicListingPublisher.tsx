@@ -33,6 +33,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { celebratePublication, preparePublicationSound } from '@/lib/publicationCelebration';
 import { missingAdFields, missingPublishFields } from '@/lib/adRecovery';
 
+const isVideoUrl = (s: unknown) => typeof s === 'string' && /\.(mp4|webm|mov|m3u8|m4v)(\?|#|$)/i.test(s);
+const importedVideoUrls = (src: any): string[] => Array.from(new Set([...(Array.isArray(src?.videos) ? src.videos : []), ...(Array.isArray(src?.media_videos) ? src.media_videos : []), ...(src?.video_url ? [src.video_url] : []), ...(Array.isArray(src?.photos) ? src.photos.filter(isVideoUrl) : [])].filter((v: unknown): v is string => typeof v === 'string' && v.length > 0)));
+
 const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
 const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
 const AIR_DIRECTIONS = ['1', '2', '3', '4'];
@@ -552,7 +555,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   };
 
   // The publish button stays disabled until every mandatory detail is complete.
-  const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || files.length > 0 || videos.length > 0;
+  const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || importedVideoUrls(fields.importedListing).length > 0 || files.length > 0 || videos.length > 0;
   const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia), [fields, hasMedia]);
   const canPublish = missingPublish.length === 0;
 
@@ -712,7 +715,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <button type="button" className="font-semibold text-blue-600 underline underline-offset-2">מנגנון העמלות</button>
+                    <button type="button" className="font-semibold text-primary underline underline-offset-2">מנגנון העמלות</button>
                   </DialogTrigger>
                   <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
                     <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
