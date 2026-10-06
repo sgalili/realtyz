@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, Mail, MessageSquare, Phone, Settings2 } from 'lucide-react';
 import { WorkspaceMailboxCard, useWorkspaceMailbox } from '@/components/profile/WorkspaceMailboxCard';
 import { BrandIcon } from '@/components/BrandIcon';
@@ -6,7 +6,7 @@ import { PortalBrandGlyph } from '@/components/profile/PortalBrandGlyph';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspace, useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
@@ -176,6 +176,22 @@ export function ConnectionsTab() {
     }
   });
   const [meta, setMeta] = useState<MetaStatus | null>(null);
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const [activeGroups, setActiveGroups] = useState<{ owner: string | null; count: number } | null>(null);
+  const reportActiveGroups = useCallback((owner: string | null, count: number) => {
+    setActiveGroups((previous) => previous?.owner === owner && previous.count === count ? previous : { owner, count });
+  }, []);
+  const { data: directInstagram } = useQuery({
+    queryKey: ['ig-direct', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
+    queryFn: async () => {
+      if (!workspaceOwnerId) return null;
+      const { data, error } = await supabase.from('social_connections').select('id, credentials, is_connected')
+        .eq('workspace_owner_id', workspaceOwnerId).eq('platform', 'instagram_direct').maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
   const [waMode, setWaMode] = useState<string | null>(null);
   const [greenReady, setGreenReady] = useState(false);
   const [voiceReady, setVoiceReady] = useState(false);
@@ -343,7 +359,7 @@ export function ConnectionsTab() {
   // Instagram card: "מחובר" only when the Page token is verified AND an IG
   // professional account is actually linked to it. Anything else (timeout,
   // failed probe, no linked account) is strictly "לא מחובר".
-  const igConnected = fbVerified && (!!fbHealth?.instagram?.id || isRememberedConnected('facebook', activeWorkspaceId) && !!fbHealth?.instagram?.id);
+  const igConnected = !!directInstagram?.is_connected || (fbLiveVerified && !!fbHealth?.instagram?.id);
   const igStatus: [string, Tone] = igConnected
     ? ['מחובר', 'ok']
     : (fbHealthPending || fbBindingPending) && fbHealth?.needsReconnect !== true
@@ -431,7 +447,7 @@ export function ConnectionsTab() {
   const sections: Array<{ id: string; title: string; titleAside?: ReactNode; titleLead?: ReactNode; titleNode?: ReactNode; status: string; tone: Tone; node: ReactNode; headerAside?: ReactNode; restricted?: boolean }> = [
     {
       id: 'facebook',
-      title: 'חיבור לפייסבוק',
+      title: 'דף עסקי',
       titleLead: (
         <BrandIcon name="facebook" className={cn('h-5 w-5 shrink-0 text-[#1877F2]', !fbConnected && 'grayscale opacity-40')} />
       ),
@@ -454,8 +470,8 @@ export function ConnectionsTab() {
       titleLead: <FacebookGroupsIcon className="h-5 w-5" />,
       status: '',
       tone: 'idle',
-      headerAside: <span className="shrink-0 text-xs text-muted-foreground">עד 100 קבוצות</span>,
-      node: <div data-plain className="p-3"><FacebookTargetsCard /></div>,
+      headerAside: <span className="shrink-0 text-xs text-muted-foreground">{activeGroups?.owner === workspaceOwnerId ? activeGroups.count : 0} קבוצות פעילות</span>,
+      node: <div data-plain className="p-3"><FacebookTargetsCard onActiveCount={reportActiveGroups} /></div>,
     },
     {
       id: 'instagram',
@@ -465,7 +481,7 @@ export function ConnectionsTab() {
       ),
       status: igStatus[0],
       tone: igStatus[1],
-      node: <InstagramConnectionCard />,
+      node: <InstagramConnectionCard pageConnected={fbLiveVerified} />,
     },
     {
       id: 'whatsapp',

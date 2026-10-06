@@ -59,12 +59,13 @@ function readCache(owner: string | null): { groups: GroupTarget[] } | null {
  * FacebookTargetsCard — where a broker chooses WHICH imported Facebook groups
  * the system is allowed to publish to.
  */
-export function FacebookTargetsCard({ className, actions }: { className?: string; actions?: ReactNode }) {
+export function FacebookTargetsCard({ className, actions, onActiveCount }: { className?: string; actions?: ReactNode; onActiveCount?: (owner: string | null, count: number) => void }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const cached = readCache(workspaceOwnerId);
   const [allGroups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   // פעילות = live joined groups only; pending / not-joined / blocked live in their own tabs.
   const groups = allGroups.filter((g) => !g.blocked && g.joinStatus === 'joined');
+  useEffect(() => { onActiveCount?.(workspaceOwnerId, groups.length); }, [onActiveCount, workspaceOwnerId, groups.length]);
   // בהמתנה = every non-blocked group that is not confirmed joined (not joined yet or request sent).
   const notJoinedGroups = allGroups.filter((g) => !g.blocked && g.joinStatus !== 'joined');
   const blockedGroups = allGroups.filter((g) => g.blocked);
@@ -330,10 +331,10 @@ export function FacebookTargetsCard({ className, actions }: { className?: string
     <div dir="rtl" className={cn('space-y-3', className)}>
       {/* Extension/sync row — "הוספת קבוצות" sits at the card's far edge. */}
       <div className="flex items-center justify-between gap-2">
-        <ExtensionGroupSyncCard onSynced={() => void load()} actions={actions} className="min-w-0 flex-1" />
         <Button type="button" size="sm" variant="outline" className="h-8 shrink-0 gap-1" onClick={() => setDiscoverOpen(true)}>
           <Search className="h-3.5 w-3.5" /> הוספת קבוצות
         </Button>
+        <ExtensionGroupSyncCard onSynced={() => void load()} actions={actions} className="min-w-0 justify-end" />
       </div>
 
       {loading ? (

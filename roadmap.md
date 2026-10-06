@@ -1,4 +1,6 @@
 # Roadmap
+## Connection card refinements
+- [x] Reorder group buttons, update sync icon and active count, rename business Page, and immediately reflect saved direct Instagram association with Page-dependent actions. Signed-in header count matched Activity, connected IG badge rendered green, section switching passed, five regressions passed and build OK; a new IG save was not performed on the live account.
 ## Independent Facebook sections
 - [x] Separate Facebook authentication and extension group management, preserving tabs, limits and live joining independently of Page state; signed-in section switching verified, five regression tests passed and build OK. Existing over-limit legacy groups remain unchanged; no Facebook joins were initiated by the checks.
 ## Live group joining indicators

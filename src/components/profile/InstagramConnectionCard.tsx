@@ -21,7 +21,7 @@ import { callMetaPageConnect } from '@/lib/facebookPageConnect';
  * Facebook Page binding. "מחובר" requires BOTH a verified live Page token AND
  * a linked Instagram professional account — anything else shows "לא מחובר".
  */
-export function InstagramConnectionCard() {
+export function InstagramConnectionCard({ pageConnected = false }: { pageConnected?: boolean }) {
   const { data: health, isPending } = useFacebookHealth();
   const refreshHealth = useRefreshFacebookHealth();
   const [helpOpen, setHelpOpen] = useState(false);
@@ -34,8 +34,9 @@ export function InstagramConnectionCard() {
     queryKey: directKey,
     enabled: !!wsId,
     queryFn: async () => {
+      if (!wsId) return null;
       const { data } = await supabase.from('social_connections').select('id, credentials, is_connected')
-        .eq('workspace_owner_id', wsId!).eq('platform', 'instagram_direct').maybeSingle();
+        .eq('workspace_owner_id', wsId).eq('platform', 'instagram_direct').maybeSingle();
       return data as { id: string; credentials: Record<string, string>; is_connected: boolean } | null;
     },
   });
@@ -53,6 +54,7 @@ export function InstagramConnectionCard() {
   };
 
   const saveDirect = async (disconnect = false) => {
+    if (!wsId || !user) return;
     const username = disconnect ? null : parseHandle(handleInput);
     if (!disconnect && !username) { toast.error('שם משתמש או קישור אינסטגרם לא תקין'); return; }
     setSavingDirect(true);
@@ -62,10 +64,13 @@ export function InstagramConnectionCard() {
         credentials: username ? { username, profile_url: `https://instagram.com/${username}` } : {},
         is_connected: !!username, created_by: user?.id, workspace_owner_id: wsId,
       };
-      const { error } = direct
+      const { data: saved, error } = direct
         ? await supabase.from('social_connections').update(payload as never).eq('id', direct.id)
-        : await supabase.from('social_connections').upsert(payload as never, { onConflict: 'workspace_owner_id,platform' });
+          .eq('workspace_owner_id', wsId).select('id, credentials, is_connected').single()
+        : await supabase.from('social_connections').upsert(payload as never, { onConflict: 'workspace_owner_id,platform' })
+          .select('id, credentials, is_connected').single();
       if (error) throw error;
+      qc.setQueryData(directKey, saved);
       toast.success(username ? `אינסטגרם @${username} חובר` : 'החיבור הישיר נותק');
       if (!username) setHandleInput('');
       qc.invalidateQueries({ queryKey: directKey });
@@ -136,7 +141,7 @@ export function InstagramConnectionCard() {
               בדוק חיבור
             </Button>
           </div>
-        ) : (
+        ) : pageConnected ? (
           <div className="space-y-2 rounded-xl border border-dashed p-3">
             <Button
               onClick={() => void checkConnection()}
@@ -156,10 +161,9 @@ export function InstagramConnectionCard() {
               <Instagram className="h-3.5 w-3.5" /> איך מחברים?
             </Button>
           </div>
-        )}
+        ) : null}
 
         <div className="space-y-2 rounded-xl border p-3">
-          <p className="text-[13px] font-semibold">חיבור ישיר (ללא תלות בפייסבוק)</p>
           {directHandle ? (
             <div className="flex items-center justify-between gap-2">
               <a href={`https://instagram.com/${directHandle}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="truncate text-[14px] font-medium text-primary">@{directHandle}</a>

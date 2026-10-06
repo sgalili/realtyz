@@ -681,7 +681,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-right">
           <Facebook className="h-5 w-5 text-primary" />
-          <span>חיבור לפייסבוק</span>
+          <span>דף עסקי</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
