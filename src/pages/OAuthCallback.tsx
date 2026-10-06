@@ -574,7 +574,7 @@ export default function OAuthCallback() {
           <a
             href={error.enableUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 text-sm font-medium text-primary underline underline-offset-4"
           >
             <ExternalLink className="h-4 w-4" />

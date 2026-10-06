@@ -219,7 +219,7 @@ export default function FbEngagement() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Facebook Engagement Console</h1>
-          <a className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:underline" href={POST_URL} target="_blank" rel="noreferrer">
+          <a className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:underline" href={POST_URL} target="_blank" rel="noopener noreferrer">
             הפוסט המנוטר <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>

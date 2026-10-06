@@ -233,7 +233,7 @@ export default function SharedDeals() {
                           asChild
                           className="gap-1"
                         >
-                          <a href={r.delivery_meta.wa_link} target="_blank" rel="noreferrer">
+                          <a href={r.delivery_meta.wa_link} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-3.5 w-3.5" /> פתח WhatsApp
                           </a>
                         </Button>

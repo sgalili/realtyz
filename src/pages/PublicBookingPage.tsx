@@ -77,7 +77,7 @@ export default function PublicBookingPage() {
           <h1 className="text-lg font-semibold">Meeting confirmed</h1>
           <p className="text-sm text-muted-foreground">A calendar invite has been sent. We'll also send a WhatsApp reminder 1 hour before.</p>
           {confirmed?.conference_link && (
-            <a href={confirmed.conference_link} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Open Google Meet link</a>
+            <a href={confirmed.conference_link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">Open Google Meet link</a>
           )}
         </Card>
       </div>

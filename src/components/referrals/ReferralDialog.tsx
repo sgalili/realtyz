@@ -166,7 +166,7 @@ export function ReferralDialog({ open, onOpenChange, subject }: Props) {
 
       const link = (data as any)?.wa_link || (data as any)?.mailto_link;
       if (link) {
-        window.open(link, "_blank");
+        window.open(link, '_blank', 'noopener,noreferrer');
         toast.success("ההפניה נרשמה ונשלחה");
       } else {
         toast.success("ההפניה נרשמה. שלח ידנית את ההודעה לשותף.");
