@@ -836,15 +836,17 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       {!resumeDraft && <DialogTrigger asChild>
         <Button disabled={disabled} className="h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
       </DialogTrigger>}
-      <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6">
-        <Button type="button" variant="ghost" size="icon" aria-label="איפוס והתחלה מחדש" title="איפוס והתחלה מחדש" disabled={publishing || importing} onClick={resetAll} className="absolute left-4 top-4 h-8 w-8 text-muted-foreground hover:text-foreground">
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-        <DialogHeader className="text-right">
-          <DialogTitle>
-             {reviewMode ? 'פרסום מודעה' : step === 0 && importSlide ? 'יצירת מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6">
+        <div className="flex flex-row-reverse items-center gap-2">
+          <Button type="button" variant="ghost" size="icon" aria-label="איפוס והתחלה מחדש" title="איפוס והתחלה מחדש" disabled={publishing || importing} onClick={resetAll} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <DialogHeader className="min-w-0 flex-1 items-stretch text-right">
+            <DialogTitle>
+              {reviewMode ? 'פרסום מודעה' : step === 0 && importSlide ? 'יצירת מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
         <div className="space-y-4">
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
