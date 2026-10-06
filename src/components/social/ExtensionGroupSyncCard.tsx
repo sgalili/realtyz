@@ -45,6 +45,8 @@ function claimSignature(signature: string, owner: string) {
  * `actions` lets the parent render the connection action buttons in the very
  * same row as the sync buttons.
  */
+const MAX_WORKSPACE_GROUPS = 100;
+
 export function ExtensionGroupSyncCard({
   className,
   onSynced,
@@ -66,6 +68,21 @@ export function ExtensionGroupSyncCard({
 
   const persist = async (rows: ExtensionGroup[], silent: boolean) => {
     if (!workspaceOwnerId || rows.length === 0) return;
+    // Limits: top 100 groups per sync, and at most 100 saved groups per workspace.
+    {
+      const { data: existing } = await (supabase as any).from('fb_user_groups')
+        .select('group_id').eq('workspace_owner_id', workspaceOwnerId);
+      const known = new Set(((existing ?? []) as any[]).map((r) => String(r.group_id)));
+      const room = Math.max(0, MAX_WORKSPACE_GROUPS - known.size);
+      const top = rows.slice(0, MAX_WORKSPACE_GROUPS);
+      const fresh = top.filter((g) => !known.has(g.group_id)).slice(0, room);
+      const freshIds = new Set(fresh.map((g) => g.group_id));
+      rows = top.filter((g) => known.has(g.group_id) || freshIds.has(g.group_id));
+      if (fresh.length < top.filter((g) => !known.has(g.group_id)).length && !silent) {
+        toast.warning(`ניתן לשמור עד ${MAX_WORKSPACE_GROUPS} קבוצות. חלק מהקבוצות לא נוספו.`);
+      }
+      if (rows.length === 0) return;
+    }
     claimSignature(rows.map((g) => g.group_id).sort().join('|'), workspaceOwnerId);
     setSaving(true);
     try {
@@ -81,8 +98,6 @@ export function ExtensionGroupSyncCard({
           // Bind every synced group to this workspace's connected Facebook page.
           page_id: pageBinding?.pageId ?? null,
           source: 'extension',
-          // The extension only lists groups the user already belongs to.
-          join_status: 'joined',
           is_selected: true,
           imported_at: now,
           updated_at: now,
