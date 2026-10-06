@@ -45,6 +45,8 @@ export type PublicListingDraftFields = {
   limitForm?: string;
   limitWhatsapp?: string;
   limitPhone?: string;
+  questionsWhatsapp?: string[];
+  questionsPhone?: string[];
   commissionTermsAccepted?: boolean;
   importUrl?: string;
   reviewMode?: boolean;
