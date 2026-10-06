@@ -5,7 +5,7 @@
 - Facebook authentication and workspace extension groups are siblings; groups remain mounted so Page state cannot hide them or interrupt joining.
 - Auto-join indicators follow extension per-group events; workspace result overlays prevent polling from reversing tab migration before persistence.
 - Peer expansions use exclusive group-keyed animated height; nested utilities use separate groups.
-- Shared tables use min-content width with native horizontal scrolling; no arrow-control overlays above tables.
+- Tables use min-content/native horizontal scrolling, no arrow overlays. Board columns share header/cell IDs and user/workspace-keyed local settings, never stored listing data.
 - My Ads uses workspace-keyed, property-authorized RPCs; partners see only their own external-listing results, never raw contact identity.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 
@@ -17,7 +17,7 @@
 - Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
 - Posting continuation uses the full campaign composer and an atomic workspace-authorized edited-repost operation; active original jobs block replacement and completed jobs require explicit resubmission.
 
-- Campaign composer topic mode is derived from the active workspace, not the signed-in user; topic selection persists with its workspace-scoped draft and overrides property focus in AI generation.
+- Composer topic mode uses the active workspace; workspace drafts retain topics overriding property focus in AI generation.
 
 - Campaign feed refreshes preserve displayed post copy by stable post ID within the active workspace; refresh status/counters independently to prevent background content swaps.
 - Campaign cards group by stable series identity regardless of delivery status, sort by immutable creation time with ID tie-breakers, and distinguish comment-only warnings from publication failures.
