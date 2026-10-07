@@ -232,7 +232,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     const { data, error } = await supabase.functions.invoke('public-lead-gate', { body: { action: 'register', listing_id: gate.card.id, name: form.name.trim(), phone: form.phone.trim(), intent: gate.intent } });
     setSending(false);
     const payload = data as any;
-    if (error || !payload?.token) { toast.error(payload?.error || 'השליחה נכשלה, נסו שוב'); return; }
+    if (error || !payload?.token) {
+      let msg = payload?.error;
+      const ctx = (error as { context?: Response } | null)?.context;
+      if (!msg && ctx && typeof ctx.json === 'function') { try { msg = (await ctx.clone().json())?.error; } catch { /* non-JSON */ } }
+      console.error('[PublicListingsBoard] lead submission failed', { listingId: gate.card.id, error, msg });
+      toast.error(msg || 'שליחת הפרטים נכשלה, אנא נסו שוב');
+      return;
+    }
     setToken(payload.token); setChat([{ role: 'rita', text: payload.greeting }]);
   };
 
