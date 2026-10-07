@@ -39,7 +39,10 @@ export function extractYad2Publisher(ad: any, sourceUrl: string): Record<string,
   const number = licenseNumber(ad?.broker_license_number ?? ad?.broker_license ?? broker.licenseNumber ?? broker.license_number ?? broker.brokerLicenseNumber);
   const logo = [ad?.office_logo_url, ad?.office_logo, ad?.merchant_logo, ad?.agency_logo_url, ad?.agencyLogo, agency.logo, agency.logoUrl, agency.image, broker.logo, broker.logoUrl, ad?.contact_info?.logo, ad?.merchant?.logo_url, ad?.metaData?.agencyLogo].map(publisherImageUrl).find(Boolean);
   const sourceKind = ad?._source_bucket ?? ad?.publisher_kind ?? ad?.publisherType;
-  const isBroker = !!office || !!number || ['broker', 'agency'].includes(sourceKind) || ad?.additionalDetails?.isAssetExclusive === true || ad?.attributes?.isAssetExclusive === true;
+  // Exclusivity label on the ad's OWN tags only (never related ads).
+  const ownTags = JSON.stringify([ad?.tags, ad?.labels, ad?.highlightText, ad?.title_tags] ?? []);
+  const exclusiveTag = /בלעדיות/.test(ownTags);
+  const isBroker = !!office || !!number || ['broker', 'agency'].includes(sourceKind) || exclusiveTag || ad?.additionalDetails?.isAssetExclusive === true || ad?.attributes?.isAssetExclusive === true;
   const kind = isBroker ? 'broker' : sourceKind === 'private' || ad?.isPrivate === true ? 'private' : null;
   return {
     ...(name ? { broker_name: name.trim() } : {}),
