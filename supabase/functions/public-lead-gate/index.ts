@@ -137,7 +137,6 @@ Deno.serve(async (req) => {
             deal_type: listing.deal_type === "rent" ? "rent" : "sale",
             lead_stage: "new",
             status: "new",
-            source: "public_listings_board",
             last_interaction_at: new Date().toISOString(),
           })
           .select("id")
@@ -209,7 +208,7 @@ Deno.serve(async (req) => {
       if (leadId) {
         await admin.from("leads").update({ full_name: existing?.full_name || name, last_interaction_at: new Date().toISOString() }).eq("id", leadId);
       } else {
-        const { data: inserted, error: insertError } = await admin.from("leads").insert({ workspace_owner_id: ownerId, phone_number: phone, full_name: name, city: listing.city ?? null, deal_type: listing.deal_type === "rent" ? "rent" : "sale", lead_stage: "new", status: "new", source: "public_phone_callback", last_interaction_at: new Date().toISOString() }).select("id").single();
+        const { data: inserted, error: insertError } = await admin.from("leads").insert({ workspace_owner_id: ownerId, phone_number: phone, full_name: name, city: listing.city ?? null, deal_type: listing.deal_type === "rent" ? "rent" : "sale", lead_stage: "new", status: "new", last_interaction_at: new Date().toISOString() }).select("id").single();
         if (insertError) throw insertError;
         leadId = inserted.id as string;
       }
@@ -396,7 +395,9 @@ Deno.serve(async (req) => {
 
     return json({ error: "unknown action" }, 400);
   } catch (error) {
-    console.error("[public-lead-gate]", error);
-    return json({ error: "lead gate failed" }, 500);
+    const e = error as { code?: string; message?: string; details?: string };
+    console.error("[public-lead-gate] failed", { code: e?.code, message: e?.message, details: e?.details });
+    const validation = e?.code === "23505" || e?.code === "23514" || e?.code === "22P02" || e?.code === "23502";
+    return json({ error: validation ? "חלק מהפרטים אינם תקינים, אנא בדקו ונסו שוב" : "שליחת הפרטים נכשלה, אנא נסו שוב בעוד רגע", code: e?.code ?? "unknown" }, validation ? 400 : 500);
   }
 });

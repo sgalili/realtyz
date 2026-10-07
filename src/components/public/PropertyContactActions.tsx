@@ -121,7 +121,13 @@ export default function PropertyContactActions({
     setSending(false);
 
     if (error || (data as { error?: string } | null)?.error) {
-      toast.error('שליחת הפרטים נכשלה');
+      let serverMessage = (data as { error?: string } | null)?.error;
+      const ctx = (error as { context?: Response } | null)?.context;
+      if (!serverMessage && ctx && typeof ctx.json === 'function') {
+        try { serverMessage = (await ctx.clone().json())?.error; } catch { /* non-JSON body */ }
+      }
+      console.error('[PropertyContactActions] lead submission failed', { listingId, action: callback ? 'callback' : 'register', error, serverMessage });
+      toast.error(serverMessage || 'שליחת הפרטים נכשלה, אנא נסו שוב');
       return;
     }
     toast.success(callback ? 'תודה, נחזור אליכם טלפונית בהקדם' : 'הפרטים נשלחו בהצלחה');
