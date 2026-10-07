@@ -21,8 +21,8 @@ export default function BrokerAttribution({
 }: BrokerAttributionProps) {
   const broker = brokerName?.trim() && !brokerName.includes('לא צוין') ? brokerName.trim() : '';
   const office = officeName?.trim() && !officeName.includes('לא צוין') ? officeName.trim() : '';
-  const license = /^[1-9]\d{0,7}$/.test(licenceNumber?.trim() ?? '') ? licenceNumber?.trim() : '';
   const isPrivate = publisherKind === 'private' || (!publisherKind && office === 'מפרסם פרטי');
+  const license = !isPrivate && /^[1-9]\d{0,7}$/.test(licenceNumber?.trim() ?? '') ? licenceNumber?.trim() : '';
 
   return (
     <div data-publisher-attribution className={`flex min-w-0 items-center gap-3 border-y bg-muted/30 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
