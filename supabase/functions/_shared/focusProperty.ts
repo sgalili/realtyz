@@ -83,6 +83,19 @@ export async function matchListingFromText(
 ): Promise<FocusRow | null> {
   const haystack = norm(text);
   if (!ownerId || haystack.length < 6) return null;
+  // Explicit listing id (pasted ad link / share URL) wins, workspace-scoped.
+  const ids = [...String(text ?? "").matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi)].map((m) => m[0].toLowerCase());
+  if (ids.length) {
+    try {
+      const { data } = await admin
+        .from("listings")
+        .select(FOCUS_COLUMNS)
+        .eq("workspace_owner_id", ownerId)
+        .in("id", ids.slice(0, 5))
+        .limit(1);
+      if (data?.[0]) return data[0] as FocusRow;
+    } catch (_) { /* fall through to text matching */ }
+  }
   try {
     const { data } = await admin
       .from("listings")
