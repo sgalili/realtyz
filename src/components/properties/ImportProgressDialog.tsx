@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Hourglass } from 'lucide-react';
 import { SourceBadge } from '@/components/properties/SourceBadge';
 import type { UnifiedResult } from '@/lib/propertySearch';
 
@@ -67,7 +67,7 @@ export function ImportProgressDialog({
                   {s.status === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                   {s.status === 'error' && <XCircle className="h-4 w-4 text-destructive" />}
                   {s.status === 'running' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                  {s.status === 'pending' && <Clock className="h-4 w-4 text-muted-foreground" />}
+                  {s.status === 'pending' && <Hourglass className="h-4 w-4 text-muted-foreground" />}
                 </span>
                 <SourceBadge source={s.source} compact />
                 <span className="flex-1 truncate">{s.title || 'נכס'}</span>
