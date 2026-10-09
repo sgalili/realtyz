@@ -30,3 +30,4 @@
 - Page sync strategy belongs to the workspace's own binding, never shared bindings. Server-authorized Graph/extension routing rejects foreign workspace/Page payloads and never prunes partial scrapes. Delivery correlates request/workspace/Page/originating app tab; scrape tabs close only after app receipt ACK persists in chrome.storage.local.
 
 - Yad2 preserves original publisher snapshots, source buckets and scoped DOM evidence, never null-overwrites or classifies from related ads; inspect gallery logos before removal and require license evidence.
+- Partner rewards freeze into immutable listing_reward_snapshots when a partner picks a listing; charging uses the snapshot so later commission edits only apply forward. Trust scores are computed server-side (compute_trust_score), mirrored to profiles/affiliate_profiles, overridable only by super_admin, and every change is written to audit_logs.
