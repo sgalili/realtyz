@@ -25,6 +25,7 @@ import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
+import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -156,6 +157,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [gate, setGate] = useState<{ card: PublicCard; intent: GateIntent } | null>(null);
   const [form, setForm] = useState({ name: '', phone: '' });
   const [sending, setSending] = useState(false);
+  const [challenge, setChallenge] = useState<InquiryChallenge | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [chat, setChat] = useState<{ role: 'rita' | 'visitor'; text: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -409,6 +411,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <Input placeholder="שם מלא" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <div className="space-y-1"><label className="text-sm font-semibold">מספר ווטסאפ</label><Input inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <Button className="w-full" disabled={sending} onClick={() => void submitGate()}>{sending ? 'שולח…' : 'שלחו לי פרטים נוספים'}</Button>
+            <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submitGate(verification)} />
           </div> : <div className="space-y-3">
             <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">{chat.map((message, index) => <p key={index} className={cn('max-w-[85%] break-words rounded-lg px-3 py-2 text-xs', message.role === 'rita' ? 'bg-card text-foreground' : 'ms-auto bg-primary text-primary-foreground')}>{message.text}</p>)}</div>
             <div className="flex gap-2"><Input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void sendToRita(); }} placeholder="כתבו לריטה מה חשוב לכם" /><Button size="icon" onClick={() => void sendToRita()} aria-label="שליחה"><Send className="h-4 w-4" /></Button></div>
