@@ -12,6 +12,8 @@ import { Trash2 } from 'lucide-react';
 import { listingToDraft, missingAdFields } from '@/lib/adRecovery';
 import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown, BadgeCheck } from 'lucide-react';
 import ListingLifecycleStatus from '@/components/listings/ListingLifecycleStatus';
+import TransparencyWidget from '@/components/transparency/TransparencyWidget';
+import LeadDisputesPanel from '@/components/transparency/LeadDisputesPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -197,6 +199,8 @@ export default function MyAds() {
         })()}
       </TabsContent>
       <TabsContent value="ads" className="space-y-6 pt-3">
+    <TransparencyWidget />
+    <LeadDisputesPanel />
     {isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות שפרסמת או נכסים שאתה מקדם.</p> : (['owned', 'promoting'] as const).map(relation => {
       const rows = data.filter(r => r.relation === relation);
       return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2><div className="space-y-3">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
