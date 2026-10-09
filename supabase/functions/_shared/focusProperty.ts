@@ -96,6 +96,15 @@ export async function matchListingFromText(
       if (data?.[0]) return data[0] as FocusRow;
     } catch (_) { /* fall through to text matching */ }
   }
+  // Shared ad link by slug (realtyz.co.il/.../<slug>), workspace-scoped.
+  const slugs = [...String(text ?? "").matchAll(/realtyz\.co\.il\/[^\s?#]*?([A-Za-z0-9\u0590-\u05FF%_-]{6,120})(?=[\s?#]|$)/gi)]
+    .map((m) => { try { return decodeURIComponent(m[1]); } catch { return m[1]; } });
+  if (slugs.length) {
+    try {
+      const { data } = await admin.from("listings").select(FOCUS_COLUMNS).eq("workspace_owner_id", ownerId).in("slug", slugs.slice(0, 5)).limit(1);
+      if (data?.[0]) return data[0] as FocusRow;
+    } catch (_) { /* fall through */ }
+  }
   try {
     const { data } = await admin
       .from("listings")
