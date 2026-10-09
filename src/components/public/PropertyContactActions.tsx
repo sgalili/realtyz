@@ -13,6 +13,7 @@ import { openExternal } from '@/lib/openExternal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cleanFormFields, type LeadContactOptions } from '@/lib/leadTiers';
+import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 
 export type ContactOptions = LeadContactOptions;
 
@@ -60,6 +61,7 @@ export default function PropertyContactActions({
   const setAnswer = (id: string, value: string | string[]) => setAnswers((a) => ({ ...a, [id]: value }));
   const { user } = useAuth();
   const [joinOpen, setJoinOpen] = useState(false);
+  const [challenge, setChallenge] = useState<InquiryChallenge | null>(null);
   const ref = new URLSearchParams(window.location.search).get('ref');
 
   // Canonical opener built from the property row itself, so Rita can parse the
@@ -103,7 +105,7 @@ export default function PropertyContactActions({
     window.open(officialWaLink(waOpener), '_blank', 'width=1200,height=800,noopener,noreferrer');
   };
 
-  const submit = async () => {
+  const submit = async (verification?: { id: string; answers: Record<string, string> }) => {
     if ((!mode && !name.trim()) || phone.replace(/\D/g, '').length < 9) {
       toast.error(mode === 'phone' ? 'יש למלא מספר טלפון תקין' : 'יש למלא שם מלא ומספר טלפון תקין');
       return;
@@ -116,9 +118,17 @@ export default function PropertyContactActions({
     setSending(true);
     const formAnswers = callback ? undefined : extraFields.map((f) => ({ id: f.id, value: answers[f.id] ?? '' }));
     const { data, error } = await supabase.functions.invoke('public-lead-gate', {
-      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: callback ? 'phone' : 'digital', ref, form_answers: formAnswers },
+      body: { action: callback ? 'callback' : 'register', listing_id: listingId, name: name.trim(), phone: phone.trim(), intent: callback ? 'phone' : 'digital', ref, form_answers: formAnswers, device_id: inquiryDeviceId(), verification },
     });
     setSending(false);
+    const v = (data as { verify?: InquiryChallenge; error?: string } | null);
+    if (!error && v?.verify) {
+      if (v.error) toast.error(v.error);
+      setChallenge(v.verify);
+      return;
+    }
+    setChallenge(null);
+
 
     if (error || (data as { error?: string } | null)?.error) {
       let serverMessage = (data as { error?: string } | null)?.error;
@@ -203,6 +213,7 @@ export default function PropertyContactActions({
           </DropdownMenu>
         )}
       </div>
+      <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
       <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
         <DialogContent dir="rtl" className="sm:max-w-md">
           <DialogHeader><DialogTitle className="text-right">שתפו נכסים והרוויחו</DialogTitle></DialogHeader>
