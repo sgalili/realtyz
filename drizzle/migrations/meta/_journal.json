@@ -50,6 +50,13 @@
       "when": 1791567381900,
       "tag": "0006_audit_logs_system_actor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791567518872,
+      "tag": "0007_lifecycle_tracking_engine",
+      "breakpoints": true
     }
   ]
 }

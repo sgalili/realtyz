@@ -3786,6 +3786,7 @@ export type Database = {
           last_interaction_at: string | null
           lead_stage: string
           lease_end_date: string | null
+          lifecycle_stage: string
           linked_listing_id: string | null
           loss_reason: string | null
           loss_reason_note: string | null
@@ -3844,6 +3845,7 @@ export type Database = {
           last_interaction_at?: string | null
           lead_stage?: string
           lease_end_date?: string | null
+          lifecycle_stage?: string
           linked_listing_id?: string | null
           loss_reason?: string | null
           loss_reason_note?: string | null
@@ -3902,6 +3904,7 @@ export type Database = {
           last_interaction_at?: string | null
           lead_stage?: string
           lease_end_date?: string | null
+          lifecycle_stage?: string
           linked_listing_id?: string | null
           loss_reason?: string | null
           loss_reason_note?: string | null
@@ -4179,6 +4182,9 @@ export type Database = {
           area_perks: Json | null
           asking_price: number
           attributes: Json
+          availability_check_count: number
+          availability_check_sent_at: string | null
+          availability_confirmed_at: string | null
           available_from: string | null
           city: string | null
           contact_options: Json
@@ -4186,6 +4192,8 @@ export type Database = {
           daily_lead_cap: number | null
           deal_type: string | null
           description: string
+          distribution_paused: boolean
+          distribution_paused_at: string | null
           elevator: boolean | null
           embedding: string | null
           external_id: string | null
@@ -4203,7 +4211,10 @@ export type Database = {
           is_investment_opportunity: boolean
           is_promoted: boolean
           is_published: boolean
+          last_activity_at: string
           latitude: number | null
+          lifecycle_stage: string
+          lifecycle_updated_at: string
           long_description: string | null
           longitude: number | null
           media_documents: Json
@@ -4246,6 +4257,9 @@ export type Database = {
           area_perks?: Json | null
           asking_price?: number
           attributes?: Json
+          availability_check_count?: number
+          availability_check_sent_at?: string | null
+          availability_confirmed_at?: string | null
           available_from?: string | null
           city?: string | null
           contact_options?: Json
@@ -4253,6 +4267,8 @@ export type Database = {
           daily_lead_cap?: number | null
           deal_type?: string | null
           description: string
+          distribution_paused?: boolean
+          distribution_paused_at?: string | null
           elevator?: boolean | null
           embedding?: string | null
           external_id?: string | null
@@ -4270,7 +4286,10 @@ export type Database = {
           is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
+          last_activity_at?: string
           latitude?: number | null
+          lifecycle_stage?: string
+          lifecycle_updated_at?: string
           long_description?: string | null
           longitude?: number | null
           media_documents?: Json
@@ -4313,6 +4332,9 @@ export type Database = {
           area_perks?: Json | null
           asking_price?: number
           attributes?: Json
+          availability_check_count?: number
+          availability_check_sent_at?: string | null
+          availability_confirmed_at?: string | null
           available_from?: string | null
           city?: string | null
           contact_options?: Json
@@ -4320,6 +4342,8 @@ export type Database = {
           daily_lead_cap?: number | null
           deal_type?: string | null
           description?: string
+          distribution_paused?: boolean
+          distribution_paused_at?: string | null
           elevator?: boolean | null
           embedding?: string | null
           external_id?: string | null
@@ -4337,7 +4361,10 @@ export type Database = {
           is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
+          last_activity_at?: string
           latitude?: number | null
+          lifecycle_stage?: string
+          lifecycle_updated_at?: string
           long_description?: string | null
           longitude?: number | null
           media_documents?: Json
@@ -7216,6 +7243,10 @@ export type Database = {
         Returns: Json
       }
       admin_unlink_referral: { Args: { _referred: string }; Returns: Json }
+      advance_listing_stage: {
+        Args: { _listing: string; _stage: string }
+        Returns: undefined
+      }
       affiliate_can_access_lead: {
         Args: { _lead_id: string }
         Returns: boolean
@@ -7310,6 +7341,10 @@ export type Database = {
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
       compute_trust_score: { Args: { _user_id: string }; Returns: Json }
+      confirm_listing_availability: {
+        Args: { _available?: boolean; _listing: string }
+        Returns: Json
+      }
       continue_group_post_jobs: {
         Args: {
           _job_ids: string[]
@@ -7898,6 +7933,7 @@ export type Database = {
         Returns: string[]
       }
       leftover_lead_price: { Args: { _charge_id: string }; Returns: number }
+      lifecycle_rank: { Args: { _s: string }; Returns: number }
       list_leftover_leads: {
         Args: never
         Returns: {
@@ -8070,6 +8106,7 @@ export type Database = {
         Args: { _approve: boolean; _reason?: string; _user_id: string }
         Returns: Json
       }
+      run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
       rz_phone_label: { Args: { _p: string }; Returns: string }
       seed_demo_data: { Args: never; Returns: Json }
