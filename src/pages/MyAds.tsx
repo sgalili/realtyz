@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Trash2 } from 'lucide-react';
 import { listingToDraft, missingAdFields } from '@/lib/adRecovery';
 import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown, BadgeCheck } from 'lucide-react';
+import ListingLifecycleStatus from '@/components/listings/ListingLifecycleStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -91,6 +92,7 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
       <div className="min-w-0 flex-1 space-y-1">
         <Link to={`/p/${r.slug || r.listing_id}`} className="block truncate font-semibold text-foreground" title={title}>{title}</Link>
         <p className="font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}</p>
+        {owned && <ListingLifecycleStatus listingId={r.listing_id} />}
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {([{ icon: Eye, value: r.views, label: 'צפיות' }, { icon: MousePointerClick, value: r.clicks, label: 'קליקים' }, { icon: Users, value: r.affiliates, label: 'שותפים מקדמים' }]).map(({ icon: Icon, value, label }) => <Button key={label} variant="ghost" size="sm" className="h-auto gap-1.5 px-0 py-1 text-muted-foreground" aria-expanded={open} aria-controls={`stats-${r.relation}-${r.listing_id}`} onClick={() => setOpen(v => !v)}><Icon className="h-4 w-4" /><b className="text-foreground">{number(value)}</b>{label}</Button>)}
           <Button variant="ghost" size="sm" className="h-auto gap-1 px-0 py-1" onClick={() => setOpen(v => !v)} aria-expanded={open}><Banknote className="h-4 w-4" />פירוט<ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} /></Button>

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ownerListingPhotos, useOwnerListings, useUpdateOwnerListing, type OwnerListing } from '@/hooks/useOwnerListings';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
+import ListingLifecycleStatus from '@/components/listings/ListingLifecycleStatus';
 
 /** Private owner screen: their own properties, with details and image editing. */
 export default function OwnerProperties() {
@@ -86,6 +87,7 @@ export default function OwnerProperties() {
                 )}
                 <div className="space-y-1 p-3">
                   <h2 className="text-sm font-bold text-foreground">{listing.property_title || 'נכס ללא כותרת'}</h2>
+                  <ListingLifecycleStatus listingId={listing.id} />
                   <p className="text-xs text-muted-foreground">
                     {[listing.city, listing.neighborhood, listing.address].filter(Boolean).join(' · ')}
                   </p>
