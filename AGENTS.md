@@ -13,17 +13,8 @@
 
 - Group selection uses one checkbox per row, immutable deduplicated snapshots and no-op guards; sibling links prevent duplicate activation/cascades.
 
-- Campaign feed metadata uses one nonwrapping RTL row ordered platform, date, group target, repost and engagement; shrinkable names open full-name popovers, and inline bordered series retain per-target statuses inside their parent.
-- Multi-target campaign expansion derives one child per persisted target and reuses the feed card renderer with campaign/group keys; synthetic children never submit campaign-level actions.
-- Queue progress and card mirrors share a stable workspace-filtered live subscription with polling fallback; normalize both server payloads and browser job payloads so every active card reflects persisted jobs.
-- Campaign selection toolbars use fixed side tracks and a shrinkable scrolling center track so selection controls cannot squeeze the page on narrow screens.
-- Posting continuation uses full composer and atomic workspace-authorized edited-repost; active jobs block replacement, completed jobs need explicit resubmission.
 
-- Composer topic mode uses the active workspace; workspace drafts retain topics overriding property focus in AI generation.
 
-- Campaign feed refreshes preserve displayed post copy by stable post ID within the active workspace; refresh status/counters independently to prevent background content swaps.
-- Campaign cards group by stable series identity regardless of delivery status, sort by immutable creation time with ID tie-breakers, and distinguish comment-only warnings from publication failures.
-- Permanent campaign deletion uses a workspace-authorized transaction for posts and queued jobs; native import excludes deletion markers to prevent deleted cards returning.
 - Post media deduplication matches original host/path hashes to cached filenames; mirrors and source URLs represent one asset, not separate gallery items.- Multi-select lists use the shared controls in src/components/ui/multi-select-controls.tsx (list-icon toggle, select-all, counter shown only when count > 0) so every page behaves the same.
 - Facebook group-post engagement is scraped read-only by the extension (ext-metrics endpoint + pairing-token RPCs); counters only increase and roll up from queue jobs into the campaign card.
 - fb_user_groups.is_blocked requires manual unblock: confirmed rejection blocks immediately; transient failures use the three-failure safeguard. Normalized workspace DB guards reject inserts/retries, cancel remaining jobs and require authorized extension preflight on every send, preventing stale-queue bypass. Pending approval/comment warnings are not rejection. Group search/join is extension-only in the broker browser, with capped, spaced batches for account safety.
