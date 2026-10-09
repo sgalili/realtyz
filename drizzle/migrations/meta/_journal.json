@@ -29,6 +29,27 @@
       "when": 1791566576153,
       "tag": "0003_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791567290043,
+      "tag": "0004_reward_snapshots_trust_scores",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791567347509,
+      "tag": "0005_charge_uses_reward_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791567381900,
+      "tag": "0006_audit_logs_system_actor",
+      "breakpoints": true
     }
   ]
 }
