@@ -269,6 +269,7 @@ export type Database = {
           rita_auto_mode: boolean
           terms_accepted_at: string | null
           terms_version: string | null
+          trust_score: number | null
           updated_at: string
           user_id: string
         }
@@ -290,6 +291,7 @@ export type Database = {
           rita_auto_mode?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
+          trust_score?: number | null
           updated_at?: string
           user_id: string
         }
@@ -311,6 +313,7 @@ export type Database = {
           rita_auto_mode?: boolean
           terms_accepted_at?: string | null
           terms_version?: string | null
+          trust_score?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -4066,6 +4069,57 @@ export type Database = {
           },
         ]
       }
+      listing_reward_snapshots: {
+        Row: {
+          affiliate_id: string
+          asking_price: number | null
+          created_at: string
+          daily_lead_cap: number | null
+          id: string
+          listing_id: string
+          referral_id: string | null
+          terms: Json
+          tier1_amount: number
+          tier2_amount: number
+          tier3_amount: number
+          tier4_amount: number | null
+          tier4_type: string | null
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          asking_price?: number | null
+          created_at?: string
+          daily_lead_cap?: number | null
+          id?: string
+          listing_id: string
+          referral_id?: string | null
+          terms?: Json
+          tier1_amount?: number
+          tier2_amount?: number
+          tier3_amount?: number
+          tier4_amount?: number | null
+          tier4_type?: string | null
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          asking_price?: number | null
+          created_at?: string
+          daily_lead_cap?: number | null
+          id?: string
+          listing_id?: string
+          referral_id?: string | null
+          terms?: Json
+          tier1_amount?: number
+          tier2_amount?: number
+          tier3_amount?: number
+          tier4_amount?: number | null
+          tier4_type?: string | null
+          workspace_owner_id?: string | null
+        }
+        Relationships: []
+      }
       listing_stat_events: {
         Row: {
           affiliate_id: string | null
@@ -5393,6 +5447,7 @@ export type Database = {
           service_areas: string[]
           trial_end_date: string | null
           trial_start_date: string
+          trust_score: number | null
           updated_at: string
           wallet_balance_agorot: number
           whatsapp_provider: string
@@ -5424,6 +5479,7 @@ export type Database = {
           service_areas?: string[]
           trial_end_date?: string | null
           trial_start_date?: string
+          trust_score?: number | null
           updated_at?: string
           wallet_balance_agorot?: number
           whatsapp_provider?: string
@@ -5455,6 +5511,7 @@ export type Database = {
           service_areas?: string[]
           trial_end_date?: string | null
           trial_start_date?: string
+          trust_score?: number | null
           updated_at?: string
           wallet_balance_agorot?: number
           whatsapp_provider?: string
@@ -6385,6 +6442,60 @@ export type Database = {
         }
         Relationships: []
       }
+      trust_scores: {
+        Row: {
+          components: Json
+          computed_score: number
+          conversion_rate: number
+          disputes_count: number
+          flagged_count: number
+          inquiries_converted: number
+          inquiries_total: number
+          is_verified: boolean
+          override_at: string | null
+          override_by: string | null
+          override_reason: string | null
+          override_score: number | null
+          score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          components?: Json
+          computed_score?: number
+          conversion_rate?: number
+          disputes_count?: number
+          flagged_count?: number
+          inquiries_converted?: number
+          inquiries_total?: number
+          is_verified?: boolean
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          override_score?: number | null
+          score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          components?: Json
+          computed_score?: number
+          conversion_rate?: number
+          disputes_count?: number
+          flagged_count?: number
+          inquiries_converted?: number
+          inquiries_total?: number
+          is_verified?: boolean
+          override_at?: string | null
+          override_by?: string | null
+          override_reason?: string | null
+          override_score?: number | null
+          score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       usage_events: {
         Row: {
           created_at: string
@@ -7198,6 +7309,7 @@ export type Database = {
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
+      compute_trust_score: { Args: { _user_id: string }; Returns: Json }
       continue_group_post_jobs: {
         Args: {
           _job_ids: string[]
@@ -7883,6 +7995,10 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      override_trust_score: {
+        Args: { _reason: string; _score: number; _user_id: string }
+        Returns: Json
       }
       post_media_source_key: { Args: { _url: string }; Returns: string }
       purchase_leftover_lead: { Args: { _charge_id: string }; Returns: Json }

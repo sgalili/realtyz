@@ -29,6 +29,13 @@
       "when": 1791566576153,
       "tag": "0003_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791567290043,
+      "tag": "0004_reward_snapshots_trust_scores",
+      "breakpoints": true
     }
   ]
 }
