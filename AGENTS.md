@@ -22,3 +22,4 @@
 
 - Yad2 preserves original publisher snapshots, source buckets and scoped DOM evidence, never null-overwrites or classifies from related ads; inspect gallery logos before removal and require license evidence.
 - Partner rewards freeze into immutable listing_reward_snapshots when a partner picks a listing; charging uses the snapshot so later commission edits only apply forward. Trust scores are computed server-side (compute_trust_score), mirrored to profiles/affiliate_profiles, overridable only by super_admin, and every change is written to audit_logs.
+- Listing lifecycle advances forward-only via DB triggers (advance_listing_stage); a daily cron prompts idle advertisers and pauses partner distribution after 3 unanswered checks, resumed only by confirm_listing_availability.
