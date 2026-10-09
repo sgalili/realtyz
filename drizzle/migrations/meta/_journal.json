@@ -36,6 +36,13 @@
       "when": 1791567290043,
       "tag": "0004_reward_snapshots_trust_scores",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791567347509,
+      "tag": "0005_charge_uses_reward_snapshot",
+      "breakpoints": true
     }
   ]
 }
