@@ -471,6 +471,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     }
     if (!fields.termsAccepted) { toast.error('יש לאשר את התקנון'); return; }
     if (!fields.commissionTermsAccepted) { toast.error('יש לאשר שקראת והבנת את מנגנון העמלות'); return; }
+    {
+      const n = (v: unknown) => { const x = Number(String(v ?? '').replace(/[^\d.]/g, '')); return String(v ?? '').trim() === '' || Number.isNaN(x) ? null : x; };
+      const amounts = [n(fields.commissionForm), n(fields.commissionWhatsapp), n(fields.commissionPhone)];
+      if (amounts.some((a) => a != null && (a < 0 || a > 500))) { toast.error('עמלה לפנייה חייבת להיות בין ₪0 ל-₪500'); return; }
+      const caps = [n(fields.limitForm), n(fields.limitWhatsapp), n(fields.limitPhone)];
+      if (caps.some((c) => c != null && (!Number.isInteger(c) || c < 1 || c > 50))) { toast.error('מגבלה יומית חייבת להיות מספר שלם בין 1 ל-50'); return; }
+    }
     if (!confirming) { setConfirming(true); return; }
     if (user) publicationAudio.current = preparePublicationSound();
     try {
