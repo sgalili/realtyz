@@ -43,6 +43,13 @@
       "when": 1791567347509,
       "tag": "0005_charge_uses_reward_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791567381900,
+      "tag": "0006_audit_logs_system_actor",
+      "breakpoints": true
     }
   ]
 }
