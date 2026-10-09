@@ -3399,7 +3399,13 @@ export type Database = {
           device_id: string | null
           id: string
           ip_hash: string | null
+          otp_attempts: number
+          otp_expires_at: string | null
+          otp_hash: string | null
+          otp_sent_count: number
+          otp_verified_at: string | null
           phone: string | null
+          reason: string
           status: string
         }
         Insert: {
@@ -3410,7 +3416,13 @@ export type Database = {
           device_id?: string | null
           id?: string
           ip_hash?: string | null
+          otp_attempts?: number
+          otp_expires_at?: string | null
+          otp_hash?: string | null
+          otp_sent_count?: number
+          otp_verified_at?: string | null
           phone?: string | null
+          reason?: string
           status?: string
         }
         Update: {
@@ -3421,7 +3433,13 @@ export type Database = {
           device_id?: string | null
           id?: string
           ip_hash?: string | null
+          otp_attempts?: number
+          otp_expires_at?: string | null
+          otp_hash?: string | null
+          otp_sent_count?: number
+          otp_verified_at?: string | null
           phone?: string | null
+          reason?: string
           status?: string
         }
         Relationships: []
@@ -3434,7 +3452,9 @@ export type Database = {
           device_id: string | null
           id: string
           ip_hash: string | null
+          latitude: number | null
           listing_id: string | null
+          longitude: number | null
           phone: string | null
         }
         Insert: {
@@ -3444,7 +3464,9 @@ export type Database = {
           device_id?: string | null
           id?: string
           ip_hash?: string | null
+          latitude?: number | null
           listing_id?: string | null
+          longitude?: number | null
           phone?: string | null
         }
         Update: {
@@ -3454,7 +3476,9 @@ export type Database = {
           device_id?: string | null
           id?: string
           ip_hash?: string | null
+          latitude?: number | null
           listing_id?: string | null
+          longitude?: number | null
           phone?: string | null
         }
         Relationships: []
@@ -4126,6 +4150,8 @@ export type Database = {
           affiliate_id: string | null
           created_at: string
           dispute_status: string | null
+          extra_fee: number
+          extra_fields_count: number
           gross: number
           id: string
           is_leftover: boolean
@@ -4140,6 +4166,8 @@ export type Database = {
           affiliate_id?: string | null
           created_at?: string
           dispute_status?: string | null
+          extra_fee?: number
+          extra_fields_count?: number
           gross?: number
           id?: string
           is_leftover?: boolean
@@ -4154,6 +4182,8 @@ export type Database = {
           affiliate_id?: string | null
           created_at?: string
           dispute_status?: string | null
+          extra_fee?: number
+          extra_fields_count?: number
           gross?: number
           id?: string
           is_leftover?: boolean
