@@ -9,6 +9,7 @@
 //   3. `details` — exact address and contact details, returned ONLY for an
 //      unlocked record.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { checkGuard, guardIdentity, recordGuard } from "./guard.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { normalizePhone } from "../_shared/leadIntake.ts";
 import { toPublicCard } from "../_shared/publicMask.ts";
@@ -85,6 +86,10 @@ Deno.serve(async (req) => {
       if (!listing || !(listing.is_published || listing.affiliate_enabled) || (intent === 'digital' && !(Number(listing.affiliate_tier1_amount) > 0))) {
         return json({ error: "הנכס אינו זמין" }, 404);
       }
+      const gid = await guardIdentity(req, body, phone);
+      const guard = await checkGuard(admin, gid, listing.city ?? null, body?.verification);
+      if (guard) return json(guard, guard.blocked ? 429 : 200);
+      await recordGuard(admin, gid, listing.id, listing.city ?? null, "register");
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
       // Publisher-defined extra form fields: validated against the stored
       // definition only, never against anything the visitor claims.
@@ -195,6 +200,10 @@ Deno.serve(async (req) => {
       if (!listingId || !phone) return json({ error: "מספר טלפון תקין הוא שדה חובה" }, 400);
       const { data: listing } = await admin.from("listings").select("id, city, address, house_number, property_title, deal_type, workspace_owner_id, user_id, contact_options, affiliate_enabled, is_published, affiliate_tier3_amount").eq("id", listingId).maybeSingle();
       if (!listing || !(listing.affiliate_enabled || listing.is_published) || !(Number(listing.affiliate_tier3_amount) > 0)) return json({ error: "אפשרות השיחה אינה זמינה" }, 404);
+      const gid = await guardIdentity(req, body, phone);
+      const guard = await checkGuard(admin, gid, listing.city ?? null, body?.verification);
+      if (guard) return json(guard, guard.blocked ? 429 : 200);
+      await recordGuard(admin, gid, listing.id, listing.city ?? null, "callback");
       const ownerId = listing.workspace_owner_id ?? listing.user_id;
       const refCode = str(body?.ref, 40);
       let affiliateId: string | null = null;

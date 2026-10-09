@@ -3384,6 +3384,75 @@ export type Database = {
           },
         ]
       }
+      inquiry_guard_challenges: {
+        Row: {
+          attempts: number
+          cities: string[]
+          cleared_until: string | null
+          created_at: string
+          device_id: string | null
+          id: string
+          ip_hash: string | null
+          phone: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          cities?: string[]
+          cleared_until?: string | null
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          phone?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          cities?: string[]
+          cleared_until?: string | null
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          phone?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      inquiry_guard_events: {
+        Row: {
+          action: string
+          city: string | null
+          created_at: string
+          device_id: string | null
+          id: string
+          ip_hash: string | null
+          listing_id: string | null
+          phone: string | null
+        }
+        Insert: {
+          action?: string
+          city?: string | null
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          listing_id?: string | null
+          phone?: string | null
+        }
+        Update: {
+          action?: string
+          city?: string | null
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          listing_id?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       integration_alert_state: {
         Row: {
           integration: string
