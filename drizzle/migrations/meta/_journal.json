@@ -57,6 +57,13 @@
       "when": 1791567518872,
       "tag": "0007_lifecycle_tracking_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791567780980,
+      "tag": "0008_disputes_bans_transparency",
+      "breakpoints": true
     }
   ]
 }

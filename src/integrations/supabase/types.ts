@@ -1906,6 +1906,7 @@ export type Database = {
         Row: {
           balance_ils: number
           created_at: string
+          frozen: boolean
           id: string
           updated_at: string
           user_id: string
@@ -1913,6 +1914,7 @@ export type Database = {
         Insert: {
           balance_ils?: number
           created_at?: string
+          frozen?: boolean
           id?: string
           updated_at?: string
           user_id: string
@@ -1920,6 +1922,7 @@ export type Database = {
         Update: {
           balance_ils?: number
           created_at?: string
+          frozen?: boolean
           id?: string
           updated_at?: string
           user_id?: string
@@ -3706,6 +3709,102 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_disputes: {
+        Row: {
+          affiliate_id: string | null
+          appeal_deadline: string | null
+          appeal_decided_at: string | null
+          appeal_decided_by: string | null
+          appeal_decision: string | null
+          appeal_note: string | null
+          appeal_reason: string | null
+          appealed_at: string | null
+          appealed_by: string | null
+          charge_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: string | null
+          decision_due: string
+          decision_note: string | null
+          details: string | null
+          id: string
+          initial_check_due: string
+          lead_id: string | null
+          listing_id: string
+          opened_by: string
+          reason: string
+          refunded_amount: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          affiliate_id?: string | null
+          appeal_deadline?: string | null
+          appeal_decided_at?: string | null
+          appeal_decided_by?: string | null
+          appeal_decision?: string | null
+          appeal_note?: string | null
+          appeal_reason?: string | null
+          appealed_at?: string | null
+          appealed_by?: string | null
+          charge_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          decision_due: string
+          decision_note?: string | null
+          details?: string | null
+          id?: string
+          initial_check_due: string
+          lead_id?: string | null
+          listing_id: string
+          opened_by: string
+          reason: string
+          refunded_amount?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          affiliate_id?: string | null
+          appeal_deadline?: string | null
+          appeal_decided_at?: string | null
+          appeal_decided_by?: string | null
+          appeal_decision?: string | null
+          appeal_note?: string | null
+          appeal_reason?: string | null
+          appealed_at?: string | null
+          appealed_by?: string | null
+          charge_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: string | null
+          decision_due?: string
+          decision_note?: string | null
+          details?: string | null
+          id?: string
+          initial_check_due?: string
+          lead_id?: string | null
+          listing_id?: string
+          opened_by?: string
+          reason?: string
+          refunded_amount?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       lead_listings: {
         Row: {
           created_at: string
@@ -4026,6 +4125,7 @@ export type Database = {
         Row: {
           affiliate_id: string | null
           created_at: string
+          dispute_status: string | null
           gross: number
           id: string
           is_leftover: boolean
@@ -4039,6 +4139,7 @@ export type Database = {
         Insert: {
           affiliate_id?: string | null
           created_at?: string
+          dispute_status?: string | null
           gross?: number
           id?: string
           is_leftover?: boolean
@@ -4052,6 +4153,7 @@ export type Database = {
         Update: {
           affiliate_id?: string | null
           created_at?: string
+          dispute_status?: string | null
           gross?: number
           id?: string
           is_leftover?: boolean
@@ -6643,6 +6745,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_bans: {
+        Row: {
+          active: boolean
+          banned_by: string | null
+          created_at: string
+          effects: Json
+          id: string
+          lifted_at: string | null
+          lifted_by: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          banned_by?: string | null
+          created_at?: string
+          effects?: Json
+          id?: string
+          lifted_at?: string | null
+          lifted_by?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          banned_by?: string | null
+          created_at?: string
+          effects?: Json
+          id?: string
+          lifted_at?: string | null
+          lifted_by?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -7224,6 +7362,10 @@ export type Database = {
         Args: { _job: string; _lease_seconds?: number; _worker?: string }
         Returns: boolean
       }
+      add_business_days: {
+        Args: { _days: number; _from: string }
+        Returns: string
+      }
       add_credit: {
         Args: {
           _amount: number
@@ -7252,10 +7394,19 @@ export type Database = {
         Returns: boolean
       }
       affiliate_tier3_eligible: { Args: { _user_id: string }; Returns: boolean }
+      appeal_lead_dispute: {
+        Args: { _id: string; _reason: string }
+        Returns: Json
+      }
+      apply_dispute_refund: {
+        Args: { _d: Database["public"]["Tables"]["lead_disputes"]["Row"] }
+        Returns: number
+      }
       attribute_whatsapp_referral: {
         Args: { _name?: string; _phone: string; _ref: string }
         Returns: Json
       }
+      ban_user: { Args: { _reason: string; _user: string }; Returns: Json }
       bulk_update_leads: {
         Args: {
           lead_ids: string[]
@@ -7392,6 +7543,14 @@ export type Database = {
       crm_safe_int: { Args: { _t: string }; Returns: number }
       crm_safe_numeric: { Args: { _t: string }; Returns: number }
       current_workspace_owner: { Args: never; Returns: string }
+      decide_lead_appeal: {
+        Args: { _id: string; _note: string; _upheld: boolean }
+        Returns: Json
+      }
+      decide_lead_dispute: {
+        Args: { _id: string; _note: string; _upheld: boolean }
+        Returns: Json
+      }
       dedupe_media_jsonb: {
         Args: { _arr: Json; _blocked?: Json }
         Returns: Json
@@ -7418,6 +7577,10 @@ export type Database = {
           _lead_name: string
           _user_id: string
         }
+        Returns: undefined
+      }
+      dispute_audit: {
+        Args: { _action: string; _details: Json; _id: string }
         Returns: undefined
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
@@ -7758,6 +7921,7 @@ export type Database = {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json
       }
+      get_dispute_evidence: { Args: { _id: string }; Returns: Json }
       get_effective_meta_page:
         | {
             Args: never
@@ -7884,6 +8048,7 @@ export type Database = {
           won_count: number
         }[]
       }
+      get_transparency_summary: { Args: never; Returns: Json }
       get_user_balance: {
         Args: { _user_id: string }
         Returns: {
@@ -7925,6 +8090,7 @@ export type Database = {
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
       is_trial_active: { Args: { _user_id: string }; Returns: boolean }
+      is_user_banned: { Args: { _u: string }; Returns: boolean }
       is_workspace_member:
         | { Args: { _owner: string; _user: string }; Returns: boolean }
         | { Args: { _owner_id: string }; Returns: boolean }
@@ -8032,6 +8198,10 @@ export type Database = {
         }
         Returns: number
       }
+      open_lead_dispute: {
+        Args: { _charge_id: string; _details?: string; _reason: string }
+        Returns: Json
+      }
       override_trust_score: {
         Args: { _reason: string; _score: number; _user_id: string }
         Returns: Json
@@ -8106,6 +8276,7 @@ export type Database = {
         Args: { _approve: boolean; _reason?: string; _user_id: string }
         Returns: Json
       }
+      review_lead_dispute: { Args: { _id: string }; Returns: Json }
       run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
       rz_phone_label: { Args: { _p: string }; Returns: string }
@@ -8201,6 +8372,7 @@ export type Database = {
         Args: { p_force?: boolean; p_lead_id: string; p_owner_id?: string }
         Returns: undefined
       }
+      unban_user: { Args: { _note: string; _user: string }; Returns: Json }
       upsert_lead_by_social: {
         Args: {
           _email?: string
