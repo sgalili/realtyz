@@ -7768,6 +7768,7 @@ export type Database = {
         Returns: boolean
       }
       in_current_workspace: { Args: { _row_owner: string }; Returns: boolean }
+      inquiry_is_suspicious: { Args: { _phone: string }; Returns: boolean }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
       is_affiliate: { Args: { _user_id?: string }; Returns: boolean }
       is_ai_autopilot_enabled: { Args: { _user_id: string }; Returns: boolean }
