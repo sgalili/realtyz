@@ -225,13 +225,15 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
 
   const openGate = (card: PublicCard, intent: GateIntent) => { setGate({ card, intent }); setToken(null); setUnlocked(null); setChat([]); };
 
-  const submitGate = async () => {
+  const submitGate = async (verification?: { id: string; answers: Record<string, string> }) => {
     if (!gate) return;
     if (!form.name.trim() || form.phone.replace(/\D/g, '').length < 9) { toast.error('נא למלא שם ומספר ווטסאפ תקין'); return; }
     setSending(true);
-    const { data, error } = await supabase.functions.invoke('public-lead-gate', { body: { action: 'register', listing_id: gate.card.id, name: form.name.trim(), phone: form.phone.trim(), intent: gate.intent } });
+    const { data, error } = await supabase.functions.invoke('public-lead-gate', { body: { action: 'register', listing_id: gate.card.id, name: form.name.trim(), phone: form.phone.trim(), intent: gate.intent, device_id: inquiryDeviceId(), verification } });
     setSending(false);
     const payload = data as any;
+    if (!error && payload?.verify) { if (payload.error) toast.error(payload.error); setChallenge(payload.verify); return; }
+    setChallenge(null);
     if (error || !payload?.token) {
       let msg = payload?.error;
       const ctx = (error as { context?: Response } | null)?.context;
