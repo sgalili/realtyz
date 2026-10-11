@@ -23,9 +23,9 @@ export default function LeadDirectionTabs({ children }: { children: ReactNode })
     else next.delete('direction');
     navigate({ pathname: location.pathname, search: next.toString() });
   }}>
-    <TabsList className="mb-3 grid h-auto w-full grid-cols-2">
-      <TabsTrigger value="received" className="gap-2 whitespace-normal py-2 text-sm"><ArrowDownLeft className="h-4 w-4 shrink-0" /><span className="tabular-nums font-bold">{received}</span> לידים שקיבלתי</TabsTrigger>
-      <TabsTrigger value="sent" className="gap-2 whitespace-normal py-2 text-sm"><Send className="h-4 w-4 shrink-0" /><span className="tabular-nums font-bold">{sentRows.length}</span> לידים שמכרתי</TabsTrigger>
+    <TabsList className="mb-3 grid w-full grid-cols-2">
+      <TabsTrigger value="received" className="min-w-0 gap-2"><ArrowDownLeft className="h-4 w-4 shrink-0" /><span className="tabular-nums">{received}</span> לידים שקיבלתי</TabsTrigger>
+      <TabsTrigger value="sent" className="min-w-0 gap-2"><Send className="h-4 w-4 shrink-0" /><span className="tabular-nums">{sentRows.length}</span> לידים שמכרתי</TabsTrigger>
     </TabsList>
     <TabsContent value="received">{children}</TabsContent>
     <TabsContent value="sent"><SentPartnerLeads /></TabsContent>

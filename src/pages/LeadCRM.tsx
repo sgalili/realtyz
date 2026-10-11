@@ -69,6 +69,7 @@ import OwnerPropertyGrid from '@/components/leads/OwnerPropertyGrid';
 import LeadDirectionTabs from '@/components/leads/LeadDirectionTabs';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
+import { leadCategoryOrFilter, visibleLeadKinds, type LeadKind } from '@/lib/leadCategoryFilters';
 
 /**
  * isOwnerLead — Sellers and Landlords are property OWNERS, not seekers.
@@ -550,25 +551,28 @@ const LeadCRM = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
   const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
-  type LeadKind = 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker' | 'affiliate';
   const [leadKinds, setLeadKinds] = useState<LeadKind[]>([]);
   const leadKindFilter = leadKinds.length ? [...leadKinds].sort().join(',') : 'all';
   const roleInfo = useUserRole();
   const termsAcceptedAt = useAffiliateLicense().license.termsAcceptedAt;
   const isDeveloperView = roleInfo.isDeveloper && !roleInfo.isTeamMember;
   const isOwnerOnlyView = roleInfo.isPropertyOwnerOnly;
+  const isBrokerView = roleInfo.roles.some((role) => ['managing_broker', 'lead_agent', 'agent', 'assistant', 'junior_agent'].includes(role));
   // Pills shown depend on the signed-in account type; partners appear only after accepted affiliate terms.
   const leadKindOptions = useMemo(() => {
     const all: { v: LeadKind; label: string }[] = [
       { v: 'buyer', label: 'קונים' }, { v: 'seller', label: 'מוכרים' }, { v: 'renter', label: 'שוכרים' },
       { v: 'landlord', label: 'משכירים' }, { v: 'broker', label: 'מתווכים' }, { v: 'affiliate', label: 'שותפים' },
     ];
-    const allowed: LeadKind[] = isOwnerOnlyView ? ['buyer', 'renter']
-      : isDeveloperView ? ['buyer', 'broker']
-      : ['buyer', 'seller', 'renter', 'landlord', 'broker'];
-    if (roleInfo.isAffiliate && termsAcceptedAt) allowed.push('affiliate');
+    const allowed = visibleLeadKinds({
+      ownerOnly: isOwnerOnlyView,
+      developer: isDeveloperView,
+      broker: isBrokerView,
+      affiliateConsented: !!user && roleInfo.isAffiliate && !!termsAcceptedAt,
+    });
     return all.filter((o) => allowed.includes(o.v));
-  }, [isOwnerOnlyView, isDeveloperView, roleInfo.isAffiliate, termsAcceptedAt]);
+  }, [isOwnerOnlyView, isDeveloperView, isBrokerView, roleInfo.isAffiliate, termsAcceptedAt, user]);
+  const categoryOrFilter = leadCategoryOrFilter(leadKinds, leadKindOptions.map((option) => option.v));
   useEffect(() => {
     setLeadKinds((cur) => cur.filter((k) => leadKindOptions.some((o) => o.v === k)));
   }, [leadKindOptions]);
@@ -712,7 +716,7 @@ const LeadCRM = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter, leadKindFilter, sentimentFilter, channelFilter],
+    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter, leadKindFilter, categoryOrFilter, sentimentFilter, channelFilter],
     enabled: !isDemoMode,
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase.from('leads').select('*', { count: 'exact' });
@@ -776,7 +780,7 @@ const LeadCRM = () => {
       if (statusFilter === 'untreated') query = query.or('lead_stage.is.null,lead_stage.in.(new,new_lead)');
       else if (statusFilter !== 'all') query = query.eq('status', statusFilter);
       if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
-      if (leadKinds.length) query = query.in('preferences->>lead_kind', leadKinds);
+      if (categoryOrFilter) query = query.or(categoryOrFilter);
       if (sentimentFilter !== 'all') query = query.eq('sentiment', sentimentFilter);
       if (channelFilter !== 'all') query = query.eq('preferences->>arrival_channel', channelFilter);
 
