@@ -3861,6 +3861,53 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_closing_splits: {
+        Row: {
+          affiliate_id: string
+          commission_amount: number
+          computed_at: string
+          lead_id: string | null
+          partner_amount: number
+          partner_is_licensed: boolean
+          partner_pct: number
+          platform_amount: number
+          submission_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          affiliate_id: string
+          commission_amount?: number
+          computed_at?: string
+          lead_id?: string | null
+          partner_amount?: number
+          partner_is_licensed: boolean
+          partner_pct: number
+          platform_amount?: number
+          submission_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          affiliate_id?: string
+          commission_amount?: number
+          computed_at?: string
+          lead_id?: string | null
+          partner_amount?: number
+          partner_is_licensed?: boolean
+          partner_pct?: number
+          platform_amount?: number
+          submission_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_closing_splits_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: true
+            referencedRelation: "affiliate_lead_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_disputes: {
         Row: {
           affiliate_id: string | null
@@ -7709,6 +7756,10 @@ export type Database = {
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
+      compute_closing_split: {
+        Args: { _submission_id: string }
+        Returns: undefined
+      }
       compute_trust_score: { Args: { _user_id: string }; Returns: Json }
       confirm_listing_availability: {
         Args: { _available?: boolean; _listing: string }
