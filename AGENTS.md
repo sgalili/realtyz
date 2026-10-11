@@ -24,3 +24,6 @@
 - Partner rewards freeze into immutable listing_reward_snapshots when a partner picks a listing; charging uses the snapshot so later commission edits only apply forward. Trust scores are computed server-side (compute_trust_score), mirrored to profiles/affiliate_profiles, overridable only by super_admin, and every change is written to audit_logs.
 - Listing lifecycle advances forward-only via DB triggers (advance_listing_stage); a daily cron prompts idle advertisers and pauses partner distribution after 3 unanswered checks, resumed only by confirm_listing_availability.
 - Lead disputes, appeals and bans run only through audited security-definer RPCs (open/decide/appeal lead disputes, ban_user/unban_user); appeals need a neutral reviewer and bans freeze rather than delete data.
+
+- Developers (יזמים) are agent + `developer` role via register_as_developer; their projects live in workspace-scoped developer_projects, and the sidebar swaps broker-only tools for /developer-dashboard. Why: reuse broker workspace/ecosystem while hiding broker-exclusive features.
+- Yad2 developer-page import (yad2-developer-import) only previews; saving happens on explicit user confirm. Why: never invent or auto-persist scraped data.

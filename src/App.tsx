@@ -93,6 +93,7 @@ const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
 const OwnerProperties = lazy(() => import("./pages/owner/OwnerProperties"));
 const Developers = lazy(() => import("./pages/Developers"));
+const DeveloperDashboard = lazy(() => import("./pages/DeveloperDashboard"));
 const OwnerLeads = lazy(() => import("./pages/owner/OwnerLeads"));
 const OwnerRewards = lazy(() => import("./pages/owner/OwnerRewards"));
 const OwnerRita = lazy(() => import("./pages/owner/OwnerRita"));
@@ -402,6 +403,7 @@ const App = () => (
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
               <Route path="/affiliate-pricing" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><AffiliatePricing /></Suspense></ProtectedRoute>} />
               <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
+              <Route path="/developer-dashboard" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><DeveloperDashboard /></Suspense></ProtectedRoute>} />
               <Route path="/developers" element={<ProtectedRoute allowGuestDemo><Suspense fallback={<PageLoader />}><Developers /></Suspense></ProtectedRoute>} />
               <Route path="/owner/leads" element={<ProtectedRoute><OwnerLeads /></ProtectedRoute>} />
               <Route path="/owner/rewards" element={<ProtectedRoute><OwnerRewards /></ProtectedRoute>} />

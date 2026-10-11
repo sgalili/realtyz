@@ -2333,6 +2333,83 @@ export type Database = {
         }
         Relationships: []
       }
+      developer_projects: {
+        Row: {
+          address: string | null
+          apartments: Json
+          available_units: number | null
+          city: string | null
+          created_at: string
+          delivery_date: string | null
+          description: string | null
+          developer_id: string
+          id: string
+          image_url: string | null
+          images: Json
+          name: string
+          neighborhood: string | null
+          price_from: number | null
+          source_project_id: string | null
+          source_url: string | null
+          status: string
+          total_units: number | null
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          address?: string | null
+          apartments?: Json
+          available_units?: number | null
+          city?: string | null
+          created_at?: string
+          delivery_date?: string | null
+          description?: string | null
+          developer_id: string
+          id?: string
+          image_url?: string | null
+          images?: Json
+          name: string
+          neighborhood?: string | null
+          price_from?: number | null
+          source_project_id?: string | null
+          source_url?: string | null
+          status?: string
+          total_units?: number | null
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          address?: string | null
+          apartments?: Json
+          available_units?: number | null
+          city?: string | null
+          created_at?: string
+          delivery_date?: string | null
+          description?: string | null
+          developer_id?: string
+          id?: string
+          image_url?: string | null
+          images?: Json
+          name?: string
+          neighborhood?: string | null
+          price_from?: number | null
+          source_project_id?: string | null
+          source_url?: string | null
+          status?: string
+          total_units?: number | null
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developer_projects_developer_id_fkey"
+            columns: ["developer_id"]
+            isOneToOne: false
+            referencedRelation: "developers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       developers: {
         Row: {
           company_name: string
@@ -2340,6 +2417,9 @@ export type Database = {
           first_project_name: string | null
           first_project_units: number | null
           id: string
+          last_synced_at: string | null
+          logo_url: string | null
+          owner_user_id: string | null
           phone: string | null
           source_url: string | null
           updated_at: string
@@ -2351,6 +2431,9 @@ export type Database = {
           first_project_name?: string | null
           first_project_units?: number | null
           id?: string
+          last_synced_at?: string | null
+          logo_url?: string | null
+          owner_user_id?: string | null
           phone?: string | null
           source_url?: string | null
           updated_at?: string
@@ -2362,6 +2445,9 @@ export type Database = {
           first_project_name?: string | null
           first_project_units?: number | null
           id?: string
+          last_synced_at?: string | null
+          logo_url?: string | null
+          owner_user_id?: string | null
           phone?: string | null
           source_url?: string | null
           updated_at?: string
@@ -8316,6 +8402,7 @@ export type Database = {
         Returns: Json
       }
       register_as_broker: { Args: { _display_name?: string }; Returns: Json }
+      register_as_developer: { Args: { _display_name?: string }; Returns: Json }
       register_as_property_owner: {
         Args: { _display_name?: string }
         Returns: Json
@@ -8484,6 +8571,7 @@ export type Database = {
         | "affiliate"
         | "property_owner"
         | "property_seeker"
+        | "developer"
       listing_source: "yad2" | "madlan" | "manual"
     }
     CompositeTypes: {
@@ -8625,6 +8713,7 @@ export const Constants = {
         "affiliate",
         "property_owner",
         "property_seeker",
+        "developer",
       ],
       listing_source: ["yad2", "madlan", "manual"],
     },

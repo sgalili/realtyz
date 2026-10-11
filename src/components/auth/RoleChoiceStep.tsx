@@ -18,17 +18,17 @@ import { useNavigate } from 'react-router-dom';
  * matching quick onboarding.
  */
 export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
-  const [busy, setBusy] = useState<'broker' | 'partner' | 'property_owner' | 'property_seeker' | null>(null);
+  const [busy, setBusy] = useState<'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer' | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const pick = async (role: 'broker' | 'partner' | 'property_owner' | 'property_seeker') => {
+  const pick = async (role: 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer') => {
     if (busy) return;
     setBusy(role);
     try {
       if (!user?.id) throw new Error('ההתחברות הסתיימה. יש להתחבר מחדש.');
-      const expectedRole: AppRole = role === 'partner' ? 'affiliate' : role === 'property_owner' ? 'property_owner' : role === 'property_seeker' ? 'property_seeker' : 'agent';
+      const expectedRole: AppRole = role === 'developer' ? 'developer' : role === 'partner' ? 'affiliate' : role === 'property_owner' ? 'property_owner' : role === 'property_seeker' ? 'property_seeker' : 'agent';
       if (role === 'partner') {
         const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
         if (error) throw error;
@@ -37,6 +37,10 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         const { data, error } = await supabase.rpc('register_as_property_owner', { _display_name: null });
         if (error) throw error;
         if (!(data as { ok?: boolean } | null)?.ok) throw new Error('יצירת חשבון מפרסם הנכס לא הושלמה');
+      } else if (role === 'developer') {
+        const { data, error } = await supabase.rpc('register_as_developer' as any, { _display_name: null });
+        if (error) throw error;
+        if (!(data as { ok?: boolean } | null)?.ok) throw new Error('יצירת חשבון היזם לא הושלמה');
       } else if (role === 'property_seeker') {
         const { data, error } = await supabase.rpc('register_as_property_seeker', { _display_name: null });
         if (error) throw error;
@@ -61,7 +65,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       queryClient.setQueryData(userRolesQueryKey(user.id), refreshedRoles);
       await queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) });
       onDone?.();
-      navigate(role === 'partner' ? '/affiliate' : role === 'property_owner' ? '/owner/properties' : role === 'property_seeker' ? '/public-listings' : '/dashboard', { replace: true });
+      navigate(role === 'developer' ? '/developer-dashboard' : role === 'partner' ? '/affiliate' : role === 'property_owner' ? '/owner/properties' : role === 'property_seeker' ? '/public-listings' : '/dashboard', { replace: true });
     } catch (err: any) {
       // The role itself may already have been granted; only block the user when
       // no role landed on the account at all.
@@ -75,7 +79,8 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         await queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user?.id) });
         onDone?.();
         navigate(
-          refreshedRoles.includes('property_owner') ? '/owner/properties'
+          refreshedRoles.includes('developer') ? '/developer-dashboard'
+            : refreshedRoles.includes('property_owner') ? '/owner/properties'
             : refreshedRoles.includes('property_seeker') ? '/public-listings'
               : refreshedRoles.includes('affiliate') && !refreshedRoles.includes('agent') ? '/affiliate'
                 : '/dashboard',
@@ -97,6 +102,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
           ['partner', 'שותף'],
           ['property_owner', 'מפרסם נכס'],
           ['property_seeker', 'מחפש נכס'],
+          ['developer', 'יזם / קבלן'],
         ] as const).map(([role, label]) => (
           <Button
             key={role}

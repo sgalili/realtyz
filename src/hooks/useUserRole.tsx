@@ -15,7 +15,8 @@ export type AppRole =
   | 'junior_agent'
   | 'affiliate'
   | 'property_owner'
-  | 'property_seeker';
+  | 'property_seeker'
+  | 'developer';
 
 export const userRolesQueryKey = (userId: string | undefined) => ['user-roles', userId] as const;
 
@@ -64,6 +65,7 @@ export function useUserRole() {
   const isAffiliate = roles.includes('affiliate');
   const isPropertyOwner = roles.includes('property_owner');
   const isPropertySeeker = roles.includes('property_seeker');
+  const isDeveloper = roles.includes('developer');
   const isTeamMember =
     isManagingBroker || isLeadAgent || isAgent || isAssistant || isJuniorAgent || isAdmin;
 
@@ -118,6 +120,7 @@ export function useUserRole() {
     isPropertyOwnerOnly,
     isPropertySeeker,
     isPropertySeekerOnly,
+    isDeveloper,
     isTeamMember,
 
     canCloseDeals,
