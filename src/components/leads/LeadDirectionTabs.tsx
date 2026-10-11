@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowDownLeft, Send } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SentPartnerLeads from './SentPartnerLeads';
@@ -23,11 +22,11 @@ export default function LeadDirectionTabs({ children }: { children: ReactNode })
     else next.delete('direction');
     navigate({ pathname: location.pathname, search: next.toString() });
   }}>
-    <TabsList className="mb-3 grid w-full grid-cols-2">
-      <TabsTrigger value="received" className="min-w-0 gap-2"><ArrowDownLeft className="h-4 w-4 shrink-0" /><span className="tabular-nums">{received}</span> לידים שקיבלתי</TabsTrigger>
-      <TabsTrigger value="sent" className="min-w-0 gap-2"><Send className="h-4 w-4 shrink-0" /><span className="tabular-nums">{sentRows.length}</span> לידים שמכרתי</TabsTrigger>
+    <TabsList className="mb-1.5 grid h-[44px] w-full grid-cols-2 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+      <TabsTrigger value="received" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">לידים שקיבלתי ({received})</TabsTrigger>
+      <TabsTrigger value="sent" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">לידים שמכרתי ({sentRows.length})</TabsTrigger>
     </TabsList>
-    <TabsContent value="received">{children}</TabsContent>
-    <TabsContent value="sent"><SentPartnerLeads /></TabsContent>
+    <TabsContent value="received" className="mt-1">{children}</TabsContent>
+    <TabsContent value="sent" className="mt-1"><SentPartnerLeads /></TabsContent>
   </Tabs>;
 }
