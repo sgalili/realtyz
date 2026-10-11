@@ -1947,47 +1947,6 @@ const LeadCRM = () => {
             </Select>}
           </div>}
         </CardHeader>
-        {selectMode && (filtered?.length ?? 0) > 0 && (
-          <div className="border-t border-border/60 bg-muted/30 px-4 py-2 flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-            <Checkbox className="rounded-none" checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר הכל" />
-            <button type="button" className="text-sm font-semibold" onClick={toggleAll}>{allFilteredSelected ? 'בטל הכל' : 'בחר הכל'}</button>
-            {selectedIds.size > 0 && <Badge variant="secondary" className="gap-1 text-sm">
-              <Users className="h-3.5 w-3.5" /> {selectedIds.size} נבחרו
-            </Badge>}
-            {selectedIds.size > 0 && <>
-            <Separator orientation="vertical" className="h-6" />
-            {recruitmentMode && (
-              <Button
-                size="sm"
-                className="gap-1.5 h-8 rounded-md px-3 text-sm font-medium bg-green-600 hover:bg-green-700 text-white border-0 shadow-none disabled:opacity-100 disabled:bg-green-600 disabled:cursor-wait"
-                onClick={handleBrokerFirstOutreach}
-                disabled={sendingFirstOutreach}
-                aria-label="הודעת פתיחה למתווכים"
-                title="הודעת פתיחה למתווכים"
-              >
-                <Send className="h-3.5 w-3.5" />
-                {sendingFirstOutreach ? 'שולח…' : 'הודעת פתיחה למתווכים'}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 items-center justify-center"
-              onClick={() => handleExportExcel('selected')}
-              aria-label="ייצוא נבחרים"
-              title="ייצוא נבחרים"
-            >
-              <ExcelIcon className="h-4 w-4" />
-            </Button>
-            <Button variant="destructive" size="icon" className="h-8 w-8" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-            </>}
-            <Button variant="ghost" size="icon" className="h-8 w-8 ms-auto" onClick={() => { setSelectedIds(new Set()); setSelectMode(false); }}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
         <CardContent className="p-0">
           <div
             ref={tableContainerRef}
@@ -2003,8 +1962,16 @@ const LeadCRM = () => {
               <TableHeader>
                 <TableRow className="hover:bg-transparent bg-muted/30">
                   {selectMode && <TableHead className="w-10 min-w-10 text-center">
-                    <Checkbox className="rounded-none align-middle" checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר את כל הלידים" />
+                    <Checkbox className="rounded-none align-middle" checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר הכל" title="בחר הכל" />
                   </TableHead>}
+                  {selectMode && selectedIds.size > 0 ? <TableHead colSpan={totalColCount - 1}>
+                    <div className="flex h-10 items-center gap-2 whitespace-nowrap" role="toolbar" aria-label="פעולות על לידים נבחרים">
+                      <span className="text-sm tabular-nums">{selectedIds.size} נבחרו</span>
+                      {recruitmentMode && <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={handleBrokerFirstOutreach} disabled={sendingFirstOutreach} aria-label="הודעת פתיחה למתווכים" title="הודעת פתיחה למתווכים"><Send className="h-4 w-4" /></Button>}
+                      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleExportExcel('selected')} aria-label="ייצוא נבחרים" title="ייצוא נבחרים"><ExcelIcon className="h-4 w-4" /></Button>
+                      <Button variant="destructive" size="icon" className="h-8 w-8 shrink-0" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </TableHead> : <>
                   <TableHead className="w-auto font-semibold text-xs">שם</TableHead>
                   <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
@@ -2016,6 +1983,7 @@ const LeadCRM = () => {
                   {isOwnerView && HOMELY_OWNER_COLUMNS.map((col) => (
                     <TableHead key={`oh-${col.key}`} className="w-auto font-semibold text-xs text-center bg-blue-50/60">{col.label}</TableHead>
                   ))}
+                  </>}
                 </TableRow>
               </TableHeader>
               <TableBody>
