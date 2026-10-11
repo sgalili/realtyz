@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CreditCard, Plus, Wallet as WalletIcon } from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, CreditCard, Plus, Wallet as WalletIcon } from 'lucide-react';
+import { ACTION_META, CREDITS_PER_ILS, fmtCredits, ilsToCredits, parseActionNote } from '@/lib/credits';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -22,11 +23,12 @@ type Card = { id: string; brand: string | null; last4: string | null; exp_month:
 const TYPE_LABEL: Record<string, string> = {
   topup: 'הפקדה', launch_bonus: 'בונוס הצטרפות', referral_reward: 'תגמול הפניה', manual_adjustment: 'התאמה ידנית',
   usage_deduction: 'שימוש בשירותים', affiliate_lead_charge: 'תשלום על פנייה', affiliate_lead_reward: 'תגמול שותף על פנייה',
-  dispute_refund: 'החזר מחלוקת',
+  dispute_refund: 'החזר מחלוקת', action_charge: 'שימוש בפעולה',
 };
 const TIER_LABEL: Record<number, string> = { 1: 'טופס', 2: 'וואטסאפ עם ריטה', 3: 'שיחת טלפון' };
 const DEPOSIT_TYPES = new Set(['topup', 'launch_bonus', 'referral_reward', 'manual_adjustment', 'dispute_refund']);
 export const ils = (n: number) => `₪${Math.round(n).toLocaleString('he-IL')}`;
+const money = (n: number) => `₪${n.toLocaleString('he-IL', { maximumFractionDigits: Math.abs(n) < 10 ? 2 : 0 })}`;
 const when = (d: string) => new Date(d).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export default function Wallet() {
@@ -61,7 +63,17 @@ export default function Wallet() {
   const locked = !!wallet?.lockedAt;
 
   const target = (r: LedgerRow) => [r.listing_title, r.listing_city].filter(Boolean).join(' · ') || r.lead_name || '—';
-  const purpose = (r: LedgerRow) => (r.tier ? `${TYPE_LABEL[r.type] ?? r.type} · ${TIER_LABEL[r.tier]}` : TYPE_LABEL[r.type] ?? r.note ?? r.type);
+  const purpose = (r: LedgerRow) => {
+    const a = parseActionNote(r.note);
+    if (r.type === 'action_charge' && a) return a.quantity !== 1 ? `${a.label} × ${a.quantity}` : a.label;
+    return r.tier ? `${TYPE_LABEL[r.type] ?? r.type} · ${TIER_LABEL[r.tier]}` : TYPE_LABEL[r.type] ?? r.note ?? r.type;
+  };
+  const iconFor = (r: LedgerRow) => {
+    const a = parseActionNote(r.note);
+    const m = a ? ACTION_META[a.key] : null;
+    if (m) return <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${m.tone}`}><m.icon className="h-3.5 w-3.5" /></span>;
+    return <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${r.amount_ils > 0 ? 'bg-success/15 text-success' : 'bg-muted text-muted-foreground'}`}>{r.amount_ils > 0 ? <ArrowDownLeft className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}</span>;
+  };
 
   const statusOf = (r: LedgerRow) => ({ open: 'במחלוקת', pending: 'במחלוקת', accepted: 'הוחזר', refunded: 'הוחזר', rejected: 'הושלם' } as Record<string, string>)[r.dispute_status ?? ''] ?? 'הושלם';
   const rows = (list: LedgerRow[], withTarget: boolean) => (
@@ -76,9 +88,12 @@ export default function Wallet() {
             <TableRow key={r.id} className="cursor-pointer" onClick={() => setDetail(r)}>
               <TableCell className="whitespace-nowrap">{when(r.created_at)}</TableCell>
               {withTarget && <TableCell className="max-w-[220px] truncate">{target(r)}</TableCell>}
-              <TableCell className="max-w-[220px] truncate">{purpose(r)}</TableCell>
+              <TableCell className="max-w-[240px]"><span className="flex items-center gap-2">{iconFor(r)}<span className="truncate">{purpose(r)}</span></span></TableCell>
               <TableCell className="whitespace-nowrap">{statusOf(r)}</TableCell>
-              <TableCell dir="ltr" className={`whitespace-nowrap text-right font-bold ${r.amount_ils < 0 ? 'text-destructive' : 'text-primary'}`}>{r.amount_ils > 0 ? '+' : ''}{ils(r.amount_ils)}</TableCell>
+              <TableCell dir="ltr" className={`whitespace-nowrap text-right font-bold ${r.amount_ils < 0 ? 'text-destructive' : 'text-primary'}`}>
+                {r.amount_ils > 0 ? '+' : ''}{money(r.amount_ils)}
+                <span className="block text-xs font-normal text-muted-foreground">{r.amount_ils > 0 ? '+' : ''}{fmtCredits(ilsToCredits(r.amount_ils))}</span>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -110,6 +125,7 @@ export default function Wallet() {
           <div>
             <p className="text-sm text-muted-foreground">יתרה נוכחית</p>
             <p dir="ltr" className={`text-right text-3xl font-bold ${(wallet?.balance ?? 0) <= 0 ? 'text-destructive' : ''}`}>{ils(wallet?.balance ?? 0)}</p>
+            <p className="text-sm text-muted-foreground">{fmtCredits(ilsToCredits(wallet?.balance ?? 0))} · ₪1 = {CREDITS_PER_ILS} קרדיטים</p>
           </div>
           <Button onClick={() => setTopupOpen(true)}><Plus className="h-4 w-4" />טעינת ארנק</Button>
         </div>
