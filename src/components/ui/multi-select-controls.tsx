@@ -40,7 +40,7 @@ export const SelectModeToggle = ({
           onClick={onSelectAll}
           className="text-[13px] font-semibold text-primary hover:underline"
         >
-          {allSelected ? 'בטל הכל' : 'בחר הכל'}
+          בחר הכל
         </button>
       )}
       {active && count > 0 && (
