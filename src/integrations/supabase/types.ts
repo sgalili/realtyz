@@ -3739,6 +3739,83 @@ export type Database = {
           },
         ]
       }
+      invite_dual_rewards: {
+        Row: {
+          created_at: string
+          deal_id: string
+          friend_amount: number
+          id: string
+          referral_id: string
+          referred_user_id: string
+          referrer_amount: number
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          friend_amount?: number
+          id?: string
+          referral_id: string
+          referred_user_id: string
+          referrer_amount?: number
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          friend_amount?: number
+          id?: string
+          referral_id?: string
+          referred_user_id?: string
+          referrer_amount?: number
+          referrer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_dual_rewards_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "invite_verified_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invite_verified_deals: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          source_id: string
+          source_type: string
+          status: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          source_id: string
+          source_type: string
+          status?: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+          user_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       kb_whitelist: {
         Row: {
           created_at: string
@@ -7675,6 +7752,10 @@ export type Database = {
       apply_dispute_refund: {
         Args: { _d: Database["public"]["Tables"]["lead_disputes"]["Row"] }
         Returns: number
+      }
+      approve_invite_verified_deal: {
+        Args: { _source_id: string; _source_type: string; _user_id: string }
+        Returns: string
       }
       attribute_whatsapp_referral: {
         Args: { _name?: string; _phone: string; _ref: string }
