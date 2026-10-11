@@ -26,6 +26,7 @@ Deno.serve(async req => {
   const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'reatyz_yad2';
   if (!token) return json({ error: 'not_configured', message: 'שירות הייבוא מיד2 אינו מוגדר' }, 503);
   const failed: string[] = [];
+  const failReasons: Record<string, string> = {};
   const fetchPage = async (url: string) => {
     const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(45000) });
     const html = await res.text();
