@@ -8484,6 +8484,18 @@ export type Database = {
           won_count: number
         }[]
       }
+      get_transparency_charges: {
+        Args: { _filter: string; _side: string }
+        Returns: {
+          created_at: string
+          dispute_status: string
+          gross: number
+          id: string
+          listing_id: string
+          title: string
+        }[]
+      }
+      get_transparency_shared_listing_ids: { Args: never; Returns: string[] }
       get_transparency_summary: { Args: never; Returns: Json }
       get_user_balance: {
         Args: { _user_id: string }
