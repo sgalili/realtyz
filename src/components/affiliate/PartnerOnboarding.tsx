@@ -28,6 +28,7 @@ export function PartnerOnboarding({ onComplete, onCancel }: { onComplete: () => 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['partner-consent', user?.id] }),
         queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user?.id) }),
+        queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] }),
       ]);
       tutorialStore.markSeen('page:/affiliate-network');
       onComplete();
