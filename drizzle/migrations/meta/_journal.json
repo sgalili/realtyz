@@ -169,6 +169,13 @@
       "when": 1791692025803,
       "tag": "0023_invite_dual_win_verified_deals",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791692101556,
+      "tag": "0024_invite_bonus_evidence_integrity",
+      "breakpoints": true
     }
   ]
 }
