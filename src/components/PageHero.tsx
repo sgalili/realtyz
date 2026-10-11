@@ -294,7 +294,6 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/affiliate-network/, title: "שיווק שותפים" },
   { match: /^\/affiliate$/, title: "שיווק שותפים" },
 
-  { match: /^\/referral/, title: "הזמן חברים" },
   { match: /^\/settings\/branding/, title: "מיתוג הסוכנות" },
   { match: /^\/settings\/system-health/, title: "תקינות המערכת" },
   { match: /^\/leads/, title: "פניות נכנסות" },

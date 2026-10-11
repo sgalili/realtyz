@@ -35,18 +35,16 @@ export function AffiliateInviteCard() {
   return (
     <section dir="rtl" data-no-hero-wave className="space-y-8 px-2 py-6 sm:px-6 sm:py-10">
       <header className="space-y-3 text-center">
-        <p className="text-sm font-bold text-success">Realtyz · בונוס כפול</p>
-        <h1 className="text-3xl font-bold text-foreground">הזמן חברים</h1>
         <p className="mx-auto max-w-md text-base leading-relaxed text-muted-foreground">קונים, מוכרים, מתווכים ושותפים. עסקה מאושרת אחת, בונוס לשניכם.</p>
       </header>
       <div className="grid grid-cols-3 gap-2 sm:gap-6">
         {STEPS.map((step, i) => (
-          <div key={step.label} className="flex min-w-0 flex-col items-center gap-3 text-center">
+          <div key={step.label} className="flex min-w-0 flex-col items-center gap-2 text-center">
+            <span className={`text-4xl font-extrabold leading-none sm:text-5xl ${step.color}`}>{i + 1}</span>
             <span className={`flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20 ${step.color} ${step.surface}`}>
               <step.icon className="h-9 w-9 sm:h-11 sm:w-11" strokeWidth={1.7} aria-hidden="true" />
             </span>
             <span className="text-sm font-bold text-foreground sm:text-base">{step.label}</span>
-            <span className="text-xs text-muted-foreground">{i + 1}</span>
           </div>
         ))}
       </div>
