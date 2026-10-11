@@ -92,6 +92,7 @@ const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
 const OwnerProperties = lazy(() => import("./pages/owner/OwnerProperties"));
+const Developers = lazy(() => import("./pages/Developers"));
 const OwnerLeads = lazy(() => import("./pages/owner/OwnerLeads"));
 const OwnerRewards = lazy(() => import("./pages/owner/OwnerRewards"));
 const OwnerRita = lazy(() => import("./pages/owner/OwnerRita"));

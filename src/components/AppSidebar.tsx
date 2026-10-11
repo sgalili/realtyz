@@ -101,6 +101,13 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/property', '/listings'],
   },
   {
+    title: 'יזמים',
+    url: '/developers',
+    icon: Building2,
+    iconColor: '!text-[#334155]', // slate-700
+    badgeClass: 'bg-slate-50 text-slate-700 ring-slate-200',
+  },
+  {
     title: 'צ׳אטים',
     url: '/inbox',
     icon: MessageCircle,
