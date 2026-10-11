@@ -129,7 +129,7 @@ export default function CallSummaryDialog({
 
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">איש קשר</Label>
+            <Label className="text-sm font-semibold">ליד</Label>
             {lead ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">

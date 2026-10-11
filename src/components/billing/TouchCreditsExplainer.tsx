@@ -22,7 +22,7 @@ export function TouchCreditsExplainerBody() {
       <section className="space-y-2">
         <h3 className="text-base font-extrabold">מה זה מגע קרדיט (T.C)?</h3>
         <p className="text-muted-foreground">
-          מגע אחד = פעולה אחת שה-AI מבצע מול איש קשר: תשובה בוואטסאפ, הודעת SMS, אימייל,
+          מגע אחד = פעולה אחת שה-AI מבצע מול ליד: תשובה בוואטסאפ, הודעת SMS, אימייל,
           שיחה קולית, מענה ל-IVR או תגובה ברשתות. שיחת וואטסאפ שלמה נספרת כמגע אחד בחלון של
           24 שעות, גם אם הוחלפו בה עשר הודעות.
         </p>
@@ -33,14 +33,14 @@ export function TouchCreditsExplainerBody() {
         <p className="flex items-start gap-2">
           <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <span>
-            <b>{FREE_TC_PER_CONTACT} מגעים לכל איש קשר בחודש</b> — כלולים במלואם בכל חבילה,
+            <b>{FREE_TC_PER_CONTACT} מגעים לכל ליד בחודש</b> — כלולים במלואם בכל חבילה,
             בכל הערוצים, בלי הפרדה בין וואטסאפ, SMS, אימייל, שיחות קוליות ו-IVR.
           </span>
         </p>
         <p className="flex items-start gap-2">
           <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <span>
-            המכסה מחושבת לכל איש קשר בנפרד, ומתאפסת בתחילת כל חודש קלנדרי.
+            המכסה מחושבת לכל ליד בנפרד, ומתאפסת בתחילת כל חודש קלנדרי.
           </span>
         </p>
       </section>
@@ -56,7 +56,7 @@ export function TouchCreditsExplainerBody() {
             לקוח מתכתב איתכם 20 הודעות באותו יום — מגע אחד בלבד (חלון 24 שעות).
           </li>
           <li>
-            איש קשר שקיבל 15 מגעים והמערכת ממשיכה לטפל בו — כל מגע נוסף עולה{' '}
+            ליד שקיבל 15 מגעים והמערכת ממשיכה לטפל בו — כל מגע נוסף עולה{' '}
             <PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} />.
           </li>
         </ul>
@@ -65,7 +65,7 @@ export function TouchCreditsExplainerBody() {
       <section className="space-y-2">
         <h3 className="text-base font-extrabold">איך מחושבת חריגה?</h3>
         <p className="text-muted-foreground">
-          החריגה נמדדת לכל איש קשר בנפרד. אחרי {FREE_TC_PER_CONTACT} המגעים הכלולים באותו
+          החריגה נמדדת לכל ליד בנפרד. אחרי {FREE_TC_PER_CONTACT} המגעים הכלולים באותו
           חודש, כל מגע נוסף מחויב ב-<PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} />.
           הסכום נגרע מארנק הקרדיטים, שניתן לטעון בתוך המערכת בכל רגע.
         </p>

@@ -12,7 +12,7 @@ const PROPERTY_QUICK_LINK = { label: 'נכסים', path: '/properties', icon: Bu
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/command-center', icon: LayoutDashboard },
-  { label: 'אנשי קשר', path: '/lead-crm', icon: User },
+  { label: 'לידים', path: '/lead-crm', icon: User },
   PROPERTY_QUICK_LINK,
   { label: 'תיבת הודעות', path: '/inbox', icon: MessageSquare },
   { label: 'שידור לקהילה', path: '/broadcast', icon: Radio },
@@ -199,7 +199,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
       const tourResults: SearchResult[] = (toursRes.data ?? []).map((t: any) => ({
         id: `tour-${t.id}`,
         type: 'tour',
-        title: `סיור · ${t.client_name || 'איש קשר'}`,
+        title: `סיור · ${t.client_name || 'ליד'}`,
         subtitle:
           [t.property_title || t.property_address, t.scheduled_at ? new Date(t.scheduled_at).toLocaleString('he-IL') : null]
             .filter(Boolean)
@@ -254,7 +254,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
 
   const labelFor = (t: SearchResult['type']) => {
     switch (t) {
-      case 'lead': return 'איש קשר';
+      case 'lead': return 'ליד';
       case 'listing': return 'נכס';
       case 'message': return 'הודעה';
       case 'inquiry': return 'פנייה';
@@ -277,8 +277,8 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={listingsEnabled
-              ? 'חיפוש בכל המערכת — אנשי קשר, נכסים, פניות, פגישות, הודעות...'
-              : 'חיפוש בכל המערכת — אנשי קשר, פניות, פגישות, הודעות...'}
+              ? 'חיפוש בכל המערכת — לידים, נכסים, פניות, פגישות, הודעות...'
+              : 'חיפוש בכל המערכת — לידים, פניות, פגישות, הודעות...'}
             className="border-0 focus-visible:ring-0 h-12 text-base"
             autoFocus
            />
@@ -358,7 +358,7 @@ export function GlobalSearchTrigger({ className }: GlobalSearchTriggerProps) {
       >
         <Search className="h-4 w-4 text-muted-foreground" />
         <span className="flex-1 text-right">
-          {listingsEnabled ? 'חיפוש גלובלי — אנשי קשר, נכסים, שיחות' : 'חיפוש גלובלי — אנשי קשר, שיחות'}
+          {listingsEnabled ? 'חיפוש גלובלי — לידים, נכסים, שיחות' : 'חיפוש גלובלי — לידים, שיחות'}
         </span>
         <kbd className="hidden sm:inline-flex text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
       </button>

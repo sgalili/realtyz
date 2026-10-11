@@ -20,7 +20,7 @@ export function ContactAvatar({
   if (!imageUrl) return null;
   return (
     <Avatar className={className ?? 'h-9 w-9'}>
-      <AvatarImage src={imageUrl} alt={name ?? 'איש קשר'} />
+      <AvatarImage src={imageUrl} alt={name ?? 'ליד'} />
     </Avatar>
   );
 }

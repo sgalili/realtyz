@@ -124,8 +124,8 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
       } else {
         const list: HomelyContact[] = payload.contacts ?? [];
         setContacts(list);
-        if (!list.length) toast.info(payload.message ?? 'אין אנשי קשר פעילים בחשבון הומלי המחובר');
-        else toast.success(isSearch ? `נמצאו ${list.length} אנשי קשר מהומלי` : `נטענו ${list.length} אנשי קשר מהומלי`);
+        if (!list.length) toast.info(payload.message ?? 'אין לידים פעילים בחשבון הומלי המחובר');
+        else toast.success(isSearch ? `נמצאו ${list.length} לידים מהומלי` : `נטענו ${list.length} לידים מהומלי`);
       }
     } catch (e) {
       toast.error(`שגיאה בטעינה מהומלי: ${(e as Error).message}`);
@@ -272,14 +272,14 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
         className="max-w-3xl w-[calc(100vw-1rem)] max-h-[95vh] overflow-hidden p-4 sm:p-6 flex flex-col gap-3"
       >
         <DialogHeader className="text-right space-y-0">
-          <DialogTitle className="text-right">{mode === 'contacts' ? 'סנכרון אנשי קשר מהומלי' : 'סנכרון נכסים מהומלי'}</DialogTitle>
+          <DialogTitle className="text-right">{mode === 'contacts' ? 'סנכרון לידים מהומלי' : 'סנכרון נכסים מהומלי'}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'properties' | 'contacts')} className="flex flex-col min-h-0 flex-1">
           <div dir="rtl" className="flex flex-wrap items-center justify-between gap-2">
             {mode === 'contacts' ? (
               <TabsList className="h-auto flex-wrap">
-                <TabsTrigger value="contacts" className="text-xs sm:text-sm">אנשי קשר {contacts.length ? `(${filteredContacts.length})` : ''}</TabsTrigger>
+                <TabsTrigger value="contacts" className="text-xs sm:text-sm">לידים {contacts.length ? `(${filteredContacts.length})` : ''}</TabsTrigger>
               </TabsList>
             ) : <div />}
 
@@ -446,10 +446,10 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
               ) : filteredContacts.length === 0 ? (
                 <div className="text-center text-sm text-muted-foreground py-10 space-y-2">
-                  <div>{contacts.length === 0 ? 'לחצו על "רענון" כדי לטעון אנשי קשר מהומלי' : 'אין תוצאות שתואמות לסינון'}</div>
+                  <div>{contacts.length === 0 ? 'לחצו על "רענון" כדי לטעון לידים מהומלי' : 'אין תוצאות שתואמות לסינון'}</div>
                   {contacts.length === 0 && (
                     <Button variant="outline" size="sm" onClick={() => fetchAction('fetchAllContacts')} disabled={loading} className="gap-1.5 mx-auto">
-                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> טעינת אנשי קשר
+                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> טעינת לידים
                     </Button>
                   )}
                 </div>
@@ -511,7 +511,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
           ) : (
             <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
               <Users className="h-5 w-5 text-primary shrink-0" />
-              <div className="flex-1 text-sm">אנשי קשר שנקלטו במערכת</div>
+              <div className="flex-1 text-sm">לידים שנקלטו במערכת</div>
               <div className="text-lg font-bold tabular-nums">{summary?.contacts ?? 0}</div>
             </div>
           )}

@@ -32,15 +32,15 @@ const PAGE_COPY: Record<string, string> = {
   '/dashboard': 'בודקים את תמונת הפעילות העדכנית של המשרד.',
   '/campaigns': 'יוצרים תוכן, בוחרים יעדים ומתזמנים פרסומים.',
   '/posts': 'עוקבים אחרי הפוסטים והשיתופים שלכם.',
-  '/lead-crm': 'מחפשים אנשי קשר, מעדכנים פרטים ועוקבים אחרי הפעילות.',
+  '/lead-crm': 'מחפשים לידים, מעדכנים פרטים ועוקבים אחרי הפעילות.',
   '/properties': 'מנהלים את מלאי הנכסים, מייבאים מיד2 ומכינים מודעות לפרסום.',
   '/developers': 'מנהלים חברות יזמיות ואת פרטי הפרויקטים שלהן.',
   '/developer-dashboard': 'מנהלים פרויקטים, תמהיל יחידות, תמונות ומפרטים, או מייבאים מעמוד היזם ביד2.',
-  '/inbox': 'קוראים שיחות וממשיכים את התקשורת עם אנשי הקשר.',
+  '/inbox': 'קוראים שיחות וממשיכים את התקשורת עם הלידים.',
   '/deal-room': 'עוקבים אחרי התקדמות העסקאות ומעדכנים את השלבים.',
   '/affiliate-network': 'בוחרים נכסים לשיתוף, מעתיקים קישור אישי ועוקבים אחרי הפניות והתגמולים.',
   '/referral': 'משתפים הזמנה אישית ועוקבים אחרי ההזמנות שלכם.',
-  '/partner/contacts': 'עוקבים אחרי אנשי הקשר שהגיעו מהשיתופים שלכם.',
+  '/partner/contacts': 'עוקבים אחרי הלידים שהגיעו מהשיתופים שלכם.',
   '/partner/chats': 'ממשיכים שיחות הקשורות לפעילות שלכם.',
   '/owner/properties': 'מנהלים את הנכסים שלכם ומאשרים את זמינותם.',
   '/owner/leads': 'רואים את הפניות לנכסים שלכם וממשיכים את הקשר.',
@@ -50,7 +50,7 @@ const PAGE_COPY: Record<string, string> = {
 const ACTION_COPY: Record<string, { selector: string; title: string; body: string }> = {
   '/developer-dashboard': { selector: '[aria-label="הוספת פרויקט"]', title: 'מוסיפים פרויקט', body: 'הפלוס פותח בחירה בין ייבוא מעמוד היזם ביד2 לבין יצירה ידנית בשלבים.' },
   '/properties': { selector: '[data-page-hero] button[title*="נכס"], [data-page-hero] button[aria-label*="הוספ"]', title: 'מוסיפים נכס', body: 'פותחים את טופס הנכס, משלימים את הפרטים ובודקים אותם לפני אישור.' },
-  '/lead-crm': { selector: '[data-page-hero] button[aria-label*="הוספ"], [data-page-hero] button[title*="איש קשר"]', title: 'מוסיפים איש קשר', body: 'מוסיפים פרטים וממשיכים במעקב האישי.' },
+  '/lead-crm': { selector: '[data-page-hero] button[aria-label*="הוספ"], [data-page-hero] button[title*="ליד"]', title: 'מוסיפים ליד', body: 'מוסיפים פרטים וממשיכים במעקב האישי.' },
   '/public-listings': { selector: 'main input[placeholder="חיפוש חופשי"]', title: 'מוצאים את הנכס המתאים', body: 'מצמצמים את המודעות בעזרת חיפוש וסינון.' },
 };
 

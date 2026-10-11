@@ -77,7 +77,7 @@ export function LeadSignatureCard({
       </div>
       {docs.length === 0 ? (
         <p className="text-[11px] text-muted-foreground">
-          שלחו קישור חתימה לפני הסיור בנכס. המסמך החתום יישמר אוטומטית בכרטיס איש הקשר.
+          שלחו קישור חתימה לפני הסיור בנכס. המסמך החתום יישמר אוטומטית בכרטיס הליד.
         </p>
       ) : (
         <div className="divide-y rounded-md border bg-background">

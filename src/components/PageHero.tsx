@@ -130,7 +130,7 @@ function LeadsHeroAddButton() {
           variant="ghost"
           disabled={busy}
           className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white disabled:opacity-100"
-          aria-label="הוספת איש קשר"
+          aria-label="הוספת ליד"
         >
           {busy ? (
             <Loader2 className="!h-5 !w-5 animate-spin" strokeWidth={2.5} />
@@ -141,13 +141,13 @@ function LeadsHeroAddButton() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => dispatch("manual")} className="gap-2" disabled={busy}>
-          <User className="h-4 w-4" /> הוספת איש קשר
+          <User className="h-4 w-4" /> הוספת ליד
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch("import")} className="gap-2" disabled={busy}>
-          <FileSpreadsheet className="h-4 w-4" /> ייבוא אנשי קשר
+          <FileSpreadsheet className="h-4 w-4" /> ייבוא לידים
         </DropdownMenuItem>
         {connected && <DropdownMenuItem onClick={() => dispatch("homely")} className="gap-2" disabled={busy}>
-          <DownloadCloud className="h-4 w-4" /> משיכת אנשי קשר מ-Homely
+          <DownloadCloud className="h-4 w-4" /> משיכת לידים מ-Homely
         </DropdownMenuItem>}
         <DropdownMenuItem onClick={() => dispatch("avatars")} className="gap-2" disabled={busy}>
           <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> סנכרון תמונות פרופיל
@@ -258,7 +258,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/developer-dashboard/, title: "הפרויקטים שלנו" },
   { match: /^\/(command-center|tasks)/, title: "משימות" },
   { match: /^\/dashboard$/, title: "לוח בקרה" },
-  { match: /^\/lead-crm/, title: "אנשי קשר" },
+  { match: /^\/lead-crm/, title: "לידים" },
   { match: /^\/inbox/, title: "צ׳אטים" },
   { match: /^\/communication/, title: "צ׳אטים" },
   { match: /^\/deal-room/, title: "עסקאות" },
@@ -289,7 +289,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/team/, title: "ניהול צוות" },
   { match: /^\/partner\/posts/, title: "פוסטים" },
   { match: /^\/partner\/chats/, title: "צ׳אטים" },
-  { match: /^\/partner\/contacts/, title: "אנשי קשר" },
+  { match: /^\/partner\/contacts/, title: "לידים" },
   { match: /^\/affiliate-pricing/, title: "חבילות שותפים" },
   { match: /^\/affiliate-network/, title: "שיווק שותפים" },
   { match: /^\/affiliate$/, title: "שיווק שותפים" },

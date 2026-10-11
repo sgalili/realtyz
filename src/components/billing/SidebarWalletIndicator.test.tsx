@@ -16,7 +16,9 @@ describe('sidebar wallet and counters', () => {
   it('shows credits, hides zero counter and closes drawer on wallet navigation', () => {
     render(<SidebarWalletIndicator />);
     expect(screen.getByText('5,000 קרדיטים')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'הסבר על אנשי קשר חדשים' })).not.toBeInTheDocument();
+    expect(screen.getByText('לידים')).toBeInTheDocument();
+    expect(screen.queryByText('חדשים')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'הסבר על לידים חדשים' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'ארנק ותשלומים' }));
     expect(mocks.mobile).toHaveBeenCalledWith(false);
     expect(mocks.desktop).toHaveBeenCalledWith(false);
@@ -25,10 +27,11 @@ describe('sidebar wallet and counters', () => {
   it('opens explanation from a positive counter without navigating', () => {
     mocks.count = 3;
     render(<SidebarWalletIndicator />);
-    fireEvent.click(screen.getByRole('button', { name: 'הסבר על אנשי קשר חדשים' }));
-    expect(screen.getByRole('heading', { name: 'אנשי קשר חדשים' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'הסבר על לידים חדשים' }));
+    expect(screen.getByRole('heading', { name: 'לידים חדשים' })).toBeInTheDocument();
+    expect(screen.getByText('המספר מציג לידים חדשים במרחב העבודה הנוכחי שעדיין לא טופלו. כאשר אין לידים כאלה, המונה מוסתר.')).toBeInTheDocument();
     expect(mocks.navigate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'לצפייה באנשי הקשר' }));
+    fireEvent.click(screen.getByRole('button', { name: 'לצפייה בלידים' }));
     expect(mocks.navigate).toHaveBeenCalledWith('/lead-crm?filter=untreated');
     expect(mocks.mobile).toHaveBeenCalledWith(false);
   });

@@ -64,7 +64,7 @@ export default function OAuthConsent() {
           <>
             <h1 className="text-xl font-semibold">חיבור {name} לחשבון שלך</h1>
             <p className="text-muted-foreground">
-              {name} יוכל לקרוא את אנשי הקשר והנכסים בסביבת העבודה שלך ב-Realtyz AI+, בשמך.
+              {name} יוכל לקרוא את הלידים והנכסים בסביבת העבודה שלך ב-Realtyz AI+, בשמך.
             </p>
             <div className="flex gap-3 justify-center">
               <Button disabled={busy} onClick={() => decide(true)}>אישור</Button>

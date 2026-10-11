@@ -49,7 +49,7 @@ const TEMPLATES = [
   {
     key: 'welcome',
     name: 'ברכת לקוח חדש',
-    description: 'ברכו איש קשר טרי בהיכרות חמה.',
+    description: 'ברכו ליד טרי בהיכרות חמה.',
     trigger_type: 'lead_added',
     action_type: 'composite',
     action_config: {
@@ -64,7 +64,7 @@ const TEMPLATES = [
   {
     key: 'followup_48h',
     name: 'מעקב לאחר 48 שעות',
-    description: 'חיברו מחדש אנשי קשר ששתקו יומיים.',
+    description: 'חיברו מחדש לידים ששתקו יומיים.',
     trigger_type: 'followup_after_hours',
     action_type: 'send_whatsapp',
     action_config: {
@@ -235,7 +235,7 @@ export function AutomationStudio() {
                   <Input
                     value={draft.name}
                     onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                    placeholder="לדוגמה: ברכת אנשי קשר חדשים"
+                    placeholder="לדוגמה: ברכת לידים חדשים"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">

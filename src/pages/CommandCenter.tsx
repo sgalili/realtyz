@@ -120,7 +120,7 @@ function dueLabel(dueAt: string | null) {
 const ADD_LABEL: Record<SectionTab, string> = {
   tours: 'סיור חדש',
   tasks: 'משימה חדשה',
-  leads: 'איש קשר חדש',
+  leads: 'ליד חדש',
   demos: 'הדגמה חדשה',
   notes: 'הערה חדשה',
   calls: 'סיכום שיחה',
@@ -284,7 +284,7 @@ export default function CommandCenter() {
                   if (task.leadId) navigate(`/lead-crm/${task.leadId}`);
                 }}
                 disabled={!task.leadId}
-                aria-label={`פתיחת כרטיס איש קשר של ${task.leadName ?? 'איש קשר'}`}
+                aria-label={`פתיחת כרטיס ליד של ${task.leadName ?? 'ליד'}`}
               >
                 <ContactAvatar name={task.leadName} imageUrl={task.leadAvatar} className="h-10 w-10 shrink-0" />
               </button>

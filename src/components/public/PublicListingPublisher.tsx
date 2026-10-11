@@ -762,9 +762,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       {label}
                       <LeadTypeHelp label={label}>
                         <p>
-                          {key === 'Form' && 'איש הקשר ממלא את טופס המודעה ועונה על 3 שאלות הסינון שהגדרת; התשובות נשמרות יחד עם פרטי הפנייה.'}
-                          {key === 'Whatsapp' && 'איש הקשר פותח שיחת ווטסאפ וריטה שואלת את 3 שאלות הסינון שהגדרת; התמליל המלא של השיחה נשמר לצפייה.'}
-                          {key === 'Phone' && 'איש הקשר מתקשר למספר שבמודעה; השיחה מוקלטת ומתומללת, וכוללת את 3 שאלות הסינון שהגדרת.'}
+                          {key === 'Form' && 'הפונה ממלא את טופס המודעה ועונה על 3 שאלות הסינון שהגדרת; התשובות נשמרות יחד עם פרטי הפנייה.'}
+                          {key === 'Whatsapp' && 'הפונה פותח שיחת ווטסאפ וריטה שואלת את 3 שאלות הסינון שהגדרת; התמליל המלא של השיחה נשמר לצפייה.'}
+                          {key === 'Phone' && 'הפונה מתקשר למספר שבמודעה; השיחה מוקלטת ומתומללת, וכוללת את 3 שאלות הסינון שהגדרת.'}
                         </p>
                         {LEAD_TYPE_VALIDITY}
                       </LeadTypeHelp>
@@ -796,7 +796,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               {fields.publisherType === 'broker' && Boolean(publisherProfile?.broker_license_number || isSuperAdmin) && (
                 <div className="space-y-1.5 rounded-lg border p-2.5 text-sm">
                   <span className="flex items-center gap-1 font-medium">סגירת עסקה (למתווכים מורשים)
-                    <LeadTypeHelp label="סגירת עסקה"><p>עמלה לשותף שהביא איש קשר שסגר עסקה בפועל על הנכס. ניתן להגדיר אחוז מהעסקה או סכום קבוע.</p></LeadTypeHelp>
+                    <LeadTypeHelp label="סגירת עסקה"><p>עמלה לשותף שהביא ליד שסגר עסקה בפועל על הנכס. ניתן להגדיר אחוז מהעסקה או סכום קבוע.</p></LeadTypeHelp>
                   </span>
                   <div className="flex items-center gap-2">
                     <div className="flex shrink-0 overflow-hidden rounded-md border">
@@ -827,11 +827,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
                     <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
                     <div className="space-y-3 text-sm leading-relaxed">
-                      <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשאיש קשר חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
+                      <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשליד חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
                       <ul className="list-disc space-y-1 ps-5">
-                        <li><b>פנייה בטופס:</b> איש הקשר השאיר פרטים בטופס המודעה.</li>
-                        <li><b>שיחה עם ריטה בווטסאפ:</b> איש הקשר פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
-                        <li><b>שיחת טלפון:</b> איש הקשר התקשר ישירות למספר שבמודעה.</li>
+                        <li><b>פנייה בטופס:</b> הפונה השאיר פרטים בטופס המודעה.</li>
+                        <li><b>שיחה עם ריטה בווטסאפ:</b> הפונה פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
+                        <li><b>שיחת טלפון:</b> הפונה התקשר ישירות למספר שבמודעה.</li>
                       </ul>
                       <p><b>מגבלה יומית:</b> מספר הפניות המרבי שתחויב עליהן ביום מכל סוג. לאחר שהגעת למגבלה, המודעה ממשיכה להופיע אך לא תחויב על פניות נוספות מאותו סוג עד היום הבא.</p>
                       <p>כל פנייה נבדקת באמצעות 3 שאלות סינון קצרות שהמפרסם קובע מראש, וכוללת תמליל מלא של השיחה (ובשיחות טלפון גם הקלטה). פנייה נחשבת תקפה וחייבת לחיוב רק אם התשובות חיוביות ומשביעות רצון.</p>

@@ -231,12 +231,12 @@ export default function NotificationCenter() {
         // same burst can never produce a second toast later.
         alsoSeen: g.ids,
         msg: g.count > 1
-          ? `${g.count} הודעות חדשות מ${g.row.leads?.full_name || 'איש קשר'}`
-          : `הודעה חדשה מ${g.row.leads?.full_name || 'איש קשר'}`,
+          ? `${g.count} הודעות חדשות מ${g.row.leads?.full_name || 'ליד'}`
+          : `הודעה חדשה מ${g.row.leads?.full_name || 'ליד'}`,
       })),
       ...ritaSmsReplies.map((n: any) => ({ id: `rita-${n.id}`, at: n.created_at, msg: n.title || 'ריטה השיבה ב-SMS' })),
       ...tours.map((t: any) => ({ id: t.id, at: t.created_at, msg: `סיור חדש נקבע: ${t.client_name || 'לקוח'}` })),
-      ...newLeads.map((l: any) => ({ id: `lead-${l.id}`, at: l.created_at, msg: `ליד חדש נכנס: ${l.full_name || 'איש קשר חדש'}` })),
+      ...newLeads.map((l: any) => ({ id: `lead-${l.id}`, at: l.created_at, msg: `ליד חדש נכנס: ${l.full_name || 'ליד חדש'}` })),
     ];
     // First pass after mount: remember everything without notifying.
     const baseline = !baselinedRef.current;
@@ -444,7 +444,7 @@ export default function NotificationCenter() {
                   <UserPlus className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">
-                      ליד חדש: {l.full_name || 'איש קשר חדש'}
+                      ליד חדש: {l.full_name || 'ליד חדש'}
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                       {l.interest_tag || 'פנייה חדשה'}
@@ -497,7 +497,7 @@ export default function NotificationCenter() {
                   <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-medium">{m.leads?.full_name || 'איש קשר'}</span>
+                      <span className="truncate text-sm font-medium">{m.leads?.full_name || 'ליד'}</span>
                       {count > 1 && (
                         <span className="shrink-0 rounded-full bg-emerald-600/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
                           {count}
@@ -547,7 +547,7 @@ export default function NotificationCenter() {
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-medium">{voterMap[a.lead_id ?? ''] || 'איש קשר'}</span>
+                      <span className="truncate text-sm font-medium">{voterMap[a.lead_id ?? ''] || 'ליד'}</span>
                       {keyword && (
                         <span className="shrink-0 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
                           {keyword}

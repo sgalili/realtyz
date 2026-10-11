@@ -250,7 +250,7 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
   const submit = async () => {
     if (!ownerId) return;
     if (!selectedLead) {
-      toast.error('יש לבחור איש קשר מהמאגר או להוסיף חדש');
+      toast.error('יש לבחור ליד מהמאגר או להוסיף חדש');
       return;
     }
     if (!date || !time) {
@@ -329,7 +329,7 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>איש קשר</Label>
+              <Label>ליד</Label>
               {selectedLead ? (
                 <div className="flex items-center gap-2 rounded-md border p-2">
                   <ContactAvatar
@@ -343,7 +343,7 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
                       {formatPhoneDisplay(selectedLead.phone_number)}
                     </span>
                   </span>
-                  <Button variant="ghost" size="icon" onClick={() => setSelectedLead(null)} title="בחירת איש קשר אחר">
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedLead(null)} title="בחירת ליד אחר">
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -362,7 +362,7 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
                       variant="ghost"
                       size="icon"
                       className="absolute left-1 top-1/2 h-7 w-7 -translate-y-1/2"
-                      title="הוספת איש קשר חדש"
+                      title="הוספת ליד חדש"
                       onClick={() => setNewContactOpen(true)}
                     >
                       <Plus className="h-4 w-4" />

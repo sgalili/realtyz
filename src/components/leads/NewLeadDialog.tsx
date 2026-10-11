@@ -168,7 +168,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
 
   async function handleSave(opts: { force?: boolean } = {}) {
     if (!leadKind) {
-      toast.error('יש לבחור סוג איש קשר');
+      toast.error('יש לבחור סוג ליד');
       return;
     }
     if (!fullName.trim()) {
@@ -272,7 +272,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           // No such contact in this workspace — try the insert once more before failing.
           const retry = await supabase.from('leads').insert(payload).select('id').maybeSingle();
           if (retry.error) {
-            toast.error('לא ניתן לשמור את איש הקשר', {
+            toast.error('לא ניתן לשמור את הליד', {
               description: retry.error.message || 'נסו שוב בעוד רגע.',
             });
             return;
@@ -321,7 +321,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           .catch(() => {});
       }
 
-      toast.success(merged ? 'איש הקשר עודכן' : 'איש הקשר נוצר בהצלחה', {
+      toast.success(merged ? 'הליד עודכן' : 'הליד נוצר בהצלחה', {
         description: merged
           ? `${fullName.trim()} · כבר היה במאגר עם אותו טלפון, הפרטים עודכנו`
           : `${fullName.trim()} · ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}`,
@@ -359,7 +359,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
-            איש קשר חדש
+            ליד חדש
           </DialogTitle>
   
         </DialogHeader>
@@ -598,7 +598,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             ביטול
           </Button>
           <Button onClick={() => handleSave()} disabled={saving || pendingOutOfArea || !leadKind}>
-            {saving ? 'יוצר…' : leadKind ? `הוסף ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}` : 'הוסף איש קשר'}
+            {saving ? 'יוצר…' : leadKind ? `הוסף ${KIND_OPTIONS.find((k) => k.v === leadKind)?.l}` : 'הוסף ליד'}
           </Button>
         </DialogFooter>
       </DialogContent>

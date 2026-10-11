@@ -98,9 +98,9 @@ interface Message {
 
 // Hebrew translations for common SQL/aggregate column names returned by ai-agent
 const COLUMN_HE: Record<string, string> = {
-  total_leads: 'סך אנשי קשר',
-  new_leads_count: 'אנשי קשר חדשים',
-  active_leads: 'אנשי קשר פעילים',
+  total_leads: 'סך לידים',
+  new_leads_count: 'לידים חדשים',
+  active_leads: 'לידים פעילים',
   active_listings: 'נכסים פעילים',
   total_listings: 'סך נכסים',
   published_listings: 'נכסים שפורסמו',
@@ -392,7 +392,7 @@ ${shareUrl}
   const sendPropertyOffer = useCallback(async (r: WebtivResult, recipientPhone: string | null) => {
     const phone = (recipientPhone || '').replace(/\D/g, '');
     if (!phone) {
-      toast.error('חסר מספר טלפון של איש הקשר');
+      toast.error('חסר מספר טלפון של הליד');
       return;
     }
     const normalized = phone.startsWith('972') ? phone
@@ -831,7 +831,7 @@ ${shareUrl}
                                     size="sm"
                                     variant="outline"
                                     className="w-full h-7 mt-1 gap-1 text-[14px]"
-                                    title="שתף נכס עם איש קשר"
+                                    title="שתף נכס עם ליד"
                                   >
                                     <Share2 className="h-3.5 w-3.5" />
                                     שתף

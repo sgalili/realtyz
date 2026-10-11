@@ -826,7 +826,7 @@ export default function AffiliatePortal() {
   }, [referralCampaigns, search]);
 
   const searchPlaceholder = activeTab === 'leads'
-    ? 'חיפוש אנשי קשר שהגשתי'
+    ? 'חיפוש לידים שהגשתי'
     : activeTab === 'mine'
       ? 'חיפוש נכסים בשיווק'
       : 'חיפוש נכסים לשיווק';

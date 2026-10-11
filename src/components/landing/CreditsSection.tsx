@@ -25,7 +25,7 @@ export default function CreditsSection() {
           מגעי קרדיט ותעריפי הפצה
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
-          {FREE_TC_PER_CONTACT} מגעי AI חינם לכל איש קשר בחודש — כלולים בכל חבילה. מעבר לזה, התעריפים
+          {FREE_TC_PER_CONTACT} מגעי AI חינם לכל ליד בחודש — כלולים בכל חבילה. מעבר לזה, התעריפים
           הזולים בישראל.
         </p>
 
@@ -34,7 +34,7 @@ export default function CreditsSection() {
             <p className="flex items-start gap-2 text-sm">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <span>
-                מגע נוסף: <PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> לאיש קשר
+                מגע נוסף: <PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> לליד
                 (ולא לפי נפח מצטבר). טעינת ארנק בתוך המערכת בכל רגע.{' '}
                 <TouchCreditsExplainerLink />
               </span>

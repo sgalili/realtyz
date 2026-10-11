@@ -15,7 +15,7 @@ describe('global walkthrough', () => {
     expect(steps.some((step) => step.selector === '[aria-label="הוספת פרויקט"]')).toBe(true);
   });
   it('does not introduce broker/closing screens into a partner tour', () => {
-    const steps = buildWalkthrough([{ path: '/affiliate-network', title: 'שיווק שותפים' }, { path: '/partner/contacts', title: 'אנשי קשר' }]);
+    const steps = buildWalkthrough([{ path: '/affiliate-network', title: 'שיווק שותפים' }, { path: '/partner/contacts', title: 'לידים' }]);
     expect(steps.some((step) => step.path === '/deal-room' || step.path === '/lead-crm')).toBe(false);
     for (const phrase of ['80%', '20%', 'עמלת סגירה', 'מה השותף רואה']) expect(JSON.stringify(steps)).not.toContain(phrase);
   });

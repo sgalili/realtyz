@@ -131,12 +131,12 @@ export function FirstTimeSyncDialog() {
         {step === 0 && <>
           <DialogHeader className="text-right">
             <DialogTitle>השותף החכם שלכם לנדל״ן</DialogTitle>
-            <DialogDescription>Realtyz מחברת אתכם לנכסים, אנשי קשר ותגמולים — וריטה ממשיכה את העבודה עבורכם.</DialogDescription>
+            <DialogDescription>Realtyz מחברת אתכם לנכסים, לידים ותגמולים — וריטה ממשיכה את העבודה עבורכם.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-3">
             {[
               [Megaphone, 'שיווק אוטומטי', 'פרסום נכסים בערוצים המחוברים.'],
-              [Users, 'יצירת אנשי קשר', 'קליטת פניות ומעקב במקום אחד.'],
+              [Users, 'יצירת לידים', 'קליטת פניות ומעקב במקום אחד.'],
               [Sparkles, 'ריטה מחממת', 'מענה, סינון והתאמת נכסים בזמן אמת.'],
             ].map(([Icon, title, text]) => <div key={String(title)} className="rounded-xl border bg-card p-4 text-center"><Icon className="mx-auto mb-2 h-6 w-6 text-primary" /><div className="font-semibold">{String(title)}</div><p className="mt-1 text-xs text-muted-foreground">{String(text)}</p></div>)}
           </div>
@@ -164,8 +164,8 @@ export function FirstTimeSyncDialog() {
           <div className="space-y-2">
             {([
               ['autoPost', 'פרסום אוטומטי', 'פרסום תוכן שאושר בערוצים המחוברים'],
-              ['leadGeneration', 'יצירת אנשי קשר', 'קליטת פניות מפוסטים וקמפיינים'],
-              ['leadWarming', 'חימום אנשי קשר', 'ריטה ממשיכה שיחה ומקדמת להתאמה'],
+              ['leadGeneration', 'יצירת לידים', 'קליטת פניות מפוסטים וקמפיינים'],
+              ['leadWarming', 'חימום לידים', 'ריטה ממשיכה שיחה ומקדמת להתאמה'],
               ['propertyFilter', 'סינון נכסים', 'הכנסת נכסים מתאימים למשפך בלבד'],
             ] as const).map(([key, title, description]) => <div key={key} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{description}</p></div><Switch checked={settings[key]} onCheckedChange={(checked) => setSettings((current) => ({ ...current, [key]: checked }))} /></div>)}
           </div>

@@ -296,7 +296,7 @@ export default function PerformanceInsights() {
             תובנות ביצועים
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            מדדי KPI חיים לאנשי קשר, המרות, יעילות AI וקצב הצוות.
+            מדדי KPI חיים ללידים, המרות, יעילות AI וקצב הצוות.
           </p>
         </div>
         <Tabs value={range} onValueChange={(v) => setRange(v as RangeKey)}>
@@ -311,7 +311,7 @@ export default function PerformanceInsights() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiTile
           icon={Users}
-          label="אנשי קשר בקשר"
+          label="לידים בקשר"
           value={isLoading ? null : String(stats.totalEngaged)}
           hint={range === 'week' ? '7 הימים האחרונים' : '30 הימים האחרונים'}
           tone="text-primary"

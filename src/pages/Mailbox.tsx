@@ -155,7 +155,7 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
                 <span className="text-[11px] text-muted-foreground tabular-nums">{fmt(r.created_at)}</span>
                 {kind === 'in' ? (
                   <Badge variant={r.status === 'matched' ? 'default' : 'secondary'} className="text-[10px]">
-                    {r.status === 'matched' ? 'איש קשר' : 'לא מזוהה'}
+                    {r.status === 'matched' ? 'ליד' : 'לא מזוהה'}
                   </Badge>
                 ) : (
                   <Badge variant={r.status === 'sent' ? 'default' : 'destructive'} className="text-[10px]">

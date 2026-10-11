@@ -169,7 +169,7 @@ export default function BillingTab() {
               <CardTitle className="text-lg">החבילה שלך: {currentPackage.name}</CardTitle>
               <CardDescription>
                 {currentPackage.monthlyPrice === 0 ? 'מסלול חינם' : `${fmtILS(currentPackage.monthlyPrice)} לחודש`} ·{' '}
-                {limitLabel(currentPackage.contacts)} אנשי קשר
+                {limitLabel(currentPackage.contacts)} לידים
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -232,14 +232,14 @@ export default function BillingTab() {
           <p className="flex items-start gap-2">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>
-              עד <b>{FREE_TC_PER_CONTACT} פעולות מצד המערכת לכל איש קשר בחודש</b> כלולים במלואם בחבילה.
+              עד <b>{FREE_TC_PER_CONTACT} פעולות מצד המערכת לכל ליד בחודש</b> כלולים במלואם בחבילה.
             </span>
           </p>
           <p className="flex items-start gap-2">
             <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>
-              פעולה נוספת מעל המכסה: <b><PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> לאיש קשר</b>.&nbsp;
-              החיוב הוא לכל איש קשר בודד ולא לפי נפח מצטבר.
+              פעולה נוספת מעל המכסה: <b><PriceTag value={EXTRA_TC_PRICE_PER_CONTACT} fractionDigits={2} /> לליד</b>.&nbsp;
+              החיוב הוא לכל ליד בודד ולא לפי נפח מצטבר.
             </span>
           </p>
           <p className="flex items-start gap-2">
@@ -334,7 +334,7 @@ export default function BillingTab() {
                 </span>
               )}
               <span className="text-xs text-muted-foreground">
-                {limitLabel(pkg.contacts)} אנשי קשר
+                {limitLabel(pkg.contacts)} לידים
               </span>
               <Button
                 size="sm"

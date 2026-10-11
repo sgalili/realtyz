@@ -304,11 +304,11 @@ export default function AiDialer() {
                     </div>
                     <div className="text-[12.5px] text-[#0f1b3d] text-right font-medium">
                       {editingPill ? (
-                        <input autoFocus value={pillLabel || `רשימה נטענה · ${targets.length} אנשי קשר`}
+                        <input autoFocus value={pillLabel || `רשימה נטענה · ${targets.length} לידים`}
                           onChange={(e) => setPillLabel(e.target.value)} onBlur={() => setEditingPill(false)}
                           className="bg-transparent border-b border-[#0f1b3d]/30 text-right outline-none" />
                       ) : (
-                        pillLabel || `רשימה נטענה · ${targets.length} אנשי קשר`
+                        pillLabel || `רשימה נטענה · ${targets.length} לידים`
                       )}
                     </div>
                   </div>

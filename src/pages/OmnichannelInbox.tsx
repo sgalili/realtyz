@@ -604,7 +604,7 @@ const OmnichannelInbox = () => {
       .limit(1);
     const found = (data ?? [])[0]?.id;
     if (found) navigate(`/lead-crm/${found}`);
-    else toast.error('אין כרטיס איש קשר לשיחה הזו');
+    else toast.error('אין כרטיס ליד לשיחה הזו');
   };
 
   const openCrmContact = (leadId: string) => {
@@ -1299,8 +1299,8 @@ const OmnichannelInbox = () => {
                       type="button"
                       onClick={(event) => { event.stopPropagation(); openCrmContact(voter.id); }}
                       className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      title="פתיחת כרטיס איש קשר"
-                      aria-label="פתיחת כרטיס איש קשר"
+                      title="פתיחת כרטיס ליד"
+                      aria-label="פתיחת כרטיס ליד"
                     >
                       <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
                     </button>
@@ -1431,7 +1431,7 @@ const OmnichannelInbox = () => {
                         textClassName="text-[10px]"
                       />
                     ) : (
-                      <button type="button" onClick={openCrmCard} className="shrink-0 rounded-full" aria-label="פתיחת כרטיס איש קשר">
+                      <button type="button" onClick={openCrmCard} className="shrink-0 rounded-full" aria-label="פתיחת כרטיס ליד">
                         <VoterAvatar
                           fullName={selectedVoter?.full_name}
                           profilePictureUrl={(selectedVoter as any)?.profile_picture_url}
@@ -1634,7 +1634,7 @@ const OmnichannelInbox = () => {
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>מחיקת {selectedChats.size} שיחות</AlertDialogTitle>
-            <AlertDialogDescription>השיחות ואנשי הקשר שלהן יימחקו לצמיתות. לא ניתן לבטל פעולה זו.</AlertDialogDescription>
+            <AlertDialogDescription>השיחות והלידים שלהן יימחקו לצמיתות. לא ניתן לבטל פעולה זו.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction

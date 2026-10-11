@@ -184,7 +184,7 @@ export default function QuickActionDrawer() {
   };
 
   const saveInteraction = async () => {
-    if (!lead) { toast.error('בחר איש קשר'); return; }
+    if (!lead) { toast.error('בחר ליד'); return; }
     if (!interactionText.trim()) { toast.error('כתוב סיכום שיחה'); return; }
     setSaving(true);
     try {
@@ -203,7 +203,7 @@ export default function QuickActionDrawer() {
 
   const leadPicker = (
     <div className="space-y-2">
-      <Label className="text-sm font-semibold">איש קשר</Label>
+      <Label className="text-sm font-semibold">ליד</Label>
       {lead ? (
         <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
           <div className="min-w-0">

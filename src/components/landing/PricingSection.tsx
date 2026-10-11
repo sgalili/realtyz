@@ -28,7 +28,7 @@ export default function PricingSection() {
           חבילות ומחירים
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
-          כל החבילות כוללות את כל היכולות ללא הגבלה. ההבדל היחיד הוא היקף אנשי הקשר.
+          כל החבילות כוללות את כל היכולות ללא הגבלה. ההבדל היחיד הוא היקף הלידים.
         </p>
 
         <div className="mt-10 rounded-3xl border border-primary/40 bg-card/70 p-6 text-right shadow-xl shadow-primary/10 sm:p-8">
@@ -47,7 +47,7 @@ export default function PricingSection() {
                 )}
               >
                 <span className="block text-sm font-extrabold">{p.name}</span>
-                <span className="mt-0.5 block text-[11px]">{limitLabel(p.contacts)} אנשי קשר</span>
+                <span className="mt-0.5 block text-[11px]">{limitLabel(p.contacts)} לידים</span>
               </button>
             ))}
           </div>
@@ -92,12 +92,12 @@ export default function PricingSection() {
           <ul className="mt-6 space-y-2 text-[14px] leading-relaxed">
             <li className="flex items-start gap-2">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <span>עד {limitLabel(pkg.contacts)} אנשי קשר מנוהלים</span>
+              <span>עד {limitLabel(pkg.contacts)} לידים מנוהלים</span>
             </li>
             <li className="flex items-start gap-2">
               <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <span>
-                {limitLabel(monthlyTouches(pkg))} מגעי AI בחודש ({TOUCHES_PER_CONTACT} לכל איש קשר)
+                {limitLabel(monthlyTouches(pkg))} מגעי AI בחודש ({TOUCHES_PER_CONTACT} לכל ליד)
               </span>
             </li>
             {UNIVERSAL_FEATURES.map((f) => (

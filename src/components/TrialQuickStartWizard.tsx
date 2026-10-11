@@ -227,7 +227,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
       }
       const phone = normalizeIsraeliPhone(phoneRaw);
       if (!phone) continue;
-      out.push({ name: name || 'איש קשר/ת', phone });
+      out.push({ name: name || 'ליד', phone });
     }
     return out.slice(0, TRIAL_RECORD_CAP);
   };
@@ -262,7 +262,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
         }
         return;
       }
-      toast.success(`${slice.length} אנשי קשר נוספו לרשימה`);
+      toast.success(`${slice.length} לידים נוספו לרשימה`);
       setVoterCount((c) => c + slice.length);
       setRecipientsText('');
     } catch (e: any) {
@@ -513,7 +513,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                   disabled={launching || isTrialExpired || !welcomeMsg.trim()}
                   className="bg-primary"
                 >
-                  {launching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `שגר ל-${voterCount} אנשי קשר`}
+                  {launching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `שגר ל-${voterCount} לידים`}
                 </Button>
               </div>
               {launchedCount !== null && (
@@ -527,7 +527,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                     className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-gradient-to-l from-amber-500/10 to-amber-500/5 px-4 py-2.5 text-sm font-semibold text-amber-600 hover:from-amber-500/15 hover:to-amber-500/10 transition-colors"
                   >
                     <Sparkles className="h-4 w-4" />
-                    שדרג ל-VIP Setup ופתח את המערכת לאלפי אנשי קשר
+                    שדרג ל-VIP Setup ופתח את המערכת לאלפי לידים
                   </a>
                 </div>
               )}

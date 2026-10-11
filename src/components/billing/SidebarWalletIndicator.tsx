@@ -71,12 +71,12 @@ export function SidebarWalletIndicator() {
         variant="outline"
         onClick={() => go('/lead-crm?filter=untreated')}
         className={cn('flex w-full items-center justify-center gap-1 rounded-lg border border-border bg-card py-2 ps-1 text-sm font-semibold transition-colors hover:border-primary', untreated > 0 ? 'pe-12' : 'pe-6')}
-        aria-label={`אנשי קשר שטרם טופלו: ${untreated}`}
-        title="אנשי קשר שטרם טופלו"
+        aria-label={`לידים שטרם טופלו: ${untreated}`}
+        title="לידים שטרם טופלו"
       >
         <Users className="h-4 w-4 shrink-0 text-[hsl(var(--nav-new-contacts))]" />
-        <span>חדשים</span>
-      </Button>{untreated > 0 && <Button variant="ghost" size="icon" aria-label="הסבר על אנשי קשר חדשים" className="absolute end-6 top-1/2 h-5 min-w-5 -translate-y-1/2 rounded-full bg-destructive px-1 text-xs font-bold text-destructive-foreground hover:bg-destructive/90 hover:text-destructive-foreground" onClick={() => setExplanation(true)}>{untreated > 99 ? '99+' : untreated}</Button>}<Button variant="ghost" size="icon" aria-label="מה מייצג מונה אנשי הקשר?" title="הסבר על המונה" className="absolute end-0 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground" onClick={() => setExplanation(true)}><CircleHelp className="h-3.5 w-3.5" /></Button></div>}
-    </div><Dialog open={explanation} onOpenChange={setExplanation}><DialogContent dir="rtl"><DialogHeader><DialogTitle>אנשי קשר חדשים</DialogTitle><DialogDescription>המספר מציג אנשי קשר במרחב העבודה הנוכחי שעדיין לא טופלו. כאשר אין אנשי קשר כאלה, המונה מוסתר.</DialogDescription></DialogHeader><Button onClick={() => { setExplanation(false); go('/lead-crm?filter=untreated'); }}>לצפייה באנשי הקשר</Button></DialogContent></Dialog></>
+        <span>לידים</span>
+      </Button>{untreated > 0 && <Button variant="ghost" size="icon" aria-label="הסבר על לידים חדשים" className="absolute end-6 top-1/2 h-5 min-w-5 -translate-y-1/2 rounded-full bg-destructive px-1 text-xs font-bold text-destructive-foreground hover:bg-destructive/90 hover:text-destructive-foreground" onClick={() => setExplanation(true)}>{untreated > 99 ? '99+' : untreated}</Button>}<Button variant="ghost" size="icon" aria-label="מה מייצג מונה הלידים?" title="הסבר על המונה" className="absolute end-0 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground" onClick={() => setExplanation(true)}><CircleHelp className="h-3.5 w-3.5" /></Button></div>}
+    </div><Dialog open={explanation} onOpenChange={setExplanation}><DialogContent dir="rtl"><DialogHeader><DialogTitle>לידים חדשים</DialogTitle><DialogDescription>המספר מציג לידים חדשים במרחב העבודה הנוכחי שעדיין לא טופלו. כאשר אין לידים כאלה, המונה מוסתר.</DialogDescription></DialogHeader><Button onClick={() => { setExplanation(false); go('/lead-crm?filter=untreated'); }}>לצפייה בלידים</Button></DialogContent></Dialog></>
   );
 }

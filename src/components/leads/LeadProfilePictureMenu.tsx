@@ -138,7 +138,7 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
         ? extractReason(error, await readFunctionError(error))
         : d.supported === false
           ? d.reason || 'שירות תמונות הפרופיל אינו זמין כרגע'
-          : 'לאיש הקשר אין תמונת פרופיל ציבורית בוואטסאפ';
+          : 'להליד אין תמונת פרופיל ציבורית בוואטסאפ';
       toast.dismiss(toastId);
       toast.error('שליפה מוואטסאפ לא הצליחה', { description: reason, duration: 8000 });
     } catch (e: any) {

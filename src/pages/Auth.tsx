@@ -30,8 +30,8 @@ const acceptVerifiedSession = async (data: PhoneAuthResult | null) => {
 const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
   { key: 'h1', render: () => <>כלי העבודה היחיד שכל מתווך חייב בעידן ה<strong>AI</strong></> },
   { key: 'h2', render: () => <>בלי ספקים חיצוניים: <strong>ווטסאפ, SMS ואימייל</strong> במקום אחד</> },
-  { key: 'h3', render: () => <>ניהול אנשי קשר, נכסים ושיחות <strong>בלי בלאגן ובלי גיליונות</strong></> },
-  { key: 'h4', render: () => <>ריטה <strong>מדברת, מדרגת ומזכירה</strong> מתי לחזור לאיש הקשר</> },
+  { key: 'h3', render: () => <>ניהול לידים, נכסים ושיחות <strong>בלי בלאגן ובלי גיליונות</strong></> },
+  { key: 'h4', render: () => <>ריטה <strong>מדברת, מדרגת ומזכירה</strong> מתי לחזור להליד</> },
   { key: 'h5', render: () => <>שיווק בכל הערוצים: <strong>פייסבוק, ווטסאפ ו-SMS</strong> ממסך אחד</> },
   { key: 'h6', render: () => <>חתימות דיגיטליות, הסכמי סיור ושיתוף נכסים <strong>בקליק אחד</strong></> },
 ];
