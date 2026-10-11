@@ -119,6 +119,9 @@ Deno.serve(async (req) => {
     }
     const userId = userRes.user.id;
     const userEmail = userRes.user.email || "";
+    const { data: canClose, error: permissionError } = await userClient.rpc('can_use_closing_room', { _user_id: userId });
+    const { data: developer } = await userClient.rpc('has_role', { _user_id: userId, _role: 'developer' });
+    if (permissionError || !canClose || developer) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -130,7 +133,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     // ---------- Client (CRM contact) ----------
-    const { data: lead, error: leadErr } = await admin
+    const { data: lead, error: leadErr } = await userClient
       .from("leads")
       .select("id, full_name, phone_number, email, city, address, identity_number, interest_tag, deal_type")
       .eq("id", lead_id)
@@ -171,7 +174,7 @@ Deno.serve(async (req) => {
     // ---------- Property ----------
     let listing: any = {};
     if (listing_id) {
-      const { data } = await admin
+      const { data } = await userClient
         .from("listings")
         .select("property_title, description, asking_price, address, city, rooms, floor, deal_type")
         .eq("id", listing_id)

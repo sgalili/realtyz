@@ -114,7 +114,7 @@ export type AffiliateReferral = {
 export function formatReward(type: RewardType, amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
   if (!value) return 'טרם נקבע';
-  if (type === 'percent') return `${value}% ברוטו · 80% לשותף`;
+  if (type === 'percent') return `${partnerNetReward(value)}% לשותף`;
   return `₪${partnerNetReward(value).toLocaleString('he-IL', { maximumFractionDigits: 0 })} לשותף`;
 }
 
@@ -244,11 +244,7 @@ export function useMyReferrals() {
     queryKey: ['affiliate-my-referrals', user?.id],
     enabled: !!user?.id,
     queryFn: async (): Promise<AffiliateReferral[]> => {
-      const { data, error } = await supabase
-        .from('affiliate_referrals')
-        .select('*')
-        .eq('affiliate_id', user!.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_my_partner_referrals');
       if (error) throw error;
       return (data ?? []) as AffiliateReferral[];
     },
@@ -287,13 +283,9 @@ export function useStartPromoting() {
       const { listing, channel } = input;
       if (!user?.id) throw new Error('not_authenticated');
 
-      const { data: existing } = await supabase
-        .from('affiliate_referrals')
-        .select('*')
-        .eq('affiliate_id', user.id)
-        .eq('listing_id', listing.listing_id)
-        .eq('channel', channel ?? 'direct')
-        .maybeSingle();
+      const { data: ownRows, error: readError } = await supabase.rpc('get_my_partner_referrals');
+      if (readError) throw readError;
+      const existing = (ownRows as unknown as AffiliateReferral[] ?? []).find((r) => r.listing_id === listing.listing_id && r.channel === (channel ?? 'direct'));
 
       if (existing) {
         const row = existing as AffiliateReferral;
@@ -301,7 +293,7 @@ export function useStartPromoting() {
       }
 
       const code = newTrackingCode();
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('affiliate_referrals')
         .insert({
           affiliate_id: user.id,
@@ -318,11 +310,12 @@ export function useStartPromoting() {
           tier2_amount: listing.tier2_amount,
           tier3_type: listing.tier3_type,
           tier3_amount: listing.tier3_amount,
-        })
-        .select('*')
-        .single();
+        });
       if (error) throw error;
-      const row = data as AffiliateReferral;
+      const { data: saved, error: savedError } = await supabase.rpc('get_my_partner_referrals');
+      if (savedError) throw savedError;
+      const row = (saved as unknown as AffiliateReferral[] ?? []).find((r) => r.tracking_code === code);
+      if (!row) throw new Error('referral_not_found');
       return { referral: row, link: affiliateTrackingLink(listing.slug, listing.listing_id, row.tracking_code) };
     },
     onSuccess: () => {
@@ -691,13 +684,15 @@ export function useMySubmissions() {
     queryKey: ['affiliate-my-submissions', user?.id],
     enabled: !!user?.id,
     queryFn: async (): Promise<AffiliateSubmissionRow[]> => {
-      const { data, error } = await supabase
-        .from('affiliate_lead_submissions')
-        .select('*')
-        .eq('affiliate_id', user!.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_my_partner_submissions');
       if (error) throw error;
-      return hydrateSubmissions((data ?? []) as AffiliateLeadSubmission[]);
+      const rows = (data ?? []) as unknown as AffiliateLeadSubmission[];
+      const { data: listings, error: listingError } = await supabase.rpc('get_affiliate_referral_listings');
+      if (listingError) throw listingError;
+      return rows.map((row) => {
+        const l = listings?.find((item) => item.listing_id === row.listing_id);
+        return { ...row, listing: l ? { ...l, id: l.listing_id } : null };
+      });
     },
   });
 }
@@ -709,7 +704,7 @@ export function useBrokerSubmissions() {
     queryKey: ['broker-affiliate-submissions', ownerId],
     enabled: !!ownerId,
     queryFn: async (): Promise<AffiliateSubmissionRow[]> => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('affiliate_lead_submissions')
         .select('*')
         .eq('broker_id', ownerId!)
@@ -752,11 +747,9 @@ export function useSubmitAffiliateLead() {
           tier3_amount: tiers.tier3,
           tier4_type: tiers.tier4Type,
           tier4_amount: tiers.tier4,
-        })
-        .select('*')
-        .single();
+        });
       if (error) throw error;
-      return data as AffiliateLeadSubmission;
+      return { ok: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['affiliate-my-submissions'] });
