@@ -99,7 +99,7 @@ export function GlobalAppTour() {
           footerRoot = createRoot(popover.footerButtons);
           footerRoot.render(<>
             <Button variant="outline" onClick={() => walkthroughStore.move(session.index - 1)} aria-label="הקודם"><ChevronRight />הקודם</Button>
-            <span className="text-sm font-semibold text-muted-foreground" aria-live="polite">{session.index + 1} / {session.steps.length}</span>
+            <bdi dir="ltr" className="text-sm font-semibold text-muted-foreground" aria-live="polite">{session.index + 1} / {session.steps.length}</bdi>
             <Button onClick={() => session.index === session.steps.length - 1 ? closeRef.current() : walkthroughStore.move(session.index + 1)}>
               {session.index === session.steps.length - 1 ? 'סיום' : 'הבא'}<ChevronLeft />
             </Button>
