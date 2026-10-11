@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Camera, Trash2, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { ImageCropDialog } from '@/components/profile/ImageCropDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -16,6 +16,9 @@ export function ProfileAvatarUploader({ profileOwnerId }: { profileOwnerId: stri
   const isOwnProfile = profileOwnerId === user?.id;
   const [avatarPath, setAvatarPath] = useState<string | null>(isOwnProfile ? meta.avatar_path ?? null : null);
   const [busy, setBusy] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  useEffect(() => { setPendingFile(null); }, [profileOwnerId]);
 
   useEffect(() => {
     if (!profileOwnerId) return;
@@ -33,10 +36,17 @@ export function ProfileAvatarUploader({ profileOwnerId }: { profileOwnerId: stri
 
   const onPick = () => inputRef.current?.click();
 
-  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !profileOwnerId) return;
+    if (!file.type.startsWith('image/') || file.size === 0) { toast.error('יש לבחור קובץ תמונה תקין'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('הקובץ גדול מדי (מקסימום 5MB)'); return; }
+    setPendingFile(file);
+  };
+
+  const uploadAvatar = async (file: File) => {
+    if (!profileOwnerId) return;
     setBusy(true);
     try {
       const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
@@ -75,6 +85,7 @@ export function ProfileAvatarUploader({ profileOwnerId }: { profileOwnerId: stri
 
       setAvatarPath(path);
       setAvatarUrl(signed.signedUrl);
+      setPendingFile(null);
       toast.success('תמונת הפרופיל עודכנה');
     } catch (err: any) {
       console.error('[avatar upload]', err);
@@ -109,24 +120,27 @@ export function ProfileAvatarUploader({ profileOwnerId }: { profileOwnerId: stri
 
   return (
     <div className="rounded-lg border bg-card/40 p-3 text-right">
-      <Label className="mb-2 block text-sm font-semibold"></Label>
+      {pendingFile && <ImageCropDialog file={pendingFile} aspect={1} title="חיתוך תמונת פרופיל" onCancel={() => setPendingFile(null)} onConfirm={uploadAvatar} />}
       <div className="flex flex-col items-center gap-2">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onPick}
           disabled={busy}
           aria-label={avatarUrl ? 'החלפת תמונת פרופיל' : 'העלאת תמונת פרופיל'}
-          className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          title={avatarUrl ? 'החלפת תמונת פרופיל' : 'העלאת תמונת פרופיל'}
+          className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background p-0 transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt="תמונת פרופיל" className="h-full w-full object-cover" />
           ) : (
             <UserIcon className="h-8 w-8 text-muted-foreground/50" />
           )}
-          <span className="absolute inset-x-0 bottom-0 flex h-8 items-center justify-center bg-foreground/70 text-background opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+          <span className="absolute bottom-1.5 right-2 flex h-7 w-7 items-center justify-center rounded-full border bg-background/90 text-primary shadow-sm">
             <Camera className="h-4 w-4" aria-hidden="true" />
           </span>
-        </button>
+        </Button>
         <input
           ref={inputRef}
           type="file"
