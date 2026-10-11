@@ -72,7 +72,7 @@ export default function DeveloperDashboard() {
     <div dir="rtl" className="mx-auto max-w-6xl space-y-6 p-4">
       {busy ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">טוען פרויקטים</span></div>
       : projectError || companyError ? <div role="alert" className="space-y-3 py-8 text-center"><p className="text-lg text-destructive">לא ניתן לטעון את הפרויקטים</p><Button variant="outline" onClick={refresh}>ניסיון נוסף</Button></div>
-      : projects.length === 0 ? <section className="flex flex-col items-center gap-3 py-16 text-center"><Building2 className="h-12 w-12 text-muted-foreground/50" /><h2 className="text-xl font-semibold">עדיין אין פרויקטים</h2></section>
+      : projects.length === 0 ? <section className="flex flex-col items-center gap-3 py-16 text-center"><Building2 className="h-12 w-12 text-muted-foreground/50" /><h2 className="text-xl font-semibold">עדיין אין פרויקטים</h2><p className="text-base text-muted-foreground">ייבוא הפרויקטים מיד2 נשמר אחרי לחיצה על ״אישור ושמירה״.</p><div className="flex gap-2"><Button onClick={() => setMode('import')}><FileDown className="h-4 w-4" />ייבוא מיד2</Button><Button variant="outline" onClick={() => { setEditing(undefined); setMode('manual'); }}><Pencil className="h-4 w-4" />יצירה ידנית</Button></div></section>
       : <>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -107,7 +107,7 @@ export default function DeveloperDashboard() {
             <Button variant="outline" className="h-24 gap-3 text-lg" onClick={() => setMode('import')}><FileDown />ייבוא מיד2</Button>
             <Button variant="outline" className="h-24 gap-3 text-lg" onClick={() => setMode('manual')}><Pencil />יצירה ידנית</Button>
           </div>}
-          {mode === 'import' && <div className="space-y-4"><DeveloperYad2Import onSaved={saved} /><Button variant="ghost" onClick={() => setMode('manual')}>יצירה ידנית</Button></div>}
+          {mode === 'import' && <div className="space-y-4"><DeveloperYad2Import onSaved={saved} initialUrl={companies[0]?.source_url ?? null} /><Button variant="ghost" onClick={() => setMode('manual')}>יצירה ידנית</Button></div>}
           {mode === 'manual' && !busy && <DeveloperProjectWizard key={`${ws}-${editing?.id ?? 'new'}`} project={editing} company={developer} onSaved={saved} onCancel={close} />}
         </DialogContent>
       </Dialog>

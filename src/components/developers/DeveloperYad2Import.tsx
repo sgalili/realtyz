@@ -46,10 +46,11 @@ function ImportProgress() {
 }
 
 /** Paste a Yad2 developer page, preview every project/apartment, then save on confirm. */
-export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { projects: number; units: number }) => void }) {
+export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summary: { projects: number; units: number }) => void; initialUrl?: string | null }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(initialUrl ?? '');
+  const [blocked, setBlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -60,15 +61,18 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
     const clean = developerImportUrl(value);
     if (!clean) { setError('הדביקו את הקישור לעמוד הראשי של היזם ביד2, ולא למודעה או לפרויקט בודד'); return; }
     setUrl(clean);
-    setLoading(true); setError(''); setPreview(null);
+    setLoading(true); setError(''); setBlocked(false); setPreview(null);
     const { data, error: fnError } = await supabase.functions.invoke('yad2-developer-import', { body: { url: clean } });
     setLoading(false);
     if (fnError || !data?.ok) {
       let msg = 'הייבוא נכשל. אפשר להמשיך ולהוסיף פרויקטים ידנית.';
       try { const b = await (fnError as any)?.context?.json?.(); if (b?.message) msg = b.message; } catch { /* keep default */ }
+      const status = (fnError as any)?.context?.status;
+      if (status === 502 || status === 503 || status === 429 || !data) setBlocked(true);
       setError(data?.message ?? msg);
       return;
     }
+    if (!Array.isArray(data.projects) || data.projects.length === 0) { setBlocked(true); return; }
     setPreview(data as Preview);
   };
 
@@ -144,7 +148,12 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
         <Button type="button" onClick={() => void fetchPreview(url)} disabled={loading || saving || !url.trim()}>ייבוא כל הפרויקטים</Button>
       </div>
       {loading && <ImportProgress />}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {!loading && (blocked || error) && (
+        <div role="alert" className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+          <p className="text-sm font-semibold text-destructive">{blocked ? 'הייבוא נתקל בהגנה זמנית מיד2, נסה שוב בעוד מספר דקות' : error}</p>
+          {developerImportUrl(url) && <Button type="button" size="sm" variant="outline" onClick={() => void fetchPreview(url)}>נסה שוב</Button>}
+        </div>
+      )}
       {preview && (
         <div className="space-y-3 rounded-lg border bg-card p-3 animate-in fade-in">
           {preview.warnings?.map(warning => <p role="status" key={warning} className="text-sm text-muted-foreground">{warning}</p>)}
