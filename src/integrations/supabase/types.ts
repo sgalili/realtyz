@@ -8484,6 +8484,7 @@ export type Database = {
         | "affiliate"
         | "property_owner"
         | "property_seeker"
+        | "developer"
       listing_source: "yad2" | "madlan" | "manual"
     }
     CompositeTypes: {
@@ -8625,6 +8626,7 @@ export const Constants = {
         "affiliate",
         "property_owner",
         "property_seeker",
+        "developer",
       ],
       listing_source: ["yad2", "madlan", "manual"],
     },
