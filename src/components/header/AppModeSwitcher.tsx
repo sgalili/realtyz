@@ -88,7 +88,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
             className={cn(
               'h-8 rounded-none px-2 text-xs font-semibold transition-colors disabled:opacity-100',
               active
-                ? 'bg-primary text-primary-foreground shadow-sm'
+                ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-600'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
