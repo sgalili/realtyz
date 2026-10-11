@@ -2333,6 +2333,42 @@ export type Database = {
         }
         Relationships: []
       }
+      developers: {
+        Row: {
+          company_name: string
+          created_at: string
+          first_project_name: string | null
+          first_project_units: number | null
+          id: string
+          phone: string | null
+          source_url: string | null
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          first_project_name?: string | null
+          first_project_units?: number | null
+          id?: string
+          phone?: string | null
+          source_url?: string | null
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          first_project_name?: string | null
+          first_project_units?: number | null
+          id?: string
+          phone?: string | null
+          source_url?: string | null
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       drip_campaigns: {
         Row: {
           channel: string
