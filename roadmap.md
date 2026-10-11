@@ -1,4 +1,8 @@
 # Roadmap
+## Developer projects cleanup and creation wizard
+- [ ] Clean title/blue header, top-left plus and empty-page metrics; move import into focused creation flow.
+- [ ] Eight-step manual editor with developer identity, location, status, units, images, specifications and explicit review/save.
+- [ ] Verify signed-in creation/editing/readback and focused tests; do not imply public publishing without an existing supported flow.
 ## Developer direct entry and complete Yad2 import
 - [x] Authenticated developer entry bypasses role/item screens; loading is fail-closed and stale pending roles cannot change developer entry.
 - [x] Main-page URL validation, linked project reads, nested unit/source details and images, partial-read warnings, explicit save and non-null-preserving resync added; importer deployed.
