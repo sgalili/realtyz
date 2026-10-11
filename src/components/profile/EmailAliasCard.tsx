@@ -69,7 +69,7 @@ export function EmailAliasCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground text-right">
-          תיבה אחת לכל מרחב העבודה, לשליחה ולקבלת מיילים. תשובות מאנשי קשר נכנסות אוטומטית לתיבת השיחות. דוגמה: <code dir="ltr">udi{DOMAIN}</code>.
+          תיבה אחת לכל מרחב העבודה, לשליחה ולקבלת מיילים. הפעלת התיבה מתבצעת רק לאחר בחירת כתובת ואישור שלכם.
         </p>
         <p className="text-xs text-right rounded-md bg-muted px-3 py-2">
           {gmail
@@ -97,7 +97,7 @@ export function EmailAliasCard() {
           </div>
         </div>
         <div className="flex justify-end">
-          <Button size="sm" onClick={save} disabled={saving || loading || !isOwner}>
+          <Button size="sm" onClick={save} disabled={saving || loading || !isOwner || alias.trim().length < 2}>
             {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
             אשר והפעל תיבה
           </Button>

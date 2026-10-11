@@ -6,8 +6,7 @@
 import { Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCreditWallet } from '@/hooks/useSubscription';
-
-const SALES_PHONE = '972546811841';
+import { openOfficialWhatsApp } from '@/lib/officialWa';
 
 function formatIls(n: number): string {
   return `₪${n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -19,7 +18,7 @@ export function WalletLockGate() {
   if (balance >= 0) return null;
 
   const due = Math.abs(balance);
-  const text = `היי, אשמח להסדיר את יתרת החשבון שלי ברילטיז בסך ${due} ש"ח ולהמשיך לקבל לידים.`;
+  const text = `היי, אשמח להסדיר את יתרת החשבון שלי ברילטיז בסך ${due} ש"ח ולהמשיך לקבל פניות.`;
 
   return (
     <div dir="rtl" className="fixed inset-0 z-[200] flex items-center justify-center bg-background/95 p-5 backdrop-blur">
@@ -27,11 +26,11 @@ export function WalletLockGate() {
         <Wallet className="mx-auto h-10 w-10 text-warning" />
         <h2 className="text-xl font-bold">נדרשת הטענת יתרה</h2>
         <p className="text-sm text-muted-foreground">
-          היתרה בארנק אינה מכסה את עמלות הלידים שהתקבלו. יש להסדיר{' '}
+          היתרה בארנק אינה מכסה את עלות הפניות שהתקבלו. יש להסדיר{' '}
           <bdi dir="ltr" className="font-semibold">{formatIls(due)}</bdi> כדי להמשיך להשתמש במערכת.
         </p>
         <div className="flex flex-col gap-2">
-          <Button onClick={() => window.open(`https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`, '_blank', 'width=1200,height=800,noopener,noreferrer')}>
+          <Button onClick={() => void openOfficialWhatsApp(text)}>
             הטענת יתרה עכשיו
           </Button>
           <Button variant="outline" onClick={() => window.location.reload()}>שילמתי, רענון</Button>
