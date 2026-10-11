@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HelpCircle, Link, ChartNoAxesCombined, Wallet, CircleHelp } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,25 +16,37 @@ function Rich({ text }: { text: string }) {
 /** Single dialog for all tutorials; auto-opens once per page on first visit. */
 export function TutorialHost() {
   const { user } = useAuth();
+  const role = useUserRole();
+  const allowed = (t: Tutorial) => {
+    if (role.loading || role.error) return false;
+    if (role.isSuperAdmin) return true;
+    const shared = ['page:/profile', 'page:/wallet'];
+    if (role.isPropertySeekerOnly) return shared.includes(t.id);
+    if (role.isPropertyOwnerOnly) return [...shared, 'page:/owner/properties'].includes(t.id);
+    if (role.isAffiliateOnly) return [...shared, 'page:/affiliate-network'].includes(t.id);
+    if (role.isDeveloper) return !['page:/properties', 'page:/deal-room', 'page:/dashboard'].includes(t.id);
+    return role.isTeamMember;
+  };
   const { pathname } = useLocation();
   const st = useTutorialState();
   const [tut, setTut] = useState<Tutorial | null>(null);
   const [i, setI] = useState(0);
 
   useEffect(() => { tutorialStore.setUser(user?.id); }, [user?.id]);
-  useEffect(() => { registerTutorialOpener((t) => { setI(0); setTut(t); }); return () => registerTutorialOpener(null); }, []);
+  useEffect(() => { registerTutorialOpener((t) => { if (allowed(t)) { setI(0); setTut(t); } }); return () => registerTutorialOpener(null); }, [role.roles, role.loading, role.error]);
   useEffect(() => {
     if (!user) return;
     const t = tutorialForPath(pathname);
-    if (!t) return;
+    if (!t || !allowed(t)) return;
     const s = tutorialStore.get();
     if (s.seen.includes(t.id) || s.dismissed.includes(t.id)) return;
     const timer = window.setTimeout(() => { setI(0); setTut(t); }, 600);
     return () => window.clearTimeout(timer);
-  }, [pathname, user, st]);
+  }, [pathname, user, st, role.roles, role.loading, role.error]);
 
-  if (!tut) return null;
+  if (!tut || !allowed(tut)) return null;
   const slide = tut.slides[i];
+  const SlideIcon = tut.id === 'page:/affiliate-network' ? [Link, ChartNoAxesCombined, Wallet][i] ?? CircleHelp : CircleHelp;
   const last = i === tut.slides.length - 1;
   const gotIt = () => { tutorialStore.markSeen(tut.id); setTut(null); };
   const never = () => { tutorialStore.dismiss(tut.id); setTut(null); };
@@ -41,8 +54,8 @@ export function TutorialHost() {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) gotIt(); }}>
       <DialogContent dir="rtl" className="max-w-md overflow-hidden p-0">
-        <div className="bg-gradient-to-b from-primary/15 to-transparent px-6 pb-2 pt-8 text-center">
-          <div className="mb-3 text-6xl" aria-hidden>{slide.emoji}</div>
+        <div className="px-6 pb-2 pt-8 text-center">
+          <SlideIcon className="mx-auto mb-3 h-9 w-9 text-primary" aria-hidden />
           <p className="text-sm font-bold text-primary">{tut.title}</p>
           <DialogTitle className="mt-1 text-2xl font-extrabold">{slide.title}</DialogTitle>
         </div>
@@ -50,7 +63,7 @@ export function TutorialHost() {
           <DialogDescription className="text-lg leading-relaxed text-foreground"><Rich text={slide.body} /></DialogDescription>
           {slide.bullets && (
             <ul className="space-y-1.5">
-              {slide.bullets.map((b) => <li key={b} className="rounded-lg bg-muted px-3 py-2.5 text-base leading-snug"><Rich text={b} /></li>)}
+              {slide.bullets.map((b) => <li key={b} className="py-1.5 text-lg leading-relaxed"><Rich text={b} /></li>)}
             </ul>
           )}
         </div>

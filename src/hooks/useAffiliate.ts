@@ -583,7 +583,7 @@ export const TIER_LABELS = {
   tier1: 'רמה 1 · ליד דיגיטלי (שם וטלפון)',
   tier2: 'רמה 2 · סינון בשיחת ווטסאפ',
   tier3: 'רמה 3 · שיחת טלפון מסוננת',
-  tier4: 'רמה 4 · סגירת עסקה לבעלי רישיון',
+  tier4: 'סגירת עסקה',
 } as const;
 
 /** Reads the tiers off a marketplace row. Level 1 is always present. */
@@ -704,7 +704,7 @@ export function useBrokerSubmissions() {
     queryKey: ['broker-affiliate-submissions', ownerId],
     enabled: !!ownerId,
     queryFn: async (): Promise<AffiliateSubmissionRow[]> => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('affiliate_lead_submissions')
         .select('*')
         .eq('broker_id', ownerId!)
@@ -730,7 +730,7 @@ export function useSubmitAffiliateLead() {
     }) => {
       if (!user?.id) throw new Error('not_authenticated');
       const tiers = listingTiers(input.listing);
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('affiliate_lead_submissions')
         .insert({
           affiliate_id: user.id,
