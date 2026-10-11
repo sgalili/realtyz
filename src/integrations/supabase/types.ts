@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_pricing: {
+        Row: {
+          action_key: string
+          label_he: string
+          price_agorot: number
+          sort_order: number
+          unit_he: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_key: string
+          label_he: string
+          price_agorot?: number
+          sort_order?: number
+          unit_he?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_key?: string
+          label_he?: string
+          price_agorot?: number
+          sort_order?: number
+          unit_he?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       admin_leads: {
         Row: {
           attempted_target: number | null
@@ -7795,6 +7825,15 @@ export type Database = {
         Returns: number
       }
       cancel_my_subscription: { Args: never; Returns: Json }
+      charge_action: {
+        Args: {
+          _action: string
+          _quantity?: number
+          _reference_id?: string
+          _user_id: string
+        }
+        Returns: number
+      }
       charge_lead_commission: {
         Args: {
           _affiliate_id?: string

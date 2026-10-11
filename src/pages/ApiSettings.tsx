@@ -33,6 +33,7 @@ import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
 import { WebtivHomelySyncCard } from '@/components/integrations/WebtivHomelySyncCard';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
+import { ActionPricingCard } from '@/components/billing/ActionPricingCard';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
@@ -864,6 +865,7 @@ const ApiSettings = () => {
         </p>
       </div>
 
+      {isSuperAdmin && <ActionPricingCard />}
       <UsageMeterPanel />
 
       <SectionShell title="פרטיות ו-GDPR" subtitle="מסכת PII, ביקורת ומחיקת איש קשר לצמיתות">
