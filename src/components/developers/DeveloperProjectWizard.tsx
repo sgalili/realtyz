@@ -24,7 +24,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
   const { activeWorkspaceId } = useWorkspace();
   const [form, setForm] = useState(() => projectForm(project, company));
   const [step, setStep] = useState(0);
-  const [furthest, setFurthest] = useState(0);
+  const [furthest, setFurthest] = useState(project ? 7 : 0);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
