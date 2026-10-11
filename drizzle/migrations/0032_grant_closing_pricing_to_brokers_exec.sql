@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.partner_can_view_closing(uuid) TO anon, authenticated, service_role;
