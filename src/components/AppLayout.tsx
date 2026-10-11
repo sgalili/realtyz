@@ -21,6 +21,7 @@ import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import QuickActionDrawer from '@/components/QuickActionDrawer';
 import { TutorialHost } from '@/components/tutorial/TutorialHost';
+import { DeveloperTerminology } from '@/components/DeveloperTerminology';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { FirstTimeSyncDialog } from '@/components/onboarding/FirstTimeSyncDialog';
@@ -541,6 +542,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <AiAgentDrawer />
           <QuickActionDrawer />
           <TutorialHost />
+          <DeveloperTerminology />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
             <DialogContent dir="rtl" className="premium-auth-modal sm:max-w-md">
               <DialogHeader className="text-right">
