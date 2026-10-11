@@ -1,4 +1,8 @@
 # Roadmap
+## Wallet summary
+- [ ] Compact wallet credits to two decimal places, show actual NIS balance beneath, remove duplicate title/rate, add הארנק שלי to page hero.
+- [ ] Recover agreed free monthly allowance for approximately 100 operations; do not invent or replace live balances.
+- [ ] Verify wallet display and formatting tests.
 ## Received and partner-sent leads
 - [x] Label received leads before the existing live counter; add received/sent-sold tabs for existing partners using authorized personal submissions, retaining license redaction.
 - [x] Eight focused tests and automatic build passed; signed-in received → sent → refresh → received verified without runtime errors. Current account has no sent submissions, so populated rows/license redaction were tested in isolation; no live leads submitted or sold.

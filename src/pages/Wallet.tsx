@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, ArrowDownLeft, CreditCard, Plus, Wallet as WalletIcon } from 'lucide-react';
-import { ACTION_META, CREDITS_PER_ILS, fmtCredits, ilsToCredits, parseActionNote } from '@/lib/credits';
+import { ACTION_META, fmtCompactCredits, fmtCredits, ilsToCredits, parseActionNote } from '@/lib/credits';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -103,8 +103,6 @@ export default function Wallet() {
 
   return (
     <div dir="rtl" className="mx-auto max-w-5xl space-y-5 p-4">
-      <h1 className="text-2xl font-bold">ארנק ותשלומים</h1>
-
       {locked && (
         <div role="alert" className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
@@ -123,9 +121,8 @@ export default function Wallet() {
       <div className="space-y-3">
         <div className="flex items-center justify-between rounded-lg border bg-card p-5">
           <div>
-            <p className="text-sm text-muted-foreground">יתרה נוכחית</p>
-             <p className={`text-right text-3xl font-bold ${(wallet?.balance ?? 0) <= 0 ? 'text-destructive' : ''}`}>{fmtCredits(ilsToCredits(wallet?.balance ?? 0))}</p>
-             <p className="text-sm text-muted-foreground">₪1 = {CREDITS_PER_ILS} קרדיטים</p>
+             <p className={`text-right text-3xl font-bold ${(wallet?.balance ?? 0) <= 0 ? 'text-destructive' : ''}`}>{fmtCompactCredits(ilsToCredits(wallet?.balance ?? 0), 2)}</p>
+             <p className="text-sm text-muted-foreground" dir="ltr">{money(wallet?.balance ?? 0)}</p>
           </div>
           <Button onClick={() => setTopupOpen(true)}><Plus className="h-4 w-4" />טעינת ארנק</Button>
         </div>

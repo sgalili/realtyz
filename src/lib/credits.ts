@@ -8,11 +8,11 @@ export const agorotToCredits = (agorot: number) => agorot / AGOROT_PER_CREDIT;
 export const ilsToCredits = (ils: number) => ils * CREDITS_PER_ILS;
 export const fmtCredits = (c: number) =>
   `${c.toLocaleString('he-IL', { maximumFractionDigits: Math.abs(c) < 1 ? 2 : 1 })} קרדיטים`;
-export const fmtCompactCredits = (c: number) => {
+export const fmtCompactCredits = (c: number, maximumFractionDigits = 1) => {
   const magnitude = Math.abs(c);
   const divisor = magnitude >= 1_000_000 ? 1_000_000 : magnitude >= 1_000 ? 1_000 : 1;
   const suffix = divisor === 1_000_000 ? 'm' : divisor === 1_000 ? 'k' : '';
-  return `${(c / divisor).toLocaleString('en-US', { maximumFractionDigits: magnitude < 1 ? 2 : 1 })}${suffix} קרדיטים`;
+  return `${(c / divisor).toLocaleString('en-US', { maximumFractionDigits: magnitude < 1 ? 2 : maximumFractionDigits })}${suffix} קרדיטים`;
 };
 
 export const ACTION_META: Record<string, { icon: LucideIcon; tone: string }> = {

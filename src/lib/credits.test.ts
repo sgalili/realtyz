@@ -8,6 +8,8 @@ describe('credits-first displays', () => {
     expect(fmtCompactCredits(5000)).toBe('5k קרדיטים');
     expect(fmtCompactCredits(0.25)).toBe('0.25 קרדיטים');
     expect(fmtCompactCredits(0)).toBe('0 קרדיטים');
+    expect(fmtCompactCredits(1234, 2)).toBe('1.23k קרדיטים');
+    expect(fmtCompactCredits(125000, 2)).toBe('125k קרדיטים');
   });
   it('converts rewards and fractional action charges without changing stored ILS', () => {
     expect(ilsToCredits(200)).toBe(5000);
