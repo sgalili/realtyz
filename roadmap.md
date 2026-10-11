@@ -1,4 +1,8 @@
 # Roadmap
+## Navigation and partner introduction
+- [ ] Hide developer destinations for non-developers; remove sidebar Leads rows and retain role-appropriate top access with live badge/no help icon.
+- [ ] Compact top credits and exact 15px profile gap.
+- [ ] Partner-page introduction, terms checkbox and user-keyed Don't show again without bypassing consent; focused tests and signed-in checks.
 ## Public publisher card placement
 - [x] Move commission amounts inside publisher strip opposite name; private publishers use silhouette and sale/rent subtitle; remove standalone copy beside favorites, retain share-menu copying.
 - [x] Seven focused tests and signed-in real board check passed: amounts inside all ten publisher strips, no copy beside favorite, no overflow or runtime errors; private subtitles tested in isolation because current board has no confirmed-private records. No WhatsApp avatar lookup added.
