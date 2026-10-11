@@ -8,7 +8,7 @@
 - Joining indicators follow extension events; workspace overlays stop polling reversing tab migration before persistence.
 - Peer expansions use exclusive motion groups to avoid hover leaks.
 - Inquiry tiers require server-only workspace/listing identity and satisfactory screening evidence; first turns/callbacks never qualify screening. Atomic upgrades charge only unpaid differences to prevent duplicates.
-- Tables share the Table primitive for sort/reorder/hide; user/workspace/page-keyed local prefs never store listings. Use native horizontal scrolling without arrow overlays.
+- Tables share sort/reorder/hide with visible grips and order-only reset; user/workspace/page prefs never store listings. Native scrolling, no overlays. Why: consistency.
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe, preventing private inventory/contact exposure.
 - Yad2 checks exact workspace records before daily authenticated claims; cache reads preserve edits and source timestamps to avoid sliding freshness. Service-only cache and scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely requires verified workspace status, with setup accessible. Counters use completed-search snapshots, not inventory.
 

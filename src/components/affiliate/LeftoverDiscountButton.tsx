@@ -5,25 +5,34 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 /** Partner-set discount (% or fixed ₪) for contacts they bring after the property's daily limit. */
 export default function LeftoverDiscountButton({ referralId, inline = false }: { referralId: string; inline?: boolean }) {
+  const { user } = useAuth();
+  const [authorizedReferral, setAuthorizedReferral] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<'percent' | 'fixed'>('percent');
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open && !inline) return;
-    void supabase.from('affiliate_referrals').select('leftover_discount_type, leftover_discount_value').eq('id', referralId).maybeSingle()
+    setAuthorizedReferral(null);
+    if (!user) return;
+    let cancelled = false;
+    void supabase.from('affiliate_referrals').select('leftover_discount_type, leftover_discount_value').eq('id', referralId).eq('affiliate_id', user.id).maybeSingle()
       .then(({ data }) => {
+        if (cancelled || !data) return;
         const d = data as { leftover_discount_type?: string; leftover_discount_value?: number } | null;
+        setAuthorizedReferral(referralId);
         setType(d?.leftover_discount_type === 'fixed' ? 'fixed' : 'percent');
         setValue(d?.leftover_discount_value ? String(d.leftover_discount_value) : '');
       });
-  }, [open, inline, referralId]);
+    return () => { cancelled = true; };
+  }, [user?.id, referralId]);
 
   const save = async () => {
+    if (authorizedReferral !== referralId) return;
     const v = Number(value || 0);
     if (!Number.isFinite(v) || v < 0 || (type === 'percent' && v > 100)) { toast.error('ערך הנחה לא תקין'); return; }
     setSaving(true);
@@ -35,7 +44,7 @@ export default function LeftoverDiscountButton({ referralId, inline = false }: {
   };
 
   const form = <div className="space-y-3">
-        <p className="text-sm font-semibold">הנחה ללידים מעבר למכסה היומית</p>
+        <p className="text-sm font-semibold">הנחה ללידים מעבר למכסה היומית · נקבעת על ידך כשותף</p>
         <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
           {(['percent', 'fixed'] as const).map((t) => (
             <Button variant="ghost" key={t} type="button" onClick={() => setType(t)}
@@ -47,6 +56,7 @@ export default function LeftoverDiscountButton({ referralId, inline = false }: {
         <Input inputMode="decimal" value={value} placeholder="0" onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ''))} />
         <Button className="w-full" size="sm" disabled={saving} onClick={save}>שמירה</Button>
   </div>;
+  if (authorizedReferral !== referralId) return null;
   if (inline) return form;
   return (
     <Popover open={open} onOpenChange={setOpen}>

@@ -66,6 +66,7 @@ export function usePublicBoardColumns(identity: string, rows: PublicCard[]) {
       update({ ...prefs, hidden: prefs.hidden.includes(id) ? prefs.hidden.filter(c => c !== id) : [...prefs.hidden, id] });
     },
     reset: () => update(defaults()),
+    resetOrder: () => update({ ...prefs, order: defaults().order }),
   };
 }
 export type BoardColumnControls = ReturnType<typeof usePublicBoardColumns>;
@@ -82,13 +83,13 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
       <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-7 gap-1 px-0 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
         {label}{sorted && (controls.sort?.descending ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />)}
       </Button>
-      <Button variant="ghost" size="icon" {...attributes} {...listeners} aria-label={`הזזת עמודת ${label}`} title={`הזזת עמודת ${label}`} className="h-7 w-5 touch-none text-muted-foreground opacity-0 focus-visible:opacity-100 group-hover/column:opacity-100 [@media(hover:none)]:opacity-60"><GripVertical className="h-3 w-3" /></Button>
+      <Button variant="ghost" size="icon" {...attributes} {...listeners} aria-label={`הזזת עמודת ${label}`} title={`הזזת עמודת ${label}`} className="h-7 w-5 touch-none text-muted-foreground"><GripVertical className="h-3 w-3" /></Button>
     </div>
   </th>;
 }
 export function BoardColumnMenu({ controls }: { controls: BoardColumnControls }) {
   return <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="התאמת עמודות" title="התאמת עמודות"><Columns3 className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
     {BOARD_COLUMNS.map(c => <DropdownMenuCheckboxItem key={c.id} checked={controls.visible.includes(c.id)} disabled={controls.visible.length === 1 && controls.visible.includes(c.id)} onSelect={e => e.preventDefault()} onCheckedChange={() => controls.toggleVisible(c.id)}>{c.label}</DropdownMenuCheckboxItem>)}
-    <DropdownMenuSeparator /><DropdownMenuItem onSelect={controls.reset}>איפוס עמודות</DropdownMenuItem>
+    <DropdownMenuSeparator /><DropdownMenuItem onSelect={controls.resetOrder}>איפוס סדר עמודות</DropdownMenuItem><DropdownMenuItem onSelect={controls.reset}>איפוס עמודות</DropdownMenuItem>
   </DropdownMenuContent></DropdownMenu>;
 }

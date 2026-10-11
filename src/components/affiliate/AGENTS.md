@@ -1,2 +1,2 @@
 # Affiliate pricing
-- Partner pricing dialogs reuse the publisher reward editor only for an authored active-workspace row; other viewers use redacted public data, with referral discounts inside and removal in trailing table actions. Why: preserve tenant isolation and distinct publisher/partner controls.
+- Partner pricing dialogs reuse the publisher reward editor only for an authored active-workspace row; other viewers use redacted public data, with referral discounts inside and removal in trailing table actions. Discount controls require the authenticated referral affiliate; the RPC enforces the same ownership, never publisher authority. Why: preserve tenant isolation and distinct publisher/partner controls.
