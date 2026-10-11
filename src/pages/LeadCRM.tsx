@@ -1830,7 +1830,7 @@ const LeadCRM = () => {
 
       {/* Data Table */}
       <Card className="border-border/50 shadow-sm">
-        <CardHeader className="pb-3 pt-3">
+        <CardHeader className="px-[5px] pb-3 pt-3">
           <div className="flex flex-col gap-3">
             {/* Lead kind pills (multi-select, relevant to the signed-in account type) */}
             <div className="flex flex-wrap gap-1.5">
@@ -1853,9 +1853,9 @@ const LeadCRM = () => {
                 );
               })}
             </div>
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="חיפוש" className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder="חיפוש לידים ואנשי קשר" className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
               <button
                 type="button"
                 onClick={() => setFiltersOpen((open) => !open)}
@@ -1865,12 +1865,21 @@ const LeadCRM = () => {
                 <SlidersHorizontal className="h-4 w-4" />
               </button>
             </div>
-            <div className="-mx-6 flex items-center justify-between gap-2 px-[5px]">
+            <div className="flex min-w-0 items-center justify-between gap-2" role="toolbar" aria-label="בחירה ופעולות על לידים">
+              <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
               <SelectModeToggle
                 total={filtered?.length ?? 0}
                 active={selectMode}
+                className={selectMode ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground ring-2 ring-primary/20' : 'border border-border'}
                 onToggle={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
               />
+              {selectMode && selectedIds.size > 0 && <span className="text-sm tabular-nums">{selectedIds.size} נבחרו</span>}
+              </div>
+              {selectMode && selectedIds.size > 0 ? <div className="ms-auto flex shrink-0 items-center gap-1" role="toolbar" aria-label="פעולות על לידים נבחרים">
+                {recruitmentMode && <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" onClick={handleBrokerFirstOutreach} disabled={sendingFirstOutreach} aria-label="הודעת פתיחה למתווכים" title="הודעת פתיחה למתווכים"><Send className="h-4 w-4" /></Button>}
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" onClick={() => handleExportExcel('selected')} aria-label="ייצוא נבחרים" title="ייצוא נבחרים"><ExcelIcon className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 bg-transparent text-destructive hover:bg-transparent hover:text-destructive" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}><Trash2 className="h-4 w-4" /></Button>
+              </div> :
               {(() => {
                 const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKinds.length > 0;
                 const accountTotal = isDemoMode ? leads.length : realTotalCount;
@@ -1878,14 +1887,12 @@ const LeadCRM = () => {
                 if (accountTotal === 0 && selectedIds.size === 0) return null;
                 return (
                   <span className="text-[15px] leading-none text-muted-foreground tabular-nums whitespace-nowrap">
-                    {selectedIds.size > 0
-                      ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} לידים`
-                      : hasFilter
+                    {hasFilter
                         ? `מציג ${filteredTotal.toLocaleString('he-IL')} מתוך ${accountTotal.toLocaleString('he-IL')}`
                         : `סה״כ: ${accountTotal.toLocaleString('he-IL')} לידים`}
                   </span>
                 );
-              })()}
+              })()}}
             </div>
           </div>
           {filtersOpen && <div className="flex flex-wrap gap-2 pt-2 animate-fade-in">
@@ -1964,14 +1971,6 @@ const LeadCRM = () => {
                   {selectMode && <TableHead className="w-10 min-w-10 text-center">
                     <Checkbox className="rounded-none align-middle" checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר הכל" title="בחר הכל" />
                   </TableHead>}
-                  {selectMode && selectedIds.size > 0 ? <TableHead colSpan={totalColCount - 1}>
-                    <div className="flex h-10 items-center gap-2 whitespace-nowrap" role="toolbar" aria-label="פעולות על לידים נבחרים">
-                      <span className="text-sm tabular-nums">{selectedIds.size} נבחרו</span>
-                      {recruitmentMode && <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={handleBrokerFirstOutreach} disabled={sendingFirstOutreach} aria-label="הודעת פתיחה למתווכים" title="הודעת פתיחה למתווכים"><Send className="h-4 w-4" /></Button>}
-                      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleExportExcel('selected')} aria-label="ייצוא נבחרים" title="ייצוא נבחרים"><ExcelIcon className="h-4 w-4" /></Button>
-                      <Button variant="destructive" size="icon" className="h-8 w-8 shrink-0" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  </TableHead> : <>
                   <TableHead className="w-auto font-semibold text-xs">שם</TableHead>
                   <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
@@ -1983,7 +1982,6 @@ const LeadCRM = () => {
                   {isOwnerView && HOMELY_OWNER_COLUMNS.map((col) => (
                     <TableHead key={`oh-${col.key}`} className="w-auto font-semibold text-xs text-center bg-blue-50/60">{col.label}</TableHead>
                   ))}
-                  </>}
                 </TableRow>
               </TableHeader>
               <TableBody>

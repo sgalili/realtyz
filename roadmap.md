@@ -1,4 +1,7 @@
 # Roadmap
+## Lead toolbar and received count
+- [ ] Align pills/search to table edges; move selected count beside the mode toggle and transparent actions to row end, red trash, no duplicate total, clear toggle state.
+- [ ] Diagnose received tab count and verify selected/unselected states on live leads.
 ## Lead categories and main tabs
 - [x] Use OR category matching; zero/all-visible selection retains unclassified records.
 - [x] Hide broker pill for broker/team accounts; preserve developer/owner relevance and affiliate consent.
