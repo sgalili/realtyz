@@ -1,5 +1,5 @@
 # Architecture rules
-- Tours use authorized menus and route-stable state, never auto-mutate. Why: safe replay.
+- Tours use authorized menus and route-stable state; never auto-mutate.
 - Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts.
 - Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports/commissions; DB-authorize publication.
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
@@ -27,7 +27,7 @@
 - Lead disputes, appeals and bans run only through audited security-definer RPCs (open/decide/appeal lead disputes, ban_user/unban_user); appeals need a neutral reviewer and bans freeze rather than delete data.
 
 - Core identity survives partner membership; RPC-only profile consent gates entry. Mode grants no roles.
-- Developer editors retain source JSON in scoped eight-step forms; confirm saves, never publishes. Why: evidence.
+- Developer editors preserve source JSON in scoped eight-step forms; confirm saves, never publishes.
 
 - Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards. Why: card secrets stay server-side.
