@@ -24,4 +24,10 @@ describe('empty-safe selection controls', () => {
     expect(toggle).not.toHaveBeenCalled();
     expect(screen.getByText('3 נבחרו')).toBeTruthy();
   });
+  it('allows a page to show only the active toggle without duplicate selection details', () => {
+    render(<SelectModeToggle total={5} active onToggle={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'בחירה מרובה' })).toBeTruthy();
+    expect(screen.queryByText('בחר הכל')).toBeNull();
+    expect(screen.queryByText(/נבחרו/)).toBeNull();
+  });
 });
