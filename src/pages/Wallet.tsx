@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CreditCard, Plus, Wallet as WalletIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreditWallet } from '@/hooks/useSubscription';
-import { useActiveWorkspaceOwnerId } from '@/hooks/useActiveWorkspaceOwnerId';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

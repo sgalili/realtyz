@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { SidebarWalletIndicator } from '@/components/billing/SidebarWalletIndicator';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
@@ -294,6 +295,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu pt-3">
+        {!collapsed && user && <SidebarWalletIndicator />}
         {/* TOP: ACTIVE WORKSPACE identity + switcher (never the personal profile) */}
         {!collapsed && user && (
           <SidebarGroup className="p-0 border-b border-slate-200">
