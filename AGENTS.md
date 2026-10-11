@@ -40,3 +40,4 @@
 <!-- LOVABLE:END -->
 
 - Affiliate pricing rules: see src/components/affiliate/AGENTS.md.
+- Lead categories are resolved by the generated `leads.lead_category` column (explicit lead_kind → interest_tag → deal_type); filters, counts and badges read it. Why: legacy leads stored type only in interest_tag.
