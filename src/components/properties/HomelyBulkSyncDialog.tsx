@@ -279,7 +279,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
           <div dir="rtl" className="flex flex-wrap items-center justify-between gap-2">
             {mode === 'contacts' ? (
               <TabsList className="h-auto flex-wrap">
-                <TabsTrigger value="contacts" className="text-xs sm:text-sm">לידים {contacts.length ? `(${filteredContacts.length})` : ''}</TabsTrigger>
+                <TabsTrigger value="contacts" className="text-xs sm:text-sm">{contacts.length ? `${filteredContacts.length} ` : ''}לידים</TabsTrigger>
               </TabsList>
             ) : <div />}
 

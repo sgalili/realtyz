@@ -226,8 +226,8 @@ export default function Mailbox({ embedded = false }: { embedded?: boolean } = {
       </Dialog>
       <Tabs defaultValue="in">
         <TabsList>
-          <TabsTrigger value="in">דואר נכנס ({inbound.length})</TabsTrigger>
-          <TabsTrigger value="out">דואר יוצא ({outbound.length})</TabsTrigger>
+          <TabsTrigger value="in">{inbound.length} דואר נכנס</TabsTrigger>
+          <TabsTrigger value="out">{outbound.length} דואר יוצא</TabsTrigger>
         </TabsList>
         <TabsContent value="in"><List rows={inbound} loading={inLoading} kind="in" /></TabsContent>
         <TabsContent value="out"><List rows={outbound} loading={outLoading} kind="out" /></TabsContent>

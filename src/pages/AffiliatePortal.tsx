@@ -990,10 +990,10 @@ export default function AffiliatePortal() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
             <TabsList>
-              <TabsTrigger value="marketplace">נכסים ({marketplace.length})</TabsTrigger>
-              <TabsTrigger value="leads">לידים ({submissions.length})</TabsTrigger>
-              <TabsTrigger value="mine">בשיווק ({referralCampaigns.filter((row) => row.listing).length})</TabsTrigger>
-              <TabsTrigger value="earnings">רווחים ({earningRows.length})</TabsTrigger>
+              <TabsTrigger value="marketplace">{marketplace.length} נכסים</TabsTrigger>
+              <TabsTrigger value="leads">{submissions.length} לידים</TabsTrigger>
+              <TabsTrigger value="mine">{referralCampaigns.filter((row) => row.listing).length} בשיווק</TabsTrigger>
+              <TabsTrigger value="earnings">{earningRows.length} רווחים</TabsTrigger>
             </TabsList>
             </div>
             <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">

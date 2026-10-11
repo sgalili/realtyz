@@ -353,7 +353,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
   const tabBtn = (id: typeof tab, label: string, n: number) => (
     <Button key={id} variant="ghost" type="button" role="tab" aria-selected={tab === id} onClick={() => { setTab(id); setDeleteMode(false); }}
       className={cn('flex-1 whitespace-nowrap rounded-md px-1.5 py-1 font-semibold', TEXT_SM, tab === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}>
-      {label} ({n})
+      {n} {label}
     </Button>
   );
 

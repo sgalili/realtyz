@@ -6141,7 +6141,7 @@ const PublishedFeed = ({
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {t.label} ({t.count})
+              {t.count} {t.label}
             </button>
           ))}
         </div>

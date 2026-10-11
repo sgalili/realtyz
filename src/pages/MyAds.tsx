@@ -137,9 +137,13 @@ export default function MyAds() {
     refetchInterval: 30_000, refetchOnWindowFocus: true,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
   });
+  const { data: favCount = 0 } = useQuery({
+    queryKey: ['my-fav-ads-count', user?.id], enabled: !!user?.id,
+    queryFn: async () => { const { count, error } = await supabase.from('listing_favorites').select('listing_id', { count: 'exact', head: true }).eq('user_id', user!.id); if (error) throw error; return count ?? 0; },
+  });
   return <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
     <Tabs defaultValue="ads" dir="rtl">
-      <div className="max-w-full overflow-x-auto"><TabsList className="w-max min-w-full"><TabsTrigger value="ads">המודעות שלי</TabsTrigger><TabsTrigger value="failed">טיוטות{Boolean(recovery.data?.length) && <span className="ms-2 text-xs">({recovery.data?.length})</span>}</TabsTrigger><TabsTrigger value="favorites">המועדפים שלי</TabsTrigger></TabsList></div>
+      <div className="max-w-full overflow-x-auto"><TabsList className="w-max min-w-full"><TabsTrigger value="ads">{data.length} המודעות שלי</TabsTrigger><TabsTrigger value="failed">{recovery.data?.length ?? 0} טיוטות</TabsTrigger><TabsTrigger value="favorites">{favCount} המועדפים שלי</TabsTrigger></TabsList></div>
       <TabsContent value="favorites" className="pt-3"><MyFavoriteAds /></TabsContent>
       <TabsContent value="failed" className="space-y-3 pt-3">
         {recovery.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : recovery.isError ? <p role="alert">לא ניתן לטעון טיוטות <Button variant="link" onClick={() => void recovery.refetch()}>ניסיון נוסף</Button></p> : !recovery.data?.length ? <p className="py-10 text-center text-muted-foreground">אין מודעות שנכשלו או טיוטות חסרות.</p> : (() => {
