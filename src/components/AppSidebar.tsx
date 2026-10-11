@@ -4,7 +4,6 @@ import { HelpHint } from "@/components/tutorial/TutorialHost";
 import { useMemo } from 'react';
 import {
   Activity,
-  Users,
   Megaphone,
   MessageCircle,
   Home,
@@ -89,14 +88,6 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
   {
-    title: 'לידים',
-    url: '/lead-crm',
-    icon: Users,
-    iconColor: '!text-[hsl(var(--nav-contacts))]', // emerald-700
-    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    aliases: ['/crm', '/leads'],
-  },
-  {
     title: 'נכסים',
     url: '/properties',
     icon: Home,
@@ -157,13 +148,6 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
   },
   {
-    title: 'לידים',
-    url: '/partner/contacts',
-    icon: Users,
-    iconColor: '!text-[hsl(var(--nav-contacts))]', // blue-700
-    badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
-  },
-  {
     title: 'צ׳אטים',
     url: '/partner/chats',
     icon: MessageCircle,
@@ -198,13 +182,6 @@ const OWNER_NAV_ITEMS: NavItem[] = [
     icon: Home,
     iconColor: '!text-[hsl(var(--nav-properties))]', // amber-700
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
-  },
-  {
-    title: 'לידים',
-    url: '/owner/leads',
-    icon: Users,
-    iconColor: '!text-[hsl(var(--nav-contacts))]', // blue-700
-    badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
   },
   {
     title: 'הגדרת תגמולים ועמלות',
@@ -260,6 +237,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       return projects ? [{ ...projects, title: 'הפרויקטים שלי', url: '/developer-dashboard' }, ...base] : base;
     }
     return NAV_ITEMS.filter((item) => {
+      if (item.url === '/developers') return isDeveloper;
       if (item.url === '/properties') return features.listingsEnabled;
       if (item.url === '/deal-room') return features.dealsEnabled;
       if (item.url === '/affiliate-network') return features.partnersEnabled;
@@ -299,7 +277,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
-      <SidebarContent className="realtyz-sidebar-menu pt-3">
+      <SidebarContent className="realtyz-sidebar-menu gap-0 pt-3">
         {!collapsed && user && <SidebarWalletIndicator />}
         {/* TOP: ACTIVE WORKSPACE identity + switcher (never the personal profile) */}
         {!collapsed && user && (

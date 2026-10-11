@@ -1,5 +1,4 @@
-import { AlertTriangle, Users, Wallet, CircleHelp } from 'lucide-react';
-import { useState } from 'react';
+import { AlertTriangle, ContactRound, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,27 +9,40 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
 import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { fmtCredits, ilsToCredits } from '@/lib/credits';
+import { fmtCompactCredits, ilsToCredits } from '@/lib/credits';
+import { useAuth } from '@/hooks/useAuth';
 
 /** Untreated contacts = workspace contacts still at the "new" stage (or no stage yet). */
 export function useUntreatedContactsCount() {
   const { isPartnerMode } = useAppMode();
   const ws = useActiveWorkspaceOwnerId();
-  const { isTeamMember, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading } = useUserRole();
-   const allowed = !loading && !isPartnerMode && isTeamMember && !isAffiliateOnly && !isPropertyOwnerOnly && !isPropertySeekerOnly;
+  const { user } = useAuth();
+  const { isTeamMember, isDeveloper, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading, error } = useUserRole();
+  const partner = isPartnerMode || isAffiliateOnly;
+  const allowed = !loading && !error && !isPropertySeekerOnly && (partner || isTeamMember || isDeveloper || isPropertyOwnerOnly);
   return useQuery({
-    queryKey: ['untreated-contacts-count', ws],
-    enabled: !!ws && allowed,
+    queryKey: ['untreated-contacts-count', ws, user?.id, partner, isPropertyOwnerOnly],
+    enabled: !!user && !!ws && allowed,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const { count } = await supabase
+      if (partner) {
+        const { data, error } = await supabase.rpc('get_affiliate_contacts');
+        if (error) throw error;
+        return (data ?? []).filter((lead: { lead_stage?: string | null }) => !lead.lead_stage || ['new', 'new_lead'].includes(lead.lead_stage)).length;
+      }
+      if (isPropertyOwnerOnly) {
+        const { count, error } = await supabase.from('public_listing_interest').select('id', { count: 'exact', head: true });
+        if (error) throw error;
+        return count ?? 0;
+      }
+      const { count, error } = await supabase
         .from('leads')
         .select('id', { count: 'exact', head: true })
         .eq('workspace_owner_id', ws ?? '')
         .eq('is_demo', false)
         .or('lead_stage.is.null,lead_stage.in.(new,new_lead)');
+      if (error) throw error;
       return count ?? 0;
     },
   }).data ?? 0;
@@ -41,16 +53,16 @@ export function SidebarWalletIndicator() {
   const { isPartnerMode } = useAppMode();
   const navigate = useNavigate();
   const { setOpen, setOpenMobile } = useSidebar();
-  const [explanation, setExplanation] = useState(false);
   const go = (path: string) => { setOpenMobile(false); setOpen(false); navigate(path); };
   const { data, isLoading } = useCreditWallet();
   const untreated = useUntreatedContactsCount();
   const balance = Number(data?.balance ?? 0);
   const locked = !!data?.lockedAt;
-  const { isTeamMember, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly } = useUserRole();
-  const showContacts = !isPartnerMode && isTeamMember && !isAffiliateOnly && !isPropertyOwnerOnly && !isPropertySeekerOnly;
+  const { isTeamMember, isDeveloper, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading, error } = useUserRole();
+  const showContacts = !loading && !error && !isPropertySeekerOnly && (isPartnerMode || isAffiliateOnly || isTeamMember || isDeveloper || isPropertyOwnerOnly);
+  const leadsPath = isPartnerMode || isAffiliateOnly ? '/partner/contacts' : isPropertyOwnerOnly ? '/owner/leads' : '/lead-crm?filter=untreated';
   return (
-    <><div className={cn('mx-3 mb-3 grid gap-2', showContacts ? 'grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]' : 'grid-cols-1')}>
+    <div data-sidebar="balance-controls" className={cn('mx-3 mb-[15px] grid gap-2', showContacts ? 'grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]' : 'grid-cols-1')}>
       <Button
         data-walkthrough="wallet"
         variant="outline"
@@ -64,19 +76,20 @@ export function SidebarWalletIndicator() {
       >
         {locked ? <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" /> : <Wallet className="h-4 w-4 shrink-0 text-[hsl(var(--nav-wallet))]" />}
         <span className={cn('min-w-0 whitespace-normal text-sm font-bold leading-tight', balance <= 0 && 'text-destructive')}>
-          {isLoading ? '…' : fmtCredits(ilsToCredits(balance))}
+          {isLoading ? '…' : fmtCompactCredits(ilsToCredits(balance))}
         </span>
       </Button>
-      {showContacts && <div className="relative min-w-0"><Button
+      {showContacts && <Button
         variant="outline"
-        onClick={() => go('/lead-crm?filter=untreated')}
-        className={cn('flex w-full items-center justify-center gap-1 rounded-lg border border-border bg-card py-2 ps-1 text-sm font-semibold transition-colors hover:border-primary', untreated > 0 ? 'pe-12' : 'pe-6')}
+        onClick={() => go(leadsPath)}
+        className="flex min-w-0 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-1 py-2 text-sm font-semibold transition-colors hover:border-primary"
         aria-label={`לידים שטרם טופלו: ${untreated}`}
         title="לידים שטרם טופלו"
       >
-        <Users className="h-4 w-4 shrink-0 text-[hsl(var(--nav-new-contacts))]" />
+        <ContactRound className="h-4 w-4 shrink-0 text-[hsl(var(--nav-new-contacts))]" />
         <span>לידים</span>
-      </Button>{untreated > 0 && <Button variant="ghost" size="icon" aria-label="הסבר על לידים חדשים" className="absolute end-6 top-1/2 h-5 min-w-5 -translate-y-1/2 rounded-full bg-destructive px-1 text-xs font-bold text-destructive-foreground hover:bg-destructive/90 hover:text-destructive-foreground" onClick={() => setExplanation(true)}>{untreated > 99 ? '99+' : untreated}</Button>}<Button variant="ghost" size="icon" aria-label="מה מייצג מונה הלידים?" title="הסבר על המונה" className="absolute end-0 top-1/2 h-6 w-6 -translate-y-1/2 text-muted-foreground" onClick={() => setExplanation(true)}><CircleHelp className="h-3.5 w-3.5" /></Button></div>}
-    </div><Dialog open={explanation} onOpenChange={setExplanation}><DialogContent dir="rtl"><DialogHeader><DialogTitle>לידים חדשים</DialogTitle><DialogDescription>המספר מציג לידים חדשים במרחב העבודה הנוכחי שעדיין לא טופלו. כאשר אין לידים כאלה, המונה מוסתר.</DialogDescription></DialogHeader><Button onClick={() => { setExplanation(false); go('/lead-crm?filter=untreated'); }}>לצפייה בלידים</Button></DialogContent></Dialog></>
+        {untreated > 0 && <span aria-label="לידים חדשים" className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold text-destructive-foreground">{untreated > 99 ? '99+' : untreated}</span>}
+      </Button>}
+    </div>
   );
 }

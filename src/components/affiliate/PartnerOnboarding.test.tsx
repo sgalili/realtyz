@@ -5,31 +5,36 @@ import { PartnerOnboarding } from './PartnerOnboarding';
 const mocks = vi.hoisted(() => ({ accept: vi.fn(), seen: vi.fn() }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ acceptTerms: mocks.accept, isAcceptingTerms: false }) }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'test' } }) }));
+vi.mock('@/hooks/usePartnerConsent', () => ({ usePartnerConsent: () => ({ data: false, isLoading: false }) }));
 vi.mock('@/hooks/useUserRole', () => ({ userRolesQueryKey: (id: string) => ['roles', id] }));
 vi.mock('@/lib/tutorials', () => ({ tutorialStore: { markSeen: mocks.seen } }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear(); });
 function setup() {
   const done = vi.fn();
   render(<QueryClientProvider client={new QueryClient()}><PartnerOnboarding onComplete={done} /></QueryClientProvider>);
   return done;
 }
-function advance() { for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: /^הבא$/ })); }
+function agree() { fireEvent.click(screen.getByRole('checkbox', { name: /קראתי ואני מסכים/ })); }
 describe('partner consent sequence', () => {
-  it('requires slides and explicit agreement before entry', async () => {
+  it('requires terms checkbox and successful server agreement before remembering dismissal', async () => {
     mocks.accept.mockResolvedValue(undefined);
     const done = setup();
-    expect(screen.queryByRole('button', { name: 'אשר והסכם' })).toBeNull();
-    advance();
+    expect(screen.getByRole('button', { name: 'אשר והסכם' })).toBeDisabled();
+    agree();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'אל תציג לי שוב' }));
     expect(done).not.toHaveBeenCalled();
     expect(mocks.accept).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'אשר והסכם' }));
     await waitFor(() => expect(done).toHaveBeenCalledOnce());
+    expect(localStorage.getItem('realtyz-partner-intro-dismissed-test')).toBe('true');
   });
   it('does not unlock partner entry when consent persistence fails', async () => {
     mocks.accept.mockRejectedValue(new Error('failed'));
-    const done = setup(); advance();
+    const done = setup(); agree();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'אל תציג לי שוב' }));
     fireEvent.click(screen.getByRole('button', { name: 'אשר והסכם' }));
     await screen.findByRole('alert');
     expect(done).not.toHaveBeenCalled();
+    expect(localStorage.getItem('realtyz-partner-intro-dismissed-test')).toBeNull();
   });
 });

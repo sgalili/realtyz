@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { agorotToCredits, fmtCredits, ilsToCredits } from './credits';
+import { agorotToCredits, fmtCompactCredits, fmtCredits, ilsToCredits } from './credits';
 import { isSyntheticEmail } from './friendlyUserDisplayName';
 
 describe('credits-first displays', () => {
+  it('compacts header balances without losing small fractional credits', () => {
+    expect(fmtCompactCredits(1300)).toBe('1.3k קרדיטים');
+    expect(fmtCompactCredits(5000)).toBe('5k קרדיטים');
+    expect(fmtCompactCredits(0.25)).toBe('0.25 קרדיטים');
+    expect(fmtCompactCredits(0)).toBe('0 קרדיטים');
+  });
   it('converts rewards and fractional action charges without changing stored ILS', () => {
     expect(ilsToCredits(200)).toBe(5000);
     expect(ilsToCredits(100)).toBe(2500);
