@@ -142,7 +142,7 @@ export function IncomingLeadsPanel({ mode }: { mode: Mode }) {
       {rows.map((row: any) => {
         const isLead = mode === 'leads';
         const name = isLead
-          ? row.full_name || 'איש קשר חדש'
+          ? row.full_name || 'ליד חדש'
           : [row.first_name, row.last_name].filter(Boolean).join(' ') || 'מתווך חדש';
         const phone = isLead ? row.phone_number : row.phone;
         const target = isLead ? `/lead-crm/${row.id}` : row.lead_id ? `/lead-crm/${row.lead_id}` : '/lead-crm';

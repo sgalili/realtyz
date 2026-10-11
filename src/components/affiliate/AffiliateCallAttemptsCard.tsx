@@ -89,7 +89,7 @@ export default function AffiliateCallAttemptsCard() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
             <Phone className="h-4 w-4 text-sky-600" />
-            שיחות אוטומטיות לאנשי קשר שהבאתם
+            שיחות אוטומטיות ללידים שהבאתם
             {failures.length > 0 && (
               <Badge variant="destructive" className="ms-1">{failures.length} נכשלו</Badge>
             )}
@@ -102,7 +102,7 @@ export default function AffiliateCallAttemptsCard() {
               <div key={row.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2">
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] font-semibold text-slate-900">
-                    {row.lead_name || 'איש קשר'} · {row.lead_phone}
+                    {row.lead_name || 'ליד'} · {row.lead_phone}
                   </div>
                   <div className="truncate text-[12px] text-slate-500">
                     {row.address || '—'} · {new Date(row.created_at).toLocaleString('he-IL')}
@@ -141,7 +141,7 @@ export default function AffiliateCallAttemptsCard() {
 
       <Dialog open={!!openLead} onOpenChange={(open) => !open && setOpenLead(null)}>
         <DialogContent dir="rtl" className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader><DialogTitle className="text-right">{openLead?.lead_name || 'איש קשר'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-right">{openLead?.lead_name || 'ליד'}</DialogTitle></DialogHeader>
           <div className="space-y-4 text-[13px]">
             <div>
               <div className="mb-1 font-bold text-slate-900">שיחת ווטסאפ</div>
@@ -151,7 +151,7 @@ export default function AffiliateCallAttemptsCard() {
                 <div className="space-y-1">
                   {(enrichment?.whatsapp_transcript ?? []).map((line, index) => (
                     <p key={index} className="text-slate-700">
-                      <span className="font-semibold">{line.from === 'voter' ? 'איש הקשר' : 'ריטה'}: </span>{line.text}
+                      <span className="font-semibold">{line.from === 'voter' ? 'הליד' : 'ריטה'}: </span>{line.text}
                     </p>
                   ))}
                 </div>

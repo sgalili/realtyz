@@ -38,28 +38,28 @@ export default function LeftoverLeadsDialog() {
     const { data, error } = await (supabase.rpc as any)('purchase_leftover_lead', { _charge_id: id });
     setBuying(null);
     if (error || !data?.ok) { toast.error('הרכישה נכשלה'); return; }
-    toast.success('איש הקשר נרכש');
+    toast.success('הליד נרכש');
     qc.invalidateQueries({ queryKey: key });
   };
 
   return (
     <>
-      <Button variant="outline" size="sm" className="h-[44px] shrink-0 gap-1.5" onClick={() => setOpen(true)} title="אנשי קשר מעבר למכסה היומית">
+      <Button variant="outline" size="sm" className="h-[44px] shrink-0 gap-1.5" onClick={() => setOpen(true)} title="לידים מעבר למכסה היומית">
         <Inbox className="h-4 w-4" />
         {pending > 0 ? <span className="font-semibold">{pending}</span> : null}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl" className="max-w-2xl">
-          <DialogHeader><DialogTitle>אנשי קשר מעבר למכסה היומית</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">אנשי קשר שהגיעו אחרי שהנכס הגיע למכסה. לא חויבתם עליהם; ניתן לרכוש במחיר המוזל שקבע השותף.</p>
+          <DialogHeader><DialogTitle>לידים מעבר למכסה היומית</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">לידים שהגיעו אחרי שהנכס הגיע למכסה. לא חויבתם עליהם; ניתן לרכוש במחיר המוזל שקבע השותף.</p>
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : rows.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">אין כרגע אנשי קשר נוספים</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">אין כרגע לידים נוספים</p>
           ) : (
             <div className="max-h-[60vh] overflow-auto">
               <Table className="w-full min-w-[520px] text-sm">
-                <thead><tr className="border-b text-muted-foreground"><th className="p-2 text-start">נכס</th><th className="p-2 text-start">איש קשר</th><th className="p-2 text-start">סוג</th><th className="p-2 text-start">מחיר</th><th className="p-2" /></tr></thead>
+                <thead><tr className="border-b text-muted-foreground"><th className="p-2 text-start">נכס</th><th className="p-2 text-start">ליד</th><th className="p-2 text-start">סוג</th><th className="p-2 text-start">מחיר</th><th className="p-2" /></tr></thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id} className="border-b last:border-0">

@@ -156,7 +156,7 @@ export default function SmartTimelineCard({
           kind: 'signature',
           label: `חתימה דיגיטלית · ${r.title ?? ''}`,
           detail: signed
-            ? 'המסמך נחתם דיגיטלית על ידי איש הקשר.'
+            ? 'המסמך נחתם דיגיטלית על ידי הליד.'
             : r.viewed_at
               ? 'המסמך נשלח ונצפה, ממתין לחתימה.'
               : 'המסמך נשלח לחתימה דיגיטלית בוואטסאפ.',

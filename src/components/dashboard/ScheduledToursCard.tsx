@@ -342,7 +342,7 @@ export function ScheduledToursCard({
                 if (leadId) navigate(`/lead-crm/${leadId}`);
               }}
               disabled={!leadIdOf(t.client_phone)}
-              aria-label={`פתיחת כרטיס איש קשר של ${t.client_name}`}
+              aria-label={`פתיחת כרטיס ליד של ${t.client_name}`}
             >
               <ContactAvatar name={t.client_name} imageUrl={avatarOf(t.client_phone)} className="h-8 w-8" />
               <span className="truncate hover:underline">{t.client_name}</span>

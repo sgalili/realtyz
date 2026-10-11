@@ -95,7 +95,7 @@ export function SubmitLeadDialog({ listing }: { listing: MarketplaceListing }) {
             />
           </div>
           <p className="text-[11px] text-slate-500">
-            הזינו את פרטי איש הקשר ושלחו את הפנייה. תוכלו לעקוב אחריה במסך אנשי הקשר שלכם.
+            הזינו את פרטי הליד ושלחו את הפנייה. תוכלו לעקוב אחריה במסך הלידים שלכם.
           </p>
         </div>
 

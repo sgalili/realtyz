@@ -596,7 +596,7 @@ export default function SmsBlastSimulator() {
       if (isDemoMode) {
         setMaxAvailableVoters(1_000_000);
         setTotalRecipients(DEMO_TOTAL_VOTERS);
-        setRecipientSource(`כל אנשי הקשר במערכת (${DEMO_TOTAL_VOTERS.toLocaleString('he-IL')})`);
+        setRecipientSource(`כל הלידים במערכת (${DEMO_TOTAL_VOTERS.toLocaleString('he-IL')})`);
         setFilterCount(DEMO_TOTAL_VOTERS);
         setCityOptions(DEMO_CITIES);
         setTagOptions(DEMO_TAGS);
@@ -685,7 +685,7 @@ export default function SmsBlastSimulator() {
     setRecipientSource('picker');
     setListFileName(null);
     setVoterPickerOpen(false);
-    toast.success(`נבחרו ${clamped.toLocaleString('he-IL')} אנשי קשר מהמערכת`);
+    toast.success(`נבחרו ${clamped.toLocaleString('he-IL')} לידים מהמערכת`);
   }, [filterCount]);
 
   // Voice pricing — differential by source:
@@ -1186,7 +1186,7 @@ export default function SmsBlastSimulator() {
                         : `₪${channel.unitPriceNis.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     const handleCardClick = () => {
                       if (disabledForLead) {
-                        toast.info('לאיש קשר זה אין כתובת/מספר מתאים לערוץ זה.');
+                        toast.info('לליד זה אין כתובת/מספר מתאים לערוץ זה.');
                         return;
                       }
                       if (isPending) {
@@ -1201,7 +1201,7 @@ export default function SmsBlastSimulator() {
                       toggleChannel(channel.id);
                     };
                     const disabledTitle = disabledForLead
-                      ? 'אין יעד זמין לאיש קשר זה בערוץ הזה'
+                      ? 'אין יעד זמין לליד זה בערוץ הזה'
                       : disabledForIntegration
                         ? 'הערוץ אינו מחובר בהגדרות המשרד'
                         : undefined;
@@ -2033,8 +2033,8 @@ export default function SmsBlastSimulator() {
       <Dialog open={voterPickerOpen} onOpenChange={setVoterPickerOpen}>
         <DialogContent className="max-w-lg" dir="rtl">
           <DialogHeader>
-            <DialogTitle>בחירת אנשי קשר מהמערכת</DialogTitle>
-            <DialogDescription>סננו לפי עיר, תגית עניין, סטטוס ונאמנות. ברירת המחדל היא כלל אנשי הקשר.</DialogDescription>
+            <DialogTitle>בחירת לידים מהמערכת</DialogTitle>
+            <DialogDescription>סננו לפי עיר, תגית עניין, סטטוס ונאמנות. ברירת המחדל היא כלל הלידים.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -2082,7 +2082,7 @@ export default function SmsBlastSimulator() {
           </div>
           <div className="rounded-md bg-primary/5 p-3 text-center text-sm">
             {filterLoading ? 'מחשב...' : (
-              <>נמצאו <span className="font-bold text-primary">{filterCount.toLocaleString('he-IL')}</span> אנשי קשר תואמים</>
+              <>נמצאו <span className="font-bold text-primary">{filterCount.toLocaleString('he-IL')}</span> לידים תואמים</>
             )}
           </div>
           <DialogFooter>

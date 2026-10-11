@@ -250,7 +250,7 @@ export function ClosingRoomDialog({
             {template === 'tour_agreement' ? 'חתימה דיגיטלית לפני סיור' : 'חדר סגירה דיגיטלי'}
           </DialogTitle>
           <DialogDescription>
-            הפיקו מסמך מוכן עבור {lead?.full_name || 'איש הקשר'} ושלחו אותו לחתימה מאובטחת ב-WhatsApp.
+            הפיקו מסמך מוכן עבור {lead?.full_name || 'הליד'} ושלחו אותו לחתימה מאובטחת ב-WhatsApp.
           </DialogDescription>
         </DialogHeader>
 

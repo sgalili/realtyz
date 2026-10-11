@@ -1,7 +1,6 @@
 // Locale-aware micro-strings for loading/status UI in the campaigns feed.
 // Reads `kalpiz_locale` from localStorage; defaults to Hebrew (he).
-// STRICT: never use the forbidden Hebrew tokens 'ליד'/'לידים' — always
-// use 'איש קשר'/'אנשי קשר' when referring to platform contacts.
+// Hebrew sales terminology: ליד/לידים for leads, פנייה/פניות for inquiries.
 
 export type Locale = "he" | "en";
 

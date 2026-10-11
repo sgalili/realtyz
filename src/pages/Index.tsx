@@ -208,7 +208,7 @@ const RealEstateDashboard = () => {
           id: `inq-${r.id}`,
           type: 'inquiry',
           title: 'פנייה חדשה לנכס',
-          detail: [r.full_name || 'איש קשר חדש', formatPhoneDisplay(r.phone_number)].filter(Boolean).join(' · '),
+          detail: [r.full_name || 'ליד חדש', formatPhoneDisplay(r.phone_number)].filter(Boolean).join(' · '),
           at: r.created_at,
           leadId: r.lead_id,
         });
@@ -218,7 +218,7 @@ const RealEstateDashboard = () => {
           id: `show-${r.id}`,
           type: 'showing',
           title: 'נקבע סיור בנכס',
-          detail: `${r.lead_name ?? 'איש קשר'} · ${r.title}`,
+          detail: `${r.lead_name ?? 'ליד'} · ${r.title}`,
           at: r.created_at,
         });
       });
@@ -235,7 +235,7 @@ const RealEstateDashboard = () => {
         items.push({
           id: `rep-${r.id}`,
           type: 'reply',
-          title: 'איש קשר הגיב',
+          title: 'ליד הגיב',
           detail: (r.content ?? '').slice(0, 60) || 'הודעה חדשה',
           at: r.created_at,
           leadId: r.lead_id,
@@ -290,7 +290,7 @@ const RealEstateDashboard = () => {
       <CollapsibleSection
         id="kpis"
         title="מדדים מרכזיים"
-        description="נכסים, אנשי קשר, פגישות ועסקאות"
+        description="נכסים, לידים, פגישות ועסקאות"
         icon={<Building2 className="h-4 w-4 text-primary" />}
       >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
@@ -304,10 +304,10 @@ const RealEstateDashboard = () => {
         />
         <KpiCard
           icon={Flame}
-          label="אנשי קשר חמים"
+          label="לידים חמים"
           value={hotLeads ?? 0}
           loading={loadingHot}
-          tooltip="אנשי קשר שיצרו אינטראקציה ב-24 השעות האחרונות."
+          tooltip="לידים שיצרו אינטראקציה ב-24 השעות האחרונות."
           accent="warning"
           to="/lead-crm"
         />
@@ -336,7 +336,7 @@ const RealEstateDashboard = () => {
       <CollapsibleSection
         id="activity-and-neighborhoods"
         title="פעילות נדל״ן והתפלגות שכונות"
-        description="פניות, סיורים, חוזים ותגובות אנשי קשר"
+        description="פניות, סיורים, חוזים ותגובות לידים"
         icon={<Home className="h-4 w-4 text-primary" />}
       >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -347,7 +347,7 @@ const RealEstateDashboard = () => {
               <Home className="h-4 w-4 text-primary" />
               פעילות נדל״ן בזמן אמת
             </CardTitle>
-            <CardDescription>פניות, סיורים, חוזים ותגובות אנשי קשר</CardDescription>
+            <CardDescription>פניות, סיורים, חוזים ותגובות לידים</CardDescription>
           </CardHeader>
           <CardContent>
             {!activityFeed ? (
@@ -371,7 +371,7 @@ const RealEstateDashboard = () => {
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                אנשי קשר לפי שכונה
+                לידים לפי שכונה
               </CardTitle>
               <CardDescription className="text-xs">6 שכונות מובילות</CardDescription>
             </div>
@@ -430,7 +430,7 @@ const RealEstateDashboard = () => {
           <CollapsibleSection id="pending-listings" title="נכסים שזוהו אוטומטית" description="אישור, עריכה או מחיקה של נכסים שהופקו על ידי ה-AI">
             <PendingListingsCard />
           </CollapsibleSection>
-          <CollapsibleSection id="match-progress" title="התאמות אנשי קשר ונכסים" description="מצב ההתאמות בין אנשי קשר לנכסים">
+          <CollapsibleSection id="match-progress" title="התאמות לידים ונכסים" description="מצב ההתאמות בין לידים לנכסים">
             <MatchProgressCard />
           </CollapsibleSection>
           <CollapsibleSection id="listing-visibility" title="ניהול חשיפת נכסים" description="נכסים מקודמים ומודגשים">

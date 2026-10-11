@@ -209,7 +209,7 @@ export function RecruitmentDashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{row.content || 'הודעה'}</p>
                         <p className="truncate text-[11px] text-muted-foreground">
-                          {row.sender_type === 'ai' ? 'ריטה' : row.sender_type === 'agent' ? 'המשרד' : 'איש קשר'}
+                          {row.sender_type === 'ai' ? 'ריטה' : row.sender_type === 'agent' ? 'המשרד' : 'ליד'}
                           {row.platform ? ` · ${row.platform}` : ''}
                         </p>
                       </div>

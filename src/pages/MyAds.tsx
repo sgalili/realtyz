@@ -34,7 +34,7 @@ type History = { id: string; at: string; type: string; amount: number; name: str
 type Details = { affiliates: Affiliate[]; history: History[]; history_started_at: string | null; has_older_history: boolean; owned: boolean };
 const number = (value: number) => Number(value || 0).toLocaleString('he-IL');
 const date = (value: string | null) => value ? new Date(value).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-const labels: Record<string, string> = { view: 'צפייה במודעה', click: 'לחיצה על קישור', promotion: 'תחילת קידום', contact: 'איש קשר חדש', purchase: 'רכישת איש קשר' };
+const labels: Record<string, string> = { view: 'צפייה במודעה', click: 'לחיצה על קישור', promotion: 'תחילת קידום', contact: 'ליד חדש', purchase: 'רכישת ליד' };
 
 function AdDetails({ listingId }: { listingId: string }) {
   const { user } = useAuth();
@@ -67,7 +67,7 @@ function AdDetails({ listingId }: { listingId: string }) {
       <h3 className="font-semibold">{data?.owned ? 'תוצאות השותפים' : 'תוצאות הקידום שלי'}</h3>
       {!data?.affiliates.length ? <p className="text-sm text-muted-foreground">אין עדיין שותפים מקדמים</p> : <HorizontalTableScroll>
         <Table className="w-full min-w-[680px] text-right text-sm">
-          <thead><tr className="text-muted-foreground">{['שותף', 'צפיות מתועדות', 'קליקים', 'אנשי קשר', 'רכישות בתשלום', 'סכום ששולם', 'תחילת קידום', 'פעילות אחרונה'].map(t => <th key={t} className="p-2 font-medium">{t}</th>)}</tr></thead>
+          <thead><tr className="text-muted-foreground">{['שותף', 'צפיות מתועדות', 'קליקים', 'לידים', 'רכישות בתשלום', 'סכום ששולם', 'תחילת קידום', 'פעילות אחרונה'].map(t => <th key={t} className="p-2 font-medium">{t}</th>)}</tr></thead>
           <tbody>{data.affiliates.map(a => <tr key={a.affiliate_id} className="border-t"><td className="p-2 font-semibold">{a.name}</td><td className="p-2">{number(a.views)}</td><td className="p-2">{number(a.clicks)}</td><td className="p-2">{number(a.leads)}</td><td className="p-2">{number(a.paid_count)}</td><td className="p-2 whitespace-nowrap">₪{number(a.paid_bids)}</td><td className="p-2 whitespace-nowrap">{date(a.since)}</td><td className="p-2 whitespace-nowrap">{date(a.last_activity)}</td></tr>)}</tbody>
         </Table>
       </HorizontalTableScroll>}

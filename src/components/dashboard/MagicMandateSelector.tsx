@@ -182,7 +182,7 @@ export function MagicMandateSelector({ open, onComplete }: MagicMandateSelectorP
                   <BreakdownItem
                     label="קהל יעד לניצחון"
                     value={`${formatNumber(breakdown.voters)}`}
-                    suffix="אנשי קשר מזוהים"
+                    suffix="לידים מזוהים"
                     valueKey={breakdown.voters}
                   />
                   <BreakdownItem

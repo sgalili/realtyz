@@ -151,7 +151,7 @@ export default function Wallet() {
               <dt className="text-muted-foreground">סטטוס</dt><dd>{statusOf(detail)}</dd>
               <dt className="text-muted-foreground">סכום</dt><dd dir="ltr" className="text-right font-bold">{ils(detail.amount_ils)}</dd>
               {detail.listing_title && <><dt className="text-muted-foreground">נכס</dt><dd>{target(detail)}</dd></>}
-              {detail.lead_name && <><dt className="text-muted-foreground">איש קשר</dt><dd>{detail.lead_name}</dd></>}
+              {detail.lead_name && <><dt className="text-muted-foreground">ליד</dt><dd>{detail.lead_name}</dd></>}
               {!!detail.gross && <><dt className="text-muted-foreground">עלות הפנייה</dt><dd>{ils(detail.gross)}</dd></>}
               {!!detail.extra_fee && <><dt className="text-muted-foreground">שדות/שאלות נוספים</dt><dd>{ils(detail.extra_fee)}</dd></>}
               {detail.dispute_status && <><dt className="text-muted-foreground">מחלוקת</dt><dd>{detail.dispute_status}</dd></>}

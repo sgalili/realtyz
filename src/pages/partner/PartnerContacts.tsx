@@ -55,7 +55,7 @@ function ContactCard({ contact, licensed }: { contact: PartnerContact; licensed:
           />
           <div className="min-w-0 flex-1">
             <p className="break-words text-[14px] font-medium text-slate-800">
-              {contact.full_name || contact.phone_number || 'איש קשר'}
+              {contact.full_name || contact.phone_number || 'ליד'}
             </p>
             <p className="text-[13px] text-slate-600">
               {[contact.city, contact.neighborhood, deal].filter(Boolean).join(' • ')}
@@ -127,7 +127,7 @@ export default function PartnerContacts() {
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-violet-50 p-3 text-center">
           <p className="text-lg font-semibold text-violet-700">{contacts.length}</p>
-          <p className="text-[13px] text-slate-600">אנשי קשר</p>
+          <p className="text-[13px] text-slate-600">לידים</p>
         </div>
         <div className="rounded-xl bg-emerald-50 p-3 text-center">
           <p className="text-lg font-semibold text-success">{fmtCredits(ilsToCredits(earnedTotal))}</p>
@@ -140,7 +140,7 @@ export default function PartnerContacts() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="חיפוש איש קשר"
+          placeholder="חיפוש ליד"
           className="pe-9 text-[14px]"
         />
       </div>
@@ -159,7 +159,7 @@ export default function PartnerContacts() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
             <Users className="h-6 w-6 text-slate-400" />
-            <p className="text-[14px] text-slate-600">אין אנשי קשר להצגה כרגע.</p>
+            <p className="text-[14px] text-slate-600">אין לידים להצגה כרגע.</p>
           </CardContent>
         </Card>
       ) : (

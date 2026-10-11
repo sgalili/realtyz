@@ -37,12 +37,12 @@ export default function LeftoverDiscountButton({ referralId }: { referralId: str
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8" title="הנחה לאנשי קשר מעבר למכסה">
+        <Button variant="ghost" size="icon" className="h-8 w-8" title="הנחה ללידים מעבר למכסה">
           <BadgePercent className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
       <PopoverContent dir="rtl" className="w-64 space-y-3">
-        <p className="text-sm font-semibold">הנחה לאנשי קשר מעבר למכסה היומית</p>
+        <p className="text-sm font-semibold">הנחה ללידים מעבר למכסה היומית</p>
         <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
           {(['percent', 'fixed'] as const).map((t) => (
             <button key={t} type="button" onClick={() => setType(t)}

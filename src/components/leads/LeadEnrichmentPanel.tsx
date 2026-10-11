@@ -142,7 +142,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
       const updated = (data as any)?.updated ?? 0;
       const failed = (data as any)?.failed ?? 0;
       if (updated > 0)      toast.success('תמונת פרופיל סונכרנה מוואטסאפ');
-      else if (failed > 0)  toast.warning('לא נמצאה תמונת פרופיל פעילה לאיש קשר זה');
+      else if (failed > 0)  toast.warning('לא נמצאה תמונת פרופיל פעילה לליד זה');
       else                  toast.info('סריקה הושלמה — אין נתונים חדשים להעשרה');
       qc.invalidateQueries({ queryKey: ['leads-infinite'] });
     } catch (e: any) {
@@ -276,7 +276,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
           </div>
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <GenderIcon className="h-3.5 w-3.5 text-slate-700" /> סוג איש קשר
+              <GenderIcon className="h-3.5 w-3.5 text-slate-700" /> סוג ליד
               {savingField === 'lead_kind' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
             </Label>
             <Select
@@ -419,7 +419,7 @@ export function LeadEnrichmentButton({ lead }: { lead: any }) {
       const updated = (data as any)?.updated ?? 0;
       const failed = (data as any)?.failed ?? 0;
       if (updated > 0)      toast.success('תמונת פרופיל סונכרנה מוואטסאפ');
-      else if (failed > 0)  toast.warning('לא נמצאה תמונת פרופיל פעילה לאיש קשר זה');
+      else if (failed > 0)  toast.warning('לא נמצאה תמונת פרופיל פעילה לליד זה');
       else                  toast.info('סריקה הושלמה — אין נתונים חדשים להעשרה');
       qc.invalidateQueries({ queryKey: ['leads-infinite'] });
     } catch (e: any) {

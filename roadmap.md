@@ -185,3 +185,7 @@
 - [x] 7. Show action buttons per priced lead type on public ads
 - [x] 8. Signed-out "share ad": affiliate onboarding flow, then share the original property
 - [x] 9. Daily lead cap, stop promotion + FB group posts at cap, partner leftover discount (% or fixed), leftover purchase screen, WhatsApp partner attribution via referral code
+
+## Lead and inquiry terminology
+- [x] Rename counter and explanation to the requested לידים copy; align sales navigation, tooltips, onboarding and helper text with לידים / פניות, preserving stored values and contact details.
+- [ ] Verify terminology tests and authenticated counter → explanation → leads navigation.

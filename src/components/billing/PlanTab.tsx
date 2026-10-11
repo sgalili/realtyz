@@ -57,7 +57,7 @@ export default function PlanTab() {
                 <ul className="space-y-1.5 text-sm">
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 shrink-0 text-primary" />
-                    <span>{limitLabel(pkg.contacts)} אנשי קשר</span>
+                    <span>{limitLabel(pkg.contacts)} לידים</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 shrink-0 text-primary" />
@@ -87,8 +87,8 @@ export default function PlanTab() {
 
       {status && (
         <p dir="rtl" className="text-xs text-muted-foreground">
-          השימוש הנוכחי: {status.contacts_used.toLocaleString('he-IL')} מתוך {status.contact_limit.toLocaleString('he-IL')} אנשי קשר בחבילה.
-          כל החבילות בתשלום כוללות את אותן יכולות; ההבדל היחיד הוא מספר אנשי הקשר הפעילים.
+          השימוש הנוכחי: {status.contacts_used.toLocaleString('he-IL')} מתוך {status.contact_limit.toLocaleString('he-IL')} לידים בחבילה.
+          כל החבילות בתשלום כוללות את אותן יכולות; ההבדל היחיד הוא מספר הלידים הפעילים.
         </p>
       )}
 

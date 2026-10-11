@@ -64,7 +64,7 @@ export function NextMilestoneWidget() {
         <CardContent className="text-center space-y-2 py-4">
           <p className="text-sm text-foreground">עדיין אין נתוני קמפיין במערכת שלך.</p>
           <p className="text-xs text-muted-foreground">
-            הגדר יעד עסקאות בעמוד המנוי וייבא את רשימת אנשי הקשר שלך כדי לראות את אבן הדרך הבאה.
+            הגדר יעד עסקאות בעמוד המנוי וייבא את רשימת הלידים שלך כדי לראות את אבן הדרך הבאה.
           </p>
         </CardContent>
       </Card>
@@ -115,7 +115,7 @@ export function NextMilestoneWidget() {
                   <p className="text-3xl font-black tabular-nums text-primary">
                     {contactsToConvert.toLocaleString()}
                   </p>
-                  <p className="text-xs text-muted-foreground">אנשי קשר להמרה לפי אחוזי ההמרה שלך</p>
+                  <p className="text-xs text-muted-foreground">לידים להמרה לפי אחוזי ההמרה שלך</p>
                 </div>
               </div>
               <Badge variant="outline" className="gap-1 text-xs">

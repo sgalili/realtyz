@@ -56,7 +56,7 @@ function ChatThread({ chat, onBack }: { chat: PartnerChat; onBack: () => void })
         </Button>
         <ContactAvatar name={chat.full_name ?? undefined} imageUrl={chat.profile_picture_url ?? undefined} className="h-8 w-8" />
         <div className="min-w-0">
-          <p className="truncate text-[14px] font-medium text-slate-800">{chat.full_name || chat.phone_number || 'איש קשר'}</p>
+          <p className="truncate text-[14px] font-medium text-slate-800">{chat.full_name || chat.phone_number || 'ליד'}</p>
           <p className="text-[12px] text-slate-500">
             {PARTNER_CHANNEL_LABELS[(chat.last_channel || '').toLowerCase()] || chat.last_channel || ''}
           </p>
@@ -170,7 +170,7 @@ export default function PartnerChats() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="min-w-0 flex-1 truncate text-[14px] font-medium text-slate-800">
-                      {c.full_name || c.phone_number || 'איש קשר'}
+                      {c.full_name || c.phone_number || 'ליד'}
                     </p>
                     <span className="shrink-0 text-[12px] text-slate-500">{fmtTime(c.last_message_at)}</span>
                   </div>

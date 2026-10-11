@@ -89,7 +89,7 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
   {
-    title: 'אנשי קשר',
+    title: 'לידים',
     url: '/lead-crm',
     icon: Users,
     iconColor: '!text-[hsl(var(--nav-contacts))]', // emerald-700
@@ -157,7 +157,7 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
   },
   {
-    title: 'אנשי קשר',
+    title: 'לידים',
     url: '/partner/contacts',
     icon: Users,
     iconColor: '!text-[hsl(var(--nav-contacts))]', // blue-700
@@ -200,7 +200,7 @@ const OWNER_NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
   },
   {
-    title: 'אנשי קשר',
+    title: 'לידים',
     url: '/owner/leads',
     icon: Users,
     iconColor: '!text-[hsl(var(--nav-contacts))]', // blue-700

@@ -1084,7 +1084,7 @@ function BrokerAffiliateNetwork() {
             ) : filteredReferrals.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">
-                  עוד לא נכנסו אנשי קשר דרך שותפים.
+                  עוד לא נכנסו לידים דרך שותפים.
                 </CardContent>
               </Card>
             ) : (
@@ -1161,7 +1161,7 @@ function BrokerAffiliateNetwork() {
                             imageUrl={r.lead.profile_picture_url}
                             className="h-8 w-8"
                           />
-                          <span>{r.lead.full_name || "איש קשר"}</span>
+                          <span>{r.lead.full_name || "ליד"}</span>
                           {r.lead.phone ? (
                             <bdi dir="ltr" className="text-slate-500">
                               {r.lead.phone}

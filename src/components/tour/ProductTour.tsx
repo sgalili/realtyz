@@ -44,7 +44,7 @@ const PARTNER_STEPS: TourStep[] = [
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
   { title: 'בוחרים נכס ומקבלים קישור שיווק אישי', cta: { label: 'פתח שיווק שותפים', to: '/affiliate-network' } },
   { title: 'ריטה עונה לכל פנייה במקומכם, גם כשאתם לא מול המסך', cta: { label: 'פתח צ׳אטים', to: '/partner/chats' } },
-  { title: 'כל איש קשר, פנייה ותגמול במקום אחד', cta: { label: 'פתח אנשי קשר', to: '/partner/contacts' } },
+  { title: 'כל ליד, פנייה ותגמול במקום אחד', cta: { label: 'פתח לידים', to: '/partner/contacts' } },
 ];
 
 /** Private property owner flow: their own properties, leads and rewards. */
@@ -60,7 +60,7 @@ const OWNER_STEPS: TourStep[] = [
 const SEEKER_STEPS: TourStep[] = [
   { title: 'מגדירים עיר, תקציב ומספר חדרים ומקבלים התאמות מדויקות' },
   { title: 'ריטה מרכזת עבורכם נכסים מכל רשת השותפים' },
-  { title: 'שומרים נכסים ומשאירים פרטים בלי לחפש אנשי קשר', cta: { label: 'פתח את הלוח השיתופי', to: '/public-listings' } },
+  { title: 'שומרים נכסים ומשאירים פרטים בלי לחפש פרטי קשר', cta: { label: 'פתח את הלוח השיתופי', to: '/public-listings' } },
   { title: 'ריטה ממשיכה את השיחה בווטסאפ ומעדכנת כשנמצא נכס מתאים', cta: { label: 'חיפוש נכסים', to: '/public-listings' } },
 ];
 

@@ -54,7 +54,7 @@ export default function AffiliatePricing() {
                       <span className="text-2xl font-black">₪{price.toLocaleString('he-IL')}</span>
                       <span className="text-xs font-semibold text-muted-foreground">{billing === 'annual' ? '/לשנה' : '/לחודש'}</span>
                     </p>
-                    <p className="text-xs text-muted-foreground">עד {plan.contacts.toLocaleString('he-IL')} אנשי קשר</p>
+                    <p className="text-xs text-muted-foreground">עד {plan.contacts.toLocaleString('he-IL')} לידים</p>
                   </div>
                   <Button className="w-full" variant={selected === plan.slug ? 'secondary' : 'default'} disabled={saving} onClick={() => void save(plan.slug)}>
                     {selected === plan.slug ? 'נבחרה' : 'בחירת חבילה'}
