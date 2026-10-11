@@ -560,6 +560,10 @@ const LeadCRM = () => {
   const { leadId: routeLeadId } = useParams<{ leadId?: string }>();
   const navigate = useNavigate();
   const routeLocation = useLocation();
+  // Sidebar 'new contacts' button opens the list pre-filtered to untreated contacts.
+  useEffect(() => {
+    if (new URLSearchParams(routeLocation.search).get('filter') === 'untreated') setStatusFilter('untreated');
+  }, [routeLocation.search]);
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? null);
 
   // Sync sheet open-state with the URL param so /lead-crm/:id opens the profile.
@@ -652,7 +656,7 @@ const LeadCRM = () => {
       });
       if (error) throw error;
       toast.success('סנכרון תמונות הפרופיל הושלם');
-      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
     } catch (err: any) {
       toast.error('סנכרון תמונות הפרופיל נכשל: ' + (err?.message || 'שגיאה לא ידועה'));
     } finally {
@@ -745,7 +749,8 @@ const LeadCRM = () => {
       }
       if (interestFilter !== 'all') query = query.eq('interest_tag', interestFilter);
       if (cityFilter !== 'all') query = query.eq('city', cityFilter);
-      if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+      if (statusFilter === 'untreated') query = query.or('lead_stage.is.null,lead_stage.in.(new,new_lead)');
+      else if (statusFilter !== 'all') query = query.eq('status', statusFilter);
       if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
       if (leadKindFilter !== 'all') query = query.eq('preferences->>lead_kind', leadKindFilter);
       if (sentimentFilter !== 'all') query = query.eq('sentiment', sentimentFilter);
@@ -1024,7 +1029,7 @@ const LeadCRM = () => {
     autoFilledRef.current.add(selectedVoter.id);
     (async () => {
       const { error } = await supabase.from('leads').update(patch as any).eq('id', selectedVoter.id);
-      if (!error) queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      if (!error) queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVoter?.id, activeVoterMessages?.length, activeVoterChatHistory?.length]);
@@ -1228,7 +1233,7 @@ const LeadCRM = () => {
           description: failed.slice(0, 5).join(', ') || undefined,
         });
       }
-      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
     } finally {
       setSendingFirstOutreach(false);
     }
@@ -1245,7 +1250,7 @@ const LeadCRM = () => {
         new_interest_tag: tag,
       });
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       setSelectedIds(new Set());
       toast.success(`${count ?? ids.length} אנשי קשר עודכנו לתגית "${tag}"`);
@@ -1365,7 +1370,7 @@ const LeadCRM = () => {
           return { ...old, pages };
         });
       } catch { /* non-fatal cache prime */ }
-      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
       toast.success('איש קשר נוסף בהצלחה');
@@ -1880,6 +1885,7 @@ const LeadCRM = () => {
               <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="סנן לפי סטטוס" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל הסטטוסים</SelectItem>
+                <SelectItem value="untreated">טרם טופלו</SelectItem>
                 {uniqueStatuses.map((s) => <SelectItem key={s} value={s!}>{hebrewLabel(statusHebrew, s) || s}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -2395,7 +2401,7 @@ const LeadCRM = () => {
                         onSave={async (next) => {
                           const { error } = await supabase.from('leads').update({ full_name: next || null }).eq('id', selectedVoter.id);
                           if (error) throw error;
-                          await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                          await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
                           toast.success('השם עודכן');
                         }}
                       />
@@ -2489,7 +2495,7 @@ const LeadCRM = () => {
                                     return;
                                   }
                                   toast.success(checked ? 'ריטה הופעלה' : 'ריטה כובתה');
-                                  queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                                  queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
                                 }}
                               >
                                 {/* Bot icon overlaid on the switch thumb; follows the same translate as the thumb */}
@@ -2591,7 +2597,7 @@ const LeadCRM = () => {
                       const { error } = await supabase.from('leads').update(patch as any).eq('id', selectedVoter.id);
                       if (error) { toast.error('שגיאה בעדכון'); return; }
                       toast.success('עודכן');
-                      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
                     };
 
                     const savePref = (pref: Record<string, any>) =>
@@ -2674,7 +2680,7 @@ const LeadCRM = () => {
                       const { error } = await supabase.from('leads').update({ [field]: next } as any).eq('id', lead.id);
                       if (error) { toast.error('שגיאה בעדכון'); return; }
                       toast.success('עודכן');
-                      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
                     };
                     return (
                       <div className="space-y-3">
@@ -2941,7 +2947,7 @@ const LeadCRM = () => {
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
         onImported={() => {
-          queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+          queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['untreated-contacts-count'] });
           queryClient.invalidateQueries({ queryKey: ['leads-total'] });
           // Immediately pull WA profile pictures for the freshly synced contacts.
           supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 2000, owner_id: activeWorkspaceId } }).catch(() => {});
