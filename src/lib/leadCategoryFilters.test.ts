@@ -1,21 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { leadCategoryOrFilter, visibleLeadKinds, type LeadKind } from './leadCategoryFilters';
+import { leadCategoryOrFilter, resolveLeadKind, visibleLeadKinds, type LeadKind } from './leadCategoryFilters';
 
 const available: LeadKind[] = ['buyer', 'seller', 'renter', 'landlord'];
 
 describe('lead category filtering', () => {
-  it('combines selected categories with OR', () => {
-    expect(leadCategoryOrFilter(['buyer', 'seller'], available))
-      .toBe('preferences->>lead_kind.eq.buyer,preferences->>lead_kind.eq.seller');
+  it('combines selected categories with OR on the resolved category', () => {
+    expect(leadCategoryOrFilter(['buyer', 'seller'], available)).toBe('lead_category.in.(buyer,seller)');
   });
-  it('leaves zero/all-visible selections unrestricted, including unclassified leads', () => {
+  it('single selection restricts to that category; zero selection is unrestricted', () => {
+    expect(leadCategoryOrFilter(['landlord'], available)).toBe('lead_category.in.(landlord)');
     expect(leadCategoryOrFilter([], available)).toBeUndefined();
-    expect(leadCategoryOrFilter(available, available)).toBeUndefined();
   });
   it('deduplicates and ignores stale unavailable selections', () => {
-    expect(leadCategoryOrFilter(['buyer', 'buyer', 'broker'], available))
-      .toBe('preferences->>lead_kind.eq.buyer');
+    expect(leadCategoryOrFilter(['buyer', 'buyer', 'broker'], available)).toBe('lead_category.in.(buyer)');
     expect(leadCategoryOrFilter(['broker'], available)).toBeUndefined();
+  });
+  it('resolves kind from the server column before preferences', () => {
+    expect(resolveLeadKind({ lead_category: 'renter', preferences: { lead_kind: 'buyer' } })).toBe('renter');
+    expect(resolveLeadKind({ preferences: { lead_kind: 'seller' } })).toBe('seller');
+    expect(resolveLeadKind({ lead_category: 'bogus' })).toBeNull();
   });
   it('hides brokers even when broker accounts are also partners', () => {
     expect(visibleLeadKinds({ ownerOnly: false, developer: false, broker: true, affiliateConsented: true }))
