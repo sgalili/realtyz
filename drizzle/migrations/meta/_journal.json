@@ -176,6 +176,13 @@
       "when": 1791692101556,
       "tag": "0024_invite_bonus_evidence_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791692202765,
+      "tag": "0025_invite_approval_closing_audit_compatibility",
+      "breakpoints": true
     }
   ]
 }
