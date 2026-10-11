@@ -41,8 +41,8 @@ export function TutorialHost() {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) gotIt(); }}>
       <DialogContent dir="rtl" className="max-w-md overflow-hidden p-0">
-        <div className="bg-gradient-to-b from-primary/15 to-transparent px-6 pb-2 pt-8 text-center">
-          <div className="mb-3 text-6xl" aria-hidden>{slide.emoji}</div>
+        <div className="px-6 pb-2 pt-8 text-center">
+          <div className="mb-3 text-4xl" aria-hidden>{slide.emoji}</div>
           <p className="text-sm font-bold text-primary">{tut.title}</p>
           <DialogTitle className="mt-1 text-2xl font-extrabold">{slide.title}</DialogTitle>
         </div>
@@ -50,7 +50,7 @@ export function TutorialHost() {
           <DialogDescription className="text-lg leading-relaxed text-foreground"><Rich text={slide.body} /></DialogDescription>
           {slide.bullets && (
             <ul className="space-y-1.5">
-              {slide.bullets.map((b) => <li key={b} className="rounded-lg bg-muted px-3 py-2.5 text-base leading-snug"><Rich text={b} /></li>)}
+              {slide.bullets.map((b) => <li key={b} className="py-1.5 text-lg leading-relaxed"><Rich text={b} /></li>)}
             </ul>
           )}
         </div>
