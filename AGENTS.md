@@ -26,7 +26,7 @@
 - Listing lifecycle advances forward-only via DB triggers (advance_listing_stage); a daily cron prompts idle advertisers and pauses partner distribution after 3 unanswered checks, resumed only by confirm_listing_availability.
 - Lead disputes, appeals and bans run only through audited security-definer RPCs (open/decide/appeal lead disputes, ban_user/unban_user); appeals need a neutral reviewer and bans freeze rather than delete data.
 
-- Developers use register_as_developer and scoped /developer-dashboard, not broker tools. Why: share ecosystem only.
+- Core identity survives additive affiliate membership; mode never grants roles. Why: safe dual-role navigation.
 - Developer editors retain source JSON in scoped eight-step forms; confirm saves, never publishes. Why: evidence.
 
 - Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.

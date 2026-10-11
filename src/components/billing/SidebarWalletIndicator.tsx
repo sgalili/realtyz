@@ -6,13 +6,15 @@ import { useCreditWallet } from '@/hooks/useSubscription';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { cn } from '@/lib/utils';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAppMode } from '@/hooks/useAppMode';
 import { Button } from '@/components/ui/button';
 
 /** Untreated contacts = workspace contacts still at the "new" stage (or no stage yet). */
 export function useUntreatedContactsCount() {
+  const { isPartnerMode } = useAppMode();
   const ws = useActiveWorkspaceOwnerId();
   const { isTeamMember, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading } = useUserRole();
-  const allowed = !loading && isTeamMember && !isAffiliateOnly && !isPropertyOwnerOnly && !isPropertySeekerOnly;
+   const allowed = !loading && !isPartnerMode && isTeamMember && !isAffiliateOnly && !isPropertyOwnerOnly && !isPropertySeekerOnly;
   return useQuery({
     queryKey: ['untreated-contacts-count', ws],
     enabled: !!ws && allowed,
@@ -32,13 +34,14 @@ export function useUntreatedContactsCount() {
 
 /** Top of the sidebar: wallet balance (icon + amount → /wallet) and untreated-contacts counter. */
 export function SidebarWalletIndicator() {
+  const { isPartnerMode } = useAppMode();
   const navigate = useNavigate();
   const { data, isLoading } = useCreditWallet();
   const untreated = useUntreatedContactsCount();
   const balance = Number(data?.balance ?? 0);
   const locked = !!data?.lockedAt;
   const { isTeamMember, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly } = useUserRole();
-  const showContacts = isTeamMember && !isAffiliateOnly && !isPropertyOwnerOnly && !isPropertySeekerOnly;
+  const showContacts = !isPartnerMode && isTeamMember && !isAffiliateOnly && !isPropertyOwnerOnly && !isPropertySeekerOnly;
   return (
     <div className={cn('mx-3 mb-3 grid gap-2', showContacts ? 'grid-cols-2' : 'grid-cols-1')}>
       <Button

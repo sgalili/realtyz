@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Dual-role app mode: one account can act as a broker (מצב מתווך) with the full
@@ -18,6 +20,8 @@ export const PARTNER_MODE_PATHS = [
   '/my-ads',
   '/affiliate-pricing',
   '/affiliate-network',
+  '/affiliate',
+  '/affiliates',
   '/referral',
   '/profile',
   '/wallet',
@@ -27,17 +31,19 @@ export const PARTNER_MODE_PATHS = [
   '/partner/contacts',
 ];
 
-export function readAppMode(): AppMode {
+export function readAppMode(userId?: string): AppMode {
+  if (!userId) return 'broker';
   try {
-    return window.localStorage.getItem(KEY) === 'partner' ? 'partner' : 'broker';
+    return window.localStorage.getItem(`${KEY}:${userId}`) === 'partner' ? 'partner' : 'broker';
   } catch {
     return 'broker';
   }
 }
 
-export function writeAppMode(mode: AppMode) {
+export function writeAppMode(mode: AppMode, userId?: string) {
+  if (!userId) return;
   try {
-    window.localStorage.setItem(KEY, mode);
+    window.localStorage.setItem(`${KEY}:${userId}`, mode);
   } catch {
     /* storage disabled */
   }
@@ -49,22 +55,29 @@ export function isPartnerModePath(pathname: string): boolean {
 }
 
 export function useAppMode() {
-  const [mode, setModeState] = useState<AppMode>(() => readAppMode());
+  const { user } = useAuth();
+  const userId = user?.id;
+  const { isAffiliate, isAffiliateOnly } = useUserRole();
+  const [state, setModeState] = useState(() => ({ userId, mode: readAppMode(userId) }));
+  const mode = state.userId === userId ? state.mode : readAppMode(userId);
 
   useEffect(() => {
-    const sync = () => setModeState(readAppMode());
+    const sync = () => setModeState({ userId, mode: readAppMode(userId) });
+    sync();
     window.addEventListener(EVENT, sync);
     window.addEventListener('storage', sync);
     return () => {
       window.removeEventListener(EVENT, sync);
       window.removeEventListener('storage', sync);
     };
-  }, []);
+  }, [userId]);
 
   const setMode = useCallback((next: AppMode) => {
-    setModeState(next);
-    writeAppMode(next);
-  }, []);
+    setModeState({ userId, mode: next });
+    writeAppMode(next, userId);
+  }, [userId]);
 
-  return { mode, setMode, isPartnerMode: mode === 'partner', isBrokerMode: mode === 'broker' };
+  // A stored display preference never creates partner authorization.
+  const effectiveMode: AppMode = isAffiliate && (isAffiliateOnly || mode === 'partner') ? 'partner' : 'broker';
+  return { mode: effectiveMode, setMode, isPartnerMode: effectiveMode === 'partner', isBrokerMode: effectiveMode === 'broker' };
 }

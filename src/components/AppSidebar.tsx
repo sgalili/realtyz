@@ -26,6 +26,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { SidebarWalletIndicator } from '@/components/billing/SidebarWalletIndicator';
 import { useUserRole } from '@/hooks/useUserRole';
+import { accountIdentity } from '@/lib/accountMode';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
 import { supabase } from '@/integrations/supabase/client';
@@ -236,7 +237,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, error: roleError } = useUserRole();
+  const { roles, isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, error: roleError } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
@@ -246,11 +247,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   // In partner ("שותף") mode — or for an affiliate-only account — only the
   // affiliate screens are listed.
   const features = useWorkspaceFeatures();
-  const affiliateOnlyNav = isAffiliateOnly || (isPartnerMode && !isDeveloper && !isPropertyOwnerOnly && !isPropertySeekerOnly);
+  const affiliateOnlyNav = isAffiliateOnly || isPartnerMode;
   const navItems = useMemo(() => {
-    if (roleLoading || roleError || isPropertySeekerOnly) return [];
-    if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
+    if (roleLoading || roleError) return [];
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
+    if (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') return [];
+    if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.
@@ -265,7 +267,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       if (item.url === '/affiliate-network') return features.partnersEnabled;
       return true;
     });
-  }, [features, affiliateOnlyNav, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError]);
+  }, [features, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
@@ -356,8 +358,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4" />הדרכה
                 </Button>
 
-                {/* Broker/partner toggle: hidden only in Rita's marketing workspace. */}
-                {features.modeSwitcherEnabled && <AppModeSwitcher />}
+              </div>
+              <div className="mt-3 flex justify-center" onClick={(e) => e.stopPropagation()}>
+                <AppModeSwitcher keepSidebarOpen />
               </div>
 
             </SidebarGroupContent>

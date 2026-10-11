@@ -27,6 +27,7 @@ import { applyPendingSignupRole } from '@/lib/signupRole';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
+import { accountIdentity } from '@/lib/accountMode';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -187,7 +188,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   }, [user, roleApplied]);
   const { data: walletState } = useCreditWallet();
   const walletLocked = !!walletState?.lockedAt;
-  const { roles, isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
+  const { roles, isSuperAdmin, isAffiliate, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
@@ -220,19 +221,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   }
 
   // Private property owners are locked to their own four screens.
-  if (!roleLoading && isPropertyOwnerOnly) {
+  if (!roleLoading && isPropertyOwnerOnly && !(isPartnerMode && isAffiliate)) {
     const allowed = OWNER_ALLOWED_PATHS.some(
       (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
     );
     if (!allowed) return <Navigate to="/owner/properties" replace />;
   }
 
-  if (!roleLoading && isPropertySeekerOnly) {
+  if (!roleLoading && (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') && !(isPartnerMode && isAffiliate)) {
     const allowed = SEEKER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
     if (!allowed) return <Navigate to="/public-listings" replace />;
   }
 
-  if (isDeveloper && !isSuperAdmin && !DEVELOPER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
+  if (isDeveloper && !isSuperAdmin && !(isPartnerMode && isAffiliate) && !DEVELOPER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
     return <Navigate to="/developer-dashboard" replace />;
   }
 
@@ -244,7 +245,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
 
   // Partner mode (dual-role accounts) keeps broker tooling out of reach until
   // the user switches back to מצב מתווך from the header.
-  if (isPartnerMode && !isDeveloper && !isPropertyOwnerOnly && !isPropertySeekerOnly && !isPartnerModePath(location.pathname)) {
+  if (isPartnerMode && isAffiliate && !isPartnerModePath(location.pathname)) {
     return <Navigate to="/affiliate" replace />;
   }
 

@@ -1,4 +1,5 @@
 import { useWalkthrough } from '@/lib/appWalkthrough';
+import { useAppMode } from '@/hooks/useAppMode';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, HelpCircle, Link, ChartNoAxesCombined, Wallet, CircleHelp } from 'lucide-react';
@@ -18,10 +19,12 @@ function Rich({ text }: { text: string }) {
 export function TutorialHost() {
   const { user } = useAuth();
   const role = useUserRole();
+  const { isPartnerMode } = useAppMode();
   const allowed = (t: Tutorial) => {
     if (role.loading || role.error) return false;
     if (role.isSuperAdmin) return true;
     const shared = ['page:/profile', 'page:/wallet'];
+    if (isPartnerMode) return [...shared, 'page:/affiliate-network'].includes(t.id);
     if (role.isPropertySeekerOnly) return shared.includes(t.id);
     if (role.isPropertyOwnerOnly) return [...shared, 'page:/owner/properties'].includes(t.id);
     if (role.isAffiliateOnly) return [...shared, 'page:/affiliate-network'].includes(t.id);
@@ -35,7 +38,7 @@ export function TutorialHost() {
   const [i, setI] = useState(0);
 
   useEffect(() => { tutorialStore.setUser(user?.id); }, [user?.id]);
-  useEffect(() => { registerTutorialOpener((t) => { if (allowed(t)) { setI(0); setTut(t); } }); return () => registerTutorialOpener(null); }, [role.roles, role.loading, role.error]);
+  useEffect(() => { registerTutorialOpener((t) => { if (allowed(t)) { setI(0); setTut(t); } }); return () => registerTutorialOpener(null); }, [role.roles, role.loading, role.error, isPartnerMode]);
   useEffect(() => {
     if (!user || walkthrough) return;
     const t = tutorialForPath(pathname);
@@ -44,7 +47,7 @@ export function TutorialHost() {
     if (s.seen.includes(t.id) || s.dismissed.includes(t.id)) return;
     const timer = window.setTimeout(() => { setI(0); setTut(t); }, 600);
     return () => window.clearTimeout(timer);
-  }, [pathname, user, st, role.roles, role.loading, role.error, walkthrough]);
+  }, [pathname, user, st, role.roles, role.loading, role.error, walkthrough, isPartnerMode]);
 
   useEffect(() => {
     const dismiss = () => setTut(null);

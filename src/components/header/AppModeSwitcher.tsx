@@ -1,54 +1,60 @@
-import { useState } from 'react';
+import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useUserRole, userRolesQueryKey } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
+import { accountIdentity } from '@/lib/accountMode';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import { useAppMode, type AppMode } from '@/hooks/useAppMode';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
 
 /**
- * Instant switch between broker mode (full CRM + Rita) and partner mode
- * (referrals, commissions, recruitment). Same session, no second login.
- * Hidden for partner-only accounts, which have no broker side at all.
+ * Switch between the preserved core identity and additive partner membership.
+ * Server roles authorize access; the display preference never grants a role.
  */
-export function AppModeSwitcher() {
+export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?: boolean }) {
   const navigate = useNavigate();
   const { mode, setMode } = useAppMode();
-  const { isTeamMember, isAffiliateOnly, isDeveloper, loading } = useUserRole();
+  const { roles, isAffiliate, loading, error: roleError } = useUserRole();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const identity = accountIdentity(roles);
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
-  const [busy, setBusy] = useState(false);
-
-  if (loading || isAffiliateOnly || isDeveloper || !isTeamMember) return null;
-
-  const switchTo = async (next: AppMode) => {
-    if (next === mode || busy) return;
-    setBusy(true);
-    try {
+  const busy = useIsMutating({ mutationKey: ['activate-partner', user?.id] }) > 0;
+  const activation = useMutation({
+    mutationKey: ['activate-partner', user?.id],
+    mutationFn: async (next: AppMode) => {
+      if (!user || roleError || loading) throw new Error('לא ניתן להחליף מצב כרגע');
       if (next === 'partner') {
-        // Idempotent: makes sure the account really has a partner profile.
-        await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
+        if (!isAffiliate) {
+          const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
+          if (error) throw error;
+          if (!(data as { ok?: boolean } | null)?.ok) throw new Error('הפעלת מצב שותף נכשלה');
+          await queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) });
+        }
         setMode('partner');
         navigate('/affiliate-network');
-        sessionStorage.setItem('realtyz:keep-sidebar-open', '1');
-        requestAnimationFrame(() => isMobile ? setOpenMobile(true) : setOpen(true));
         toast.success('עברת למצב שותף');
       } else {
         setMode('broker');
-        navigate('/');
+        navigate(identity.home);
+        toast.success(`עברת למצב ${identity.label}`);
+      }
+      if (keepSidebarOpen) {
         sessionStorage.setItem('realtyz:keep-sidebar-open', '1');
         requestAnimationFrame(() => isMobile ? setOpenMobile(true) : setOpen(true));
-        toast.success('עברת למצב מתווך');
-      }
-    } catch (e: any) {
-      toast.error(e?.message || 'החלפת המצב נכשלה');
-    } finally {
-      setBusy(false);
-    }
-  };
+      } else { setOpenMobile(false); setOpen(false); }
+    },
+    onError: () => toast.error('החלפת המצב נכשלה. אפשר לנסות שוב.'),
+  });
+
+  if (loading || roleError || !user || !identity.canSwitch) return null;
 
   const options: { value: AppMode; label: string }[] = [
-    { value: 'broker', label: 'מתווך' },
+    { value: 'broker', label: identity.label },
     { value: 'partner', label: 'שותף' },
   ];
 
@@ -57,28 +63,30 @@ export function AppModeSwitcher() {
       dir="rtl"
       role="radiogroup"
       aria-label="החלפת מצב עבודה"
-      className="flex items-center gap-0.5 rounded-full border border-border bg-muted/60 p-0.5"
+      data-keep-terms
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-border bg-muted/60 p-0.5"
     >
       {options.map((opt) => {
         const active = mode === opt.value;
         return (
-          <button
+          <Button
+            variant="ghost"
             key={opt.value}
             type="button"
             role="radio"
             aria-checked={active}
             disabled={busy}
-            onClick={() => void switchTo(opt.value)}
+            onClick={() => { if (opt.value !== mode && !busy) activation.mutate(opt.value); }}
             title={opt.label}
             className={cn(
-              'inline-flex items-center rounded-full px-2.5 py-1.5 text-xs font-semibold transition-colors',
+              'h-8 rounded px-3 text-sm font-semibold transition-colors',
               active
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
-            <span>{opt.label}</span>
-          </button>
+            {busy && opt.value === 'partner' && <Loader2 className="h-3 w-3 animate-spin" />}<span>{opt.label}</span>
+          </Button>
         );
       })}
     </div>
