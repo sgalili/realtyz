@@ -168,7 +168,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const draftScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'visitor';
   const entryPending = authLoading || Boolean(user && (rolesLoading || !rolesFetched || rolesError));
   useEffect(() => {
-    if (!entryPending && user && isDeveloper && (open || autoResume || resumeDraft)) {
+    if (!entryPending && user && isDeveloper && (open || resumeDraft)) {
       setOpen(false);
       navigate('/developer-dashboard?import=1', { replace: true });
     }
