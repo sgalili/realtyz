@@ -30,8 +30,11 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
 
   if (!photos.length) {
     return (
+      <div className="min-w-0 space-y-2" onClick={(event) => event.stopPropagation()}>
+      <div data-property-image-toolbar className="flex min-h-10 items-center justify-end gap-1">{overlay}{onFavorite && !overlay && <Button type="button" variant="ghost" size="icon" onClick={onFavorite} aria-label="שמירה במועדפים"><Heart className="h-5 w-5 text-destructive" /></Button>}</div>
       <div className="flex aspect-[16/7] w-full flex-col items-center justify-center gap-2 rounded-xl bg-muted text-sm text-muted-foreground">
         <ImageOff className="h-6 w-6" />אין תמונות
+      </div>
       </div>
     );
   }

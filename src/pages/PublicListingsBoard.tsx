@@ -369,7 +369,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
-                        <td className="relative p-2 align-bottom"><PropertyReferralButton listingId={card.id} />
+                        <td className="relative pb-8 ps-2 pe-2 pt-2 align-bottom"><PropertyReferralButton listingId={card.id} />
                           <Button type="button" variant="ghost" size="icon" className="absolute bottom-0.5 left-0.5 h-7 w-7 text-muted-foreground/70 hover:bg-transparent hover:text-foreground" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}>
                             <ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')} />
                           </Button>
