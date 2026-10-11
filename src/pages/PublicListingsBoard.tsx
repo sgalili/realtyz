@@ -50,7 +50,6 @@ function PhotoCarousel({ photos, alt, card, onFavorite, isMine = false, isFav = 
     <div>
       <div data-property-image-toolbar className="flex min-h-10 items-center gap-1 px-2" onClick={(event) => event.stopPropagation()}>
         {photos.length > 1 && <><Button type="button" size="icon" variant="ghost" aria-label="תמונה קודמת" onClick={() => move(-1)} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button><span className="text-xs font-semibold tabular-nums">{index + 1}/{photos.length}</span><Button type="button" size="icon" variant="ghost" aria-label="תמונה הבאה" onClick={() => move(1)} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button></>}
-        {isMine && <span title="המודעה שלי" className="inline-flex items-center gap-1 text-xs font-semibold text-primary"><BadgeCheck className="h-3.5 w-3.5" />שלי</span>}
         <div className="ms-auto flex items-center gap-1">
           <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={isFav} className="h-9 w-9 text-destructive"><Heart className={cn('h-5 w-5', isFav && 'fill-current')} /></Button>
           <PropertyContactActions listingId={card.id} title={alt} compact shareOnly shareButtonClassName="h-9 w-9 border-0 bg-transparent shadow-none" />
@@ -58,6 +57,7 @@ function PhotoCarousel({ photos, alt, card, onFavorite, isMine = false, isFav = 
       </div>
       <div className="relative h-48 overflow-hidden bg-muted [touch-action:pan-y]" onTouchStart={(event) => { const touch = event.touches[0]; if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY }; swiped.current = false; }} onTouchEnd={(event) => { const start = touchStart.current; const touch = event.changedTouches[0]; touchStart.current = null; if (!start || !touch || photos.length < 2) return; const dx = touch.clientX - start.x; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(touch.clientY - start.y)) { swiped.current = true; move(dx > 0 ? 1 : -1); } }} onClickCapture={(event) => { if (swiped.current) { event.preventDefault(); event.stopPropagation(); swiped.current = false; } }}>
         {photos.length ? <img src={photos[index]} alt={alt} loading="lazy" draggable={false} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">אין תמונות</div>}
+        {isMine && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-white/80 px-1.5 py-0.5 text-xs font-semibold text-success" onClick={(event) => event.stopPropagation()}><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />שלי</span>}
       </div>
     </div>
   );
@@ -358,9 +358,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       <tr key={card.id} id={`row-${card.id}`} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap')}>
                           {id === 'photo' ? (
-                          <div className="flex w-12 flex-col gap-1">
+                          <div className="relative w-12">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
-                            {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="order-first inline-flex text-primary"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
+                            {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex h-4 w-4 items-center justify-center rounded-bl rounded-tr bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
                           </div>
                           ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem]">{open ? <div className="flex items-start gap-1"><div className="min-w-0 flex-1"><PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /></div>{user ? <div className="-me-3 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
