@@ -67,6 +67,8 @@ import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDial
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import OwnerPropertyGrid from '@/components/leads/OwnerPropertyGrid';
 import LeadDirectionTabs from '@/components/leads/LeadDirectionTabs';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 
 /**
  * isOwnerLead — Sellers and Landlords are property OWNERS, not seekers.
@@ -548,7 +550,28 @@ const LeadCRM = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
   const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
-  const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker' | 'affiliate'>('all');
+  type LeadKind = 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker' | 'affiliate';
+  const [leadKinds, setLeadKinds] = useState<LeadKind[]>([]);
+  const leadKindFilter = leadKinds.length ? [...leadKinds].sort().join(',') : 'all';
+  const roleInfo = useUserRole();
+  const { termsAcceptedAt } = useAffiliateLicense();
+  const isDeveloperView = roleInfo.isDeveloper && !roleInfo.isTeamMember;
+  const isOwnerOnlyView = roleInfo.isPropertyOwnerOnly;
+  // Pills shown depend on the signed-in account type; partners appear only after accepted affiliate terms.
+  const leadKindOptions = useMemo(() => {
+    const all: { v: LeadKind; label: string }[] = [
+      { v: 'buyer', label: 'קונים' }, { v: 'seller', label: 'מוכרים' }, { v: 'renter', label: 'שוכרים' },
+      { v: 'landlord', label: 'משכירים' }, { v: 'broker', label: 'מתווכים' }, { v: 'affiliate', label: 'שותפים' },
+    ];
+    const allowed: LeadKind[] = isOwnerOnlyView ? ['buyer', 'renter']
+      : isDeveloperView ? ['buyer', 'broker']
+      : ['buyer', 'seller', 'renter', 'landlord', 'broker'];
+    if (roleInfo.isAffiliate && termsAcceptedAt) allowed.push('affiliate');
+    return all.filter((o) => allowed.includes(o.v));
+  }, [isOwnerOnlyView, isDeveloperView, roleInfo.isAffiliate, termsAcceptedAt]);
+  useEffect(() => {
+    setLeadKinds((cur) => cur.filter((k) => leadKindOptions.some((o) => o.v === k)));
+  }, [leadKindOptions]);
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [compactMode, setCompactMode] = useState<boolean>(() => {
@@ -753,7 +776,7 @@ const LeadCRM = () => {
       if (statusFilter === 'untreated') query = query.or('lead_stage.is.null,lead_stage.in.(new,new_lead)');
       else if (statusFilter !== 'all') query = query.eq('status', statusFilter);
       if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
-      if (leadKindFilter !== 'all') query = query.eq('preferences->>lead_kind', leadKindFilter);
+      if (leadKinds.length) query = query.in('preferences->>lead_kind', leadKinds);
       if (sentimentFilter !== 'all') query = query.eq('sentiment', sentimentFilter);
       if (channelFilter !== 'all') query = query.eq('preferences->>arrival_channel', channelFilter);
 
@@ -844,7 +867,7 @@ const LeadCRM = () => {
   // Owner-only Homely columns. Only injected when the agent has filtered the
   // table to sellers or landlords (property owners). Each column is rendered
   // from the linked `listings` row referenced by `leads.linked_listing_id`.
-  const isOwnerView = leadKindFilter === 'seller' || leadKindFilter === 'landlord';
+  const isOwnerView = leadKinds.length > 0 && leadKinds.every((k) => k === 'seller' || k === 'landlord');
   // Owner view: keep ONLY contact-profile related columns. Property structural
   // columns (rooms/price/floor/elevator/city/street/area/house_no) live in the
   // Properties table — never duplicate them in the contacts dashboard.
