@@ -27,6 +27,7 @@ import { applyPendingSignupRole } from '@/lib/signupRole';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
+import { accountIdentity } from '@/lib/accountMode';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -227,7 +228,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     if (!allowed) return <Navigate to="/owner/properties" replace />;
   }
 
-  if (!roleLoading && isPropertySeekerOnly && !(isPartnerMode && isAffiliate)) {
+  if (!roleLoading && (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') && !(isPartnerMode && isAffiliate)) {
     const allowed = SEEKER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
     if (!allowed) return <Navigate to="/public-listings" replace />;
   }

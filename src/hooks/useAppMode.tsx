@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useUserRole } from '@/hooks/useUserRole';
 
 /**
  * Dual-role app mode: one account can act as a broker (מצב מתווך) with the full
@@ -18,6 +19,8 @@ export const PARTNER_MODE_PATHS = [
   '/my-ads',
   '/affiliate-pricing',
   '/affiliate-network',
+  '/affiliate',
+  '/affiliates',
   '/referral',
   '/profile',
   '/wallet',
@@ -49,6 +52,7 @@ export function isPartnerModePath(pathname: string): boolean {
 }
 
 export function useAppMode() {
+  const { isAffiliate, isAffiliateOnly } = useUserRole();
   const [mode, setModeState] = useState<AppMode>(() => readAppMode());
 
   useEffect(() => {
@@ -66,5 +70,7 @@ export function useAppMode() {
     writeAppMode(next);
   }, []);
 
-  return { mode, setMode, isPartnerMode: mode === 'partner', isBrokerMode: mode === 'broker' };
+  // A stored display preference never creates partner authorization.
+  const effectiveMode: AppMode = isAffiliate && (isAffiliateOnly || mode === 'partner') ? 'partner' : 'broker';
+  return { mode: effectiveMode, setMode, isPartnerMode: effectiveMode === 'partner', isBrokerMode: effectiveMode === 'broker' };
 }
