@@ -920,6 +920,21 @@ const LeadCRM = () => {
   });
 
   // Unfiltered total - reflects ALL real leads in the user's account
+  // Per-category totals for the pills (RLS scopes to the active workspace).
+  const { data: categoryCounts = {} as Partial<Record<LeadKind, number>> } = useQuery({
+    queryKey: ['lead-category-counts', leadKindOptions.map((o) => o.v).join(',')],
+    enabled: !isDemoMode && leadKindOptions.length > 0,
+    queryFn: async () => {
+      const entries = await Promise.all(leadKindOptions.map(async (o) => {
+        const { count } = await supabase.from('leads').select('id', { count: 'exact', head: true })
+          .eq('is_demo', false).eq('lead_category' as any, o.v);
+        return [o.v, count ?? 0] as const;
+      }));
+      return Object.fromEntries(entries) as Partial<Record<LeadKind, number>>;
+    },
+    staleTime: 60 * 1000,
+    refetchInterval: 60_000,
+  });
   const { data: realTotalCount = 0 } = useQuery({
     queryKey: ['leads-total'],
     enabled: !isDemoMode,
@@ -1848,51 +1863,41 @@ const LeadCRM = () => {
                         : 'bg-background text-muted-foreground border-border hover:bg-primary hover:text-primary-foreground hover:border-primary'
                     }`}
                   >
-                    {t.label}
+                    <span className="tabular-nums">{categoryCounts[t.v] ?? 0}</span> {t.label}
                   </button>
                 );
               })}
             </div>
-            <div className="relative w-full">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="חיפוש לידים ואנשי קשר" className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-              <button
-                type="button"
-                onClick={() => setFiltersOpen((open) => !open)}
-                className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                aria-label="סינון וייצוא"
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex min-w-0 items-center justify-between gap-2" role="toolbar" aria-label="בחירה ופעולות על לידים">
-              <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+            <div className="flex min-w-0 items-center gap-2" role="toolbar" aria-label="חיפוש, בחירה ופעולות על לידים">
               <SelectModeToggle
                 total={filtered?.length ?? 0}
                 active={selectMode}
                 className={selectMode ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground ring-2 ring-primary/20' : 'border border-border'}
                 onToggle={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
               />
-              {selectMode && selectedIds.size > 0 && <span className="text-sm tabular-nums">{selectedIds.size} נבחרו</span>}
+              <div className="relative min-w-0 flex-1 transition-[flex-basis] duration-300 ease-out">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="חיפוש לידים ואנשי קשר" className="pr-9 pl-9 h-9 w-full" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen((open) => !open)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  aria-label="סינון וייצוא"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                </button>
               </div>
-              {selectMode && selectedIds.size > 0 ? <div className="ms-auto flex shrink-0 items-center gap-1" role="toolbar" aria-label="פעולות על לידים נבחרים">
-                {recruitmentMode && <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" onClick={handleBrokerFirstOutreach} disabled={sendingFirstOutreach} aria-label="הודעת פתיחה למתווכים" title="הודעת פתיחה למתווכים"><Send className="h-4 w-4" /></Button>}
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" onClick={() => handleExportExcel('selected')} aria-label="ייצוא נבחרים" title="ייצוא נבחרים"><ExcelIcon className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 bg-transparent text-destructive hover:bg-transparent hover:text-destructive" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}><Trash2 className="h-4 w-4" /></Button>
-              </div> :
-              (() => {
-                const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKinds.length > 0;
-                const accountTotal = isDemoMode ? leads.length : realTotalCount;
-                const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
-                if (accountTotal === 0 && selectedIds.size === 0) return null;
-                return (
-                  <span className="text-[15px] leading-none text-muted-foreground tabular-nums whitespace-nowrap">
-                    {hasFilter
-                        ? `מציג ${filteredTotal.toLocaleString('he-IL')} מתוך ${accountTotal.toLocaleString('he-IL')}`
-                        : `סה״כ: ${accountTotal.toLocaleString('he-IL')} לידים`}
-                  </span>
-                );
-              })()}
+              <div
+                aria-hidden={!selectMode}
+                className={`flex shrink-0 items-center gap-1 overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-out will-change-[max-width] ${selectMode ? 'max-w-[220px] opacity-100' : 'max-w-0 opacity-0 pointer-events-none'}`}
+                role="toolbar"
+                aria-label="פעולות על לידים נבחרים"
+              >
+                <span className="px-1 text-sm tabular-nums">{selectedIds.size} נבחרו</span>
+                {recruitmentMode && <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" onClick={handleBrokerFirstOutreach} disabled={sendingFirstOutreach || selectedIds.size === 0} aria-label="הודעת פתיחה למתווכים" title="הודעת פתיחה למתווכים"><Send className="h-4 w-4" /></Button>}
+                <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" disabled={selectedIds.size === 0} onClick={() => handleExportExcel('selected')} aria-label="ייצוא נבחרים" title="ייצוא נבחרים"><ExcelIcon className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent text-destructive hover:bg-transparent hover:text-destructive" disabled={selectedIds.size === 0} aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}><Trash2 className="h-4 w-4" /></Button>
+              </div>
             </div>
           </div>
           {filtersOpen && <div className="flex flex-wrap gap-2 pt-2 animate-fade-in">
