@@ -57,7 +57,7 @@ export function EmailAliasCard() {
 
   const previewAddress = alias
     ? `${alias.toLowerCase().replace(/[^a-z0-9._-]/g, "")}${DOMAIN}`
-    : `prefix${DOMAIN}`;
+     : '';
 
   return (
     <Card>
@@ -74,7 +74,7 @@ export function EmailAliasCard() {
         <p className="text-xs text-right rounded-md bg-muted px-3 py-2">
           {gmail
             ? "Gmail מחובר ומשמש לשליחה. כתובת זו היא אפשרות גיבוי."
-            : "Gmail לא מחובר, לכן המיילים יישלחו מכתובת זו."}
+            : alias ? "כתובת זו משמשת לשליחת מיילים." : "לא הופעלה תיבת דואר. בחרו כתובת ואשרו הפעלה, או חברו Gmail."}
         </p>
         <div className="space-y-2">
           <Label htmlFor="email-alias" className="text-right block">Prefix</Label>
@@ -82,7 +82,7 @@ export function EmailAliasCard() {
             <Input
               id="email-alias"
               dir="ltr"
-              placeholder="udi"
+              placeholder=""
               value={alias}
               onChange={(e) => setAlias(e.target.value)}
               disabled={loading || !isOwner}
@@ -99,7 +99,7 @@ export function EmailAliasCard() {
         <div className="flex justify-end">
           <Button size="sm" onClick={save} disabled={saving || loading || !isOwner}>
             {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
-            שמור כתובת
+            אשר והפעל תיבה
           </Button>
         </div>
 

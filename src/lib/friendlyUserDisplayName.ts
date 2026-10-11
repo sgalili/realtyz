@@ -5,7 +5,7 @@ type AuthUserLike = {
 } | null | undefined;
 
 const isSyntheticWhatsAppEmail = (value: string) =>
-  /@(?:whatsapp\.)?realtyz\.local$/i.test(value.trim());
+  /\.(?:local|test|invalid)$/i.test(value.trim()) || /@(?:[a-z0-9-]+\.)*(?:example\.(?:com|org)|placeholder\.[a-z]+)$/i.test(value.trim());
 
 export function friendlyUserDisplayName(user: AuthUserLike, fallback = 'ללא שם'): string {
   const meta = user?.user_metadata ?? {};

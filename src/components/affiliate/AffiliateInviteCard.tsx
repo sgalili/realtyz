@@ -5,7 +5,7 @@ import { FaWhatsapp } from 'react-icons/fa';
 import { toast } from 'sonner';
 import { useReferralProgram } from '@/hooks/useReferralProgram';
 import { referralLink } from '@/lib/referralAttribution';
-import { fmtILS } from '@/lib/formatCurrency';
+import { fmtCredits, ilsToCredits } from '@/lib/credits';
 
 const STEPS = [
   { icon: Link2, label: 'שולחים קישור', color: 'text-deal-blue', surface: 'bg-deal-blue/10' },
@@ -16,7 +16,7 @@ const STEPS = [
 export function AffiliateInviteCard() {
   const { data, isLoading, isError, refetch } = useReferralProgram();
   const link = data?.code ? referralLink(data.code) : '';
-  const message = `בואו ל־Realtyz! אחרי העסקה המאושרת הראשונה שלכם, תקבלו ₪100 לארנק ואני אקבל ₪200. מצטרפים דרך הקישור שלי: ${link}`;
+  const message = `בואו ל־Realtyz! אחרי העסקה המאושרת הראשונה שלכם, תקבלו ${fmtCredits(ilsToCredits(100))} לארנק ואני אקבל ${fmtCredits(ilsToCredits(200))}. מצטרפים דרך הקישור שלי: ${link}`;
   const copy = async () => {
     if (!link) return;
     try {
@@ -29,7 +29,7 @@ export function AffiliateInviteCard() {
   const metrics = [
     { label: 'חברים שהצטרפו', value: String(data?.total ?? 0) },
     { label: 'בונוסים שאושרו', value: String(data?.verified_deals ?? 0) },
-    { label: 'בונוס שנצבר בארנק', value: fmtILS(data?.earned_ils ?? 0) },
+    { label: 'בונוס שנצבר בארנק', value: fmtCredits(ilsToCredits(data?.earned_ils ?? 0)) },
   ];
 
   return (
@@ -51,13 +51,13 @@ export function AffiliateInviteCard() {
       <div className="grid grid-cols-2 border-y border-border py-6 text-center">
         <div className="space-y-1 border-e border-border">
           <p className="text-sm text-muted-foreground">לכם · המזמין</p>
-          <p className="text-4xl font-extrabold text-deal-blue"><bdi>₪200</bdi></p>
-          <p className="text-sm">זיכוי לארנק</p>
+          <p className="text-4xl font-extrabold text-deal-blue"><bdi>5,000</bdi></p>
+          <p className="text-sm">קרדיטים לארנק</p>
         </div>
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">לחבר · המוזמן</p>
-          <p className="text-4xl font-extrabold text-success"><bdi>₪100</bdi></p>
-          <p className="text-sm">בונוס לארנק</p>
+          <p className="text-4xl font-extrabold text-success"><bdi>2,500</bdi></p>
+          <p className="text-sm">קרדיטים לארנק</p>
         </div>
       </div>
       <div className="space-y-3">

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Rocket } from 'lucide-react';
+import { fmtCredits, ilsToCredits } from '@/lib/credits';
 
 const db = supabase as any;
 
@@ -62,9 +63,9 @@ export function GrowthPromoCard() {
           {stat('הפניות סה״כ', String(data.referrals_total))}
           {stat('הפכו למשלמים', String(data.referrals_converted))}
           {stat('שיעור המרה', `${convRate}%`)}
-          {stat('קרדיט הפניות', `₪${Math.round(data.credits_referral_reward).toLocaleString('he-IL')}`)}
-          {stat('מתנות השקה', `₪${Math.round(data.credits_launch_bonus).toLocaleString('he-IL')}`)}
-          {stat('התאמות ידניות', `₪${Math.round(data.credits_manual).toLocaleString('he-IL')}`)}
+          {stat('קרדיט הפניות', fmtCredits(ilsToCredits(data.credits_referral_reward)))}
+          {stat('מתנות השקה', fmtCredits(ilsToCredits(data.credits_launch_bonus)))}
+          {stat('התאמות ידניות', fmtCredits(ilsToCredits(data.credits_manual)))}
           {Object.entries(data.plan_distribution || {}).map(([plan, count]) =>
             stat(`חבילת ${plan}`, String(count)),
           )}

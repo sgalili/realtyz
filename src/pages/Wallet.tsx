@@ -124,8 +124,8 @@ export default function Wallet() {
         <div className="flex items-center justify-between rounded-lg border bg-card p-5">
           <div>
             <p className="text-sm text-muted-foreground">יתרה נוכחית</p>
-            <p dir="ltr" className={`text-right text-3xl font-bold ${(wallet?.balance ?? 0) <= 0 ? 'text-destructive' : ''}`}>{ils(wallet?.balance ?? 0)}</p>
-            <p className="text-sm text-muted-foreground">{fmtCredits(ilsToCredits(wallet?.balance ?? 0))} · ₪1 = {CREDITS_PER_ILS} קרדיטים</p>
+             <p className={`text-right text-3xl font-bold ${(wallet?.balance ?? 0) <= 0 ? 'text-destructive' : ''}`}>{fmtCredits(ilsToCredits(wallet?.balance ?? 0))}</p>
+             <p className="text-sm text-muted-foreground">₪1 = {CREDITS_PER_ILS} קרדיטים</p>
           </div>
           <Button onClick={() => setTopupOpen(true)}><Plus className="h-4 w-4" />טעינת ארנק</Button>
         </div>
