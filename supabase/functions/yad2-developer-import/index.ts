@@ -41,7 +41,8 @@ Deno.serve(async req => {
     const visited = new Set<string>([pageUrl.href]);
     const pending = [...first.links];
     for (let i = 0; i < pending.length; i++) {
-      const url = pending[i];
+      const url = pending[i].split('?')[0];
+      if (i > 0) await new Promise(r => setTimeout(r, 1500));
       if (visited.has(url)) continue;
       visited.add(url);
       try {
