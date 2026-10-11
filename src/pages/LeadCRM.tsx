@@ -1949,7 +1949,7 @@ const LeadCRM = () => {
         </CardHeader>
         {selectMode && (filtered?.length ?? 0) > 0 && (
           <div className="border-t border-border/60 bg-muted/30 px-4 py-2 flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-            <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר הכל" />
+            <Checkbox className="rounded-none" checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר הכל" />
             <button type="button" className="text-sm font-semibold" onClick={toggleAll}>{allFilteredSelected ? 'בטל הכל' : 'בחר הכל'}</button>
             {selectedIds.size > 0 && <Badge variant="secondary" className="gap-1 text-sm">
               <Users className="h-3.5 w-3.5" /> {selectedIds.size} נבחרו
@@ -2002,6 +2002,9 @@ const LeadCRM = () => {
             <Table className="w-full [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_th]:!px-[5px] [&_td]:!px-[5px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent bg-muted/30">
+                  {selectMode && <TableHead className="w-10 min-w-10 text-center">
+                    <Checkbox className="rounded-none align-middle" checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר את כל הלידים" />
+                  </TableHead>}
                   <TableHead className="w-auto font-semibold text-xs">שם</TableHead>
                   <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
@@ -2013,9 +2016,6 @@ const LeadCRM = () => {
                   {isOwnerView && HOMELY_OWNER_COLUMNS.map((col) => (
                     <TableHead key={`oh-${col.key}`} className="w-auto font-semibold text-xs text-center bg-blue-50/60">{col.label}</TableHead>
                   ))}
-                  {selectMode && (filtered?.length ?? 0) > 0 && <TableHead className="w-10 text-center">
-                    <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
-                  </TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2078,6 +2078,9 @@ const LeadCRM = () => {
                     const homelyId = prefs.homely_id ? String(prefs.homely_id) : null;
                     return (
                       <TableRow key={lead.id} className={rowCls}>
+                        {selectMode && <TableCell className="w-10 min-w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox className="rounded-none align-middle" checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleOne(lead.id)} aria-label={`בחר ליד ${lead.full_name || ''}`} />
+                        </TableCell>}
                         <TableCell className="font-medium whitespace-nowrap" onClick={() => setSelectedVoterId(lead.id)}>
                           <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
                             <VoterAvatar fullName={lead.full_name} profilePictureUrl={(lead as any).profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
@@ -2180,9 +2183,6 @@ const LeadCRM = () => {
                             );
                           });
                         })()}
-                        {selectMode && <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleOne(lead.id)} />
-                        </TableCell>}
                       </TableRow>
                     );
                   })}
