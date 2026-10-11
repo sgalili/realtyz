@@ -91,12 +91,12 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
   return <article className="min-w-0 overflow-hidden rounded-lg border bg-card" data-my-ad={r.listing_id}>
     <div data-property-image-toolbar className="flex min-h-10 items-center justify-end gap-1 px-3">{owned && <span title="המודעה שלי" className="inline-flex text-primary"><BadgeCheck className="h-3.5 w-3.5" /></span>}<PropertyReferralButton listingId={r.listing_id} /></div>
     <div className="flex min-w-0 gap-3 p-3">
-      <Link to={`/p/${r.slug || r.listing_id}`} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
+      <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
         {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-7 w-7 text-muted-foreground" />}
 
       </Link>
       <div className="min-w-0 flex-1 space-y-1">
-        <Link to={`/p/${r.slug || r.listing_id}`} className="block truncate font-semibold text-foreground" title={title}>{title}</Link>
+        <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block truncate font-semibold text-foreground" title={title}>{title}</Link>
         <p className="font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}</p>
         {owned && <ListingLifecycleStatus listingId={r.listing_id} />}
         <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -142,7 +142,7 @@ export default function MyAds() {
   const navigate = useNavigate();
   const [tFilter, setTFilter] = useState<TransparencyFilter | null>(null);
   const { data: sharedIds } = useQuery({
-    queryKey: ['transparency-shared-ids', user?.id, activeWorkspaceId], enabled: !!user?.id && tFilter?.key === 'active_listings',
+    queryKey: ['transparency-shared-ids', user?.id, activeWorkspaceId], enabled: !!user?.id,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_transparency_shared_listing_ids'); if (error) throw error; return new Set((data ?? []) as string[]); },
   });
   const onTFilter = (f: TransparencyFilter | null) => { if (f?.key === 'wallet') { navigate('/wallet'); return; } setTFilter(f); };
@@ -155,7 +155,7 @@ export default function MyAds() {
   return <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
     <Tabs defaultValue="ads" dir="rtl">
       <TabsList className="mb-1.5 grid h-[44px] w-full grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-        <TabsTrigger value="ads" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{data.length}{'\u00a0'}נכסים שלי</TabsTrigger>
+        <TabsTrigger value="ads" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{sharedIds?.size ?? 0}{'\u00a0'}נכסים משותפים</TabsTrigger>
         <TabsTrigger value="failed" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{recovery.data?.length ?? 0} טיוטות</TabsTrigger>
         <TabsTrigger value="favorites" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{favCount}{'\u00a0'}מועדפים</TabsTrigger>
       </TabsList>

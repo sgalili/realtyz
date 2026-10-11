@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { attributeCards } from '@/components/public/propertyAttributes';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bed, Building2, ChevronLeft, ChevronRight, Heart, ImageIcon, Layers, Loader2, Ruler, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -234,9 +234,12 @@ export function formatPrice(value: number, dealType: PublicListing['dealType']):
 function PublicListingContent() {
   const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const closeDetails = () => {
+    const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
+    if (returnTo) { navigate(returnTo); return; }
     if (typeof window.history.state?.idx === 'number' && window.history.state.idx > 0) navigate(-1);
     else navigate('/public-listings', { replace: true });
   };
