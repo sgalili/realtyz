@@ -188,4 +188,4 @@
 
 ## Lead and inquiry terminology
 - [x] Rename counter and explanation to the requested לידים copy; align sales navigation, tooltips, onboarding and helper text with לידים / פניות, preserving stored values and contact details.
-- [ ] Verify terminology tests and authenticated counter → explanation → leads navigation.
+- [x] Eight focused tests passed; authenticated counter → exact explanation → leads page verified, drawer closed, no runtime errors and automatic build OK. Legal wording and saved status values retained.
