@@ -84,7 +84,7 @@ export function readPage(html: string, base: string) {
   const links = new Set<string>();
   for (const m of html.matchAll(/href=["']([^"']+)["']/gi)) {
     const url = sourceUrl(m[1].replace(/&amp;/g, '&'), base);
-    if (url && /\/yad1\/(?:project|projects)\/[^/?]+/i.test(new URL(url).pathname)) links.add(url);
+    if (url && /\/yad1\/(?:project|projects)\/[^/?]+/i.test(new URL(url).pathname)) links.add(url.split('?')[0]);
   }
   const result = extractDeveloper(payloads, base);
   result.projects.forEach(p => { if (p.source_url) links.add(p.source_url); });
