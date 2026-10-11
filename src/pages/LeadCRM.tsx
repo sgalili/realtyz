@@ -1880,7 +1880,7 @@ const LeadCRM = () => {
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" onClick={() => handleExportExcel('selected')} aria-label="ייצוא נבחרים" title="ייצוא נבחרים"><ExcelIcon className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 bg-transparent text-destructive hover:bg-transparent hover:text-destructive" aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}><Trash2 className="h-4 w-4" /></Button>
               </div> :
-              {(() => {
+              (() => {
                 const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKinds.length > 0;
                 const accountTotal = isDemoMode ? leads.length : realTotalCount;
                 const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
@@ -1892,7 +1892,7 @@ const LeadCRM = () => {
                         : `סה״כ: ${accountTotal.toLocaleString('he-IL')} לידים`}
                   </span>
                 );
-              })()}}
+              })()}
             </div>
           </div>
           {filtersOpen && <div className="flex flex-wrap gap-2 pt-2 animate-fade-in">
