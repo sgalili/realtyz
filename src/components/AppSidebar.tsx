@@ -350,8 +350,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               <SidebarMenuItem key="public-listings">
                 <SidebarMenuButton asChild isActive={location.pathname === '/' || location.pathname.startsWith('/public-listings')}>
                   <NavLink
-                    to="/public-listings"
-                    data-walkthrough-path="/public-listings"
+                    to="/"
+                    data-walkthrough-path="/"
                     data-walkthrough-title="לוח נדל״ן שיתופי"
                     onClick={handleNavClick}
                     className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"

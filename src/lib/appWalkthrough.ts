@@ -27,6 +27,7 @@ export const walkthroughStore = {
 export const useWalkthrough = () => useSyncExternalStore(walkthroughStore.subscribe, walkthroughStore.get, walkthroughStore.get);
 
 const PAGE_COPY: Record<string, string> = {
+  '/': 'מחפשים נכס, משווים מודעות ושומרים את הנכסים שאהבתם.',
   '/public-listings': 'מחפשים נכס, משווים מודעות ושומרים את הנכסים שאהבתם.',
   '/command-center': 'מרכזים מטלות, שיחות חוזרות ומעקבים, ומעדכנים את ההתקדמות.',
   '/dashboard': 'בודקים את תמונת הפעילות העדכנית של המשרד.',
@@ -51,6 +52,7 @@ const ACTION_COPY: Record<string, { selector: string; title: string; body: strin
   '/developer-dashboard': { selector: '[aria-label="הוספת פרויקט"]', title: 'מוסיפים פרויקט', body: 'הפלוס פותח בחירה בין ייבוא מעמוד היזם ביד2 לבין יצירה ידנית בשלבים.' },
   '/properties': { selector: '[data-page-hero] button[title*="נכס"], [data-page-hero] button[aria-label*="הוספ"]', title: 'מוסיפים נכס', body: 'פותחים את טופס הנכס, משלימים את הפרטים ובודקים אותם לפני אישור.' },
   '/lead-crm': { selector: '[data-page-hero] button[aria-label*="הוספ"], [data-page-hero] button[title*="ליד"]', title: 'מוסיפים ליד', body: 'מוסיפים פרטים וממשיכים במעקב האישי.' },
+  '/': { selector: 'main input[placeholder="חיפוש חופשי"]', title: 'מוצאים את הנכס המתאים', body: 'מצמצמים את המודעות בעזרת חיפוש וסינון.' },
   '/public-listings': { selector: 'main input[placeholder="חיפוש חופשי"]', title: 'מוצאים את הנכס המתאים', body: 'מצמצמים את המודעות בעזרת חיפוש וסינון.' },
 };
 
