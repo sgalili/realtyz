@@ -87,7 +87,7 @@ export function SidebarWalletIndicator() {
         title="לידים שטרם טופלו"
       >
         <ContactRound className="h-4 w-4 shrink-0 text-[hsl(var(--nav-new-contacts))]" />
-        <span>לידים</span>
+        <span className="min-w-0 whitespace-normal leading-tight">לידים שהתקבלו</span>
         {untreated > 0 && <span aria-label="לידים חדשים" className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold text-destructive-foreground">{untreated > 99 ? '99+' : untreated}</span>}
       </Button>}
     </div>

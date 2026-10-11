@@ -15,6 +15,7 @@ import { fmtCredits, ilsToCredits } from '@/lib/credits';
 import { SUBMISSION_STATUS_LABELS } from '@/hooks/useAffiliate';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { usePartnerContacts, type PartnerContact } from '@/hooks/usePartnerSurfaces';
+import LeadDirectionTabs from '@/components/leads/LeadDirectionTabs';
 
 const TABS = [
   { value: 'all', label: 'הכל' },
@@ -103,7 +104,7 @@ function ContactCard({ contact, licensed }: { contact: PartnerContact; licensed:
   );
 }
 
-export default function PartnerContacts() {
+function PartnerContacts() {
   const { level4Unlocked } = useAffiliateLicense();
   const { data: contacts = [], isLoading } = usePartnerContacts();
   const [search, setSearch] = useState('');
@@ -167,4 +168,8 @@ export default function PartnerContacts() {
       )}
     </div>
   );
+}
+
+export default function PartnerContactsPage() {
+  return <LeadDirectionTabs><PartnerContacts /></LeadDirectionTabs>;
 }

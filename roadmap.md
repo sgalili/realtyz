@@ -1,4 +1,7 @@
 # Roadmap
+## Received and partner-sent leads
+- [x] Label received leads before the existing live counter; add received/sent-sold tabs for existing partners using authorized personal submissions, retaining license redaction.
+- [x] Eight focused tests and automatic build passed; signed-in received → sent → refresh → received verified without runtime errors. Current account has no sent submissions, so populated rows/license redaction were tested in isolation; no live leads submitted or sold.
 ## Navigation and partner introduction
 - [x] Hide developer destinations for non-developers; remove sidebar Leads rows and retain role-appropriate top access with live badge/no help icon.
 - [x] Compact top credits and exact 15px profile gap; signed-in broker verified no developer directory, no sidebar Leads rows, compact balance and direct Leads navigation closing drawer.

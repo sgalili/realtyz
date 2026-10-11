@@ -2,6 +2,7 @@ import { Table } from '@/components/ui/table';
 import { useMemo } from 'react';
 import { Users } from 'lucide-react';
 import { useOwnerInterest, useOwnerListings } from '@/hooks/useOwnerListings';
+import LeadDirectionTabs from '@/components/leads/LeadDirectionTabs';
 
 const INTENT_LABELS: Record<string, string> = {
   favorite: 'מועדפים',
@@ -11,7 +12,7 @@ const INTENT_LABELS: Record<string, string> = {
 };
 
 /** Private owner screen: every visitor who asked about their properties. */
-export default function OwnerLeads() {
+function OwnerLeads() {
   const { data: interest = [], isLoading } = useOwnerInterest();
   const { data: listings = [] } = useOwnerListings();
 
@@ -68,4 +69,8 @@ export default function OwnerLeads() {
       )}
     </div>
   );
+}
+
+export default function OwnerLeadsPage() {
+  return <LeadDirectionTabs><OwnerLeads /></LeadDirectionTabs>;
 }

@@ -17,7 +17,7 @@ describe('sidebar wallet and counters', () => {
   it('shows credits, hides zero counter and closes drawer on wallet navigation', () => {
     render(<SidebarWalletIndicator />);
     expect(screen.getByText('5k קרדיטים')).toBeInTheDocument();
-    expect(screen.getByText('לידים')).toBeInTheDocument();
+    expect(screen.getByText('לידים שהתקבלו')).toBeInTheDocument();
     expect(screen.queryByText('חדשים')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'הסבר על לידים חדשים' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'ארנק ותשלומים' }));
