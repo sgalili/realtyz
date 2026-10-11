@@ -583,7 +583,7 @@ export const TIER_LABELS = {
   tier1: 'רמה 1 · ליד דיגיטלי (שם וטלפון)',
   tier2: 'רמה 2 · סינון בשיחת ווטסאפ',
   tier3: 'רמה 3 · שיחת טלפון מסוננת',
-  tier4: 'רמה 4 · סגירת עסקה לבעלי רישיון',
+  tier4: 'סגירת עסקה',
 } as const;
 
 /** Reads the tiers off a marketplace row. Level 1 is always present. */
