@@ -4,7 +4,8 @@
 // partner: a digital lead (name + phone), a WhatsApp screening chat, and a
 // screened phone conversation. Level 4 is a deal-closing brokerage commission
 // and stays locked until the partner's broker license is verified.
-import { ClipboardList, Lock, Phone, Trophy } from 'lucide-react';
+import { ClipboardList, Phone, Trophy } from 'lucide-react';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import type { CommissionTiers, RewardType } from '@/hooks/useAffiliate';
 import { partnerNetReward } from '@/lib/affiliatePlans';
@@ -27,12 +28,14 @@ export function CommissionTierBadges({
   /** True for partners without a verified broker license (locks level 4). */
   level4Locked?: boolean;
 }) {
+  const { level4Unlocked } = useAffiliateLicense();
+  const showClosing = level4Unlocked && !level4Locked;
   const rows = [
     // Zero-value levels are hidden everywhere.
     { key: 'tier1', label: 'ליד דיגיטלי', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-amber-50 text-amber-800 ring-amber-100', locked: false, show: tiers.tier1 > 0 },
     { key: 'tier2', label: 'סינון בווטסאפ', value: tierValue(tiers.tier2), icon: WhatsAppIcon, tone: 'bg-sky-50 text-sky-800 ring-sky-100', locked: false, show: tiers.tier2 > 0 },
     { key: 'tier3', label: 'שיחת טלפון', value: tierValue(tiers.tier3), icon: Phone, tone: 'bg-indigo-50 text-indigo-800 ring-indigo-100', locked: false, show: tiers.tier3 > 0 },
-    { key: 'tier4', label: level4Locked ? 'סגירת עסקה · נדרש רישיון' : 'סגירת עסקה', value: tierValue(tiers.tier4, tiers.tier4Type), icon: level4Locked ? Lock : Trophy, tone: level4Locked ? 'bg-slate-100 text-slate-500 ring-slate-200' : 'bg-emerald-50 text-emerald-800 ring-emerald-100', locked: level4Locked, show: tiers.tier4 > 0 && !level4Locked },
+    { key: 'tier4', label: 'סגירת עסקה', value: showClosing ? tierValue(tiers.tier4, tiers.tier4Type) : '', icon: Trophy, tone: 'bg-success/10 text-success ring-success/20', locked: false, show: tiers.tier4 > 0 && showClosing },
   ].filter((row) => row.show);
 
   if (compact) {
