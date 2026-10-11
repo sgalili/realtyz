@@ -169,11 +169,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const draftScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'visitor';
   const entryPending = authLoading || Boolean(user && (rolesLoading || !rolesFetched || rolesError));
   useEffect(() => {
+    // Only an explicit open sends developers to project import; a recovered
+    // draft just closes silently so the public board stays on screen.
     if (!entryPending && user && isDeveloper && (open || resumeDraft)) {
       setOpen(false);
-      navigate('/developer-dashboard?import=1', { replace: true });
+      if (open && !resumeDraft) navigate('/developer-dashboard?import=1');
     }
-  }, [entryPending, user, isDeveloper, open, autoResume, resumeDraft, navigate]);
+  }, [entryPending, user, isDeveloper, open, resumeDraft, navigate]);
   useEffect(() => {
     if (openedScope.current && openedScope.current !== draftScope && openedScope.current !== 'visitor') {
       setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setPublishError('');
@@ -416,14 +418,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   };
 
   useEffect(() => {
-    if (!autoResume || !user?.id || resumed) return;
+    // Developers publish projects, not ads: a leftover ad draft must never
+    // auto-open the wizard (which would bounce them off the public board).
+    if (!autoResume || !user?.id || resumed || entryPending || isDeveloper) return;
     setResumed(true);
     void readPublicListingDraft('visitor').then((draft) => {
       if (!draft) return;
       setFields(draft); setFiles(draft.files ?? []); setVideos(draft.videos ?? []);
       setReviewMode(true); setExpandedStep(`step-${draft.resumeStep || 0}`); setOpen(true);
     });
-  }, [autoResume, user?.id, resumed]);
+  }, [autoResume, user?.id, resumed, entryPending, isDeveloper]);
 
   const stepValid = () => {
     if (step === 2) return Boolean(fields.propertyType);
