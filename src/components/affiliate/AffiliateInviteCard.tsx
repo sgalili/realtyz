@@ -1,166 +1,81 @@
-// RealtyZ Partner Network panel — a short, visual, mobile-first invite screen
-// dedicated ONLY to inviting licensed brokers to the RealtyZ software.
-// No property / lead terminology here on purpose.
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, Gift, Link2, MessageCircle, MessageSquare, Share2, TrendingUp, UserPlus, Wallet } from 'lucide-react';
+import { Copy, Handshake, Link2, Mail, Wallet, RefreshCw } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import { toast } from 'sonner';
 import { useReferralProgram } from '@/hooks/useReferralProgram';
 import { referralLink } from '@/lib/referralAttribution';
 import { fmtILS } from '@/lib/formatCurrency';
 
 const STEPS = [
-  { icon: Link2, label: 'משתפים קישור' },
-  { icon: UserPlus, label: 'מתווך מצטרף' },
-  { icon: Wallet, label: 'אתם מרוויחים' },
+  { icon: Link2, label: 'שולחים קישור', color: 'text-deal-blue', surface: 'bg-deal-blue/10' },
+  { icon: Handshake, label: 'החבר סוגר עסקה', color: 'text-social-instagram', surface: 'bg-social-instagram/10' },
+  { icon: Wallet, label: 'שניכם מרוויחים!', color: 'text-success', surface: 'bg-success/10' },
 ];
 
 export function AffiliateInviteCard() {
-  const { data, isLoading } = useReferralProgram();
-  const code = data?.code ?? '';
-  const link = code ? referralLink(code) : '';
-
-  const invites = data?.total ?? 0;
-  const signups = (data?.registered_free ?? 0) + (data?.converted_paid ?? 0);
-  const activeSubs = data?.converted_paid ?? 0;
-  const earnings = data?.earned_ils ?? 0;
-
-  const message = `היי, אני עובד עם RealtyZ – מערכת ה-AI לסוכני נדל״ן. מצטרפים דרך הקישור שלי: ${link}`;
-
+  const { data, isLoading, isError, refetch } = useReferralProgram();
+  const link = data?.code ? referralLink(data.code) : '';
+  const message = `בואו ל־Realtyz! אחרי העסקה המאושרת הראשונה שלכם, תקבלו ₪100 לארנק ואני אקבל ₪200. מצטרפים דרך הקישור שלי: ${link}`;
   const copy = async () => {
     if (!link) return;
-    await navigator.clipboard.writeText(link);
-    toast.success('קישור ההזמנה הועתק');
-  };
-
-  const share = async () => {
-    if (!link) return;
-    if (typeof navigator !== 'undefined' && (navigator as any).share) {
-      try {
-        await (navigator as any).share({ title: 'רשת השותפים של RealtyZ', text: message, url: link });
-        return;
-      } catch { /* user cancelled */ }
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success('קישור ההזמנה הועתק');
+    } catch {
+      toast.error('לא ניתן להעתיק כרגע. אפשר לבחור ולהעתיק את הקישור שמופיע כאן.');
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'width=1200,height=800,noopener,noreferrer');
   };
-
   const metrics = [
-    { label: 'הזמנות', value: String(invites) },
-    { label: 'נרשמים', value: String(signups) },
-    { label: 'אנשי קשר משלמים', value: String(activeSubs) },
-    { label: 'קרדיט שנצבר', value: fmtILS(earnings) },
+    { label: 'חברים שהצטרפו', value: String(data?.total ?? 0) },
+    { label: 'בונוסים שאושרו', value: String(data?.verified_deals ?? 0) },
+    { label: 'בונוס שנצבר בארנק', value: fmtILS(data?.earned_ils ?? 0) },
   ];
 
   return (
-    <Card dir="rtl" className="border-border/60">
-      <CardContent className="space-y-5 p-4 sm:p-6">
-        {/* Header */}
-        <header className="space-y-1 text-center">
-          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">רשת השותפים של RealtyZ</h1>
-          <p className="mx-auto max-w-md text-[13px] leading-relaxed text-muted-foreground">
-            מזמינים מתווכים ל RealtyZ ומרוויחים על כל מנוי שמצטרף דרך הקישור האישי שלכם.
-          </p>
-        </header>
-
-        {/* 3 visual steps */}
-        <div className="grid grid-cols-3 gap-2">
-          {STEPS.map((s, i) => (
-            <div
-              key={s.label}
-              className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-muted/30 px-2 py-3 text-center"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <s.icon className="h-5 w-5" />
-              </span>
-              <span className="text-[11px] font-bold text-foreground sm:text-[13px]">{s.label}</span>
-              <span className="text-[10px] font-semibold text-muted-foreground">{i + 1}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Reward tiers */}
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-primary">
-            <Gift className="h-4 w-4" /> מה מקבלים
+    <section dir="rtl" data-no-hero-wave className="space-y-8 px-2 py-6 sm:px-6 sm:py-10">
+      <header className="space-y-3 text-center">
+        <p className="text-sm font-bold text-success">Realtyz · בונוס כפול</p>
+        <h1 className="text-3xl font-bold text-foreground">הזמן חברים</h1>
+        <p className="mx-auto max-w-md text-base leading-relaxed text-muted-foreground">קונים, מוכרים, מתווכים ושותפים. עסקה מאושרת אחת, בונוס לשניכם.</p>
+      </header>
+      <div className="grid grid-cols-3 gap-2 sm:gap-6">
+        {STEPS.map((step, i) => (
+          <div key={step.label} className="flex min-w-0 flex-col items-center gap-3 text-center">
+            <span className={`flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20 ${step.color} ${step.surface}`}>
+              <step.icon className="h-9 w-9 sm:h-11 sm:w-11" strokeWidth={1.7} aria-hidden="true" />
+            </span>
+            <span className="text-sm font-bold text-foreground sm:text-base">{step.label}</span>
+            <span className="text-xs text-muted-foreground">{i + 1}</span>
           </div>
-          <div className="space-y-2">
-            <div className="rounded-xl bg-card p-3 shadow-sm">
-              <div className="text-base font-extrabold text-foreground">50% הנחה לחודש הראשון</div>
-              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
-                המתווך שמצטרף דרך הקישור שלכם מקבל חצי מחיר בחודש הראשון.
-              </div>
-            </div>
-            <div className="rounded-xl bg-card p-3 shadow-sm ring-1 ring-primary/30">
-              <div className="text-base font-extrabold tabular-nums text-primary">₪15 קרדיט</div>
-              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
-                נכנס לארנק הקרדיטים שלכם על כל חבר שהזמנתם והופך ללקוח משלם.
-              </div>
-            </div>
-            <div className="rounded-xl bg-card p-3 shadow-sm">
-              <div className="text-base font-extrabold text-foreground">חודש חינם בחבילת Pro</div>
-              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
-                בונוס יעד: אחרי 3 חברים שהזמנתם שהפכו לאנשי קשר משלמים.
-              </div>
-            </div>
-          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 border-y border-border py-6 text-center">
+        <div className="space-y-1 border-e border-border">
+          <p className="text-sm text-muted-foreground">לכם · המזמין</p>
+          <p className="text-4xl font-extrabold text-deal-blue"><bdi>₪200</bdi></p>
+          <p className="text-sm">זיכוי לארנק</p>
         </div>
-
-
-        {/* Metrics */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {metrics.map((m) => (
-            <div key={m.label} className="rounded-xl border border-border/60 bg-muted/20 p-3 text-center">
-              <div className="text-base font-extrabold tabular-nums text-foreground sm:text-lg">
-                {isLoading ? '—' : m.value}
-              </div>
-              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">{m.label}</div>
-            </div>
-          ))}
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">לחבר · המוזמן</p>
+          <p className="text-4xl font-extrabold text-success"><bdi>₪100</bdi></p>
+          <p className="text-sm">בונוס לארנק</p>
         </div>
-
-        {/* Link + CTAs */}
-        <div className="space-y-2">
-          <Input
-            readOnly
-            value={isLoading ? 'טוען…' : link || 'לא נוצר קישור'}
-            className="bg-muted/30 text-center font-mono text-xs"
-            dir="ltr"
-            onFocus={(e) => e.currentTarget.select()}
-          />
-          <Button className="w-full" size="lg" disabled={!link} onClick={() => void copy()}>
-            <Copy className="me-2 h-4 w-4" /> העתקת קישור ההזמנה
-          </Button>
-          <Button className="w-full" size="lg" variant="outline" disabled={!link} onClick={() => void share()}>
-            <Share2 className="me-2 h-4 w-4" /> שיתוף הקישור
-          </Button>
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              size="sm"
-              variant="ghost"
-              disabled={!link}
-              onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'width=1200,height=800,noopener,noreferrer')}
-            >
-              <MessageCircle className="me-1.5 h-4 w-4" /> וואטסאפ
-            </Button>
-            <Button
-              className="flex-1"
-              size="sm"
-              variant="ghost"
-              disabled={!link}
-              onClick={() => window.open(`sms:?&body=${encodeURIComponent(message)}`, '_self')}
-            >
-              <MessageSquare className="me-1.5 h-4 w-4" /> SMS
-            </Button>
-          </div>
-          <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-            <TrendingUp className="h-3.5 w-3.5" /> כל מי שנרשם דרך הקישור משויך אליכם לצמיתות.
-          </p>
+      </div>
+      <div className="space-y-3">
+        <p className="text-center text-base leading-relaxed">הבונוס נכנס אוטומטית לשני הארנקים אחרי אישור העסקה הראשונה של החבר. הרשמה בלבד אינה מזכה בבונוס.</p>
+        {isError && <div role="alert" className="text-center text-sm text-destructive">לא ניתן לטעון את ההזמנות כרגע. <Button variant="ghost" size="sm" onClick={() => void refetch()}><RefreshCw className="h-4 w-4" />נסה שוב</Button></div>}
+        <Input readOnly value={isLoading ? 'טוען…' : link || 'לא נוצר קישור'} className="bg-muted/30 text-center font-mono text-xs" dir="ltr" aria-label="קישור ההזמנה האישי" onFocus={(e) => e.currentTarget.select()} />
+        <Button className="w-full gap-2" size="lg" disabled={!link} onClick={() => void copy()}><Copy className="h-5 w-5" />העתק קישור אישי</Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="outline" className="gap-2" disabled={!link} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><FaWhatsapp className="h-5 w-5 text-social-whatsapp" />וואטסאפ</Button>
+          <Button variant="outline" className="gap-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־Realtyz · בונוס כפול')}&body=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 text-social-email" />אימייל</Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      {!!data?.total && <div className="grid grid-cols-3 gap-2 text-center">
+        {metrics.map((m) => <div key={m.label} className="min-w-0 space-y-1"><p className="text-xl font-bold tabular-nums">{m.value}</p><p className="text-sm text-muted-foreground">{m.label}</p></div>)}
+      </div>}
+    </section>
   );
 }
-
 export default AffiliateInviteCard;

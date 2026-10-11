@@ -164,9 +164,9 @@ const AFFILIATE_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', 
  * the leads interested in them, the reward settings and Rita. Broker CRM,
  * recruitment and affiliate management are unreachable, not just hidden.
  */
-export const OWNER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
-const WALLET_LOCK_ALLOWED = ['/wallet', '/profile', '/public-listings', '/billing'];
-const SEEKER_ALLOWED_PATHS = [ '/wallet','/public-listings', '/profile'];
+export const OWNER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile', '/referral'];
+const WALLET_LOCK_ALLOWED = ['/wallet', '/profile', '/public-listings', '/billing', '/referral'];
+const SEEKER_ALLOWED_PATHS = [ '/wallet','/public-listings', '/profile', '/referral'];
 const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
@@ -252,7 +252,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     return <Navigate to="/affiliate" replace />;
   }
 
-  if ((isPartnerMode || isAffiliateOnly) && isAffiliate && !['/wallet', '/profile', '/public-listings'].some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
+  if ((isPartnerMode || isAffiliateOnly) && isAffiliate && !['/wallet', '/profile', '/public-listings', '/referral'].some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
     if (partnerConsent.isLoading) return <PageLoader />;
     if (partnerConsent.data !== true) return <AppLayout><PartnerOnboarding onComplete={() => void partnerConsent.refetch()} /></AppLayout>;
   }
@@ -438,6 +438,7 @@ const App = () => (
               <Route path="/owner/rewards" element={<ProtectedRoute><OwnerRewards /></ProtectedRoute>} />
               <Route path="/owner/rita" element={<ProtectedRoute><OwnerRita /></ProtectedRoute>} />
               <Route path="/referral" element={<ProtectedRoute><PartnerNetwork /></ProtectedRoute>} />
+              <Route path="/invite" element={<Navigate to="/referral" replace />} />
               <Route path="/partner/posts" element={<Navigate to="/posts" replace />} />
               <Route path="/partner/chats" element={<ProtectedRoute><PartnerOnlyRoute><PartnerChats /></PartnerOnlyRoute></ProtectedRoute>} />
               <Route path="/partner/contacts" element={<ProtectedRoute><PartnerOnlyRoute><PartnerContacts /></PartnerOnlyRoute></ProtectedRoute>} />

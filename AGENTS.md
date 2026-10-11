@@ -1,12 +1,12 @@
 # Architecture rules
-- Tours use authorized menus and a route-stable store; never auto-click mutations. Why: safe replay.
+- Tours use authorized menus and route-stable state, never auto-mutate. Why: safe replay.
 - Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts.
 - Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports/commissions; DB-authorize publication.
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Joining indicators follow extension events; workspace overlays stop polling reversing tab migration before persistence.
-- Peer expansions use exclusive group-keyed motion; nested utilities use separate groups.
+- Peer expansions use exclusive motion groups. Why: avoid nested hover leaks.
 - Inquiry tiers require server-only workspace/listing identity and satisfactory screening evidence; first turns/callbacks never qualify screening. Atomic upgrades charge only unpaid differences to prevent duplicates.
 - Tables share the Table primitive for sort/reorder/hide; user/workspace/page-keyed local prefs never store listings. Use native horizontal scrolling without arrow overlays.
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe, preventing private inventory/contact exposure.
@@ -34,3 +34,7 @@
 
 - Personal links use auth RPCs; service attribution validates listing/workspace. Why: prevent spoofing.
 - Roles come only from user_roles; partner reads use server-redacted RPCs and verified-license guards. Why: prevent privilege and closing-data leaks.
+
+<!-- LOVABLE:BEGIN -->
+- Personal invite bonuses are account-scoped and atomic on evidence-verified first-deal approval, never signup or subscription. Why: prevent fake and duplicate rewards.
+<!-- LOVABLE:END -->
