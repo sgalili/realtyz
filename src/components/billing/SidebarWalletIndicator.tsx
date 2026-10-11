@@ -87,7 +87,7 @@ export function SidebarWalletIndicator() {
       >
         <ContactRound className="h-4 w-4 shrink-0 text-[hsl(var(--nav-new-contacts))]" />
         <span aria-label="מספר לידים שהתקבלו" className={cn('flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[11px] font-bold', incoming > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground')}>{incoming > 99 ? '99+' : incoming}</span>
-        <span className="min-w-0 whitespace-normal leading-tight">לידים שהתקבלו</span>
+        <span className="min-w-0 whitespace-normal leading-tight">לידים</span>
       </Button>}
     </div>
   );
