@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/pages/PublicListingPage';
+import PropertyReferralButton from './PropertyReferralButton';
 
 type Favorite = { listing_id: string; property: { slug?: string; property_title?: string; address?: string; city?: string; image_url?: string; media_photos?: string[]; asking_price?: number; deal_type?: string } | null };
 
@@ -59,6 +60,7 @@ export default function MyFavoriteAds() {
     return <article key={listing_id} data-favorite-ad={listing_id} className="flex min-w-0 items-center gap-3 rounded-lg border bg-card p-3">
       <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">{photo ? <img src={photo} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-6 w-6 text-muted-foreground" />}</div>
       <div className="min-w-0 flex-1">{property ? <Link to={`/p/${property.slug || listing_id}`} className="block break-words font-semibold text-foreground">{title}</Link> : <p className="text-sm text-muted-foreground">{title}</p>}{property && <p className="font-bold text-primary">{formatPrice(Number(property.asking_price) || 0, property.deal_type === 'rent' ? 'rent' : property.deal_type === 'sale' ? 'sale' : null)}</p>}</div>
+      {property && <PropertyReferralButton listingId={listing_id} />}
       <Button variant="ghost" size="icon" className="shrink-0 text-destructive" aria-label={`הסרה מהמועדפים: ${title}`} title="הסרה מהמועדפים" disabled={removing.has(listing_id)} onClick={() => void remove(listing_id)}>{removing.has(listing_id) ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5 fill-current" />}</Button>
     </article>;
   })}</div>;

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import MyFavoriteAds from '@/components/public/MyFavoriteAds';
+import PropertyReferralButton from '@/components/public/PropertyReferralButton';
 import { readPublicListingDraft, clearPublicListingDraft, type PublicListingDraft } from '@/lib/publicListingDraft';
 import { SelectModeToggle, SelectBox, SelectAllRow } from '@/components/ui/multi-select-controls';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -86,10 +87,11 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
   const [open, setOpen] = useExclusiveExpansion(`my-ads:${activeWorkspaceId}`, `${r.relation}:${r.listing_id}`);
   const title = [r.address, r.city].filter(Boolean).join(', ') || r.title || 'נכס';
   return <article className="min-w-0 overflow-hidden rounded-lg border bg-card" data-my-ad={r.listing_id}>
+    <div data-property-image-toolbar className="flex min-h-10 items-center justify-end gap-1 px-3">{owned && <span title="המודעה שלי" className="inline-flex text-primary"><BadgeCheck className="h-3.5 w-3.5" /></span>}<PropertyReferralButton listingId={r.listing_id} /></div>
     <div className="flex min-w-0 gap-3 p-3">
       <Link to={`/p/${r.slug || r.listing_id}`} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
         {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-7 w-7 text-muted-foreground" />}
-        {owned && <span title="המודעה שלי" className="absolute right-1 top-1 rounded-full bg-background/90 p-1 text-primary shadow"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /></span>}
+
       </Link>
       <div className="min-w-0 flex-1 space-y-1">
         <Link to={`/p/${r.slug || r.listing_id}`} className="block truncate font-semibold text-foreground" title={title}>{title}</Link>
