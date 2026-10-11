@@ -704,7 +704,7 @@ export function useBrokerSubmissions() {
     queryKey: ['broker-affiliate-submissions', ownerId],
     enabled: !!ownerId,
     queryFn: async (): Promise<AffiliateSubmissionRow[]> => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('affiliate_lead_submissions')
         .select('*')
         .eq('broker_id', ownerId!)
@@ -730,7 +730,7 @@ export function useSubmitAffiliateLead() {
     }) => {
       if (!user?.id) throw new Error('not_authenticated');
       const tiers = listingTiers(input.listing);
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('affiliate_lead_submissions')
         .insert({
           affiliate_id: user.id,
