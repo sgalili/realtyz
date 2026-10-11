@@ -2,6 +2,8 @@
  * Referral attribution: captures ?ref=CODE (or /ref/CODE) and keeps it for one year
  * in both localStorage and a cookie. The first captured code wins.
  */
+import { publicUrl } from '@/lib/publicUrl';
+
 const KEY = 'realtyz_ref_code';
 const COOKIE = 'realtyz_ref';
 const DAYS = 365;
@@ -51,6 +53,8 @@ export function storeRefCode(raw: string | null | undefined): string | null {
 export function captureRefFromLocation(): string | null {
   try {
     const url = new URL(window.location.href);
+    // Property partner codes are not account-invitation codes.
+    if (/^\/(p|property|share\/property)\//i.test(url.pathname)) return getStoredRefCode();
     const q = url.searchParams.get('ref') ?? url.searchParams.get('referral');
     const path = url.pathname.match(/^\/ref\/([^/?#]+)/i)?.[1] ?? null;
     return storeRefCode(q ?? path);
@@ -62,6 +66,7 @@ export function captureRefFromLocation(): string | null {
 export function clearRefCode() {
   try {
     localStorage.removeItem(KEY);
+    sessionStorage.removeItem(KEY);
     writeCookie(COOKIE, '');
   } catch {
     /* noop */
@@ -69,5 +74,5 @@ export function clearRefCode() {
 }
 
 export function referralLink(code: string): string {
-  return `https://realtyz.co.il/ref/${code}`;
+  return publicUrl(`/ref/${encodeURIComponent(code)}`);
 }

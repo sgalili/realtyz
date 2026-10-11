@@ -14,7 +14,7 @@ export function ReferralCapture() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const attributed = useRef(false);
+  const attributed = useRef<string | null>(null);
 
   useEffect(() => {
     const code = captureRefFromLocation();
@@ -24,15 +24,17 @@ export function ReferralCapture() {
   }, [location.pathname, navigate, user]);
 
   useEffect(() => {
-    if (!user?.id || attributed.current) return;
+    if (!user?.id) { attributed.current = null; return; }
+    if (attributed.current === user.id) return;
     const code = getStoredRefCode();
     if (!code) return;
-    attributed.current = true;
+    attributed.current = user.id;
     void (async () => {
       try {
-        await db.rpc('register_referral', { _code: code });
+        const { error } = await db.rpc('register_referral', { _code: code });
+        if (error) attributed.current = null;
       } catch {
-        attributed.current = false;
+        attributed.current = null;
       }
     })();
   }, [user?.id]);

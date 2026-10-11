@@ -162,6 +162,27 @@
       "when": 1791691420039,
       "tag": "0022_restore_authenticated_partner_marketplace_access",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791692025803,
+      "tag": "0023_invite_dual_win_verified_deals",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791692101556,
+      "tag": "0024_invite_bonus_evidence_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791692202765,
+      "tag": "0025_invite_approval_closing_audit_compatibility",
+      "breakpoints": true
     }
   ]
 }

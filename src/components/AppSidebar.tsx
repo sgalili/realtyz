@@ -251,8 +251,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const navItems = useMemo(() => {
     if (roleLoading || roleError) return [];
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
-    if (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') return [];
-    if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
+    const invite = NAV_ITEMS.filter((item) => item.url === '/referral');
+    if (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') return invite;
+    if (isPropertyOwnerOnly) return [...OWNER_NAV_ITEMS, ...invite];
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.

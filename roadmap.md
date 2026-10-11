@@ -1,4 +1,8 @@
 # Roadmap
+## Invite friends dual-win bonus
+- [x] Replace shared invite surfaces and subscription referral payouts with ₪200/₪100, personal copy/WhatsApp/email sharing; /invite aliases /referral and private accounts have access.
+- [x] Account-scoped approved-deal evidence, automatic closed+approved submission hook, protected manual signed/completed-deal approval, atomic two-wallet credits, immutable awards, unique first-user payout, suspension/fraud/self guards and audit. Fixed pre-existing closing audit column mismatch blocking approvals.
+- [x] Signed-in canonical copy and both share buttons verified without runtime errors; 13 tests and automatic builds passed. Live DB rollback exercised zero inquiry reward, approved deal 200/100 ledger/balance changes, repeat dedup and audit; ordinary-user approval rejected and foreign reads hidden. No real transaction approved or permanent funds credited; actual buyer/document approval and full role matrix were not exercised.
 ## Role toggle, partner feed, selection, wallet and Rita
 - [x] Solid blue active disabled role toggle and sidebar Settings label.
 - [x] Restore authenticated EXECUTE grant for shared-property feed; consent, license and distribution checks remain unchanged. Empty-safe global selection menus and search reset/error handling added.
