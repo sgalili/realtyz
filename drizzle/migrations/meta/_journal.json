@@ -134,6 +134,13 @@
       "when": 1791682765732,
       "tag": "0018_developer_project_source_details",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791689673142,
+      "tag": "0019_partner_consent_and_licensed_closing",
+      "breakpoints": true
     }
   ]
 }
