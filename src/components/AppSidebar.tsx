@@ -62,17 +62,14 @@ type NavItem = {
 };
 
 /**
- * Every sidebar entry owns a UNIQUE colour. The icon colour is forced with an
- * arbitrary Tailwind value that is the exact hex of the badge's `text-*-700`
- * token, so icon and counter pill always render in the same colour and no
- * inherited `text-slate-900` can win.
+ * Each destination owns a unique semantic icon token independent of text inheritance.
  */
 const NAV_ITEMS: NavItem[] = [
   {
     title: 'מטלות\n',
     url: '/command-center',
     icon: ClipboardList,
-    iconColor: '!text-[#0369a1]', // sky-700
+    iconColor: '!text-[hsl(var(--nav-tasks))]', // sky-700
     badgeClass: 'bg-sky-50 text-sky-700 ring-sky-200',
     aliases: ['/tasks'],
   },
@@ -80,14 +77,14 @@ const NAV_ITEMS: NavItem[] = [
     title: 'לוח בקרה',
     url: '/dashboard',
     icon: Activity,
-    iconColor: '!text-[#4338ca]', // indigo-700
+    iconColor: '!text-[hsl(var(--nav-dashboard))]', // indigo-700
     badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
   },
   {
     title: 'פוסטים',
     url: '/campaigns',
     icon: Megaphone,
-    iconColor: '!text-[#c2410c]', // orange-700
+    iconColor: '!text-[hsl(var(--nav-posts))]', // orange-700
     badgeClass: 'bg-orange-50 text-orange-700 ring-orange-200',
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
@@ -95,7 +92,7 @@ const NAV_ITEMS: NavItem[] = [
     title: 'אנשי קשר',
     url: '/lead-crm',
     icon: Users,
-    iconColor: '!text-[#047857]', // emerald-700
+    iconColor: '!text-[hsl(var(--nav-contacts))]', // emerald-700
     badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     aliases: ['/crm', '/leads'],
   },
@@ -103,7 +100,7 @@ const NAV_ITEMS: NavItem[] = [
     title: 'נכסים',
     url: '/properties',
     icon: Home,
-    iconColor: '!text-[#b45309]', // amber-700
+    iconColor: '!text-[hsl(var(--nav-properties))]', // amber-700
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
     aliases: ['/property', '/listings'],
   },
@@ -111,14 +108,14 @@ const NAV_ITEMS: NavItem[] = [
     title: 'יזמים',
     url: '/developers',
     icon: Building2,
-    iconColor: '!text-[#334155]', // slate-700
+    iconColor: '!text-[hsl(var(--nav-developers))]', // slate-700
     badgeClass: 'bg-slate-50 text-slate-700 ring-slate-200',
   },
   {
     title: 'צ׳אטים',
     url: '/inbox',
     icon: MessageCircle,
-    iconColor: '!text-[#0e7490]', // cyan-700
+    iconColor: '!text-[hsl(var(--nav-chats))]', // cyan-700
     badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
     aliases: ['/communication'],
   },
@@ -126,7 +123,7 @@ const NAV_ITEMS: NavItem[] = [
     title: 'עסקאות',
     url: '/deal-room',
     icon: Handshake,
-    iconColor: '!text-[#be123c]', // rose-700
+    iconColor: '!text-[hsl(var(--nav-deals))]', // rose-700
     badgeClass: 'bg-rose-50 text-rose-700 ring-rose-200',
     aliases: ['/deals'],
   },
@@ -134,14 +131,14 @@ const NAV_ITEMS: NavItem[] = [
     title: 'שיווק שותפים',
     url: '/affiliate-network',
     icon: AffiliateFlowchartIcon,
-    iconColor: '!text-[#6d28d9]', // violet-700
+    iconColor: '!text-[hsl(var(--nav-partners))]', // violet-700
     badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
   },
   {
     title: 'הזמן חברים',
     url: '/referral',
     icon: Gift,
-    iconColor: '!text-[#0f766e]', // teal-700
+    iconColor: '!text-[hsl(var(--nav-invite))]', // teal-700
     badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
   },
 ];
@@ -156,35 +153,35 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
     title: 'שיווק שותפים',
     url: '/affiliate-network',
     icon: AffiliateFlowchartIcon,
-    iconColor: '!text-[#6d28d9]', // violet-700
+    iconColor: '!text-[hsl(var(--nav-partners))]', // violet-700
     badgeClass: 'bg-violet-50 text-violet-700 ring-violet-200',
   },
   {
     title: 'אנשי קשר',
     url: '/partner/contacts',
     icon: Users,
-    iconColor: '!text-[#1d4ed8]', // blue-700
+    iconColor: '!text-[hsl(var(--nav-contacts))]', // blue-700
     badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
   },
   {
     title: 'צ׳אטים',
     url: '/partner/chats',
     icon: MessageCircle,
-    iconColor: '!text-[#0e7490]', // cyan-700
+    iconColor: '!text-[hsl(var(--nav-chats))]', // cyan-700
     badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
   },
   {
     title: 'פוסטים',
     url: '/posts',
     icon: Megaphone,
-    iconColor: '!text-[#b45309]', // amber-700
+    iconColor: '!text-[hsl(var(--nav-properties))]', // amber-700
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
   },
   {
     title: 'הזמן חברים',
     url: '/referral',
     icon: Gift,
-    iconColor: '!text-[#0f766e]', // teal-700
+    iconColor: '!text-[hsl(var(--nav-invite))]', // teal-700
     badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
   },
 ];
@@ -199,28 +196,28 @@ const OWNER_NAV_ITEMS: NavItem[] = [
     title: 'הנכסים שלי',
     url: '/owner/properties',
     icon: Home,
-    iconColor: '!text-[#b45309]', // amber-700
+    iconColor: '!text-[hsl(var(--nav-properties))]', // amber-700
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
   },
   {
     title: 'אנשי קשר',
     url: '/owner/leads',
     icon: Users,
-    iconColor: '!text-[#1d4ed8]', // blue-700
+    iconColor: '!text-[hsl(var(--nav-contacts))]', // blue-700
     badgeClass: 'bg-blue-50 text-blue-700 ring-blue-200',
   },
   {
     title: 'הגדרת תגמולים ועמלות',
     url: '/owner/rewards',
     icon: Coins,
-    iconColor: '!text-[#0f766e]', // teal-700
+    iconColor: '!text-[hsl(var(--nav-rewards))]', // teal-700
     badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
   },
   {
     title: 'צ׳אט עם ריטה',
     url: '/owner/rita',
     icon: MessageCircle,
-    iconColor: '!text-[#0e7490]', // cyan-700
+    iconColor: '!text-[hsl(var(--nav-chats))]', // cyan-700
     badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
   },
 ];
@@ -289,7 +286,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const formatCount = (n: number) => (n > 999 ? `${Math.floor(n / 1000)}k+` : String(n));
 
   const handleNavClick = () => {
-    if (isMobile) setOpenMobile(false);
+    closeSidebar();
   };
 
   const isActive = (item: NavItem) =>
@@ -329,7 +326,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               </div>
 
               {/* Settings + Tutorial + broker/partner toggle share one row. */}
-              <div className="mt-2 flex items-center gap-1" dir="rtl" onClick={(e) => e.stopPropagation()}>
+              <div className="mt-2 grid w-full grid-cols-[1fr_1fr_1.35fr] items-stretch gap-1" dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {/* Settings shortcut: opens /profile and closes the sidebar.
                     Hidden in Rita's marketing workspace. */}
                 {(
@@ -343,9 +340,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     }}
                     title="הגדרות"
                     aria-label="הגדרות"
-                    className="h-8 shrink-0 gap-1 px-1.5 text-xs font-semibold"
+                    className="h-9 w-full min-w-0 gap-1 px-1 text-xs font-semibold"
                   >
-                    <Settings className="h-4 w-4" />
+                    <Settings className="h-4 w-4 text-[hsl(var(--nav-settings))]" />
                     הגדרות
                   </Button>
                 )}
@@ -357,11 +354,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     closeSidebar();
                   }}
                   title="הדרכה" aria-label="הדרכה"
-                  className="h-8 min-w-0 shrink-0 gap-1 px-1.5 text-xs font-semibold">
-                  <HelpCircle className="h-4 w-4" />הדרכה
+                  className="h-9 w-full min-w-0 gap-1 px-1 text-xs font-semibold">
+                  <HelpCircle className="h-4 w-4 text-[hsl(var(--nav-help))]" />הדרכה
                 </Button>
 
-                <AppModeSwitcher keepSidebarOpen />
+                <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-9 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1" />
               </div>
 
             </SidebarGroupContent>
@@ -382,7 +379,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
                     activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
                   >
-                    <Globe className="h-4 w-4 shrink-0 text-sky-600" />
+                    <Globe className="h-4 w-4 shrink-0 !text-[hsl(var(--nav-board))]" />
                     {!collapsed && <span className="text-sm font-medium">לוח נדל״ן שיתופי</span>}
                   </NavLink>
                 </SidebarMenuButton>
@@ -413,7 +410,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         )}
                         {!collapsed && !item.badge && (() => {
                           const c = countFor(item.url);
-                          if (c === undefined || (c === 0 && item.url !== '/command-center')) return null;
+                          if (c === undefined || c === 0) return null;
                           return (
                             <span className="ms-auto rounded-full bg-background px-2 py-0.5 text-[11px] font-bold leading-none text-foreground ring-1 ring-border">
                               {formatCount(c)}

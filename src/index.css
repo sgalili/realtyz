@@ -83,6 +83,21 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 215 65% 22%;
     --sidebar-ring: 47 100% 50%;
+    --nav-board: 221 75% 44%;
+    --nav-tasks: 199 89% 30%;
+    --nav-dashboard: 245 58% 51%;
+    --nav-posts: 17 88% 40%;
+    --nav-contacts: 161 94% 30%;
+    --nav-properties: 37 91% 37%;
+    --nav-developers: 215 25% 27%;
+    --nav-chats: 189 94% 30%;
+    --nav-deals: 347 77% 41%;
+    --nav-partners: 263 70% 50%;
+    --nav-invite: 175 77% 26%;
+    --nav-rewards: 316 68% 38%;
+    --nav-wallet: 83 70% 29%;
+    --nav-settings: 210 16% 43%;
+    --nav-help: 3 72% 45%;
 
     /* SUCCESS / WARNING */
     --success: 134 61% 41%;
@@ -1150,6 +1165,20 @@
     color: hsl(222 47% 11%) !important;
   }
 
+  .realtyz-sidebar-menu [data-sidebar="menu-button"] {
+    min-height: 42px;
+    height: auto;
+    font-size: 16.8px;
+  }
+  .realtyz-sidebar-menu [data-sidebar="menu-button"] > svg {
+    width: 19.2px;
+    height: 19.2px;
+  }
+  .realtyz-sidebar-menu [data-sidebar="menu-button"] > span:first-of-type {
+    font-size: 16.8px;
+    white-space: normal;
+    line-height: 1.35;
+  }
   .realtyz-sidebar-brand {
     position: relative;
     background: hsl(0 0% 100%);

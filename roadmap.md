@@ -1,4 +1,9 @@
 # Roadmap
+## Credits ecosystem, email and sidebar
+- [ ] Credits-first general balances and rewards; keep financial/property prices in ILS.
+- [ ] Stop generated signup/profile emails; require explicit mailbox consent.
+- [ ] Edge-to-edge top controls, hidden zero counters with explanation, close navigation, unique colors and 20% enlarged menu.
+- [ ] Focused tests and signed-in navigation verification. 
 ## Invite friends dual-win bonus
 - [x] Replace shared invite surfaces and subscription referral payouts with ₪200/₪100, personal copy/WhatsApp/email sharing; /invite aliases /referral and private accounts have access.
 - [x] Account-scoped approved-deal evidence, automatic closed+approved submission hook, protected manual signed/completed-deal approval, atomic two-wallet credits, immutable awards, unique first-user payout, suspension/fraud/self guards and audit. Fixed pre-existing closing audit column mismatch blocking approvals.

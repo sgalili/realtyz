@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
  * Switch between the preserved core identity and additive partner membership.
  * Server roles authorize access; the display preference never grants a role.
  */
-export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?: boolean }) {
+export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSidebarOpen?: boolean; className?: string }) {
   const navigate = useNavigate();
   const [onboarding, setOnboarding] = useState(false);
   const consent = usePartnerConsent();
@@ -71,7 +71,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
       role="radiogroup"
       aria-label="החלפת מצב עבודה"
       data-keep-terms
-      className="inline-flex shrink-0 items-center overflow-hidden rounded-md border border-border bg-muted/60"
+      className={cn("inline-flex shrink-0 items-center overflow-hidden rounded-md border border-border bg-muted/60", className)}
     >
       {options.map((opt) => {
         const active = mode === opt.value;
@@ -88,7 +88,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
             className={cn(
               'h-8 rounded-none px-1.5 text-xs font-semibold transition-colors disabled:opacity-100',
               active
-                ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-600'
+                ? 'bg-deal-blue text-deal-blue-foreground shadow-sm hover:bg-deal-blue'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
