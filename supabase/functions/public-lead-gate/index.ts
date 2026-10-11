@@ -32,13 +32,10 @@ const str = (v: unknown, max = 120) => String(v ?? "").replace(/\s+/g, " ").trim
 // deno-lint-ignore no-explicit-any
 async function chargeLead(admin: any, listingId: string, tier: number, refCode: string, leadId: string | null = null) {
   let affiliateId: string | null = null;
-  if (refCode) {
-    const { data } = await admin
-      .from("affiliate_referrals")
-      .select("affiliate_id")
-      .eq("tracking_code", refCode)
-      .maybeSingle();
-    affiliateId = (data?.affiliate_id as string | undefined) ?? null;
+  if (refCode && leadId && /^[a-z0-9]{4,32}$/i.test(refCode)) {
+    const { data, error } = await admin.rpc('record_property_referral_inquiry', { _listing_id: listingId, _lead_id: leadId, _code: refCode });
+    if (error) throw error;
+    affiliateId = data ?? null;
   }
   const { data, error } = await admin.rpc("charge_lead_commission", {
     _listing_id: listingId,
@@ -183,7 +180,6 @@ Deno.serve(async (req) => {
         token: accessToken,
         unlocked: false,
         lead_id: leadId,
-        billing,
         greeting: `היי ${name}, אני ריטה. ספרי לי מה חשוב לך בנכס הזה ואשלח לך מיד את כל הפרטים המלאים.`,
       });
     }
@@ -208,7 +204,7 @@ Deno.serve(async (req) => {
       const refCode = str(body?.ref, 40);
       let affiliateId: string | null = null;
       if (refCode) {
-        const { data: referral } = await admin.from("affiliate_referrals").select("affiliate_id").eq("tracking_code", refCode).maybeSingle();
+        const { data: referral } = await admin.from("affiliate_referrals").select("affiliate_id").eq('listing_id', listing.id).ilike("tracking_code", /^[a-z0-9]{4,32}$/i.test(refCode) ? refCode : 'invalid').maybeSingle();
         affiliateId = (referral?.affiliate_id as string | undefined) ?? null;
       }
 
@@ -287,7 +283,7 @@ Deno.serve(async (req) => {
       // A callback request is identity capture, NOT a satisfactory conversation.
       const billing = await chargeLead(admin, listing.id, 1, refCode, leadId ?? null);
       // Always a success for the visitor.
-      return json({ success: true, lead_id: leadId, billing });
+      return json({ success: true, lead_id: leadId });
     }
 
     // ------------------------------------------------------------- rita
