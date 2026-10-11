@@ -560,6 +560,10 @@ const LeadCRM = () => {
   const { leadId: routeLeadId } = useParams<{ leadId?: string }>();
   const navigate = useNavigate();
   const routeLocation = useLocation();
+  // Sidebar 'new contacts' button opens the list pre-filtered to untreated contacts.
+  useEffect(() => {
+    if (new URLSearchParams(routeLocation.search).get('filter') === 'untreated') setStatusFilter('untreated');
+  }, [routeLocation.search]);
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? null);
 
   // Sync sheet open-state with the URL param so /lead-crm/:id opens the profile.
@@ -745,7 +749,8 @@ const LeadCRM = () => {
       }
       if (interestFilter !== 'all') query = query.eq('interest_tag', interestFilter);
       if (cityFilter !== 'all') query = query.eq('city', cityFilter);
-      if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+      if (statusFilter === 'untreated') query = query.or('lead_stage.is.null,lead_stage.in.(new,new_lead)');
+      else if (statusFilter !== 'all') query = query.eq('status', statusFilter);
       if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
       if (leadKindFilter !== 'all') query = query.eq('preferences->>lead_kind', leadKindFilter);
       if (sentimentFilter !== 'all') query = query.eq('sentiment', sentimentFilter);
@@ -1880,6 +1885,7 @@ const LeadCRM = () => {
               <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="סנן לפי סטטוס" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל הסטטוסים</SelectItem>
+                <SelectItem value="untreated">טרם טופלו</SelectItem>
                 {uniqueStatuses.map((s) => <SelectItem key={s} value={s!}>{hebrewLabel(statusHebrew, s) || s}</SelectItem>)}
               </SelectContent>
             </Select>
