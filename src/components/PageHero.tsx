@@ -460,7 +460,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
-                    {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
+          {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
           {isPublicBoard && !user && (
             <Button
               size="sm"
