@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
+import { CompleteProfileBanner } from '@/components/profile/CompleteProfileBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BillingTab from '@/components/profile/BillingTab';
 import KnowledgeBase from '@/pages/KnowledgeBase';
@@ -178,11 +179,20 @@ function ProfileArrayRows({
   );
 }
 
-/** Synthetic WhatsApp-login emails are internal only and must never be shown. */
+/** Synthetic phone/WhatsApp/SMS-login emails are internal only and must never be shown. */
 function realEmail(value: unknown): string {
   const email = String(value ?? '').trim();
-  if (!email || /@(?:whatsapp\.)?realtyz\.local$/i.test(email)) return '';
+  if (!email || !email.includes('@')) return '';
+  if (/\.(local|test|invalid)$/i.test(email) || /@(?:[a-z0-9-]+\.)*(?:example\.(?:com|org)|placeholder\.[a-z]+)$/i.test(email)) return '';
+  // Phone-number local parts on our own domains are login placeholders.
+  if (/^\+?\d{9,15}@(?:[a-z0-9-]+\.)*realtyz\./i.test(email)) return '';
   return email;
+}
+
+/** Email belongs to the account only when it signed in with email or Google. */
+function hasRealEmailLogin(user: any): boolean {
+  const providers: string[] = user?.app_metadata?.providers ?? [user?.app_metadata?.provider].filter(Boolean);
+  return providers.includes('google') || (providers.includes('email') && !!realEmail(user?.email));
 }
 
 function PersonalTab() {
@@ -224,7 +234,10 @@ function PersonalTab() {
           .maybeSingle();
         if ((data as any)?.id && (data as any).id !== ownerId) return;
         const server: any = data ?? {};
-        const serverEmail = realEmail(server.email) || (isOwnProfile ? realEmail(user.email) : '');
+        const loginEmail = isOwnProfile && hasRealEmailLogin(user) ? realEmail(user.email) : '';
+        // A profile email equal to a placeholder auth email is never shown.
+        const storedEmail = realEmail(server.email);
+        const serverEmail = (storedEmail && (storedEmail.toLowerCase() !== String(user.email ?? '').toLowerCase() || loginEmail) ? storedEmail : '') || loginEmail;
         const serverName = String(server.full_name ?? '').trim() || defaultName;
         let local: any = null;
         try {
@@ -710,6 +723,10 @@ export default function Profile() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <div className="mb-3">
+        <CompleteProfileBanner force={params.get('welcome') === 'developer'} onEdit={() => setTab('personal')} />
+      </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <TabsList className={`grid w-full ${isAgency ? 'grid-cols-6' : 'grid-cols-5'} mb-[15px]`}>
