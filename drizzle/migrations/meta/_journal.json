@@ -148,6 +148,13 @@
       "when": 1791689773583,
       "tag": "0020_partner_feed_consent_and_reward_redaction",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791689940486,
+      "tag": "0021_harden_partner_consent_audit",
+      "breakpoints": true
     }
   ]
 }
