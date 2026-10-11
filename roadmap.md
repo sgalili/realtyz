@@ -209,3 +209,6 @@
  - [x] Affiliate-only leftover editor plus server RPC ownership confirmed; shared/public grips visible with order-only reset. Table browser check and focused tests; partner-mode browser check unavailable in current session.
 - [x] Click commission amounts for publisher editing or partner-only information (types, prices, daily cap, screening questions); put leftover pricing inside the dialog and removal at row end.
 - [x] Five focused tests passed; authenticated publisher editor and partner information verified on real listings (daily cap 3, questions and prices). Own marketing dialog contains leftover discount; removal is the last cell. Automatic build OK. No live prices, discounts or marketing rows were changed.
+## Sidebar incoming-leads counter
+- [x] Count only incoming leads (a partner's own sent/sold leads excluded), place the number before the label and keep 0 visible; the control opens the incoming leads list.
+- [x] Two focused tests passed; signed-in drawer shows badge 39 before לידים שהתקבלו, matching the 39-record leads list, with no page errors and automatic build OK. The zero state is covered by tests only.
