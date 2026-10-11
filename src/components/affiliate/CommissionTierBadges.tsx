@@ -40,7 +40,7 @@ export function CommissionTierBadges({
 
   if (compact) {
     return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-success" data-commission-icons>
+      <div className="grid grid-cols-2 items-center gap-x-3 gap-y-1 text-xs font-semibold text-success" data-commission-icons>
         {rows.map((r) => (
           <div key={r.key} className="flex items-center gap-1" title={r.label} aria-label={`${r.label}: ${r.value}`}>
             <r.icon className="h-3 w-3" /><bdi dir="ltr">{r.value}</bdi>
@@ -51,7 +51,7 @@ export function CommissionTierBadges({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-1.5">
       {rows.map((r) => (
         <div key={r.key} className={`rounded-md px-2 py-1.5 ring-1 ${r.tone}`}>
           <div className="flex items-center gap-1 text-[10px] font-semibold opacity-80">
