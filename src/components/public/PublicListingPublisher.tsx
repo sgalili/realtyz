@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -793,21 +794,41 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 ))}
               </div>
-              {fields.publisherType === 'broker' && Boolean(publisherProfile?.broker_license_number || isSuperAdmin) && (
-                <div className="space-y-1.5 rounded-lg border p-2.5 text-sm">
-                  <span className="flex items-center gap-1 font-medium">סגירת עסקה (למתווכים מורשים)
-                    <LeadTypeHelp label="סגירת עסקה"><p>עמלה לשותף שהביא ליד שסגר עסקה בפועל על הנכס. ניתן להגדיר אחוז מהעסקה או סכום קבוע.</p></LeadTypeHelp>
+              {fields.publisherType === 'broker' && Boolean(publisherProfile?.broker_license_number || isSuperAdmin) && (() => {
+                const isRent = fields.dealType === 'rent';
+                const minPct = isRent ? 10 : 0.2;
+                const maxPct = isRent ? 100 : 2;
+                const step = isRent ? 1 : 0.1;
+                const raw = Number(fields.commissionDeal);
+                const pct = Number.isFinite(raw) && raw >= minPct ? Math.min(raw, maxPct) : minPct;
+                const price = Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0;
+                const amount = price > 0 ? Math.round((price * pct) / 100) : null;
+                return (
+                <div className="space-y-2 rounded-lg border p-2.5 text-sm">
+                  <span className="flex items-center gap-1 font-medium">עמלת סגירה (למתווכים מורשים)<span className="text-destructive"> *</span>
+                    <LeadTypeHelp label="עמלת סגירה"><p>עמלה לשותף שהביא ליד שסגר עסקה בפועל על הנכס. {isRent ? 'הטווח: 10% עד 100% משכר הדירה החודשי.' : 'הטווח: 0.2% עד 2% ממחיר המכירה.'}</p></LeadTypeHelp>
                   </span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex shrink-0 overflow-hidden rounded-md border">
-                      {(['percent', 'fixed'] as const).map(t => (
-                        <button key={t} type="button" onClick={() => set('commissionDealType', t)} className={`px-3 py-1.5 text-xs font-semibold ${(fields.commissionDealType || 'percent') === t ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}>{t === 'percent' ? '%' : '₪'}</button>
-                      ))}
-                    </div>
-                    <Input inputMode="decimal" aria-label="עמלה על סגירת עסקה" value={fields.commissionDeal || ''} onChange={(e) => set('commissionDeal', decimalInput(e.target.value))} />
+                  <div className="flex items-center gap-3" dir="ltr">
+                    <span className="w-10 shrink-0 text-center text-xs text-muted-foreground">{minPct}%</span>
+                    <Slider
+                      aria-label="עמלת סגירה"
+                      min={minPct}
+                      max={maxPct}
+                      step={step}
+                      value={[pct]}
+                      onValueChange={([v]) => { set('commissionDealType', 'percent'); set('commissionDeal', String(v)); }}
+                      className="flex-1"
+                    />
+                    <span className="w-10 shrink-0 text-center text-xs text-muted-foreground">{maxPct}%</span>
                   </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-bold text-primary">{pct}%{amount != null ? ` · ₪${amount.toLocaleString('he-IL')}` : ''}</span>
+                    <span className="text-xs text-muted-foreground">{isRent ? 'משכר הדירה החודשי' : 'ממחיר המכירה'}</span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-muted-foreground">עמלת סגירה גבוהה היא היתרון שלך: היא מקנה למודעה חשיפה מקסימלית, מניעה שותפים רבים יותר לקדם את הנכס באופן פעיל, ומגדילה משמעותית את הסיכוי לסגור את העסקה מהר יותר.</p>
                 </div>
-              )}
+                );
+              })()}
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
