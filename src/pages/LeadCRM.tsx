@@ -1868,9 +1868,7 @@ const LeadCRM = () => {
             <div className="flex items-center justify-between gap-2 sm:w-72">
               <SelectModeToggle
                 total={filtered?.length ?? 0}
-                onSelectAll={() => setSelectedIds(new Set((filtered ?? []).map(v => v.id)))}
                 active={selectMode}
-                count={selectedIds.size}
                 onToggle={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
               />
               {(() => {
