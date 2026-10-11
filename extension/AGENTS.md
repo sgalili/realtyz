@@ -1,0 +1,4 @@
+# Facebook extension rules
+- FB group-post engagement is scraped read-only by the extension (ext-metrics + pairing-token RPCs); counters only increase and roll up into the campaign card.
+- fb_user_groups.is_blocked needs manual unblock: confirmed rejection blocks immediately; transient failures use a three-failure safeguard. DB guards reject inserts/retries, cancel remaining jobs, and require extension preflight per send. Pending approval is not rejection. Group search/join is extension-only, capped and spaced.
+- Page sync uses the workspace's own binding. Server routing rejects foreign workspace/Page payloads and never prunes partial scrapes; scrape tabs close only after app receipt ACK persists.

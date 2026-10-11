@@ -15,9 +15,6 @@
 - Group selection uses one checkbox per row, immutable deduplicated snapshots and no-op guards.
 - Post media dedup matches original host/path hashes to cached filenames; mirrors and sources are one asset.
 - Multi-select lists use the shared controls in src/components/ui/multi-select-controls.tsx so every page behaves the same.
-- FB group-post engagement is scraped read-only by the extension (ext-metrics + pairing-token RPCs); counters only increase and roll up into the campaign card.
-- fb_user_groups.is_blocked needs manual unblock: confirmed rejection blocks immediately; transient failures use a three-failure safeguard. DB guards reject inserts/retries, cancel remaining jobs, and require extension preflight per send. Pending approval is not rejection. Group search/join is extension-only, capped and spaced.
-- Page sync uses the workspace's own binding. Server routing rejects foreign workspace/Page payloads and never prunes partial scrapes; scrape tabs close only after app receipt ACK persists.
 - Partner rewards freeze into immutable listing_reward_snapshots on pick; charges use the snapshot. Trust scores are server-computed (compute_trust_score), super_admin-overridable, audited.
 - Listing lifecycle advances forward-only via advance_listing_stage; daily cron pauses partner distribution after 3 unanswered checks until confirm_listing_availability.
 - Lead disputes, appeals and bans run only through audited security-definer RPCs; appeals need a neutral reviewer; bans freeze, never delete.
@@ -34,3 +31,4 @@
 <!-- LOVABLE:END -->
 
 - Affiliate pricing rules: see src/components/affiliate/AGENTS.md.
+- Facebook extension/group rules: see extension/AGENTS.md.
