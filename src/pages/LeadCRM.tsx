@@ -554,7 +554,7 @@ const LeadCRM = () => {
   const [leadKinds, setLeadKinds] = useState<LeadKind[]>([]);
   const leadKindFilter = leadKinds.length ? [...leadKinds].sort().join(',') : 'all';
   const roleInfo = useUserRole();
-  const { termsAcceptedAt } = useAffiliateLicense();
+  const termsAcceptedAt = useAffiliateLicense().license.termsAcceptedAt;
   const isDeveloperView = roleInfo.isDeveloper && !roleInfo.isTeamMember;
   const isOwnerOnlyView = roleInfo.isPropertyOwnerOnly;
   // Pills shown depend on the signed-in account type; partners appear only after accepted affiliate terms.
