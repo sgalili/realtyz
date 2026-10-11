@@ -1908,6 +1908,8 @@ export type Database = {
           created_at: string
           frozen: boolean
           id: string
+          lock_reason: string | null
+          locked_at: string | null
           updated_at: string
           user_id: string
         }
@@ -1916,6 +1918,8 @@ export type Database = {
           created_at?: string
           frozen?: boolean
           id?: string
+          lock_reason?: string | null
+          locked_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1924,6 +1928,8 @@ export type Database = {
           created_at?: string
           frozen?: boolean
           id?: string
+          lock_reason?: string | null
+          locked_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -5527,6 +5533,66 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_methods: {
+        Row: {
+          added_by: string | null
+          auto_recharge_enabled: boolean
+          brand: string | null
+          created_at: string
+          exp_month: number | null
+          exp_year: number | null
+          id: string
+          is_default: boolean
+          last_charge_at: string | null
+          last_charge_error: string | null
+          last4: string | null
+          provider: string
+          provider_token: string | null
+          recharge_amount: number
+          status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          auto_recharge_enabled?: boolean
+          brand?: string | null
+          created_at?: string
+          exp_month?: number | null
+          exp_year?: number | null
+          id?: string
+          is_default?: boolean
+          last_charge_at?: string | null
+          last_charge_error?: string | null
+          last4?: string | null
+          provider: string
+          provider_token?: string | null
+          recharge_amount?: number
+          status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          added_by?: string | null
+          auto_recharge_enabled?: boolean
+          brand?: string | null
+          created_at?: string
+          exp_month?: number | null
+          exp_year?: number | null
+          id?: string
+          is_default?: boolean
+          last_charge_at?: string | null
+          last_charge_error?: string | null
+          last4?: string | null
+          provider?: string
+          provider_token?: string | null
+          recharge_amount?: number
+          status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
           contact_limit: number
@@ -8155,6 +8221,7 @@ export type Database = {
       get_my_referral_stats: { Args: never; Returns: Json }
       get_my_subscription_status: { Args: never; Returns: Json }
       get_my_wallet: { Args: never; Returns: Json }
+      get_my_wallet_ledger: { Args: { _limit?: number }; Returns: Json }
       get_my_workspaces: {
         Args: never
         Returns: {
@@ -8439,6 +8506,10 @@ export type Database = {
         Returns: Json
       }
       set_active_workspace: { Args: { _owner: string }; Returns: undefined }
+      set_card_auto_recharge: {
+        Args: { _amount: number; _enabled: boolean; _id: string }
+        Returns: undefined
+      }
       set_homely_broker_disabled: {
         Args: { _disabled: boolean; _reason?: string; _user_id: string }
         Returns: undefined

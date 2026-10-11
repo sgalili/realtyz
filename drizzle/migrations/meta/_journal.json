@@ -92,6 +92,13 @@
       "when": 1791677200940,
       "tag": "0012_developer_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791677647679,
+      "tag": "0013_wallet_billing_lock",
+      "breakpoints": true
     }
   ]
 }
