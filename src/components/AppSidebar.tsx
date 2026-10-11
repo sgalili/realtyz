@@ -328,7 +328,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               </div>
 
               {/* Settings + Tutorial + broker/partner toggle share one row. */}
-              <div className="mt-2 flex items-center gap-2" dir="rtl" onClick={(e) => e.stopPropagation()}>
+              <div className="mt-2 flex items-center gap-1" dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {/* Settings shortcut: opens /profile and closes the sidebar.
                     Hidden in Rita's marketing workspace. */}
                 {(
@@ -356,7 +356,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     closeSidebar();
                   }}
                   title="הדרכה" aria-label="הדרכה"
-                  className="h-8 min-w-0 flex-1 px-2 text-xs font-semibold">
+                  className="h-8 min-w-0 shrink-0 gap-1 px-1.5 text-xs font-semibold">
                   <HelpCircle className="h-4 w-4" />הדרכה
                 </Button>
 

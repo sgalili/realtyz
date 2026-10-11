@@ -86,7 +86,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
             onClick={() => { if (opt.value !== mode && !busy) activation.mutate(opt.value); }}
             title={opt.label}
             className={cn(
-              'h-8 rounded-none px-2 text-xs font-semibold transition-colors disabled:opacity-100',
+              'h-8 rounded-none px-1.5 text-xs font-semibold transition-colors disabled:opacity-100',
               active
                 ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-600'
                 : 'text-muted-foreground hover:text-foreground',
