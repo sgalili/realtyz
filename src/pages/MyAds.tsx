@@ -142,7 +142,7 @@ export default function MyAds() {
   const navigate = useNavigate();
   const [tFilter, setTFilter] = useState<TransparencyFilter | null>(null);
   const { data: sharedIds } = useQuery({
-    queryKey: ['transparency-shared-ids', user?.id, activeWorkspaceId], enabled: !!user?.id && tFilter?.key === 'active_listings',
+    queryKey: ['transparency-shared-ids', user?.id, activeWorkspaceId], enabled: !!user?.id,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_transparency_shared_listing_ids'); if (error) throw error; return new Set((data ?? []) as string[]); },
   });
   const onTFilter = (f: TransparencyFilter | null) => { if (f?.key === 'wallet') { navigate('/wallet'); return; } setTFilter(f); };
