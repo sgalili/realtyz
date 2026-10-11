@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SaveCardForm } from '@/components/billing/SaveCardForm';
+import { ZCreditSettingsCard } from '@/components/billing/ZCreditSettingsCard';
+import { useUserRole } from '@/hooks/useUserRole';
 
 type LedgerRow = {
   id: string; amount_ils: number; type: string; note: string | null; created_at: string; reference_id: string | null;
@@ -29,6 +31,7 @@ const when = (d: string) => new Date(d).toLocaleString('he-IL', { day: '2-digit'
 
 export default function Wallet() {
   const ws = useActiveWorkspaceOwnerId();
+  const { isSuperAdmin } = useUserRole();
   const { data: wallet } = useCreditWallet();
   const [detail, setDetail] = useState<LedgerRow | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
@@ -102,7 +105,7 @@ export default function Wallet() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="space-y-3">
         <div className="flex items-center justify-between rounded-lg border bg-card p-5">
           <div>
             <p className="text-sm text-muted-foreground">יתרה נוכחית</p>
@@ -110,22 +113,7 @@ export default function Wallet() {
           </div>
           <Button onClick={() => setTopupOpen(true)}><Plus className="h-4 w-4" />טעינת ארנק</Button>
         </div>
-        <div className="rounded-lg border bg-card p-5">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="flex items-center gap-2 text-sm text-muted-foreground"><CreditCard className="h-4 w-4" />כרטיס לחיוב אוטומטי</p>
-            <Button size="sm" variant="outline" onClick={() => setCardOpen(true)}>{cards.length ? 'החלפת כרטיס' : 'הוספת כרטיס'}</Button>
-          </div>
-          {cards.length === 0 ? (
-            <p className="text-sm">לא נשמר כרטיס. כשהיתרה תתאפס, החיוב ינסה את הכרטיס השמור לפני הגבלת החשבון.</p>
-          ) : cards.map((c) => (
-            <div key={c.id} className="text-sm">
-              <span className="font-bold">{c.brand ?? 'כרטיס'} •••• {c.last4}</span>
-              {c.exp_month && <span className="ms-2 text-muted-foreground">{String(c.exp_month).padStart(2, '0')}/{c.exp_year}</span>}
-              <div className="text-muted-foreground">{c.auto_recharge_enabled ? `טעינה אוטומטית של ${ils(c.recharge_amount)}` : 'טעינה אוטומטית כבויה'}</div>
-              {c.last_charge_error && <div className="text-destructive">{c.last_charge_error}</div>}
-            </div>
-          ))}
-        </div>
+
       </div>
 
       <Tabs defaultValue="payments">
@@ -158,20 +146,31 @@ export default function Wallet() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={cardOpen} onOpenChange={setCardOpen}>
-        <DialogContent dir="rtl">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" />שמירת כרטיס אשראי</DialogTitle></DialogHeader>
-          <SaveCardForm onDone={() => setCardOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={topupOpen} onOpenChange={setTopupOpen}>
-        <DialogContent dir="rtl">
+      <Dialog open={topupOpen} onOpenChange={(open) => { setTopupOpen(open); if (!open) setCardOpen(false); }}>
+        <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><WalletIcon className="h-5 w-5" />טעינת ארנק</DialogTitle></DialogHeader>
           <div className="grid grid-cols-3 gap-2">
             {[200, 500, 1000].map((a) => <Button key={a} variant="outline" disabled>{ils(a)}</Button>)}
           </div>
           <p className="text-sm text-muted-foreground">התשלום בכרטיס אשראי ייפתח בקרוב. עד אז טעינה מתבצעת דרך צוות Realtyz.</p>
+        <div className="space-y-3 border-t border-border pt-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><CreditCard className="h-4 w-4" />כרטיס לחיוב אוטומטי</p>
+            <Button size="sm" variant="outline" onClick={() => setCardOpen(v => !v)}>{cards.length ? 'החלפת כרטיס' : 'הוספת כרטיס'}</Button>
+          </div>
+          {cards.length === 0 ? (
+            <p className="text-sm">לא נשמר כרטיס. כשהיתרה תתאפס, החיוב ינסה את הכרטיס השמור לפני הגבלת החשבון.</p>
+          ) : cards.map((c) => (
+            <div key={c.id} className="text-sm">
+              <span className="font-bold">{c.brand ?? 'כרטיס'} •••• {c.last4}</span>
+              {c.exp_month && <span className="ms-2 text-muted-foreground">{String(c.exp_month).padStart(2, '0')}/{c.exp_year}</span>}
+              <div className="text-muted-foreground">{c.auto_recharge_enabled ? `טעינה אוטומטית של ${ils(c.recharge_amount)}` : 'טעינה אוטומטית כבויה'}</div>
+              {c.last_charge_error && <div className="text-destructive">{c.last_charge_error}</div>}
+            </div>
+          ))}
+          {cardOpen && <SaveCardForm onDone={() => setCardOpen(false)} />}
+        </div>
+          {isSuperAdmin && <ZCreditSettingsCard />}
         </DialogContent>
       </Dialog>
     </div>

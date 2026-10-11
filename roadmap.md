@@ -1,4 +1,10 @@
 # Roadmap
+## Role toggle, partner feed, selection, wallet and Rita
+- [ ] Solid active disabled role toggle and sidebar Settings label.
+- [ ] Restore authorized platform shared-property feed and empty-safe selection menus.
+- [ ] Move automatic card setup and admin provider settings into wallet top-up.
+- [ ] Replace Rita categories with role-aware prompts and concise workflow context.
+- [ ] Verify focused tests, signed-in feed, wallet and Rita UI.
 ## Sidebar partner onboarding and commissions
 - [x] Sidebar-only switcher beside Help; introductory slides and protected digital consent before partner entry.
 - [x] Account-scoped shared feed and commission icons under public/partner prices; verified closing restrictions.
