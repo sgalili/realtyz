@@ -6,7 +6,7 @@
 - Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Joining indicators follow extension events; workspace overlays stop polling reversing tab migration before persistence.
-- Peer expansions use exclusive motion groups. Why: avoid nested hover leaks.
+- Peer expansions use exclusive motion groups to avoid hover leaks.
 - Inquiry tiers require server-only workspace/listing identity and satisfactory screening evidence; first turns/callbacks never qualify screening. Atomic upgrades charge only unpaid differences to prevent duplicates.
 - Tables share the Table primitive for sort/reorder/hide; user/workspace/page-keyed local prefs never store listings. Use native horizontal scrolling without arrow overlays.
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe, preventing private inventory/contact exposure.
@@ -26,13 +26,13 @@
 - Listing lifecycle advances forward-only via DB triggers (advance_listing_stage); a daily cron prompts idle advertisers and pauses partner distribution after 3 unanswered checks, resumed only by confirm_listing_availability.
 - Lead disputes, appeals and bans run only through audited security-definer RPCs (open/decide/appeal lead disputes, ban_user/unban_user); appeals need a neutral reviewer and bans freeze rather than delete data.
 
-- Core identity survives partner membership; RPC-only profile consent gates entry. Mode grants no roles. Why: safety.
+- Core identity survives partner membership; RPC-only profile consent gates entry. Mode grants no roles.
 - Developer editors retain source JSON in scoped eight-step forms; confirm saves, never publishes. Why: evidence.
 
 - Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards. Why: card secrets stay server-side.
 
-- Personal links use auth RPCs; service attribution validates listing/workspace. Why: prevent spoofing.
+- Personal links use auth RPCs; service attribution validates listing/workspace to prevent spoofing.
 - Roles come only from user_roles; partner reads use server-redacted RPCs and verified-license guards. Why: prevent privilege and closing-data leaks.
 
 <!-- LOVABLE:BEGIN -->
