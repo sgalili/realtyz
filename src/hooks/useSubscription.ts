@@ -106,6 +106,9 @@ export function useCreditWallet() {
       if (txnRes.error) throw txnRes.error;
       return {
         balance: Number(walletRes.data?.balance_ils ?? 0),
+        lockedAt: (walletRes.data?.locked_at ?? null) as string | null,
+        lockReason: (walletRes.data?.lock_reason ?? null) as string | null,
+        frozen: Boolean(walletRes.data?.frozen),
         transactions: (txnRes.data ?? []) as WalletTransaction[],
       };
     },

@@ -21,20 +21,6 @@ export default function PlanTab() {
     <div className="space-y-4 mt-5">
       <LaunchPromoBanner />
 
-      <div dir="rtl" className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
-        <div className="text-right">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ארנק קרדיטים</p>
-          <p className="text-sm text-foreground">
-            יתרה לשירותי פרימיום (SMS, WhatsApp, שיחות AI)
-            {status && (
-              <span className="ms-2 text-muted-foreground">
-                · <bdi dir="ltr">₪{Math.round(status.wallet_balance_ils).toLocaleString('he-IL')}</bdi>
-              </span>
-            )}
-          </p>
-        </div>
-        <CreditBalancePill />
-      </div>
 
       <div dir="rtl" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {PACKAGES.map((pkg) => {

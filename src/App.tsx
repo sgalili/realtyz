@@ -24,6 +24,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
 import { applyPendingSignupRole } from '@/lib/signupRole';
+import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
 
@@ -93,6 +94,7 @@ const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
 const OwnerProperties = lazy(() => import("./pages/owner/OwnerProperties"));
 const Developers = lazy(() => import("./pages/Developers"));
+const Wallet = lazy(() => import("./pages/Wallet"));
 const DeveloperDashboard = lazy(() => import("./pages/DeveloperDashboard"));
 const OwnerLeads = lazy(() => import("./pages/owner/OwnerLeads"));
 const OwnerRewards = lazy(() => import("./pages/owner/OwnerRewards"));
@@ -152,15 +154,16 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/', '/public-listings', '/my-ads', '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile', '/posts'];
+const AFFILIATE_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile', '/posts'];
 
 /**
  * Private property owners are a separate product: only their own properties,
  * the leads interested in them, the reward settings and Rita. Broker CRM,
  * recruitment and affiliate management are unreachable, not just hidden.
  */
-export const OWNER_ALLOWED_PATHS = ['/', '/public-listings', '/my-ads', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
-const SEEKER_ALLOWED_PATHS = ['/public-listings', '/profile'];
+export const OWNER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
+const WALLET_LOCK_ALLOWED = ['/wallet', '/profile', '/public-listings', '/billing'];
+const SEEKER_ALLOWED_PATHS = [ '/wallet','/public-listings', '/profile'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
@@ -179,7 +182,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     });
     return () => { alive = false; };
   }, [user, roleApplied]);
-  const { roles, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
+  const { data: walletState } = useCreditWallet();
+  const walletLocked = !!walletState?.lockedAt;
+  const { roles, isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
@@ -220,6 +225,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   if (!roleLoading && isPropertySeekerOnly) {
     const allowed = SEEKER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
     if (!allowed) return <Navigate to="/public-listings" replace />;
+  }
+
+  // Empty wallet + no successful card charge: everything but the wallet,
+  // profile and public board is restricted until payment is settled.
+  if (walletLocked && !isSuperAdmin && !WALLET_LOCK_ALLOWED.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
+    return <Navigate to="/wallet" replace />;
   }
 
   // Partner mode (dual-role accounts) keeps broker tooling out of reach until
@@ -403,6 +414,7 @@ const App = () => (
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
               <Route path="/affiliate-pricing" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><AffiliatePricing /></Suspense></ProtectedRoute>} />
               <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
+              <Route path="/wallet" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Wallet /></Suspense></ProtectedRoute>} />
               <Route path="/developer-dashboard" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><DeveloperDashboard /></Suspense></ProtectedRoute>} />
               <Route path="/developers" element={<ProtectedRoute allowGuestDemo><Suspense fallback={<PageLoader />}><Developers /></Suspense></ProtectedRoute>} />
               <Route path="/owner/leads" element={<ProtectedRoute><OwnerLeads /></ProtectedRoute>} />

@@ -27,3 +27,6 @@
 
 - Developers (יזמים) are agent + `developer` role via register_as_developer; their projects live in workspace-scoped developer_projects, and the sidebar swaps broker-only tools for /developer-dashboard. Why: reuse broker workspace/ecosystem while hiding broker-exclusive features.
 - Yad2 developer-page import (yad2-developer-import) only previews; saving happens on explicit user confirm. Why: never invent or auto-persist scraped data.
+
+- Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
+- payment_methods.provider_token is never client-granted; only provider backends insert cards. Why: card secrets stay server-side.
