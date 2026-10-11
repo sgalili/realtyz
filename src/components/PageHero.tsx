@@ -299,6 +299,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/leads/, title: "פניות נכנסות" },
   { match: /^\/profile/, title: "הגדרות" },
   { match: /^\/billing/, title: "חבילה וחשבוניות" },
+  { match: /^\/wallet/, title: "הארנק שלי" },
   { match: /^\/auth/, title: "התחברות" },
 ];
 

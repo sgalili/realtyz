@@ -1,4 +1,8 @@
 # Roadmap
+## Wallet summary
+- [x] Compact wallet credits to two decimal places, show actual NIS balance beneath, remove duplicate title/rate, add הארנק שלי to page hero.
+- [ ] Monthly free allowance awaits user choice: no verified existing monthly wallet credit grant found; legacy ₪50 profile fallback is not the current wallet. Actual balances preserved.
+- [x] Five focused tests and automatic build passed; signed-in wallet shows 123k credits, ₪4,920 beneath, new hero title, no duplicate heading/runtime errors.
 ## Received and partner-sent leads
 - [x] Label received leads before the existing live counter; add received/sent-sold tabs for existing partners using authorized personal submissions, retaining license redaction.
 - [x] Eight focused tests and automatic build passed; signed-in received → sent → refresh → received verified without runtime errors. Current account has no sent submissions, so populated rows/license redaction were tested in isolation; no live leads submitted or sold.
