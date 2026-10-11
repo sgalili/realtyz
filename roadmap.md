@@ -1,8 +1,8 @@
 # Roadmap
 ## Tutorial sanitation and role isolation
 - [x] Replace internal commission/platform explanations with action-focused sharing, tracking, wallet and profile tutorials.
-- [ ] Enforce role-specific navigation and hide closing data from unlicensed partner screens and API reads.
-- [ ] Verify tutorial content, role guards and signed-in presentation without changing real deals.
+- [x] Add fail-closed role navigation, developer route isolation, server-redacted partner reads, restrictive referral/submission/snapshot/split policies, protected license verification and authorized closing-document endpoints.
+- [x] Seven regression tests and signed-in three-slide guide/dismissal passed; partner RPCs succeeded and closing access was false, with no runtime errors and automatic build OK. Current partner submissions were empty, so nonempty redaction and the full multi-account role matrix were not end-to-end verified.
 ## One-click property referral sharing
 - [x] Add authenticated personal referral copy controls to public grid/list/details, affiliate grid, inventory actions, My Ads and favorites; shared menus mint the signed-in user's link. Inquiry attribution validates the exact listing/workspace and logs referrals server-side without returning financial billing details.
 - [x] Move image controls and labels into minimal above-image rows, retaining gallery swiping and navigation.
