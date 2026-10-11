@@ -55,7 +55,7 @@ export function useAffiliateLicense() {
       const { data, error } = await supabase
         .from('affiliate_profiles')
         .select('license_number, license_holder_name, license_status, license_submitted_at, license_verified_at, license_rejection_reason, terms_accepted_at, terms_version')
-        .eq('user_id', user!.id)
+        .eq('user_id', user?.id ?? '')
         .maybeSingle();
       if (error) throw error;
       const row = (data ?? null) as Record<string, unknown> | null;
@@ -101,7 +101,7 @@ export function useAffiliateLicense() {
     license,
     isLoading: query.isLoading,
     /** True only for a verified broker license — the gate for level 4 rewards. */
-    level4Unlocked: license.status === 'verified',
+    level4Unlocked: license.status === 'verified' && !!license.licenseNumber.trim(),
     submit: submit.mutateAsync,
     isSubmitting: submit.isPending,
     acceptTerms: acceptTerms.mutateAsync,

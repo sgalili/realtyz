@@ -200,7 +200,7 @@ const OWNER_NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
   },
   {
-    title: 'לידים מתעניינים',
+    title: 'אנשי קשר',
     url: '/owner/leads',
     icon: Users,
     iconColor: '!text-[#1d4ed8]', // blue-700
@@ -234,7 +234,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isDeveloper } = useUserRole();
+  const { isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, error: roleError } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
@@ -244,8 +244,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   // In partner ("שותף") mode — or for an affiliate-only account — only the
   // affiliate screens are listed.
   const features = useWorkspaceFeatures();
-  const affiliateOnlyNav = isPartnerMode || isAffiliateOnly;
+  const affiliateOnlyNav = isAffiliateOnly || (isPartnerMode && !isDeveloper && !isPropertyOwnerOnly && !isPropertySeekerOnly);
   const navItems = useMemo(() => {
+    if (roleLoading || roleError || isPropertySeekerOnly) return [];
     if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
@@ -253,8 +254,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     // are swapped for their own project management dashboard.
     if (isDeveloper && !isSuperAdmin) {
       const base = NAV_ITEMS.filter((i) => !['/properties', '/deal-room', '/developers', '/dashboard'].includes(i.url));
-      const projects = NAV_ITEMS.find((i) => i.url === '/developers')!;
-      return [{ ...projects, title: 'הפרויקטים שלי', url: '/developer-dashboard' }, ...base];
+      const projects = NAV_ITEMS.find((i) => i.url === '/developers');
+      return projects ? [{ ...projects, title: 'הפרויקטים שלי', url: '/developer-dashboard' }, ...base] : base;
     }
     return NAV_ITEMS.filter((item) => {
       if (item.url === '/properties') return features.listingsEnabled;
@@ -262,7 +263,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       if (item.url === '/affiliate-network') return features.partnersEnabled;
       return true;
     });
-  }, [features, affiliateOnlyNav, isPropertyOwnerOnly, isDeveloper, isSuperAdmin]);
+  }, [features, affiliateOnlyNav, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;

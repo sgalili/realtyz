@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { BadgeCheck, Lock, ShieldCheck } from 'lucide-react';
+import { BadgeCheck, ShieldCheck } from 'lucide-react';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import AffiliateEligibilityBadge from '@/components/affiliate/AffiliateEligibilityBadge';
 import { formatIsoDate } from '@/lib/listingDates';
@@ -40,31 +40,21 @@ export function AffiliateLicenseCard() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-bold text-foreground">
             <ShieldCheck className="h-4 w-4 text-primary" />
-            זכאות לתגמולים
+            אימות רישיון
           </div>
           <AffiliateEligibilityBadge status={license.status} />
-        </div>
-
-        <div className="space-y-2 text-[12px] leading-relaxed text-muted-foreground">
-          <p>
-            ליד דיגיטלי, סינון בשיחת ווטסאפ ושיחת טלפון הם שירותי שיווק ויצירת לידים הפתוחים לכל שותף.
-          </p>
-          <p className="flex items-start gap-1.5 font-semibold text-foreground">
-            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            רמה 4, עמלת סגירת עסקה, פתוחה רק לבעלי רישיון תיווך מאומת, בהתאם לחוק המתווכים במקרקעין.
-          </p>
         </div>
 
         {level4Unlocked ? (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-[12px] font-semibold text-emerald-800 ring-1 ring-emerald-200">
             <BadgeCheck className="h-4 w-4 shrink-0" />
-            רישיון {license.licenseNumber} אומת ב{formatIsoDate(license.verifiedAt) ?? '—'}. רמה 4 פעילה וזמינה.
+            רישיון {license.licenseNumber} אומת ב{formatIsoDate(license.verifiedAt) ?? '—'}.
           </div>
         ) : (
           <div className="space-y-3">
             {license.status === 'pending' ? (
               <div className="rounded-xl bg-amber-50 p-3 text-[12px] font-semibold text-amber-800 ring-1 ring-amber-200">
-                הרישיון הוגש ב{formatIsoDate(license.submittedAt) ?? '—'} ונמצא בבדיקה. עד לאישור, תגמולי רמה 4 אינם נצברים.
+                הרישיון הוגש ב{formatIsoDate(license.submittedAt) ?? '—'} ונמצא בבדיקה.
               </div>
             ) : null}
             {license.status === 'rejected' ? (

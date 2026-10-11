@@ -56,6 +56,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userId = userRes.user.id;
+    const { data: canClose, error: permissionError } = await userClient.rpc('can_use_closing_room', { _user_id: userId });
+    const { data: developer } = await userClient.rpc('has_role', { _user_id: userId, _role: 'developer' });
+    if (permissionError || !canClose || developer) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const parsed = BodySchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -65,7 +68,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    const { data: doc, error: docErr } = await admin
+    const { data: doc, error: docErr } = await userClient
       .from("closing_documents")
       .select("id, user_id, lead_id, title, pdf_path, sign_token, signer_name, status")
       .eq("id", document_id)

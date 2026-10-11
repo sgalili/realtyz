@@ -65,7 +65,7 @@ export function TutorialHost() {
         )}
         <div className="space-y-2 px-6 pb-5 pt-2">
           {last ? <Button className="h-11 w-full text-base font-bold" onClick={gotIt}>הבנתי</Button> : <Button className="h-11 w-full text-base font-bold" onClick={() => setI(i + 1)}>הבא</Button>}
-          <button type="button" onClick={never} className="w-full text-center text-sm text-muted-foreground underline-offset-2 hover:underline">אל תציג לי את זה יותר</button>
+          <Button variant="ghost" onClick={never} className="w-full text-sm text-muted-foreground">אל תציג לי את זה יותר</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -78,13 +78,14 @@ export function HelpHint({ tutorial, path, className }: { tutorial?: Tutorial | 
   const t = tutorial ?? (path ? tutorialForPath(path) : null);
   if (!t || st.dismissed.includes(t.id)) return null;
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon"
       aria-label={`מדריך: ${t.title}`}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); import('@/lib/tutorials').then((m) => m.openTutorial(t)); }}
       className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-primary/70 transition-colors hover:bg-primary/10 hover:text-primary', className)}
     >
       <HelpCircle className="h-3.5 w-3.5" />
-    </button>
+    </Button>
   );
 }

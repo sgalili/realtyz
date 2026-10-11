@@ -154,7 +154,7 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile', '/posts'];
+const AFFILIATE_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile', '/posts', '/partner/contacts', '/partner/chats', '/partner/posts'];
 
 /**
  * Private property owners are a separate product: only their own properties,
@@ -164,6 +164,7 @@ const AFFILIATE_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', 
 export const OWNER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile'];
 const WALLET_LOCK_ALLOWED = ['/wallet', '/profile', '/public-listings', '/billing'];
 const SEEKER_ALLOWED_PATHS = [ '/wallet','/public-listings', '/profile'];
+const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
@@ -186,7 +187,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   }, [user, roleApplied]);
   const { data: walletState } = useCreditWallet();
   const walletLocked = !!walletState?.lockedAt;
-  const { roles, isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
+  const { roles, isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const location = useLocation();
   if (loading) return (
@@ -195,6 +196,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
+  if (roleLoading || !rolesFetched) return <PageLoader />;
 
   // Brand-new account (no role yet): pick מתווך / שותף once, then continue.
   if (roleError) return (
@@ -229,6 +231,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     if (!allowed) return <Navigate to="/public-listings" replace />;
   }
 
+  if (isDeveloper && !isSuperAdmin && !DEVELOPER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
+    return <Navigate to="/developer-dashboard" replace />;
+  }
+
   // Empty wallet + no successful card charge: everything but the wallet,
   // profile and public board is restricted until payment is settled.
   if (walletLocked && !isSuperAdmin && !WALLET_LOCK_ALLOWED.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
@@ -237,7 +243,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
 
   // Partner mode (dual-role accounts) keeps broker tooling out of reach until
   // the user switches back to מצב מתווך from the header.
-  if (isPartnerMode && !isPartnerModePath(location.pathname)) {
+  if (isPartnerMode && !isDeveloper && !isPropertyOwnerOnly && !isPropertySeekerOnly && !isPartnerModePath(location.pathname)) {
     return <Navigate to="/affiliate" replace />;
   }
 

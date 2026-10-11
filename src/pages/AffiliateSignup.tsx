@@ -19,8 +19,8 @@ import { AFFILIATE_TERMS_VERSION } from '@/hooks/useAffiliateLicense';
 
 const PERKS = [
   { icon: Building2, title: 'מאגר נכסים משותף', text: 'נכסים למכירה ולהשכרה שמתווכים פתחו לשיווק דיגיטלי על ידכם.' },
-  { icon: Handshake, title: 'דמי שיווק ויצירת לידים', text: 'שלב 1 על חשיפה ושיתוף קישור, שלב 2 על ליד מאומת ופגישה שנקבעה. שלב 3, עמלת סגירה, לבעלי רישיון תיווך מאומת בלבד.' },
-  { icon: TrendingUp, title: 'מעקב מלא', text: 'לוח מחוונים עם סטטוס כל ליד והתגמול שנצבר בכל שלב.' },
+  { icon: Handshake, title: 'שיתוף קישורים אישיים', text: 'בחרו נכס ושתפו את הקישור האישי שלכם בוואטסאפ, בהודעה או באימייל.' },
+  { icon: TrendingUp, title: 'מעקב אישי', text: 'עקבו אחרי השיתופים, הפניות והתגמולים שלכם.' },
 ];
 
 export default function AffiliateSignup() {

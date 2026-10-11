@@ -20,9 +20,6 @@ export type AppRole =
 
 export const userRolesQueryKey = (userId: string | undefined) => ['user-roles', userId] as const;
 
-// Hardcoded super-admin override - bypasses any state delays.
-const SUPER_ADMIN_EMAILS = ['sgalili@gmail.com'];
-
 export function useUserRole() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -51,8 +48,7 @@ export function useUserRole() {
     }
   }, [user?.id, queryClient]);
 
-  const emailOverride = !!user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
-  const isSuperAdmin = roles.includes('super_admin') || emailOverride;
+  const isSuperAdmin = roles.includes('super_admin');
   const isAdmin = roles.includes('admin') || isSuperAdmin;
   const isModerator = roles.includes('moderator') || isAdmin;
 
@@ -72,7 +68,7 @@ export function useUserRole() {
   // True only when `affiliate` is the user's ONLY role. Affiliate-only accounts
   // are external marketers: every broker tool, CRM screen and office setting is
   // hidden from them and they are routed to the affiliate portal instead.
-  const isAffiliateOnly = isAffiliate && !isTeamMember && !isModerator;
+  const isAffiliateOnly = isAffiliate && !isTeamMember && !isModerator && !isDeveloper;
 
   // Private property owners are NOT brokers and NOT affiliates: they only get
   // their own listings, the leads interested in them, the reward settings and
@@ -89,9 +85,9 @@ export function useUserRole() {
 
   // --- Permissions (mirror DB helpers in supabase migrations) ---
   // Close deals: Managing Broker, Lead Agent, Agent, Admin, Super Admin.
-  const canCloseDeals = isAgent;
+  const canCloseDeals = isAgent && !isDeveloper;
   // Closing Room (contracts): same set as can-close (Assistant + Junior blocked).
-  const canUseClosingRoom = isAgent;
+  const canUseClosingRoom = canCloseDeals;
   // Delete leads: Managing Broker, Lead Agent, Agent, Admin, Super Admin.
   const canDeleteLeads = isAgent;
   // Strategy Bank + Deal Room data ingestion: any team member.

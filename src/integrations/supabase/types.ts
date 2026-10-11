@@ -8268,6 +8268,8 @@ export type Database = {
           views: number
         }[]
       }
+      get_my_partner_referrals: { Args: never; Returns: Json }
+      get_my_partner_submissions: { Args: never; Returns: Json }
       get_my_referral_code: { Args: never; Returns: string }
       get_my_referral_stats: { Args: never; Returns: Json }
       get_my_subscription_status: { Args: never; Returns: Json }
@@ -8480,6 +8482,7 @@ export type Database = {
         Args: { _reason: string; _score: number; _user_id: string }
         Returns: Json
       }
+      partner_can_view_closing: { Args: { _user_id: string }; Returns: boolean }
       post_media_source_key: { Args: { _url: string }; Returns: string }
       purchase_leftover_lead: { Args: { _charge_id: string }; Returns: Json }
       queue_autopilot_messages: {
