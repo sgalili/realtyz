@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 const KEY = (uid: string) => `realtyz-complete-profile-dismissed:${uid}`;
 
 /** Gentle nudge to finish profile details; hidden once complete or dismissed. */
-export function CompleteProfileBanner({ force = false, onEdit }: { force?: boolean; onEdit?: () => void }) {
+export function CompleteProfileBanner({ force = false }: { force?: boolean }) {
   const { user } = useAuth();
   const [missing, setMissing] = useState<string[] | null>(null);
   const [hidden, setHidden] = useState(false);
@@ -34,7 +34,6 @@ export function CompleteProfileBanner({ force = false, onEdit }: { force?: boole
         <p className="font-semibold">פרופיל מלא בונה אמון אצל קונים ושותפים</p>
         {missing.length > 0 && <p className="truncate text-muted-foreground">חסר: {missing.join(', ')}</p>}
       </div>
-      {onEdit && missing.length > 0 && <Button size="sm" onClick={onEdit}>השלמת פרטים</Button>}
       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={dismiss} aria-label="סגירה"><X className="h-4 w-4" /></Button>
     </div>
   );
