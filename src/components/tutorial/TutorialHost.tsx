@@ -43,6 +43,8 @@ export function TutorialHost() {
     if (!user || walkthrough) return;
     const t = tutorialForPath(pathname);
     if (!t || !allowed(t)) return;
+    // Partner-page entry owns its consent-aware introduction; keep manual guides available.
+    if (t.id === 'page:/affiliate-network') return;
     const s = tutorialStore.get();
     if (s.seen.includes(t.id) || s.dismissed.includes(t.id)) return;
     const timer = window.setTimeout(() => { setI(0); setTut(t); }, 600);
