@@ -40,7 +40,7 @@ export const SelectModeToggle = ({
   </Button>;
   if (!onSelectAll) return trigger;
   return <DropdownMenu><DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-    <DropdownMenuContent align="end" dir="rtl">
+    <DropdownMenuContent align="end">
       <DropdownMenuItem onSelect={() => { if (!active) onToggle(); onSelectAll(); }}>בחר הכל</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => { if (!active) onToggle(); }}>בחר פריטים</DropdownMenuItem>
       {active && <DropdownMenuItem onSelect={onToggle}>סיום בחירה</DropdownMenuItem>}

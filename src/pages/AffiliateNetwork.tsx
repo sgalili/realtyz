@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SelectModeToggle } from "@/components/ui/multi-select-controls";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -598,16 +599,9 @@ function BrokerAffiliateNetwork() {
 
           <TabsContent value="rewards" className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
-              <Checkbox
-                checked={multiSelectMode}
-                onCheckedChange={(checked) => {
-                  setMultiSelectMode(Boolean(checked));
-                  if (!checked) setSelectedListingIds(new Set());
-                }}
-                aria-label="בחירה מרובה"
-                title="בחירה מרובה"
-                className="h-5 w-5 shrink-0"
-              />
+              <SelectModeToggle total={filteredListings.length} active={multiSelectMode} count={selectedListingIds.size}
+                onToggle={() => { setMultiSelectMode(v => !v); setSelectedListingIds(new Set()); }}
+                onSelectAll={() => setSelectedListingIds(new Set(filteredListings.map(l => l.id)))} />
               {/* Filter button at the start of the field, like the public board. */}
               <div className="relative flex h-10 max-w-sm flex-1 items-center rounded-md border border-input bg-background">
                 <span className="absolute start-2 top-1/2 z-10 flex -translate-y-1/2">

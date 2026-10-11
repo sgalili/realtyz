@@ -152,14 +152,14 @@ export default function Wallet() {
           <div className="grid grid-cols-3 gap-2">
             {[200, 500, 1000].map((a) => <Button key={a} variant="outline" disabled>{ils(a)}</Button>)}
           </div>
-          <p className="text-sm text-muted-foreground">התשלום בכרטיס אשראי ייפתח בקרוב. עד אז טעינה מתבצעת דרך צוות Realtyz.</p>
+          <p className="text-sm text-muted-foreground">טעינה בכרטיס וחיוב אוטומטי עדיין אינם זמינים. לטעינת הארנק יש לפנות לצוות Realtyz.</p>
         <div className="space-y-3 border-t border-border pt-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="flex items-center gap-2 text-sm text-muted-foreground"><CreditCard className="h-4 w-4" />כרטיס לחיוב אוטומטי</p>
             <Button size="sm" variant="outline" onClick={() => setCardOpen(v => !v)}>{cards.length ? 'החלפת כרטיס' : 'הוספת כרטיס'}</Button>
           </div>
           {cards.length === 0 ? (
-            <p className="text-sm">לא נשמר כרטיס. כשהיתרה תתאפס, החיוב ינסה את הכרטיס השמור לפני הגבלת החשבון.</p>
+            <p className="text-sm">לא נשמר כרטיס. שמירת כרטיס אינה מחייבת אותו או טוענת את הארנק.</p>
           ) : cards.map((c) => (
             <div key={c.id} className="text-sm">
               <span className="font-bold">{c.brand ?? 'כרטיס'} •••• {c.last4}</span>
