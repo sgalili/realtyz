@@ -7,6 +7,9 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAppMode } from '@/hooks/useAppMode';
+import { RITA_PROMPTS, ritaWorkflow } from '@/lib/ritaPrompts';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -31,7 +34,7 @@ import {
 } from 'recharts';
 
 /** Professional Hebrew fallback shown instead of any raw internal error. */
-const GRACEFUL_FALLBACK_HE = 'אירעה שגיאה קטנה בשליפת הנתונים מהמערכת, אני מיד בודק את זה ומעדכן אותך.';
+const GRACEFUL_FALLBACK_HE = 'לא הצלחתי לשלוף את הנתונים כרגע. אפשר לנסות שוב.';
 
 
 const CHART_COLORS = [
@@ -40,61 +43,6 @@ const CHART_COLORS = [
   'hsl(var(--gold, 48 96% 53%))',
   'hsl(var(--destructive))',
   'hsl(var(--accent-foreground))',
-];
-
-// 10 topics. Each expands to 3 best follow-up prompts (used both in the empty
-// state and in the quick-actions bar at the bottom).
-const TOPICS: Array<{ label: string; prompts: string[] }> = [
-  { label: 'סיכום כללי', prompts: [
-    'תן לי סיכום כללי של מצב המשרד: כמה אנשי קשר, נכסים פעילים, וסנטימנט כללי.',
-    'מה השתנה בתיק שלי מאז אתמול?',
-    'תן לי תקציר KPI שבועי במשפט אחד לכל מדד.',
-  ]},
-  { label: 'בעיות דחופות', prompts: [
-    'אילו אנשי קשר או עסקאות דורשים טיפול מיידי השבוע?',
-    'אילו אנשי קשר לא קיבלו מענה מעל 48 שעות?',
-    'אילו נכסים נמצאים בסיכון להחמצה השבוע?',
-  ]},
-  { label: 'הזדמנויות חמות', prompts: [
-    'מהן ההזדמנויות הכי חמות בצנרת המכירות שלי כרגע?',
-    'מי 5 אנשי הקשר עם המוכנות הגבוהה ביותר לסגירה?',
-    'אילו נכסים מתאימים ליותר מ-3 אנשי קשר פעילים?',
-  ]},
-  { label: 'תוכנית 24 שעות', prompts: [
-    'בנה לי תוכנית פעולה ל-24 השעות הקרובות עבור התיק הפעיל.',
-    'לאיזה איש קשר כדאי לי להתקשר ראשון מחר בבוקר?',
-    'אילו הודעות AI כדאי לאשר היום מתוך תור האישורים?',
-  ]},
-  { label: 'נתוני מערכת', prompts: [
-    'כמה לידים, נכסים פעילים וקמפיינים יש במערכת?',
-    'מה התפלגות אנשי הקשר לפי שלב במשפך?',
-    'מהי התפלגות סוגי העסקה (מכירה מול שכירות)?',
-  ]},
-  { label: 'ערים מובילות', prompts: [
-    'מהן 5 הערים עם הכי הרבה אנשי קשר פעילים בנכסים שלי?',
-    'באילו ערים יש לי הכי הרבה נכסים פעילים?',
-    'באיזו עיר אחוז ההמרה מאיש קשר לעסקה הוא הגבוה ביותר?',
-  ]},
-  { label: 'מגמת סנטימנט', prompts: [
-    'מהי מגמת הסנטימנט של הרוכשים הפוטנציאליים בשבוע האחרון?',
-    'אילו אנשי קשר הראו ירידה חדה בסנטימנט לאחרונה?',
-    'מה הגורם העיקרי לסנטימנט שלילי בשיחות האחרונות?',
-  ]},
-  { label: 'מתלבטים לטיפול', prompts: [
-    'מי אנשי הקשר המתלבטים שדורשים מגע נוסף כדי לקדם עסקה?',
-    'הצע לי הודעת מעקב מותאמת אישית לכל מתלבט.',
-    'אילו מתלבטים נמצאים מעל 14 יום בלי התקדמות?',
-  ]},
-  { label: 'ערוצי שיווק', prompts: [
-    'הצג מגמה והשוואה לשבוע שעבר בנושא ערוצי פרסום נכסים.',
-    'אילו 3 פעולות הכי משתלמות עכשיו בגיוס בלעדיות בערוצים?',
-    'איזה ערוץ מביא את הלידים האיכותיים ביותר החודש?',
-  ]},
-  { label: 'קהל יעד אופטימלי', prompts: [
-    'מה גודל הקהל שמייצר את ה-CTR הגבוה ביותר (פילוח לפי תקציב נכס 100/500/1000+)?',
-    'תן לי סיכום קצר וחד על גודל קהל קונים אופטימלי באזור הביקוש.',
-    'הצג מגמה והשוואה לשבוע שעבר בגודל קהל אנשי קשר בנכס.',
-  ]},
 ];
 
 interface SourceTag {
@@ -276,9 +224,9 @@ export default function AiAgentDrawer() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
-  // NOTE: quick-action pill bar was removed from the composer — we still keep
-  // the topic accordion in the empty state above.
+  const { roles, loading: rolesLoading, error: rolesError } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  const workflow = ritaWorkflow(roles, isPartnerMode);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -556,6 +504,7 @@ ${shareUrl}
       const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: {
           messages: chatMessages,
+          ui_mode: isPartnerMode ? 'partner' : 'core',
           attachments: sentAttachments
             .filter((a) => !jsonFiles.includes(a))
             .map((a) => ({ name: a.name, mime: a.mime, data_url: a.data_url })),
@@ -662,54 +611,18 @@ ${shareUrl}
         <div ref={conversationWrapRef} className="flex min-h-0 flex-1 flex-col">
         <Conversation className="min-h-0 flex-1" initial="instant" resize="instant">
           <ConversationContent className="gap-3 px-4 py-3" style={{ overflowAnchor: 'none' }}>
-            <div className="space-y-5 py-2">
-              <div className={`flex items-start gap-2.5 rounded-2xl border border-border bg-card px-3 py-3 ${messages.length > 0 ? 'hidden' : ''}`}>
-                <RitaAvatar className="h-9 w-9 shrink-0" />
-                <div className="space-y-1 text-[16px] leading-relaxed">
-                  <p className="font-semibold">היי, אני ריטה 👋</p>
-                  <p className="text-muted-foreground">
-                    סוכנת ה-AI שלך ב-Realtyz. אני מכירה את אנשי הקשר, הנכסים והקמפיינים שלך,
-                    ואשמח לעזור לך לתעדף, לנסח הודעות ולסגור עסקאות.
-                  </p>
-                  <p className="text-muted-foreground">אפשר לשאול אותי כל דבר, או לבחור נושא מהרשימה למטה.</p>
-                </div>
+            {messages.length === 0 && <div className="space-y-4 py-3">
+              <div className="flex items-center gap-3">
+                <RitaAvatar className="h-12 w-12 shrink-0" />
+                <p className="text-xl font-semibold">היי, אני ריטה</p>
               </div>
-              <div className="space-y-1.5">
-
-                <p className="text-[15px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
-                {TOPICS.map((topic, ti) => {
-                  const isOpen = expandedTopic === ti;
-                  return (
-                    <div key={ti} className="rounded-xl border border-border bg-card overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedTopic(isOpen ? null : ti)}
-                        className="w-full flex items-center justify-between text-right px-3 py-2.5 text-[16px] font-medium hover:bg-primary/5 transition-colors"
-                      >
-                        <span>{topic.label}</span>
-                        {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </button>
-                      <AnimatedExpansion open={isOpen}>
-                        <div className="border-t border-border/50 bg-background/50 p-2 space-y-1.5">
-                          {topic.prompts.map((p, pi) => (
-                            <button
-                              key={pi}
-                              type="button"
-                              onClick={() => sendMessage(p)}
-                              disabled={isLoading}
-                              className="w-full text-right text-[15px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
-                            >
-                              {p}
-                            </button>
-                          ))}
-                        </div>
-                      </AnimatedExpansion>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
+              {!rolesLoading && !rolesError && <div className="flex flex-wrap gap-2" aria-label="שאלות לריטה">
+                {RITA_PROMPTS[workflow].map(({ label, prompt }) => <Button
+                  key={label} type="button" variant="outline" disabled={isLoading}
+                  className="h-auto min-h-10 max-w-full whitespace-normal rounded-md px-3 py-2 text-base"
+                  onClick={() => void sendMessage(prompt)}>{label}</Button>)}
+              </div>}
+            </div>}
 
           {messages.map((msg, i) => (
             <AiMessage key={i} from={msg.role} className={msg.role === 'user' ? 'ms-auto' : 'me-auto'}>
