@@ -12,12 +12,13 @@ vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isTeamMember: true
 vi.mock('@/hooks/useAppMode', () => ({ useAppMode: () => ({ isPartnerMode: false }) }));
 vi.mock('@/components/ui/sidebar', () => ({ useSidebar: () => ({ setOpen: mocks.desktop, setOpenMobile: mocks.mobile }) }));
 
-describe('sidebar wallet and counters', () => {
+describe('sidebar wallet and incoming-lead counter', () => {
   beforeEach(() => { mocks.count = 0; vi.clearAllMocks(); });
-  it('shows credits, hides zero counter and closes drawer on wallet navigation', () => {
+  it('shows credits, keeps the counter visible at zero and closes drawer on wallet navigation', () => {
     render(<SidebarWalletIndicator />);
     expect(screen.getByText('5k קרדיטים')).toBeInTheDocument();
     expect(screen.getByText('לידים שהתקבלו')).toBeInTheDocument();
+    expect(screen.getByLabelText('מספר לידים שהתקבלו')).toHaveTextContent('0');
     expect(screen.queryByText('חדשים')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'הסבר על לידים חדשים' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'ארנק ותשלומים' }));
@@ -25,14 +26,16 @@ describe('sidebar wallet and counters', () => {
     expect(mocks.desktop).toHaveBeenCalledWith(false);
     expect(mocks.navigate).toHaveBeenCalledWith('/wallet');
   });
-  it('puts live badge inside Leads with no help button and closes on navigation', () => {
+  it('puts the live counter before the label and closes on navigation', () => {
     mocks.count = 3;
     render(<SidebarWalletIndicator />);
-    const button = screen.getByRole('button', { name: 'לידים שטרם טופלו: 3' });
-    expect(button).toContainElement(screen.getByLabelText('לידים חדשים'));
+    const button = screen.getByRole('button', { name: 'לידים שהתקבלו: 3' });
+    const badge = screen.getByLabelText('מספר לידים שהתקבלו');
+    expect(button).toContainElement(badge);
+    expect(badge.compareDocumentPosition(screen.getByText('לידים שהתקבלו')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('button', { name: /מה מייצג/ })).not.toBeInTheDocument();
     fireEvent.click(button);
-    expect(mocks.navigate).toHaveBeenCalledWith('/lead-crm?filter=untreated');
+    expect(mocks.navigate).toHaveBeenCalledWith('/lead-crm');
     expect(mocks.mobile).toHaveBeenCalledWith(false);
   });
 });
