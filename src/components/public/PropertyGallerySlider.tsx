@@ -38,7 +38,11 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
 
   return (
     <div className="min-w-0 space-y-2" onClick={(e) => e.stopPropagation()}>
-      <div className="group relative overflow-hidden rounded-xl bg-muted">
+      <div data-property-image-toolbar className="flex min-h-10 flex-wrap items-center gap-1">
+        {photos.length > 1 && <><Button type="button" size="icon" variant="ghost" aria-label="תמונה קודמת" onClick={() => goTo(index - 1)} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button><span className="text-xs font-semibold tabular-nums">{index + 1}/{photos.length}</span><Button type="button" size="icon" variant="ghost" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button></>}
+        <div className="ms-auto flex items-center gap-1">{overlay}{onFavorite && !overlay && <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label="שמירה במועדפים" className="h-9 w-9 text-destructive"><Heart className="h-5 w-5" /></Button>}</div>
+      </div>
+      <div className="group relative overflow-hidden rounded-lg bg-muted">
         <div ref={trackRef} dir="rtl" className="flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto scroll-smooth sm:aspect-[16/7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {photos.map((src, i) => (
             <div key={`${src}-${i}`} className="h-full w-full shrink-0 snap-start">
@@ -46,31 +50,15 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
             </div>
           ))}
         </div>
-        {overlay && <div className="absolute left-3 top-3 z-10 flex items-center gap-2">{overlay}</div>}
-        {onFavorite && !overlay && (
-          <Button type="button" size="icon" variant="secondary" onClick={onFavorite} aria-label="שמירה במועדפים" className="absolute left-3 top-3 h-9 w-9 rounded-full bg-background/50 text-destructive shadow hover:bg-background/50">
-            <Heart className="h-5 w-5" />
-          </Button>
-        )}
-        {photos.length > 1 && (
-          <>
-            <Button type="button" size="icon" variant="secondary" aria-label="תמונה קודמת" onClick={() => goTo(index - 1)} className="absolute right-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/50 shadow-md hover:bg-background/50">
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-            <Button type="button" size="icon" variant="secondary" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="absolute left-3 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-background/50 shadow-md hover:bg-background/50">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <span className="absolute right-3 top-3 rounded-full bg-background/50 px-2.5 py-1 text-xs font-bold tabular-nums text-foreground shadow">{index + 1}/{photos.length}</span>
-          </>
-        )}
+
       </div>
       {photos.length > 1 && (
         <div dir="rtl" className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
           {photos.map((src, i) => (
-            <button key={`t-${src}-${i}`} type="button" onClick={() => goTo(i)} aria-label={`תמונה ${i + 1}`}
-              className={cn('h-14 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-opacity', i === index ? 'border-primary opacity-100' : 'border-transparent opacity-60 hover:opacity-100')}>
+            <Button variant="ghost" key={`t-${src}-${i}`} type="button" onClick={() => goTo(i)} aria-label={`תמונה ${i + 1}`}
+              className={cn('h-14 w-20 p-0 shrink-0 overflow-hidden rounded-md border-2 transition-opacity', i === index ? 'border-primary opacity-100' : 'border-transparent opacity-60 hover:opacity-100')}>
               <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
-            </button>
+            </Button>
           ))}
         </div>
       )}

@@ -4,6 +4,7 @@
 //   set the reward (fixed ILS or percent of commission) paid on a signed deal.
 // Tab 2 "אנשי קשר משותפים" — full tracking CRM of every affiliate-generated
 //   referral: status funnel, source affiliate, linked lead, and settlement.
+import PropertyReferralButton from "@/components/public/PropertyReferralButton";
 import { returnState } from "@/lib/returnNav";
 import { useEffect, useMemo, useState } from "react";
 import LeftoverLeadsDialog from "@/components/affiliate/LeftoverLeadsDialog";
@@ -832,6 +833,7 @@ function BrokerAffiliateNetwork() {
                         <span className="whitespace-normal">{propertyFullAddress(l)}</span>
                       </p>
                     </div>
+                    <div data-property-image-toolbar className="flex min-h-10 items-center justify-end px-3"><PropertyReferralButton listingId={l.id} /></div>
                     <div className="aspect-[16/10] overflow-hidden bg-muted">
                       {listingPhotos(l)[0] ? (
                         <img

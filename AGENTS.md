@@ -30,3 +30,5 @@
 
 - Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards. Why: card secrets stay server-side.
+
+- Personal property sharing uses authenticated get_property_referral_link returning only a URL; inquiry attribution uses service-only record_property_referral_inquiry with listing/workspace validation. Why: avoid caller-chosen identities and financial disclosure.
