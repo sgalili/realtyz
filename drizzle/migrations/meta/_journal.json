@@ -190,6 +190,13 @@
       "when": 1791692735180,
       "tag": "0026_action_pricing",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791693711224,
+      "tag": "0027_mailbox_explicit_activation_read_only",
+      "breakpoints": true
     }
   ]
 }

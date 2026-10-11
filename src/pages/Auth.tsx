@@ -20,6 +20,12 @@ import realtyzLogo from '@/assets/realtyz-logo.png';
 
 
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
+type PhoneAuthResult = { token_hash?: string; session?: { access_token: string; refresh_token: string } };
+const acceptVerifiedSession = async (data: PhoneAuthResult | null) => {
+  if (data?.session) return supabase.auth.setSession(data.session);
+  if (data?.token_hash) return supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
+  return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
+};
 
 const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
   { key: 'h1', render: () => <>כלי העבודה היחיד שכל מתווך חייב בעידן ה<strong>AI</strong></> },
@@ -189,7 +195,7 @@ const Auth = () => {
   const tryMasterOtp = async (code: string, normalizedPhone: string): Promise<boolean> => {
     // Plain fetch (not functions.invoke) so a non-master code never bubbles up as
     // a thrown FunctionsHttpError / reported runtime error.
-    let data: { token_hash?: string } | null = null;
+    let data: PhoneAuthResult | null = null;
     try {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/preview-master-auth`, {
         method: 'POST',
@@ -208,8 +214,8 @@ const Auth = () => {
     } catch {
       return false;
     }
-    if (!data?.token_hash) return false;
-    const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
+    if (!data?.token_hash && !data?.session) return false;
+    const { error: vErr } = await acceptVerifiedSession(data);
     return !vErr;
   };
 
@@ -238,14 +244,12 @@ const Auth = () => {
     const { error } = activeMethod === 'whatsapp'
       ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: normalizedPhone, code } }).then(async ({ data, error }) => {
           if (error) return { error };
-          if (!data?.token_hash) return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
-          return await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
+          return await acceptVerifiedSession(data);
         })
       : activeMethod === 'sms'
         ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: normalizedPhone, code } }).then(async ({ data, error }) => {
             if (error) return { error };
-            if (!data?.token_hash) return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
-            return await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
+            return await acceptVerifiedSession(data);
           })
         : await supabase.functions.invoke('email-auth', { body: { action: 'verify', email, code } }).then(async ({ data, error }) => {
             if (error) return { error };

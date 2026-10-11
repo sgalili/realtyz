@@ -11,8 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useCreditWallet } from '@/hooks/useSubscription';
-
-const SALES_PHONE = '972546811841';
+import { fmtCredits, ilsToCredits } from '@/lib/credits';
+import { openOfficialWhatsApp } from '@/lib/officialWa';
 
 const RATES: { label: string; price: string }[] = [
   { label: 'הודעת SMS קצרה (עד 72 תווים)', price: '₪0.02' },
@@ -41,23 +41,21 @@ export function CreditBalancePill() {
 
   const sendWhatsApp = () => {
     const text = `היי, אשמח להטעין את החשבון שלי ברילטיז נדל"ן ב-${amount} ש"ח לטובת שירותי פרימיום.`;
-    const url = `https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'width=1200,height=800,noopener,noreferrer');
+    void openOfficialWhatsApp(text);
   };
 
   return (
     <>
-      <button
+      <Button variant="outline"
         type="button"
         onClick={() => setOpen(true)}
         dir="rtl"
-        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-black/20 transition hover:brightness-95"
-        style={{ backgroundColor: '#fdf251', color: '#1b2a4f' }}
+        className="h-auto gap-1.5 rounded-full border-warning/30 bg-warning/20 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-warning/30"
         aria-label="יתרת קרדיטים"
       >
         <Wallet className="h-3.5 w-3.5" />
-        <span className="font-bold tabular-nums text-[15px]">{isLoading ? '…' : formatIls(balance)}</span>
-      </button>
+        <span className="font-bold tabular-nums text-[15px]">{isLoading ? '…' : fmtCredits(ilsToCredits(balance))}</span>
+      </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl" className="max-w-md text-right">
@@ -90,7 +88,7 @@ export function CreditBalancePill() {
               dir="ltr"
             />
             <p className="text-xs text-muted-foreground">
-              בונוס משוער: {formatIls(bonus)} נוספים על הטענה זו.
+              בונוס משוער: {fmtCredits(ilsToCredits(bonus))} נוספים על הטענה זו.
             </p>
           </div>
 

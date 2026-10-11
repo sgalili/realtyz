@@ -19,6 +19,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
 import { resolveWorkspaceIdentity } from '@/lib/workspaceIdentity';
+import { isSyntheticEmail } from '@/lib/friendlyUserDisplayName';
 
 type CapsuleItem = {
   label: string;
@@ -44,7 +45,8 @@ export function ProfileCapsule() {
   const { isManagingBroker, isSuperAdmin } = useUserRole();
   const { workspaces, activeWorkspace, openSelector } = useWorkspace();
   const multiWorkspace = workspaces.length > 1;
-  const { state } = useSidebar();
+  const { state, setOpen: setSidebarOpen, setOpenMobile } = useSidebar();
+  const email = isSyntheticEmail(user?.email) ? '' : user?.email;
   const collapsed = state === 'collapsed';
 
   // The capsule represents the WORKSPACE, not the individual user: show the
@@ -57,6 +59,8 @@ export function ProfileCapsule() {
 
   const go = (path: string) => {
     setOpen(false);
+    setOpenMobile(false);
+    setSidebarOpen(false);
     navigate(path);
   };
 
@@ -91,7 +95,7 @@ export function ProfileCapsule() {
               <>
                 <div className="min-w-0 flex-1 text-right">
                   <p className="truncate text-xs font-semibold text-primary">{displayName}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">{user?.email}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">{email}</p>
                 </div>
                 {isSuperAdmin && (
                   <span className="shrink-0 rounded-full bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider text-warning">
@@ -129,7 +133,7 @@ export function ProfileCapsule() {
         >
           <div className="border-b border-border/60 px-2.5 py-2 mb-1">
             <p className="truncate text-xs font-semibold text-primary">{displayName}</p>
-            <p className="truncate text-[10px] text-muted-foreground">{user?.email}</p>
+            <p className="truncate text-[10px] text-muted-foreground">{email}</p>
           </div>
           <div className="flex flex-col">
             {multiWorkspace && (

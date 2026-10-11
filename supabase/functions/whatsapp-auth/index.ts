@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { sendSms019 } from "../_shared/sms019.ts";
+import { verifiedPhoneSession } from "../_shared/phoneSession.ts";
 
 const OTP_TTL_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
@@ -593,57 +594,10 @@ Deno.serve(async (req) => {
 
       await admin.from("whatsapp_login_otps").update({ consumed_at: new Date().toISOString() }).eq("id", otpRow.id);
 
-      // Try to find an existing user already linked to this phone number (covers merged accounts).
-      // Query auth.users directly via the service role so we don't miss accounts past listUsers' page cap.
-      let targetEmail: string | null = null;
-      try {
-        const { data: rows } = await admin
-          .schema("auth" as never)
-          .from("users" as never)
-          .select("email, phone")
-          .or(`phone.eq.${phone},phone.eq.+${phone}`)
-          .limit(1);
-        const match = (rows ?? [])[0] as { email?: string } | undefined;
-        if (match?.email) targetEmail = match.email;
-        if (!targetEmail) {
-          // Fallback: scan user_metadata.phone_number via listUsers (best-effort).
-          const { data: byPhone } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-          const meta = byPhone?.users?.find((u) => {
-            const userPhone = String(u.phone ?? "").replace(/\D/g, "");
-            const metaPhone = String((u.user_metadata as { phone_number?: string } | null)?.phone_number ?? "").replace(/\D/g, "");
-            return userPhone === phone || metaPhone === phone;
-          });
-          if (meta?.email) targetEmail = meta.email;
-        }
-      } catch (lookupErr) {
-        console.warn("whatsapp-auth: phone lookup failed, falling back to synthetic email", lookupErr);
-      }
-
-      // Fallback: legacy synthetic email account (created on-demand for first-time WA-only logins).
-      if (!targetEmail) {
-        const syntheticEmail = `${phone}@whatsapp.realtyz.local`;
-        const { error: createError } = await admin.auth.admin.createUser({
-          email: syntheticEmail,
-          phone: `+${phone}`,
-          email_confirm: true,
-          phone_confirm: true,
-        user_metadata: { provider: "whatsapp_wba", phone_number: phone },
-        });
-        if (createError && !/already|registered|exists/i.test(createError.message)) throw createError;
-        targetEmail = syntheticEmail;
-      }
-
-      const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-        type: "magiclink",
-        email: targetEmail,
-      });
-      if (linkError) throw linkError;
-
-      return json({
-        success: true,
-        email: targetEmail,
-        token_hash: linkData.properties?.hashed_token,
-      });
+      const publishableKey = Deno.env.get('SUPABASE_ANON_KEY');
+      if (!publishableKey) throw new Error('Phone authentication is not configured');
+      const client = createClient(supabaseUrl, publishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
+      return json({ success: true, ...await verifiedPhoneSession(admin, client, phone, 'whatsapp_wba') });
     }
 
     return json({ error: "פעולה לא נתמכת" }, 400);

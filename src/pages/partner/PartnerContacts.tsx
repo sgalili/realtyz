@@ -11,7 +11,7 @@ import { MessageCircle, Phone, Search, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ContactAvatar from '@/components/contacts/ContactAvatar';
 import { officialWaLink } from '@/lib/officialWa';
-import { fmtILS } from '@/lib/formatCurrency';
+import { fmtCredits, ilsToCredits } from '@/lib/credits';
 import { SUBMISSION_STATUS_LABELS } from '@/hooks/useAffiliate';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { usePartnerContacts, type PartnerContact } from '@/hooks/usePartnerSurfaces';
@@ -71,7 +71,7 @@ function ContactCard({ contact, licensed }: { contact: PartnerContact; licensed:
         <div className="flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
           <Badge variant="outline" className="text-[12px] font-normal">{contact.message_count} הודעות</Badge>
           {contact.last_interaction_at && <span>פעילות אחרונה: {fmtDate(contact.last_interaction_at)}</span>}
-          {earned > 0 && <span className="text-emerald-700">תגמול: {fmtILS(earned)}</span>}
+          {earned > 0 && <span className="text-success">תגמול: {fmtCredits(ilsToCredits(earned))}</span>}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -130,7 +130,7 @@ export default function PartnerContacts() {
           <p className="text-[13px] text-slate-600">אנשי קשר</p>
         </div>
         <div className="rounded-xl bg-emerald-50 p-3 text-center">
-          <p className="text-lg font-semibold text-emerald-700">{fmtILS(earnedTotal)}</p>
+          <p className="text-lg font-semibold text-success">{fmtCredits(ilsToCredits(earnedTotal))}</p>
           <p className="text-[13px] text-slate-600">תגמולים</p>
         </div>
       </div>

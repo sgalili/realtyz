@@ -1,4 +1,9 @@
 # Roadmap
+## Credits ecosystem, email and sidebar
+- [x] Credits-first sidebar/header/wallet/transparency/invite/partner/admin balances and rewards; financial/property prices remain in ILS.
+- [x] Phone-only signup session path replaces generated new emails while preserving legacy account IDs; placeholder display suppressed. Mailbox reads no longer generate/activate aliases; explicit owner activation required, existing mailboxes retained.
+- [x] Full-width top controls, hidden zero counters and accessible explanation, immediate wallet/contacts/profile drawer close, unique destination colors and 20% enlarged menu. Replaced numeric workspace initial with an office icon (the apparent profile zero was an initial, not a metric).
+- [x] Eighteen focused tests passed; signed-in real sidebar/wallet/profile/contacts/invite flows and explanation checked without runtime errors. Menu fonts 16.8px/icons 19.2px, all eight visible destination colors distinct, automatic build OK. No real phone-only signup/OTP delivery or new mailbox activation performed; phone identity verified with isolated tests only.
 ## Invite friends dual-win bonus
 - [x] Replace shared invite surfaces and subscription referral payouts with ₪200/₪100, personal copy/WhatsApp/email sharing; /invite aliases /referral and private accounts have access.
 - [x] Account-scoped approved-deal evidence, automatic closed+approved submission hook, protected manual signed/completed-deal approval, atomic two-wallet credits, immutable awards, unique first-user payout, suspension/fraud/self guards and audit. Fixed pre-existing closing audit column mismatch blocking approvals.

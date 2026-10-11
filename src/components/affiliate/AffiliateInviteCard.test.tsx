@@ -9,8 +9,9 @@ describe('dual-win invitations', () => {
   beforeEach(() => vi.restoreAllMocks());
   it('shows both rewards and the approved-deal condition, without subscription offers', () => {
     render(<AffiliateInviteCard />);
-    expect(screen.getByText('₪200')).toBeInTheDocument();
-    expect(screen.getByText('₪100')).toBeInTheDocument();
+    expect(screen.getByText('5,000')).toBeInTheDocument();
+    expect(screen.getByText('2,500')).toBeInTheDocument();
+    expect(screen.getAllByText('קרדיטים לארנק')).toHaveLength(2);
     expect(screen.getByText(/הרשמה בלבד אינה מזכה/)).toBeInTheDocument();
     expect(screen.queryByText(/50%|Pro|₪15/)).not.toBeInTheDocument();
   });

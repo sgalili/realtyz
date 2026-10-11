@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Wallet, Plus, Minus } from 'lucide-react';
 import { toast } from 'sonner';
 import { GrowthPromoCard } from '@/components/admin/GrowthPromoCard';
+import { fmtCredits, ilsToCredits } from '@/lib/credits';
+import { isSyntheticEmail } from '@/lib/friendlyUserDisplayName';
 
 export function FinanceTab() {
   const qc = useQueryClient();
@@ -93,10 +95,10 @@ export function FinanceTab() {
                   <TableRow key={u.id}>
                     <TableCell>
                       <div className="text-sm font-medium">{u.full_name || '-'}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{u.email}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{isSyntheticEmail(u.email) ? '' : u.email}</div>
                     </TableCell>
                     <TableCell className={`tabular-nums font-bold whitespace-nowrap ${Number(u.balance) < 0 ? 'text-red-600' : 'text-primary'}`}>
-                      ₪{Math.round(Number(u.balance)).toLocaleString()}
+                      {fmtCredits(ilsToCredits(Number(u.balance)))}
                     </TableCell>
                     <TableCell className="tabular-nums text-amber-600 whitespace-nowrap">
                       ₪{Math.round(Number(u.mtd_spend)).toLocaleString()}

@@ -7,6 +7,7 @@
 // Input: { identifier: string, kind: 'email' | 'phone', code: string }
 // Output: { success, email, token_hash }  → client calls verifyOtp({type:'email'})
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifiedPhoneSession } from '../_shared/phoneSession.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,7 +86,13 @@ Deno.serve(async (req) => {
         const metaPhone = String((u.user_metadata as { phone_number?: string } | null)?.phone_number ?? "").replace(/\D/g, "");
         return userPhone === phone || metaPhone === phone;
       });
-      targetEmail = targetEmail || match?.email || `${phone}@whatsapp.realtyz.local`;
+      targetEmail = targetEmail || match?.email || '';
+      if (!targetEmail) {
+        const publishableKey = Deno.env.get('SUPABASE_ANON_KEY');
+        if (!publishableKey) throw new Error('Phone authentication is not configured');
+        const client = createClient(SUPABASE_URL, publishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
+        return json({ success: true, ...await verifiedPhoneSession(admin, client, phone, 'preview_master_otp') });
+      }
     } else {
       return json({ error: "bad kind" }, 400);
     }

@@ -34,21 +34,7 @@ export const EmailAliasSetupDialog = ({
       const { data: mb } = await supabase.rpc('get_workspace_mailbox' as never);
       const ownerId = (mb as any)?.owner_id;
       if (!ownerId) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('email_alias, full_name, email')
-        .eq('id', ownerId)
-        .maybeSingle();
-      const existing = ((data as any)?.email_alias ?? '').trim();
-      if (existing) {
-        setPrefix(existing);
-      } else {
-        const fallback =
-          (data as any)?.full_name?.split(/\s+/)[0] ||
-          (data as any)?.email?.split('@')[0] ||
-          '';
-        setPrefix(sanitize(fallback));
-      }
+      setPrefix((mb as any)?.alias ?? '');
     })();
   }, [open]);
 
