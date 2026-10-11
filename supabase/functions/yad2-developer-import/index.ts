@@ -61,7 +61,7 @@ Deno.serve(async req => {
             else result.projects.push({ ...matching, source_url: url });
           } else failed.push(url);
         }
-      } catch { failed.push(url); }
+      } catch (e) { console.error('project page failed', url, e instanceof Error ? e.message : e); failed.push(url); }
     }
     return json({ ok: true, source_url: pageUrl.href, ...result, completeness: { complete: failed.length === 0 && result.projects.length > 0, pages_read: visited.size - failed.length, failed_urls: failed }, warnings: failed.length ? ['חלק מעמודי הפרויקטים לא נקראו. הפרטים הזמינים נשמרו בתצוגה המקדימה; אפשר לנסות שוב.'] : result.projects.length === 0 ? ['לא נמצאו פרויקטים שניתן לקרוא בעמוד היזם.'] : [] });
   } catch (error) {
