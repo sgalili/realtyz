@@ -1,8 +1,9 @@
 # Roadmap
 ## One-click property referral sharing
-- [ ] Add authenticated personal referral copy controls across property cards/details and preserve attribution on inquiry submission.
-- [ ] Move image controls and labels into minimal above-image rows.
-- [ ] Verify tracking, permission safeguards and live presentation.
+- [x] Add authenticated personal referral copy controls to public grid/list/details, affiliate grid, inventory actions, My Ads and favorites; shared menus mint the signed-in user's link. Inquiry attribution validates the exact listing/workspace and logs referrals server-side without returning financial billing details.
+- [x] Move image controls and labels into minimal above-image rows, retaining gallery swiping and navigation.
+- [x] Verify signed-in stable copying in grid/list/full views, persisted referral, server-only attribution permissions, five regression tests and successful preview builds; no runtime errors.
+- [ ] Verify an actual submitted referral inquiry and billing readback (not exercised to avoid charging real advertiser wallets or triggering calls; requires an approved test submission).
 ## Signed-out board and source publisher refinements
 - [x] Relocate borderless sign-in after Add ad, enlarge main Realtyz logo by 30%, bottom-align card actions and use a confirmed-private-publisher silhouette.
 - [x] Improve source-backed automatic Yad2 advertiser/logo classification without random reassignment of real advertisers; preserve source buckets, scoped advertiser names/logos and exclude related-ad classification. Import and public-view functions deployed.
