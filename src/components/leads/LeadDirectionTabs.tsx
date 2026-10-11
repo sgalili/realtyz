@@ -23,8 +23,8 @@ export default function LeadDirectionTabs({ children }: { children: ReactNode })
     navigate({ pathname: location.pathname, search: next.toString() });
   }}>
     <TabsList className="mb-1.5 grid h-[44px] w-full grid-cols-2 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-      <TabsTrigger value="received" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">לידים שקיבלתי ({received})</TabsTrigger>
-      <TabsTrigger value="sent" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">לידים שמכרתי ({sentRows.length})</TabsTrigger>
+      <TabsTrigger value="received" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{received} לידים שקיבלתי</TabsTrigger>
+      <TabsTrigger value="sent" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[17px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{sentRows.length} לידים שמכרתי</TabsTrigger>
     </TabsList>
     <TabsContent value="received" className="mt-1">{children}</TabsContent>
     <TabsContent value="sent" className="mt-1"><SentPartnerLeads /></TabsContent>

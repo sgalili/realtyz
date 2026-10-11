@@ -69,7 +69,7 @@ import OwnerPropertyGrid from '@/components/leads/OwnerPropertyGrid';
 import LeadDirectionTabs from '@/components/leads/LeadDirectionTabs';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
-import { leadCategoryOrFilter, visibleLeadKinds, type LeadKind } from '@/lib/leadCategoryFilters';
+import { leadCategoryOrFilter, resolveLeadKind, visibleLeadKinds, type LeadKind } from '@/lib/leadCategoryFilters';
 
 /**
  * isOwnerLead — Sellers and Landlords are property OWNERS, not seekers.
@@ -2095,7 +2095,7 @@ const LeadCRM = () => {
                         <TableCell className="text-sm" onClick={() => setSelectedVoterId(lead.id)}>{lead.city || '-'}</TableCell>
                         <TableCell className="text-center" onClick={() => setSelectedVoterId(lead.id)}>
                           {(() => {
-                            const kind = prefs.lead_kind as string | undefined;
+                            const kind = resolveLeadKind(lead as any) ?? undefined;
                             const map: Record<string, { label: string; cls: string }> = {
                               buyer:    { label: 'קונה',   cls: 'bg-blue-500/10 text-blue-700 border-blue-300' },
                               seller:   { label: 'מוכר',   cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
