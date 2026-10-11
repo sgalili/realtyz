@@ -322,7 +322,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
             <span className="text-[15px] font-semibold leading-tight text-foreground" title={fullAddress}>{fullAddress}</span>
             <span className="text-muted-foreground">{listing.rooms ? `${listing.rooms} חד׳` : '—'}</span>
             <span className="text-muted-foreground">{listing.sqm ? `${listing.sqm} מ״ר` : '—'}</span>
-            <span className="text-[15px] font-bold text-foreground" dir="ltr">{listing.asking_price ? fmtILS(listing.asking_price) : '—'}</span>
+            <div className="space-y-1"><span className="text-[15px] font-bold text-foreground" dir="ltr">{listing.asking_price ? fmtILS(listing.asking_price) : '—'}</span><CommissionTierBadges tiers={listingTiers(listing)} compact level4Locked={!level4Unlocked} /></div>
           </div>
           <Button
             type="button"
@@ -482,6 +482,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
         </div>
 
         {referral ? (
+          <div className="contents">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-2.5" onClick={stop}>
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" />

@@ -10,6 +10,10 @@ import { Loader2 } from 'lucide-react';
 import { useAppMode, type AppMode } from '@/hooks/useAppMode';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useState } from 'react';
+import { usePartnerConsent } from '@/hooks/usePartnerConsent';
+import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 /**
  * Switch between the preserved core identity and additive partner membership.
@@ -17,6 +21,8 @@ import { useSidebar } from '@/components/ui/sidebar';
  */
 export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?: boolean }) {
   const navigate = useNavigate();
+  const [onboarding, setOnboarding] = useState(false);
+  const consent = usePartnerConsent();
   const { mode, setMode } = useAppMode();
   const { roles, isAffiliate, loading, error: roleError } = useUserRole();
   const { user } = useAuth();
@@ -29,6 +35,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
     mutationFn: async (next: AppMode) => {
       if (!user || roleError || loading) throw new Error('לא ניתן להחליף מצב כרגע');
       if (next === 'partner') {
+        if (consent.data !== true) { setOnboarding(true); return; }
         if (!isAffiliate) {
           const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
           if (error) throw error;
@@ -59,7 +66,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
   ];
 
   return (
-    <div
+    <><div
       dir="rtl"
       role="radiogroup"
       aria-label="החלפת מצב עבודה"
@@ -75,11 +82,11 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
             type="button"
             role="radio"
             aria-checked={active}
-            disabled={busy}
+            disabled={busy || consent.isLoading || consent.isError}
             onClick={() => { if (opt.value !== mode && !busy) activation.mutate(opt.value); }}
             title={opt.label}
             className={cn(
-              'h-8 rounded px-3 text-sm font-semibold transition-colors',
+              'h-8 rounded px-2 text-xs font-semibold transition-colors',
               active
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
@@ -90,6 +97,13 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
         );
       })}
     </div>
+    <Dialog open={onboarding} onOpenChange={setOnboarding}>
+      <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto p-2 [&>button]:hidden" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogTitle className="sr-only">הצטרפות לתוכנית השותפים</DialogTitle>
+        <DialogDescription className="sr-only">היכרות עם התוכנית ואישור התקנון</DialogDescription>
+        <PartnerOnboarding onCancel={() => setOnboarding(false)} onComplete={() => { setOnboarding(false); setMode('partner'); navigate('/affiliate-network'); }} />
+      </DialogContent>
+    </Dialog></>
   );
 }
 

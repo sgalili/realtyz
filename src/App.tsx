@@ -28,6 +28,8 @@ import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
 import { accountIdentity } from '@/lib/accountMode';
+import { usePartnerConsent } from '@/hooks/usePartnerConsent';
+import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -190,6 +192,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   const walletLocked = !!walletState?.lockedAt;
   const { roles, isSuperAdmin, isAffiliate, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
+  const partnerConsent = usePartnerConsent();
   const location = useLocation();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -249,6 +252,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     return <Navigate to="/affiliate" replace />;
   }
 
+  if ((isPartnerMode || isAffiliateOnly) && isAffiliate && !['/wallet', '/profile', '/public-listings'].some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
+    if (partnerConsent.isLoading) return <PageLoader />;
+    if (partnerConsent.data !== true) return <AppLayout><PartnerOnboarding onComplete={() => void partnerConsent.refetch()} /></AppLayout>;
+  }
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
 

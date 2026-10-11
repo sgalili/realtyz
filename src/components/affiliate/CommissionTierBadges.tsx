@@ -32,17 +32,17 @@ export function CommissionTierBadges({
   const showClosing = level4Unlocked && !level4Locked;
   const rows = [
     // Zero-value levels are hidden everywhere.
-    { key: 'tier1', label: 'ליד דיגיטלי', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-amber-50 text-amber-800 ring-amber-100', locked: false, show: tiers.tier1 > 0 },
-    { key: 'tier2', label: 'סינון בווטסאפ', value: tierValue(tiers.tier2), icon: WhatsAppIcon, tone: 'bg-sky-50 text-sky-800 ring-sky-100', locked: false, show: tiers.tier2 > 0 },
-    { key: 'tier3', label: 'שיחת טלפון', value: tierValue(tiers.tier3), icon: Phone, tone: 'bg-indigo-50 text-indigo-800 ring-indigo-100', locked: false, show: tiers.tier3 > 0 },
+    { key: 'tier1', label: 'פנייה דיגיטלית', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-warning/10 text-warning ring-warning/20', locked: false, show: tiers.tier1 > 0 },
+    { key: 'tier2', label: 'סינון בווטסאפ', value: tierValue(tiers.tier2), icon: WhatsAppIcon, tone: 'bg-primary/10 text-primary ring-primary/20', locked: false, show: tiers.tier2 > 0 },
+    { key: 'tier3', label: 'שיחת טלפון', value: tierValue(tiers.tier3), icon: Phone, tone: 'bg-accent text-accent-foreground ring-border', locked: false, show: tiers.tier3 > 0 },
     { key: 'tier4', label: 'סגירת עסקה', value: showClosing ? tierValue(tiers.tier4, tiers.tier4Type) : '', icon: Trophy, tone: 'bg-success/10 text-success ring-success/20', locked: false, show: tiers.tier4 > 0 && showClosing },
   ].filter((row) => row.show);
 
   if (compact) {
     return (
-      <div className="space-y-0.5 text-[11px] font-semibold text-success">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-success" data-commission-icons>
         {rows.map((r) => (
-          <div key={r.key} className={`flex items-center gap-1 ${r.locked ? 'text-slate-400 line-through' : ''}`} title={r.label}>
+          <div key={r.key} className="flex items-center gap-1" title={r.label} aria-label={`${r.label}: ${r.value}`}>
             <r.icon className="h-3 w-3" /><bdi dir="ltr">{r.value}</bdi>
           </div>
         ))}
