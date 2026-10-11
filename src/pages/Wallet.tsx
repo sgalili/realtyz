@@ -60,19 +60,21 @@ export default function Wallet() {
   const target = (r: LedgerRow) => [r.listing_title, r.listing_city].filter(Boolean).join(' · ') || r.lead_name || '—';
   const purpose = (r: LedgerRow) => (r.tier ? `${TYPE_LABEL[r.type] ?? r.type} · ${TIER_LABEL[r.tier]}` : TYPE_LABEL[r.type] ?? r.note ?? r.type);
 
+  const statusOf = (r: LedgerRow) => ({ open: 'במחלוקת', pending: 'במחלוקת', accepted: 'הוחזר', refunded: 'הוחזר', rejected: 'הושלם' } as Record<string, string>)[r.dispute_status ?? ''] ?? 'הושלם';
   const rows = (list: LedgerRow[], withTarget: boolean) => (
     <div className="overflow-x-auto rounded-lg border">
       <Table>
         <TableHeader><TableRow>
-          <TableHead>מועד</TableHead>{withTarget && <TableHead>יעד</TableHead>}<TableHead>מטרה</TableHead><TableHead>סכום</TableHead>
+          <TableHead>מועד</TableHead>{withTarget && <TableHead>יעד</TableHead>}<TableHead>מטרה</TableHead><TableHead>סטטוס</TableHead><TableHead>סכום</TableHead>
         </TableRow></TableHeader>
         <TableBody>
-          {list.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">אין תנועות עדיין</TableCell></TableRow>}
+          {list.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">אין תנועות עדיין</TableCell></TableRow>}
           {list.map((r) => (
             <TableRow key={r.id} className="cursor-pointer" onClick={() => setDetail(r)}>
               <TableCell className="whitespace-nowrap">{when(r.created_at)}</TableCell>
               {withTarget && <TableCell className="max-w-[220px] truncate">{target(r)}</TableCell>}
               <TableCell className="max-w-[220px] truncate">{purpose(r)}</TableCell>
+              <TableCell className="whitespace-nowrap">{statusOf(r)}</TableCell>
               <TableCell dir="ltr" className={`whitespace-nowrap text-right font-bold ${r.amount_ils < 0 ? 'text-destructive' : 'text-primary'}`}>{r.amount_ils > 0 ? '+' : ''}{ils(r.amount_ils)}</TableCell>
             </TableRow>
           ))}
@@ -142,6 +144,7 @@ export default function Wallet() {
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
               <dt className="text-muted-foreground">מועד</dt><dd>{when(detail.created_at)}</dd>
               <dt className="text-muted-foreground">סוג</dt><dd>{purpose(detail)}</dd>
+              <dt className="text-muted-foreground">סטטוס</dt><dd>{statusOf(detail)}</dd>
               <dt className="text-muted-foreground">סכום</dt><dd dir="ltr" className="text-right font-bold">{ils(detail.amount_ils)}</dd>
               {detail.listing_title && <><dt className="text-muted-foreground">נכס</dt><dd>{target(detail)}</dd></>}
               {detail.lead_name && <><dt className="text-muted-foreground">איש קשר</dt><dd>{detail.lead_name}</dd></>}
