@@ -98,7 +98,7 @@ function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactEleme
             {...listeners}
             aria-label={`הזזת עמודת ${label}`}
             title={`הזזת עמודת ${label}`}
-            className="inline-flex h-6 w-4 touch-none items-center justify-center text-muted-foreground opacity-0 focus-visible:opacity-100 group-hover/column:opacity-100 [@media(hover:none)]:opacity-60"
+            className="inline-flex h-6 w-4 touch-none items-center justify-center text-muted-foreground"
           >
             <GripVertical className="h-3 w-3" />
           </button>
@@ -241,6 +241,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
                   </DropdownMenuCheckboxItem>
                 ))}
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => update({ ...prefs, order: defaults(n).order })}>איפוס סדר עמודות</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => update(defaults(n))}>איפוס עמודות</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
