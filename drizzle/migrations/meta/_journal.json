@@ -218,6 +218,20 @@
       "when": 1791704253113,
       "tag": "0030_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791705401316,
+      "tag": "0031_grant_closing_pricing_to_brokers",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791705414364,
+      "tag": "0032_grant_closing_pricing_to_brokers_exec",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,8 @@
 // every partner. Level 4 (deal-closing commission) is restricted by the Real
 // Estate Brokerage Law to holders of a verified broker license, so the portal
 // reads the license status from `affiliate_profiles` and gates it here.
+// Broker accounts (managing_broker / lead_agent / agent roles) also unlock
+// level 4 — the server-side `partner_can_view_closing` RPC owns that decision.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
