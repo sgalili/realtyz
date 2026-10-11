@@ -3,7 +3,7 @@
 - [x] Use OR category matching; zero/all-visible selection retains unclassified records.
 - [x] Hide broker pill for broker/team accounts; preserve developer/owner relevance and affiliate consent.
 - [x] Use shared main-tab dimensions, colors and typography.
-- [ ] Verify regression tests and authenticated category/tab flow.
+- [x] Eleven regression tests and automatic build passed; authenticated zero/all-visible selection retains 39 records, broker pill hidden, received/sold switching visually verified. Partial selections use server OR; most existing records are unclassified, and no live lead categories were modified.
 ## Wallet summary
 - [x] Compact wallet credits to two decimal places, show actual NIS balance beneath, remove duplicate title/rate, add הארנק שלי to page hero.
 - [x] Approved 500-credit monthly free-plan grant atomically records one workspace/UTC-month ledger entry on first wallet access; paid/frozen accounts excluded and existing funds preserved. Signed-in balance rose by ₪20/500 credits once; repeated fresh browser read stayed ₪4,940/123.5k. No recurring polling; future-month/paid/frozen scenarios not live-tested.
