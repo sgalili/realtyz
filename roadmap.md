@@ -1,4 +1,8 @@
 # Roadmap
+## Invite friends dual-win bonus
+- [ ] Replace invite page and legacy rewards with personal copy/WhatsApp/email sharing and ₪200/₪100 offer.
+- [ ] Add authorized first-approved-deal atomic wallet rewards, attribution, duplicate/fraud guards and audit.
+- [ ] Verify signed-in invite flow, backend reward conditions, ledger readback and regression checks.
 ## Role toggle, partner feed, selection, wallet and Rita
 - [x] Solid blue active disabled role toggle and sidebar Settings label.
 - [x] Restore authenticated EXECUTE grant for shared-property feed; consent, license and distribution checks remain unchanged. Empty-safe global selection menus and search reset/error handling added.
