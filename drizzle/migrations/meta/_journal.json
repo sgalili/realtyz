@@ -99,6 +99,13 @@
       "when": 1791677647679,
       "tag": "0013_wallet_billing_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791680754526,
+      "tag": "0014_closing_commission_split",
+      "breakpoints": true
     }
   ]
 }

@@ -72,3 +72,4 @@
 - [Affiliate tier-3 license gate](mem://features/affiliate-tier3-license) — שלבים 1-2 דמי שיווק/לידים לכל שותף; שלב 3 עמלת סגירה רק לבעלי רישיון תיווך מאומת.
 
 - [Full repost editor](mem://features/full-repost-editor) — Editable repost content, groups, comment, media and schedule with explicit approval; cancellation at the right edge.
+- [Closing commission split](mem://features/closing-commission-split) — Licensed partner 80/20, otherwise 100% platform; unlicensed partners never see closing data.

@@ -13,6 +13,7 @@ import ContactAvatar from '@/components/contacts/ContactAvatar';
 import { officialWaLink } from '@/lib/officialWa';
 import { fmtILS } from '@/lib/formatCurrency';
 import { SUBMISSION_STATUS_LABELS } from '@/hooks/useAffiliate';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { usePartnerContacts, type PartnerContact } from '@/hooks/usePartnerSurfaces';
 
 const TABS = [
@@ -33,9 +34,11 @@ function dealTypeLabel(value: string | null): string | null {
   return value === 'rent' ? 'שכירות' : value === 'sale' ? 'מכירה' : value;
 }
 
-function ContactCard({ contact }: { contact: PartnerContact }) {
+function ContactCard({ contact, licensed }: { contact: PartnerContact; licensed: boolean }) {
   const navigate = useNavigate();
-  const status = contact.submission_status
+  // Unlicensed partners never see closing status.
+  const hideClose = !licensed && ['closed', 'deal_signed'].includes(contact.submission_status ?? '');
+  const status = hideClose ? SUBMISSION_STATUS_LABELS.verified : contact.submission_status
     ? SUBMISSION_STATUS_LABELS[contact.submission_status as keyof typeof SUBMISSION_STATUS_LABELS] ?? contact.submission_status
     : null;
   const earned = Number(contact.earned_amount ?? 0);
@@ -101,6 +104,7 @@ function ContactCard({ contact }: { contact: PartnerContact }) {
 }
 
 export default function PartnerContacts() {
+  const { level4Unlocked } = useAffiliateLicense();
   const { data: contacts = [], isLoading } = usePartnerContacts();
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<string>('all');
@@ -143,7 +147,7 @@ export default function PartnerContacts() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid w-full grid-cols-3">
-          {TABS.map((t) => (
+          {TABS.filter((t) => level4Unlocked || t.value !== 'closed').map((t) => (
             <TabsTrigger key={t.value} value={t.value} className="text-[13px]">{t.label}</TabsTrigger>
           ))}
         </TabsList>
@@ -159,7 +163,7 @@ export default function PartnerContacts() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">{filtered.map((c) => <ContactCard key={c.lead_id} contact={c} />)}</div>
+        <div className="space-y-2">{filtered.map((c) => <ContactCard licensed={level4Unlocked} key={c.lead_id} contact={c} />)}</div>
       )}
     </div>
   );
