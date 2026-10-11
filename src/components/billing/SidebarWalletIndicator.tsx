@@ -13,15 +13,15 @@ import { fmtCompactCredits, ilsToCredits } from '@/lib/credits';
 import { useAuth } from '@/hooks/useAuth';
 
 /** Incoming leads = inquiries that arrived here. A partner's own sent leads never count as incoming. */
-export function useIncomingLeadsCount() {
+export function useIncomingLeadsCount(scope: 'current-mode' | 'workspace' = 'current-mode') {
   const { isPartnerMode } = useAppMode();
   const ws = useActiveWorkspaceOwnerId();
   const { user } = useAuth();
   const { isTeamMember, isDeveloper, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, loading, error } = useUserRole();
-  const partner = isPartnerMode || isAffiliateOnly;
-  const allowed = !loading && !error && !isPropertySeekerOnly && (partner || isTeamMember || isDeveloper || isPropertyOwnerOnly);
+  const partner = scope === 'current-mode' && (isPartnerMode || isAffiliateOnly);
+  const allowed = !loading && !error && (scope === 'workspace' || (!isPropertySeekerOnly && (partner || isTeamMember || isDeveloper || isPropertyOwnerOnly)));
   return useQuery({
-    queryKey: ['incoming-leads-count', ws, user?.id, partner, isPropertyOwnerOnly],
+    queryKey: ['incoming-leads-count', ws, user?.id, scope, partner, isPropertyOwnerOnly],
     enabled: !!user && !!ws && allowed,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
@@ -31,7 +31,7 @@ export function useIncomingLeadsCount() {
         if (error) throw error;
         return (data ?? []).filter((lead: { submission_status?: string | null }) => !lead.submission_status).length;
       }
-      if (isPropertyOwnerOnly) {
+      if (scope === 'current-mode' && isPropertyOwnerOnly) {
         const { count, error } = await supabase.from('public_listing_interest').select('id', { count: 'exact', head: true });
         if (error) throw error;
         return count ?? 0;

@@ -17,7 +17,7 @@ describe('sidebar wallet and incoming-lead counter', () => {
   it('shows credits, keeps the counter visible at zero and closes drawer on wallet navigation', () => {
     render(<SidebarWalletIndicator />);
     expect(screen.getByText('5k קרדיטים')).toBeInTheDocument();
-    expect(screen.getByText('לידים שהתקבלו')).toBeInTheDocument();
+    expect(screen.getByText('לידים')).toBeInTheDocument();
     expect(screen.getByLabelText('מספר לידים שהתקבלו')).toHaveTextContent('0');
     expect(screen.queryByText('חדשים')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'הסבר על לידים חדשים' })).not.toBeInTheDocument();
@@ -32,7 +32,7 @@ describe('sidebar wallet and incoming-lead counter', () => {
     const button = screen.getByRole('button', { name: 'לידים שהתקבלו: 3' });
     const badge = screen.getByLabelText('מספר לידים שהתקבלו');
     expect(button).toContainElement(badge);
-    expect(badge.compareDocumentPosition(screen.getByText('לידים שהתקבלו')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(badge.compareDocumentPosition(screen.getByText('לידים')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('button', { name: /מה מייצג/ })).not.toBeInTheDocument();
     fireEvent.click(button);
     expect(mocks.navigate).toHaveBeenCalledWith('/lead-crm');

@@ -4,9 +4,9 @@ import { MemoryRouter } from 'react-router-dom';
 import LeadDirectionTabs from './LeadDirectionTabs';
 import SentPartnerLeads from './SentPartnerLeads';
 
-const mocks = vi.hoisted(() => ({ affiliate: true, loading: false, error: false, licensed: false, submissions: [] as any[] }));
+const mocks = vi.hoisted(() => ({ affiliate: true, loading: false, error: false, licensed: false, submissions: [] as any[], incoming: vi.fn(() => 7) }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isAffiliate: mocks.affiliate, loading: mocks.loading, error: mocks.error }) }));
-vi.mock('@/components/billing/SidebarWalletIndicator', () => ({ useIncomingLeadsCount: () => 7 }));
+vi.mock('@/components/billing/SidebarWalletIndicator', () => ({ useIncomingLeadsCount: mocks.incoming }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: mocks.licensed }) }));
 vi.mock('@/hooks/useAffiliate', () => ({
   useMySubmissions: () => ({ data: mocks.submissions, isLoading: false, isError: false }),
@@ -19,6 +19,7 @@ describe('lead direction tabs', () => {
   const show = (path = '/lead-crm?filter=untreated') => render(<MemoryRouter initialEntries={[path]}><LeadDirectionTabs><p>לידים במרחב הנוכחי</p></LeadDirectionTabs></MemoryRouter>);
   it('defaults to received and lets an existing partner view sent leads then return', () => {
     show();
+    expect(mocks.incoming).toHaveBeenCalledWith('workspace');
     expect(screen.getByText('לידים במרחב הנוכחי')).toBeVisible();
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'לידים שמכרתי (0)' }), { button: 0, ctrlKey: false });
     expect(screen.getByText('לא מכרת לידים עדיין')).toBeVisible();
