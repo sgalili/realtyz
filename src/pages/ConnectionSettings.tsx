@@ -87,6 +87,7 @@ const ConnectionSettings = () => {
   const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
   const blockDemoAction = useDemoGuard();
+  const { isSuperAdmin } = useUserRole();
 
   // Show/hide map
   const [show, setShow] = useState<Record<string, boolean>>({});
