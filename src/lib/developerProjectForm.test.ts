@@ -26,8 +26,7 @@ describe('developer project editor', () => {
     form.specifications = 'מפרט מעודכן';
     const payload = projectPayload(form, original);
     expect(payload.total_units).toBe(0);
-    expect(payload.apartments[0].source_details).toEqual({ verified: true });
-    expect(payload.apartments[0].images).toEqual(['https://example.org/unit.jpg']);
+    expect(payload.apartments[0]).toMatchObject({ source_details: { verified: true }, images: ['https://example.org/unit.jpg'] });
     expect(payload.source_details).toMatchObject({ source: 'original', manual: { retained: true, specifications: 'מפרט מעודכן' } });
     expect(payload.image_url).toBe('https://example.org/project.jpg');
   });
