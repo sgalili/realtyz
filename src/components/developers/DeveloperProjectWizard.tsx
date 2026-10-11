@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const AMENITIES = ['מעלית', 'חניה', 'מחסן', 'מרפסת', 'ממ״ד', 'לובי', 'חדר כושר', 'נגישות', 'גינה משותפת', 'טעינה לרכב חשמלי'];
