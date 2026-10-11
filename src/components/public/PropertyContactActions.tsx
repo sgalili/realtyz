@@ -14,6 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cleanFormFields, type LeadContactOptions } from '@/lib/leadTiers';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
+import PropertyReferralButton from './PropertyReferralButton';
+import { personalPropertyLink, propertyInquiryRef } from '@/lib/propertyReferral';
 
 export type ContactOptions = LeadContactOptions;
 
@@ -62,7 +64,7 @@ export default function PropertyContactActions({
   const { user } = useAuth();
   const [joinOpen, setJoinOpen] = useState(false);
   const [challenge, setChallenge] = useState<InquiryChallenge | null>(null);
-  const ref = new URLSearchParams(window.location.search).get('ref');
+  const ref = propertyInquiryRef();
 
   // Canonical opener built from the property row itself, so Rita can parse the
   // exact property (type, street + house number, city) with zero questions.
@@ -77,9 +79,10 @@ export default function PropertyContactActions({
   };
 
   const share = async (channel: 'whatsapp' | 'sms' | 'email' | 'copy' | 'native') => {
-    const { url, text } = shareDetails();
-    if (!url) return;
     try {
+      const url = user ? await personalPropertyLink(listingId) : shareDetails().url;
+      const text = `${title}\n${url}`;
+      if (!url) return;
       if (channel === 'native' && navigator.share) {
         await navigator.share({ title, url });
         return;
@@ -94,8 +97,8 @@ export default function PropertyContactActions({
         await navigator.clipboard.writeText(url);
         toast.success('הקישור הועתק');
       }
-    } catch {
-      /* the visitor cancelled, or the clipboard is blocked */
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) toast.error('שיתוף הקישור נכשל, נסו שוב');
     }
   };
 
@@ -187,6 +190,7 @@ export default function PropertyContactActions({
             <Phone className="h-4 w-4" />חייגו אליי
           </Button>
         )}
+        {showShare && <PropertyReferralButton listingId={listingId} />}
         {showShare && !user && (
           <Button variant="outline" size={compact ? 'icon' : 'default'} className={shareButtonClassName || (compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1')} aria-label="שיתוף נכס" title="שיתוף נכס" onClick={() => setJoinOpen(true)}>
             <Share2 className="h-4 w-4" />{compact ? null : 'שיתוף'}

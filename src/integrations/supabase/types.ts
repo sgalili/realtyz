@@ -8294,6 +8294,10 @@ export type Database = {
         Returns: Json
       }
       get_platform_stats: { Args: never; Returns: Json }
+      get_property_referral_link: {
+        Args: { _listing_id: string }
+        Returns: string
+      }
       get_system_status: {
         Args: never
         Returns: {
@@ -8513,6 +8517,10 @@ export type Database = {
           _platform: string
           _sender_type: string
         }
+        Returns: string
+      }
+      record_property_referral_inquiry: {
+        Args: { _code: string; _lead_id: string; _listing_id: string }
         Returns: string
       }
       register_as_affiliate: {

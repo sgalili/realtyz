@@ -172,11 +172,11 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const overlay = (onFavorite || listing.id) ? (
     <>
       {onFavorite && (
-        <Button type="button" variant="secondary" size="icon" onClick={(e) => { e.stopPropagation(); onFavorite(); }} aria-pressed={isFav} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" className="h-9 w-9 rounded-full bg-background/50 shadow hover:bg-background/70">
+        <Button type="button" variant="secondary" size="icon" onClick={(e) => { e.stopPropagation(); onFavorite(); }} aria-pressed={isFav} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" className="h-9 w-9 border-0 bg-transparent shadow-none hover:bg-muted">
           <Heart className={`h-4 w-4 text-destructive ${isFav ? 'fill-current' : ''}`} />
         </Button>
       )}
-      {listing.id && <div className="rounded-full bg-background/50 shadow [&_button]:rounded-full [&_button]:border-0 [&_button]:bg-transparent"><PropertyContactActions listingId={listing.id} title={listing.title} shareUrl={publicUrl(`/p/${encodeURIComponent(listing.slug || listing.id)}`)} compact shareOnly /></div>}
+      {listing.id && <div className="[&_button]:border-0 [&_button]:bg-transparent [&_button]:shadow-none"><PropertyContactActions listingId={listing.id} title={listing.title} shareUrl={publicUrl(`/p/${encodeURIComponent(listing.slug || listing.id)}`)} compact shareOnly /></div>}
     </>
   ) : null;
   const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode }>, { overlay }) : gallery;

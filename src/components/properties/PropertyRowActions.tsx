@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+import PropertyReferralButton from '@/components/public/PropertyReferralButton';
 import { RewardDialog } from '@/pages/AffiliateNetwork';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
@@ -52,6 +53,7 @@ export function PropertyRowActions({
         {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Megaphone className="h-3.5 w-3.5" />}
       </Button>
       <PropertyShareMenu results={[r]} iconOnly variant="ghost" hidePublish={hideSharePublish} />
+      {r.localId && <PropertyReferralButton listingId={r.localId} />}
       {onEdit ? (
         <Button size="icon" variant="ghost" className="h-8 w-8" title="עריכת הנכס" aria-label="עריכת הנכס" onClick={() => onEdit(r)}>
           <Pencil className="h-4 w-4" />
