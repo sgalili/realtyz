@@ -1,4 +1,9 @@
 # Roadmap
+## Developer direct entry and complete Yad2 import
+- [x] Authenticated developer entry bypasses role/item screens; loading is fail-closed and stale pending roles cannot change developer entry.
+- [x] Main-page URL validation, linked project reads, nested unit/source details and images, partial-read warnings, explicit save and non-null-preserving resync added; importer deployed.
+- [x] Signed-in developer publication click reached /developer-dashboard?import=1 with no role/item fields; invalid item URLs rejected by UI and live endpoint; five focused tests and automatic build passed.
+- [ ] Verify live full-source project import and confirmed saved readback: no real developer main-page URL supplied, and no existing sourced projects are available to exercise it; source blocking/pagination may prevent full extraction and is not claimed complete.
 ## Tutorial sanitation and role isolation
 - [x] Replace internal commission/platform explanations with action-focused sharing, tracking, wallet and profile tutorials.
 - [x] Add fail-closed role navigation, developer route isolation, server-redacted partner reads, restrictive referral/submission/snapshot/split policies, protected license verification and authorized closing-document endpoints.

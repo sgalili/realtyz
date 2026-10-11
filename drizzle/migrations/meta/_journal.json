@@ -127,6 +127,13 @@
       "when": 1791682617983,
       "tag": "0017_secure_partner_map_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791682765732,
+      "tag": "0018_developer_project_source_details",
+      "breakpoints": true
     }
   ]
 }

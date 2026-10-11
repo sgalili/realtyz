@@ -52,6 +52,14 @@ export function clearPendingSignupRole() {
 export async function applyPendingSignupRole(): Promise<string | null> {
   const role = readPendingSignupRole();
   if (!role) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: savedRoles, error: rolesError } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
+  if (rolesError) return null;
+  if (savedRoles?.some(r => r.role === 'developer')) {
+    clearPendingSignupRole();
+    return '/developer-dashboard?import=1';
+  }
   if (role === 'partner') {
     const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
     if (error || !(data as { ok?: boolean } | null)?.ok) return null;

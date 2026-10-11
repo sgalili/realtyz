@@ -9,14 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { developerImportUrl } from '@/lib/developerImportUrl';
 
 type ImportedProject = {
   source_project_id: string | null; name: string; city: string | null; neighborhood: string | null;
   address: string | null; total_units: number | null; available_units: number | null; price_from: number | null;
   delivery_date: string | null; status: string | null; description: string | null; images: string[];
-  source_url: string | null; apartments: unknown[];
+  source_url: string | null; apartments: unknown[]; source_details: Record<string, unknown>;
 };
-type Preview = { source_url: string; developer: { company_name: string | null; phone: string | null; logo_url: string | null }; projects: ImportedProject[] };
+type Preview = { source_url: string; developer: { company_name: string | null; phone: string | null; logo_url: string | null }; projects: ImportedProject[]; warnings?: string[] };
 
 const YAD2_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i;
 const STAGES = ['מתחבר לעמוד היזם ביד2', 'קורא את פרטי החברה', 'אוסף את רשימת הפרויקטים', 'סופר יחידות דיור ודירות', 'מכין דוח סיכום'];
@@ -55,8 +56,10 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
   const [error, setError] = useState('');
 
   const fetchPreview = async (value: string) => {
-    const clean = value.match(YAD2_RE)?.[0];
-    if (!clean) { setError('הקישור אינו עמוד יד2 תקין'); return; }
+    if (loading) return;
+    const clean = developerImportUrl(value);
+    if (!clean) { setError('הדביקו את הקישור לעמוד הראשי של היזם ביד2, ולא למודעה או לפרויקט בודד'); return; }
+    setUrl(clean);
     setLoading(true); setError(''); setPreview(null);
     const { data, error: fnError } = await supabase.functions.invoke('yad2-developer-import', { body: { url: clean } });
     setLoading(false);
@@ -78,17 +81,18 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
     const ws = activeWorkspaceId ?? user.id;
     setSaving(true);
     try {
-      const { data: existing } = await supabase.from('developers').select('id').eq('workspace_owner_id', ws).eq('source_url', preview.source_url).maybeSingle();
+      const { data: existing, error: existingError } = await supabase.from('developers').select('id,company_name,phone,logo_url,first_project_name,first_project_units').eq('workspace_owner_id', ws).eq('source_url', preview.source_url).maybeSingle();
+      if (existingError) throw existingError;
       const first = preview.projects[0];
       const devRow = {
         workspace_owner_id: ws,
         owner_user_id: user.id,
-        company_name: preview.developer.company_name || 'החברה שלי',
-        phone: preview.developer.phone ? normalizePhoneForStorage(preview.developer.phone) : null,
-        logo_url: preview.developer.logo_url,
+        company_name: preview.developer.company_name || existing?.company_name || 'החברה שלי',
+        phone: preview.developer.phone ? normalizePhoneForStorage(preview.developer.phone) : existing?.phone ?? null,
+        logo_url: preview.developer.logo_url ?? existing?.logo_url ?? null,
         source_url: preview.source_url,
-        first_project_name: first?.name ?? null,
-        first_project_units: first?.total_units ?? null,
+        first_project_name: first?.name ?? existing?.first_project_name ?? null,
+        first_project_units: first?.total_units ?? existing?.first_project_units ?? null,
         last_synced_at: new Date().toISOString(),
       };
       let devId = existing?.id as string | undefined;
@@ -101,13 +105,22 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
         devId = data.id;
       }
       if (preview.projects.length) {
-        const rows = preview.projects.map((p) => ({
-          workspace_owner_id: ws, developer_id: devId!, name: p.name, city: p.city, neighborhood: p.neighborhood,
+        if (!devId) throw new Error('שמירת החברה לא הושלמה');
+        const { data: savedProjects, error: readError } = await supabase.from('developer_projects').select('*').eq('workspace_owner_id', ws).eq('developer_id', devId);
+        if (readError) throw readError;
+        const rows = preview.projects.map((p) => {
+          const old = savedProjects?.find(row => row.source_project_id === (p.source_project_id ?? p.source_url ?? p.name));
+          const imported = {
+          workspace_owner_id: ws, developer_id: devId, name: p.name, city: p.city, neighborhood: p.neighborhood,
           address: p.address, total_units: p.total_units, available_units: p.available_units, price_from: p.price_from,
           delivery_date: p.delivery_date, description: p.description, image_url: p.images[0] ?? null,
-          images: p.images, apartments: p.apartments as any, source_url: p.source_url,
-          source_project_id: p.source_project_id ?? p.name, status: 'marketing',
-        }));
+          images: p.images.length ? p.images : old?.images ?? [], apartments: p.apartments.length ? p.apartments as any : old?.apartments ?? [], source_url: p.source_url,
+          source_details: p.source_details as any,
+          source_project_id: p.source_project_id ?? p.source_url ?? p.name, status: old?.status ?? 'marketing',
+          };
+          // Partial source reads must not erase previously saved project details.
+          return Object.fromEntries(Object.entries(imported).map(([key, value]) => [key, value ?? (old as Record<string, unknown> | undefined)?.[key] ?? null])) as typeof imported;
+        });
         const { error: e } = await supabase.from('developer_projects').upsert(rows, { onConflict: 'developer_id,source_project_id' });
         if (e) throw e;
       }
@@ -122,17 +135,19 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
 
   return (
     <div className="space-y-3">
-      <Label htmlFor="dev-yad2-url">הדבק את כתובת ה-URL של עמוד היזם שלך ביד 2</Label>
+      <Label htmlFor="dev-yad2-url" className="text-base font-bold">הקישור לעמוד הראשי של היזם ביד2</Label>
+      <p id="dev-yad2-help" className="text-base text-muted-foreground">הדביקו את כתובת עמוד החברה שלכם ביד2, שבו מופיעה רשימת הפרויקטים. אין צורך בקישור נפרד לכל פרויקט או דירה.</p>
       <div className="flex gap-2">
-        <Input id="dev-yad2-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/..." value={url}
+        <Input id="dev-yad2-url" aria-describedby="dev-yad2-help" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/..." value={url} disabled={loading || saving}
           onChange={(e) => setUrl(e.target.value)}
-          onPaste={(e) => { const t = e.clipboardData.getData('text').trim(); if (YAD2_RE.test(t)) { e.preventDefault(); setUrl(t); void fetchPreview(t); } }} />
-        <Button type="button" onClick={() => void fetchPreview(url)} disabled={loading || !url.trim()}>ייבוא</Button>
+          onPaste={(e) => { const t = e.clipboardData.getData('text').trim(); if (YAD2_RE.test(t)) { e.preventDefault(); setUrl(t.match(YAD2_RE)?.[0] ?? t); setError(''); } }} />
+        <Button type="button" onClick={() => void fetchPreview(url)} disabled={loading || saving || !url.trim()}>ייבוא כל הפרויקטים</Button>
       </div>
       {loading && <ImportProgress />}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {preview && (
         <div className="space-y-3 rounded-lg border bg-card p-3 animate-in fade-in">
+          {preview.warnings?.map(warning => <p role="status" key={warning} className="text-sm text-muted-foreground">{warning}</p>)}
           <div className="flex items-center gap-3">
             {preview.developer.logo_url && <img src={preview.developer.logo_url} alt="" className="h-10 w-10 rounded object-contain" />}
             <div>
@@ -155,7 +170,8 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
           ) : (
             <ul className="max-h-80 space-y-2 overflow-y-auto">
               {preview.projects.map((p) => (
-                <li key={p.source_project_id ?? p.name} className="flex items-center gap-3 rounded border p-2">
+                <li key={p.source_project_id ?? p.name} className="rounded border p-2">
+                  <div className="flex items-center gap-3">
                   {p.images[0] ? <img src={p.images[0]} alt="" className="h-12 w-12 shrink-0 rounded object-cover" /> : <div className="h-12 w-12 shrink-0 rounded bg-muted" />}
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-semibold">{p.name}</div>
@@ -166,6 +182,20 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
                       {p.apartments.length ? ` · ${p.apartments.length} דירות` : ''}
                     </div>
                   </div>
+                  </div>
+                  <details className="mt-2 text-sm">
+                    <summary className="cursor-pointer font-semibold">פרטי הפרויקט והדירות</summary>
+                    {p.description && <p className="mt-2 whitespace-pre-line">{p.description}</p>}
+                    <p className="mt-2">{[p.address, p.delivery_date, p.status].filter(Boolean).join(' · ')}</p>
+                    <div className="mt-2 flex gap-2 overflow-x-auto">{p.images.map(image => <img key={image} src={image} alt={p.name} className="h-24 w-32 shrink-0 rounded object-cover" />)}</div>
+                    {p.apartments.map((unit, index) => {
+                      const u = unit as { source_unit_id?: string; rooms?: number; floor?: string; size_sqm?: number; price?: number; images?: string[] };
+                      return <div key={u.source_unit_id ?? index} className="border-b py-2">
+                        <div>{[u.rooms != null ? `${u.rooms} חדרים` : '', u.floor != null ? `קומה ${u.floor}` : '', u.size_sqm != null ? `${u.size_sqm} מ״ר` : ''].filter(Boolean).join(' · ')}{u.price != null && <strong> · ₪{u.price.toLocaleString('he-IL')}</strong>}</div>
+                        {!!u.images?.length && <div className="mt-1 flex gap-2 overflow-x-auto">{u.images.map(image => <img key={image} src={image} alt="תמונת הדירה" className="h-20 w-28 shrink-0 rounded object-cover" />)}</div>}
+                      </div>;
+                    })}
+                  </details>
                 </li>
               ))}
             </ul>

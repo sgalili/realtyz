@@ -123,9 +123,9 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
 }
 
 export function PublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered }: { autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { activeWorkspaceId, activeWorkspace, setActiveWorkspace, refresh: refreshWorkspaces } = useWorkspace();
-  const { isPropertyOwner, isAgent, isSuperAdmin, refetch: refetchRoles } = useUserRole();
+  const { isPropertyOwner, isAgent, isSuperAdmin, isDeveloper, loading: rolesLoading, fetched: rolesFetched, error: rolesError, refetch: refetchRoles } = useUserRole();
   const { data: publisherProfile } = useQuery({
     queryKey: ['publisher-profile', user?.id, activeWorkspaceId],
     enabled: Boolean(user?.id && activeWorkspaceId),
@@ -166,6 +166,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const publicationAudio = useRef<AudioContext | null>(null);
   const openedScope = useRef('');
   const draftScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'visitor';
+  const entryPending = authLoading || Boolean(user && (rolesLoading || !rolesFetched || rolesError));
+  useEffect(() => {
+    if (!entryPending && user && isDeveloper && (open || resumeDraft)) {
+      setOpen(false);
+      navigate('/developer-dashboard?import=1', { replace: true });
+    }
+  }, [entryPending, user, isDeveloper, open, autoResume, resumeDraft, navigate]);
   useEffect(() => {
     if (openedScope.current && openedScope.current !== draftScope && openedScope.current !== 'visitor') {
       setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setPublishError('');
@@ -839,10 +846,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     </>
   );
 
+  if (isDeveloper && user && !entryPending) return <Button disabled={disabled} onClick={() => navigate('/developer-dashboard?import=1')} className="h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>;
+
   return (
-    <Dialog open={open} onOpenChange={value => { if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
+    <Dialog open={open && !entryPending && !isDeveloper} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       {!resumeDraft && <DialogTrigger asChild>
-        <Button disabled={disabled} className="h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
+        <Button disabled={disabled || entryPending} className="h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90">פרסום חינם</Button>
       </DialogTrigger>}
       <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6">
         <div className="relative flex flex-row-reverse items-center justify-between gap-2 self-start">

@@ -2355,6 +2355,7 @@ export type Database = {
           name: string
           neighborhood: string | null
           price_from: number | null
+          source_details: Json
           source_project_id: string | null
           source_url: string | null
           status: string
@@ -2377,6 +2378,7 @@ export type Database = {
           name: string
           neighborhood?: string | null
           price_from?: number | null
+          source_details?: Json
           source_project_id?: string | null
           source_url?: string | null
           status?: string
@@ -2399,6 +2401,7 @@ export type Database = {
           name?: string
           neighborhood?: string | null
           price_from?: number | null
+          source_details?: Json
           source_project_id?: string | null
           source_url?: string | null
           status?: string
