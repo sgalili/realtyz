@@ -143,7 +143,7 @@ export default function MyAds() {
   });
   return <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
     <Tabs defaultValue="ads" dir="rtl">
-      <div className="max-w-full overflow-x-auto"><TabsList className="w-max min-w-full"><TabsTrigger value="ads">{data.length} המודעות שלי</TabsTrigger><TabsTrigger value="failed">{recovery.data?.length ?? 0} טיוטות</TabsTrigger><TabsTrigger value="favorites">{favCount} המועדפים שלי</TabsTrigger></TabsList></div>
+      <div className="max-w-full overflow-x-auto"><TabsList className="w-max min-w-full"><TabsTrigger value="ads">{data.length}{'\u00a0'}נכסים שלי</TabsTrigger><TabsTrigger value="failed">{recovery.data?.length ?? 0} טיוטות</TabsTrigger><TabsTrigger value="favorites">{favCount}{'\u00a0'}מועדפים</TabsTrigger></TabsList></div>
       <TabsContent value="favorites" className="pt-3"><MyFavoriteAds /></TabsContent>
       <TabsContent value="failed" className="space-y-3 pt-3">
         {recovery.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : recovery.isError ? <p role="alert">לא ניתן לטעון טיוטות <Button variant="link" onClick={() => void recovery.refetch()}>ניסיון נוסף</Button></p> : !recovery.data?.length ? <p className="py-10 text-center text-muted-foreground">אין מודעות שנכשלו או טיוטות חסרות.</p> : (() => {
