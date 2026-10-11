@@ -1,4 +1,8 @@
 # Roadmap
+## Developer direct entry and complete Yad2 import
+- [ ] Bypass role/item screens for signed-in developers while roles resolve.
+- [ ] Read main developer URLs and linked project/unit details and images, preserving hierarchy and explicit save.
+- [ ] Verify routing, source parsing, preview/save, and provider availability.
 ## Tutorial sanitation and role isolation
 - [x] Replace internal commission/platform explanations with action-focused sharing, tracking, wallet and profile tutorials.
 - [x] Add fail-closed role navigation, developer route isolation, server-redacted partner reads, restrictive referral/submission/snapshot/split policies, protected license verification and authorized closing-document endpoints.
