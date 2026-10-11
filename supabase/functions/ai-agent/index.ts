@@ -28,6 +28,7 @@ import {
 } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { resolveAgentIdentity, buildMasterAgentPrompt } from "../_shared/masterAgentPrompt.ts";
+import { ritaWorkflowDirective } from "../_shared/ritaWorkflow.ts";
 import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { maskMessages } from "../_shared/pii.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
@@ -1079,13 +1080,20 @@ serve(async (req) => {
     });
     const isInternalDashboard = !lead_id && identity.mode === "internal";
     const wsPersona = await fetchWorkspacePersona(supabase as any, currentOwnerId);
+    // The mode preference only changes wording; verified roles and the server
+    // license check remain the authority for sensitive closing information.
+    let canViewClosing = false;
+    if (!lead_id && identity.userId) {
+      const { data, error } = await supabase.rpc('partner_can_view_closing', { _user_id: identity.userId });
+      canViewClosing = !error && data === true;
+    }
     const masterDirective = buildMasterAgentPrompt(identity.mode, {
       surface: lead_id ? "lead_conversation" : "internal_dashboard",
       roles: identity.roles,
       owner: { name: wsPersona.name, agency: wsPersona.agency },
       personaBrief: wsPersona.brief,
       domain: wsPersona.domain,
-    });
+    }) + (lead_id ? '' : '\n\n' + ritaWorkflowDirective(identity.roles, body?.ui_mode, canViewClosing));
     console.log("agent identity:", identity.mode, "-", identity.reason);
 
     // A property-search turn is deterministic: execute it before asking the

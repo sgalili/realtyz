@@ -155,6 +155,13 @@
       "when": 1791689940486,
       "tag": "0021_harden_partner_consent_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791691420039,
+      "tag": "0022_restore_authenticated_partner_marketplace_access",
+      "breakpoints": true
     }
   ]
 }

@@ -71,24 +71,24 @@ export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?:
       role="radiogroup"
       aria-label="החלפת מצב עבודה"
       data-keep-terms
-      className="inline-flex shrink-0 items-center gap-0.5 rounded-md border border-border bg-muted/60 p-0.5"
+      className="inline-flex shrink-0 items-center overflow-hidden rounded-md border border-border bg-muted/60"
     >
       {options.map((opt) => {
         const active = mode === opt.value;
         return (
           <Button
-            variant="ghost"
+            variant={active ? 'default' : 'ghost'}
             key={opt.value}
             type="button"
             role="radio"
             aria-checked={active}
-            disabled={busy || consent.isLoading || consent.isError}
+            disabled={active || busy || consent.isLoading || consent.isError}
             onClick={() => { if (opt.value !== mode && !busy) activation.mutate(opt.value); }}
             title={opt.label}
             className={cn(
-              'h-8 rounded px-2 text-xs font-semibold transition-colors',
+              'h-8 rounded-none px-1.5 text-xs font-semibold transition-colors disabled:opacity-100',
               active
-                ? 'bg-primary text-primary-foreground shadow-sm'
+                ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-600'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >

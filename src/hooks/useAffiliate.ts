@@ -155,8 +155,10 @@ export function useAffiliateMarketplace() {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['affiliate-marketplace', user?.id],
-    enabled: isAffiliate,
-    staleTime: 60_000,
+    enabled: !!user?.id && isAffiliate,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<MarketplaceListing[]> => {
       const { data, error } = await supabase.rpc('get_affiliate_marketplace_v3');
       if (error) throw error;

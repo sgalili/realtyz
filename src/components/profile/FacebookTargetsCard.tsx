@@ -377,6 +377,8 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
           <div className="flex min-w-0 items-center gap-2">
             {(tab === 'not_joined' ? notJoinedGroups.length > 0 : tab === 'active' && groups.length > 0) && (
               <SelectModeToggle
+                total={tab === 'not_joined' ? notJoinedGroups.length : groups.length}
+                onSelectAll={() => { if (tab === 'not_joined') setJoinPicked(new Set(sortByPopularity(notJoinedGroups).slice(0, MAX_GROUPS).map(g => g.id))); else markAll(true); }}
                 active={deleteMode}
                 count={tab === 'not_joined' ? joinPicked.size : markedIds.size}
                 onToggle={() => { setDeleteMode((v) => !v); setMarkedIds(new Set()); setJoinPicked(new Set()); }}

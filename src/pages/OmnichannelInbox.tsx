@@ -1205,6 +1205,8 @@ const OmnichannelInbox = () => {
                 />
               </div>
               <SelectModeToggle
+                total={filteredVoters?.length ?? 0}
+                onSelectAll={() => setSelectedChats(new Set((filteredVoters ?? []).map((v: any) => v.id)))}
                 active={chatSelectMode}
                 count={selectedChats.size}
                 onToggle={() => { setChatSelectMode((v) => !v); setSelectedChats(new Set()); }}

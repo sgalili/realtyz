@@ -1061,7 +1061,7 @@ export default function Properties() {
         <div data-testid="property-tools-row" className="flex flex-wrap items-center gap-2 mt-[10px]" dir="rtl">
           {/* Side A — sort + total-count dropdown */}
           <div className="flex items-center gap-0">
-            <SelectModeToggle active={multiSelectMode} count={selectedListingIds.size} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
+            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} count={selectedListingIds.size} onSelectAll={() => setSelectedListingIds(new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : [])))} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1660,7 +1660,7 @@ export function ResultTable({
       <Table className="w-full min-w-max text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
-            {selectionMode ? (
+            {selectionMode && results.length > 0 ? (
               <th className="sticky right-0 z-10 w-10 bg-muted/95 px-3 py-2">
                 <Checkbox
                   checked={allSelected}
@@ -1699,7 +1699,7 @@ export function ResultTable({
             return (
               <Fragment key={r.key}>
               <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => selectionMode && r.localId && onToggleSelected ? onToggleSelected(r.localId) : onSelect(r)}>
-                {selectionMode ? (
+                {selectionMode && results.length > 0 ? (
                   <td className="sticky right-0 z-10 bg-background px-3 py-1.5" onClick={(event) => event.stopPropagation()}>
                     {r.localId ? <Checkbox checked={selectedIds?.has(r.localId)} onCheckedChange={() => onToggleSelected?.(r.localId as string)} aria-label="בחירת נכס" /> : null}
                   </td>

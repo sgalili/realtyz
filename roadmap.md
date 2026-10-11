@@ -1,4 +1,10 @@
 # Roadmap
+## Role toggle, partner feed, selection, wallet and Rita
+- [x] Solid blue active disabled role toggle and sidebar Settings label.
+- [x] Restore authenticated EXECUTE grant for shared-property feed; consent, license and distribution checks remain unchanged. Empty-safe global selection menus and search reset/error handling added.
+- [x] Move automatic card setup and admin provider settings into wallet top-up; actual charging remains unavailable and is labeled accordingly.
+- [x] Replace Rita categories with five role-aware prompts and verified-role concise workflow context; agent deployed.
+- [x] Nineteen focused tests passed; signed-in partner feed returned nine shared properties, selection menu, wallet card form and five Rita chips verified. No card saved or charge attempted; actual AI reply and full live role matrix remain unverified.
 ## Sidebar partner onboarding and commissions
 - [x] Sidebar-only switcher beside Help; introductory slides and protected digital consent before partner entry.
 - [x] Account-scoped shared feed and commission icons under public/partner prices; verified closing restrictions.

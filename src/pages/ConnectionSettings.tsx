@@ -16,7 +16,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { useUserRole } from '@/hooks/useUserRole';
-import { ZCreditSettingsCard } from '@/components/billing/ZCreditSettingsCard';
 
 type Status = 'idle' | 'testing' | 'success' | 'error';
 
@@ -307,7 +306,6 @@ const ConnectionSettings = () => {
           </p>
         </header>
 
-        {isSuperAdmin && <ZCreditSettingsCard />}
 
         {/* WhatsApp */}
         <Card>
