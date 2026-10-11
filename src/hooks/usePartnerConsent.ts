@@ -10,9 +10,9 @@ export function usePartnerConsent() {
     staleTime: 30_000,
     queryFn: async () => {
       if (!user) return false;
-      const { data, error } = await supabase.from('profiles').select('partner_terms_accepted_at').eq('id', user.id).single();
+      const { data, error } = await supabase.from('profiles').select('partner_terms_accepted_at').eq('id', user.id).maybeSingle();
       if (error) throw error;
-      return !!data.partner_terms_accepted_at;
+      return !!data?.partner_terms_accepted_at;
     },
   });
 }
