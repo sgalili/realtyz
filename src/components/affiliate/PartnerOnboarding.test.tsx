@@ -13,7 +13,7 @@ function setup() {
   render(<QueryClientProvider client={new QueryClient()}><PartnerOnboarding onComplete={done} /></QueryClientProvider>);
   return done;
 }
-function advance() { for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: 'הבא', exact: true })); }
+function advance() { for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: /^הבא$/ })); }
 describe('partner consent sequence', () => {
   it('requires slides and explicit agreement before entry', async () => {
     mocks.accept.mockResolvedValue(undefined);
