@@ -93,6 +93,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDeleteListings } from "@/hooks/useDeleteListings";
 import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
 import AffiliateAutomationCards from "@/components/affiliate/AffiliateAutomationCards";
+import { PartnerPageIntroduction } from '@/components/affiliate/PartnerProgramIntro';
 
 const AFFILIATE_SCROLL_KEY = "affiliate-network:scroll-y";
 
@@ -1250,5 +1251,5 @@ function BrokerAffiliateNetwork() {
 export default function AffiliateNetwork() {
   const { isAffiliateOnly } = useUserRole();
   const { isPartnerMode } = useAppMode();
-  return isAffiliateOnly || isPartnerMode ? <AffiliatePortal /> : <BrokerAffiliateNetwork />;
+  return <><PartnerPageIntroduction />{isAffiliateOnly || isPartnerMode ? <AffiliatePortal /> : <BrokerAffiliateNetwork />}</>;
 }
