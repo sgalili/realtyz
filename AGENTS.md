@@ -32,3 +32,4 @@
 
 - Affiliate pricing rules: see src/components/affiliate/AGENTS.md.
 - Facebook extension/group rules: see extension/AGENTS.md.
+- Closing splits: compute_closing_split pays 80% to authorized brokers (partner_can_view_closing) via idempotent paid_amount delta; otherwise platform retains 100%. No subscription plans; billing is credits only. Why: legal license model.
