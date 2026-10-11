@@ -11,6 +11,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -654,7 +655,7 @@ export default function AffiliatePortal() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAffiliate, loading: roleLoading } = useUserRole();
-  const { data: marketplace = [], isLoading: marketLoading } = useAffiliateMarketplace();
+  const { data: marketplace = [], isLoading: marketLoading, isError: marketError, refetch: reloadMarketplace } = useAffiliateMarketplace();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
   const { data: referralListings = [], isLoading: refListingsLoading } = useMyReferralListings();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
@@ -771,8 +772,9 @@ export default function AffiliatePortal() {
   }, [marketplace, search, leadFilter, inlinePropertyFilter, effectiveCommissionRange, effectivePriceRange, propertyType, city, neighborhood, rooms, dealType, propertySource]);
 
   const clearFilters = () => {
-    setCommissionRange([0, commissionMax]);
-    setPriceRange([0, priceMax]);
+    setCommissionRange([0, 0]);
+    setPriceRange([0, 0]);
+    setSearch('');
     setPropertyType('all');
     setCity('all');
     setNeighborhood('all');
@@ -963,12 +965,11 @@ export default function AffiliatePortal() {
 
 
         <div className="mt-4 flex max-w-lg items-center gap-3">
-          <Checkbox
-            checked={multiSelectMode}
-            onCheckedChange={(checked) => { setMultiSelectMode(Boolean(checked)); if (!checked) setSelectedIds(new Set()); }}
-            aria-label="בחירה מרובה"
-            title="בחירה מרובה"
-            className="h-5 w-5 shrink-0"
+          <SelectModeToggle
+            total={activeTab === 'marketplace' ? filtered.length : activeTab === 'mine' ? filteredReferrals.length : 0}
+            active={multiSelectMode} count={selectedIds.size}
+            onToggle={() => { setMultiSelectMode(v => !v); setSelectedIds(new Set()); }}
+            onSelectAll={() => setSelectedIds(new Set(activeTab === 'marketplace' ? filtered.map(l => l.listing_id) : filteredReferrals.flatMap(row => row.listing ? [row.listing.listing_id] : [])))}
           />
           {/* Filter button at the start of the field, before the placeholder. */}
           <div className="relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background">
@@ -1030,12 +1031,16 @@ export default function AffiliatePortal() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 w-full" />)}
               </div>
+            ) : marketError ? (
+              <div role="alert" className="space-y-3 py-10 text-center text-muted-foreground">
+                <p>לא ניתן לטעון את הנכסים כרגע.</p>
+                <Button variant="outline" onClick={() => void reloadMarketplace()}>ניסיון נוסף</Button>
+              </div>
             ) : filtered.length === 0 ? (
-              <Card className="border-dashed border-slate-200">
-                <CardContent className="p-10 text-center text-sm text-slate-500">
-                  אין כרגע נכסים פתוחים לשיווק. מתווכים מוסיפים נכסים לרשת באופן שוטף.
-                </CardContent>
-              </Card>
+              <div className="space-y-3 py-10 text-center text-muted-foreground">
+                <p>{marketplace.length > 0 ? 'אין נכסים שתואמים לחיפוש.' : 'אין כרגע נכסים פתוחים לשיווק.'}</p>
+                {(activeFilterCount > 0 || search) && <Button variant="outline" onClick={clearFilters}>ניקוי סינונים</Button>}
+              </div>
             ) : (
               viewMode === 'list' ? (
                 <ResultTable
