@@ -1118,7 +1118,7 @@ export default function AffiliatePortal() {
               </Card>
             ) : (
               filteredSubmissions.map((s) => {
-                const stage = s.status === 'closed' ? 3 : s.status === 'verified' ? 2 : s.status === 'rejected' ? 0 : 1;
+                const stage = s.status === 'closed' ? (level4Unlocked ? 3 : 2) : s.status === 'verified' ? 2 : s.status === 'rejected' ? 0 : 1;
                 return (
                   <Card key={s.id} className="border-slate-200">
                     <CardContent className="space-y-2.5 p-3.5">
@@ -1133,7 +1133,7 @@ export default function AffiliatePortal() {
                           </div>
                         </div>
                         <Badge variant="outline" className="text-[11px]">
-                          {SUBMISSION_STATUS_LABELS[s.status] ?? s.status}
+                          {!level4Unlocked && s.status === 'closed' ? SUBMISSION_STATUS_LABELS.verified : SUBMISSION_STATUS_LABELS[s.status] ?? s.status}
                         </Badge>
                         <Badge variant="outline" className="text-[11px]">
                           {SETTLEMENT_LABELS[s.settlement_status] ?? s.settlement_status}

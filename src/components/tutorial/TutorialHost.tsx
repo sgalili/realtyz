@@ -7,6 +7,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { registerTutorialOpener, tutorialForPath, tutorialStore, useTutorialState, type Tutorial } from '@/lib/tutorials';
 
+/** Renders **bold** keywords as highlighted text. */
+function Rich({ text }: { text: string }) {
+  return <>{text.split(/(\*\*[^*]+\*\*)/g).map((p, k) => p.startsWith('**') ? <strong key={k} className="font-extrabold text-primary">{p.slice(2, -2)}</strong> : p)}</>;
+}
+
 /** Single dialog for all tutorials; auto-opens once per page on first visit. */
 export function TutorialHost() {
   const { user } = useAuth();
@@ -35,17 +40,17 @@ export function TutorialHost() {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) gotIt(); }}>
-      <DialogContent dir="rtl" className="max-w-sm overflow-hidden p-0">
+      <DialogContent dir="rtl" className="max-w-md overflow-hidden p-0">
         <div className="bg-gradient-to-b from-primary/15 to-transparent px-6 pb-2 pt-8 text-center">
-          <div className="mb-3 text-5xl" aria-hidden>{slide.emoji}</div>
-          <p className="text-xs font-semibold text-primary">{tut.title}</p>
-          <DialogTitle className="mt-1 text-xl font-bold">{slide.title}</DialogTitle>
+          <div className="mb-3 text-6xl" aria-hidden>{slide.emoji}</div>
+          <p className="text-sm font-bold text-primary">{tut.title}</p>
+          <DialogTitle className="mt-1 text-2xl font-extrabold">{slide.title}</DialogTitle>
         </div>
         <div className="space-y-3 px-6 pb-2 text-right">
-          <DialogDescription className="text-base leading-relaxed text-foreground">{slide.body}</DialogDescription>
+          <DialogDescription className="text-lg leading-relaxed text-foreground"><Rich text={slide.body} /></DialogDescription>
           {slide.bullets && (
             <ul className="space-y-1.5">
-              {slide.bullets.map((b) => <li key={b} className="rounded-md bg-muted px-3 py-2 text-sm">{b}</li>)}
+              {slide.bullets.map((b) => <li key={b} className="rounded-lg bg-muted px-3 py-2.5 text-base leading-snug"><Rich text={b} /></li>)}
             </ul>
           )}
         </div>
@@ -59,8 +64,8 @@ export function TutorialHost() {
           </div>
         )}
         <div className="space-y-2 px-6 pb-5 pt-2">
-          {last ? <Button className="w-full" onClick={gotIt}>הבנתי</Button> : <Button className="w-full" onClick={() => setI(i + 1)}>הבא</Button>}
-          <button type="button" onClick={never} className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline">אל תציג לי את זה יותר</button>
+          {last ? <Button className="h-11 w-full text-base font-bold" onClick={gotIt}>הבנתי</Button> : <Button className="h-11 w-full text-base font-bold" onClick={() => setI(i + 1)}>הבא</Button>}
+          <button type="button" onClick={never} className="w-full text-center text-sm text-muted-foreground underline-offset-2 hover:underline">אל תציג לי את זה יותר</button>
         </div>
       </DialogContent>
     </Dialog>
