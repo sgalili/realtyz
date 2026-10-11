@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { CompleteProfileBanner } from '@/components/profile/CompleteProfileBanner';
 import { TutorialSettingsCard } from '@/components/tutorial/TutorialSettingsCard';
-import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BillingTab from '@/components/profile/BillingTab';
 import KnowledgeBase from '@/pages/KnowledgeBase';
@@ -727,10 +726,6 @@ export default function Profile() {
       </Dialog>
 
       <div className="mb-3">
-        <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-4">
-          <span className="text-lg font-bold">מצב עבודה</span>
-          <AppModeSwitcher />
-        </div>
         <CompleteProfileBanner force={params.get('welcome') === 'developer'} onEdit={() => setTab('personal')} />
         <TutorialSettingsCard />
       </div>

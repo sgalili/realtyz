@@ -134,6 +134,27 @@
       "when": 1791682765732,
       "tag": "0018_developer_project_source_details",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791689673142,
+      "tag": "0019_partner_consent_and_licensed_closing",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791689773583,
+      "tag": "0020_partner_feed_consent_and_reward_redaction",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791689940486,
+      "tag": "0021_harden_partner_consent_audit",
+      "breakpoints": true
     }
   ]
 }

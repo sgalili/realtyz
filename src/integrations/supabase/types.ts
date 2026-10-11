@@ -5838,6 +5838,8 @@ export type Database = {
           is_suspended: boolean
           is_unlimited: boolean
           last_sign_in_at: string | null
+          partner_terms_accepted_at: string | null
+          partner_terms_version: string | null
           phone: string | null
           plan_status: string
           referral_code: string | null
@@ -5870,6 +5872,8 @@ export type Database = {
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
+          partner_terms_accepted_at?: string | null
+          partner_terms_version?: string | null
           phone?: string | null
           plan_status?: string
           referral_code?: string | null
@@ -5902,6 +5906,8 @@ export type Database = {
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
+          partner_terms_accepted_at?: string | null
+          partner_terms_version?: string | null
           phone?: string | null
           plan_status?: string
           referral_code?: string | null

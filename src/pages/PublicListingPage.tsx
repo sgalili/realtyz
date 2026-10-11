@@ -34,6 +34,7 @@ import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { useAuth } from '@/hooks/useAuth';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
+import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 
 export type PublicListing = {
   id: string | null;
@@ -412,6 +413,7 @@ function PublicListingContent() {
           </div>
           <div className="px-4 py-3">
             <PublicAdHeading title={data.title} price={formatPrice(data.price, data.dealType)} dealType={data.dealType} />
+            {data.id && <PropertyCommissionIcons listingId={data.id} />}
           </div>
           <BrokerAttribution brokerName={data.brokerName} officeName={data.officeName} licenceNumber={data.brokerLicenceNumber} logoUrl={data.agencyLogoUrl} />
           <div data-property-image-toolbar className="flex min-h-10 flex-wrap items-center gap-1 px-3">

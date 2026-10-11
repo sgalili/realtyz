@@ -358,8 +358,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4" />הדרכה
                 </Button>
 
-              </div>
-              <div className="mt-3 flex justify-center" onClick={(e) => e.stopPropagation()}>
                 <AppModeSwitcher keepSidebarOpen />
               </div>
 

@@ -1,4 +1,9 @@
 # Roadmap
+## Sidebar partner onboarding and commissions
+- [x] Sidebar-only switcher beside Help; introductory slides and protected digital consent before partner entry.
+- [x] Account-scoped shared feed and commission icons under public/partner prices; verified closing restrictions.
+- [x] Signed-in sidebar alignment, introduction → consent and cancel verified; 17 focused tests passed.
+- [ ] Live consent acceptance/readback and populated multi-role feed verification (no consent submitted on user's behalf).
 ## Universal partner mode
 - [x] Extend switcher to developer/broker/private accounts in sidebar, header and profile; retain core roles and return destination, check activation errors and update role cache.
 - [x] Identity and account-scoped preference tests passed; signed-in developer verified header/sidebar/profile switches, partner navigation and refresh persistence without runtime errors. First-time activation and other live account types remain unverified.

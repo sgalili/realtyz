@@ -152,14 +152,15 @@ export function affiliateTrackingLink(slug: string | null, listingId: string, co
 /** Broker-approved properties open for affiliate marketing. */
 export function useAffiliateMarketplace() {
   const { isAffiliate } = useUserRole();
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['affiliate-marketplace'],
+    queryKey: ['affiliate-marketplace', user?.id],
     enabled: isAffiliate,
     staleTime: 60_000,
     queryFn: async (): Promise<MarketplaceListing[]> => {
-      const { data, error } = await supabase.functions.invoke('affiliate-map-properties');
+      const { data, error } = await supabase.rpc('get_affiliate_marketplace_v3');
       if (error) throw error;
-      return (data ?? []) as MarketplaceListing[];
+      return (data ?? []) as unknown as MarketplaceListing[];
     },
   });
 }

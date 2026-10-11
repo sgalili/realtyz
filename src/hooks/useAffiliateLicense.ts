@@ -99,8 +99,9 @@ export function useAffiliateLicense() {
 
   const acceptTerms = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc('accept_affiliate_terms', { _version: AFFILIATE_TERMS_VERSION });
+      const { data, error } = await supabase.rpc('accept_affiliate_terms', { _version: AFFILIATE_TERMS_VERSION });
       if (error) throw error;
+      if (!(data as { ok?: boolean } | null)?.ok) throw new Error('terms_acceptance_failed');
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
