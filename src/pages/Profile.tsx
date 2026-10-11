@@ -3,11 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { CompleteProfileBanner } from '@/components/profile/CompleteProfileBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import BillingTab from '@/components/profile/BillingTab';
 import KnowledgeBase from '@/pages/KnowledgeBase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { LaunchPromoBanner } from '@/components/billing/LaunchPromoBanner';
-import { ReferralProgramCard } from '@/components/referrals/ReferralProgramCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -651,7 +648,7 @@ export default function Profile() {
   const { user } = useAuth();
   // Managers are only relevant for agencies with multiple brokers.
   const isAgency = (activeWorkspace?.account_type ?? '').toLowerCase() === 'agency';
-  const tab = params.get('tab') ?? 'personal';
+  const tab = params.get('tab') === 'billing' ? 'personal' : params.get('tab') ?? 'personal';
   const setTab = (v: string) => {
     const next = new URLSearchParams(params);
     next.set('tab', v);
@@ -740,12 +737,11 @@ export default function Profile() {
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
-        <TabsList className={`grid w-full ${isAgency ? 'grid-cols-6' : 'grid-cols-5'} mb-[15px]`}>
+        <TabsList className={`grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px]`}>
           <TabsTrigger value="personal">פרופיל</TabsTrigger>
           <TabsTrigger value="workspace">משרד</TabsTrigger>
           <TabsTrigger value="aibrain">מח AI</TabsTrigger>
           <TabsTrigger value="connections">חיבורים</TabsTrigger>
-          <TabsTrigger value="billing">חבילה</TabsTrigger>
           {isAgency && <TabsTrigger value="managers">מנהלים</TabsTrigger>}
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
@@ -764,11 +760,6 @@ export default function Profile() {
         </TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4" dir="rtl">
           <ConnectionsTab key={activeWorkspaceId ?? user?.id ?? 'connections'} />
-        </TabsContent>
-        <TabsContent value="billing" className="mt-[20px] space-y-4" dir="rtl">
-          <LaunchPromoBanner key={`promo-${activeWorkspaceId ?? user?.id ?? 'billing'}`} />
-          <BillingTab key={`billing-${activeWorkspaceId ?? user?.id ?? 'billing'}`} />
-          <ReferralProgramCard key={`referrals-${activeWorkspaceId ?? user?.id ?? 'billing'}`} />
         </TabsContent>
 
       </Tabs>

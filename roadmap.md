@@ -1,4 +1,7 @@
 # Roadmap
+## Profile tab and wallet price list
+- [x] Remove profile package tab, add wallet-hero read-only live credit usage price list, and remove unsolicited Google connection toast.
+- [x] Automatic build passed; signed-in wallet icon opened six live read-only credit prices and screenshot confirmed labels. Google reminder absent; profile source removal checked, but subsequent browser runs did not render profile tabs, so profile visual verification remains unavailable.
 ## Profile image cropping
 - [x] Add adjustable square and landscape crop selection before office-logo upload and a persistent camera icon inside the profile avatar.
 - [x] Two crop tests and automatic build passed; signed-in avatar icon, square/landscape selection adjustment, generated PNG dimensions and cancellation verified without runtime errors. Existing saved images were not overwritten, so real upload/persisted readback remains unverified.

@@ -36,6 +36,7 @@ import { BrightDataHeroPill } from "@/components/BrightDataHeroPill";
 import { AiResponseToggle } from "@/components/AiResponseToggle";
 // CreditBalancePill moved to /billing (Packages & Payments page).
 import { Button } from "@/components/ui/button";
+import { UsagePriceListButton } from '@/components/billing/UsagePriceListButton';
 import { cn } from "@/lib/utils";
 import { readReturn, type ReturnState } from "@/lib/returnNav";
 import { useQuery } from "@tanstack/react-query";
@@ -445,6 +446,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
+          {location.pathname.startsWith('/wallet') && <UsagePriceListButton />}
           {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
           {isPublicBoard && !user && (
             <Button

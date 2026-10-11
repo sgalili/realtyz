@@ -1,4 +1,5 @@
 # Architecture rules
+- Wallet usage pricing is read-only and loaded from action_pricing on opening its hero dialog; reuse the admin query key without exposing editing controls. Why: display current configured costs consistently.
 - Profile and office image uploads use the shared fixed-aspect crop dialog before storage; crop percentages map to original pixels and pending selections clear on workspace changes. Why: consistent image framing without premature uploads or tenant drift.
 - Tours use authorized menus and route-stable state; never auto-mutate.
 - Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts.

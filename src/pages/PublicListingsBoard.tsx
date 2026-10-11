@@ -207,17 +207,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
 
   useEffect(() => { void load(); }, [deal]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    const key = `public-board-google-prompt:${user.id}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, '1');
-    void supabase.from('social_connections').select('id').in('platform', ['gmail', 'google_calendar']).eq('is_connected', true).limit(1).then(({ data }) => {
-      if (data?.length) return;
-      toast('חברו Google לקבלת תיאומים ועדכונים אוטומטיים', { action: { label: 'לחיבור', onClick: () => { window.location.assign('/profile?tab=connections'); } } });
-    });
-  }, [user?.id]);
-
   const openGate = (card: PublicCard, intent: GateIntent) => { setGate({ card, intent }); setToken(null); setUnlocked(null); setChat([]); };
 
   const submitGate = async (verification?: { id: string; answers: Record<string, string> }) => {
