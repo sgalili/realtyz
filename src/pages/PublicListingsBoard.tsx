@@ -57,6 +57,7 @@ function PhotoCarousel({ photos, alt, card, onFavorite, isMine = false, isFav = 
       </div>
       <div className="relative h-48 overflow-hidden bg-muted [touch-action:pan-y]" onTouchStart={(event) => { const touch = event.touches[0]; if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY }; swiped.current = false; }} onTouchEnd={(event) => { const start = touchStart.current; const touch = event.changedTouches[0]; touchStart.current = null; if (!start || !touch || photos.length < 2) return; const dx = touch.clientX - start.x; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(touch.clientY - start.y)) { swiped.current = true; move(dx > 0 ? 1 : -1); } }} onClickCapture={(event) => { if (swiped.current) { event.preventDefault(); event.stopPropagation(); swiped.current = false; } }}>
         {photos.length ? <img src={photos[index]} alt={alt} loading="lazy" draggable={false} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">אין תמונות</div>}
+        {isMine && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-white/80 px-1.5 py-0.5 text-xs font-semibold text-success" onClick={(event) => event.stopPropagation()}><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />שלי</span>}
       </div>
     </div>
   );
