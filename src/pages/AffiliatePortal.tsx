@@ -49,7 +49,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import AffiliateLicenseCard from '@/components/affiliate/AffiliateLicenseCard';
 import AffiliateCallAttemptsCard from '@/components/affiliate/AffiliateCallAttemptsCard';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';

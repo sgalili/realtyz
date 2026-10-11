@@ -198,6 +198,7 @@
 - [x] Eight focused tests passed; authenticated counter → exact explanation → leads page verified, drawer closed, no runtime errors and automatic build OK. Legal wording and saved status values retained.
 
 ## Partner lead pricing dialog
+- [ ] Advertiser prices open settings, partner prices open read-only tier details; all price badges use two columns.
  - [x] Affiliate-only leftover editor plus server RPC ownership confirmed; shared/public grips visible with order-only reset. Table browser check and focused tests; partner-mode browser check unavailable in current session.
 - [x] Click commission amounts for publisher editing or partner-only information (types, prices, daily cap, screening questions); put leftover pricing inside the dialog and removal at row end.
 - [x] Five focused tests passed; authenticated publisher editor and partner information verified on real listings (daily cap 3, questions and prices). Own marketing dialog contains leftover discount; removal is the last cell. Automatic build OK. No live prices, discounts or marketing rows were changed.
