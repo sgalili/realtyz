@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Send } from 'lucide-react';
 import { useMySubmissions, SUBMISSION_STATUS_LABELS, SETTLEMENT_LABELS } from '@/hooks/useAffiliate';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
@@ -12,6 +13,7 @@ export default function SentPartnerLeads() {
   const { data: submissions = [], isLoading, isError, refetch } = useMySubmissions();
   const { level4Unlocked } = useAffiliateLicense();
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
   const query = search.trim().toLowerCase();
   const filtered = submissions.filter((row) =>
     [row.lead_name, row.lead_phone, row.listing?.property_title, row.listing?.address, row.listing?.city]
@@ -26,7 +28,11 @@ export default function SentPartnerLeads() {
         <Button variant="outline" onClick={() => refetch()}>נסה שוב</Button>
       </div> : filtered.length === 0 ?
       <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-        <Send className="h-6 w-6" /><p>אין לידים שנשלחו להצגה.</p>
+        <Send className="h-6 w-6" />{submissions.length === 0 ? <>
+          <p className="font-semibold text-foreground">לא מכרת לידים עדיין</p>
+          <p className="max-w-xs text-center text-sm">בוחרים נכס מרשת השותפים, משתפים את הקישור האישי שלך, וכל פנייה שמגיעה דרכו נרשמת כאן ומזכה אותך בתגמול.</p>
+          <Button size="sm" onClick={() => navigate('/affiliate-network')}>בחירת נכס והתחלת מכירה</Button>
+        </> : <p>לא נמצאו לידים בחיפוש.</p>}
       </div> : <div className="space-y-2">{filtered.map((row) => {
         const status = !level4Unlocked && row.status === 'closed' ? 'verified' : row.status;
         const reward = Number(row.partner_net_amount ?? 0);

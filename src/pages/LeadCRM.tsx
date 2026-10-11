@@ -67,6 +67,8 @@ import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDial
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import OwnerPropertyGrid from '@/components/leads/OwnerPropertyGrid';
 import LeadDirectionTabs from '@/components/leads/LeadDirectionTabs';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 
 /**
  * isOwnerLead — Sellers and Landlords are property OWNERS, not seekers.
@@ -548,7 +550,28 @@ const LeadCRM = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
   const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
-  const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker' | 'affiliate'>('all');
+  type LeadKind = 'buyer' | 'seller' | 'renter' | 'landlord' | 'broker' | 'affiliate';
+  const [leadKinds, setLeadKinds] = useState<LeadKind[]>([]);
+  const leadKindFilter = leadKinds.length ? [...leadKinds].sort().join(',') : 'all';
+  const roleInfo = useUserRole();
+  const termsAcceptedAt = useAffiliateLicense().license.termsAcceptedAt;
+  const isDeveloperView = roleInfo.isDeveloper && !roleInfo.isTeamMember;
+  const isOwnerOnlyView = roleInfo.isPropertyOwnerOnly;
+  // Pills shown depend on the signed-in account type; partners appear only after accepted affiliate terms.
+  const leadKindOptions = useMemo(() => {
+    const all: { v: LeadKind; label: string }[] = [
+      { v: 'buyer', label: 'קונים' }, { v: 'seller', label: 'מוכרים' }, { v: 'renter', label: 'שוכרים' },
+      { v: 'landlord', label: 'משכירים' }, { v: 'broker', label: 'מתווכים' }, { v: 'affiliate', label: 'שותפים' },
+    ];
+    const allowed: LeadKind[] = isOwnerOnlyView ? ['buyer', 'renter']
+      : isDeveloperView ? ['buyer', 'broker']
+      : ['buyer', 'seller', 'renter', 'landlord', 'broker'];
+    if (roleInfo.isAffiliate && termsAcceptedAt) allowed.push('affiliate');
+    return all.filter((o) => allowed.includes(o.v));
+  }, [isOwnerOnlyView, isDeveloperView, roleInfo.isAffiliate, termsAcceptedAt]);
+  useEffect(() => {
+    setLeadKinds((cur) => cur.filter((k) => leadKindOptions.some((o) => o.v === k)));
+  }, [leadKindOptions]);
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [compactMode, setCompactMode] = useState<boolean>(() => {
@@ -753,7 +776,7 @@ const LeadCRM = () => {
       if (statusFilter === 'untreated') query = query.or('lead_stage.is.null,lead_stage.in.(new,new_lead)');
       else if (statusFilter !== 'all') query = query.eq('status', statusFilter);
       if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
-      if (leadKindFilter !== 'all') query = query.eq('preferences->>lead_kind', leadKindFilter);
+      if (leadKinds.length) query = query.in('preferences->>lead_kind', leadKinds);
       if (sentimentFilter !== 'all') query = query.eq('sentiment', sentimentFilter);
       if (channelFilter !== 'all') query = query.eq('preferences->>arrival_channel', channelFilter);
 
@@ -844,7 +867,7 @@ const LeadCRM = () => {
   // Owner-only Homely columns. Only injected when the agent has filtered the
   // table to sellers or landlords (property owners). Each column is rendered
   // from the linked `listings` row referenced by `leads.linked_listing_id`.
-  const isOwnerView = leadKindFilter === 'seller' || leadKindFilter === 'landlord';
+  const isOwnerView = leadKinds.length > 0 && leadKinds.every((k) => k === 'seller' || k === 'landlord');
   // Owner view: keep ONLY contact-profile related columns. Property structural
   // columns (rooms/price/floor/elevator/city/street/area/house_no) live in the
   // Properties table — never duplicate them in the contacts dashboard.
@@ -1805,19 +1828,40 @@ const LeadCRM = () => {
       <Card className="border-border/50 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="חיפוש" className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-                <button
-                  type="button"
-                  onClick={() => setFiltersOpen((open) => !open)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  aria-label="סינון וייצוא"
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                </button>
-              </div>
+            {/* Lead kind pills (multi-select, relevant to the signed-in account type) */}
+            <div className="flex flex-wrap gap-1.5">
+              {leadKindOptions.map((t) => {
+                const on = leadKinds.includes(t.v);
+                return (
+                  <button
+                    key={t.v}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setLeadKinds((cur) => on ? cur.filter((k) => k !== t.v) : [...cur, t.v])}
+                    className={`px-3 h-7 rounded-full text-xs font-medium border transition-colors ${
+                      on
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-muted-foreground border-border hover:bg-primary hover:text-primary-foreground hover:border-primary'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="חיפוש" className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((open) => !open)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="סינון וייצוא"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex items-center justify-between gap-2 sm:w-72">
               <SelectModeToggle
                 total={filtered?.length ?? 0}
                 onSelectAll={() => setSelectedIds(new Set((filtered ?? []).map(v => v.id)))}
@@ -1825,39 +1869,13 @@ const LeadCRM = () => {
                 count={selectedIds.size}
                 onToggle={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
               />
-            </div>
-            {/* Lead kind tabs */}
-            <div className="flex flex-wrap gap-1.5 -mt-1">
-              {([
-                { v: 'all', label: 'כולם' },
-                { v: 'buyer', label: 'קונים' },
-                { v: 'seller', label: 'מוכרים' },
-                { v: 'renter', label: 'שוכרים' },
-                { v: 'landlord', label: 'משכירים' },
-                { v: 'broker', label: 'מתווכים' },
-                { v: 'affiliate', label: 'שותפים' },
-              ] as const).map((t) => (
-                <button
-                  key={t.v}
-                  type="button"
-                  onClick={() => setLeadKindFilter(t.v as typeof leadKindFilter)}
-                  className={`px-3 h-7 rounded-full text-xs font-medium border transition-colors ${
-                    leadKindFilter === t.v
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border hover:bg-primary hover:text-primary-foreground hover:border-primary'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-              {/* Total counter sits at the very end of the pills row */}
               {(() => {
-                const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKindFilter !== 'all';
+                const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKinds.length > 0;
                 const accountTotal = isDemoMode ? leads.length : realTotalCount;
                 const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
                 if (accountTotal === 0 && selectedIds.size === 0) return null;
                 return (
-                  <span className="self-center ms-1 text-[15px] leading-none text-muted-foreground tabular-nums whitespace-nowrap">
+                  <span className="text-[15px] leading-none text-muted-foreground tabular-nums whitespace-nowrap">
                     {selectedIds.size > 0
                       ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} רשומות`
                       : hasFilter
@@ -1867,7 +1885,6 @@ const LeadCRM = () => {
                 );
               })()}
             </div>
-
           </div>
           {filtersOpen && <div className="flex flex-wrap gap-2 pt-2 animate-fade-in">
             <Select value={interestFilter} onValueChange={setInterestFilter}>
@@ -1892,7 +1909,7 @@ const LeadCRM = () => {
                 {uniqueStatuses.map((s) => <SelectItem key={s} value={s!}>{hebrewLabel(statusHebrew, s) || s}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={profileFilter} onValueChange={setProfileFilter}>
+            {!isOwnerOnlyView && <Select value={profileFilter} onValueChange={setProfileFilter}>
               <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
@@ -1901,15 +1918,15 @@ const LeadCRM = () => {
                 <SelectItem value="במשא ומתן">במשא ומתן</SelectItem>
                 <SelectItem value="נסגר">נסגר</SelectItem>
               </SelectContent>
-            </Select>
-            <Select value={dealTypeFilter} onValueChange={setDealTypeFilter}>
+            </Select>}
+            {!isDeveloperView && <Select value={dealTypeFilter} onValueChange={setDealTypeFilter}>
               <SelectTrigger className="w-[150px] h-8 text-xs"><Home className="h-3 w-3 ml-1" /><SelectValue placeholder="סוג עסקה" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל סוגי העסקה</SelectItem>
                 <SelectItem value="sale">קנייה / מכירה</SelectItem>
                 <SelectItem value="rent">שכירות / השכרה</SelectItem>
               </SelectContent>
-            </Select>
+            </Select>}
             <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
               <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder="יחס הלקוח" /></SelectTrigger>
               <SelectContent>
@@ -1919,13 +1936,13 @@ const LeadCRM = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={channelFilter} onValueChange={setChannelFilter}>
+            {!isOwnerOnlyView && <Select value={channelFilter} onValueChange={setChannelFilter}>
               <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="ערוץ הגעה" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל ערוצי ההגעה</SelectItem>
                 {(filterOptions?.channels ?? []).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
-            </Select>
+            </Select>}
           </div>}
         </CardHeader>
         {selectMode && (filtered?.length ?? 0) > 0 && (
@@ -2019,11 +2036,14 @@ const LeadCRM = () => {
                           </div>
                           {accountIsEmpty ? (
                             <>
-                              <p className="text-base font-semibold text-foreground mb-1">אין רשומות במאגר</p>
-                              <p className="text-sm text-muted-foreground mb-3">העלה רשימה כדי להתחיל</p>
-                              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
-                                <Upload className="h-4 w-4" /> ייבוא לידים
-                              </Button>
+                              <p className="text-base font-semibold text-foreground mb-1">לא קיבלת לידים עדיין</p>
+                              <p className="text-sm text-muted-foreground mb-3 max-w-xs">מפרסמים מודעה, מגדירים מחיר ללידים, ושותפים ומחפשי נכסים שולחים אליך פניות ישירות לכאן.</p>
+                              <div className="flex flex-wrap justify-center gap-2">
+                                <Button size="sm" onClick={() => navigate('/my-ads')}>פרסום מודעה וקבלת לידים</Button>
+                                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
+                                  <Upload className="h-4 w-4" /> ייבוא לידים
+                                </Button>
+                              </div>
                             </>
                           ) : (
                             <>
