@@ -232,6 +232,13 @@
       "when": 1791705414364,
       "tag": "0032_grant_closing_pricing_to_brokers_exec",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791706846736,
+      "tag": "0033_closing_split_wallet_payout",
+      "breakpoints": true
     }
   ]
 }
