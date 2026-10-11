@@ -64,7 +64,7 @@ Deno.serve(async req => {
         }
       } catch (e) { console.error('project page failed', url, e instanceof Error ? e.message : e); failed.push(url); failReasons[url] = e instanceof Error ? e.message : String(e); }
     }
-    return json({ ok: true, source_url: pageUrl.href, ...result, completeness: { complete: failed.length === 0 && result.projects.length > 0, pages_read: visited.size - failed.length, failed_urls: failed }, warnings: failed.length ? ['חלק מעמודי הפרויקטים לא נקראו. הפרטים הזמינים נשמרו בתצוגה המקדימה; אפשר לנסות שוב.'] : result.projects.length === 0 ? ['לא נמצאו פרויקטים שניתן לקרוא בעמוד היזם.'] : [] });
+    return json({ ok: true, source_url: pageUrl.href, ...result, completeness: { complete: failed.length === 0 && result.projects.length > 0, pages_read: visited.size - failed.length, failed_urls: failed, fail_reasons: failReasons }, warnings: failed.length ? ['חלק מעמודי הפרויקטים לא נקראו. הפרטים הזמינים נשמרו בתצוגה המקדימה; אפשר לנסות שוב.'] : result.projects.length === 0 ? ['לא נמצאו פרויקטים שניתן לקרוא בעמוד היזם.'] : [] });
   } catch (error) {
     console.error('Developer import failed', { error: error instanceof Error ? error.message : 'unknown', source_url: pageUrl.href });
     return json({ error: 'fetch_failed', message: 'לא ניתן לקרוא את עמוד היזם ביד2 כרגע. נסו שוב או הוסיפו פרויקטים ידנית.' }, 502);
