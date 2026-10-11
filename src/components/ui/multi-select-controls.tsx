@@ -1,5 +1,7 @@
 import { Check, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 /**
  * Unified multi-select controls (same pattern as the publishing-groups dialog):
@@ -10,14 +12,19 @@ export const SelectModeToggle = ({
   active,
   onToggle,
   count = 0,
+  total,
+  onSelectAll,
   className,
-}: { active: boolean; onToggle: () => void; count?: number; className?: string }) => (
-  <button
+}: { active: boolean; onToggle: () => void; count?: number; total?: number; onSelectAll?: () => void; className?: string }) => {
+  if (total === 0) return null;
+  const trigger = <Button
+    variant="ghost"
+    size="icon"
     type="button"
     aria-label="בחירה מרובה"
     title="בחירה מרובה"
     aria-pressed={active}
-    onClick={onToggle}
+    onClick={onSelectAll ? undefined : onToggle}
     className={cn(
       'relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition',
       active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted',
@@ -30,8 +37,16 @@ export const SelectModeToggle = ({
         {count}
       </span>
     )}
-  </button>
-);
+  </Button>;
+  if (!onSelectAll) return trigger;
+  return <DropdownMenu><DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+    <DropdownMenuContent align="end" dir="rtl">
+      <DropdownMenuItem onSelect={() => { if (!active) onToggle(); onSelectAll(); }}>בחר הכל</DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => { if (!active) onToggle(); }}>בחר פריטים</DropdownMenuItem>
+      {active && <DropdownMenuItem onSelect={onToggle}>סיום בחירה</DropdownMenuItem>}
+    </DropdownMenuContent>
+  </DropdownMenu>;
+};
 
 export const SelectBox = ({
   checked,
@@ -66,6 +81,7 @@ export const SelectAllRow = ({
   className,
 }: { total: number; selected: number; onToggle: () => void; children?: React.ReactNode; className?: string }) => {
   const all = total > 0 && selected === total;
+  if (total === 0) return null;
   return (
     <div className={cn('flex flex-wrap items-center gap-2 bg-muted/40 px-3 py-2 border-b border-border', className)} dir="rtl">
       <SelectBox checked={all} indeterminate={selected > 0 && !all} onChange={onToggle} label={all ? 'בטל בחירה' : 'בחר הכל'} />

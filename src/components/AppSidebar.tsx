@@ -332,7 +332,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 {/* Settings shortcut: opens /profile and closes the sidebar.
                     Hidden in Rita's marketing workspace. */}
                 {(
-                  <button
+                  <Button
+                    variant="outline"
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -341,10 +342,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     }}
                     title="הגדרות"
                     aria-label="הגדרות"
-                    className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 px-2 py-1.5 text-slate-600 transition-colors hover:bg-slate-50"
+                    className="h-8 shrink-0 gap-1 px-1.5 text-xs font-semibold"
                   >
                     <Settings className="h-4 w-4" />
-                  </button>
+                    הגדרות
+                  </Button>
                 )}
 
                 <Button variant="outline" type="button" disabled={roleLoading || roleError}
