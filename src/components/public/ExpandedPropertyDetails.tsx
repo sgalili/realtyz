@@ -191,7 +191,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
             </Button>
           </div>
         )}
-        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} exclusive={a.isAssetExclusive === true} />
+        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} />
         {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">

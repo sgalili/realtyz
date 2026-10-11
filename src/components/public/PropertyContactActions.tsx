@@ -14,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cleanFormFields, type LeadContactOptions } from '@/lib/leadTiers';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
-import PropertyReferralButton from './PropertyReferralButton';
 import { personalPropertyLink, propertyInquiryRef } from '@/lib/propertyReferral';
 
 export type ContactOptions = LeadContactOptions;
@@ -190,7 +189,6 @@ export default function PropertyContactActions({
             <Phone className="h-4 w-4" />חייגו אליי
           </Button>
         )}
-        {showShare && <PropertyReferralButton listingId={listingId} />}
         {showShare && !user && (
           <Button variant="outline" size={compact ? 'icon' : 'default'} className={shareButtonClassName || (compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1')} aria-label="שיתוף נכס" title="שיתוף נכס" onClick={() => setJoinOpen(true)}>
             <Share2 className="h-4 w-4" />{compact ? null : 'שיתוף'}
