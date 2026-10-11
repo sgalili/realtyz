@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import PropertyReferralButton from '@/components/public/PropertyReferralButton';
-import { RewardDialog } from '@/pages/AffiliateNetwork';
+import { RewardDialog } from '@/components/affiliate/RewardDialog';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { useYad2AdStatus } from '@/hooks/useYad2AdStatus';

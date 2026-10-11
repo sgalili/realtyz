@@ -1297,7 +1297,6 @@ function ResultCard({
   onToggleSelected,
   onDelete,
   quickPromotion,
-  endActions,
 }: {
   result: UnifiedResult;
   importing: boolean;
