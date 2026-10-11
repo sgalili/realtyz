@@ -523,7 +523,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                     {launchedCount} הודעות נשלחו לתור · ניתן לעקוב במסך ״פעילות חיה״
                   </p>
                   <a
-                    href="/upgrade"
+                    href="/wallet"
                     className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-gradient-to-l from-amber-500/10 to-amber-500/5 px-4 py-2.5 text-sm font-semibold text-amber-600 hover:from-amber-500/15 hover:to-amber-500/10 transition-colors"
                   >
                     <Sparkles className="h-4 w-4" />

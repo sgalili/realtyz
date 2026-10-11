@@ -3977,10 +3977,13 @@ export type Database = {
           commission_amount: number
           computed_at: string
           lead_id: string | null
+          paid_amount: number
+          paid_at: string | null
           partner_amount: number
           partner_is_licensed: boolean
           partner_pct: number
           platform_amount: number
+          retained_under: string | null
           submission_id: string
           workspace_owner_id: string
         }
@@ -3989,10 +3992,13 @@ export type Database = {
           commission_amount?: number
           computed_at?: string
           lead_id?: string | null
+          paid_amount?: number
+          paid_at?: string | null
           partner_amount?: number
           partner_is_licensed: boolean
           partner_pct: number
           platform_amount?: number
+          retained_under?: string | null
           submission_id: string
           workspace_owner_id: string
         }
@@ -4001,10 +4007,13 @@ export type Database = {
           commission_amount?: number
           computed_at?: string
           lead_id?: string | null
+          paid_amount?: number
+          paid_at?: string | null
           partner_amount?: number
           partner_is_licensed?: boolean
           partner_pct?: number
           platform_amount?: number
+          retained_under?: string | null
           submission_id?: string
           workspace_owner_id?: string
         }

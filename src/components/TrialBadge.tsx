@@ -36,7 +36,7 @@ export function TrialBadge() {
         size="sm"
         className="h-7 rounded-full bg-primary-foreground px-3 text-xs font-semibold text-primary hover:bg-primary-foreground/90"
       >
-        <Link to="/upgrade" aria-label="שדרג עכשיו">
+        <Link to="/wallet" aria-label="שדרג עכשיו">
           <Sparkles className="me-1 h-3.5 w-3.5" />
           שדרג עכשיו
         </Link>

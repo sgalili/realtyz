@@ -64,7 +64,6 @@ const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const SocialConnect = lazy(() => import("./pages/SocialConnect"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const Upgrade = lazy(() => import("./pages/Upgrade"));
 const DealRoom = lazy(() => import("./pages/DealRoom"));
 const PerformanceInsights = lazy(() => import("./pages/PerformanceInsights"));
 const BusinessPerformance = lazy(() => import("./pages/BusinessPerformance"));
@@ -90,7 +89,6 @@ const FbEngagement = lazy(() => import("./pages/FbEngagement"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const AffiliateSignup = lazy(() => import("./pages/AffiliateSignup"));
 const AffiliateNetwork = lazy(() => import("./pages/AffiliateNetwork"));
-const AffiliatePricing = lazy(() => import("./pages/AffiliatePricing"));
 const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
@@ -427,9 +425,9 @@ const App = () => (
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
-               <Route path="/affiliate" element={<Navigate to="/affiliate-pricing" replace />} />
+               <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
-              <Route path="/affiliate-pricing" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><AffiliatePricing /></Suspense></ProtectedRoute>} />
+              <Route path="/affiliate-pricing" element={<Navigate to="/wallet" replace />} />
               <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Wallet /></Suspense></ProtectedRoute>} />
               <Route path="/developer-dashboard" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><DeveloperDashboard /></Suspense></ProtectedRoute>} />
@@ -486,8 +484,8 @@ const App = () => (
               <Route path="/shared-deals" element={<ProtectedRoute><SharedDeals /></ProtectedRoute>} />
               <Route path="/my-ads" element={<ProtectedRoute><MyAds /></ProtectedRoute>} />
               <Route path="/sign/:token" element={<Suspense fallback={<PageLoader />}><SignDocument /></Suspense>} />
-              <Route path="/upgrade" element={<ProtectedRoute allowGuestDemo><Upgrade /></ProtectedRoute>} />
-              <Route path="/pricing" element={<Navigate to="/upgrade" replace />} />
+              <Route path="/wallet" element={<Navigate to="/wallet" replace />} />
+              <Route path="/pricing" element={<Navigate to="/wallet" replace />} />
               <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactForm /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>

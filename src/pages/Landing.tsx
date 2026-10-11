@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/accordion';
 import { ArrowLeft, Check } from 'lucide-react';
 import { FREE_CONTACTS, FREE_PROPERTIES } from '@/lib/pricing';
-import PricingSection from '@/components/landing/PricingSection';
 import CreditsSection from '@/components/landing/CreditsSection';
 import ScheduleDemoDialog from '@/components/landing/ScheduleDemoDialog';
 import { cn } from '@/lib/utils';
@@ -426,7 +425,6 @@ export default function Landing() {
       </section>
 
       {/* ───────── Pricing ───────── */}
-      <PricingSection />
       <div className="pb-5 text-center">
         <ScheduleDemoDialog>
           <Button size="lg" className="h-14 px-10 text-base font-extrabold shadow-2xl shadow-primary/25">

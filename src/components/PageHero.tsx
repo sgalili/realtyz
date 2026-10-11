@@ -419,21 +419,6 @@ export function PageHero() {
               <ArrowLeft className="!h-5 !w-5 -scale-x-100" strokeWidth={2.5} />
             </Button>
           )}
-          {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => window.dispatchEvent(new Event("realtyz:affiliate-automation-toggle"))}
-              aria-label="אוטומציות שותפים"
-              title="אוטומציות שותפים"
-              className={cn(
-                "h-9 w-9 rounded-full hover:bg-white/15",
-                automationAnyOn ? "text-white hover:text-white" : "text-slate-400 grayscale hover:text-slate-400",
-              )}
-            >
-              <Bot className="!h-5 !w-5" strokeWidth={2.5} />
-            </Button>
-          ) : null}
           {(isPostsPage || location.pathname.startsWith("/inbox")) && (
             <AiResponseToggle />
           )}
@@ -488,18 +473,6 @@ export function PageHero() {
               <Gift className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
           ) : null}
-          {location.pathname.startsWith("/affiliate-pricing") && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => navigate("/affiliate-network")}
-              aria-label="חזרה לשיווק שותפים"
-              title="חזרה לשיווק שותפים"
-              className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
-            >
-              <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
-            </Button>
-          )}
           {location.pathname.startsWith('/inbox') && inboxChatOpen && (
             <Button
               size="icon"

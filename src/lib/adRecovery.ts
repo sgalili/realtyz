@@ -21,8 +21,8 @@ export function missingPublishFields(f: PublicListingDraftFields, hasMedia: bool
     !hasMedia && 'תמונה או סרטון',
     !f.contactName.trim() && 'שם מפרסם',
     f.contactWhatsapp.replace(/\D/g, '').length < 9 && 'מספר ווטסאפ',
-    !(Number(f.commissionForm) > 0 || Number(f.commissionWhatsapp) > 0 || Number(f.commissionPhone) > 0 || (f.publisherType === 'broker' && Number(f.commissionDeal) > 0)) && 'עמלה לפחות לסוג פנייה אחד',
-    f.publisherType === 'broker' && !(Number(f.commissionDeal) > 0) && 'עמלת סגירה',
+    !(Number(f.commissionForm) > 0 || Number(f.commissionWhatsapp) > 0 || Number(f.commissionPhone) > 0 || Number(f.commissionDeal) > 0) && 'עמלה לפחות לסוג פנייה אחד',
+    !(Number(f.commissionDeal) > 0) && 'עמלת סגירה',
     !f.termsAccepted && 'אישור התקנון',
     !f.commissionTermsAccepted && 'אישור מנגנון העמלות',
   ].filter((v): v is string => Boolean(v));

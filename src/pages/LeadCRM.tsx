@@ -1433,7 +1433,7 @@ const LeadCRM = () => {
       if (msg.includes('TRIAL_RECORD_LIMIT')) {
         toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הלידים שלך', {
           duration: 8000,
-          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
+          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/wallet') },
         });
       } else {
         toast.error('שגיאה בהוספת ליד: ' + (err?.message || 'שגיאה'));

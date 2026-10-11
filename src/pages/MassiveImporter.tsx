@@ -237,7 +237,7 @@ export default function MassiveImporter() {
       if (existing + parsed.rows.length > TRIAL_RECORD_CAP) {
         toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הלידים שלך', {
           duration: 8000,
-          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
+          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/wallet') },
         });
         return;
       }
@@ -314,7 +314,7 @@ export default function MassiveImporter() {
         if (typeof error.message === 'string' && error.message.includes('TRIAL_RECORD_LIMIT')) {
           toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הלידים שלך', {
             duration: 8000,
-            action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
+            action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/wallet') },
           });
           abortRef.current = true;
           break;

@@ -873,7 +873,7 @@ export default function SmsBlastSimulator() {
     if (trial.isTrialExpired) {
       toast.error('תקופת הניסיון הסתיימה. יש לשדרג כדי להמשיך להפיץ קמפיינים', {
         duration: 8000,
-        action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
+        action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/wallet') },
       });
       return;
     }
