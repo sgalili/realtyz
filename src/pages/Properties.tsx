@@ -1592,6 +1592,7 @@ export function ResultTable({
   onToggleSelected,
   onDelete,
   quickPromotion,
+  endActions,
 }: {
   results: UnifiedResult[];
   importingKey: string | null;
@@ -1619,6 +1620,8 @@ export function ResultTable({
   onToggleSelected?: (id: string) => void;
   onDelete?: (r: UnifiedResult) => void;
   quickPromotion?: (r: UnifiedResult) => React.ReactNode;
+  /** Optional trailing actions, including on read-only partner tables. */
+  endActions?: (r: UnifiedResult) => React.ReactNode;
 }) {
 
   const { notesByListing } = usePropertyNotesByListing();
@@ -1686,7 +1689,7 @@ export function ResultTable({
             {headerCell('מ"ר')}
             {headerCell("תמונות")}
             {headerCell(publishedLabel)}
-            {!hideDefaultActions ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th> : null}
+            {!hideDefaultActions || endActions ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th> : null}
 
 
           </tr>
@@ -1815,9 +1818,10 @@ export function ResultTable({
                   </span>
                 </td>
 
-                {!hideDefaultActions ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
+                {!hideDefaultActions || endActions ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
+                  {endActions?.(r)}
                   {quickPromotion?.(r)}
-                  <PropertyRowActions r={r} importing={importing} onCampaign={(x) => (onCampaign ? onCampaign(x) : onSelect(x))} onEdit={onEdit} onDelete={onDelete} onAffiliate={onAffiliate} hideAffiliate={showAffiliateColumn} />
+                  {!hideDefaultActions && <PropertyRowActions r={r} importing={importing} onCampaign={(x) => (onCampaign ? onCampaign(x) : onSelect(x))} onEdit={onEdit} onDelete={onDelete} onAffiliate={onAffiliate} hideAffiliate={showAffiliateColumn} />}
                 </td> : null}
 
 

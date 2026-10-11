@@ -349,6 +349,7 @@ export type BrokerAffiliateListing = {
   house_number?: string | null;
   apartment_number?: string | null;
   status: string | null;
+  daily_lead_cap?: number | null;
   affiliate_enabled: boolean;
   affiliate_reward_type: RewardType;
   affiliate_reward_amount: number;
@@ -375,12 +376,13 @@ export function useBrokerAffiliateListings() {
     queryKey: ['broker-affiliate-listings', ownerId],
     enabled: !!ownerId,
     queryFn: async (): Promise<BrokerAffiliateListing[]> => {
+      if (!ownerId) return [];
       const { data, error } = await supabase
         .from('listings')
         .select(
-          'id, property_title, address, city, neighborhood, deal_type, asking_price, rooms, sqm, floor, description, source_url, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount, affiliate_tier4_type, affiliate_tier4_amount, contact_options',
+          'id, property_title, address, city, neighborhood, deal_type, asking_price, rooms, sqm, floor, description, source_url, image_url, media_photos, house_number, apartment_number, status, affiliate_enabled, affiliate_reward_type, affiliate_reward_amount, affiliate_approved_at, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_type, affiliate_tier3_amount, affiliate_tier4_type, affiliate_tier4_amount, contact_options, daily_lead_cap',
         )
-        .eq('workspace_owner_id', ownerId!)
+        .eq('workspace_owner_id', ownerId)
         .order('affiliate_enabled', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;
