@@ -1,12 +1,11 @@
 import { Check, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 /**
- * Unified multi-select controls (same pattern as the publishing-groups dialog):
- * a small unlabeled list icon toggles checkboxes, a select-all row, per-item
- * checkboxes and a counter badge that appears only when something is selected.
+ * Unified multi-select controls: a small list icon toggles selection mode.
+ * When active, a "בחר הכל" button and a selected counter appear next to it
+ * in the same row, and square checkboxes show on every record. No dropdown menu.
  */
 export const SelectModeToggle = ({
   active,
@@ -17,35 +16,41 @@ export const SelectModeToggle = ({
   className,
 }: { active: boolean; onToggle: () => void; count?: number; total?: number; onSelectAll?: () => void; className?: string }) => {
   if (total === 0) return null;
-  const trigger = <Button
-    variant="ghost"
-    size="icon"
-    type="button"
-    aria-label="בחירה מרובה"
-    title="בחירה מרובה"
-    aria-pressed={active}
-    onClick={onSelectAll ? undefined : onToggle}
-    className={cn(
-      'relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition',
-      active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted',
-      className,
-    )}
-  >
-    <ListChecks className="h-4 w-4" />
-    {count > 0 && (
-      <span className="absolute -top-1 -left-1 min-w-[16px] h-4 rounded-full bg-primary px-1 text-[10px] font-bold leading-4 text-primary-foreground tabular-nums">
-        {count}
-      </span>
-    )}
-  </Button>;
-  if (!onSelectAll) return trigger;
-  return <DropdownMenu><DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      <DropdownMenuItem onSelect={() => { if (!active) onToggle(); onSelectAll(); }}>בחר הכל</DropdownMenuItem>
-      <DropdownMenuItem onSelect={() => { if (!active) onToggle(); }}>בחר פריטים</DropdownMenuItem>
-      {active && <DropdownMenuItem onSelect={onToggle}>סיום בחירה</DropdownMenuItem>}
-    </DropdownMenuContent>
-  </DropdownMenu>;
+  const allSelected = !!total && count === total;
+  return (
+    <div className="flex items-center gap-2" dir="rtl">
+      <Button
+        variant="ghost"
+        size="icon"
+        type="button"
+        aria-label="בחירה מרובה"
+        title="בחירה מרובה"
+        aria-pressed={active}
+        onClick={onToggle}
+        className={cn(
+          'relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition',
+          active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted',
+          className,
+        )}
+      >
+        <ListChecks className="h-4 w-4" />
+      </Button>
+      {active && onSelectAll && (
+        <button
+          type="button"
+          onClick={onSelectAll}
+          className="text-[13px] font-semibold text-primary hover:underline"
+        >
+          {allSelected ? 'בטל הכל' : 'בחר הכל'}
+        </button>
+      )}
+      {active && count > 0 && (
+        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
+          {count} נבחרו
+        </span>
+      )}
+    </div>
+  );
 };
 
 export const SelectBox = ({
