@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -32,6 +32,8 @@ export default function DeveloperDashboard() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const onboarding = params.get('onboarding') === '1';
+  const importSection = useRef<HTMLElement>(null);
+  useEffect(() => { if (params.get('import') === '1') importSection.current?.scrollIntoView({ block: 'start' }); }, [params]);
   const [editing, setEditing] = useState<Project | 'new' | null>(null);
   const [form, setForm] = useState(EMPTY);
 
@@ -112,7 +114,7 @@ export default function DeveloperDashboard() {
         ))}
       </div>
 
-      <section className={`rounded-lg border bg-card p-4 ${onboarding ? 'order-first border-primary ring-2 ring-primary/20' : ''}`}>
+      <section ref={importSection} className={`scroll-mt-20 p-4 ${onboarding ? 'order-first border-primary' : ''}`}>
         <h2 className="mb-3 font-bold">{developer?.source_url ? 'סנכרון מחדש מיד2' : 'ייבוא הפרויקטים שלך מיד2'}</h2>
         {onboarding && <p className="mb-3 text-sm text-muted-foreground">החשבון אומת. נשאר רק לייבא את הפרויקטים שלך מיד2.</p>}
         <DeveloperYad2Import onSaved={() => { refresh(); if (onboarding) navigate('/profile?welcome=developer', { replace: true }); }} />
