@@ -7,21 +7,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { supabase } from '@/integrations/supabase/client';
 
 /** Partner-set discount (% or fixed ₪) for contacts they bring after the property's daily limit. */
-export default function LeftoverDiscountButton({ referralId }: { referralId: string }) {
+export default function LeftoverDiscountButton({ referralId, inline = false }: { referralId: string; inline?: boolean }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<'percent' | 'fixed'>('percent');
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open && !inline) return;
     void supabase.from('affiliate_referrals').select('leftover_discount_type, leftover_discount_value').eq('id', referralId).maybeSingle()
       .then(({ data }) => {
         const d = data as { leftover_discount_type?: string; leftover_discount_value?: number } | null;
         setType(d?.leftover_discount_type === 'fixed' ? 'fixed' : 'percent');
         setValue(d?.leftover_discount_value ? String(d.leftover_discount_value) : '');
       });
-  }, [open, referralId]);
+  }, [open, inline, referralId]);
 
   const save = async () => {
     const v = Number(value || 0);
@@ -34,6 +34,20 @@ export default function LeftoverDiscountButton({ referralId }: { referralId: str
     setOpen(false);
   };
 
+  const form = <div className="space-y-3">
+        <p className="text-sm font-semibold">הנחה ללידים מעבר למכסה היומית</p>
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+          {(['percent', 'fixed'] as const).map((t) => (
+            <Button variant="ghost" key={t} type="button" onClick={() => setType(t)}
+              className={`rounded-md py-1 text-sm ${type === t ? 'bg-background font-semibold shadow-sm' : 'text-muted-foreground'}`}>
+              {t === 'percent' ? 'אחוז %' : 'סכום ₪'}
+            </Button>
+          ))}
+        </div>
+        <Input inputMode="decimal" value={value} placeholder="0" onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ''))} />
+        <Button className="w-full" size="sm" disabled={saving} onClick={save}>שמירה</Button>
+  </div>;
+  if (inline) return form;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -41,19 +55,7 @@ export default function LeftoverDiscountButton({ referralId }: { referralId: str
           <BadgePercent className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent dir="rtl" className="w-64 space-y-3">
-        <p className="text-sm font-semibold">הנחה ללידים מעבר למכסה היומית</p>
-        <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-          {(['percent', 'fixed'] as const).map((t) => (
-            <button key={t} type="button" onClick={() => setType(t)}
-              className={`rounded-md py-1 text-sm ${type === t ? 'bg-background font-semibold shadow-sm' : 'text-muted-foreground'}`}>
-              {t === 'percent' ? 'אחוז %' : 'סכום ₪'}
-            </button>
-          ))}
-        </div>
-        <Input inputMode="decimal" value={value} placeholder="0" onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ''))} />
-        <Button className="w-full" size="sm" disabled={saving} onClick={save}>שמירה</Button>
-      </PopoverContent>
+      <PopoverContent dir="rtl" className="w-64">{form}</PopoverContent>
     </Popover>
   );
 }
