@@ -196,7 +196,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     // A workspace hand-off always lands in broker mode, so the מתווך/שותף
     // toggle and the routes it guards never keep the previous tenant's state.
-    writeAppMode('broker');
+    writeAppMode('broker', user.id);
 
     // Remove old tenant results before any observer can repaint, then refetch
     // active screens and sidebar counters against the newly committed scope.

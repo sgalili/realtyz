@@ -12,9 +12,8 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
 
 /**
- * Instant switch between broker mode (full CRM + Rita) and partner mode
- * (referrals, commissions, recruitment). Same session, no second login.
- * Hidden for partner-only accounts, which have no broker side at all.
+ * Switch between the preserved core identity and additive partner membership.
+ * Server roles authorize access; the display preference never grants a role.
  */
 export function AppModeSwitcher({ keepSidebarOpen = false }: { keepSidebarOpen?: boolean }) {
   const navigate = useNavigate();
