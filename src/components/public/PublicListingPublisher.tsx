@@ -340,7 +340,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       if (cw != null) commissions.affiliate_tier2_amount = cw;
       if (cp != null) commissions.affiliate_tier3_amount = cp;
       const cd = toNum(draftFields.commissionDeal);
-      if (cd != null && draftFields.publisherType === 'broker') (payload.features as Record<string, unknown>).deal_closing_commission = { type: draftFields.commissionDealType === 'percent' ? 'percent' : 'fixed', value: cd };
+      if (cd != null) (payload.features as Record<string, unknown>).deal_closing_commission = { type: draftFields.commissionDealType === 'percent' ? 'percent' : 'fixed', value: cd };
       const limits = { form: toInt(draftFields.limitForm), whatsapp: toInt(draftFields.limitWhatsapp), phone: toInt(draftFields.limitPhone) };
       const limitValues = Object.values(limits).filter((v): v is number => v != null);
       if (limitValues.length) commissions.daily_lead_cap = limitValues.reduce((a, b) => a + b, 0);
@@ -794,7 +794,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 ))}
               </div>
-              {fields.publisherType === 'broker' && Boolean(publisherProfile?.broker_license_number || isSuperAdmin) && (() => {
+              {(() => {
                 const isRent = fields.dealType === 'rent';
                 const minPct = isRent ? 10 : 0.2;
                 const maxPct = isRent ? 100 : 2;
