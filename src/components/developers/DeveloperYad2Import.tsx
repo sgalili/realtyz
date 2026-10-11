@@ -136,8 +136,8 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { project
   return (
     <div className="space-y-3">
       <Label htmlFor="dev-yad2-url" className="text-base font-bold">הקישור לעמוד הראשי של היזם ביד2</Label>
-      <p id="dev-yad2-help" className="text-base text-muted-foreground">הדביקו את כתובת עמוד החברה שלכם ביד2, שבו מופיעה רשימת הפרויקטים. אין צורך בקישור נפרד לכל פרויקט או דירה.</p>
-      <div className="flex gap-2">
+      <p id="dev-yad2-help" className="text-base text-muted-foreground">עמוד החברה, עם כל הפרויקטים.</p>
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Input id="dev-yad2-url" aria-describedby="dev-yad2-help" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/..." value={url} disabled={loading || saving}
           onChange={(e) => setUrl(e.target.value)}
           onPaste={(e) => { const t = e.clipboardData.getData('text').trim(); if (YAD2_RE.test(t)) { e.preventDefault(); setUrl(t.match(YAD2_RE)?.[0] ?? t); setError(''); } }} />

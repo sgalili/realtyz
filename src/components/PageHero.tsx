@@ -255,6 +255,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/$/, title: "לוח נדל״ן שיתופי" },
   { match: /^\/public-listings/, title: "לוח נדל״ן שיתופי" },
   { match: /^\/my-ads/, title: "המודעות שלי" },
+  { match: /^\/developer-dashboard/, title: "הפרויקטים שלנו" },
   { match: /^\/(command-center|tasks)/, title: "משימות" },
   { match: /^\/dashboard$/, title: "לוח בקרה" },
   { match: /^\/lead-crm/, title: "אנשי קשר" },
@@ -515,6 +516,13 @@ export function PageHero() {
             </Button>
           )}
           {location.pathname === "/properties" && <PropertiesHeroAddButton />}
+          {location.pathname === "/developer-dashboard" && (
+            <Button size="icon" variant="ghost" aria-label="הוספת פרויקט" title="הוספת פרויקט"
+              className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+              onClick={() => window.dispatchEvent(new Event('developer-projects:add'))}>
+              <Plus className="!h-5 !w-5" strokeWidth={2.5} />
+            </Button>
+          )}
           {location.pathname.startsWith("/lead-crm") && <LeadsHeroAddButton />}
           {isPostsPage && !isCampaignsCreate && <CampaignsHeroSyncButton />}
           {isPostsPage && <CampaignsHeroAddButton onBackToOrigin={origin ? goBackToOrigin : undefined} />}
