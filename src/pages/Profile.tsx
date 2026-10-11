@@ -725,7 +725,7 @@ export default function Profile() {
       </Dialog>
 
       <div className="mb-3">
-        <CompleteProfileBanner force={params.get('welcome') === 'developer'} onEdit={() => setTab('personal')} />
+        <CompleteProfileBanner force={params.get('welcome') === 'developer'} />
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
