@@ -161,7 +161,7 @@ export default function MyAds() {
           };
           return <>
             <div className="flex items-center justify-between gap-2">
-              <SelectModeToggle active={selectMode} count={selected.size} onToggle={() => { setSelectMode(v => !v); setSelected(new Set()); }} />
+              <SelectModeToggle total={keys.length} active={selectMode} count={selected.size} onSelectAll={() => setSelected(new Set(keys))} onToggle={() => { setSelectMode(v => !v); setSelected(new Set()); }} />
               {selectMode && selected.size > 0 && <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4" />מחיקת {selected.size} טיוטות</Button>}
             </div>
             {selectMode && <SelectAllRow total={keys.length} selected={selected.size} onToggle={() => setSelected(selected.size === keys.length ? new Set() : new Set(keys))} />}

@@ -1818,6 +1818,8 @@ const LeadCRM = () => {
                 </button>
               </div>
               <SelectModeToggle
+                total={filtered?.length ?? 0}
+                onSelectAll={() => setSelectedIds(new Set((filtered ?? []).map(v => v.id)))}
                 active={selectMode}
                 count={selectedIds.size}
                 onToggle={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
@@ -1925,7 +1927,7 @@ const LeadCRM = () => {
             </Select>
           </div>}
         </CardHeader>
-        {selectMode && (
+        {selectMode && (filtered?.length ?? 0) > 0 && (
           <div className="border-t border-border/60 bg-muted/30 px-4 py-2 flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
             <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} aria-label="בחר הכל" />
             <button type="button" className="text-sm font-semibold" onClick={toggleAll}>{allFilteredSelected ? 'בטל הכל' : 'בחר הכל'}</button>
@@ -1991,7 +1993,7 @@ const LeadCRM = () => {
                   {isOwnerView && HOMELY_OWNER_COLUMNS.map((col) => (
                     <TableHead key={`oh-${col.key}`} className="w-auto font-semibold text-xs text-center bg-blue-50/60">{col.label}</TableHead>
                   ))}
-                  {selectMode && <TableHead className="w-10 text-center">
+                  {selectMode && (filtered?.length ?? 0) > 0 && <TableHead className="w-10 text-center">
                     <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
                   </TableHead>}
                 </TableRow>

@@ -1061,7 +1061,7 @@ export default function Properties() {
         <div data-testid="property-tools-row" className="flex flex-wrap items-center gap-2 mt-[10px]" dir="rtl">
           {/* Side A — sort + total-count dropdown */}
           <div className="flex items-center gap-0">
-            <SelectModeToggle active={multiSelectMode} count={selectedListingIds.size} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
+            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} count={selectedListingIds.size} onSelectAll={() => setSelectedListingIds(new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : [])))} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

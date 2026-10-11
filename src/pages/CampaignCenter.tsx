@@ -4245,7 +4245,7 @@ const GlobalSocialFeed = ({
     <div className="grid w-full min-w-0 grid-cols-[4.5rem_minmax(0,1fr)_2rem] items-center gap-1 sm:gap-2" dir="rtl">
       {totalSelectable > 0 ? (
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 justify-self-start">
-          <SelectModeToggle active={feedSelectMode} count={selectedCount} onToggle={() => onToggleSelectMode?.()} className="h-7 w-7" />
+          <SelectModeToggle total={totalSelectable} onSelectAll={() => onToggleSelectAll?.(true)} active={feedSelectMode} count={selectedCount} onToggle={() => onToggleSelectMode?.()} className="h-7 w-7" />
           {feedSelectMode && (
             <Checkbox
               checked={allSelected ? true : someSelected ? 'indeterminate' : false}
