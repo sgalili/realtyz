@@ -5297,6 +5297,33 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_free_credit_grants: {
+        Row: {
+          amount_ils: number
+          created_at: string
+          credits: number
+          grant_month: string
+          id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          amount_ils?: number
+          created_at?: string
+          credits?: number
+          grant_month: string
+          id?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          amount_ils?: number
+          created_at?: string
+          credits?: number
+          grant_month?: string
+          id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           created_at: string
@@ -7878,6 +7905,7 @@ export type Database = {
         Returns: boolean
       }
       claim_market_scrape_slot: { Args: { _source?: string }; Returns: Json }
+      claim_monthly_free_credits: { Args: never; Returns: number }
       claim_yad2_item_import: {
         Args: { _item: string; _url: string }
         Returns: Json
