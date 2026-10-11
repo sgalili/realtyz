@@ -1830,7 +1830,7 @@ const LeadCRM = () => {
 
       {/* Data Table */}
       <Card className="border-border/50 shadow-sm">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 pt-3">
           <div className="flex flex-col gap-3">
             {/* Lead kind pills (multi-select, relevant to the signed-in account type) */}
             <div className="flex flex-wrap gap-1.5">
@@ -1865,7 +1865,7 @@ const LeadCRM = () => {
                 <SlidersHorizontal className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex items-center justify-between gap-2 sm:w-72">
+            <div className="-mx-6 flex items-center justify-between gap-2 px-[5px]">
               <SelectModeToggle
                 total={filtered?.length ?? 0}
                 active={selectMode}
@@ -1879,10 +1879,10 @@ const LeadCRM = () => {
                 return (
                   <span className="text-[15px] leading-none text-muted-foreground tabular-nums whitespace-nowrap">
                     {selectedIds.size > 0
-                      ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} רשומות`
+                      ? `נבחרו ${selectedIds.size.toLocaleString('he-IL')} לידים`
                       : hasFilter
                         ? `מציג ${filteredTotal.toLocaleString('he-IL')} מתוך ${accountTotal.toLocaleString('he-IL')}`
-                        : `סה״כ: ${accountTotal.toLocaleString('he-IL')} רשומות`}
+                        : `סה״כ: ${accountTotal.toLocaleString('he-IL')} לידים`}
                   </span>
                 );
               })()}

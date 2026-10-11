@@ -20,10 +20,10 @@ describe('lead direction tabs', () => {
   it('defaults to received and lets an existing partner view sent leads then return', () => {
     show();
     expect(screen.getByText('לידים במרחב הנוכחי')).toBeVisible();
-    fireEvent.mouseDown(screen.getByRole('tab', { name: '0 לידים שמכרתי' }), { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'לידים שמכרתי (0)' }), { button: 0, ctrlKey: false });
     expect(screen.getByText('לא מכרת לידים עדיין')).toBeVisible();
     expect(screen.queryByText('לידים במרחב הנוכחי')).not.toBeInTheDocument();
-    fireEvent.mouseDown(screen.getByRole('tab', { name: '7 לידים שקיבלתי' }), { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'לידים שקיבלתי (7)' }), { button: 0, ctrlKey: false });
     expect(screen.getByText('לידים במרחב הנוכחי')).toBeVisible();
   });
   it.each([{ affiliate: false }, { loading: true }, { error: true }])('hides partner tabs without verified membership: %s', (state) => {
@@ -34,7 +34,7 @@ describe('lead direction tabs', () => {
   });
   it('restores the sent tab from the URL', () => {
     show('/lead-crm?filter=untreated&direction=sent');
-    expect(screen.getByRole('tab', { name: '0 לידים שמכרתי' })).toHaveAttribute('data-state', 'active');
+    expect(screen.getByRole('tab', { name: 'לידים שמכרתי (0)' })).toHaveAttribute('data-state', 'active');
   });
   it('shows authorized submission rows and searches without revealing closing status to unlicensed partners', () => {
     mocks.submissions = [{ id: '1', lead_name: 'ליד בדיקה', status: 'closed', partner_net_amount: 4, settlement_status: 'paid', created_at: '2026-10-11T05:00:00Z' }];
