@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useCreditWallet } from '@/hooks/useSubscription';
-import { fmtCredits, ilsToCredits } from '@/lib/credits';
+import { fmtCompactCredits, fmtCredits, ilsToCredits } from '@/lib/credits';
 import { openOfficialWhatsApp } from '@/lib/officialWa';
 
 const RATES: { label: string; price: string }[] = [
@@ -54,7 +54,7 @@ export function CreditBalancePill() {
         aria-label="יתרת קרדיטים"
       >
         <Wallet className="h-3.5 w-3.5" />
-        <span className="font-bold tabular-nums text-[15px]">{isLoading ? '…' : fmtCredits(ilsToCredits(balance))}</span>
+        <span className="font-bold tabular-nums text-[15px]">{isLoading ? '…' : fmtCompactCredits(ilsToCredits(balance))}</span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
