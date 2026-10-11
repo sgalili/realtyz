@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SaveCardForm } from '@/components/billing/SaveCardForm';
 
 type LedgerRow = {
   id: string; amount_ils: number; type: string; note: string | null; created_at: string; reference_id: string | null;
@@ -31,6 +32,7 @@ export default function Wallet() {
   const { data: wallet } = useCreditWallet();
   const [detail, setDetail] = useState<LedgerRow | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
 
   const { data: ledger = [] } = useQuery({
     queryKey: ['wallet-ledger', ws], enabled: !!ws,
@@ -107,7 +109,10 @@ export default function Wallet() {
           <Button onClick={() => setTopupOpen(true)}><Plus className="h-4 w-4" />טעינת ארנק</Button>
         </div>
         <div className="rounded-lg border bg-card p-5">
-          <p className="mb-2 flex items-center gap-2 text-sm text-muted-foreground"><CreditCard className="h-4 w-4" />כרטיס לחיוב אוטומטי</p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><CreditCard className="h-4 w-4" />כרטיס לחיוב אוטומטי</p>
+            <Button size="sm" variant="outline" onClick={() => setCardOpen(true)}>{cards.length ? 'החלפת כרטיס' : 'הוספת כרטיס'}</Button>
+          </div>
           {cards.length === 0 ? (
             <p className="text-sm">לא נשמר כרטיס. כשהיתרה תתאפס, החיוב ינסה את הכרטיס השמור לפני הגבלת החשבון.</p>
           ) : cards.map((c) => (
@@ -147,6 +152,13 @@ export default function Wallet() {
               <dt className="text-muted-foreground">מזהה</dt><dd dir="ltr" className="text-right text-xs text-muted-foreground">{detail.id}</dd>
             </dl>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cardOpen} onOpenChange={setCardOpen}>
+        <DialogContent dir="rtl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" />שמירת כרטיס אשראי</DialogTitle></DialogHeader>
+          <SaveCardForm onDone={() => setCardOpen(false)} />
         </DialogContent>
       </Dialog>
 

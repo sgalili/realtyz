@@ -15,6 +15,8 @@ import { supabase as supabaseClient } from '@/integrations/supabase/client';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { useUserRole } from '@/hooks/useUserRole';
+import { ZCreditSettingsCard } from '@/components/billing/ZCreditSettingsCard';
 
 type Status = 'idle' | 'testing' | 'success' | 'error';
 
@@ -85,6 +87,7 @@ const ConnectionSettings = () => {
   const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
   const blockDemoAction = useDemoGuard();
+  const { isSuperAdmin } = useUserRole();
 
   // Show/hide map
   const [show, setShow] = useState<Record<string, boolean>>({});
@@ -303,6 +306,8 @@ const ConnectionSettings = () => {
             ניהול חיבורי API לערוצי תקשורת חיצוניים. כל המפתחות מוצפנים ומוסתרים כברירת מחדל.
           </p>
         </header>
+
+        {isSuperAdmin && <ZCreditSettingsCard />}
 
         {/* WhatsApp */}
         <Card>
