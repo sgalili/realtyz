@@ -25,10 +25,11 @@
 - Listing lifecycle advances forward-only via DB triggers (advance_listing_stage); a daily cron prompts idle advertisers and pauses partner distribution after 3 unanswered checks, resumed only by confirm_listing_availability.
 - Lead disputes, appeals and bans run only through audited security-definer RPCs (open/decide/appeal lead disputes, ban_user/unban_user); appeals need a neutral reviewer and bans freeze rather than delete data.
 
-- Developers use agent + developer roles via register_as_developer, workspace-scoped developer_projects and /developer-dashboard instead of broker-only tools. Why: reuse workspaces/ecosystem without broker features.
+- Developers reuse agent workspaces via register_as_developer with scoped projects and /developer-dashboard, not broker tools. Why: share ecosystem only.
 - yad2-developer-import previews only; save on explicit confirmation. Why: no invented or auto-saved data.
 
 - Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards. Why: card secrets stay server-side.
 
-- Personal sharing: authenticated get_property_referral_link returns only a URL; service-only record_property_referral_inquiry validates listing/workspace. Why: prevent identity spoofing and financial disclosure.
+- Personal links use authenticated get_property_referral_link; service-only attribution validates listing/workspace. Why: prevent spoofing.
+- Roles come only from user_roles; partner reads use server-redacted RPCs and verified-license guards. Why: prevent privilege and closing-data leaks.
