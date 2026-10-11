@@ -163,8 +163,8 @@ const AFFILIATE_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', 
  * recruitment and affiliate management are unreachable, not just hidden.
  */
 export const OWNER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile', '/referral'];
-const WALLET_LOCK_ALLOWED = ['/wallet', '/profile', '/public-listings', '/billing', '/referral'];
-const SEEKER_ALLOWED_PATHS = [ '/wallet','/public-listings', '/profile', '/referral'];
+const WALLET_LOCK_ALLOWED = ['/', '/wallet', '/profile', '/public-listings', '/billing', '/referral'];
+const SEEKER_ALLOWED_PATHS = ['/', '/wallet','/public-listings', '/profile', '/referral'];
 const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
@@ -250,7 +250,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     return <Navigate to="/affiliate" replace />;
   }
 
-  if ((isPartnerMode || isAffiliateOnly) && isAffiliate && !['/wallet', '/profile', '/public-listings', '/referral'].some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
+  if ((isPartnerMode || isAffiliateOnly) && isAffiliate && !['/', '/wallet', '/profile', '/public-listings', '/referral'].some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
     if (partnerConsent.isLoading) return <PageLoader />;
     if (partnerConsent.data !== true) return <AppLayout><PartnerOnboarding onComplete={() => void partnerConsent.refetch()} /></AppLayout>;
   }
