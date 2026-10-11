@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -28,6 +29,9 @@ export default function DeveloperDashboard() {
   const { activeWorkspaceId } = useWorkspace();
   const ws = activeWorkspaceId ?? user?.id ?? null;
   const qc = useQueryClient();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const onboarding = params.get('onboarding') === '1';
   const [editing, setEditing] = useState<Project | 'new' | null>(null);
   const [form, setForm] = useState(EMPTY);
 
@@ -108,9 +112,10 @@ export default function DeveloperDashboard() {
         ))}
       </div>
 
-      <section className="rounded-lg border bg-card p-4">
+      <section className={`rounded-lg border bg-card p-4 ${onboarding ? 'order-first border-primary ring-2 ring-primary/20' : ''}`}>
         <h2 className="mb-3 font-bold">{developer?.source_url ? 'סנכרון מחדש מיד2' : 'ייבוא הפרויקטים שלך מיד2'}</h2>
-        <DeveloperYad2Import onSaved={refresh} />
+        {onboarding && <p className="mb-3 text-sm text-muted-foreground">החשבון אומת. נשאר רק לייבא את הפרויקטים שלך מיד2.</p>}
+        <DeveloperYad2Import onSaved={() => { refresh(); if (onboarding) navigate('/profile?welcome=developer', { replace: true }); }} />
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

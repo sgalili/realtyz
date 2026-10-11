@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +8,7 @@ import { normalizePhoneForStorage } from '@/lib/formatPhone';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 
 type ImportedProject = {
   source_project_id: string | null; name: string; city: string | null; neighborhood: string | null;
@@ -18,9 +19,33 @@ type ImportedProject = {
 type Preview = { source_url: string; developer: { company_name: string | null; phone: string | null; logo_url: string | null }; projects: ImportedProject[] };
 
 const YAD2_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i;
+const STAGES = ['מתחבר לעמוד היזם ביד2', 'קורא את פרטי החברה', 'אוסף את רשימת הפרויקטים', 'סופר יחידות דיור ודירות', 'מכין דוח סיכום'];
+
+/** Animated staged loader shown while the Yad2 page is being read. */
+function ImportProgress() {
+  const [pct, setPct] = useState(4);
+  useEffect(() => {
+    const t = window.setInterval(() => setPct((p) => (p < 92 ? p + Math.max(1, (92 - p) / 14) : p)), 400);
+    return () => window.clearInterval(t);
+  }, []);
+  const stage = Math.min(STAGES.length - 1, Math.floor((pct / 100) * STAGES.length));
+  return (
+    <div role="status" aria-live="polite" className="space-y-3 rounded-lg border bg-card p-4">
+      <Progress value={pct} className="h-2" />
+      <ul className="space-y-1.5 text-sm">
+        {STAGES.map((s, i) => (
+          <li key={s} className={`flex items-center gap-2 ${i > stage ? 'text-muted-foreground/50' : i === stage ? 'font-semibold' : 'text-muted-foreground'}`}>
+            {i < stage ? <CheckCircle2 className="h-4 w-4 text-primary" /> : i === stage ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <span className="h-4 w-4 rounded-full border" />}
+            {s}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /** Paste a Yad2 developer page, preview every project/apartment, then save on confirm. */
-export function DeveloperYad2Import({ onSaved }: { onSaved?: () => void }) {
+export function DeveloperYad2Import({ onSaved }: { onSaved?: (summary: { projects: number; units: number }) => void }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [url, setUrl] = useState('');
@@ -43,6 +68,10 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: () => void }) {
     }
     setPreview(data as Preview);
   };
+
+  const sum = (k: 'total_units' | 'available_units') => (preview?.projects ?? []).reduce((s, p) => s + (p[k] ?? 0), 0);
+  const apartments = (preview?.projects ?? []).reduce((s, p) => s + (p.apartments?.length ?? 0), 0);
+  const cities = [...new Set((preview?.projects ?? []).map((p) => p.city).filter(Boolean))] as string[];
 
   const save = async () => {
     if (!preview || !user) return;
@@ -82,9 +111,10 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: () => void }) {
         const { error: e } = await supabase.from('developer_projects').upsert(rows, { onConflict: 'developer_id,source_project_id' });
         if (e) throw e;
       }
-      toast.success(`נשמרו ${preview.projects.length} פרויקטים`);
+      const summary = { projects: preview.projects.length, units: sum('total_units') };
+      toast.success(`נשמרו ${summary.projects} פרויקטים`);
       setPreview(null); setUrl('');
-      onSaved?.();
+      onSaved?.(summary);
     } catch (e: any) {
       toast.error(e?.message ?? 'השמירה נכשלה');
     } finally { setSaving(false); }
@@ -94,18 +124,31 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: () => void }) {
     <div className="space-y-3">
       <Label htmlFor="dev-yad2-url">הדבק את כתובת ה-URL של עמוד היזם שלך ביד 2</Label>
       <div className="flex gap-2">
-        <Input id="dev-yad2-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developer/..." value={url}
+        <Input id="dev-yad2-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/yad1/developers/..." value={url}
           onChange={(e) => setUrl(e.target.value)}
           onPaste={(e) => { const t = e.clipboardData.getData('text').trim(); if (YAD2_RE.test(t)) { e.preventDefault(); setUrl(t); void fetchPreview(t); } }} />
         <Button type="button" onClick={() => void fetchPreview(url)} disabled={loading || !url.trim()}>ייבוא</Button>
       </div>
-      {loading && <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />טוען את הפרויקטים מיד2...</div>}
+      {loading && <ImportProgress />}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {preview && (
-        <div className="space-y-3 rounded-lg border bg-card p-3">
+        <div className="space-y-3 rounded-lg border bg-card p-3 animate-in fade-in">
           <div className="flex items-center gap-3">
             {preview.developer.logo_url && <img src={preview.developer.logo_url} alt="" className="h-10 w-10 rounded object-contain" />}
-            <div className="font-bold">{preview.developer.company_name ?? 'שם החברה לא נמצא'}</div>
+            <div>
+              <div className="font-bold">{preview.developer.company_name ?? 'שם החברה לא נמצא'}</div>
+              {cities.length > 0 && <div className="text-xs text-muted-foreground">{cities.join(' · ')}</div>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {([['פרויקטים', preview.projects.length], ['יח״ד', sum('total_units')], ['זמינות', sum('available_units')], ['דירות', apartments]] as const)
+              .filter(([, v]) => v > 0)
+              .map(([l, v]) => (
+                <div key={l} className="rounded-md border p-2 text-center">
+                  <div className="text-xl font-bold">{v.toLocaleString('he-IL')}</div>
+                  <div className="text-xs text-muted-foreground">{l}</div>
+                </div>
+              ))}
           </div>
           {preview.projects.length === 0 ? (
             <p className="text-sm text-muted-foreground">לא נמצאו פרויקטים בעמוד. אפשר לשמור את החברה ולהוסיף פרויקטים ידנית.</p>
@@ -119,6 +162,7 @@ export function DeveloperYad2Import({ onSaved }: { onSaved?: () => void }) {
                     <div className="truncate text-xs text-muted-foreground">
                       {[p.city, p.neighborhood].filter(Boolean).join(' · ')}
                       {p.total_units ? ` · ${p.total_units} יח״ד` : ''}
+                      {p.available_units ? ` · ${p.available_units} זמינות` : ''}
                       {p.apartments.length ? ` · ${p.apartments.length} דירות` : ''}
                     </div>
                   </div>
