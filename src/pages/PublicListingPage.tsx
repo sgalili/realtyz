@@ -237,6 +237,8 @@ function PublicListingContent() {
   const { user } = useAuth();
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const closeDetails = () => {
+    const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
+    if (returnTo) { navigate(returnTo); return; }
     if (typeof window.history.state?.idx === 'number' && window.history.state.idx > 0) navigate(-1);
     else navigate('/public-listings', { replace: true });
   };
