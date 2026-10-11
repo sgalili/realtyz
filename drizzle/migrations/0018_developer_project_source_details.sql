@@ -1,0 +1,2 @@
+ALTER TABLE public.developer_projects ADD COLUMN IF NOT EXISTS source_details jsonb NOT NULL DEFAULT '{}'::jsonb;
+COMMENT ON COLUMN public.developer_projects.source_details IS 'Original Yad2 project fields and nested unit hierarchy; workspace policies remain applicable.';

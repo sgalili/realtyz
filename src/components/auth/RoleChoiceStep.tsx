@@ -7,9 +7,9 @@ import realtyzLogo from '@/assets/realtyz-logo.png';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { userRolesQueryKey } from '@/hooks/useUserRole';
+import { userRolesQueryKey, useUserRole } from '@/hooks/useUserRole';
 import type { AppRole } from '@/hooks/useUserRole';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 /**
  * Shown once, right after a brand-new account signs in for the first time
@@ -21,6 +21,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const [busy, setBusy] = useState<'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer' | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { isDeveloper, loading: rolesLoading, fetched, error } = useUserRole();
   const navigate = useNavigate();
 
   const pick = async (role: 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer') => {
@@ -92,6 +93,9 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       setBusy(null);
     }
   };
+
+  if (user && (rolesLoading || !fetched || error)) return <RealtyzLoader size="lg" />;
+  if (user && isDeveloper) return <Navigate to="/developer-dashboard?import=1" replace />;
 
   return (
     <div dir="rtl" className="min-h-screen flex flex-col items-center justify-center gap-8 bg-background px-6">
