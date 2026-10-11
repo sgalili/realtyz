@@ -5,6 +5,7 @@ import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import PublicAdHeading from './PublicAdHeading';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
+import PropertyCommissionIcons from './PropertyCommissionIcons';
 
 export default function PublicCardSummary({ card, price, showBroker = true, dense = false }: { card: PublicCard; price?: string; showBroker?: boolean; dense?: boolean }) {
   const { data } = useQuery({
@@ -18,6 +19,7 @@ export default function PublicCardSummary({ card, price, showBroker = true, dens
   });
   return <div className="space-y-2">
     <PublicAdHeading compact dense={dense} title={data?.listing.title || publicAdTitle(card)} price={price} dealType={card.deal_type} />
+    <PropertyCommissionIcons listingId={card.id} raw={data?.raw} />
     {showBroker && <BrokerAttribution compact brokerName={data?.listing.brokerName} officeName={data?.listing.officeName} licenceNumber={data?.listing.brokerLicenceNumber} logoUrl={data?.listing.agencyLogoUrl} />}
   </div>;
 }

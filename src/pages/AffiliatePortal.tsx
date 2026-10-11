@@ -481,8 +481,8 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
           </Button>
         </div>
 
+        {!compact && <CommissionTierBadges tiers={listingTiers(listing)} compact level4Locked={!level4Unlocked} />}
         {referral ? (
-          <div className="contents">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-2.5" onClick={stop}>
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" />
