@@ -407,7 +407,7 @@ export function PageHero() {
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1">
-{isMyAdsPage && (
+          {isMyAdsPage && (
             <Button
               size="icon"
               variant="ghost"
@@ -419,7 +419,7 @@ export function PageHero() {
               <ArrowLeft className="!h-5 !w-5 -scale-x-100" strokeWidth={2.5} />
             </Button>
           )}
-                    {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
+          {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
             <Button
               size="icon"
               variant="ghost"
