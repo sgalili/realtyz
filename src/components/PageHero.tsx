@@ -407,7 +407,19 @@ export function PageHero() {
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1">
-          {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
+{isMyAdsPage && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => navigate("/public-listings")}
+              aria-label="חזרה ללוח נדל״ן שיתופי"
+              title="חזרה ללוח נדל״ן שיתופי"
+              className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+            >
+              <ArrowLeft className="!h-5 !w-5 -scale-x-100" strokeWidth={2.5} />
+            </Button>
+          )}
+                    {/^\/affiliate(\/|$)/.test(location.pathname) || location.pathname.startsWith("/affiliate-network") ? (
             <Button
               size="icon"
               variant="ghost"
@@ -448,19 +460,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
-          {isMyAdsPage && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => navigate("/public-listings")}
-              aria-label="חזרה ללוח נדל״ן שיתופי"
-              title="חזרה ללוח נדל״ן שיתופי"
-              className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
-            >
-              <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
-            </Button>
-          )}
-          {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
+                    {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
           {isPublicBoard && !user && (
             <Button
               size="sm"
