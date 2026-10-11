@@ -16,7 +16,6 @@ export const SelectModeToggle = ({
   className,
 }: { active: boolean; onToggle: () => void; count?: number; total?: number; onSelectAll?: () => void; className?: string }) => {
   if (total === 0) return null;
-  const allSelected = !!total && count === total;
   return (
     <div className="flex items-center gap-2" dir="rtl">
       <Button
