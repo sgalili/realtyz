@@ -26,6 +26,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { SidebarWalletIndicator } from '@/components/billing/SidebarWalletIndicator';
 import { useUserRole } from '@/hooks/useUserRole';
+import { accountIdentity } from '@/lib/accountMode';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
 import { supabase } from '@/integrations/supabase/client';
@@ -236,7 +237,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, error: roleError } = useUserRole();
+  const { roles, isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, error: roleError } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
@@ -250,7 +251,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const navItems = useMemo(() => {
     if (roleLoading || roleError) return [];
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
-    if (isPropertySeekerOnly) return [];
+    if (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') return [];
     if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
@@ -266,7 +267,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       if (item.url === '/affiliate-network') return features.partnersEnabled;
       return true;
     });
-  }, [features, affiliateOnlyNav, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError]);
+  }, [features, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;

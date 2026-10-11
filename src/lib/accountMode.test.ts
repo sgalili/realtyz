@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { accountIdentity, isAffiliateOnlyAccount } from './accountMode';
 import type { AppRole } from '@/hooks/useUserRole';
+import { readAppMode, writeAppMode } from '@/hooks/useAppMode';
 
 describe('universal account identity', () => {
   it.each([
@@ -21,5 +22,16 @@ describe('universal account identity', () => {
     expect(accountIdentity(['affiliate'])).toEqual({ label: 'שותף', home: '/affiliate-network', canSwitch: false });
     expect(isAffiliateOnlyAccount(['affiliate'])).toBe(true);
     expect(accountIdentity([] as AppRole[]).canSwitch).toBe(false);
+  });
+  it('isolates preferences by account and ignores the legacy global key', () => {
+    localStorage.clear();
+    localStorage.setItem('realtyz-app-mode', 'partner');
+    expect(readAppMode('first')).toBe('broker');
+    writeAppMode('partner', 'first');
+    expect(readAppMode('first')).toBe('partner');
+    expect(readAppMode('second')).toBe('broker');
+    expect(readAppMode()).toBe('broker');
+    writeAppMode('broker', 'first');
+    expect(readAppMode('first')).toBe('broker');
   });
 });
