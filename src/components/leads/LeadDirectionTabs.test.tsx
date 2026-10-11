@@ -38,7 +38,7 @@ describe('lead direction tabs', () => {
   });
   it('shows authorized submission rows and searches without revealing closing status to unlicensed partners', () => {
     mocks.submissions = [{ id: '1', lead_name: 'ליד בדיקה', status: 'closed', partner_net_amount: 4, settlement_status: 'paid', created_at: '2026-10-11T05:00:00Z' }];
-    render(<SentPartnerLeads />);
+    render(<MemoryRouter><SentPartnerLeads /></MemoryRouter>);
     expect(screen.getByText('ליד בדיקה')).toBeVisible();
     expect(screen.getByText('אומת')).toBeVisible();
     expect(screen.queryByText('עסקה נסגרה')).not.toBeInTheDocument();
