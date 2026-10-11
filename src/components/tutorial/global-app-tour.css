@@ -1,0 +1,26 @@
+.realtyz-global-tour.driver-popover {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: 0 16px 48px hsl(var(--foreground) / 0.18);
+  width: min(380px, calc(100vw - 24px));
+  min-width: 0;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 24px;
+  text-align: right;
+  font-family: 'Assistant', 'Inter', sans-serif;
+  letter-spacing: 0;
+}
+.realtyz-global-tour .driver-popover-title { font-size: 24px; font-weight: 800; padding-inline-end: 12px; }
+.realtyz-global-tour .driver-popover-description { font-size: 20px; line-height: 1.55; margin-top: 12px; }
+.realtyz-global-tour .driver-popover-footer { margin-top: 20px; }
+.realtyz-global-tour .driver-popover-navigation-btns { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; }
+.realtyz-global-tour .driver-popover-close-btn { color: hsl(var(--muted-foreground)); left: 4px; right: auto; }
+.realtyz-global-tour .driver-popover-close-btn:hover { color: hsl(var(--foreground)); }
+.realtyz-global-tour .driver-popover-arrow { display: none; }
+.driver-active .driver-overlay { z-index: 100000; }
+.realtyz-global-tour.driver-popover { z-index: 100002; }
+@media (prefers-reduced-motion: reduce) { .driver-active * { scroll-behavior: auto !important; } }

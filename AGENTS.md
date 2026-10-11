@@ -1,7 +1,8 @@
 # Architecture rules
-- Public ads share headings/publishers/public cache, never private profiles; layouts use container width.
-- Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports and commissions; authorize publication in DB.
-- Drafts retain user/workspace steps/errors; explicit publish, current-member broker defaults. Celebration owns canvas/audio.
+- Tours use authorized menus and a route-stable store; never auto-click mutations. Why: safe replay.
+- Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts.
+- Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports/commissions; DB-authorize publication.
+- Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Joining indicators follow extension events; workspace overlays stop polling reversing tab migration before persistence.
@@ -25,11 +26,11 @@
 - Listing lifecycle advances forward-only via DB triggers (advance_listing_stage); a daily cron prompts idle advertisers and pauses partner distribution after 3 unanswered checks, resumed only by confirm_listing_availability.
 - Lead disputes, appeals and bans run only through audited security-definer RPCs (open/decide/appeal lead disputes, ban_user/unban_user); appeals need a neutral reviewer and bans freeze rather than delete data.
 
-- Developers reuse agent workspaces via register_as_developer with scoped projects and /developer-dashboard, not broker tools. Why: share ecosystem only.
-- Developer editors use scoped eight-step forms and preserve source JSON; confirm to save, not publish. Why: retain hierarchy and evidence.
+- Developers use register_as_developer and scoped /developer-dashboard, not broker tools. Why: share ecosystem only.
+- Developer editors retain source JSON in scoped eight-step forms; confirm saves, never publishes. Why: evidence.
 
 - Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards. Why: card secrets stay server-side.
 
-- Personal links use authenticated RPCs; service attribution validates listing/workspace. Why: prevent spoofing.
+- Personal links use auth RPCs; service attribution validates listing/workspace. Why: prevent spoofing.
 - Roles come only from user_roles; partner reads use server-redacted RPCs and verified-license guards. Why: prevent privilege and closing-data leaks.
