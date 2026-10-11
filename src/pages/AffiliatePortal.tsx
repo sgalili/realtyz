@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
-import LeftoverDiscountButton from '@/components/affiliate/LeftoverDiscountButton';
+import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -197,8 +197,6 @@ function PartnerListingActions({ listing, referralId }: { listing: MarketplaceLi
       {/* Icon-only action: the title carries the meaning, no text label. */}
       <PropertyShareMenu results={[result]} iconOnly />
       <SubmitLeadDialog listing={listing} />
-      {referralId ? <LeftoverDiscountButton referralId={referralId} /> : null}
-      {referralId ? <RemoveFromMarketingButton referralId={referralId} /> : null}
     </div>
   );
 }
@@ -1071,13 +1069,17 @@ export default function AffiliatePortal() {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
                     return listing ? commissionPotential(listing) : 0;
                   }}
+                  endActions={(result) => {
+                    const referral = referrals.find((r) => r.listing_id === result.localId);
+                    return referral ? <RemoveFromMarketingButton referralId={referral.id} /> : null;
+                  }}
                   affiliateCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
                     return listing ? <PartnerListingActions listing={listing} referralId={referrals.find((r) => r.listing_id === listing.listing_id)?.id ?? null} /> : null;
                   }}
                   commissionCell={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
-                    return listing ? <CommissionTierBadges tiers={listingTiers(listing)} compact level4Locked={!level4Unlocked} /> : null;
+                    return listing ? <LeadPricingDialog listing={listing} referralId={referrals.find((r) => r.listing_id === listing.listing_id)?.id} /> : null;
                   }}
                 />
               ) : (
@@ -1202,11 +1204,15 @@ export default function AffiliatePortal() {
                 }}
                 commissionCell={(result) => {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
-                  return row?.listing ? <CommissionTierBadges tiers={listingTiers(row.listing)} compact level4Locked={!level4Unlocked} /> : null;
+                  return row?.listing ? <LeadPricingDialog listing={row.listing} referralId={row.referral.id} /> : null;
                 }}
                 selectionMode={multiSelectMode}
                 selectedIds={selectedIds}
                 onToggleSelected={toggleSelected}
+                endActions={(result) => {
+                  const row = filteredReferrals.find((r) => r.listing?.listing_id === result.localId);
+                  return row ? <RemoveFromMarketingButton referralId={row.referral.id} /> : null;
+                }}
                 affiliateSortValue={(result) => filteredReferrals.find((item) => item.listing?.listing_id === result.localId)?.referral.clicks ?? 0}
                 affiliateCell={(result) => {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
@@ -1222,7 +1228,6 @@ export default function AffiliatePortal() {
                         {leadsForReferral(row.referral)}
                       </span>
                       {row.listing ? <PropertyShareMenu results={[marketplaceResult(row.listing)]} iconOnly /> : null}
-                      <RemoveFromMarketingButton referralId={row.referral.id} />
                     </div>
                   );
                 }}

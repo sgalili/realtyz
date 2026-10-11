@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!backendUrl || !serviceKey) throw new Error("missing backend configuration");
     const admin = createClient(backendUrl, serviceKey);
-    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, is_published, status, affiliate_enabled, workspace_owner_id, user_id, source, source_metadata, owner_id";
+    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, daily_lead_cap, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, is_published, status, affiliate_enabled, workspace_owner_id, user_id, source, source_metadata, owner_id";
 
     let query = admin.from("listings").select(columns).limit(1);
     query = UUID_RE.test(identifier) ? query.eq("id", identifier) : query.eq("slug", identifier);

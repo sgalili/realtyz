@@ -38,3 +38,5 @@
 <!-- LOVABLE:BEGIN -->
 - Personal invite bonuses are account-scoped and atomic on evidence-verified first-deal approval, never signup or subscription. Why: prevent fake and duplicate rewards.
 <!-- LOVABLE:END -->
+
+- Partner pricing dialogs reuse the publisher reward editor only for an authored active-workspace row; other viewers use redacted public data, with referral discounts inside and removal in trailing table actions. Why: preserve tenant isolation and distinct publisher/partner controls.
