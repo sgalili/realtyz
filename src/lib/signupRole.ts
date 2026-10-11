@@ -5,7 +5,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { PUBLIC_LISTING_RESUME_KEY } from '@/lib/publicListingDraft';
 
-export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker';
+export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer';
 
 const KEY = 'realtyz-signup-role';
 
@@ -14,6 +14,7 @@ export const SIGNUP_ROLE_LABELS: Record<SignupRole, string> = {
   partner: 'שותף',
   property_owner: 'מפרסם נכס',
   property_seeker: 'מחפש נכס',
+  developer: 'יזם / קבלן',
 };
 
 export function setPendingSignupRole(role: SignupRole) {
@@ -27,7 +28,7 @@ export function setPendingSignupRole(role: SignupRole) {
 export function readPendingSignupRole(): SignupRole | null {
   try {
     const v = window.localStorage.getItem(KEY);
-    return v === 'broker' || v === 'partner' || v === 'property_owner' || v === 'property_seeker' ? v : null;
+    return v === 'broker' || v === 'partner' || v === 'property_owner' || v === 'property_seeker' || v === 'developer' ? v : null;
   } catch {
     return null;
   }
@@ -63,6 +64,12 @@ export async function applyPendingSignupRole(): Promise<string | null> {
       if (window.localStorage.getItem(PUBLIC_LISTING_RESUME_KEY) === '1') return '/public-listings';
     } catch { /* storage disabled */ }
     return '/owner/properties';
+  }
+  if (role === 'developer') {
+    const { data, error } = await supabase.rpc('register_as_developer' as any, { _display_name: null });
+    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
+    clearPendingSignupRole();
+    return '/developer-dashboard';
   }
   if (role === 'property_seeker') {
     const { data, error } = await supabase.rpc('register_as_property_seeker', { _display_name: null });

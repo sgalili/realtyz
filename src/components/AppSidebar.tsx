@@ -231,7 +231,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly } = useUserRole();
+  const { isSuperAdmin, isAffiliateOnly, isPropertyOwnerOnly, isDeveloper } = useUserRole();
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
@@ -245,13 +245,21 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const navItems = useMemo(() => {
     if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
+    // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
+    // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
+    // are swapped for their own project management dashboard.
+    if (isDeveloper && !isSuperAdmin) {
+      const base = NAV_ITEMS.filter((i) => !['/properties', '/deal-room', '/developers', '/dashboard'].includes(i.url));
+      const projects = NAV_ITEMS.find((i) => i.url === '/developers')!;
+      return [{ ...projects, title: 'הפרויקטים שלי', url: '/developer-dashboard' }, ...base];
+    }
     return NAV_ITEMS.filter((item) => {
       if (item.url === '/properties') return features.listingsEnabled;
       if (item.url === '/deal-room') return features.dealsEnabled;
       if (item.url === '/affiliate-network') return features.partnersEnabled;
       return true;
     });
-  }, [features, affiliateOnlyNav, isPropertyOwnerOnly]);
+  }, [features, affiliateOnlyNav, isPropertyOwnerOnly, isDeveloper, isSuperAdmin]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;

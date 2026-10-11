@@ -620,6 +620,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             <div className="grid grid-cols-2 gap-2">
               <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto p-6 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
               <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} className="h-auto p-6 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>פרטי</Button>
+              <Button type="button" variant="outline" className="col-span-2 h-auto p-6 text-base font-bold" onClick={() => { if (!user) { setPendingSignupRole('developer'); navigate('/auth'); return; } void supabase.rpc('register_as_developer' as any, { _display_name: null }).then(async ({ error }) => { if (error) { toast.error(error.message); return; } await refetchRoles(); navigate('/developer-dashboard'); }); }}>יזם / קבלן</Button>
             </div>
           )}
           {step === 0 && importSlide && (
