@@ -320,7 +320,6 @@ export default function AiAgentDrawer() {
     setMessages([]);
     setInput('');
     setPendingAttachments([]);
-    setExpandedTopic(null);
     toast.success('הצ׳אט אופס');
     window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
   }, [user?.id]);
