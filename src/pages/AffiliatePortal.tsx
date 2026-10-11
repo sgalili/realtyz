@@ -1106,7 +1106,7 @@ export default function AffiliatePortal() {
               ))}
             </div>
 
-            <AffiliateLicenseCard />
+            {level4Unlocked && <AffiliateLicenseCard />}
 
             {subsLoading ? (
               <Skeleton className="h-48 w-full" />
