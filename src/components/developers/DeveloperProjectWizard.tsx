@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Loader2, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowRight, Loader2, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
@@ -23,8 +23,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [form, setForm] = useState(() => projectForm(project, company));
-  const [step, setStep] = useState(0);
-  const [furthest, setFurthest] = useState(project ? 7 : 0);
+  const [openStep, setOpenStep] = useState('step-0');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -37,10 +36,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
         dir={key.includes('url') || key === 'phone' ? 'ltr' : undefined} onChange={e => set(key, e.target.value)} />
     </div>
   );
-  const go = (next: number) => {
-    if (next > step) { const message = validateProjectStep(form, step); if (message) { setError(message); return; } }
-    setError(''); setStep(next); setFurthest(old => Math.max(old, next));
-  };
+  const stepFilled = (i: number) => i === 7 ? form.name.trim() !== '' : !validateProjectStep(form, i);
   const upload = async (files: FileList | null) => {
     if (!files || !user || !activeWorkspaceId) return;
     const ws = activeWorkspaceId;
@@ -56,7 +52,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
   };
   const save = async () => {
     if (!user || !activeWorkspaceId || (project && project.workspace_owner_id !== activeWorkspaceId)) { setError('יש לבחור סביבת עבודה פעילה'); return; }
-    for (let i = 0; i < 7; i++) { const message = validateProjectStep(form, i); if (message) { setStep(i); setError(message); return; } }
+    for (let i = 0; i < 7; i++) { const message = validateProjectStep(form, i); if (message) { setOpenStep(`step-${i}`); setError(message); return; } }
     const ws = activeWorkspaceId;
     setSaving(true); setError('');
     try {
@@ -82,59 +78,63 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
     finally { setSaving(false); }
   };
 
+  const renderStep = (i: number) => <div className="space-y-4 pt-1">
+    {i === 0 && <>{field('company_name', 'שם החברה *')}{field('phone', 'טלפון החברה')}{field('company_source_url', 'עמוד החברה ביד2')}{field('logo_url', 'קישור ללוגו')}</>}
+    {i === 1 && <>{field('name', 'שם הפרויקט *')}<div className="space-y-2"><Label htmlFor="project-description" className="text-base">תיאור הפרויקט</Label><Textarea id="project-description" className="min-h-28 text-base" value={form.description} onChange={e => set('description', e.target.value)} /></div>{field('source_url', 'קישור לפרויקט ביד2')}</>}
+    {i === 2 && <>{field('city', 'עיר')}{field('neighborhood', 'שכונה')}{field('address', 'כתובת')}</>}
+    {i === 3 && <>
+      <div className="space-y-2"><Label className="text-base" htmlFor="project-status">שלב הפרויקט</Label><Select value={form.status} onValueChange={v => set('status', v)}><SelectTrigger id="project-status" className="h-11 text-base"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(PROJECT_STATUS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
+      <div className="grid grid-cols-2 gap-3">{field('total_units', 'סך יחידות דיור', true)}{field('available_units', 'יחידות זמינות', true)}</div>
+      {field('price_from', 'מחיר החל מ־₪', true)}{field('delivery_date', 'מועד מסירה')}
+    </>}
+    {i === 4 && <>
+      {form.units.map((u, idx) => <fieldset key={u.source_unit_id} className="space-y-3 border-b border-border pb-4">
+        <div className="flex items-center justify-between"><legend className="text-lg font-semibold">דגם {idx + 1}</legend><Button size="icon-sm" variant="ghost" title="מחיקת דגם" aria-label={`מחיקת דגם ${idx + 1}`} onClick={() => set('units', form.units.filter((_, index) => index !== idx))}><Trash2 /></Button></div>
+        <div className="grid grid-cols-2 gap-3">{([['type', 'סוג דירה'], ['rooms', 'חדרים'], ['floor', 'קומה'], ['size_sqm', 'שטח במ״ר'], ['price', 'מחיר ₪'], ['count', 'מספר יחידות'], ['balcony_sqm', 'מרפסת במ״ר'], ['parking', 'חניות']] as const).map(([key, label]) => <div key={key} className="space-y-1"><Label htmlFor={`unit-${idx}-${key}`} className="text-base">{label}</Label><Input id={`unit-${idx}-${key}`} className="h-11 text-base" value={u[key]} inputMode={key === 'type' || key === 'floor' ? undefined : 'decimal'} onChange={e => set('units', form.units.map((unit, index) => index === idx ? { ...unit, [key]: e.target.value } : unit))} /></div>)}</div>
+      </fieldset>)}
+      <Button variant="outline" onClick={() => set('units', [...form.units, newUnit()])}><Plus />הוספת דגם דירה</Button>
+    </>}
+    {i === 5 && <>
+      <Label htmlFor="project-images" className="flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border text-base font-semibold">{uploading ? <Loader2 className="animate-spin" /> : <Upload />}העלאת תמונות</Label>
+      <Input id="project-images" type="file" accept="image/*" multiple className="sr-only" disabled={uploading} onChange={e => { void upload(e.target.files); e.target.value = ''; }} />
+      <div className="flex gap-2"><Input aria-label="קישור לתמונה" dir="ltr" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://" /><Button size="icon" variant="outline" aria-label="הוספת תמונה מקישור" title="הוספת תמונה מקישור" onClick={() => { try { if (new URL(imageUrl).protocol !== 'https:') throw new Error(); set('images', [...new Set([...form.images, imageUrl])]); setImageUrl(''); setError(''); } catch { setError('יש להזין קישור תמונה תקין'); } }}><Plus /></Button></div>
+      <div className="grid grid-cols-2 gap-3">{form.images.map((image, idx) => <div key={image} className="space-y-1"><img src={image} alt={`תמונת פרויקט ${idx + 1}`} className="aspect-[4/3] w-full rounded-md object-cover" /><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{idx === 0 ? 'תמונה ראשית' : idx + 1}</span><div className="flex"><Button size="icon-sm" variant="ghost" disabled={idx === 0} title="הקדמת תמונה" aria-label={`הקדמת תמונה ${idx + 1}`} onClick={() => { const images = [...form.images]; [images[idx - 1], images[idx]] = [images[idx], images[idx - 1]]; set('images', images); }}><ArrowRight /></Button><Button size="icon-sm" variant="ghost" title="הסרת תמונה" aria-label={`הסרת תמונה ${idx + 1}`} onClick={() => set('images', form.images.filter(v => v !== image))}><Trash2 /></Button></div></div></div>)}</div>
+    </>}
+    {i === 6 && <>
+      <div className="space-y-2"><Label htmlFor="project-specifications" className="text-base">מפרט הפרויקט</Label><Textarea id="project-specifications" className="min-h-28 text-base" value={form.specifications} onChange={e => set('specifications', e.target.value)} /></div>
+      <div className="grid grid-cols-2 gap-3">{AMENITIES.map(a => <Label key={a} className="flex items-center gap-2 text-base"><Checkbox checked={form.amenities.includes(a)} onCheckedChange={checked => set('amenities', checked === true ? [...form.amenities, a] : form.amenities.filter(v => v !== a))} />{a}</Label>)}</div>
+    </>}
+    {i === 7 && <>
+      {form.images[0] && <img src={form.images[0]} alt={form.name} className="aspect-[16/7] w-full rounded-md object-cover" />}
+      <h3 className="text-2xl font-bold">{form.name}</h3><p className="text-lg">{form.company_name}</p>
+      <dl className="divide-y divide-border text-base">{[
+        ['מיקום', [form.city, form.neighborhood, form.address].filter(Boolean).join(' · ')], ['שלב', PROJECT_STATUS[form.status] ?? form.status],
+        ['יחידות דיור', form.total_units], ['זמינות', form.available_units], ['מחיר החל מ־', form.price_from ? `₪${Number(form.price_from.replace(/,/g, '')).toLocaleString('he-IL')}` : ''],
+        ['מסירה', form.delivery_date], ['דגמי דירות', form.units.length || ''], ['תמונות', form.images.length || ''], ['מפרט', form.specifications], ['מאפיינים', form.amenities.join(' · ')],
+      ].filter(([, v]) => v !== '').map(([label, value]) => <div key={label} className="flex flex-wrap justify-between gap-2 py-2"><dt className="text-muted-foreground">{label}</dt><dd className="whitespace-pre-line font-semibold">{value}</dd></div>)}</dl>
+      {form.description && <p className="whitespace-pre-line text-base">{form.description}</p>}
+    </>}
+  </div>;
+
   return <div className="flex min-h-0 flex-col gap-4">
-    <div className="flex items-center justify-between gap-3">
-      <h2 className="text-xl font-bold">{PROJECT_STEPS[step]}</h2>
-      <span className="shrink-0 text-base text-muted-foreground">{step + 1} / 8</span>
-    </div>
-    <Progress value={(step + 1) / 8 * 100} className="h-1.5" />
-    <nav aria-label="שלבי הפרויקט" className="flex justify-between gap-1">
-      {PROJECT_STEPS.map((label, i) => <Button key={label} size="icon-sm" variant={i === step ? 'default' : 'ghost'} disabled={i > furthest || saving || uploading}
-        aria-label={`${i + 1}. ${label}`} aria-current={i === step ? 'step' : undefined} title={label} onClick={() => go(i)}>
-        {i < step ? <Check className="h-4 w-4" /> : i + 1}
-      </Button>)}
-    </nav>
-    <div className="max-h-[48dvh] min-h-48 space-y-4 overflow-y-auto px-1 pb-2">
-      {step === 0 && <>{field('company_name', 'שם החברה *')}{field('phone', 'טלפון החברה')}{field('company_source_url', 'עמוד החברה ביד2')}{field('logo_url', 'קישור ללוגו')}</>}
-      {step === 1 && <>{field('name', 'שם הפרויקט *')}<div className="space-y-2"><Label htmlFor="project-description" className="text-base">תיאור הפרויקט</Label><Textarea id="project-description" className="min-h-28 text-base" value={form.description} onChange={e => set('description', e.target.value)} /></div>{field('source_url', 'קישור לפרויקט ביד2')}</>}
-      {step === 2 && <>{field('city', 'עיר')}{field('neighborhood', 'שכונה')}{field('address', 'כתובת')}</>}
-      {step === 3 && <>
-        <div className="space-y-2"><Label className="text-base" htmlFor="project-status">שלב הפרויקט</Label><Select value={form.status} onValueChange={v => set('status', v)}><SelectTrigger id="project-status" className="h-11 text-base"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(PROJECT_STATUS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
-        <div className="grid grid-cols-2 gap-3">{field('total_units', 'סך יחידות דיור', true)}{field('available_units', 'יחידות זמינות', true)}</div>
-        {field('price_from', 'מחיר החל מ־₪', true)}{field('delivery_date', 'מועד מסירה')}
-      </>}
-      {step === 4 && <>
-        {form.units.map((u, i) => <fieldset key={u.source_unit_id} className="space-y-3 border-b border-border pb-4">
-          <div className="flex items-center justify-between"><legend className="text-lg font-semibold">דגם {i + 1}</legend><Button size="icon-sm" variant="ghost" title="מחיקת דגם" aria-label={`מחיקת דגם ${i + 1}`} onClick={() => set('units', form.units.filter((_, index) => index !== i))}><Trash2 /></Button></div>
-          <div className="grid grid-cols-2 gap-3">{([['type', 'סוג דירה'], ['rooms', 'חדרים'], ['floor', 'קומה'], ['size_sqm', 'שטח במ״ר'], ['price', 'מחיר ₪'], ['count', 'מספר יחידות'], ['balcony_sqm', 'מרפסת במ״ר'], ['parking', 'חניות']] as const).map(([key, label]) => <div key={key} className="space-y-1"><Label htmlFor={`unit-${i}-${key}`} className="text-base">{label}</Label><Input id={`unit-${i}-${key}`} className="h-11 text-base" value={u[key]} inputMode={key === 'type' || key === 'floor' ? undefined : 'decimal'} onChange={e => set('units', form.units.map((unit, index) => index === i ? { ...unit, [key]: e.target.value } : unit))} /></div>)}</div>
-        </fieldset>)}
-        <Button variant="outline" onClick={() => set('units', [...form.units, newUnit()])}><Plus />הוספת דגם דירה</Button>
-      </>}
-      {step === 5 && <>
-        <Label htmlFor="project-images" className="flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border text-base font-semibold">{uploading ? <Loader2 className="animate-spin" /> : <Upload />}העלאת תמונות</Label>
-        <Input id="project-images" type="file" accept="image/*" multiple className="sr-only" disabled={uploading} onChange={e => { void upload(e.target.files); e.target.value = ''; }} />
-        <div className="flex gap-2"><Input aria-label="קישור לתמונה" dir="ltr" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://" /><Button size="icon" variant="outline" aria-label="הוספת תמונה מקישור" title="הוספת תמונה מקישור" onClick={() => { try { if (new URL(imageUrl).protocol !== 'https:') throw new Error(); set('images', [...new Set([...form.images, imageUrl])]); setImageUrl(''); setError(''); } catch { setError('יש להזין קישור תמונה תקין'); } }}><Plus /></Button></div>
-        <div className="grid grid-cols-2 gap-3">{form.images.map((image, i) => <div key={image} className="space-y-1"><img src={image} alt={`תמונת פרויקט ${i + 1}`} className="aspect-[4/3] w-full rounded-md object-cover" /><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{i === 0 ? 'תמונה ראשית' : i + 1}</span><div className="flex"><Button size="icon-sm" variant="ghost" disabled={i === 0} title="הקדמת תמונה" aria-label={`הקדמת תמונה ${i + 1}`} onClick={() => { const images = [...form.images]; [images[i - 1], images[i]] = [images[i], images[i - 1]]; set('images', images); }}><ArrowRight /></Button><Button size="icon-sm" variant="ghost" title="הסרת תמונה" aria-label={`הסרת תמונה ${i + 1}`} onClick={() => set('images', form.images.filter(v => v !== image))}><Trash2 /></Button></div></div></div>)}</div>
-      </>}
-      {step === 6 && <>
-        <div className="space-y-2"><Label htmlFor="project-specifications" className="text-base">מפרט הפרויקט</Label><Textarea id="project-specifications" className="min-h-28 text-base" value={form.specifications} onChange={e => set('specifications', e.target.value)} /></div>
-        <div className="grid grid-cols-2 gap-3">{AMENITIES.map(a => <Label key={a} className="flex items-center gap-2 text-base"><Checkbox checked={form.amenities.includes(a)} onCheckedChange={checked => set('amenities', checked === true ? [...form.amenities, a] : form.amenities.filter(v => v !== a))} />{a}</Label>)}</div>
-      </>}
-      {step === 7 && <>
-        {form.images[0] && <img src={form.images[0]} alt={form.name} className="aspect-[16/7] w-full rounded-md object-cover" />}
-        <h3 className="text-2xl font-bold">{form.name}</h3><p className="text-lg">{form.company_name}</p>
-        <dl className="divide-y divide-border text-base">{[
-          ['מיקום', [form.city, form.neighborhood, form.address].filter(Boolean).join(' · ')], ['שלב', PROJECT_STATUS[form.status] ?? form.status],
-          ['יחידות דיור', form.total_units], ['זמינות', form.available_units], ['מחיר החל מ־', form.price_from ? `₪${Number(form.price_from.replace(/,/g, '')).toLocaleString('he-IL')}` : ''],
-          ['מסירה', form.delivery_date], ['דגמי דירות', form.units.length || ''], ['תמונות', form.images.length || ''], ['מפרט', form.specifications], ['מאפיינים', form.amenities.join(' · ')],
-        ].filter(([, v]) => v !== '').map(([label, value]) => <div key={label} className="flex flex-wrap justify-between gap-2 py-2"><dt className="text-muted-foreground">{label}</dt><dd className="whitespace-pre-line font-semibold">{value}</dd></div>)}</dl>
-        {form.description && <p className="whitespace-pre-line text-base">{form.description}</p>}
-      </>}
-    </div>
+    <Accordion type="single" collapsible value={openStep} onValueChange={setOpenStep} className="space-y-2">
+      {PROJECT_STEPS.map((title, i) => (
+        <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
+          <AccordionTrigger className="gap-3 px-4 text-start hover:no-underline">
+            <span className="flex min-w-0 flex-1 items-center gap-3">
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i + 1} מתוך 8`}>{i + 1}</span>
+              <span className="min-w-0 flex-1">{title}</span>
+              <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : <>חסרים פרטים<span className="text-destructive"> *</span></>}</span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="px-4">{renderStep(i)}</AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
     {error && <p role="alert" className="text-base text-destructive">{error}</p>}
     <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
-      <Button variant="ghost" disabled={saving || uploading} onClick={() => step ? go(step - 1) : onCancel()}>{step ? <><ArrowRight />הקודם</> : 'ביטול'}</Button>
-      {step < 7 ? <Button disabled={uploading} onClick={() => go(step + 1)}>הבא<ArrowLeft /></Button> : <Button disabled={saving || uploading} onClick={() => void save()}>{saving && <Loader2 className="animate-spin" />}אישור ושמירה</Button>}
+      <Button variant="ghost" disabled={saving || uploading} onClick={onCancel}>ביטול</Button>
+      <Button disabled={saving || uploading} onClick={() => void save()} className="bg-success font-bold text-success-foreground hover:bg-success/90">{saving && <Loader2 className="animate-spin" />}אישור ושמירה</Button>
     </div>
   </div>;
 }
