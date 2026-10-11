@@ -1,4 +1,7 @@
 # Roadmap
+## Universal partner mode
+- [x] Extend switcher to developer/broker/private accounts in sidebar, header and profile; retain core roles and return destination, check activation errors and update role cache.
+- [ ] Verify role combinations, activation, partner navigation/sharing access and return to core identity.
 ## Global sidebar walkthrough
 - [x] Connect sidebar Help in every workspace to concept/Rita introduction and role-scoped cross-page highlights with next/back/close/replay.
 - [x] Six tests and automatic build passed; signed-in developer completed all 26 steps across real screens, with sidebar/button highlights, previous/intro return, Escape, completion and replay; no runtime errors. Other account types were checked by navigation-isolation tests, not live sessions.

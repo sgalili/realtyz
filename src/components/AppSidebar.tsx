@@ -246,11 +246,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   // In partner ("שותף") mode — or for an affiliate-only account — only the
   // affiliate screens are listed.
   const features = useWorkspaceFeatures();
-  const affiliateOnlyNav = isAffiliateOnly || (isPartnerMode && !isDeveloper && !isPropertyOwnerOnly && !isPropertySeekerOnly);
+  const affiliateOnlyNav = isAffiliateOnly || isPartnerMode;
   const navItems = useMemo(() => {
-    if (roleLoading || roleError || isPropertySeekerOnly) return [];
-    if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
+    if (roleLoading || roleError) return [];
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS;
+    if (isPropertySeekerOnly) return [];
+    if (isPropertyOwnerOnly) return OWNER_NAV_ITEMS;
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.
@@ -356,8 +357,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4" />הדרכה
                 </Button>
 
-                {/* Broker/partner toggle: hidden only in Rita's marketing workspace. */}
-                {features.modeSwitcherEnabled && <AppModeSwitcher />}
+              </div>
+              <div className="mt-3 flex justify-center" onClick={(e) => e.stopPropagation()}>
+                <AppModeSwitcher keepSidebarOpen />
               </div>
 
             </SidebarGroupContent>

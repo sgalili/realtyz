@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { isAffiliateOnlyAccount } from '@/lib/accountMode';
 
 export type AppRole =
   | 'admin'
@@ -68,14 +69,14 @@ export function useUserRole() {
   // True only when `affiliate` is the user's ONLY role. Affiliate-only accounts
   // are external marketers: every broker tool, CRM screen and office setting is
   // hidden from them and they are routed to the affiliate portal instead.
-  const isAffiliateOnly = isAffiliate && !isTeamMember && !isModerator && !isDeveloper;
+  const isAffiliateOnly = isAffiliateOnlyAccount(roles);
 
   // Private property owners are NOT brokers and NOT affiliates: they only get
   // their own listings, the leads interested in them, the reward settings and
   // Rita. Every broker CRM tool, recruitment screen and affiliate management
   // surface stays hidden for them.
-  const isPropertyOwnerOnly = isPropertyOwner && !isTeamMember && !isModerator && !isAffiliate;
-  const isPropertySeekerOnly = isPropertySeeker && !isTeamMember && !isModerator && !isAffiliate && !isPropertyOwner;
+  const isPropertyOwnerOnly = isPropertyOwner && !isTeamMember && !isModerator && !isDeveloper;
+  const isPropertySeekerOnly = isPropertySeeker && !isTeamMember && !isModerator && !isDeveloper && !isPropertyOwner;
 
   // True only when junior_agent is the user's *highest* role.
   // Used for Junior-Agent UI restrictions (own-leads-only view).
