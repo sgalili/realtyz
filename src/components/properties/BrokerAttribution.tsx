@@ -30,7 +30,7 @@ export default function BrokerAttribution({
   const license = !isPrivate && /^[1-9]\d{0,7}$/.test(licenceNumber?.trim() ?? '') ? licenceNumber?.trim() : '';
 
   return (
-    <div data-publisher-attribution className={`flex min-w-0 items-center gap-3 border-y bg-muted/30 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
+    <div data-publisher-attribution className={`flex min-w-0 items-center gap-2 border-y bg-muted/30 ${compact ? 'px-2 py-2' : 'px-4 py-3'}`}>
       <div className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
         {logoUrl && !isPrivate ? (
           <img src={logoUrl} alt={`לוגו ${office}`} loading="lazy" className="h-full w-full object-contain p-1" />
@@ -39,7 +39,7 @@ export default function BrokerAttribution({
         )}
       </div>
       <div className="min-w-0 flex-1 text-right">
-        <p className={`${compact ? 'text-xs' : 'text-sm'} break-words font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
+        <p title={broker || 'מפרסם המודעה'} className={`${compact ? 'text-xs' : 'text-sm'} truncate font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
         {(isPrivate || office || license) && <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
           {isPrivate ? <span>{dealType === 'rent' ? 'משכיר פרטי' : dealType === 'sale' ? 'מוכר פרטי' : 'מפרסם פרטי'}</span> : office && <span title={office} className="min-w-0 truncate">{office}</span>}
           {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {license}</span>}
