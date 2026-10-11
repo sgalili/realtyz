@@ -29,6 +29,7 @@ import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
 import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
 import { ProfileAvatarUploader } from '@/components/profile/ProfileAvatarUploader';
+import { ImageCropDialog } from '@/components/profile/ImageCropDialog';
 import { ManagersTab } from '@/components/profile/ManagersTab';
 import { cn } from '@/lib/utils';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
@@ -421,6 +422,9 @@ function WorkspaceTab() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pendingLogo, setPendingLogo] = useState<{ file: File; kind: 'square' | 'landscape'; ownerId: string } | null>(null);
+
+  useEffect(() => { setPendingLogo(null); }, [ownerId]);
 
   // Load shared workspace branding from white_label_settings keyed by the workspace owner.
   useEffect(() => {
@@ -453,19 +457,22 @@ function WorkspaceTab() {
     return () => { cancelled = true; };
   }, [ownerId, activeWorkspace?.workspace_name, activeWorkspace?.workspace_logo_url]);
 
-  const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, kind: 'square' | 'landscape') => {
+  const onLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, kind: 'square' | 'landscape') => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !ownerId) return;
     if (!file.type.startsWith('image/')) { toast.error('יש לבחור קובץ תמונה (PNG, JPG, SVG או WEBP)'); return; }
     if (file.size === 0) { toast.error('הקובץ ריק – נסו לבחור תמונה אחרת'); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error('הקובץ גדול מדי (מקסימום 5MB)'); return; }
+    setPendingLogo({ file, kind, ownerId });
+  };
+
+  const uploadCroppedLogo = async (file: File) => {
+    if (!pendingLogo || !ownerId || pendingLogo.ownerId !== ownerId) return;
+    const { kind } = pendingLogo;
     setUploading(true);
     try {
-      const extFromName = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-      const extFromType = (file.type.split('/')[1] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const ext = extFromName || extFromType || 'png';
-      const path = `${ownerId}/${kind}-logo-${Date.now()}.${ext}`;
+      const path = `${ownerId}/${kind}-logo-${Date.now()}.png`;
 
       const { error: upErr } = await supabase.storage
         .from('agency-logos')
@@ -492,6 +499,7 @@ function WorkspaceTab() {
       if (kind === 'square') setLogoUrl(publicUrl); else setLandscapeLogoUrl(publicUrl);
       if (kind === 'square') { try { window.localStorage.setItem(LOGO_STORAGE_KEY, publicUrl); } catch {} }
       await refreshBrand();
+      setPendingLogo(null);
       toast.success('הלוגו הועלה ושותף לכל חברי המשרד');
     } catch (err: any) {
       toast.error('שגיאה בהעלאת הלוגו', { description: err?.message || 'נסו שוב או בחרו קובץ אחר' });
@@ -555,6 +563,9 @@ function WorkspaceTab() {
   return (
     <Card>
       <CardContent className="space-y-4">
+        {pendingLogo && pendingLogo.ownerId === ownerId && (
+          <ImageCropDialog file={pendingLogo.file} aspect={pendingLogo.kind === 'square' ? 1 : 16 / 7} title={pendingLogo.kind === 'square' ? 'חיתוך לוגו ריבוע' : 'חיתוך לוגו מלבן'} onCancel={() => setPendingLogo(null)} onConfirm={uploadCroppedLogo} />
+        )}
         <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card/40 p-3 text-right">
           <LogoBox title="לוגו ריבוע" url={logoUrl} disabled={uploading} aspect="square" onUpload={(e) => onLogoUpload(e, 'square')} onRemove={() => removeLogo('square')} />
           <LogoBox title="לוגו מלבן" url={landscapeLogoUrl} disabled={uploading} aspect="landscape" onUpload={(e) => onLogoUpload(e, 'landscape')} onRemove={() => removeLogo('landscape')} />

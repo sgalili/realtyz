@@ -1,4 +1,7 @@
 # Roadmap
+## Profile image cropping
+- [x] Add adjustable square and landscape crop selection before office-logo upload and a persistent camera icon inside the profile avatar.
+- [ ] Verify crop dimensions, cancellation and persisted image readback in the signed-in profile.
 ## Lead pills, tabs and toolbar
 - [x] Every lead gets one resolved category; single/multi pills filter correctly with counts before labels; tabs show counts without parentheses; total line removed; multiselect toggle before search with animated shrink/expand row. Signed-in check: each pill count equals rows shown, tabs 39/0.
 ## Lead toolbar and received count

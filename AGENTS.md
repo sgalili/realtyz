@@ -1,4 +1,5 @@
 # Architecture rules
+- Profile and office image uploads use the shared fixed-aspect crop dialog before storage; crop percentages map to original pixels and pending selections clear on workspace changes. Why: consistent image framing without premature uploads or tenant drift.
 - Tours use authorized menus and route-stable state; never auto-mutate.
 - Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts.
 - Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports/commissions; DB-authorize publication.
