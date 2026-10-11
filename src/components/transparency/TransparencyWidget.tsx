@@ -38,18 +38,18 @@ export default function TransparencyWidget({ filter, onFilter }: { filter?: Tran
       {data.banned && <p role="alert" className="flex items-center gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive"><ShieldAlert className="h-4 w-4" />החשבון מושעה. המודעות, ההפצה והארנק הוקפאו.</p>}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         <Stat label="נכסים פעילים" value={n(a.active_listings)} {...on('advertiser', 'active_listings')} />
-        <Stat label="פניות (30 יום)" value={n(a.leads_30d)} {...on('advertiser', 'leads_30d')} />
-        <Stat label="פניות מאושרות" value={n(a.approved)} tone="success" {...on('advertiser', 'approved')} />
-        <Stat label="במחלוקת" value={n(a.disputed)} tone="warning" {...on('advertiser', 'disputed')} />
-        <Stat label="נדחו" value={n(a.rejected)} tone="destructive" {...on('advertiser', 'rejected')} />
+        <Stat label="פניות שלי (30 יום)" value={n(a.leads_30d)} {...on('advertiser', 'leads_30d')} />
+        <Stat label="פניות שלי מאושרות" value={n(a.approved)} tone="success" {...on('advertiser', 'approved')} />
+        <Stat label="פניות שלי במחלוקת" value={n(a.disputed)} tone="warning" {...on('advertiser', 'disputed')} />
+        <Stat label="פניות שלי נדחו" value={n(a.rejected)} tone="destructive" {...on('advertiser', 'rejected')} />
         <Stat label={data.wallet?.frozen ? 'יתרה (מוקפאת)' : 'יתרת ארנק'} value={fmtCredits(ilsToCredits(Number(data.wallet?.balance ?? 0)))} tone={data.wallet?.frozen ? 'destructive' : undefined} {...on('advertiser', 'wallet')} />
       </div>
       {isPartner && <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
         <Stat label="נכסים שאני מקדם" value={n(p.promoted_listings)} {...on('partner', 'promoted_listings')} />
-        <Stat label="פניות שהבאתי (30 יום)" value={n(p.leads_30d)} {...on('partner', 'leads_30d')} />
-        <Stat label="מאושרות" value={n(p.approved)} tone="success" {...on('partner', 'approved')} />
-        <Stat label="במחלוקת" value={n(p.disputed)} tone="warning" {...on('partner', 'disputed')} />
-        <Stat label="נדחו" value={n(p.rejected)} tone="destructive" {...on('partner', 'rejected')} />
+        <Stat label="פניות משותפים (30 יום)" value={n(p.leads_30d)} {...on('partner', 'leads_30d')} />
+        <Stat label="פניות משותפים מאושרות" value={n(p.approved)} tone="success" {...on('partner', 'approved')} />
+        <Stat label="פניות משותפים במחלוקת" value={n(p.disputed)} tone="warning" {...on('partner', 'disputed')} />
+        <Stat label="פניות משותפים נדחו" value={n(p.rejected)} tone="destructive" {...on('partner', 'rejected')} />
       </div>}
       {Number(data.pending_disputes_value) > 0 && <p className="text-xs text-muted-foreground">יתרה בבירור במחלוקות פתוחות: {fmtCredits(ilsToCredits(Number(data.pending_disputes_value)))}</p>}
     </section>
