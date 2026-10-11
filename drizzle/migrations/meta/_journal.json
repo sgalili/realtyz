@@ -204,6 +204,13 @@
       "when": 1791698662853,
       "tag": "0028_monthly_free_wallet_credits",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791702414515,
+      "tag": "0029_leads_resolved_category",
+      "breakpoints": true
     }
   ]
 }

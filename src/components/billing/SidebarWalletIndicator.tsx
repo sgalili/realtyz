@@ -22,7 +22,7 @@ export function useIncomingLeadsCount(scope: 'current-mode' | 'workspace' = 'cur
   const allowed = !loading && !error && (scope === 'workspace' || (!isPropertySeekerOnly && (partner || isTeamMember || isDeveloper || isPropertyOwnerOnly)));
   return useQuery({
     queryKey: ['incoming-leads-count', ws, user?.id, scope, partner, isPropertyOwnerOnly],
-    enabled: !!user && !!ws && allowed,
+    enabled: !!user && (scope === 'workspace' || !!ws) && allowed,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
@@ -36,10 +36,10 @@ export function useIncomingLeadsCount(scope: 'current-mode' | 'workspace' = 'cur
         if (error) throw error;
         return count ?? 0;
       }
+      // Same scope as the lead list: RLS (ws_current_access) limits rows to the active workspace.
       const { count, error } = await supabase
         .from('leads')
         .select('id', { count: 'exact', head: true })
-        .eq('workspace_owner_id', ws ?? '')
         .eq('is_demo', false);
       if (error) throw error;
       return count ?? 0;

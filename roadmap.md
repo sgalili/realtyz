@@ -1,4 +1,6 @@
 # Roadmap
+## Lead pills, tabs and toolbar
+- [x] Every lead gets one resolved category; single/multi pills filter correctly with counts before labels; tabs show counts without parentheses; total line removed; multiselect toggle before search with animated shrink/expand row. Signed-in check: each pill count equals rows shown, tabs 39/0.
 ## Lead toolbar and received count
 - [x] Align pills/search to table edges; selected count beside toggle, transparent actions at row end, red trash, no duplicate total, clear toggle state. Authenticated desktop/435px selection and deselection verified without runtime errors.
 - [x] Received tab explicitly counts authorized workspace leads independently of partner mode, avoiding partner-contact zero mismatch. Live tab shows 39; 12 tests and automatic build passed. No lead records modified.
