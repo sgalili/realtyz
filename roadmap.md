@@ -1,4 +1,7 @@
 # Roadmap
+## Lead toolbar and received count
+- [x] Align pills/search to table edges; selected count beside toggle, transparent actions at row end, red trash, no duplicate total, clear toggle state. Authenticated desktop/435px selection and deselection verified without runtime errors.
+- [x] Received tab explicitly counts authorized workspace leads independently of partner mode, avoiding partner-contact zero mismatch. Live tab shows 39; 12 tests and automatic build passed. No lead records modified.
 ## Lead categories and main tabs
 - [x] Use OR category matching; zero/all-visible selection retains unclassified records.
 - [x] Hide broker pill for broker/team accounts; preserve developer/owner relevance and affiliate consent.

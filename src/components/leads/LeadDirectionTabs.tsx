@@ -11,7 +11,7 @@ export default function LeadDirectionTabs({ children }: { children: ReactNode })
   const { isAffiliate, loading, error } = useUserRole();
   const location = useLocation();
   const navigate = useNavigate();
-  const received = useIncomingLeadsCount();
+  const received = useIncomingLeadsCount('workspace');
   const { data: sentRows = [] } = useMySubmissions();
   if (loading || error || !isAffiliate) return <>{children}</>;
   const params = new URLSearchParams(location.search);
