@@ -926,8 +926,8 @@ const LeadCRM = () => {
     enabled: !isDemoMode && leadKindOptions.length > 0,
     queryFn: async () => {
       const entries = await Promise.all(leadKindOptions.map(async (o) => {
-        const { count } = await supabase.from('leads').select('id', { count: 'exact', head: true })
-          .eq('is_demo', false).eq('lead_category' as any, o.v);
+        const { count } = await (supabase.from('leads') as any).select('id', { count: 'exact', head: true })
+          .eq('is_demo', false).eq('lead_category', o.v);
         return [o.v, count ?? 0] as const;
       }));
       return Object.fromEntries(entries) as Partial<Record<LeadKind, number>>;
