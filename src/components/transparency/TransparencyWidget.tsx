@@ -14,7 +14,7 @@ export type TransparencyFilter = { side: 'advertiser' | 'partner'; key: 'active_
 
 function Stat({ label, value, tone, active, onClick }: { label: string; value: string; tone?: 'success' | 'warning' | 'destructive'; active?: boolean; onClick?: () => void }) {
   const color = tone === 'success' ? 'text-success' : tone === 'warning' ? 'text-warning' : tone === 'destructive' ? 'text-destructive' : 'text-foreground';
-  return <button type="button" onClick={onClick} aria-pressed={active} className={`min-w-0 rounded-md border bg-background p-2 text-center transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'border-primary ring-1 ring-primary bg-primary/5' : ''}`}><p className={`text-lg font-bold ${color}`}>{value}</p><p className="truncate text-xs text-muted-foreground">{label}</p></button>;
+  return <button type="button" onClick={onClick} aria-pressed={active} className={`min-w-0 rounded-md border bg-background p-2 text-center transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'border-primary ring-1 ring-primary bg-primary/5' : ''}`}><p className={`text-lg font-bold ${color}`}>{value}</p><p className="text-xs leading-tight text-muted-foreground">{label}</p></button>;
 }
 
 /** Transparent view of properties, inquiries, dispute outcomes and wallet for advertisers and partners. */
@@ -31,12 +31,9 @@ export default function TransparencyWidget({ filter, onFilter }: { filter?: Tran
   const isPartner = Number(p.promoted_listings) > 0;
   return (
     <section className="space-y-3 rounded-lg border bg-card p-3" aria-label="שקיפות">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="font-bold">שקיפות</h2>
-        {data.trust_score != null && <span className="text-xs text-muted-foreground">ציון אמינות <b className="text-foreground">{n(data.trust_score)}</b></span>}
-      </div>
       {data.banned && <p role="alert" className="flex items-center gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive"><ShieldAlert className="h-4 w-4" />החשבון מושעה. המודעות, ההפצה והארנק הוקפאו.</p>}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
+        {data.trust_score != null && <Stat label="ציון אמינות" value={n(data.trust_score)} />}
         <Stat label="נכסים פעילים" value={n(a.active_listings)} {...on('advertiser', 'active_listings')} />
         <Stat label="פניות שלי (30 יום)" value={n(a.leads_30d)} {...on('advertiser', 'leads_30d')} />
         <Stat label="פניות שלי מאושרות" value={n(a.approved)} tone="success" {...on('advertiser', 'approved')} />
