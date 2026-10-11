@@ -26,7 +26,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
-  const { setOpen, setOpenMobile } = useSidebar();
+  const { setOpen: setSidebarOpen, setOpenMobile } = useSidebar();
 
   useEffect(() => {
     if (!user?.id) {
@@ -75,7 +75,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const goProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenMobile(false);
-    setOpen(false);
+    setSidebarOpen(false);
     navigate('/profile');
   };
 
