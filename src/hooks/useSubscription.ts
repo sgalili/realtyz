@@ -51,7 +51,7 @@ export function useSubscription() {
       qc.invalidateQueries({ queryKey: ['credit-wallet'] });
       qc.invalidateQueries({ queryKey: ['freemium-status'] });
       if (res?.is_launch_promo) {
-        toast.success('נכנסת למבצע ההשקה: 50% הנחה + 15 ₪ מתנה לארנק');
+        toast.success('נכנסת למבצע ההשקה: 50% הנחה + 375 קרדיטים מתנה לארנק');
       } else {
         toast.success('החבילה עודכנה');
       }
