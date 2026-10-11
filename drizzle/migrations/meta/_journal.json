@@ -71,6 +71,13 @@
       "when": 1791567947046,
       "tag": "0009_otp_guard_and_form_field_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791676921280,
+      "tag": "0010_create_developers",
+      "breakpoints": true
     }
   ]
 }

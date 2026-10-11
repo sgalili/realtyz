@@ -5,6 +5,7 @@ import {
   Megaphone,
   MessageCircle,
   Home,
+  Building2,
   Handshake,
   ClipboardList,
   HelpCircle,
@@ -99,6 +100,13 @@ const NAV_ITEMS: NavItem[] = [
     iconColor: '!text-[#b45309]', // amber-700
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
     aliases: ['/property', '/listings'],
+  },
+  {
+    title: 'יזמים',
+    url: '/developers',
+    icon: Building2,
+    iconColor: '!text-[#334155]', // slate-700
+    badgeClass: 'bg-slate-50 text-slate-700 ring-slate-200',
   },
   {
     title: 'צ׳אטים',
