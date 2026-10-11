@@ -4192,6 +4192,7 @@ export type Database = {
           is_demo: boolean
           is_voted: boolean | null
           last_interaction_at: string | null
+          lead_category: string | null
           lead_stage: string
           lease_end_date: string | null
           lifecycle_stage: string
@@ -4251,6 +4252,7 @@ export type Database = {
           is_demo?: boolean
           is_voted?: boolean | null
           last_interaction_at?: string | null
+          lead_category?: string | null
           lead_stage?: string
           lease_end_date?: string | null
           lifecycle_stage?: string
@@ -4310,6 +4312,7 @@ export type Database = {
           is_demo?: boolean
           is_voted?: boolean | null
           last_interaction_at?: string | null
+          lead_category?: string | null
           lead_stage?: string
           lease_end_date?: string | null
           lifecycle_stage?: string
