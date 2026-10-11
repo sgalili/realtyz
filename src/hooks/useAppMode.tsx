@@ -20,6 +20,7 @@ export const PARTNER_MODE_PATHS = [
   '/affiliate-network',
   '/referral',
   '/profile',
+  '/wallet',
   '/posts',
   '/partner/posts',
   '/partner/chats',

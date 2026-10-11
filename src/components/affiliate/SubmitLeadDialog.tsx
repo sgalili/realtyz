@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { UserPlus } from 'lucide-react';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import {
   listingTiers,
   useSubmitAffiliateLead,
@@ -26,6 +27,7 @@ import {
 
 export function SubmitLeadDialog({ listing }: { listing: MarketplaceListing }) {
   const submit = useSubmitAffiliateLead();
+  const { level4Unlocked } = useAffiliateLicense();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -67,7 +69,7 @@ export function SubmitLeadDialog({ listing }: { listing: MarketplaceListing }) {
         </DialogHeader>
 
         <div className="space-y-3 py-2">
-          <CommissionTierBadges tiers={listingTiers(listing)} />
+          <CommissionTierBadges tiers={listingTiers(listing)} level4Locked={!level4Unlocked} />
 
           <div className="space-y-1.5">
             <Label>שם המתעניין</Label>
@@ -93,7 +95,7 @@ export function SubmitLeadDialog({ listing }: { listing: MarketplaceListing }) {
             />
           </div>
           <p className="text-[11px] text-slate-500">
-            תגמול שלב 1 נצבר עם ההגשה. שלב 2 נצבר לאחר אימות אנושי של המתווך, ושלב 3 בסגירת העסקה.
+            הזינו את פרטי איש הקשר ושלחו את הפנייה. תוכלו לעקוב אחריה במסך אנשי הקשר שלכם.
           </p>
         </div>
 

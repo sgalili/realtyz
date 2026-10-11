@@ -15,11 +15,11 @@ import { useSidebar } from '@/components/ui/sidebar';
 export function AppModeSwitcher() {
   const navigate = useNavigate();
   const { mode, setMode } = useAppMode();
-  const { isTeamMember, isAffiliateOnly, loading } = useUserRole();
+  const { isTeamMember, isAffiliateOnly, isDeveloper, loading } = useUserRole();
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const [busy, setBusy] = useState(false);
 
-  if (loading || isAffiliateOnly || !isTeamMember) return null;
+  if (loading || isAffiliateOnly || isDeveloper || !isTeamMember) return null;
 
   const switchTo = async (next: AppMode) => {
     if (next === mode || busy) return;
