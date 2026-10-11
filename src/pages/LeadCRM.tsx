@@ -1829,7 +1829,7 @@ const LeadCRM = () => {
             {/* Lead kind tabs */}
             <div className="flex flex-wrap gap-1.5 -mt-1">
               {([
-                { v: 'all', label: 'הכל' },
+                { v: 'all', label: 'כולם' },
                 { v: 'buyer', label: 'קונים' },
                 { v: 'seller', label: 'מוכרים' },
                 { v: 'renter', label: 'שוכרים' },
