@@ -154,7 +154,11 @@ export default function MyAds() {
   });
   return <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6">
     <Tabs defaultValue="ads" dir="rtl">
-      <div className="max-w-full overflow-x-auto"><TabsList className="w-max min-w-full"><TabsTrigger value="ads">{data.length}{'\u00a0'}נכסים שלי</TabsTrigger><TabsTrigger value="failed">{recovery.data?.length ?? 0} טיוטות</TabsTrigger><TabsTrigger value="favorites">{favCount}{'\u00a0'}מועדפים</TabsTrigger></TabsList></div>
+      <TabsList className="mb-1.5 grid h-[44px] w-full grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+        <TabsTrigger value="ads" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{data.length}{'\u00a0'}נכסים שלי</TabsTrigger>
+        <TabsTrigger value="failed" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{recovery.data?.length ?? 0} טיוטות</TabsTrigger>
+        <TabsTrigger value="favorites" className="h-9 min-w-0 rounded-lg px-2 py-2 text-[15px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">{favCount}{'\u00a0'}מועדפים</TabsTrigger>
+      </TabsList>
       <TabsContent value="favorites" className="pt-3"><MyFavoriteAds /></TabsContent>
       <TabsContent value="failed" className="space-y-3 pt-3">
         {recovery.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : recovery.isError ? <p role="alert">לא ניתן לטעון טיוטות <Button variant="link" onClick={() => void recovery.refetch()}>ניסיון נוסף</Button></p> : !recovery.data?.length ? <p className="py-10 text-center text-muted-foreground">אין מודעות שנכשלו או טיוטות חסרות.</p> : (() => {
