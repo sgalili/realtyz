@@ -402,6 +402,7 @@ const App = () => (
               <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
               <Route path="/affiliate-pricing" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><AffiliatePricing /></Suspense></ProtectedRoute>} />
               <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
+              <Route path="/developers" element={<ProtectedRoute allowGuestDemo><Suspense fallback={<PageLoader />}><Developers /></Suspense></ProtectedRoute>} />
               <Route path="/owner/leads" element={<ProtectedRoute><OwnerLeads /></ProtectedRoute>} />
               <Route path="/owner/rewards" element={<ProtectedRoute><OwnerRewards /></ProtectedRoute>} />
               <Route path="/owner/rita" element={<ProtectedRoute><OwnerRita /></ProtectedRoute>} />
