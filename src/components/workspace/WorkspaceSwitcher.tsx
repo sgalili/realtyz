@@ -81,7 +81,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
 
   // The line under the workspace name is the ACTIVE workspace owner's name.
   const ownerLabel = (activeWorkspace?.owner_full_name ?? '').trim()
-    || (activeWorkspace?.owner_email ?? '').trim()
+    || (isSyntheticEmail(activeWorkspace?.owner_email) ? '' : (activeWorkspace?.owner_email ?? '').trim())
     || (activeWorkspace?.workspace_name ?? '').trim();
 
   // Square workspace logo, shown on the side opposite the name + owner line.
@@ -112,7 +112,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
           referrerPolicy="no-referrer"
         />
       ) : (
-        <span className="text-xs font-bold text-primary">{workspaceInitial(identity.name)}</span>
+        /^\d$/.test(workspaceInitial(identity.name)) ? <Building2 className="h-4 w-4 text-primary" /> : <span className="text-xs font-bold text-primary">{workspaceInitial(identity.name)}</span>
       )}
     </span>
   );
@@ -191,7 +191,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     </span>
                     <span className="min-w-0 flex-1 truncate">
                       <span className="block truncate">{label}</span>
-                      {isSuperAdmin && w.owner_email && (
+                      {isSuperAdmin && w.owner_email && !isSyntheticEmail(w.owner_email) && (
                         <span dir="ltr" className="block truncate text-[10px] font-normal text-muted-foreground">
                           {w.owner_email}
                         </span>
@@ -205,13 +205,13 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
           </PopoverContent>
         </Popover>
       ) : (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-background px-2.5 py-2 text-right"
+        <Button variant="outline"
+          onClick={goProfile}
+          className="flex h-auto min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 text-right"
         >
           {workspaceInfo}
           {workspaceLogoSquare}
-        </div>
+        </Button>
       )}
     </div>
   );
