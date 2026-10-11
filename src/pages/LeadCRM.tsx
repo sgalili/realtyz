@@ -1878,6 +1878,17 @@ const LeadCRM = () => {
                 className={selectMode ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground ring-2 ring-primary/20' : 'border border-border'}
                 onToggle={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
               />
+              <div
+                aria-hidden={!selectMode}
+                className={`flex shrink-0 items-center gap-1 overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-out will-change-[max-width] ${selectMode ? 'max-w-[220px] opacity-100' : 'max-w-0 opacity-0 pointer-events-none'}`}
+                role="toolbar"
+                aria-label="פעולות על לידים נבחרים"
+              >
+                <span className="px-1 text-sm tabular-nums">{selectedIds.size} נבחרו</span>
+                {recruitmentMode && <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" onClick={handleBrokerFirstOutreach} disabled={sendingFirstOutreach || selectedIds.size === 0} aria-label="הודעת פתיחה למתווכים" title="הודעת פתיחה למתווכים"><Send className="h-4 w-4" /></Button>}
+                <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" disabled={selectedIds.size === 0} onClick={() => handleExportExcel('selected')} aria-label="ייצוא נבחרים" title="ייצוא נבחרים"><ExcelIcon className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent text-destructive hover:bg-transparent hover:text-destructive" disabled={selectedIds.size === 0} aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}><Trash2 className="h-4 w-4" /></Button>
+              </div>
               <div className="relative min-w-0 flex-1 transition-[flex-basis] duration-300 ease-out">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="חיפוש לידים ואנשי קשר" className="pr-9 pl-9 h-9 w-full" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -1889,17 +1900,6 @@ const LeadCRM = () => {
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                 </button>
-              </div>
-              <div
-                aria-hidden={!selectMode}
-                className={`flex shrink-0 items-center gap-1 overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-out will-change-[max-width] ${selectMode ? 'max-w-[220px] opacity-100' : 'max-w-0 opacity-0 pointer-events-none'}`}
-                role="toolbar"
-                aria-label="פעולות על לידים נבחרים"
-              >
-                <span className="px-1 text-sm tabular-nums">{selectedIds.size} נבחרו</span>
-                {recruitmentMode && <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" onClick={handleBrokerFirstOutreach} disabled={sendingFirstOutreach || selectedIds.size === 0} aria-label="הודעת פתיחה למתווכים" title="הודעת פתיחה למתווכים"><Send className="h-4 w-4" /></Button>}
-                <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent hover:bg-transparent" disabled={selectedIds.size === 0} onClick={() => handleExportExcel('selected')} aria-label="ייצוא נבחרים" title="ייצוא נבחרים"><ExcelIcon className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" tabIndex={selectMode ? 0 : -1} className="h-8 w-8 shrink-0 bg-transparent text-destructive hover:bg-transparent hover:text-destructive" disabled={selectedIds.size === 0} aria-label="מחק נבחרים" title="מחק נבחרים" onClick={openBatchDeleteDialog}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
           </div>
