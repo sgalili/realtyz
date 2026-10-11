@@ -10,13 +10,15 @@ type Summary = { advertiser: Side; partner: Side; wallet: { balance: number; fro
 
 const n = (v: unknown) => Number(v ?? 0).toLocaleString('he-IL');
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: 'success' | 'warning' | 'destructive' }) {
+export type TransparencyFilter = { side: 'advertiser' | 'partner'; key: 'active_listings' | 'promoted_listings' | 'leads_30d' | 'approved' | 'disputed' | 'rejected' | 'wallet' };
+
+function Stat({ label, value, tone, active, onClick }: { label: string; value: string; tone?: 'success' | 'warning' | 'destructive'; active?: boolean; onClick?: () => void }) {
   const color = tone === 'success' ? 'text-success' : tone === 'warning' ? 'text-warning' : tone === 'destructive' ? 'text-destructive' : 'text-foreground';
-  return <div className="min-w-0 rounded-md border bg-background p-2 text-center"><p className={`text-lg font-bold ${color}`}>{value}</p><p className="truncate text-xs text-muted-foreground">{label}</p></div>;
+  return <button type="button" onClick={onClick} aria-pressed={active} className={`min-w-0 rounded-md border bg-background p-2 text-center transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? 'border-primary ring-1 ring-primary bg-primary/5' : ''}`}><p className={`text-lg font-bold ${color}`}>{value}</p><p className="truncate text-xs text-muted-foreground">{label}</p></button>;
 }
 
 /** Transparent view of properties, inquiries, dispute outcomes and wallet for advertisers and partners. */
-export default function TransparencyWidget() {
+export default function TransparencyWidget({ filter, onFilter }: { filter?: TransparencyFilter | null; onFilter?: (f: TransparencyFilter | null) => void }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const { data } = useQuery({
@@ -24,6 +26,7 @@ export default function TransparencyWidget() {
     queryFn: async () => { const { data, error } = await supabase.rpc('get_transparency_summary'); if (error) throw error; return data as unknown as Summary; },
   });
   if (!data) return null;
+  const on = (side: TransparencyFilter['side'], key: TransparencyFilter['key']) => ({ active: filter?.side === side && filter?.key === key, onClick: () => onFilter?.(filter?.side === side && filter?.key === key ? null : { side, key }) });
   const a = data.advertiser, p = data.partner;
   const isPartner = Number(p.promoted_listings) > 0;
   return (
@@ -34,19 +37,19 @@ export default function TransparencyWidget() {
       </div>
       {data.banned && <p role="alert" className="flex items-center gap-2 rounded-md bg-destructive/10 p-2 text-sm text-destructive"><ShieldAlert className="h-4 w-4" />החשבון מושעה. המודעות, ההפצה והארנק הוקפאו.</p>}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        <Stat label="נכסים פעילים" value={n(a.active_listings)} />
-        <Stat label="פניות (30 יום)" value={n(a.leads_30d)} />
-        <Stat label="פניות מאושרות" value={n(a.approved)} tone="success" />
-        <Stat label="במחלוקת" value={n(a.disputed)} tone="warning" />
-        <Stat label="נדחו" value={n(a.rejected)} tone="destructive" />
-        <Stat label={data.wallet?.frozen ? 'יתרה (מוקפאת)' : 'יתרת ארנק'} value={fmtCredits(ilsToCredits(Number(data.wallet?.balance ?? 0)))} tone={data.wallet?.frozen ? 'destructive' : undefined} />
+        <Stat label="נכסים פעילים" value={n(a.active_listings)} {...on('advertiser', 'active_listings')} />
+        <Stat label="פניות (30 יום)" value={n(a.leads_30d)} {...on('advertiser', 'leads_30d')} />
+        <Stat label="פניות מאושרות" value={n(a.approved)} tone="success" {...on('advertiser', 'approved')} />
+        <Stat label="במחלוקת" value={n(a.disputed)} tone="warning" {...on('advertiser', 'disputed')} />
+        <Stat label="נדחו" value={n(a.rejected)} tone="destructive" {...on('advertiser', 'rejected')} />
+        <Stat label={data.wallet?.frozen ? 'יתרה (מוקפאת)' : 'יתרת ארנק'} value={fmtCredits(ilsToCredits(Number(data.wallet?.balance ?? 0)))} tone={data.wallet?.frozen ? 'destructive' : undefined} {...on('advertiser', 'wallet')} />
       </div>
       {isPartner && <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-        <Stat label="נכסים שאני מקדם" value={n(p.promoted_listings)} />
-        <Stat label="פניות שהבאתי (30 יום)" value={n(p.leads_30d)} />
-        <Stat label="מאושרות" value={n(p.approved)} tone="success" />
-        <Stat label="במחלוקת" value={n(p.disputed)} tone="warning" />
-        <Stat label="נדחו" value={n(p.rejected)} tone="destructive" />
+        <Stat label="נכסים שאני מקדם" value={n(p.promoted_listings)} {...on('partner', 'promoted_listings')} />
+        <Stat label="פניות שהבאתי (30 יום)" value={n(p.leads_30d)} {...on('partner', 'leads_30d')} />
+        <Stat label="מאושרות" value={n(p.approved)} tone="success" {...on('partner', 'approved')} />
+        <Stat label="במחלוקת" value={n(p.disputed)} tone="warning" {...on('partner', 'disputed')} />
+        <Stat label="נדחו" value={n(p.rejected)} tone="destructive" {...on('partner', 'rejected')} />
       </div>}
       {Number(data.pending_disputes_value) > 0 && <p className="text-xs text-muted-foreground">יתרה בבירור במחלוקות פתוחות: {fmtCredits(ilsToCredits(Number(data.pending_disputes_value)))}</p>}
     </section>

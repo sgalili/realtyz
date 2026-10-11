@@ -1,6 +1,6 @@
 import { Table } from '@/components/ui/table';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
@@ -15,6 +15,8 @@ import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDow
 import ListingLifecycleStatus from '@/components/listings/ListingLifecycleStatus';
 import TransparencyWidget from '@/components/transparency/TransparencyWidget';
 import LeadDisputesPanel from '@/components/transparency/LeadDisputesPanel';
+import TransparencyResults from '@/components/transparency/TransparencyResults';
+import type { TransparencyFilter } from '@/components/transparency/TransparencyWidget';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -137,6 +139,15 @@ export default function MyAds() {
     refetchInterval: 30_000, refetchOnWindowFocus: true,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
   });
+  const navigate = useNavigate();
+  const [tFilter, setTFilter] = useState<TransparencyFilter | null>(null);
+  const { data: sharedIds } = useQuery({
+    queryKey: ['transparency-shared-ids', user?.id, activeWorkspaceId], enabled: !!user?.id && tFilter?.key === 'active_listings',
+    queryFn: async () => { const { data, error } = await supabase.rpc('get_transparency_shared_listing_ids'); if (error) throw error; return new Set((data ?? []) as string[]); },
+  });
+  const onTFilter = (f: TransparencyFilter | null) => { if (f?.key === 'wallet') { navigate('/wallet'); return; } setTFilter(f); };
+  const listingFilter = tFilter?.key === 'active_listings' || tFilter?.key === 'promoted_listings';
+  const visible = !listingFilter ? data : tFilter!.key === 'promoted_listings' ? data.filter(r => r.relation === 'promoting') : data.filter(r => r.relation === 'owned' && sharedIds?.has(r.listing_id));
   const { data: favCount = 0 } = useQuery({
     queryKey: ['my-fav-ads-count', user?.id], enabled: !!user?.id,
     queryFn: async () => { const { count, error } = await supabase.from('listing_favorites').select('listing_id', { count: 'exact', head: true }).eq('user_id', user!.id); if (error) throw error; return count ?? 0; },
@@ -205,10 +216,11 @@ export default function MyAds() {
         })()}
       </TabsContent>
       <TabsContent value="ads" className="space-y-6 pt-3">
-    <TransparencyWidget />
-    <LeadDisputesPanel />
-    {isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות שפרסמת או נכסים שאתה מקדם.</p> : (['owned', 'promoting'] as const).map(relation => {
-      const rows = data.filter(r => r.relation === relation);
+    <TransparencyWidget filter={tFilter} onFilter={onTFilter} />
+    {tFilter && !listingFilter && <TransparencyResults filter={tFilter} />}
+    {tFilter?.key === 'disputed' && <LeadDisputesPanel />}
+    {tFilter && !listingFilter ? null : isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות שפרסמת או נכסים שאתה מקדם.</p> : (['owned', 'promoting'] as const).map(relation => {
+      const rows = visible.filter(r => r.relation === relation);
       return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2><div className="space-y-3">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
     })}
       </TabsContent>
