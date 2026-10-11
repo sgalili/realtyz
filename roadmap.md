@@ -1,4 +1,7 @@
 # Roadmap
+## Public publisher card placement
+- [x] Move commission amounts inside publisher strip opposite name; private publishers use silhouette and sale/rent subtitle; remove standalone copy beside favorites, retain share-menu copying.
+- [x] Seven focused tests and signed-in real board check passed: amounts inside all ten publisher strips, no copy beside favorite, no overflow or runtime errors; private subtitles tested in isolation because current board has no confirmed-private records. No WhatsApp avatar lookup added.
 ## Credits ecosystem, email and sidebar
 - [x] Credits-first sidebar/header/wallet/transparency/invite/partner/admin balances and rewards; financial/property prices remain in ILS.
 - [x] Phone-only signup session path replaces generated new emails while preserving legacy account IDs; placeholder display suppressed. Mailbox reads no longer generate/activate aliases; explicit owner activation required, existing mailboxes retained.

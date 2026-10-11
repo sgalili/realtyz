@@ -53,6 +53,7 @@ export type PublicListing = {
   officeName: string;
   brokerLicenceNumber: string | null;
   agencyLogoUrl: string | null;
+  publisherKind?: string | null;
   details: Array<{ label: string; value: string }>;
   /** Yad2-style translated attribute cards (icon + Hebrew label + value). */
   attributes: Array<{ icon: LucideIcon; label: string; value: string }>;
@@ -212,6 +213,7 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
     officeName: typeof attribution?.office_name === 'string' ? attribution.office_name : 'שם המשרד לא צוין',
     brokerLicenceNumber: typeof attribution?.broker_license_number === 'string' ? attribution.broker_license_number : null,
     agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
+    publisherKind: typeof attribution?.publisher_kind === 'string' ? attribution.publisher_kind : null,
     details: detailRows(row),
     attributes: attributeCards(row ?? {}),
     groups: detailGroups(row),
@@ -413,9 +415,8 @@ function PublicListingContent() {
           </div>
           <div className="px-4 py-3">
             <PublicAdHeading title={data.title} price={formatPrice(data.price, data.dealType)} dealType={data.dealType} />
-            {data.id && <PropertyCommissionIcons listingId={data.id} />}
           </div>
-          <BrokerAttribution brokerName={data.brokerName} officeName={data.officeName} licenceNumber={data.brokerLicenceNumber} logoUrl={data.agencyLogoUrl} />
+          <BrokerAttribution brokerName={data.brokerName} officeName={data.officeName} licenceNumber={data.brokerLicenceNumber} logoUrl={data.agencyLogoUrl} publisherKind={data.publisherKind} dealType={data.dealType} trailing={data.id ? <PropertyCommissionIcons listingId={data.id} /> : null} />
           <div data-property-image-toolbar className="flex min-h-10 flex-wrap items-center gap-1 px-3">
             {data.photos.length > 1 && <><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="תמונה קודמת" onClick={() => setSlide((slide + data.photos.length - 1) % data.photos.length)}><ChevronRight className="h-4 w-4" /></Button><span className="text-xs tabular-nums">{slide + 1}/{data.photos.length}</span><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="תמונה הבאה" onClick={() => setSlide((slide + 1) % data.photos.length)}><ChevronLeft className="h-4 w-4" /></Button></>}
             <div className="ms-auto flex items-center gap-1">              <Button variant="ghost" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button>{data.id && <PropertyContactActions listingId={data.id} title={data.title} compact shareOnly shareButtonClassName="h-9 w-9 border-0 bg-transparent shadow-none" />}</div>

@@ -19,7 +19,6 @@ export default function PublicCardSummary({ card, price, showBroker = true, dens
   });
   return <div className="space-y-2">
     <PublicAdHeading compact dense={dense} title={data?.listing.title || publicAdTitle(card)} price={price} dealType={card.deal_type} />
-    <PropertyCommissionIcons listingId={card.id} raw={data?.raw} />
-    {showBroker && <BrokerAttribution compact brokerName={data?.listing.brokerName} officeName={data?.listing.officeName} licenceNumber={data?.listing.brokerLicenceNumber} logoUrl={data?.listing.agencyLogoUrl} />}
+    {showBroker && <BrokerAttribution compact brokerName={data?.listing.brokerName} officeName={data?.listing.officeName} licenceNumber={data?.listing.brokerLicenceNumber} logoUrl={data?.listing.agencyLogoUrl} publisherKind={data?.listing.publisherKind} dealType={card.deal_type} trailing={<PropertyCommissionIcons listingId={card.id} raw={data?.raw} />} />}
   </div>;
 }
