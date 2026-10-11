@@ -208,9 +208,6 @@ export default function PropertyContactActions({
               <DropdownMenuItem className="gap-2" onSelect={() => void share('sms')}><Smartphone className="h-4 w-4" />SMS</DropdownMenuItem>
               <DropdownMenuItem className="gap-2" onSelect={() => void share('email')}><Mail className="h-4 w-4" />אימייל</DropdownMenuItem>
               <DropdownMenuItem className="gap-2" onSelect={() => void share('copy')}><Copy className="h-4 w-4" />העתק קישור</DropdownMenuItem>
-              {typeof navigator !== 'undefined' && navigator.share ? (
-                <DropdownMenuItem onSelect={() => void share('native')}>אפשרויות נוספות</DropdownMenuItem>
-              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
