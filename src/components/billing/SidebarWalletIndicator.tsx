@@ -42,6 +42,7 @@ export function SidebarWalletIndicator() {
   return (
     <div className={cn('mx-3 mb-3 grid gap-2', showContacts ? 'grid-cols-2' : 'grid-cols-1')}>
       <Button
+        data-walkthrough="wallet"
         variant="outline"
         onClick={() => navigate('/wallet')}
         className={cn(

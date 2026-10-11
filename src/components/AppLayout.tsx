@@ -21,6 +21,7 @@ import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import QuickActionDrawer from '@/components/QuickActionDrawer';
 import { TutorialHost } from '@/components/tutorial/TutorialHost';
+import { GlobalAppTour } from '@/components/tutorial/GlobalAppTour';
 import { DeveloperTerminology } from '@/components/DeveloperTerminology';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
@@ -49,11 +50,7 @@ import { PageHero } from '@/components/PageHero';
 import { FacebookConnectionBanner } from '@/components/social/FacebookConnectionBanner';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
-const TUTORIAL_STEPS = [
-  { path: '/dashboard', title: 'לוח הבקרה', text: 'כאן רואים את תמונת הניצחון: תומכים מאומתים, יעד עסקאות וקמפיינים שמתקדמים בזמן אמת.' },
-  { path: '/sentiment', title: 'ניתוח סנטימנט', text: 'כאן מזהים איפה המסר מנצח, איפה יש התנגדות, ומה דורש תגובה חדה ומהירה.' },
-  { path: '/calendar', title: 'יומן תוכן', text: 'כאן מתזמנים מהלכים, מטפטפים מסרים ושומרים על קצב קמפיין מנצח.' },
-];
+
 
 
 /** Re-opens the sidebar after a mode switch remounts the layout. */
@@ -82,6 +79,7 @@ function HeaderProfileLink() {
         }
       }}
       aria-label="פתח תפריט צדדי"
+      data-walkthrough="menu"
       className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-foreground/80 transition hover:bg-muted hover:text-foreground"
     >
       <Menu className="h-5 w-5" aria-hidden="true" />
@@ -275,7 +273,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [quickConnectOpen, setQuickConnectOpen] = useState(false);
   const { isTrial } = useTrialStatus();
   const [candidatePickerOpen, setCandidatePickerOpen] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
   const [whatsappInstanceId, setWhatsappInstanceId] = useState('');
   const [whatsappToken, setWhatsappToken] = useState('');
   const [connectingWhatsApp, setConnectingWhatsApp] = useState(false);
@@ -460,7 +457,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
     
   };
 
-  const activeTutorialStep = tutorialStep === null ? null : TUTORIAL_STEPS[tutorialStep];
   // Workspace-first header identity. Both `activeWorkspace` (workspace list cache)
   // and `brand` (white-label cache) hydrate synchronously from localStorage, so the
   // workspace logo + name paint on the FIRST frame. The personal profile name and
@@ -471,25 +467,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const headerUserName = String((activeWorkspace && !(activeWorkspace as any).is_self ? (activeWorkspace as any).owner_full_name : '') || (headerUserProfile as any)?.full_name || friendlyUserDisplayName(user, '') || '').trim();
 
 
-  const advanceTutorial = () => {
-    if (tutorialStep === null) return;
-    const nextStep = tutorialStep + 1;
-    if (nextStep >= TUTORIAL_STEPS.length) {
-      setTutorialStep(null);
-      toast.success('הסיור הושלם. עכשיו אפשר לנהל קמפיין חד, מדיד ומנצח.');
-      return;
-    }
-    setTutorialStep(nextStep);
-    navigate(TUTORIAL_STEPS[nextStep].path);
-  };
-
   return (
     <SidebarProvider>
       <KeepSidebarOpenAfterModeSwitch />
       {/* A negative wallet locks the app until the balance is topped up. */}
       <WalletLockGate />
       <div className="realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background">
-        <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
+        <AppSidebar />
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           {/* RTL header, right to left: burger menu at the far right, then the
               workspace logo, then the workspace name with the signed-in user's
@@ -526,6 +510,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 className="h-10 w-10 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => window.dispatchEvent(new Event('open-ai-drawer'))}
                 aria-label="פתח עוזר AI"
+                data-walkthrough="rita"
               >
                 <RitaAvatar className="h-7 w-7" />
               </Button>
@@ -542,6 +527,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <AiAgentDrawer />
           <QuickActionDrawer />
           <TutorialHost />
+          <GlobalAppTour />
           <DeveloperTerminology />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
             <DialogContent dir="rtl" className="premium-auth-modal sm:max-w-md">

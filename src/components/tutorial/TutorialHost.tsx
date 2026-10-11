@@ -1,3 +1,4 @@
+import { useWalkthrough } from '@/lib/appWalkthrough';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, HelpCircle, Link, ChartNoAxesCombined, Wallet, CircleHelp } from 'lucide-react';
@@ -29,22 +30,29 @@ export function TutorialHost() {
   };
   const { pathname } = useLocation();
   const st = useTutorialState();
+  const walkthrough = useWalkthrough();
   const [tut, setTut] = useState<Tutorial | null>(null);
   const [i, setI] = useState(0);
 
   useEffect(() => { tutorialStore.setUser(user?.id); }, [user?.id]);
   useEffect(() => { registerTutorialOpener((t) => { if (allowed(t)) { setI(0); setTut(t); } }); return () => registerTutorialOpener(null); }, [role.roles, role.loading, role.error]);
   useEffect(() => {
-    if (!user) return;
+    if (!user || walkthrough) return;
     const t = tutorialForPath(pathname);
     if (!t || !allowed(t)) return;
     const s = tutorialStore.get();
     if (s.seen.includes(t.id) || s.dismissed.includes(t.id)) return;
     const timer = window.setTimeout(() => { setI(0); setTut(t); }, 600);
     return () => window.clearTimeout(timer);
-  }, [pathname, user, st, role.roles, role.loading, role.error]);
+  }, [pathname, user, st, role.roles, role.loading, role.error, walkthrough]);
 
-  if (!tut || !allowed(tut)) return null;
+  useEffect(() => {
+    const dismiss = () => setTut(null);
+    window.addEventListener('realtyz:walkthrough-active', dismiss);
+    return () => window.removeEventListener('realtyz:walkthrough-active', dismiss);
+  }, []);
+
+  if (!tut || !allowed(tut) || walkthrough) return null;
   const slide = tut.slides[i];
   const SlideIcon = tut.id === 'page:/affiliate-network' ? [Link, ChartNoAxesCombined, Wallet][i] ?? CircleHelp : CircleHelp;
   const last = i === tut.slides.length - 1;

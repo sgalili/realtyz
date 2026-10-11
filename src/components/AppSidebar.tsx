@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button';
+import { APP_TOUR_EVENT } from '@/lib/appWalkthrough';
 import { HelpHint } from "@/components/tutorial/TutorialHost";
 import { useMemo } from 'react';
 import {
@@ -343,23 +345,16 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   </button>
                 )}
 
-                {/* Tutorial button: hidden in Rita's marketing workspace. */}
-                {!features.isRitaWorkspace && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeSidebar();
-                      window.dispatchEvent(new Event('realtyz:start-tour'));
-                    }}
-                    title="הדרכה"
-                    aria-label="הדרכה"
-                    className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-slate-200 px-2 py-1.5 text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                    הדרכה
-                  </button>
-                )}
+                <Button variant="outline" type="button" disabled={roleLoading || roleError}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new Event(APP_TOUR_EVENT));
+                    closeSidebar();
+                  }}
+                  title="הדרכה" aria-label="הדרכה"
+                  className="h-8 min-w-0 flex-1 px-2 text-xs font-semibold">
+                  <HelpCircle className="h-4 w-4" />הדרכה
+                </Button>
 
                 {/* Broker/partner toggle: hidden only in Rita's marketing workspace. */}
                 {features.modeSwitcherEnabled && <AppModeSwitcher />}
@@ -377,6 +372,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 <SidebarMenuButton asChild isActive={location.pathname === '/' || location.pathname.startsWith('/public-listings')}>
                   <NavLink
                     to="/public-listings"
+                    data-walkthrough-path="/public-listings"
+                    data-walkthrough-title="לוח נדל״ן שיתופי"
                     onClick={handleNavClick}
                     className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
                     activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
@@ -396,6 +393,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     <SidebarMenuButton asChild isActive={active}>
                       <NavLink
                         to={item.url}
+                        data-walkthrough-path={item.url}
+                        data-walkthrough-title={item.title.trim()}
                         end={item.url === '/command-center'}
                         onClick={handleNavClick}
                         className={`group flex items-center gap-3 px-3 pl-8 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}

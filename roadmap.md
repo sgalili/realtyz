@@ -1,4 +1,7 @@
 # Roadmap
+## Global sidebar walkthrough
+- [x] Connect sidebar Help in every workspace to concept/Rita introduction and role-scoped cross-page highlights with next/back/close/replay.
+- [ ] Verify tests, signed-in sidebar entry, highlights, page transitions, completion and replay.
 ## Developer projects cleanup and creation wizard
 - [x] Clean title/blue header, top-left plus and empty-page metrics; move import into focused creation flow.
 - [x] Eight-step manual editor with developer identity, location, status, units, images, specifications and explicit review/save; editing can jump directly to any step.

@@ -1,3 +1,4 @@
+import { useWalkthrough } from '@/lib/appWalkthrough';
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { VariantProps, cva } from "class-variance-authority";
@@ -139,6 +140,7 @@ const Sidebar = React.forwardRef<
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const walkthrough = useWalkthrough();
 
   if (collapsible === "none") {
     return (
@@ -154,10 +156,11 @@ const Sidebar = React.forwardRef<
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+      <Sheet open={openMobile} onOpenChange={setOpenMobile} modal={!walkthrough} {...props}>
         <SheetContent
           data-sidebar="sidebar"
           data-mobile="true"
+          onInteractOutside={(event) => { if (walkthrough) event.preventDefault(); }}
           className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
