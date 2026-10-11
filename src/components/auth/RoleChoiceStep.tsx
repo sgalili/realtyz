@@ -65,7 +65,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       queryClient.setQueryData(userRolesQueryKey(user.id), refreshedRoles);
       await queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) });
       onDone?.();
-      navigate(role === 'developer' ? '/developer-dashboard' : role === 'partner' ? '/affiliate' : role === 'property_owner' ? '/owner/properties' : role === 'property_seeker' ? '/public-listings' : '/dashboard', { replace: true });
+      navigate(role === 'developer' ? '/developer-dashboard?onboarding=1' : role === 'partner' ? '/affiliate' : role === 'property_owner' ? '/owner/properties' : role === 'property_seeker' ? '/public-listings' : '/dashboard', { replace: true });
     } catch (err: any) {
       // The role itself may already have been granted; only block the user when
       // no role landed on the account at all.

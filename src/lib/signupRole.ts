@@ -8,6 +8,8 @@ import { PUBLIC_LISTING_RESUME_KEY } from '@/lib/publicListingDraft';
 export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer';
 
 const KEY = 'realtyz-signup-role';
+/** Developers land straight on the Yad2 import step after verification. */
+export const DEVELOPER_ONBOARDING_PATH = '/developer-dashboard?onboarding=1';
 
 export const SIGNUP_ROLE_LABELS: Record<SignupRole, string> = {
   broker: 'מתווך',
@@ -69,7 +71,7 @@ export async function applyPendingSignupRole(): Promise<string | null> {
     const { data, error } = await supabase.rpc('register_as_developer' as any, { _display_name: null });
     if (error || !(data as { ok?: boolean } | null)?.ok) return null;
     clearPendingSignupRole();
-    return '/developer-dashboard';
+    return DEVELOPER_ONBOARDING_PATH;
   }
   if (role === 'property_seeker') {
     const { data, error } = await supabase.rpc('register_as_property_seeker', { _display_name: null });
