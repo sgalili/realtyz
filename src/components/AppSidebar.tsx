@@ -1,3 +1,4 @@
+import { HelpHint } from "@/components/tutorial/TutorialHost";
 import { useMemo } from 'react';
 import {
   Activity,
@@ -33,6 +34,7 @@ import {
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
+
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -395,7 +397,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         to={item.url}
                         end={item.url === '/command-center'}
                         onClick={handleNavClick}
-                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
+                        className={`group flex items-center gap-3 px-3 pl-8 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
                         activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
                       >
                         <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
@@ -416,6 +418,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         })()}
                       </NavLink>
                     </SidebarMenuButton>
+                    {!collapsed && <HelpHint path={item.url} className="absolute left-1 top-1/2 -translate-y-1/2" />}
                   </SidebarMenuItem>
                 );
               })}

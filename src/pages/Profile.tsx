@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { CompleteProfileBanner } from '@/components/profile/CompleteProfileBanner';
+import { TutorialSettingsCard } from '@/components/tutorial/TutorialSettingsCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import BillingTab from '@/components/profile/BillingTab';
 import KnowledgeBase from '@/pages/KnowledgeBase';
@@ -726,6 +727,7 @@ export default function Profile() {
 
       <div className="mb-3">
         <CompleteProfileBanner force={params.get('welcome') === 'developer'} onEdit={() => setTab('personal')} />
+        <TutorialSettingsCard />
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
