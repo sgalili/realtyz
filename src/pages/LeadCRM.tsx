@@ -927,7 +927,10 @@ const LeadCRM = () => {
     queryFn: async () => {
       const entries = await Promise.all(leadKindOptions.map(async (o) => {
         const { count } = await (supabase.from('leads') as any).select('id', { count: 'exact', head: true })
-          .eq('is_demo', false).eq('lead_category', o.v);
+          .eq('is_demo', false).eq('lead_category', o.v)
+          // Match the list, which hides blank "לקוח חדש" placeholder rows.
+          .not('phone_number', 'like', 'new-%')
+          .or('full_name.neq.לקוח חדש,email.neq.,city.neq.');
         return [o.v, count ?? 0] as const;
       }));
       return Object.fromEntries(entries) as Partial<Record<LeadKind, number>>;
