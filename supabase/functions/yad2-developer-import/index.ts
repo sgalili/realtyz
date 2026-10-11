@@ -26,6 +26,7 @@ Deno.serve(async req => {
   const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'reatyz_yad2';
   if (!token) return json({ error: 'not_configured', message: 'שירות הייבוא מיד2 אינו מוגדר' }, 503);
   const failed: string[] = [];
+  const failReasons: Record<string, string> = {};
   const fetchPage = async (url: string) => {
     const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(45000) });
     const html = await res.text();
@@ -41,7 +42,8 @@ Deno.serve(async req => {
     const visited = new Set<string>([pageUrl.href]);
     const pending = [...first.links];
     for (let i = 0; i < pending.length; i++) {
-      const url = pending[i];
+      const url = pending[i].split('?')[0];
+      if (i > 0) await new Promise(r => setTimeout(r, 1500));
       if (visited.has(url)) continue;
       visited.add(url);
       try {
@@ -60,9 +62,9 @@ Deno.serve(async req => {
             else result.projects.push({ ...matching, source_url: url });
           } else failed.push(url);
         }
-      } catch { failed.push(url); }
+      } catch (e) { console.error('project page failed', url, e instanceof Error ? e.message : e); failed.push(url); failReasons[url] = e instanceof Error ? e.message : String(e); }
     }
-    return json({ ok: true, source_url: pageUrl.href, ...result, completeness: { complete: failed.length === 0 && result.projects.length > 0, pages_read: visited.size - failed.length, failed_urls: failed }, warnings: failed.length ? ['חלק מעמודי הפרויקטים לא נקראו. הפרטים הזמינים נשמרו בתצוגה המקדימה; אפשר לנסות שוב.'] : result.projects.length === 0 ? ['לא נמצאו פרויקטים שניתן לקרוא בעמוד היזם.'] : [] });
+    return json({ ok: true, source_url: pageUrl.href, ...result, completeness: { complete: failed.length === 0 && result.projects.length > 0, pages_read: visited.size - failed.length, failed_urls: failed, fail_reasons: failReasons }, warnings: failed.length ? ['חלק מעמודי הפרויקטים לא נקראו. הפרטים הזמינים נשמרו בתצוגה המקדימה; אפשר לנסות שוב.'] : result.projects.length === 0 ? ['לא נמצאו פרויקטים שניתן לקרוא בעמוד היזם.'] : [] });
   } catch (error) {
     console.error('Developer import failed', { error: error instanceof Error ? error.message : 'unknown', source_url: pageUrl.href });
     return json({ error: 'fetch_failed', message: 'לא ניתן לקרוא את עמוד היזם ביד2 כרגע. נסו שוב או הוסיפו פרויקטים ידנית.' }, 502);
