@@ -33,6 +33,7 @@ import {
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
+  SidebarMenuAction,
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -416,6 +417,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         })()}
                       </NavLink>
                     </SidebarMenuButton>
+                    {!collapsed && <HelpHint path={item.url} className="absolute left-1 top-1/2 -translate-y-1/2" />}
                   </SidebarMenuItem>
                 );
               })}

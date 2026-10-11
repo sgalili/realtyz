@@ -20,7 +20,7 @@ import WalletLockGate from '@/components/billing/WalletLockGate';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import QuickActionDrawer from '@/components/QuickActionDrawer';
-import ProductTour from '@/components/tour/ProductTour';
+import { TutorialHost } from '@/components/tutorial/TutorialHost';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { FirstTimeSyncDialog } from '@/components/onboarding/FirstTimeSyncDialog';
@@ -540,7 +540,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </main>
           <AiAgentDrawer />
           <QuickActionDrawer />
-          <ProductTour />
+          <TutorialHost />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
             <DialogContent dir="rtl" className="premium-auth-modal sm:max-w-md">
               <DialogHeader className="text-right">
