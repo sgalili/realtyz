@@ -66,6 +66,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import OwnerPropertyGrid from '@/components/leads/OwnerPropertyGrid';
+import LeadDirectionTabs from '@/components/leads/LeadDirectionTabs';
 
 /**
  * isOwnerLead — Sellers and Landlords are property OWNERS, not seekers.
@@ -2990,4 +2991,6 @@ const LeadCRM = () => {
   );
 };
 
-export default LeadCRM;
+export default function LeadCRMPage() {
+  return <LeadDirectionTabs><LeadCRM /></LeadDirectionTabs>;
+}
