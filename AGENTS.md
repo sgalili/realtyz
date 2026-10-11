@@ -1,5 +1,5 @@
 # Architecture rules
-- Tours use rendered authorized menus and a route-stable store; never auto-click mutations. Why: safe role-scoped replay.
+- Tours use authorized menus and a route-stable store; never auto-click mutations. Why: safe replay.
 - Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts.
 - Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports/commissions; DB-authorize publication.
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
@@ -32,5 +32,5 @@
 - Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards. Why: card secrets stay server-side.
 
-- Personal links use authenticated RPCs; service attribution validates listing/workspace. Why: prevent spoofing.
+- Personal links use auth RPCs; service attribution validates listing/workspace. Why: prevent spoofing.
 - Roles come only from user_roles; partner reads use server-redacted RPCs and verified-license guards. Why: prevent privilege and closing-data leaks.
