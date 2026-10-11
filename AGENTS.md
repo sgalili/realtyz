@@ -26,7 +26,7 @@
 - Lead disputes, appeals and bans run only through audited security-definer RPCs (open/decide/appeal lead disputes, ban_user/unban_user); appeals need a neutral reviewer and bans freeze rather than delete data.
 
 - Developers reuse agent workspaces via register_as_developer with scoped projects and /developer-dashboard, not broker tools. Why: share ecosystem only.
-- Developer import previews source-linked projects/units; confirm to save. Why: preserve hierarchy, never invent or publish.
+- Developer editors use scoped eight-step forms and preserve source JSON; confirm to save, not publish. Why: retain hierarchy and evidence.
 
 - Wallet lock: credit_wallets trigger locks at balance<=0, clears at >0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards. Why: card secrets stay server-side.
