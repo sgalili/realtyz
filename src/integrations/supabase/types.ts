@@ -8522,6 +8522,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_workspace_owner_roles: { Args: { _owner: string }; Returns: string[] }
       group_post_lineage_jobs: {
         Args: { _log_id: string; _owner: string }
         Returns: {
