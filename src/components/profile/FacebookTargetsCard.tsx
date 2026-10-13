@@ -16,7 +16,7 @@ import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 import { cleanGroupName, memberCountFromText } from '@/lib/fbGroupText';
 
-type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean; blocked?: boolean; blockedReason?: string | null; joinStatus: JoinState };
+type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean; blocked?: boolean; blockedReason?: string | null; joinStatus: JoinState; pool?: string; cooldownUntil?: string | null; waitingReason?: string | null };
 type JoinState = 'joined' | 'pending' | 'not_joined';
 
 const bareId = (id: string) => id.replace(/^(ext:|manual:)/, '');
@@ -90,10 +90,11 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
   const cached = readCache(workspaceOwnerId);
   const [allGroups, setGroups] = useState<GroupTarget[]>(cached?.groups ?? []);
   // פעילות = live joined groups only; pending / not-joined / blocked live in their own tabs.
-  const groups = allGroups.filter((g) => !g.blocked && g.joinStatus === 'joined');
+  // Active publishing pool is capped at 100 server-side (fb_rebalance_group_pool).
+  const groups = allGroups.filter((g) => !g.blocked && g.joinStatus === 'joined' && g.pool === 'active');
   useEffect(() => { onActiveCount?.(workspaceOwnerId, groups.length); }, [onActiveCount, workspaceOwnerId, groups.length]);
   // בהמתנה = every non-blocked group that is not confirmed joined (not joined yet or request sent).
-  const notJoinedGroups = allGroups.filter((g) => !g.blocked && g.joinStatus !== 'joined');
+  const notJoinedGroups = allGroups.filter((g) => !g.blocked && (g.joinStatus !== 'joined' || g.pool !== 'active'));
   const blockedGroups = allGroups.filter((g) => g.blocked);
   const [loading, setLoading] = useState(!cached);
   const [deleteMode, setDeleteMode] = useState(false);
@@ -129,9 +130,11 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
     if (!workspaceOwnerId) { setLoading(false); return; }
     const request = ++requestRef.current;
     try {
+      // Release expired 24h cooldowns and refill the active pool before reading.
+      try { await (supabase as any).rpc('fb_rebalance_group_pool', { _owner: workspaceOwnerId }); } catch { /* read anyway */ }
       const { data, error } = await (supabase as any)
         .from('fb_user_groups')
-        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked, blocked_reason, join_status')
+        .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked, blocked_reason, join_status, pool_status, cooldown_until, waiting_reason')
         // Workspace-scoped so shared Facebook groups are identical for every member.
         .eq('workspace_owner_id', workspaceOwnerId)
         .order('group_name', { ascending: true });
@@ -155,6 +158,9 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
         blocked: !!r.is_blocked,
         blockedReason: r.blocked_reason ?? null,
         joinStatus: override ?? (r.join_status as JoinState) ?? 'pending',
+        pool: r.pool_status ?? 'waiting',
+        cooldownUntil: r.cooldown_until ?? null,
+        waitingReason: r.waiting_reason ?? null,
       }); });
       setGroups(nextGroups);
       try {
