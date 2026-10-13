@@ -422,7 +422,8 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                     onChange={() => setJoinPicked((prev) => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else if (n.size < MAX_GROUPS) n.add(g.id); else toast.info(`ניתן לבחור עד ${MAX_GROUPS} קבוצות`); return n; })} />}
                   {joinProgress[g.id] === 'מצטרף…' ? (
                     <Loader2 role="status" className="h-4 w-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" aria-label="הצטרפות בתהליך" />
-                  ) : g.joinStatus === 'pending' ? <span role="status" aria-label="בקשה ממתינה לאישור" className="relative flex h-4 w-4 shrink-0 items-center justify-center"><span className="absolute inset-0 animate-ping rounded-full bg-primary/30 motion-reduce:animate-none" /><Hourglass className="relative h-3.5 w-3.5 text-primary" /></span> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
+                  ) : g.joinStatus === 'joined' ? <span className={cn('shrink-0 text-muted-foreground', TEXT_SM)} title={g.cooldownUntil ? 'נעילת 24 שעות לאחר פרסום' : 'ממתינה למקום בקבוצות הפעילות (עד 100)'}>{g.cooldownUntil ? `זמינה ב-${new Date(g.cooldownUntil).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : 'בתור'}</span>
+                  : g.joinStatus === 'pending' ? <span role="status" aria-label="בקשה ממתינה לאישור" className="relative flex h-4 w-4 shrink-0 items-center justify-center"><span className="absolute inset-0 animate-ping rounded-full bg-primary/30 motion-reduce:animate-none" /><Hourglass className="relative h-3.5 w-3.5 text-primary" /></span> : <UserPlus className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="טרם הצטרפת" />}
                 </>)))}
               </div>
             </>)
