@@ -192,6 +192,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   const { isPartnerMode } = useAppMode();
   const partnerConsent = usePartnerConsent();
   const location = useLocation();
+  const { isDeveloperWorkspace } = useWorkspaceFeatures();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" label="מאמת זהות..." />
@@ -234,7 +235,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     if (!allowed) return <Navigate to="/public-listings" replace />;
   }
 
-  if (isDeveloper && !isSuperAdmin && !(isPartnerMode && isAffiliate) && !DEVELOPER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
+  // Developer product follows the WORKSPACE OWNER: entering a developer's
+  // workspace (e.g. as super_admin) shows the developer experience too.
+  const isDeveloperContext = isDeveloperWorkspace || (isDeveloper && !isSuperAdmin);
+  if (isDeveloperContext && !(isPartnerMode && isAffiliate) && !DEVELOPER_ALLOWED_PATHS.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
     return <Navigate to="/developer-dashboard" replace />;
   }
 

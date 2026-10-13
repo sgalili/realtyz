@@ -231,7 +231,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.
-    if (isDeveloper && !isSuperAdmin) {
+    if ((isDeveloper && !isSuperAdmin) || features.isDeveloperWorkspace) {
       const base = NAV_ITEMS.filter((i) => !['/properties', '/deal-room', '/developers', '/dashboard'].includes(i.url));
       const projects = NAV_ITEMS.find((i) => i.url === '/developers');
       return projects ? [{ ...projects, title: 'הפרויקטים שלי', url: '/developer-dashboard' }, ...base] : base;
