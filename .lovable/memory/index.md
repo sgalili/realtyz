@@ -73,3 +73,4 @@
 
 - [Full repost editor](mem://features/full-repost-editor) — Editable repost content, groups, comment, media and schedule with explicit approval; cancellation at the right edge.
 - [Closing commission split](mem://features/closing-commission-split) — Licensed partner 80/20, otherwise 100% platform; unlicensed partners never see closing data.
+- [Kobi Israeli is a developer](mem://project/kobi-israeli-developer) — קובי ישראלי is יזם, never מתווך; his workspace always shows the developer product via owner roles.

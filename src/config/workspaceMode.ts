@@ -30,12 +30,16 @@ export interface WorkspaceFeatures {
   partnersEnabled: boolean;
   /** Broker/partner mode toggle in the sidebar. */
   modeSwitcherEnabled: boolean;
+  /** True when the workspace OWNER is a developer (יזם) — the whole UI follows
+   *  the owner, so anyone entering the workspace sees the developer product. */
+  isDeveloperWorkspace: boolean;
 }
 
-export function workspaceFeatures(activeOwnerId?: string | null): WorkspaceFeatures {
+export function workspaceFeatures(activeOwnerId?: string | null, ownerRoles: string[] = []): WorkspaceFeatures {
   const isRitaWorkspace = !!activeOwnerId && activeOwnerId === RITA_WORKSPACE_OWNER_ID;
   return {
     isRitaWorkspace,
+    isDeveloperWorkspace: ownerRoles.includes('developer'),
     recruitmentMode: isRitaWorkspace,
     listingsEnabled: !isRitaWorkspace,
     limitsEnabled: !isRitaWorkspace,
