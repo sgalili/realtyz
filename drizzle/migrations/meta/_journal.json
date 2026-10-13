@@ -239,6 +239,13 @@
       "when": 1791706846736,
       "tag": "0033_closing_split_wallet_payout",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791923415747,
+      "tag": "0034_migration",
+      "breakpoints": true
     }
   ]
 }

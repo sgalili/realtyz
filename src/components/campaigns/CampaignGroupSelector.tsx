@@ -64,7 +64,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     try {
       const { data } = await (supabase as any)
         .from("fb_user_groups")
-        .select("group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked")
+        .select("group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked, pool_status")
         // Workspace-scoped: every member of this workspace sees the same groups.
         .eq("workspace_owner_id", workspaceOwnerId)
         // Only groups the broker approved in the connections screen are targets.
@@ -77,6 +77,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         if (!r?.group_id) continue;
         // Blocked/restricted groups are never offered as campaign targets.
         if (r.is_blocked) { blocked.add(String(r.group_id).replace(/^(ext:|manual:)/, '')); continue; }
+        if (r.pool_status && r.pool_status !== 'active') continue;
         if (r.page_id && connectedPage && String(r.page_id) !== connectedPage) continue;
         byId.set(String(r.group_id), mapRow(r));
       }
