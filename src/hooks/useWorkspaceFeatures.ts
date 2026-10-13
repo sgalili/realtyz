@@ -16,7 +16,8 @@ export function useWorkspaceOwnerRoles(): AppRole[] {
     queryKey: ['workspace-owner-roles', ownerId],
     enabled: !!ownerId,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_workspace_owner_roles', { _owner: ownerId! });
+      // Cast: generated types lag behind the migration that added this RPC.
+      const { data, error } = await (supabase.rpc as CallableFunction)('get_workspace_owner_roles', { _owner: ownerId }) as { data: string[] | null; error: unknown };
       if (error) return [] as AppRole[];
       return (data ?? []) as AppRole[];
     },
