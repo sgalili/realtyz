@@ -3236,6 +3236,7 @@ export type Database = {
         Row: {
           blocked_at: string | null
           blocked_reason: string | null
+          cooldown_until: string | null
           created_at: string
           fail_count: number
           group_icon: string | null
@@ -3251,14 +3252,17 @@ export type Database = {
           max_posts_per_day: number | null
           member_count: number | null
           page_id: string | null
+          pool_status: string
           privacy: string | null
           source: string | null
           updated_at: string
+          waiting_reason: string | null
           workspace_owner_id: string
         }
         Insert: {
           blocked_at?: string | null
           blocked_reason?: string | null
+          cooldown_until?: string | null
           created_at?: string
           fail_count?: number
           group_icon?: string | null
@@ -3274,14 +3278,17 @@ export type Database = {
           max_posts_per_day?: number | null
           member_count?: number | null
           page_id?: string | null
+          pool_status?: string
           privacy?: string | null
           source?: string | null
           updated_at?: string
+          waiting_reason?: string | null
           workspace_owner_id: string
         }
         Update: {
           blocked_at?: string | null
           blocked_reason?: string | null
+          cooldown_until?: string | null
           created_at?: string
           fail_count?: number
           group_icon?: string | null
@@ -3297,9 +3304,11 @@ export type Database = {
           max_posts_per_day?: number | null
           member_count?: number | null
           page_id?: string | null
+          pool_status?: string
           privacy?: string | null
           source?: string | null
           updated_at?: string
+          waiting_reason?: string | null
           workspace_owner_id?: string
         }
         Relationships: []
@@ -8089,6 +8098,8 @@ export type Database = {
       }
       fb_group_key: { Args: { _value: string }; Returns: string }
       fb_group_rejection: { Args: { _reason: string }; Returns: boolean }
+      fb_rebalance_all_group_pools: { Args: never; Returns: undefined }
+      fb_rebalance_group_pool: { Args: { _owner: string }; Returns: number }
       finish_market_scrape_run: {
         Args: {
           _error?: string
