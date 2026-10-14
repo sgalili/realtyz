@@ -1226,7 +1226,7 @@ export default function AffiliatePortal() {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredReferrals.map(({ referral, listing }) => (
-                  {listing && <MarketplaceCard key={referral.id} listing={listing} referral={referral} leadsCount={leadsForReferral(referral)} selectionMode={multiSelectMode} selected={selectedIds.has(listing.listing_id)} onToggleSelected={() => toggleSelected(listing.listing_id)} />}
+                  listing ? <MarketplaceCard key={referral.id} listing={listing} referral={referral} leadsCount={leadsForReferral(referral)} selectionMode={multiSelectMode} selected={selectedIds.has(listing.listing_id)} onToggleSelected={() => toggleSelected(listing.listing_id)} /> : null
                 ))}
               </div>
             )}
