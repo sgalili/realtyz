@@ -927,9 +927,14 @@ const ApiSettings = () => {
         <div id="facebook" className="scroll-mt-24 space-y-4">
           <FacebookPersonalConnectCard />
           <MetaDirectConnectionCard />
-          <CloudPostingSessionCard />
         </div>
 
+      </SectionShell>
+
+      <SectionShell title="אוטומציית ענן (24/7)" subtitle="פרסום בקבוצות גם כשהמחשב כבוי">
+        <div id="cloud-automation" className="scroll-mt-24">
+          <CloudPostingSessionCard />
+        </div>
       </SectionShell>
 
       <SectionShell title="AI Fine-Tuning" subtitle="כיול סגנון מהשיחות שלך">

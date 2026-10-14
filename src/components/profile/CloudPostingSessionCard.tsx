@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Cloud, ShieldCheck, Trash2 } from 'lucide-react';
+import { Cloud, ShieldCheck, Trash2, ExternalLink, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -25,6 +25,8 @@ export function CloudPostingSessionCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [cookies, setCookies] = useState('');
+  const [summary, setSummary] = useState<{ sent_today: number; pending: number; failed_today: number; active_pool: number; pool_cap: number } | null>(null);
+  const [opening, setOpening] = useState(false);
 
   const call = async (action: string, extra: Record<string, unknown> = {}) => {
     const { data, error } = await supabase.functions.invoke('fb-session-vault', {
@@ -40,6 +42,7 @@ export function CloudPostingSessionCard() {
     try {
       const data = await call('status');
       setSession(data?.session ?? null);
+      try { const sm = await call('summary'); setSummary(sm?.summary ?? null); } catch { setSummary(null); }
     } catch {
       setSession(null);
     } finally {
@@ -80,6 +83,29 @@ export function CloudPostingSessionCard() {
     }
   };
 
+  const openRemote = async () => {
+    const win = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    setOpening(true);
+    try {
+      const data = await call('remote_login');
+      if (win) win.location.href = data.url; else window.open(data.url, '_blank', 'noopener,noreferrer');
+      toast.success('דפדפן הענן נפתח – התחברו לפייסבוק בחלון החדש');
+      await refresh();
+    } catch (e) {
+      win?.close();
+      toast.error((e as Error).message || 'פתיחת הדפדפן נכשלה');
+    } finally { setOpening(false); }
+  };
+
+  const expiredAt = session?.expires_at ? new Date(session.expires_at).getTime() < Date.now() : false;
+  const state: 'active' | 'connecting' | 'reauth' =
+    session?.status === 'active' && !expiredAt && !session?.last_error ? 'active'
+    : session?.status === 'connecting' ? 'connecting' : 'reauth';
+  const STATE = {
+    active: { label: 'פעיל בענן', cls: 'bg-success text-success-foreground' },
+    connecting: { label: 'מתחבר', cls: 'bg-warning text-warning-foreground' },
+    reauth: { label: 'נדרש חידוש התחברות לפייסבוק', cls: 'bg-destructive text-destructive-foreground' },
+  }[state];
   const active = session?.status === 'active';
   const expires = session?.expires_at ? new Date(session.expires_at).toLocaleDateString('he-IL') : null;
 
@@ -87,14 +113,11 @@ export function CloudPostingSessionCard() {
     <Card dir="rtl">
       <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Cloud className={`h-4 w-4 ${active ? 'text-emerald-600' : 'text-muted-foreground'}`} />
-          פרסום מהענן (גם כשהמחשב כבוי)
+          <Cloud className={`h-4 w-4 ${state === 'active' ? 'text-success' : 'text-muted-foreground'}`} />
+          אוטומציית ענן (24/7)
         </CardTitle>
-        <Badge
-          className={active ? '!bg-emerald-600 !text-white' : ''}
-          variant={active ? 'default' : 'secondary'}
-        >
-          {loading ? 'טוען…' : active ? 'מחובר' : 'לא מחובר'}
+        <Badge className={loading ? '' : STATE.cls} variant="secondary">
+          {loading ? 'טוען…' : STATE.label}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -102,6 +125,19 @@ export function CloudPostingSessionCard() {
           שמירת חיבור הפייסבוק שלך בצורה מוצפנת מאפשרת לשרת לפרסם בקבוצות בזמנים שקבעת,
           גם בלי דפדפן פתוח. הנתונים מוצפנים ואינם מוצגים שוב אחרי השמירה.
         </p>
+
+        {summary && (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-md border p-2"><div className="text-lg font-bold">{summary.sent_today}</div><div className="text-xs text-muted-foreground">נשלחו היום מהענן</div></div>
+            <div className="rounded-md border p-2"><div className="text-lg font-bold">{summary.pending}</div><div className="text-xs text-muted-foreground">ממתינים בתור</div></div>
+            <div className="rounded-md border p-2"><div className="text-lg font-bold">{summary.active_pool}/{summary.pool_cap}</div><div className="text-xs text-muted-foreground">קבוצות פעילות</div></div>
+          </div>
+        )}
+
+        <Button size="sm" className="w-full" onClick={openRemote} disabled={opening}>
+          {opening ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <ExternalLink className="me-1 h-4 w-4" />}
+          חיבור ראשוני לפייסבוק בענן
+        </Button>
 
         {active && (
           <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
