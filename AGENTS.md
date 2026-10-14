@@ -37,4 +37,4 @@
 - Facebook extension/group rules: see extension/AGENTS.md.
 - Closing splits: compute_closing_split pays 80% to authorized brokers (partner_can_view_closing) via idempotent paid_amount delta; otherwise platform retains 100%. No subscription plans; billing is credits only. Why: legal license model.
 - Facebook group pool: fb_rebalance_group_pool keeps ≤100 active groups (pool_status), posts set a 24h cooldown to waiting, blocked groups never auto-return; campaign targets read only active. Why: server-owned rotation.
-- Global prompt/training use global_ai_config/global_ai_documents and private global-ai-training storage with Super Admin RLS and server role checks; fetchSystemRulesBlock injects both. Brains share BrainResources UI. Why: global learning without tenant leaks.
+- Global instructions use global_ai_documents/private global-ai-training with Super Admin checks; global_ai_config is legacy only. Brains share BrainResources title-free text entry and derived filenames; global library comes first. Why: one library without tenant leaks.
