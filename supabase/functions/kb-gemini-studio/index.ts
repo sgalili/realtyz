@@ -7,6 +7,7 @@
 // Input:  { prompt: string, mode?: 'answer' | 'document' }
 // Output: { content: string, sources: string[], title: string }
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchGlobalMasterBlock } from '../_shared/system-rules.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -91,6 +92,7 @@ Deno.serve(async (req) => {
     const rulesBlock = rules.map((r) => `- ${r.category ? `[${r.category}] ` : ""}${r.rule_text}`).join("\n");
 
     const systemPrompt = [
+      await fetchGlobalMasterBlock(),
       "אתה Gemini במרחב העבודה של Realtyz AI. אתה חוקר, מנתח ומייצר תוכן על בסיס מאגר הידע של המשתמש:",
       "מסמכים, פרסונת הסוכן, תבניות פוסטים, הנחיות כתיבה ומענה וכללי תקשורת.",
       "כשמידע נמצא במאגר - הסתמך עליו והצג אותו במדויק. כשחסר מידע - אמור זאת במשפט אחד והצע מה להוסיף למאגר.",

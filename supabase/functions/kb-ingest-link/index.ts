@@ -2,6 +2,7 @@
 // Knowledge Base + Media Library, distilling sales methodologies for the
 // workspace AI persona WITHOUT exposing the source URL to the model output.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { maskPii } from '../_shared/pii.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -168,7 +169,13 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "unauthorized" }, 401);
 
-    const body = await req.json().catch(() => null) as { url?: string; intent?: string } | null;
+    const body = await req.json().catch(() => null) as { url?: string; intent?: string; scope?: string } | null;
+    const global = body?.scope === 'global';
+    if (global) {
+      const gate = createClient(SUPABASE_URL, SERVICE_KEY);
+      const { data: allowed } = await gate.rpc('has_role', { _user_id: user.id, _role: 'super_admin' });
+      if (!allowed) return json({ error: 'Forbidden' }, 403);
+    }
     const url = body?.url?.trim();
     const intent = (body?.intent ?? "").toString().slice(0, 500);
     if (!url || !/^https?:\/\//i.test(url)) {
@@ -216,6 +223,17 @@ Deno.serve(async (req) => {
     const distilled = await distillForPersona(rawContent, title, intent);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    if (global) {
+      const { text } = maskPii(distilled);
+      const { data: doc, error } = await admin.from('global_ai_documents').insert({
+        title, raw_text: text, source_type: ytId ? 'video' : 'text', created_by: user.id,
+        storage_path: `external/${crypto.randomUUID()}`, chunk_count: Math.ceil(text.length / 1200),
+        source_metadata: { source_url: url, source_author: author, thumbnail, video_id: ytId, learning_intent: intent },
+      }).select('id').single();
+      if (error) throw error;
+      return json({ success: true, document_id: doc.id, title });
+    }
 
     // 1) Knowledge document — raw_text is the SANITIZED distilled version.
     //    Source URL is stored ONLY in source_metadata for audit; never sent

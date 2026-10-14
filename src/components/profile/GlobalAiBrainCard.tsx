@@ -108,9 +108,13 @@ function GlobalAiBrainContent() {
     let url: URL;
     try { url = new URL(link); if (url.protocol !== 'https:') throw new Error(); }
     catch { toast.error('יש להזין קישור HTTPS תקין'); return; }
-    if (!intent.trim()) { toast.error('יש להזין את המידע או ההנחיות מהמקור'); return; }
     setBusy(true);
-    try { await upload(new File([`מקור: ${url.href}\n${intent}`], url.hostname, { type: 'text/plain' }), `מקור: ${url.href}\n${intent}`); setLink(''); setIntent(''); toast.success('הקישור וההנחיות נשמרו'); }
+    try {
+      const { data, error } = await supabase.functions.invoke('kb-ingest-link', { body: { url: url.href, intent, scope: 'global' } });
+      if (error || data?.error) throw new Error(data?.error ?? error?.message);
+      await qc.invalidateQueries({ queryKey: key });
+      setLink(''); setIntent(''); toast.success('הקישור וההנחיות נשמרו');
+    }
     catch { toast.error('שמירת הקישור נכשלה'); }
     finally { setBusy(false); }
   };
@@ -127,7 +131,7 @@ function GlobalAiBrainContent() {
       </div>)}
       {tab === 'files' && <BrainUploadZone busy={busy} onFiles={files => void handleFiles(files)} />}
       {tab === 'text' && <div className="space-y-2"><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="כותרת" /><div className="relative"><Textarea value={body} onChange={e => setBody(e.target.value)} placeholder="הנחיות או מידע למאגר הידע" className="min-h-[140px] pt-10" /><div className="absolute top-1 start-1"><VoiceInputButton size="sm" onTranscript={t => setBody(p => `${p} ${t}`.trim())} /></div></div><div className="flex justify-end"><Button onClick={() => void saveText()} disabled={busy}>{busy ? 'שומר…' : 'שמור למאגר'}</Button></div></div>}
-      {tab === 'link' && <div className="space-y-2"><Input value={link} onChange={e => setLink(e.target.value)} placeholder="https://..." dir="ltr" /><Textarea value={intent} onChange={e => setIntent(e.target.value)} placeholder="המידע וההנחיות מהמקור" className="min-h-[80px]" /><div className="flex justify-end"><Button onClick={() => void saveLink()} disabled={busy}>{busy ? 'שומר…' : 'הוסף קישור'}</Button></div></div>}
+      {tab === 'link' && <div className="space-y-2"><Input value={link} onChange={e => setLink(e.target.value)} placeholder="https://..." dir="ltr" /><Textarea value={intent} onChange={e => setIntent(e.target.value)} placeholder="מה ללמוד מהמקור הזה?" className="min-h-[80px]" /><div className="flex justify-end"><Button onClick={() => void saveLink()} disabled={busy}>{busy ? 'שומר…' : 'הוסף קישור'}</Button></div></div>}
       <div className="space-y-2 pt-2"><div className="relative"><Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי תיאור / כיתוב" className="pr-9" /></div>
         <div className="flex flex-wrap gap-2">{[{ id: 'all', label: 'הכל' }, { id: 'images', label: 'תמונות' }, { id: 'videos', label: 'סרטונים' }, { id: 'docs', label: 'מסמכים' }].map(f => <Button key={f.id} variant={filter === f.id ? 'default' : 'outline'} className="h-auto rounded-full px-3 py-1.5 text-xs" onClick={() => setFilter(f.id)}>{f.label}</Button>)}</div>
         {docs.isError ? <p className="text-destructive">לא ניתן לטעון את הקבצים.</p> : docs.isPending ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : filtered.length ? <div className="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">{filtered.map(d => <BrainDocumentCard key={d.id} document={d} onOpen={() => setSelected(d)} onDelete={() => void remove(d.id)} deleting={deleting} />)}</div> : <p className="text-xs text-muted-foreground text-center py-8">אין פריטים להצגה</p>}
