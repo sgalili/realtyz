@@ -37,6 +37,7 @@ import { AiResponseToggle } from "@/components/AiResponseToggle";
 // CreditBalancePill moved to /billing (Packages & Payments page).
 import { Button } from "@/components/ui/button";
 import { UsagePriceListButton } from '@/components/billing/UsagePriceListButton';
+import { AffiliateProgramHelp } from '@/components/affiliate/AffiliateProgramHelp';
 import { cn } from "@/lib/utils";
 import { readReturn, type ReturnState } from "@/lib/returnNav";
 import { useQuery } from "@tanstack/react-query";
@@ -408,6 +409,7 @@ export function PageHero() {
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
         <div className="flex items-center gap-1">
+          {(location.pathname === '/affiliate' || location.pathname.startsWith('/affiliate-network')) && <AffiliateProgramHelp />}
           {isMyAdsPage && (
             <Button
               size="icon"
