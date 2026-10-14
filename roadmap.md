@@ -1,4 +1,8 @@
 # Roadmap
+## Affiliate tabs and help
+- [ ] Match marketing/property cards and shared multiselect in both account views.
+- [ ] Move leftover leads into a Leads subtab and add role-safe hero program explanation.
+- [ ] Run focused tests and signed-in desktop/mobile checks.
 ## Licensed brokerage fee disclosure
 - [x] Add prominent shared buyer/renter commission disclosure to property browsing/details and publishing.
 - [x] Add professional Hebrew brokerage commission section to Terms, preserving seller/landlord signed terms.
