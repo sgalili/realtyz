@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { PACKAGES } from '@/lib/pricing';
+import BrokerageCommissionDisclosure, { BROKERAGE_COMMISSION_TITLE } from '@/components/public/BrokerageCommissionDisclosure';
 
 /**
  * תנאי שימוש ציבוריים (RTL). מסמך משפטי כללי המשקף את יכולות המערכת.
  * אינו מהווה ייעוץ משפטי; מומלץ לאשר מול עו"ד לפני עלייה לאוויר מסחרית.
  */
-const UPDATED = '27 באוגוסט 2026';
+const UPDATED = '14 באוקטובר 2026';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -23,6 +24,21 @@ export default function Terms() {
         <Link to="/landing" className="text-sm font-bold text-primary hover:underline">← חזרה לדף הבית</Link>
         <h1 className="mt-6 text-3xl font-extrabold tracking-tight sm:text-4xl">תנאי שימוש</h1>
         <p className="mt-2 text-sm text-muted-foreground">עדכון אחרון: {UPDATED}</p>
+
+        <section id="brokerage-commissions" className="mt-8 scroll-mt-6" aria-labelledby="brokerage-commissions-title">
+          <h2 id="brokerage-commissions-title" className="text-xl font-extrabold text-foreground">{BROKERAGE_COMMISSION_TITLE}</h2>
+          <div className="mt-3 space-y-4 text-[15px] leading-relaxed text-foreground">
+            <BrokerageCommissionDisclosure />
+            <p>שירותי התיווך בנדל״ן של Realtyz ניתנים בישראל באמצעות מתווך בעל רישיון תיווך ישראלי תקף, בהתאם לחוק המתווכים במקרקעין, התשנ״ו–1996, וליתר הוראות הדין החלות. מבנה העמלות שלהלן חל על שירותי התיווך של Realtyz ואינו משנה הסכמים עם מפרסמים או מתווכים אחרים.</p>
+            <ol className="list-decimal space-y-3 ps-5">
+              <li><strong>קונים:</strong> עמלת תיווך בשיעור קבוע של 1% בלבד ממחיר העסקה הסופי שנקבע בהסכם רכישת הנכס. שיעור זה נמוך מעמלת הייחוס המקובלת בשוק של 2%.</li>
+              <li><strong>שוכרים:</strong> עמלת תיווך חד־פעמית בשיעור קבוע של 10% בלבד מדמי השכירות החודשיים שנקבעו בהסכם השכירות, ולא 10% מסך דמי השכירות לכל התקופה. זאת לעומת עמלת הייחוס המקובלת של חודש שכירות מלא.</li>
+              <li><strong>מוכרים ומשכירים:</strong> תנאי השירות ושיעורי העמלות נשארים כפי שסוכמו בהסכם התיווך הספציפי שנחתם עמם; גילוי זה אינו משנה אותם.</li>
+            </ol>
+            <p>החבות בדמי תיווך ומועד תשלומם כפופים להזמנת שירותי תיווך בכתב, להסכם החתום ולתנאי הזכאות הקבועים בדין. צפייה במודעה, פרסום נכס או שליחת פנייה אינם כשלעצמם הזמנת שירותי תיווך או התחייבות לתשלום עמלה. העמלות המפורטות כאן נפרדות מעלויות השימוש בקרדיטים ובשירותים הדיגיטליים של הפלטפורמה.</p>
+            <p className="text-muted-foreground">ההשוואה לעמלות המקובלות נועדה להמחשה בלבד; אין שיעור עמלה אחיד או מחייב בשוק.</p>
+          </div>
+        </section>
 
         <Section title="1. כללי והסכמה">
           <p>

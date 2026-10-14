@@ -1,4 +1,5 @@
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
+import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
 import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
@@ -892,6 +893,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         </div>
 
         <div className="space-y-4">
+          <BrokerageCommissionDisclosure />
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
