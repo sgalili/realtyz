@@ -1,4 +1,8 @@
 # Roadmap
+## Super Admin cloud monitoring in Connections
+- [ ] Add a Super Admin-only cloud card to Connections and restrict the existing placement.
+- [ ] Display real Railway reachability, separate worker/scheduler heartbeat and workspace queue health; enforce monitoring access server-side.
+- [ ] Verify role gating and authenticated monitoring readback.
 ## Profile tab and wallet price list
 - [x] Remove profile package tab, add wallet-hero read-only live credit usage price list, and remove unsolicited Google connection toast.
 - [x] Automatic build passed; signed-in wallet icon opened six live read-only credit prices and screenshot confirmed labels. Google reminder absent; profile source removal checked, but subsequent browser runs did not render profile tabs, so profile visual verification remains unavailable.
