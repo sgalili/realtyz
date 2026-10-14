@@ -30,15 +30,44 @@ Deno.serve(async req => {
       const bytes = new Uint8Array(await file.arrayBuffer());
       let binary = '';
       for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
-      const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'google/gemini-2.5-flash', messages: [{ role: 'user', content: [
-          { type: 'text', text: 'Extract this training file in Hebrew, faithfully preserving facts and instructions. Do not invent missing information.' },
-          { type: 'image_url', image_url: { url: `data:${file.type || body.mime_type || 'application/octet-stream'};base64,${btoa(binary)}` } },
-        ] }] }),
-      });
-      if (!res.ok) throw new Error('Media analysis failed; please retry');
-      text = (await res.json()).choices?.[0]?.message?.content ?? '';
+      const mime = file.type || body.mime_type || 'application/octet-stream';
+      const base64 = btoa(binary);
+      const prompt = 'Extract this training file in Hebrew, faithfully preserving facts and instructions. Do not invent missing information.';
+      if (mime.startsWith('image/') || mime === 'application/pdf') {
+        const media = mime === 'application/pdf' ? { type: 'input_file', filename: title, file_data: `data:${mime};base64,${base64}` } : { type: 'input_image', image_url: `data:${mime};base64,${base64}` };
+        const res = await fetch('https://ai.gateway.lovable.dev/v1/responses', {
+          method: 'POST', signal: req.signal,
+          headers: { 'Lovable-API-Key': apiKey, 'X-Lovable-AIG-SDK': 'fetch', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'openai/gpt-6-astra', stream: true, store: false, reasoning: { effort: 'low', summary: 'auto' }, include: ['reasoning.encrypted_content'],
+            input: [{ role: 'user', content: [{ type: 'input_text', text: prompt }, media] }] }),
+        });
+        if (!res.ok) return reply({ error: 'ניתוח הקובץ אינו זמין כרגע' }, res.status);
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error('Empty analysis stream');
+        let pending = '';
+        const decoder = new TextDecoder();
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          pending += decoder.decode(value, { stream: true });
+          const lines = pending.split('\n'); pending = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'response.output_text.delta') text += event.delta;
+            if (event.type === 'error' || event.type === 'response.failed' || event.type === 'response.refusal.delta') throw new Error('ניתוח הקובץ לא הושלם');
+          }
+        }
+      } else {
+        const format = mime.includes('mp4') ? 'm4a' : mime.includes('mpeg') ? 'mp3' : mime.split('/')[1];
+        const media = mime.startsWith('video/') ? { type: 'video_url', video_url: { url: `data:${mime};base64,${base64}` } } : { type: 'input_audio', input_audio: { data: base64, format } };
+        const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'google/gemini-4-argon', messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, media] }] }),
+        });
+        if (!res.ok) return reply({ error: 'ניתוח הקובץ אינו זמין כרגע' }, res.status);
+        text = (await res.json()).choices?.[0]?.message?.content ?? '';
+      }
     }
     const { text: clean } = maskPii(String(text).replace(/\u0000/g, '').trim());
     if (!clean) return reply({ error: 'No readable content found' }, 400);
