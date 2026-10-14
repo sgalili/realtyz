@@ -27,6 +27,7 @@ export function CloudPostingSessionCard() {
   const [cookies, setCookies] = useState('');
   const [summary, setSummary] = useState<{ sent_today: number; pending: number; failed_today: number; active_pool: number; pool_cap: number } | null>(null);
   const [opening, setOpening] = useState(false);
+  const [workerReady, setWorkerReady] = useState(true);
 
   const call = async (action: string, extra: Record<string, unknown> = {}) => {
     const { data, error } = await supabase.functions.invoke('fb-session-vault', {
@@ -42,6 +43,7 @@ export function CloudPostingSessionCard() {
     try {
       const data = await call('status');
       setSession(data?.session ?? null);
+      setWorkerReady(data?.worker_ready !== false);
       try { const sm = await call('summary'); setSummary(sm?.summary ?? null); } catch { setSummary(null); }
     } catch {
       setSession(null);
@@ -59,8 +61,9 @@ export function CloudPostingSessionCard() {
     }
     setSaving(true);
     try {
-      await call('save', { cookies: cookies.trim(), user_agent: navigator.userAgent });
+      const res = await call('save', { cookies: cookies.trim(), user_agent: navigator.userAgent });
       setCookies('');
+      if (res?.session) setSession(res.session); // badge flips to פעיל בענן immediately
       toast.success('החיבור נשמר מוצפן – פרסום בענן פעיל');
       await refresh();
     } catch (e) {
@@ -125,6 +128,12 @@ export function CloudPostingSessionCard() {
           שמירת חיבור הפייסבוק שלך בצורה מוצפנת מאפשרת לשרת לפרסם בקבוצות בזמנים שקבעת,
           גם בלי דפדפן פתוח. הנתונים מוצפנים ואינם מוצגים שוב אחרי השמירה.
         </p>
+
+        {state === 'active' && !workerReady && (
+          <p className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
+            החיבור נשמר. הפוסטים ימתינו בתור עד שהשרת שמבצע את הפרסום בענן יופעל.
+          </p>
+        )}
 
         {summary && (
           <div className="grid grid-cols-3 gap-2 text-center">
