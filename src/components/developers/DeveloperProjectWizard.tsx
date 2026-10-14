@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 import { ArrowRight, Loader2, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -117,6 +118,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
   </div>;
 
   return <div className="flex min-h-0 flex-col gap-4">
+    <BrokerageCommissionDisclosure />
     <Accordion type="single" collapsible value={openStep} onValueChange={setOpenStep} className="space-y-2">
       {PROJECT_STEPS.map((title, i) => (
         <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
