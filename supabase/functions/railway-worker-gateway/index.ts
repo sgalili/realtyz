@@ -102,7 +102,6 @@ Deno.serve(async (req) => {
 
   // claim_batch
   const limit = body.limit ?? 5;
-  const workerId = `railway:${body.worker_id ?? "worker"}`;
 
   await admin
     .from("campaign_activity_queue")
@@ -149,7 +148,7 @@ Deno.serve(async (req) => {
     }
     const { data: claimed } = await admin.from("campaign_activity_queue")
       .update({
-        status: "processing", claimed_by: workerId, processed_at: nowIso, last_error: null,
+        status: "processing", processed_at: nowIso, last_error: null,
         claim_expires_at: new Date(Date.now() + LEASE_MIN * 60_000).toISOString(),
         cloud_attempts: (row.cloud_attempts ?? 0) + 1,
       })
