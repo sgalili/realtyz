@@ -653,7 +653,6 @@ export function ConnectionsTab() {
 
   return (
     <div dir="rtl" className="space-y-3 text-right">
-      {isSuperAdmin && <CloudAutomationHealthCard key={activeWorkspaceId} />}
       {sections.map((s) => (
         <ConnectionSection
           key={s.id}
@@ -673,6 +672,7 @@ export function ConnectionsTab() {
           {s.node}
         </ConnectionSection>
       ))}
+      {isSuperAdmin && <CloudAutomationHealthCard key={activeWorkspaceId} />}
     </div>
   );
 }
