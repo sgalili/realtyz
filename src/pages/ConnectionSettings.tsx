@@ -448,6 +448,8 @@ const ConnectionSettings = () => {
             </div>
           </CardContent>
         </Card>
+
+        {isSuperAdmin && <CloudAutomationHealthCard />}
       </div>
     </div>
   );

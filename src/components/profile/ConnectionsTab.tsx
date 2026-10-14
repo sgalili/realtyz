@@ -672,6 +672,7 @@ export function ConnectionsTab() {
           {s.node}
         </ConnectionSection>
       ))}
+      {isSuperAdmin && <CloudAutomationHealthCard key={activeWorkspaceId} />}
     </div>
   );
 }
