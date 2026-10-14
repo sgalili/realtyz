@@ -1,3 +1,4 @@
+import { tailorGroupTexts, ensureUniqueTexts, rotateMedia } from "../_shared/groupTailor.ts";
 import { dedupePostMedia } from '../_shared/postMediaIdentity.ts';
 // meta-publish — direct Meta Graph API publishing for Facebook Pages and
 // Instagram Business accounts.
@@ -602,14 +603,28 @@ Deno.serve(async (req) => {
 
     if (groupIds.length > 0) {
       let groupUrls: Record<string, string | null> = {};
+      let groupMetas: any[] = [];
       try {
         const { data: grows } = await db
           .from("fb_user_groups")
-          .select("group_id, group_url")
+          .select("group_id, group_url, group_name, privacy, member_count")
           .eq("workspace_owner_id", ownerId)
           .in("group_id", groupIds);
         groupUrls = Object.fromEntries(((grows ?? []) as any[]).map((r) => [String(r.group_id), r.group_url ?? null]));
+        groupMetas = ((grows ?? []) as any[]).map((r) => ({ ...r, group_id: String(r.group_id) }));
       } catch { /* best effort */ }
+
+      // Tailor wording per group audience (caller-supplied texts win), then
+      // guarantee unique text and a distinct photo order for every group.
+      let aiTexts: Record<string, string> = {};
+      const needAi = groupIds.filter((g) => !(typeof groupTexts[g] === "string" && groupTexts[g].trim()));
+      if (needAi.length > 1 && body?.tailor_per_group !== false) {
+        try {
+          aiTexts = await tailorGroupTexts(text, needAi.map((g) => groupMetas.find((m) => m.group_id === g) ?? { group_id: g }));
+        } catch (e) { console.warn("[meta-publish] group tailoring skipped", String((e as Error).message)); }
+      }
+      const finalTexts = ensureUniqueTexts(groupIds, { ...aiTexts, ...Object.fromEntries(Object.entries(groupTexts).filter(([, v]) => typeof v === "string" && v.trim())) }, text);
+      const mediaByGroup = rotateMedia(groupIds, media);
 
       const nowIso = scheduledFor;
       // Scheduled group posts get the same destination link + mandatory first
@@ -617,11 +632,9 @@ Deno.serve(async (req) => {
       const groupLink = typeof body?.link === "string" && body.link.trim() ? body.link.trim() : null;
       const groupFirstComment = ensureMandatoryComment(firstComment, groupLink);
       const jobs = groupIds.map((gid, gi) => {
-        const groupMedia = media.length > 10 ? shuffle(media).slice(0, 10) : media;
-        const groupImage = groupMedia.length ? groupMedia[gi % groupMedia.length] : null;
-        const groupText = typeof groupTexts[gid] === "string" && groupTexts[gid].trim()
-          ? String(groupTexts[gid])
-          : `${text}${groupVariants[gi % groupVariants.length]}`;
+        const groupMedia = mediaByGroup[gid] ?? [];
+        const groupImage = groupMedia[0] ?? null;
+        const groupText = finalTexts[gid];
         return {
           workspace_owner_id: ownerId,
           created_by: ownerId,
