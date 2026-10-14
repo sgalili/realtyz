@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { CloudAutomationHealthCard } from '@/components/profile/CloudAutomationHealthCard';
+import { GlobalAiBrainCard } from '@/components/profile/GlobalAiBrainCard';
 
 type Status = 'idle' | 'testing' | 'success' | 'error';
 
@@ -450,6 +451,7 @@ const ConnectionSettings = () => {
         </Card>
 
         {isSuperAdmin && <CloudAutomationHealthCard />}
+        {isSuperAdmin && <GlobalAiBrainCard />}
       </div>
     </div>
   );

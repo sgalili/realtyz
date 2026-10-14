@@ -91,7 +91,35 @@ function formatBlock(
  * Returns a formatted system-prefs block (or "" when no active rules match).
  * Cached for 30s per (workspace, query-hash).
  */
+let globalCache: { at: number; text: string } | null = null;
+
+/** Platform-wide master rules edited by the Super Admin (global_ai_config). */
+export async function fetchGlobalMasterBlock(): Promise<string> {
+  if (!globalCache || Date.now() - globalCache.at > 5_000) {
+    let text = "";
+    try {
+      const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+      const { data } = await admin.from("global_ai_config").select("master_prompt").eq("id", true).maybeSingle();
+      text = String(data?.master_prompt ?? "").trim();
+    } catch { /* ignore */ }
+    globalCache = { at: Date.now(), text };
+  }
+  return globalCache.text
+    ? `#GLOBAL_MASTER_RULES — PLATFORM-WIDE, APPLIES TO EVERY WORKSPACE\n${globalCache.text}\n#END_GLOBAL_MASTER_RULES`
+    : "";
+}
+
 export async function fetchSystemRulesBlock(
+  userId: string | null | undefined,
+  queryText: string,
+  k = 8,
+): Promise<string> {
+  const globalBlock = await fetchGlobalMasterBlock();
+  const block = await fetchWorkspaceRulesBlock(userId, queryText, k);
+  return [globalBlock, block].filter(Boolean).join("\n\n");
+}
+
+async function fetchWorkspaceRulesBlock(
   userId: string | null | undefined,
   queryText: string,
   k = 8,
