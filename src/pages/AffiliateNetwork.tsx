@@ -261,93 +261,18 @@ function BrokerAffiliateNetwork() {
     );
   }, [submissions, submissionsSearch]);
 
-  return (
-    <>
-      {/* Tabs sit at the same height as on the inbox and campaigns pages:
-          no local page title block, matching top offset. */}
-      <div className="-mt-[25px] w-full max-w-full min-w-0 space-y-5" dir="rtl">
-        <AffiliateAutomationCards />
-        <Tabs defaultValue="rewards">
-          <div className="flex items-center gap-2">
-          <TabsList className="mx-auto grid flex-1 h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-            <TabsTrigger
-              value="rewards"
-              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-            >
-              נכסים ({listings.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="tracking"
-              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-            >
-              בשיווק ({referrals.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="submissions"
-              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-            >
-              לידים ({submissions.length})
-            </TabsTrigger>
-          </TabsList>
-          <LeftoverLeadsDialog />
-          </div>
+  const trackingListings = listings.filter(l => filteredReferrals.some(r => r.listing?.id === l.id));
 
-          <TabsContent value="rewards" className="space-y-4 pt-4">
-            <div className="flex items-center gap-3">
-              <SelectModeToggle total={filteredListings.length} active={multiSelectMode} count={selectedListingIds.size}
-                onToggle={() => { setMultiSelectMode(v => !v); setSelectedListingIds(new Set()); }}
-                onSelectAll={() => setSelectedListingIds(new Set(filteredListings.map(l => l.id)))} />
-              {/* Filter button at the start of the field, like the public board. */}
-              <div className="relative flex h-10 max-w-sm flex-1 items-center rounded-md border border-input bg-background">
-                <span className="absolute start-2 top-1/2 z-10 flex -translate-y-1/2">
-                  <LeadTypeFilterButton
-                    state={leadFilter}
-                    onChange={setLeadFilter}
-                    propertyState={propertyFilter}
-                    onPropertyChange={setPropertyFilter}
-                    cities={filterCities}
-                    neighborhoods={filterNeighborhoods}
-                    propertyTypes={[]}
-                  />
-                </span>
-                <Input
-                  placeholder="חיפוש נכס"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 flex-1 border-0 bg-transparent ps-11 pe-3 shadow-none focus-visible:ring-0"
-                />
-              </div>
-              <div className="ms-auto inline-flex items-center">
-                <ViewModeSwitch
-                  isGrid={viewMode === "grid"}
-                  onToggle={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
-                />
-              </div>
-            </div>
-
-            {multiSelectMode && selectedListingIds.size > 0 ? (
-              <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
-                <span className="text-sm font-semibold">נבחרו {selectedListingIds.size} נכסים</span>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="gap-1.5"
-                  onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}
-                >
-                  <Trash2 className="h-4 w-4" /> מחיקת הנבחרים
-                </Button>
-              </div>
-            ) : null}
-
-            {listingsLoading ? (
+  const renderPropertyRows = (rows: BrokerAffiliateListing[], loading: boolean) => (
+loading ? (
               <Skeleton className="h-64 w-full" />
-            ) : filteredListings.length === 0 ? (
+            ) : rows.length === 0 ? (
               <Card className="border-dashed border-slate-200">
                 <CardContent className="p-10 text-center text-sm text-slate-500">לא נמצאו נכסים בחשבון זה.</CardContent>
               </Card>
             ) : viewMode === "table" ? (
               <ResultTable
-                results={filteredListings.map(toUnifiedResult)}
+                results={rows.map(toUnifiedResult)}
                 importingKey={null}
                 onSelect={(result) => {
                   if (result.localId) {
@@ -360,13 +285,13 @@ function BrokerAffiliateNetwork() {
                 }}
                 publishedLabel="פורסם לרשת"
                 publishedAt={(result) =>
-                  filteredListings.find((item) => item.id === result.localId)?.affiliate_approved_at ?? null
+                  rows.find((item) => item.id === result.localId)?.affiliate_approved_at ?? null
                 }
                 affiliateSortValue={(result) =>
-                  filteredListings.find((item) => item.id === result.localId)?.affiliate_enabled ? 1 : 0
+                  rows.find((item) => item.id === result.localId)?.affiliate_enabled ? 1 : 0
                 }
                 commissionSortValue={(result) => {
-                  const listing = filteredListings.find((item) => item.id === result.localId);
+                  const listing = rows.find((item) => item.id === result.localId);
                   if (!listing) return 0;
                   return (
                     Number(listing.affiliate_tier1_amount ?? 0) +
@@ -394,7 +319,7 @@ function BrokerAffiliateNetwork() {
                 // First column: shared properties are green; clicking always
                 // opens the commissions dialog with the sharing switch.
                 affiliateCell={(result) => {
-                  const listing = filteredListings.find((item) => item.id === result.localId);
+                  const listing = rows.find((item) => item.id === result.localId);
                   if (!listing) return null;
                   const shared = Boolean(listing.affiliate_enabled);
                   return (
@@ -433,7 +358,7 @@ function BrokerAffiliateNetwork() {
                 }}
                 // Dedicated "עמלות" column: amounts per affiliate level.
                 commissionCell={(result) => {
-                  const listing = filteredListings.find((item) => item.id === result.localId);
+                  const listing = rows.find((item) => item.id === result.localId);
                   if (!listing || !listing.affiliate_enabled) return null;
                   const tierTexts: Array<{
                     value: string;
@@ -490,7 +415,7 @@ function BrokerAffiliateNetwork() {
               />
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {filteredListings.map((l) => (
+                {rows.map((l) => (
                   <Card
                     key={l.id}
                     className="group relative cursor-pointer overflow-hidden border-slate-200 transition-shadow hover:shadow-lg"
@@ -619,10 +544,92 @@ function BrokerAffiliateNetwork() {
                   </Card>
                 ))}
               </div>
-            )}
+            )
+  );
+
+  return (
+    <>
+      {/* Tabs sit at the same height as on the inbox and campaigns pages:
+          no local page title block, matching top offset. */}
+      <div className="-mt-[25px] w-full max-w-full min-w-0 space-y-5" dir="rtl">
+        <AffiliateAutomationCards />
+        <Tabs defaultValue="rewards" onValueChange={() => { setMultiSelectMode(false); setSelectedListingIds(new Set()); }}>
+          <div className="flex items-center gap-2">
+          <TabsList className="mx-auto grid flex-1 h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
+            <TabsTrigger
+              value="rewards"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              {listings.length} נכסים
+            </TabsTrigger>
+            <TabsTrigger
+              value="tracking"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              {new Set(referrals.flatMap(r => r.listing?.id ? [r.listing.id] : [])).size} בשיווק
+            </TabsTrigger>
+            <TabsTrigger
+              value="submissions"
+              className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              {submissions.length} לידים
+            </TabsTrigger>
+          </TabsList>
+
+          </div>
+
+          <TabsContent value="rewards" className="space-y-4 pt-4">
+            <div className="flex items-center gap-3">
+              <SelectModeToggle total={filteredListings.length} active={multiSelectMode} count={selectedListingIds.size}
+                onToggle={() => { setMultiSelectMode(v => !v); setSelectedListingIds(new Set()); }}
+                onSelectAll={() => setSelectedListingIds(new Set(filteredListings.map(l => l.id)))} />
+              {/* Filter button at the start of the field, like the public board. */}
+              <div className="relative flex h-10 max-w-sm flex-1 items-center rounded-md border border-input bg-background">
+                <span className="absolute start-2 top-1/2 z-10 flex -translate-y-1/2">
+                  <LeadTypeFilterButton
+                    state={leadFilter}
+                    onChange={setLeadFilter}
+                    propertyState={propertyFilter}
+                    onPropertyChange={setPropertyFilter}
+                    cities={filterCities}
+                    neighborhoods={filterNeighborhoods}
+                    propertyTypes={[]}
+                  />
+                </span>
+                <Input
+                  placeholder="חיפוש נכס"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-8 flex-1 border-0 bg-transparent ps-11 pe-3 shadow-none focus-visible:ring-0"
+                />
+              </div>
+              <div className="ms-auto inline-flex items-center">
+                <ViewModeSwitch
+                  isGrid={viewMode === "grid"}
+                  onToggle={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
+                />
+              </div>
+            </div>
+
+            {multiSelectMode && selectedListingIds.size > 0 ? (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <span className="text-sm font-semibold">נבחרו {selectedListingIds.size} נכסים</span>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1.5"
+                  onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}
+                >
+                  <Trash2 className="h-4 w-4" /> מחיקת הנבחרים
+                </Button>
+              </div>
+            ) : null}
+
+            {renderPropertyRows(filteredListings, listingsLoading)}
           </TabsContent>
 
           <TabsContent value="submissions" className="space-y-2.5 pt-4">
+            <Tabs defaultValue="received"><TabsList><TabsTrigger value="received">לידים שקיבלתי</TabsTrigger><TabsTrigger value="leftover">לידים עודפים</TabsTrigger></TabsList><TabsContent value="leftover"><LeftoverLeadsDialog inline /></TabsContent><TabsContent value="received" className="space-y-2.5">
             <div className="flex h-10 max-w-sm items-center gap-2 rounded-md border border-input bg-background px-3">
               <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
               <Input
@@ -751,20 +758,14 @@ function BrokerAffiliateNetwork() {
                 </Card>
               ))
             )}
+            </TabsContent></Tabs>
           </TabsContent>
 
           <TabsContent value="tracking" className="space-y-4 pt-4">
-            <div className="flex max-w-sm items-center gap-3">
-              <Checkbox
-                checked={multiSelectMode}
-                onCheckedChange={(checked) => {
-                  setMultiSelectMode(Boolean(checked));
-                  if (!checked) setSelectedListingIds(new Set());
-                }}
-                aria-label="בחירה מרובה"
-                title="בחירה מרובה"
-                className="h-5 w-5 shrink-0"
-              />
+            <div className="flex items-center gap-3">
+              <SelectModeToggle total={trackingListings.length} active={multiSelectMode} count={selectedListingIds.size}
+                onToggle={() => { setMultiSelectMode(v => !v); setSelectedListingIds(new Set()); }}
+                onSelectAll={() => setSelectedListingIds(new Set(trackingListings.map(l => l.id)))} />
               <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
@@ -774,7 +775,10 @@ function BrokerAffiliateNetwork() {
                   className="h-8 min-w-0 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
                 />
               </div>
+              <div className="ms-auto"><ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} /></div>
             </div>
+            {renderPropertyRows(trackingListings, refsLoading || listingsLoading)}
+            <details className="border-t pt-3"><summary className="cursor-pointer text-sm font-semibold">מעקב שותפים ופניות</summary>
             {refsLoading ? (
               <Skeleton className="h-64 w-full" />
             ) : filteredReferrals.length === 0 ? (
@@ -925,6 +929,7 @@ function BrokerAffiliateNetwork() {
                 ))}
               </div>
             )}
+            </details>
           </TabsContent>
         </Tabs>
 

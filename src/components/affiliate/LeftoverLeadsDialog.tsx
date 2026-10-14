@@ -17,14 +17,15 @@ const TIER = ['', 'טופס', 'WhatsApp', 'שיחה'];
 const fmt = (d: string) => new Date(d).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 /** Contacts that arrived after a property's daily limit: optional, bought at the partner's discounted price. */
-export default function LeftoverLeadsDialog() {
+export default function LeftoverLeadsDialog({ inline = false }: { inline?: boolean }) {
   const [open, setOpen] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const qc = useQueryClient();
   const { activeWorkspaceId: workspaceOwnerId } = useWorkspace();
   const key = ['leftover-leads', workspaceOwnerId ?? 'none'];
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: key,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await (supabase.rpc as any)('list_leftover_leads');
       if (error) throw error;
@@ -42,17 +43,9 @@ export default function LeftoverLeadsDialog() {
     qc.invalidateQueries({ queryKey: key });
   };
 
-  return (
-    <>
-      <Button variant="outline" size="sm" className="h-[44px] shrink-0 gap-1.5" onClick={() => setOpen(true)} title="לידים מעבר למכסה היומית">
-        <Inbox className="h-4 w-4" />
-        {pending > 0 ? <span className="font-semibold">{pending}</span> : null}
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent dir="rtl" className="max-w-2xl">
-          <DialogHeader><DialogTitle>לידים מעבר למכסה היומית</DialogTitle></DialogHeader>
+  const content = <div dir="rtl" className="space-y-3">
           <p className="text-sm text-muted-foreground">לידים שהגיעו אחרי שהנכס הגיע למכסה. לא חויבתם עליהם; ניתן לרכוש במחיר המוזל שקבע השותף.</p>
-          {isLoading ? (
+          {isError ? <p role="alert" className="py-8 text-center text-sm text-destructive">לא ניתן לטעון את הלידים כרגע.</p> : isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">אין כרגע לידים נוספים</p>
@@ -83,6 +76,19 @@ export default function LeftoverLeadsDialog() {
               </Table>
             </div>
           )}
+  </div>;
+  if (inline) return content;
+
+  return (
+    <>
+      <Button variant="outline" size="sm" className="h-[44px] shrink-0 gap-1.5" onClick={() => setOpen(true)} title="לידים מעבר למכסה היומית">
+        <Inbox className="h-4 w-4" />
+        {pending > 0 ? <span className="font-semibold">{pending}</span> : null}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent dir="rtl" className="max-w-2xl">
+          <DialogHeader><DialogTitle>לידים מעבר למכסה היומית</DialogTitle></DialogHeader>
+          {content}
         </DialogContent>
       </Dialog>
     </>
