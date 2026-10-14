@@ -1838,6 +1838,39 @@ export type Database = {
         }
         Relationships: []
       }
+      cloud_poster_runs: {
+        Row: {
+          deferred: number
+          dispatched: number
+          failed: number
+          id: string
+          note: string | null
+          processed: number
+          ran_at: string
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          deferred?: number
+          dispatched?: number
+          failed?: number
+          id?: string
+          note?: string | null
+          processed?: number
+          ran_at?: string
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          deferred?: number
+          dispatched?: number
+          failed?: number
+          id?: string
+          note?: string | null
+          processed?: number
+          ran_at?: string
+          workspace_owner_id?: string | null
+        }
+        Relationships: []
+      }
       contact_submissions: {
         Row: {
           created_at: string
