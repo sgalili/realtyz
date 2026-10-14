@@ -3409,6 +3409,42 @@ export type Database = {
         }
         Relationships: []
       }
+      global_ai_documents: {
+        Row: {
+          chunk_count: number
+          created_at: string
+          created_by: string
+          id: string
+          raw_text: string
+          source_metadata: Json
+          source_type: string
+          storage_path: string
+          title: string
+        }
+        Insert: {
+          chunk_count?: number
+          created_at?: string
+          created_by: string
+          id?: string
+          raw_text: string
+          source_metadata?: Json
+          source_type?: string
+          storage_path: string
+          title: string
+        }
+        Update: {
+          chunk_count?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          raw_text?: string
+          source_metadata?: Json
+          source_type?: string
+          storage_path?: string
+          title?: string
+        }
+        Relationships: []
+      }
       holiday_greetings: {
         Row: {
           created_at: string
