@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
       .select("status, last_verified_at, expires_at, user_agent, updated_at, last_error")
       .eq("workspace_owner_id", user.id)
       .maybeSingle();
-    return json({ success: true, session: data ?? null });
+    return json({ success: true, session: data ?? null, worker_ready: !!Deno.env.get("CLOUD_BROWSER_WORKER_URL") });
   }
 
   if (action === "summary") {
@@ -109,6 +109,13 @@ Deno.serve(async (req) => {
       return json({ error: "cookies_too_large", message: "נתוני ההתחברות גדולים מדי" }, 400);
     }
 
+    // Must contain Facebook's login cookies, in any common export format
+    // (JSON array from an extension, or a "name=value; ..." header string).
+    const hasCookie = (n: string) => new RegExp(`(["']?name["']?\\s*:\\s*["']${n}["'])|(\\b${n}=)`).test(serialized);
+    if (!hasCookie("c_user") || !hasCookie("xs")) {
+      return json({ error: "missing_login_cookies", message: "חסרים נתוני ההתחברות של פייסבוק (c_user ו-xs). ודאו שהעתקתם מדפדפן מחובר" }, 400);
+    }
+
     let cookies_encrypted: string;
     try {
       cookies_encrypted = await encryptSession(serialized, ENC_KEY);
@@ -134,7 +141,12 @@ Deno.serve(async (req) => {
     );
     if (error) return json({ error: error.message }, 500);
 
-    return json({ success: true, session: { status: "active", expires_at } });
+    const { data: saved } = await admin
+      .from("fb_cloud_sessions")
+      .select("status, last_verified_at, expires_at, user_agent, updated_at, last_error")
+      .eq("workspace_owner_id", user.id)
+      .maybeSingle();
+    return json({ success: true, session: saved ?? { status: "active", expires_at, last_error: null } });
   }
 
   return json({ error: "unknown_action" }, 400);
