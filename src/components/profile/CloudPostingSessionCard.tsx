@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Cloud, ShieldCheck, Trash2, ExternalLink, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useUserRole } from '@/hooks/useUserRole';
 
 type CloudSession = {
   status: string;
@@ -21,6 +22,12 @@ type CloudSession = {
  * so scheduled group posts run even when the laptop is off.
  */
 export function CloudPostingSessionCard() {
+  const { isSuperAdmin, loading, error } = useUserRole();
+  if (loading || error || !isSuperAdmin) return null;
+  return <CloudPostingSessionContent />;
+}
+
+function CloudPostingSessionContent() {
   const [session, setSession] = useState<CloudSession>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
