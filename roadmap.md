@@ -3,6 +3,7 @@
 - [x] Add a Super Admin-only cloud card to Connections and restrict the existing placement.
 - [x] Display real Railway reachability, separate worker/scheduler heartbeat and workspace queue health; enforce monitoring access server-side.
 - [x] Five role/loading/error and monitoring tests passed; automatic build OK; authenticated Connections readback and refresh verified. Railway responds and workspace queue is empty/healthy; no Railway heartbeat received. Other-role UI gating tested in isolation, not a second live account.
+- [x] Move the card strictly last in the Connections list (profile tab and full-page settings) and collapse it by default; monitor polls only while expanded. Six tests, automatic build OK, signed-in check: aria-expanded=false at load, body absent until click, card is the final item of eleven, expanded readback live.
 ## Profile tab and wallet price list
 - [x] Remove profile package tab, add wallet-hero read-only live credit usage price list, and remove unsolicited Google connection toast.
 - [x] Automatic build passed; signed-in wallet icon opened six live read-only credit prices and screenshot confirmed labels. Google reminder absent; profile source removal checked, but subsequent browser runs did not render profile tabs, so profile visual verification remains unavailable.
