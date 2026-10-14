@@ -101,6 +101,9 @@ export async function fetchGlobalMasterBlock(): Promise<string> {
       const admin = createClient(SUPABASE_URL, SERVICE_KEY);
       const { data } = await admin.from("global_ai_config").select("master_prompt").eq("id", true).maybeSingle();
       text = String(data?.master_prompt ?? "").trim();
+      const { data: documents } = await admin.from("global_ai_documents").select("title, raw_text").order("created_at", { ascending: true });
+      const training = (documents ?? []).map((d: { title: string; raw_text: string }) => `## ${d.title}\n${d.raw_text}`).join("\n\n");
+      if (training) text += `\n\n#GLOBAL_TRAINING_DOCUMENTS\n${training}\n#END_GLOBAL_TRAINING_DOCUMENTS`;
     } catch { /* ignore */ }
     globalCache = { at: Date.now(), text };
   }

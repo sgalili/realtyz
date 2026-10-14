@@ -1,4 +1,8 @@
 # Roadmap
+## Global AI Brain shared interface
+- [ ] Reuse workspace tabs, upload zone and individual document cards; keep global card last, collapsed and Super Admin-only.
+- [ ] Persist protected global training documents and inject their content alongside the master prompt across workspaces.
+- [ ] Test permissions, shared controls and authenticated upload/readback.
 ## Super Admin cloud monitoring in Connections
 - [x] Add a Super Admin-only cloud card to Connections and restrict the existing placement.
 - [x] Display real Railway reachability, separate worker/scheduler heartbeat and workspace queue health; enforce monitoring access server-side.
