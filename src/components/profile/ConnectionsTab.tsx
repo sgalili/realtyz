@@ -25,6 +25,7 @@ import { GoogleApiCredentialsCard } from '@/components/profile/GoogleApiCredenti
 import { GoogleBrandGlyph, GoogleServiceConnectCard } from '@/components/profile/GoogleServiceConnectCard';
 import { Button } from '@/components/ui/button';
 import { useUserRole } from '@/hooks/useUserRole';
+import { CloudAutomationHealthCard } from '@/components/profile/CloudAutomationHealthCard';
 import {
   isRememberedConnected,
   rememberConnected,
@@ -652,6 +653,7 @@ export function ConnectionsTab() {
 
   return (
     <div dir="rtl" className="space-y-3 text-right">
+      {isSuperAdmin && <CloudAutomationHealthCard key={activeWorkspaceId} />}
       {sections.map((s) => (
         <ConnectionSection
           key={s.id}

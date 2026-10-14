@@ -37,6 +37,62 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { body = {}; }
   const action = String(body?.action ?? "status");
 
+  if (action === "monitor") {
+    const { data: role, error: roleError } = await admin.from("user_roles")
+      .select("role").eq("user_id", user.id).eq("role", "super_admin").maybeSingle();
+    if (roleError) return json({ error: "role_check_failed" }, 500);
+    if (!role) return json({ error: "forbidden" }, 403);
+
+    // Resolve workspace on the server, then authorize it using the caller's JWT.
+    const scoped = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+      global: { headers: { Authorization: authHeader } }, auth: { persistSession: false },
+    });
+    const { data: owner, error: ownerError } = await scoped.rpc("current_workspace_owner");
+    if (ownerError || !owner) return json({ error: "workspace_unavailable" }, 403);
+    const { data: allowed, error: accessError } = await scoped.rpc("ws_current_access", { _ws: owner });
+    if (accessError || !allowed) return json({ error: "workspace_forbidden" }, 403);
+
+    const now = new Date();
+    const dayStart = new Date(now); dayStart.setUTCHours(0, 0, 0, 0);
+    const base = () => admin.from("campaign_activity_queue").select("id", { count: "exact", head: true })
+      .eq("workspace_owner_id", owner).eq("runner", "cloud").eq("activity_type", "fb_group_post");
+    const workerUrl = Deno.env.get("CLOUD_BROWSER_WORKER_URL") ?? "";
+    const probe = async () => {
+      if (!workerUrl) return false;
+      try {
+        const response = await fetch(new URL("/health", workerUrl), { signal: AbortSignal.timeout(8000), redirect: "error" });
+        if (!response.ok) return false;
+        const text = (await response.text()).trim();
+        // Current deployed runner uses this exact health response, not generic HTML.
+        return text === "realtyz cloud runner ok";
+      } catch { return false; }
+    };
+    const [reachable, heartbeat, tick, pending, processing, sent, failed, overdue, expired] = await Promise.all([
+      probe(),
+      admin.from("cloud_poster_runs").select("ran_at").is("workspace_owner_id", null)
+        .like("note", "railway_heartbeat:%").order("ran_at", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("cloud_poster_runs").select("ran_at").is("workspace_owner_id", null)
+        .eq("note", "tick").order("ran_at", { ascending: false }).limit(1).maybeSingle(),
+      base().eq("status", "pending"), base().eq("status", "processing"),
+      base().eq("status", "completed").gte("completed_at", dayStart.toISOString()),
+      base().eq("status", "failed").gte("processed_at", dayStart.toISOString()),
+      base().eq("status", "pending").lt("scheduled_for", new Date(now.getTime() - 15 * 60_000).toISOString()),
+      base().eq("status", "processing").lt("claim_expires_at", now.toISOString()),
+    ]);
+    if ([heartbeat, tick, pending, processing, sent, failed, overdue, expired].some((result) => result.error)) {
+      return json({ error: "monitor_read_failed" }, 500);
+    }
+    let publicWorkerUrl: string | null = null;
+    try { const url = new URL(workerUrl); if (url.protocol === "https:") publicWorkerUrl = url.origin; } catch { /* unset */ }
+    return json({
+      checked_at: now.toISOString(),
+      worker: { url: publicWorkerUrl, configured: !!workerUrl, reachable, last_heartbeat: heartbeat.data?.ran_at ?? null },
+      scheduler: { last_tick: tick.data?.ran_at ?? null },
+      queue: { pending: pending.count ?? 0, processing: processing.count ?? 0, sent_today: sent.count ?? 0,
+        failed_today: failed.count ?? 0, overdue: overdue.count ?? 0, expired_leases: expired.count ?? 0 },
+    });
+  }
+
   if (action === "status") {
     const { data } = await admin
       .from("fb_cloud_sessions")
