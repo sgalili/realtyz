@@ -1,8 +1,8 @@
 # Roadmap
 ## Global AI Brain file-first management
-- [ ] Show saved global documents before entry controls; preserve existing master instructions in the library.
-- [ ] Add each text as a separate document with הוסף and remove text-title fields globally and in all workspace brains.
-- [ ] Verify sequential additions, refresh/readback, role gates and shared-control regressions.
+- [x] Show saved global documents before entry controls; existing master instructions preserved as one private TXT/document, legacy prompt cleared only after successful copy.
+- [x] Add each text as a separate document with הוסף and remove text-title fields globally and in all workspace brains using shared entry controls and derived filenames.
+- [x] Six tests and automatic build passed; authenticated sequential additions → refresh → open/readback → cleanup verified without runtime errors. Workspace title-free text verified in Profile. Existing Super Admin gates unchanged; other-role recheck and new AI answer generation not exercised.
 ## Global AI Brain shared interface
 - [x] Reuse workspace tabs, upload zone and individual document cards; keep global card last, collapsed and Super Admin-only.
 - [x] Persist protected global training documents and inject alongside the master prompt in connected generators and knowledge chats; private workspace data unchanged.
