@@ -46,6 +46,52 @@ Deno.serve(async (req) => {
     return json({ success: true, session: data ?? null });
   }
 
+  if (action === "summary") {
+    const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+    const base = () => admin.from("campaign_activity_queue").select("id", { count: "exact", head: true })
+      .eq("workspace_owner_id", user.id).eq("runner", "cloud").eq("activity_type", "fb_group_post");
+    const [sent, pending, failed, pool] = await Promise.all([
+      base().eq("status", "completed").gte("completed_at", dayStart.toISOString()),
+      base().in("status", ["pending", "processing"]),
+      base().eq("status", "failed").gte("processed_at", dayStart.toISOString()),
+      admin.from("fb_user_groups").select("id", { count: "exact", head: true })
+        .eq("workspace_owner_id", user.id).eq("pool_status", "active").eq("is_blocked", false),
+    ]);
+    return json({ success: true, summary: {
+      sent_today: sent.count ?? 0, pending: pending.count ?? 0,
+      failed_today: failed.count ?? 0, active_pool: pool.count ?? 0, pool_cap: 100,
+    } });
+  }
+
+  if (action === "remote_login") {
+    const token = Deno.env.get("GOLOGIN_API_TOKEN") ?? "";
+    if (!token) return json({ error: "not_configured", message: "שירות הדפדפן בענן עדיין לא הוגדר. פנו למנהל המערכת" }, 400);
+    const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const { data: row } = await admin.from("fb_cloud_sessions")
+      .select("remote_profile_id").eq("workspace_owner_id", user.id).maybeSingle();
+    let profileId = row?.remote_profile_id as string | undefined;
+    try {
+      if (!profileId) {
+        const r = await fetch("https://api.gologin.com/browser/quick", {
+          method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${user.id.slice(0, 8)}` }),
+        });
+        if (!r.ok) throw new Error(`profile_${r.status}`);
+        profileId = (await r.json())?.id;
+        if (!profileId) throw new Error("profile_missing");
+      }
+      const w = await fetch(`https://api.gologin.com/browser/${profileId}/web`, { method: "POST", headers: h });
+      if (!w.ok) throw new Error(`web_${w.status}`);
+      const url = (await w.json())?.remoteOrbitaUrl;
+      if (!url || !String(url).startsWith("https://")) throw new Error("no_url");
+      await admin.from("fb_cloud_sessions").upsert({
+        workspace_owner_id: user.id, remote_profile_id: profileId, status: "connecting", last_error: null,
+      }, { onConflict: "workspace_owner_id" });
+      return json({ success: true, url });
+    } catch (e) {
+      return json({ error: "remote_failed", message: `פתיחת הדפדפן בענן נכשלה (${(e as Error).message})` }, 502);
+    }
+  }
+
   if (action === "clear") {
     const { error } = await admin.from("fb_cloud_sessions").delete().eq("workspace_owner_id", user.id);
     if (error) return json({ error: error.message }, 500);
