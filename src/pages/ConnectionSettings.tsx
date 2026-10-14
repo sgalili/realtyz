@@ -308,7 +308,6 @@ const ConnectionSettings = () => {
         </header>
 
 
-        {isSuperAdmin && <CloudAutomationHealthCard />}
 
         {/* WhatsApp */}
         <Card>
