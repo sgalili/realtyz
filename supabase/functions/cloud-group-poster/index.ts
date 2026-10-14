@@ -195,5 +195,29 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Execution log: one global heartbeat + one row per workspace touched.
+  try {
+    const byWs = new Map<string, { processed: number; dispatched: number; deferred: number; failed: number; reasons: Set<string> }>();
+    for (const r of results) {
+      const ws = (due ?? []).find((d: any) => d.id === r.id)?.workspace_owner_id;
+      if (!ws) continue;
+      const e = byWs.get(ws) ?? { processed: 0, dispatched: 0, deferred: 0, failed: 0, reasons: new Set<string>() };
+      e.processed++;
+      if (r.status === "dispatched") e.dispatched++;
+      else if (r.status === "failed") e.failed++;
+      else e.deferred++;
+      if (r.reason) e.reasons.add(r.reason);
+      byWs.set(ws, e);
+    }
+    const rows: any[] = [{ workspace_owner_id: null, processed: results.length, note: "tick" }];
+    for (const [ws, e] of byWs) rows.push({
+      workspace_owner_id: ws, processed: e.processed, dispatched: e.dispatched,
+      deferred: e.deferred, failed: e.failed, note: [...e.reasons].join(",") || null,
+    });
+    await admin.from("cloud_poster_runs").insert(rows);
+    await admin.from("cloud_poster_runs").delete().is("workspace_owner_id", null)
+      .lt("ran_at", new Date(Date.now() - 2 * 86_400_000).toISOString());
+  } catch { /* logging must never break dispatch */ }
+
   return json({ success: true, processed: results.length, results });
 });

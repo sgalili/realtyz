@@ -28,6 +28,10 @@ export function CloudPostingSessionCard() {
   const [summary, setSummary] = useState<{ sent_today: number; pending: number; failed_today: number; active_pool: number; pool_cap: number } | null>(null);
   const [opening, setOpening] = useState(false);
   const [workerReady, setWorkerReady] = useState(true);
+  const [lastTick, setLastTick] = useState<string | null>(null);
+  const [runs, setRuns] = useState<{ ran_at: string; dispatched: number; deferred: number; failed: number }[]>([]);
+  const tickFresh = !!lastTick && Date.now() - new Date(lastTick).getTime() < 15 * 60_000;
+  useEffect(() => { const t = setInterval(() => { void call('runs').then((rr) => { setLastTick(rr?.last_tick ?? null); setRuns(rr?.runs ?? []); }).catch(() => {}); }, 60_000); return () => clearInterval(t); }, []);
 
   const call = async (action: string, extra: Record<string, unknown> = {}) => {
     const { data, error } = await supabase.functions.invoke('fb-session-vault', {
@@ -45,6 +49,7 @@ export function CloudPostingSessionCard() {
       setSession(data?.session ?? null);
       setWorkerReady(data?.worker_ready !== false);
       try { const sm = await call('summary'); setSummary(sm?.summary ?? null); } catch { setSummary(null); }
+      try { const rr = await call('runs'); setLastTick(rr?.last_tick ?? null); setRuns(rr?.runs ?? []); } catch { /* ignore */ }
     } catch {
       setSession(null);
     } finally {
@@ -142,6 +147,23 @@ export function CloudPostingSessionCard() {
             <div className="rounded-md border p-2"><div className="text-lg font-bold">{summary.active_pool}/{summary.pool_cap}</div><div className="text-xs text-muted-foreground">קבוצות פעילות</div></div>
           </div>
         )}
+
+        <div className="rounded-md border p-2 text-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">תהליך הרקע (כל 5 דקות)</span>
+            <span className={tickFresh ? 'text-success' : 'text-destructive'}>
+              {lastTick ? `ריצה אחרונה ${new Date(lastTick).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : 'לא נרשמה ריצה'}
+            </span>
+          </div>
+          {runs.length === 0 ? (
+            <div className="text-muted-foreground">אין עדיין פוסטים שטופלו בענן עבור סביבת העבודה</div>
+          ) : runs.map((r, i) => (
+            <div key={i} className="flex justify-between text-muted-foreground">
+              <span>{new Date(r.ran_at).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+              <span>נשלחו {r.dispatched} · נדחו {r.deferred} · נכשלו {r.failed}</span>
+            </div>
+          ))}
+        </div>
 
         <Button size="sm" className="w-full" onClick={openRemote} disabled={opening}>
           {opening ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <ExternalLink className="me-1 h-4 w-4" />}
