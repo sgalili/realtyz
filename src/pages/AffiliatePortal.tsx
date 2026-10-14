@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
+import LeftoverLeadsDialog from '@/components/affiliate/LeftoverLeadsDialog';
 import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -275,7 +276,7 @@ function allPhotos(listing: MarketplaceListing): string[] {
  * navigation, badges over the image, compact meta row, and an expandable
  * details section holding the full affiliate tooling.
  */
-function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral; leadsCount?: number }) {
+function MarketplaceCard({ listing, compact = false, referral, leadsCount, selectionMode = false, selected = false, onToggleSelected }: { listing: MarketplaceListing; compact?: boolean; referral?: AffiliateReferral; leadsCount?: number; selectionMode?: boolean; selected?: boolean; onToggleSelected?: () => void }) {
   const promote = useStartPromoting();
   const { level4Unlocked } = useAffiliateLicense();
   const [link, setLink] = useState<string | null>(null);
@@ -305,8 +306,9 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
   return (
     <Card
       className="group relative flex cursor-pointer flex-col overflow-hidden transition-shadow hover:shadow-lg"
-      onClick={() => setExpanded((v) => !v)}
+      onClick={() => selectionMode ? onToggleSelected?.() : setExpanded((v) => !v)}
     >
+      {selectionMode && <div className="absolute end-3 top-3 z-20" onClick={(e) => e.stopPropagation()}><Checkbox aria-label="בחירת נכס" checked={selected} onCheckedChange={() => onToggleSelected?.()} className="h-5 w-5 bg-background" /></div>}
       {compact ? (
         <div className="flex min-h-14 items-center gap-3 px-3 py-2">
           <div className="h-[50px] w-[50px] shrink-0 overflow-hidden rounded-md bg-muted">
@@ -481,7 +483,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
 
         {!compact && <LeadPricingDialog listing={listing} referralId={referral?.id} />}
         {referral ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-2.5" onClick={stop}>
+          <AnimatedExpansion open={expanded}><div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-2.5" onClick={stop}>
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" />
               {fmtDMY(referral.created_at)}
@@ -504,7 +506,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount }: { l
               <PropertyShareMenu results={[marketplaceResult(listing)]} iconOnly />
               <RemoveFromMarketingButton referralId={referral.id} />
             </div>
-          </div>
+          </div></AnimatedExpansion>
         ) : null}
 
         <AnimatedExpansion open={expanded}>
@@ -986,7 +988,7 @@ export default function AffiliatePortal() {
         </div>
 
 
-        <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); }}>
+        <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); setMultiSelectMode(false); setSelectedIds(new Set()); }}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
             <TabsList>
@@ -1083,13 +1085,14 @@ export default function AffiliatePortal() {
                 />
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filtered.map((l) => <MarketplaceCard key={l.listing_id} listing={l} />)}
+                  {filtered.map((l) => <MarketplaceCard key={l.listing_id} listing={l} referral={referrals.find(r => r.listing_id === l.listing_id)} selectionMode={multiSelectMode} selected={selectedIds.has(l.listing_id)} onToggleSelected={() => toggleSelected(l.listing_id)} />)}
                 </div>
               )
             )}
           </TabsContent>
 
           <TabsContent value="leads" className="space-y-3 pt-4">
+            <Tabs defaultValue="submitted"><TabsList><TabsTrigger value="submitted">לידים שהגשתי</TabsTrigger><TabsTrigger value="leftover">לידים עודפים</TabsTrigger></TabsList><TabsContent value="leftover"><LeftoverLeadsDialog inline /></TabsContent><TabsContent value="submitted" className="space-y-3">
             {/* Automated AI callbacks, including failures only partners can see. */}
             <AffiliateCallAttemptsCard />
             <div className="grid gap-2 sm:grid-cols-3">
@@ -1168,6 +1171,7 @@ export default function AffiliatePortal() {
                 );
               })
             )}
+            </TabsContent></Tabs>
           </TabsContent>
 
 
@@ -1184,7 +1188,7 @@ export default function AffiliatePortal() {
               </Card>
             ) : viewMode === 'list' ? (
               <ResultTable
-                results={filteredReferrals.map(({ listing }) => marketplaceResult(listing!))}
+                results={filteredReferrals.flatMap(({ listing }) => listing ? [marketplaceResult(listing)] : [])}
                 importingKey={null}
                 showPropertyNotes={false}
                 onSelect={(result) => {
@@ -1216,25 +1220,13 @@ export default function AffiliatePortal() {
                 affiliateCell={(result) => {
                   const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
                   if (!row) return null;
-                  return (
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" title="כניסות">
-                        <MousePointerClick className="h-3.5 w-3.5" />
-                        {row.referral.clicks ?? 0}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" title="לידים">
-                        <UserPlus className="h-3.5 w-3.5" />
-                        {leadsForReferral(row.referral)}
-                      </span>
-                      {row.listing ? <PropertyShareMenu results={[marketplaceResult(row.listing)]} iconOnly /> : null}
-                    </div>
-                  );
+                  return row.listing ? <PartnerListingActions listing={row.listing} referralId={row.referral.id} /> : null;
                 }}
               />
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredReferrals.map(({ referral, listing }) => (
-                  <MarketplaceCard key={referral.id} listing={listing!} referral={referral} leadsCount={leadsForReferral(referral)} />
+                  listing ? <MarketplaceCard key={referral.id} listing={listing} referral={referral} leadsCount={leadsForReferral(referral)} selectionMode={multiSelectMode} selected={selectedIds.has(listing.listing_id)} onToggleSelected={() => toggleSelected(listing.listing_id)} /> : null
                 ))}
               </div>
             )}

@@ -1,4 +1,8 @@
 # Roadmap
+## Affiliate tabs and help
+- [x] Match marketing/property card renderers and shared multiselect in both account views; partner tracking details expand instead of changing the closed card layout.
+- [x] Move leftover leads into a Leads subtab and add role-safe hero program explanation opposite the gift; purchases, consent and pricing unchanged.
+- [x] Ten tests and automatic build passed. Authenticated partner check: 9 properties, 5 marketed properties; table selection, five grid checkboxes and actual checkbox selection verified at 435px, plus desktop rendering. Help and leftover tab opened without runtime errors. Core account had no properties; populated core marketing and an actual leftover purchase were not exercised.
 ## Licensed brokerage fee disclosure
 - [x] Add prominent shared buyer/renter commission disclosure to property browsing/details and publishing.
 - [x] Add professional Hebrew brokerage commission section to Terms, preserving seller/landlord signed terms.
