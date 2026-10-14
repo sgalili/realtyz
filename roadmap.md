@@ -1,8 +1,8 @@
 # Roadmap
 ## Licensed brokerage fee disclosure
-- [ ] Add prominent shared buyer/renter commission disclosure to property browsing/details and publishing.
-- [ ] Add professional Hebrew brokerage commission section to Terms, preserving seller/landlord signed terms.
-- [ ] Verify public viewing, publisher visibility, legal text and focused tests without changing billing or partner rewards.
+- [x] Add prominent shared buyer/renter commission disclosure to property browsing/details and publishing.
+- [x] Add professional Hebrew brokerage commission section to Terms, preserving seller/landlord signed terms.
+- [x] Six focused tests and automatic build passed; public board, publisher, real listing → legal section verified without runtime errors. Billing and partner rewards unchanged.
 ## Global AI Brain file-first management
 - [x] Show saved global documents before entry controls; existing master instructions preserved as one private TXT/document, legacy prompt cleared only after successful copy.
 - [x] Add each text as a separate document with הוסף and remove text-title fields globally and in all workspace brains using shared entry controls and derived filenames.
