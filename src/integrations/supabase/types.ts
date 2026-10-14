@@ -3388,6 +3388,27 @@ export type Database = {
         }
         Relationships: []
       }
+      global_ai_config: {
+        Row: {
+          id: boolean
+          master_prompt: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          master_prompt?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          master_prompt?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       holiday_greetings: {
         Row: {
           created_at: string
