@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -328,6 +329,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+          <BrokerageCommissionDisclosure />
           {/* State 1: Initial — show paste box. Hidden the moment hydrate fires. */}
           {!hydrating && !parsed && (
             <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2 max-w-2xl mx-auto mt-6">

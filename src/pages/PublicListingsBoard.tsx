@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import PublicListingPublisher from '@/components/public/PublicListingPublisher';
+import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
 import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
@@ -278,6 +279,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       </header>
 
       <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6">
+        <div className="mb-5"><BrokerageCommissionDisclosure /></div>
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
