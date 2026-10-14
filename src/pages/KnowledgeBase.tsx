@@ -1,4 +1,5 @@
-import { BrainTabs, BrainUploadZone, BrainDocumentCard } from '@/components/ai-brain/BrainResources';
+import { BrainTabs, BrainUploadZone, BrainDocumentCard, BrainTextEntry } from '@/components/ai-brain/BrainResources';
+import { brainTextDocumentName } from '@/lib/brainTextDocument';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -109,7 +110,6 @@ export default function KnowledgeBase() {
   const [dragging, setDragging] = useState(false);
   const [ingesting, setIngesting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [textTitle, setTextTitle] = useState('');
   const [textBody, setTextBody] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkIntent, setLinkIntent] = useState('');
@@ -186,7 +186,7 @@ export default function KnowledgeBase() {
       if (!textBody.trim()) throw new Error('יש להזין תוכן');
       const { error } = await supabase.functions.invoke('kb-ingest', {
         body: {
-          title: textTitle.trim() || `הערה · ${new Date().toLocaleString('he-IL')}`,
+          title: brainTextDocumentName(textBody),
           raw_text: textBody.trim(),
           source_type: 'text',
         },
@@ -199,7 +199,7 @@ export default function KnowledgeBase() {
     },
     onSuccess: () => {
       toast.success('נשמר למאגר');
-      setTextTitle(''); setTextBody('');
+      setTextBody('');
       qc.invalidateQueries({ queryKey: ['kb-documents'] });
     },
     onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
@@ -379,34 +379,7 @@ export default function KnowledgeBase() {
 
             {tab === 'files' && <BrainUploadZone busy={ingesting} onFiles={handleFiles} />}
 
-            {tab === 'text' && (
-              <div className="space-y-2">
-                <Input
-                  value={textTitle}
-                  onChange={(e) => setTextTitle(e.target.value)}
-                  placeholder="כותרת"
-                />
-                <div className="relative">
-                  <Textarea
-                    value={textBody}
-                    onChange={(e) => setTextBody(e.target.value)}
-                    placeholder="הקלד חוקי התנהגות, הנחיות לסוכן או מידע על נכסים עבור מאגר הידע (לדוגמה: 'מעכשיו תתמקד תמיד בדירות להשקעה ברעננה ותדגיש שיש חניה...')"
-                    className="min-h-[140px] pt-10"
-                  />
-                  <div className="absolute top-1 start-1">
-                    <VoiceInputButton
-                      size="sm"
-                      onTranscript={(t) => setTextBody((p) => (p ? `${p} ${t}` : t))}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={() => saveText.mutate()} disabled={saveText.isPending}>
-                    {saveText.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור למאגר'}
-                  </Button>
-                </div>
-              </div>
-            )}
+            {tab === 'text' && <BrainTextEntry value={textBody} onChange={setTextBody} busy={saveText.isPending} onAdd={() => saveText.mutate()} />}
 
             {tab === 'link' && (
               <div className="space-y-2">
