@@ -3,6 +3,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { internalMasterPrompt } from "../_shared/masterAgentPrompt.ts";
 import { fetchWorkspacePersona, renderPersonaBlock } from "../_shared/workspacePersona.ts";
+import { fetchGlobalMasterBlock } from '../_shared/system-rules.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -104,6 +105,7 @@ Deno.serve(async (req) => {
     const wsPersona = await fetchWorkspacePersona(admin as any, wsOwnerId);
 
     const systemPrompt = [
+      await fetchGlobalMasterBlock(),
       renderPersonaBlock(wsPersona),
       ownerName
         ? `אתה ה-AI Agent של ${ownerName}. ברירת מחדל: חד, יעיל, החלטי. אתה מנהל פתרונות - לא 'עונה על שאלות'.`
