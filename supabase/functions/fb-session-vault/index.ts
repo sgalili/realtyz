@@ -63,6 +63,15 @@ Deno.serve(async (req) => {
     } });
   }
 
+  if (action === "runs") {
+    const [{ data: last }, { data: mine }] = await Promise.all([
+      admin.from("cloud_poster_runs").select("ran_at").order("ran_at", { ascending: false }).limit(1).maybeSingle(),
+      admin.from("cloud_poster_runs").select("ran_at, processed, dispatched, deferred, failed, note")
+        .eq("workspace_owner_id", user.id).order("ran_at", { ascending: false }).limit(10),
+    ]);
+    return json({ success: true, last_tick: last?.ran_at ?? null, runs: mine ?? [] });
+  }
+
   if (action === "remote_login") {
     const token = Deno.env.get("GOLOGIN_API_TOKEN") ?? "";
     if (!token) return json({ error: "not_configured", message: "שירות הדפדפן בענן עדיין לא הוגדר. פנו למנהל המערכת" }, 400);
