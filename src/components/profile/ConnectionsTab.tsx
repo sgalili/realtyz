@@ -26,6 +26,7 @@ import { GoogleBrandGlyph, GoogleServiceConnectCard } from '@/components/profile
 import { Button } from '@/components/ui/button';
 import { useUserRole } from '@/hooks/useUserRole';
 import { CloudAutomationHealthCard } from '@/components/profile/CloudAutomationHealthCard';
+import { GlobalAiBrainCard } from '@/components/profile/GlobalAiBrainCard';
 import {
   isRememberedConnected,
   rememberConnected,
@@ -673,6 +674,7 @@ export function ConnectionsTab() {
         </ConnectionSection>
       ))}
       {isSuperAdmin && <CloudAutomationHealthCard key={activeWorkspaceId} />}
+      {isSuperAdmin && <GlobalAiBrainCard />}
     </div>
   );
 }
