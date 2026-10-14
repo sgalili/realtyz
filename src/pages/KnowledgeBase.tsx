@@ -1,3 +1,4 @@
+import { BrainTabs, BrainUploadZone, BrainDocumentCard } from '@/components/ai-brain/BrainResources';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -305,26 +306,7 @@ export default function KnowledgeBase() {
         {/* RIGHT (first in RTL): Resource management */}
         <Card>
           <CardContent className="p-5 space-y-4">
-            {/* Tabs */}
-            <div className="flex gap-1 p-1 rounded-lg bg-muted">
-              {tabs.map((t) => {
-                const Icon = t.icon;
-                const active = tab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTab(t.id)}
-                    className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-md transition-colors ${
-                      active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
+            <BrainTabs value={tab} onChange={setTab} />
 
             {tab === 'ai' && (
               <div className="space-y-3">
@@ -395,34 +377,7 @@ export default function KnowledgeBase() {
               </div>
             )}
 
-            {tab === 'files' && (
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60 hover:bg-muted/30'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => e.target.files && handleFiles(e.target.files)}
-                />
-                {ingesting ? (
-                  <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
-                ) : (
-                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                )}
-                <p className="text-sm font-medium">גרור קבצים לכאן או לחץ לבחירה</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  PDF, Word, Excel, TXT, CSV, תמונות, וידאו, אודיו
-                </p>
-              </div>
-            )}
+            {tab === 'files' && <BrainUploadZone busy={ingesting} onFiles={handleFiles} />}
 
             {tab === 'text' && (
               <div className="space-y-2">
@@ -539,71 +494,7 @@ export default function KnowledgeBase() {
                 };
                 return (
                   <div className="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">
-                    {filtered.map((d: any) => {
-                      const Icon = iconFor(d.source_type);
-                      const meta = (d.source_metadata ?? {}) as {
-                        thumbnail?: string;
-                        source_author?: string;
-                        source_url?: string;
-                        description?: string;
-                        video_id?: string;
-                      };
-                      const isVideo = d.source_type === 'video';
-                      const thumb = meta.thumbnail || (meta.video_id ? `https://i.ytimg.com/vi/${meta.video_id}/hqdefault.jpg` : '');
-                      const isUrlTitle = /^https?:\/\//i.test(d.title ?? '');
-                      const displayTitle = isVideo && isUrlTitle && meta.source_author
-                        ? meta.source_author
-                        : (d.title ?? '');
-                      const snippet = isVideo
-                        ? (meta.description ?? '').replace(/\s+/g, ' ').slice(0, 140)
-                        : (d.raw_text ?? '').replace(/\s+/g, ' ').slice(0, 110);
-                      return (
-                        <div
-                          key={d.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => openDoc(d)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDoc(d); } }}
-                          className="flex items-start gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors cursor-pointer"
-                        >
-                          {isVideo && thumb ? (
-                            <img
-                              src={thumb}
-                              alt=""
-                              loading="lazy"
-                              className="h-14 w-20 rounded object-cover shrink-0 bg-muted"
-                            />
-                          ) : (
-                            <Icon className="h-4 w-4 text-primary shrink-0 mt-1" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{displayTitle}</div>
-                            {isVideo && meta.source_author && displayTitle !== meta.source_author && (
-                              <div className="text-[11px] text-muted-foreground truncate">
-                                {meta.source_author}
-                              </div>
-                            )}
-                            {snippet && (
-                              <div className="text-[11px] text-muted-foreground line-clamp-2">
-                                {snippet}
-                              </div>
-                            )}
-                            <div className="text-[10px] text-muted-foreground mt-0.5">
-                              {new Date(d.created_at).toLocaleString('he-IL')} · {d.chunk_count ?? 0} מקטעים
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => { e.stopPropagation(); deleteDoc.mutate(d.id); }}
-                            disabled={deleteDoc.isPending}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      );
-                    })}
+                    {filtered.map((d: any) => <BrainDocumentCard key={d.id} document={d} onOpen={() => openDoc(d)} onDelete={() => deleteDoc.mutate(d.id)} deleting={deleteDoc.isPending} />)}
                   </div>
                 );
               })()}
