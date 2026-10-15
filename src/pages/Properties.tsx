@@ -32,7 +32,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { useListingPublishers } from '@/hooks/useListingPublishers';
-import { SelectModeToggle, SelectAllRow } from '@/components/ui/multi-select-controls';
+import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 import { useInventorySuggestions } from '@/hooks/useInventorySuggestions';
 import { usePropertySearchHistory } from '@/hooks/usePropertySearchHistory';
@@ -1061,7 +1061,7 @@ export default function Properties() {
         <div data-testid="property-tools-row" className="flex flex-wrap items-center gap-2 mt-[10px]" dir="rtl">
           {/* Side A — sort + total-count dropdown */}
           <div className="flex items-center gap-0">
-            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} count={selectedListingIds.size} onSelectAll={() => setSelectedListingIds(new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : [])))} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
+            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onSelectAll={() => setSelectedListingIds(new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : [])))} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1089,6 +1089,14 @@ export default function Properties() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {multiSelectMode && selectedListingIds.size > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">{selectedListingIds.size} נבחרו</span>
+                <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} compact />
+                <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-destructive" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" />מחיקת הנבחרים</Button>
+              </div>
+            ) : null}
+
             {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
                 between the results-count pill and the view toggle. */}
           </div>
@@ -1101,14 +1109,6 @@ export default function Properties() {
           </div>
         </div>
 
-        {multiSelectMode && <SelectAllRow total={new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : [])).size} selected={sortedResults.filter(row => row.localId && selectedListingIds.has(row.localId)).length} onToggle={() => {
-          const ids = [...new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : []))];
-          const all = ids.length > 0 && ids.every(id => selectedListingIds.has(id));
-          setSelectedListingIds(current => { const next = new Set(current); ids.forEach(id => { if (all) next.delete(id); else next.add(id); }); return next; });
-        }}>
-          <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
-          <Button size="sm" variant="ghost" className="gap-1.5 text-destructive" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" />מחיקת הנבחרים</Button>
-        </SelectAllRow>}
 
 
 
