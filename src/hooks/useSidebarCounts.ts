@@ -125,7 +125,7 @@ export function useSidebarCounts() {
 
       const [leads, listings, chats, deals, campaigns, tasks, sharedListings, invitations] = await Promise.all([
         safeCount('leads'),
-        yad2FreshCount(),
+        allListingsCount(),
         distinctChatLeads(),
         activeDealsCount(),
         groupedCampaignCount(),

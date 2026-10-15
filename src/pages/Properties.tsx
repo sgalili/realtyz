@@ -1090,9 +1090,14 @@ export default function Properties() {
 
             <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
 
+            {/* Counter pill — always visible: total records by default,
+                replaced by the selected count while selecting. */}
+            <span className="ms-[5px] rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
+              {multiSelectMode && selectedListingIds.size > 0 ? `${selectedListingIds.size} נבחרו` : sortedResults.length}
+            </span>
+
             {multiSelectMode && selectedListingIds.size > 0 ? (
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">{selectedListingIds.size} נבחרו</span>
                 <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
               </div>
