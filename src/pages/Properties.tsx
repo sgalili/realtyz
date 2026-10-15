@@ -1676,7 +1676,7 @@ export function ResultTable({
               <th className="sticky right-0 z-10 w-10 bg-muted/95 px-3 py-2">
                 <Checkbox
                   checked={allSelected}
-                  onCheckedChange={() => localIds.forEach((id) => { if (allSelected || !selectedIds?.has(id)) onToggleSelected?.(id); })}
+                  onCheckedChange={() => selectAllIds.forEach((id) => { if (allSelected || !selectedIds?.has(id)) onToggleSelected?.(id); })}
                   aria-label="בחירת כל הנכסים"
                 />
               </th>
