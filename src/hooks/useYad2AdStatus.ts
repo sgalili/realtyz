@@ -45,7 +45,7 @@ function notify() { listeners.forEach((l) => l()); }
 
 async function flush() {
   timer = null;
-  const batch = pending.splice(0, 4);
+  const batch = pending.splice(0, 2);
   if (!batch.length) return;
   try {
     const { data, error } = await supabase.functions.invoke('yad2-ad-status', { body: { urls: batch } });

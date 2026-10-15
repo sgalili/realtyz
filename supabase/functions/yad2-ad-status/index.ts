@@ -130,13 +130,24 @@ Deno.serve(async (req) => {
 
     if (probeList.length && BD_WS) {
       let browser: any = null;
-      try {
-        browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+      const started = Date.now();
+      // Hard wall-clock budget: the platform kills idle requests at 150s, so
+      // always answer (with partial 'unknown' results) well before that.
+      const HARD_DEADLINE_MS = 100_000;
+      const remaining = () => HARD_DEADLINE_MS - (Date.now() - started);
+      const withDeadline = <T,>(p: Promise<T>, ms: number): Promise<T | undefined> =>
+        Promise.race([p, new Promise<undefined>((r) => setTimeout(() => r(undefined), Math.max(0, ms)))]);
+
+      const work = (async () => {
+        browser = await withDeadline(puppeteer.connect({ browserWSEndpoint: BD_WS }), 20_000);
+        if (!browser) throw new Error('connect timeout');
 
         const probeOne = async (u: string) => {
+          if (remaining() < 15_000) return;
           const page = await browser.newPage();
           try {
-            const resp = await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+            const navTimeout = Math.min(35_000, remaining() - 10_000);
+            const resp = await page.goto(u, { waitUntil: 'domcontentloaded', timeout: navTimeout });
             const httpStatus = resp?.status?.() ?? 0;
             // Radware serves a JS loader shell first; wait until the real ad
             // document replaces it, otherwise every URL looks identical.
@@ -146,7 +157,7 @@ Deno.serve(async (req) => {
                   !/radware/i.test(document.title) &&
                   (document.querySelector('h1') !== null ||
                     document.body.innerText.trim().length > 400),
-                { timeout: 30_000, polling: 750 },
+                { timeout: Math.max(1_000, Math.min(20_000, remaining() - 8_000)), polling: 750 },
               )
               .catch(() => {});
             const finalUrl = page.url();
@@ -171,24 +182,24 @@ Deno.serve(async (req) => {
           }
         };
 
-        const started = Date.now();
-        const BUDGET_MS = 120_000;
         const CONCURRENCY = 2;
         for (let i = 0; i < probeList.length; i += CONCURRENCY) {
-          if (Date.now() - started > BUDGET_MS) break;
+          if (remaining() < 15_000) break;
           await Promise.all(probeList.slice(i, i + CONCURRENCY).map(probeOne));
         }
         // One retry for anything the bot wall swallowed, while budget allows.
         for (const u of probeList) {
           if (statuses[u] !== 'unknown') continue;
-          if (Date.now() - started > BUDGET_MS) break;
+          if (remaining() < 30_000) break;
           await probeOne(u);
         }
-      } catch (e) {
+      })().catch((e) => {
         console.warn(`[yad2-ad-status] browser connect failed: ${(e as Error).message}`);
-      } finally {
-        await browser?.close?.().catch(() => {});
-      }
+      });
+
+      await withDeadline(work, HARD_DEADLINE_MS);
+      if (remaining() <= 0) console.warn('[yad2-ad-status] hard deadline reached, returning partial results');
+      withDeadline(browser?.close?.() ?? Promise.resolve(), 3_000).catch(() => {});
     }
 
     // Persist the real source dates so the table stops falling back to
