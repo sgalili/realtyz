@@ -1058,9 +1058,9 @@ export default function Properties() {
 
 
         {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
-        <div data-testid="property-tools-row" className="flex items-center gap-2 mt-[10px]" dir="rtl">
+        <div data-testid="property-tools-row" className="flex flex-wrap items-center gap-2 mt-[10px]" dir="rtl">
           {/* Side A — sort + total-count dropdown */}
-          <div className="flex min-w-0 items-center gap-0">
+          <div className="flex items-center gap-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1097,7 +1097,7 @@ export default function Properties() {
             </span>
 
             {multiSelectMode && selectedListingIds.size > 0 ? (
-              <div className="flex min-w-0 items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
               </div>
