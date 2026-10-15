@@ -1,4 +1,8 @@
 # Roadmap
+## Affiliate select-all removal
+- [x] Remove the "בחר הכל" button from the affiliate tabs in both account views (partner toolbar shared by נכסים/בשיווק, broker נכסים and בשיווק toolbars); mode toggle, selected counter and record checkboxes unchanged.
+- [x] Automatic build OK; six selection/affiliate tests passed; signed-in partner marketing tab showed five rows, six checkboxes and zero select-all text at 435px.
+
 ## Affiliate tabs and help
 - [x] Match marketing/property card renderers and shared multiselect in both account views; partner tracking details expand instead of changing the closed card layout.
 - [x] Move leftover leads into a Leads subtab and add role-safe hero program explanation opposite the gift; purchases, consent and pricing unchanged.
