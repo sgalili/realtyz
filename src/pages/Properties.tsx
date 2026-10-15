@@ -72,7 +72,7 @@ import { listingPublishedAt } from '@/lib/listingFreshness';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
-import { AffiliateShareCell } from '@/components/properties/AffiliateShareCell';
+import { AffiliateShareCell, AffiliateTierPrices } from '@/components/properties/AffiliateShareCell';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
@@ -1642,7 +1642,11 @@ export function ResultTable({
     ?? ((r: UnifiedResult) => (r.localId
       ? <AffiliateShareCell listingId={r.localId} config={affiliateConfigs?.get(r.localId)} />
       : null));
+  // Reward amounts always sit in their own "עמלות" column, like the affiliate table.
+  const renderCommission = commissionCell
+    ?? ((r: UnifiedResult) => (r.localId ? <AffiliateTierPrices config={affiliateConfigs?.get(r.localId)} /> : null));
   const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
+  const showCommissionColumn = !!commissionCell || (!hideDefaultActions && localIds.length > 0);
   const allSelected = localIds.length > 0 && localIds.every((id) => selectedIds?.has(id));
 
   // Sorting, column reorder and hide/show are handled by the shared Table
@@ -1673,7 +1677,7 @@ export function ResultTable({
               </th>
             ) : null}
             {showAffiliateColumn ? headerCell("שותפים") : null}
-            {commissionCell ? headerCell("עמלות") : null}
+            {showCommissionColumn ? headerCell("עמלות") : null}
             {showPublisherColumn ? headerCell("משרד מפרסם") : null}
             {headerCell("תמונה", "w-14")}
 
@@ -1710,8 +1714,8 @@ export function ResultTable({
                 {showAffiliateColumn ? (
                   <td className="px-2 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{renderAffiliate(r)}</td>
                 ) : null}
-                {commissionCell ? (
-                  <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{commissionCell(r)}</td>
+                {showCommissionColumn ? (
+                  <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{renderCommission(r)}</td>
                 ) : null}
                 {showPublisherColumn ? (
                 <td className="px-2 py-1.5 whitespace-nowrap">
