@@ -1651,7 +1651,8 @@ export function ResultTable({
     ?? ((r: UnifiedResult) => (r.localId ? <AffiliateTierPrices config={affiliateConfigs?.get(r.localId)} /> : null));
   const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
   const showCommissionColumn = !!commissionCell || (!hideDefaultActions && localIds.length > 0);
-  const allSelected = localIds.length > 0 && localIds.every((id) => selectedIds?.has(id));
+  const selectAllIds = allSelectableIds && allSelectableIds.length > 0 ? allSelectableIds : localIds;
+  const allSelected = selectAllIds.length > 0 && selectAllIds.every((id) => selectedIds?.has(id));
 
   // Sorting, column reorder and hide/show are handled by the shared Table
   // primitive (persisted per user/workspace/page). Cells that need numeric or
