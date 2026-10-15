@@ -1619,6 +1619,8 @@ export function ResultTable({
   showPropertyNotes?: boolean;
   selectionMode?: boolean;
   selectedIds?: Set<string>;
+  /** Every selectable id across the full (unpaged) result set — the header checkbox selects all of these, not only the preloaded rows. */
+  allSelectableIds?: string[];
   onToggleSelected?: (id: string) => void;
   onDelete?: (r: UnifiedResult) => void;
   quickPromotion?: (r: UnifiedResult) => React.ReactNode;
