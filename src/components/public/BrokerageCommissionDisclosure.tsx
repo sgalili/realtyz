@@ -15,7 +15,7 @@ export default function BrokerageCommissionDisclosure() {
         <p><strong>קונים: 1% בלבד</strong> ממחיר הסגירה הסופי של הנכס, לעומת עמלה מקובלת של 2%.</p>
         <p><strong>שוכרים: 10% בלבד</strong> משכר דירה של חודש אחד, לעומת עמלה מקובלת של חודש שכירות מלא.</p>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">שירותי התיווך של Realtyz ניתנים באמצעות מתווך בעל רישיון ישראלי ובכפוף להזמנת שירותי תיווך בכתב ולדין. תנאי המוכרים והמשכירים נשארים כפי שסוכמו בהסכמים החתומים שלהם.</p>
+      <p className="mt-2 text-xs text-muted-foreground">שירותי התיווך של Realtyz ניתנים באמצעות מתווך בעל רישיון ישראלי</p>
     </aside>
   );
 }
