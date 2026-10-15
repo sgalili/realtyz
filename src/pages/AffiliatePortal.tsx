@@ -968,7 +968,6 @@ export default function AffiliatePortal() {
             total={activeTab === 'marketplace' ? filtered.length : activeTab === 'mine' ? filteredReferrals.length : 0}
             active={multiSelectMode} count={selectedIds.size}
             onToggle={() => { setMultiSelectMode(v => !v); setSelectedIds(new Set()); }}
-            onSelectAll={() => setSelectedIds(new Set(activeTab === 'marketplace' ? filtered.map(l => l.listing_id) : filteredReferrals.flatMap(row => row.listing ? [row.listing.listing_id] : [])))}
           />
           {/* Filter button at the start of the field, before the placeholder. */}
           <div className="relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background">
