@@ -1227,7 +1227,8 @@ export default function Properties() {
                 onCampaign={goToCampaign}
                 quickPromotion={(row) => row.localId ? <QuickPublicPromotion ids={[row.localId]} compact onPublished={markPublished} /> : null}
                 selectionMode={multiSelectMode}
-                selectedIds={selectedListingIds}
+                 selectedIds={selectedListingIds}
+                allSelectableIds={sortedResults.map((r) => r.localId).filter((id): id is string => !!id)}
                 onToggleSelected={toggleSelectedListing}
                 onDelete={(result) => result.localId && setDeleteTargetIds([result.localId])}
               />
