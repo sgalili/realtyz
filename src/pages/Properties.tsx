@@ -1061,7 +1061,6 @@ export default function Properties() {
         <div data-testid="property-tools-row" className="flex flex-wrap items-center gap-2 mt-[10px]" dir="rtl">
           {/* Side A — sort + total-count dropdown */}
           <div className="flex items-center gap-0">
-            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onSelectAll={() => setSelectedListingIds(new Set(sortedResults.flatMap(row => row.localId ? [row.localId] : [])))} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1089,11 +1088,13 @@ export default function Properties() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
+
             {multiSelectMode && selectedListingIds.size > 0 ? (
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">{selectedListingIds.size} נבחרו</span>
-                <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} compact />
-                <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-destructive" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" />מחיקת הנבחרים</Button>
+                <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ) : null}
 
