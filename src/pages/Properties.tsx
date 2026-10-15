@@ -1227,7 +1227,8 @@ export default function Properties() {
                 onCampaign={goToCampaign}
                 quickPromotion={(row) => row.localId ? <QuickPublicPromotion ids={[row.localId]} compact onPublished={markPublished} /> : null}
                 selectionMode={multiSelectMode}
-                selectedIds={selectedListingIds}
+                 selectedIds={selectedListingIds}
+                allSelectableIds={sortedResults.map((r) => r.localId).filter((id): id is string => !!id)}
                 onToggleSelected={toggleSelectedListing}
                 onDelete={(result) => result.localId && setDeleteTargetIds([result.localId])}
               />
@@ -1590,6 +1591,7 @@ export function ResultTable({
   showPropertyNotes = true,
   selectionMode = false,
   selectedIds,
+  allSelectableIds,
   onToggleSelected,
   onDelete,
   quickPromotion,
@@ -1618,6 +1620,8 @@ export function ResultTable({
   showPropertyNotes?: boolean;
   selectionMode?: boolean;
   selectedIds?: Set<string>;
+  /** Every selectable id across the full (unpaged) result set — the header checkbox selects all of these, not only the preloaded rows. */
+  allSelectableIds?: string[];
   onToggleSelected?: (id: string) => void;
   onDelete?: (r: UnifiedResult) => void;
   quickPromotion?: (r: UnifiedResult) => React.ReactNode;
@@ -1648,7 +1652,8 @@ export function ResultTable({
     ?? ((r: UnifiedResult) => (r.localId ? <AffiliateTierPrices config={affiliateConfigs?.get(r.localId)} /> : null));
   const showAffiliateColumn = !!affiliateCell || (!hideDefaultActions && localIds.length > 0);
   const showCommissionColumn = !!commissionCell || (!hideDefaultActions && localIds.length > 0);
-  const allSelected = localIds.length > 0 && localIds.every((id) => selectedIds?.has(id));
+  const selectAllIds = allSelectableIds && allSelectableIds.length > 0 ? allSelectableIds : localIds;
+  const allSelected = selectAllIds.length > 0 && selectAllIds.every((id) => selectedIds?.has(id));
 
   // Sorting, column reorder and hide/show are handled by the shared Table
   // primitive (persisted per user/workspace/page). Cells that need numeric or
@@ -1672,7 +1677,7 @@ export function ResultTable({
               <th className="sticky right-0 z-10 w-10 bg-muted/95 px-3 py-2">
                 <Checkbox
                   checked={allSelected}
-                  onCheckedChange={() => localIds.forEach((id) => { if (allSelected || !selectedIds?.has(id)) onToggleSelected?.(id); })}
+                  onCheckedChange={() => selectAllIds.forEach((id) => { if (allSelected || !selectedIds?.has(id)) onToggleSelected?.(id); })}
                   aria-label="בחירת כל הנכסים"
                 />
               </th>
