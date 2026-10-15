@@ -4,7 +4,7 @@ import { returnState } from "@/lib/returnNav";
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useNavigate, Link } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,6 +149,22 @@ export default function Properties() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const { entries: searchHistory, remember: rememberSearch } = usePropertySearchHistory(user?.id, activeWorkspaceId);
+
+  // Exact total of live workspace listings — the table only lazy-loads up to
+  // 200 rows, so the counter pill must not rely on the rendered length.
+  const { data: totalListingsCount } = useQuery({
+    queryKey: ['properties-total-count', activeWorkspaceId ?? 'anon'],
+    enabled: !!user,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { count, error } = await (supabase as any)
+        .from('listings')
+        .select('*', { count: 'exact', head: true })
+        .neq('status', 'discarded');
+      if (error) return null;
+      return (count as number) ?? 0;
+    },
+  });
   const cached = useMemo(() => loadCache(), []);
 
   const [q, setQ] = useState<string>('');
@@ -1093,7 +1109,12 @@ export default function Properties() {
             {/* Counter pill — always visible: total records by default,
                 replaced by the selected count while selecting. */}
             <span className="ms-[5px] rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
-              {multiSelectMode && selectedListingIds.size > 0 ? `${selectedListingIds.size} נבחרו` : sortedResults.length}
+              {multiSelectMode && selectedListingIds.size > 0
+                ? `${selectedListingIds.size} נבחרו`
+                : (() => {
+                    const total = totalListingsCount ?? sortedResults.length;
+                    return total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total;
+                  })()}
             </span>
 
             {multiSelectMode && selectedListingIds.size > 0 ? (
