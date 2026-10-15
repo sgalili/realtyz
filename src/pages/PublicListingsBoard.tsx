@@ -279,7 +279,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       </header>
 
       <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6">
-        <div className="mb-5"><BrokerageCommissionDisclosure /></div>
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
@@ -299,6 +298,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                    <div data-card-contact-actions className="mt-auto pt-1">
                      <PropertyContactActions
                        listingId={card.id}
+                       dealType={card.deal_type}
                        title={title}
                        premsg={ritaPropertyPremsg(card)}
                        options={card.contact_options}
@@ -372,7 +372,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
                               {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} />}
-                              <PropertyContactActions listingId={card.id} title={title} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact showShare={false} />
+                              <PropertyContactActions listingId={card.id} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact showShare={false} />
                             </div>
                           </div>
                           </AnimatedExpansion>
@@ -391,6 +391,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
         <DialogContent dir="rtl" className="max-w-lg">
           <DialogHeader className="text-right"><DialogTitle>השארת פרטים</DialogTitle><DialogDescription>ריטה תיצור איתכם מיד קשר בווטסאפ</DialogDescription></DialogHeader>
+          {gate?.intent === 'details' && <BrokerageCommissionDisclosure audience={gate.card.deal_type === 'rent' ? 'renter' : gate.card.deal_type === 'sale' ? 'buyer' : null} />}
           {!token ? <div className="space-y-3">
             <Input placeholder="שם מלא" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <div className="space-y-1"><label className="text-sm font-semibold">מספר ווטסאפ</label><Input inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>

@@ -1,4 +1,7 @@
 # Roadmap
+## Context-aware brokerage disclosures
+- [ ] Remove general banners; retain full Terms disclosure and contextual inquiry/publishing notices.
+- [ ] Verify focused tests and live public browsing/inquiry visibility.
 ## Affiliate select-all removal
 - [x] Remove the "בחר הכל" button from the affiliate tabs in both account views (partner toolbar shared by נכסים/בשיווק, broker נכסים and בשיווק toolbars); mode toggle, selected counter and record checkboxes unchanged.
 - [x] Automatic build OK; six selection/affiliate tests passed; signed-in partner marketing tab showed five rows, six checkboxes and zero select-all text at 435px.

@@ -118,7 +118,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
   </div>;
 
   return <div className="flex min-h-0 flex-col gap-4">
-    <BrokerageCommissionDisclosure />
+    <BrokerageCommissionDisclosure audience="seller" />
     <Accordion type="single" collapsible value={openStep} onValueChange={setOpenStep} className="space-y-2">
       {PROJECT_STEPS.map((title, i) => (
         <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">

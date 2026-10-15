@@ -11,7 +11,6 @@ import {
 import { normalizeListing } from '@/pages/PublicListingPage';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import PropertyContactActions from './PropertyContactActions';
-import BrokerageCommissionDisclosure from './BrokerageCommissionDisclosure';
 import { publicUrl } from '@/lib/publicUrl';
 
 type Raw = Record<string, unknown>;
@@ -193,7 +192,6 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
           </div>
         )}
         <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} />
-        <BrokerageCommissionDisclosure />
         {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">

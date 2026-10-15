@@ -329,7 +329,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
-          <BrokerageCommissionDisclosure />
+          <BrokerageCommissionDisclosure audience={parsed?.listing_type === 'rent' ? 'landlord' : 'seller'} />
           {/* State 1: Initial — show paste box. Hidden the moment hydrate fires. */}
           {!hydrating && !parsed && (
             <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2 max-w-2xl mx-auto mt-6">
