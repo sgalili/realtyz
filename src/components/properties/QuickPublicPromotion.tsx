@@ -48,7 +48,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false }: { id
   };
   return <>
     <Button variant="outline" size={compact ? 'icon' : 'sm'} className={compact ? 'h-8 w-8 text-primary' : 'gap-1.5'} disabled={busy} title="פרסום בלוח הציבורי" aria-label="פרסום בלוח הציבורי" onClick={(event) => { event.stopPropagation(); void prepare(); }}>
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}{!compact && 'פרסום בלוח הציבורי'}
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}{!compact && <span className="hidden sm:inline">פרסום בלוח הציבורי</span>}
     </Button>
     <Dialog open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-lg" onClick={event => event.stopPropagation()}>
