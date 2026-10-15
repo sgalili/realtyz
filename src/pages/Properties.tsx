@@ -149,6 +149,22 @@ export default function Properties() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const { entries: searchHistory, remember: rememberSearch } = usePropertySearchHistory(user?.id, activeWorkspaceId);
+
+  // Exact total of live workspace listings — the table only lazy-loads up to
+  // 200 rows, so the counter pill must not rely on the rendered length.
+  const { data: totalListingsCount } = useQuery({
+    queryKey: ['properties-total-count', activeWorkspaceId ?? 'anon'],
+    enabled: !!user,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { count, error } = await (supabase as any)
+        .from('listings')
+        .select('*', { count: 'exact', head: true })
+        .neq('status', 'discarded');
+      if (error) return null;
+      return (count as number) ?? 0;
+    },
+  });
   const cached = useMemo(() => loadCache(), []);
 
   const [q, setQ] = useState<string>('');
