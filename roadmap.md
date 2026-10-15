@@ -256,3 +256,6 @@
 ## Property table commissions column
 - [x] Move partner reward amounts out of the "שותפים" cell into their own adjacent "עמלות" column using the affiliate table's two-column layout; "שותפים" keeps only the sharing and property-page icons.
 - [x] Automatic build OK; signed-in /properties shows headers שותפים, עמלות, תמונה… with ₪80 in a two-column grid inside the commissions cell and icon-only buttons in the partners cell, no page errors. Only one workspace property is currently open for partner marketing, so other rows stay blank as in the affiliate table.
+## Properties selection toolbar
+- [x] Delete the separate selection bar; move the selected-count pill and the promote/delete buttons into the toolbar row (sort first, then pill, then the two buttons) and drop the "בטל הכל" text.
+- [x] Automatic build OK; signed-in /properties shows one row — toggle, בחר הכל, מיון, "10 נבחרו" pill, פרסום בלוח הציבורי, מחיקת הנבחרים — with no "בטל הכל" text, no page errors and clean spacing.
