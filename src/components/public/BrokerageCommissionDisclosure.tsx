@@ -1,21 +1,21 @@
 import { Link } from 'react-router-dom';
-import { BadgePercent } from 'lucide-react';
 
 export const BROKERAGE_COMMISSION_TITLE = 'עמלות תיווך ותנאי שירות (Brokerage Commissions)';
+type Props = { audience?: 'buyer' | 'renter' | 'seller' | 'landlord' | null };
 
-/** Public customer fees, never partner reward/closing-payout information. */
-export default function BrokerageCommissionDisclosure() {
+/** Short workflow notice; the full official disclosure lives only in Terms. */
+export default function BrokerageCommissionDisclosure({ audience }: Props) {
+  if (!audience) return null;
+  const text = audience === 'buyer'
+    ? 'לקונים: עמלת התיווך של Realtyz היא 1% ממחיר הסגירה הסופי של הנכס.'
+    : audience === 'renter'
+      ? 'לשוכרים: עמלת התיווך של Realtyz היא 10% משכר דירה של חודש אחד בלבד.'
+      : audience === 'seller'
+        ? 'למוכרים: תנאי השירות ועמלת התיווך נקבעים לפי הסכם התיווך הספציפי החתום עמכם.'
+        : 'למשכירים: תנאי השירות ועמלת התיווך נקבעים לפי הסכם התיווך הספציפי החתום עמכם.';
   return (
-    <aside dir="rtl" aria-label="עמלות התיווך של Realtyz" className="min-w-0 border-s-4 border-primary bg-primary/5 px-4 py-3 text-sm leading-relaxed text-foreground">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="inline-flex items-center gap-2 font-bold"><BadgePercent className="h-5 w-5 shrink-0 text-primary" />עמלות התיווך של Realtyz</p>
-        <Link to="/terms#brokerage-commissions" className="font-semibold text-primary underline underline-offset-4">תנאי התיווך</Link>
-      </div>
-      <div className="mt-2 grid min-w-0 gap-2 sm:grid-cols-2">
-        <p><strong>קונים: 1% בלבד</strong> ממחיר הסגירה הסופי של הנכס, לעומת עמלה מקובלת של 2%.</p>
-        <p><strong>שוכרים: 10% בלבד</strong> משכר דירה של חודש אחד, לעומת עמלה מקובלת של חודש שכירות מלא.</p>
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground">שירותי התיווך של Realtyz ניתנים באמצעות מתווך בעל רישיון ישראלי</p>
+    <aside dir="rtl" aria-label="תנאי התיווך הרלוונטיים" className="min-w-0 text-xs leading-relaxed text-muted-foreground">
+      <p>{text} <Link to="/terms#brokerage-commissions" className="font-semibold text-primary underline underline-offset-4">תנאי התיווך</Link></p>
     </aside>
   );
 }

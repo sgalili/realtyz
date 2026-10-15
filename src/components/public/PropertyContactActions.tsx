@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { cleanFormFields, type LeadContactOptions } from '@/lib/leadTiers';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 import { personalPropertyLink, propertyInquiryRef } from '@/lib/propertyReferral';
+import BrokerageCommissionDisclosure from './BrokerageCommissionDisclosure';
 
 export type ContactOptions = LeadContactOptions;
 
@@ -29,6 +30,7 @@ export type ContactOptions = LeadContactOptions;
 export default function PropertyContactActions({
   listingId,
   title,
+  dealType,
   options,
   premsg,
   shareUrl,
@@ -39,6 +41,7 @@ export default function PropertyContactActions({
 }: {
   listingId: string;
   title: string;
+  dealType?: string | null;
   options?: ContactOptions | null;
   premsg?: string | null;
   shareUrl?: string | null;
@@ -57,6 +60,8 @@ export default function PropertyContactActions({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
+  const [inquiryStarted, setInquiryStarted] = useState(false);
+  const audience = dealType === 'rent' ? 'renter' : dealType === 'sale' ? 'buyer' : null;
   const extraFields = cleanFormFields(settings.form_fields);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const setAnswer = (id: string, value: string | string[]) => setAnswers((a) => ({ ...a, [id]: value }));
@@ -104,6 +109,7 @@ export default function PropertyContactActions({
   // WhatsApp already knows the visitor's number, so skip the form: open the
   // chat at once with a message about this property; Rita asks for the name.
   const openRita = () => {
+    setInquiryStarted(true);
     window.open(officialWaLink(waOpener), '_blank', 'width=1200,height=800,noopener,noreferrer');
   };
 
@@ -150,7 +156,7 @@ export default function PropertyContactActions({
     <>
       <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={shareOnly ? 'inline-flex shrink-0' : compact ? 'flex w-full flex-wrap items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
         {showDigital && (
-          <form className="flex w-full flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+          <form className="flex w-full flex-wrap items-end gap-2" onFocusCapture={() => setInquiryStarted(true)} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`phone-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`phone-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, "").replace(/^972/, "0").slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>
             {extraFields.map((f) => {
@@ -211,6 +217,7 @@ export default function PropertyContactActions({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        {!shareOnly && inquiryStarted && mode === null && <div className="w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
       </div>
       <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
       <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
@@ -234,6 +241,7 @@ export default function PropertyContactActions({
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent dir="rtl" className="sm:max-w-md">
           <DialogHeader><DialogTitle className="text-right">חזרה טלפונית</DialogTitle></DialogHeader>
+          <BrokerageCommissionDisclosure audience={audience} />
           <div className="space-y-3">
             <div><Label>טלפון *</Label><Input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
           </div>

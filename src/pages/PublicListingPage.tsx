@@ -35,7 +35,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
-import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 
 export type PublicListing = {
   id: string | null;
@@ -410,7 +409,6 @@ function PublicListingContent() {
     <div className="min-h-screen bg-secondary pb-12" dir="rtl">
       <div className="mx-auto max-w-4xl space-y-5 px-4 pt-5">
         <Card className="overflow-hidden">
-          <BrokerageCommissionDisclosure />
           <div className="flex items-center justify-between gap-3 px-4 pt-3">
             <Button variant="ghost" size="sm" onClick={closeDetails} aria-label="סגירה וחזרה לעמוד הקודם"><X className="h-4 w-4" />סגירה וחזרה</Button>
             <div className="flex items-center gap-2">
@@ -513,7 +511,7 @@ function PublicListingContent() {
             ) : null}
 
             {/* Share lives inside the contact row below, next to WhatsApp / call / form. */}
-            {data.id && <PropertyContactActions listingId={data.id} title={data.title} premsg={data.premsg} options={data.contactOptions} showShare={false} />}
+            {data.id && <PropertyContactActions listingId={data.id} title={data.title} dealType={data.dealType} premsg={data.premsg} options={data.contactOptions} showShare={false} />}
           </CardContent>
         </Card>
       </div>

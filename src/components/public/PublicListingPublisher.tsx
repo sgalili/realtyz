@@ -893,7 +893,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         </div>
 
         <div className="space-y-4">
-          <BrokerageCommissionDisclosure />
+          <BrokerageCommissionDisclosure audience={fields.dealType === 'rent' ? 'landlord' : 'seller'} />
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">

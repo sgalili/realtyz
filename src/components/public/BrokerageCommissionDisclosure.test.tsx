@@ -5,13 +5,19 @@ import BrokerageCommissionDisclosure from './BrokerageCommissionDisclosure';
 import Terms from '@/pages/Terms';
 
 describe('public brokerage commission disclosure', () => {
-  it('shows buyer/renter fees and links directly to their terms without partner rewards', () => {
-    render(<MemoryRouter><BrokerageCommissionDisclosure /></MemoryRouter>);
-    expect(screen.getByText('קונים: 1% בלבד')).toBeInTheDocument();
-    expect(screen.getByText('שוכרים: 10% בלבד')).toBeInTheDocument();
+  it('renders nothing without a workflow audience', () => {
+    const { container } = render(<MemoryRouter><BrokerageCommissionDisclosure /></MemoryRouter>);
+    expect(container).toBeEmptyDOMElement();
+  });
+  it.each(['buyer', 'renter', 'seller', 'landlord'] as const)('shows only the relevant notice for %s', (audience) => {
+    render(<MemoryRouter><BrokerageCommissionDisclosure audience={audience} /></MemoryRouter>);
     expect(screen.getByRole('link', { name: 'תנאי התיווך' })).toHaveAttribute('href', '/terms#brokerage-commissions');
     expect(screen.getByRole('complementary')).not.toHaveTextContent('80%');
-    expect(screen.getByRole('complementary')).toHaveTextContent('הסכמים החתומים');
+    const notice = screen.getByRole('complementary');
+    expect(notice).not.toHaveTextContent('לעומת');
+    if (audience === 'buyer') { expect(notice).toHaveTextContent('1%'); expect(notice).not.toHaveTextContent('10%'); }
+    else if (audience === 'renter') { expect(notice).toHaveTextContent('10%'); expect(notice).not.toHaveTextContent('לקונים'); }
+    else { expect(notice).toHaveTextContent('הסכם התיווך הספציפי החתום'); expect(notice).not.toHaveTextContent('%'); }
   });
   it('publishes a readable dedicated legal section with signed-agreement conditions', () => {
     render(<MemoryRouter><Terms /></MemoryRouter>);

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { PACKAGES } from '@/lib/pricing';
-import BrokerageCommissionDisclosure, { BROKERAGE_COMMISSION_TITLE } from '@/components/public/BrokerageCommissionDisclosure';
+import { BROKERAGE_COMMISSION_TITLE } from '@/components/public/BrokerageCommissionDisclosure';
 
 /**
  * תנאי שימוש ציבוריים (RTL). מסמך משפטי כללי המשקף את יכולות המערכת.
@@ -28,7 +28,6 @@ export default function Terms() {
         <section id="brokerage-commissions" className="mt-8 scroll-mt-6" aria-labelledby="brokerage-commissions-title">
           <h2 id="brokerage-commissions-title" className="text-xl font-extrabold text-foreground">{BROKERAGE_COMMISSION_TITLE}</h2>
           <div className="mt-3 space-y-4 text-[15px] leading-relaxed text-foreground">
-            <BrokerageCommissionDisclosure />
             <p>שירותי התיווך בנדל״ן של Realtyz ניתנים בישראל באמצעות מתווך בעל רישיון תיווך ישראלי תקף, בהתאם לחוק המתווכים במקרקעין, התשנ״ו–1996, וליתר הוראות הדין החלות. מבנה העמלות שלהלן חל על שירותי התיווך של Realtyz ואינו משנה הסכמים עם מפרסמים או מתווכים אחרים.</p>
             <ol className="list-decimal space-y-3 ps-5">
               <li><strong>קונים:</strong> עמלת תיווך בשיעור קבוע של 1% בלבד ממחיר העסקה הסופי שנקבע בהסכם רכישת הנכס. שיעור זה נמוך מעמלת הייחוס המקובלת בשוק של 2%.</li>

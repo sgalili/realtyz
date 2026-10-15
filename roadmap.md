@@ -1,4 +1,7 @@
 # Roadmap
+## Context-aware brokerage disclosures
+- [x] Remove general banners; retain full Terms disclosure and contextual inquiry/publishing notices.
+- [x] Six focused tests and automatic build passed. Live signed-out/signed-in board and landing have no fee banners; real rental inquiry shows only renter fee; signed-in publisher shows seller agreement; full legal section checked. No real inquiry submitted or fees changed.
 ## Affiliate select-all removal
 - [x] Remove the "בחר הכל" button from the affiliate tabs in both account views (partner toolbar shared by נכסים/בשיווק, broker נכסים and בשיווק toolbars); mode toggle, selected counter and record checkboxes unchanged.
 - [x] Automatic build OK; six selection/affiliate tests passed; signed-in partner marketing tab showed five rows, six checkboxes and zero select-all text at 435px.
