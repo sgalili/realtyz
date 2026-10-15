@@ -581,8 +581,7 @@ loading ? (
           <TabsContent value="rewards" className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
               <SelectModeToggle total={filteredListings.length} active={multiSelectMode} count={selectedListingIds.size}
-                onToggle={() => { setMultiSelectMode(v => !v); setSelectedListingIds(new Set()); }}
-                onSelectAll={() => setSelectedListingIds(new Set(filteredListings.map(l => l.id)))} />
+                onToggle={() => { setMultiSelectMode(v => !v); setSelectedListingIds(new Set()); }} />
               {/* Filter button at the start of the field, like the public board. */}
               <div className="relative flex h-10 max-w-sm flex-1 items-center rounded-md border border-input bg-background">
                 <span className="absolute start-2 top-1/2 z-10 flex -translate-y-1/2">
@@ -764,8 +763,7 @@ loading ? (
           <TabsContent value="tracking" className="space-y-4 pt-4">
             <div className="flex items-center gap-3">
               <SelectModeToggle total={trackingListings.length} active={multiSelectMode} count={selectedListingIds.size}
-                onToggle={() => { setMultiSelectMode(v => !v); setSelectedListingIds(new Set()); }}
-                onSelectAll={() => setSelectedListingIds(new Set(trackingListings.map(l => l.id)))} />
+                onToggle={() => { setMultiSelectMode(v => !v); setSelectedListingIds(new Set()); }} />
               <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search className="pointer-events-none h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
