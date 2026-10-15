@@ -1109,7 +1109,12 @@ export default function Properties() {
             {/* Counter pill — always visible: total records by default,
                 replaced by the selected count while selecting. */}
             <span className="ms-[5px] rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
-              {multiSelectMode && selectedListingIds.size > 0 ? `${selectedListingIds.size} נבחרו` : sortedResults.length}
+              {multiSelectMode && selectedListingIds.size > 0
+                ? `${selectedListingIds.size} נבחרו`
+                : (() => {
+                    const total = totalListingsCount ?? sortedResults.length;
+                    return total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total;
+                  })()}
             </span>
 
             {multiSelectMode && selectedListingIds.size > 0 ? (
