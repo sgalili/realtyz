@@ -253,3 +253,6 @@
 ## Sidebar incoming-leads counter
 - [x] Count only incoming leads (a partner's own sent/sold leads excluded), place the number before the label and keep 0 visible; the control opens the incoming leads list.
 - [x] Two focused tests passed; signed-in drawer shows badge 39 before לידים שהתקבלו, matching the 39-record leads list, with no page errors and automatic build OK. The zero state is covered by tests only.
+## Property table commissions column
+- [x] Move partner reward amounts out of the "שותפים" cell into their own adjacent "עמלות" column using the affiliate table's two-column layout; "שותפים" keeps only the sharing and property-page icons.
+- [x] Automatic build OK; signed-in /properties shows headers שותפים, עמלות, תמונה… with ₪80 in a two-column grid inside the commissions cell and icon-only buttons in the partners cell, no page errors. Only one workspace property is currently open for partner marketing, so other rows stay blank as in the affiliate table.
