@@ -1591,6 +1591,7 @@ export function ResultTable({
   showPropertyNotes = true,
   selectionMode = false,
   selectedIds,
+  allSelectableIds,
   onToggleSelected,
   onDelete,
   quickPromotion,
