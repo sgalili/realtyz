@@ -261,7 +261,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     }
   };
 
-  const formatCount = (n: number) => (n > 999 ? `${Math.floor(n / 1000)}k+` : String(n));
+  const formatCount = (n: number) =>
+    n > 999 ? `${(n / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : String(n);
 
   const handleNavClick = () => {
     closeSidebar();
