@@ -1097,7 +1097,7 @@ export default function Properties() {
             </span>
 
             {multiSelectMode && selectedListingIds.size > 0 ? (
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
               </div>
