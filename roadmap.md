@@ -259,3 +259,6 @@
 ## Properties selection toolbar
 - [x] Delete the separate selection bar; move the selected-count pill and the promote/delete buttons into the toolbar row (sort first, then pill, then the two buttons) and drop the "בטל הכל" text.
 - [x] Automatic build OK; signed-in /properties shows one row — toggle, בחר הכל, מיון, "10 נבחרו" pill, פרסום בלוח הציבורי, מחיקת הנבחרים — with no "בטל הכל" text, no page errors and clean spacing.
+## Properties toolbar polish
+- [x] Remove the "בחר הכל" text control, keep the delete control icon-only, restore the "פרסום בלוח הציבורי" label and place the sort control at the beginning of the row.
+- [x] Automatic build OK; signed-in /properties reads right to left — מיון, selection toggle, "10 נבחרו" pill, פרסום בלוח הציבורי, red trash icon — no "בחר הכל" text, no page errors.
