@@ -15,7 +15,7 @@ export type WorkspaceIdentity = {
   isTenant: boolean;
 };
 
-const DEFAULT_NAME = 'Realtyz AI';
+const DEFAULT_NAME = 'TORAF';
 
 function norm(v?: string | null) {
   return (v ?? '').trim();
@@ -46,11 +46,14 @@ function officeLogoOnly(url: string | null, ownerAvatar: string): string | null 
 export function resolveWorkspaceIdentity(
   workspace: Workspace | null | undefined,
   brand?: BrandLike,
+  master?: BrandLike,
 ): WorkspaceIdentity {
   const wsName = norm(workspace?.workspace_name);
   const ownerAvatar = norm(workspace?.owner_avatar_url);
   const wsLogo = officeLogoOnly(norm(workspace?.workspace_logo_url) || null, ownerAvatar);
   const brandName = norm(brand?.agency_name);
+  const defaultName = norm(master?.agency_name) || DEFAULT_NAME;
+  const defaultLogo = officeLogoOnly(norm(master?.landscape_logo_url) || norm(master?.logo_url) || null, ownerAvatar);
   // Logo precedence: the workspace's own landscape logo, then its square logo,
   // then the workspace-list logo. Never another workspace's logo, and never a
   // personal profile picture.
@@ -63,8 +66,8 @@ export function resolveWorkspaceIdentity(
 
   if (!isSelf) {
     return {
-      name: wsName || brandName || DEFAULT_NAME,
-      logo: brandLogo || wsLogo,
+      name: brandName || wsName || defaultName,
+      logo: brandLogo || wsLogo || defaultLogo,
       isTenant: true,
     };
   }
@@ -75,8 +78,8 @@ export function resolveWorkspaceIdentity(
   const lc = (v: string) => v.toLowerCase();
   const nameIsPersonal =
     !!wsName && !!personal && (lc(wsName) === lc(personal) || lc(wsName).includes(lc(personal)));
-  const name = (nameIsPersonal ? '' : wsName) || brandName || DEFAULT_NAME;
-  const logo = brandLogo || (nameIsPersonal ? null : wsLogo);
+  const name = brandName || (nameIsPersonal ? '' : wsName) || defaultName;
+  const logo = brandLogo || (nameIsPersonal ? null : wsLogo) || defaultLogo;
 
 
   return { name, logo, isTenant: false };
