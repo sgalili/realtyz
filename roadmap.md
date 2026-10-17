@@ -6,4 +6,4 @@
 # Board header
 - [x] Swap the public logo and publication action, add the tagline and icon-only sign-in.
 - [x] Rename the public and authenticated board title.
-- [ ] Verify mobile/web layout and sign-in navigation.
+- [x] Verify mobile/web layout and sign-in navigation.
