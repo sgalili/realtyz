@@ -30,6 +30,7 @@
 - Roles come only from user_roles; partner reads use server-redacted RPCs and verified-license guards.
 
 <!-- LOVABLE:BEGIN -->
+- Master office branding is a public-safe trigger projection from the designated workspace with realtime sync; inheritance never changes avatars or source advertiser attribution. Why: identity consistency without tenant leaks.
 - Personal invite bonuses are account-scoped and atomic on evidence-verified first-deal approval, never signup or subscription. Why: prevent fake and duplicate rewards.
 <!-- LOVABLE:END -->
 

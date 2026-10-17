@@ -118,7 +118,7 @@ function writeBrandCache(ownerId: string | null, row: WhiteLabelSettings | null)
 export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const master = useMasterBranding();
-  const masterBrand = useMemo(() => master.data ? ({ ...master.data, primary_color: null, primary_foreground_color: null, hide_kalpiz_branding: false }) : null, [master.data]);
+  const masterBrand = useMemo<WhiteLabelSettings | null>(() => master.data ? ({ agency_name: master.data.agency_name, logo_url: master.data.logo_url, landscape_logo_url: master.data.landscape_logo_url, office_address: master.data.office_address, public_email: master.data.public_email, brokerage_name: master.data.brokerage_name, brokerage_license: master.data.brokerage_license, primary_color: null, primary_foreground_color: null, hide_kalpiz_branding: false }) : null, [master.data]);
   const generation = useRef(0);
   const currentOwner = useRef(activeWorkspaceId);
   currentOwner.current = activeWorkspaceId;
