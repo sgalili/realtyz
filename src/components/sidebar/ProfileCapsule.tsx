@@ -19,6 +19,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
 import { resolveWorkspaceIdentity } from '@/lib/workspaceIdentity';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { isSyntheticEmail } from '@/lib/friendlyUserDisplayName';
 
 type CapsuleItem = {
@@ -51,7 +52,8 @@ export function ProfileCapsule() {
 
   // The capsule represents the WORKSPACE, not the individual user: show the
   // workspace logo and name, never the personal profile picture.
-  const wsIdentity = resolveWorkspaceIdentity(activeWorkspace);
+  const { settings, masterBrand } = useWhiteLabel();
+  const wsIdentity = resolveWorkspaceIdentity(activeWorkspace, settings, masterBrand);
   const workspaceName = wsIdentity.name;
   const workspaceLogo = wsIdentity.logo;
   const initial = (workspaceName || 'U').slice(0, 1).toUpperCase();
