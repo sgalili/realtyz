@@ -84,7 +84,7 @@ export default function WhiteLabelSettings() {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !ownerId) return;
     setSaving(true);
     try {
       const triplet = hexToHslTriplet(colorHex);
@@ -111,7 +111,7 @@ export default function WhiteLabelSettings() {
   };
 
   const handleReset = async () => {
-    if (!user) return;
+    if (!user || !ownerId) return;
     setSaving(true);
     try {
       const { error } = await supabase.from('white_label_settings').delete().eq('user_id', ownerId);
