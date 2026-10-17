@@ -7,3 +7,8 @@
 - [x] Swap the public logo and publication action, add the tagline and icon-only sign-in.
 - [x] Rename the public and authenticated board title.
 - [x] Verify mobile/web layout and sign-in navigation.
+
+# Single-row board header
+- [x] Drop the slogan line, its colour token, and restore the office name to TORAF.
+- [x] Order the row right to left: logo, board title, account icon, publish action.
+- [x] Tighten the gap above the search row and confirm phone/web rendering.
