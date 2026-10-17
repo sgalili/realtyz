@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel, hexToHslTriplet, pickForegroundForHsl } from '@/hooks/useWhiteLabel';
@@ -29,6 +30,7 @@ function hslTripletToHex(hsl: string | null | undefined): string {
 
 export default function WhiteLabelSettings() {
   const { user } = useAuth();
+  const ownerId = useActiveWorkspaceOwnerId();
   const { roles, loading: rolesLoading } = useUserRole();
   const { settings, refresh } = useWhiteLabel();
   const { toast } = useToast();
@@ -54,7 +56,7 @@ export default function WhiteLabelSettings() {
   }, [settings]);
 
   const handleUpload = async (file: File) => {
-    if (!user) return;
+    if (!user || !ownerId) return;
     if (!file.type.startsWith('image/')) {
       toast({ title: 'קובץ לא נתמך', description: 'יש להעלות קובץ תמונה (PNG, JPG, SVG).', variant: 'destructive' });
       return;
@@ -66,7 +68,7 @@ export default function WhiteLabelSettings() {
     setUploading(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
-      const path = `${user.id}/logo-${Date.now()}.${ext}`;
+      const path = `${ownerId}/logo-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from('agency-logos')
         .upload(path, file, { upsert: true, contentType: file.type });
@@ -82,13 +84,13 @@ export default function WhiteLabelSettings() {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !ownerId) return;
     setSaving(true);
     try {
       const triplet = hexToHslTriplet(colorHex);
       const fg = triplet ? pickForegroundForHsl(triplet) : null;
       const payload = {
-        user_id: user.id,
+        user_id: ownerId,
         agency_name: agencyName.trim() || null,
         logo_url: logoUrl,
         primary_color: triplet,
@@ -109,10 +111,11 @@ export default function WhiteLabelSettings() {
   };
 
   const handleReset = async () => {
-    if (!user) return;
+    if (!user || !ownerId) return;
     setSaving(true);
     try {
-      await supabase.from('white_label_settings').delete().eq('user_id', user.id);
+      const { error } = await supabase.from('white_label_settings').delete().eq('user_id', ownerId);
+      if (error) throw error;
       setAgencyName(''); setColorHex('#1a2547'); setLogoUrl(null); setHideRealtyz(false);
       await refresh();
       toast({ title: 'המיתוג אופס', description: 'המערכת חזרה לעיצוב ברירת המחדל.' });
@@ -234,7 +237,7 @@ export default function WhiteLabelSettings() {
               style={{
                 background: colorHex,
                 color: hexToHslTriplet(colorHex)
-                  ? `hsl(${pickForegroundForHsl(hexToHslTriplet(colorHex)!)})`
+                  ? `hsl(${pickForegroundForHsl(hexToHslTriplet(colorHex) || '')})`
                   : '#fff',
               }}
             >

@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useRef, ReactNode, useCallback } from 'react';
+import { useMasterBranding, BRANDING_UPDATED_EVENT } from '@/hooks/useMasterBranding';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
 
@@ -11,18 +12,24 @@ export interface WhiteLabelSettings {
   primary_color: string | null; // HSL triplet "H S% L%"
   primary_foreground_color: string | null;
   hide_kalpiz_branding: boolean;
+  office_address?: string | null;
+  public_email?: string | null;
+  brokerage_name?: string | null;
+  brokerage_license?: string | null;
 }
 
 interface WhiteLabelContextValue {
   settings: WhiteLabelSettings | null;
   loading: boolean;
   refresh: () => Promise<void>;
+  masterBrand: WhiteLabelSettings | null;
 }
 
 const WhiteLabelContext = createContext<WhiteLabelContextValue>({
   settings: null,
   loading: true,
   refresh: async () => {},
+  masterBrand: null,
 });
 
 /** Convert "#RRGGBB" → "H S% L%" tailwind-token form */
@@ -110,6 +117,11 @@ function writeBrandCache(ownerId: string | null, row: WhiteLabelSettings | null)
 
 export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const master = useMasterBranding();
+  const masterBrand = useMemo<WhiteLabelSettings | null>(() => master.data ? ({ agency_name: master.data.agency_name, logo_url: master.data.logo_url, landscape_logo_url: master.data.landscape_logo_url, office_address: master.data.office_address, public_email: master.data.public_email, brokerage_name: master.data.brokerage_name, brokerage_license: master.data.brokerage_license, primary_color: null, primary_foreground_color: null, hide_kalpiz_branding: false }) : null, [master.data]);
+  const generation = useRef(0);
+  const currentOwner = useRef(activeWorkspaceId);
+  currentOwner.current = activeWorkspaceId;
   const initial = readBrandCache(activeWorkspaceId);
   const [settings, setSettings] = useState<WhiteLabelSettings | null>(initial);
   const [loading, setLoading] = useState(!initial);
@@ -117,9 +129,11 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
 
 
   const load = useCallback(async () => {
+    const request = ++generation.current;
+    const requestedOwner = activeWorkspaceId;
     const cached = readBrandCache(activeWorkspaceId);
     if (cached) { setSettings(cached); applyTheme(cached); setLoading(false); }
-    else setLoading(true);
+    else { setSettings(null); applyTheme(null); setLoading(true); }
     try {
       // Workspace-first branding: tenants/managers should see the owner's
       // shared office details, not their personal empty branding row.
@@ -147,6 +161,7 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
       }
       // NO global fallback: a workspace without branding keeps the default
       // Realtyz identity rather than borrowing another workspace's logo.
+      if (request !== generation.current || currentOwner.current !== requestedOwner) return;
       setSettings(row);
       applyTheme(row);
       writeBrandCache(activeWorkspaceId ?? row?.user_id ?? null, row);
@@ -156,7 +171,7 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
       console.warn('[white-label] load failed', e);
       // Keep the cached brand on screen instead of flashing the default logo.
     } finally {
-      setLoading(false);
+      if (request === generation.current && currentOwner.current === requestedOwner) setLoading(false);
     }
   }, [activeWorkspaceId, activeWorkspace]);
 
@@ -171,7 +186,12 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
   }, [load]);
 
 
-  const value = useMemo(() => ({ settings, loading, refresh: load }), [settings, loading, load]);
+  const scopedSettings = settings?.user_id === activeWorkspaceId ? settings : null;
+  const refresh = useCallback(async () => {
+    await load();
+    window.dispatchEvent(new Event(BRANDING_UPDATED_EVENT));
+  }, [load]);
+  const value = useMemo(() => ({ settings: scopedSettings, loading, refresh, masterBrand }), [scopedSettings, loading, refresh, masterBrand]);
   return <WhiteLabelContext.Provider value={value}>{children}</WhiteLabelContext.Provider>;
 };
 

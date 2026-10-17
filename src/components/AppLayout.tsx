@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import realtyzLogo from '@/assets/realtyz-logo.png';
+import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -260,7 +260,7 @@ function DemoSidebarPeek() {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const { settings: brand } = useWhiteLabel();
+  const { settings: brand, masterBrand } = useWhiteLabel();
   const { activeWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
@@ -461,7 +461,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   // and `brand` (white-label cache) hydrate synchronously from localStorage, so the
   // workspace logo + name paint on the FIRST frame. The personal profile name and
   // avatar are NEVER used as shell branding.
-  const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand as any);
+  const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand, masterBrand);
   const headerLogo = headerIdentity.logo || '';
   const headerName = headerIdentity.name;
   const headerUserName = String((activeWorkspace && !(activeWorkspace as any).is_self ? (activeWorkspace as any).owner_full_name : '') || (headerUserProfile as any)?.full_name || friendlyUserDisplayName(user, '') || '').trim();
@@ -491,7 +491,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               aria-label={`${headerName} - דף הבית`}
               className="pointer-events-auto fixed left-1/2 top-[env(safe-area-inset-top)] z-30 flex h-16 max-w-[calc(100vw-9rem)] -translate-x-1/2 items-center gap-1.5 overflow-hidden text-right leading-none"
             >
-              <img src={headerLogo || realtyzLogo} alt={headerName || 'Realtyz AI'} className={headerLogo ? "h-8 max-w-20 shrink-0 object-contain" : "h-[41.6px] max-w-[104px] shrink-0 object-contain"} />
+              {headerLogo ? <img src={headerLogo} alt={headerName} className="h-8 max-w-20 shrink-0 object-contain" /> : <PlatformBrand className="h-[41.6px]" />}
               <span className="flex min-w-0 flex-col items-start justify-center text-right leading-none">
                 <span className="min-w-0 truncate text-sm font-bold leading-[15px] text-foreground">{headerName}</span>
                 {headerUserName ? (

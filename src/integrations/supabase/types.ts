@@ -5921,6 +5921,45 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_branding: {
+        Row: {
+          agency_name: string
+          brokerage_license: string | null
+          brokerage_name: string | null
+          id: boolean
+          landscape_logo_url: string | null
+          logo_url: string | null
+          office_address: string | null
+          public_email: string | null
+          service_areas: string[]
+          updated_at: string
+        }
+        Insert: {
+          agency_name?: string
+          brokerage_license?: string | null
+          brokerage_name?: string | null
+          id?: boolean
+          landscape_logo_url?: string | null
+          logo_url?: string | null
+          office_address?: string | null
+          public_email?: string | null
+          service_areas?: string[]
+          updated_at?: string
+        }
+        Update: {
+          agency_name?: string
+          brokerage_license?: string | null
+          brokerage_name?: string | null
+          id?: boolean
+          landscape_logo_url?: string | null
+          logo_url?: string | null
+          office_address?: string | null
+          public_email?: string | null
+          service_areas?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_oauth_apps: {
         Row: {
           client_id: string | null
@@ -7677,37 +7716,49 @@ export type Database = {
       white_label_settings: {
         Row: {
           agency_name: string | null
+          brokerage_license: string | null
+          brokerage_name: string | null
           created_at: string
           hide_kalpiz_branding: boolean
           id: string
           landscape_logo_url: string | null
           logo_url: string | null
+          office_address: string | null
           primary_color: string | null
           primary_foreground_color: string | null
+          public_email: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           agency_name?: string | null
+          brokerage_license?: string | null
+          brokerage_name?: string | null
           created_at?: string
           hide_kalpiz_branding?: boolean
           id?: string
           landscape_logo_url?: string | null
           logo_url?: string | null
+          office_address?: string | null
           primary_color?: string | null
           primary_foreground_color?: string | null
+          public_email?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           agency_name?: string | null
+          brokerage_license?: string | null
+          brokerage_name?: string | null
           created_at?: string
           hide_kalpiz_branding?: boolean
           id?: string
           landscape_logo_url?: string | null
           logo_url?: string | null
+          office_address?: string | null
           primary_color?: string | null
           primary_foreground_color?: string | null
+          public_email?: string | null
           updated_at?: string
           user_id?: string
         }

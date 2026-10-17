@@ -16,7 +16,8 @@ import { BrandLogo } from '@/components/social/BrandLogo';
 
 
 import { PlatformTicker, StackTicker } from '@/components/landing/LogoTickers';
-import realtyzLogo from '@/assets/realtyz-logo.png';
+import { PlatformBrand } from '@/components/branding/PlatformBrand';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import imgPublishing from '@/assets/landing/card-publishing.jpg';
 import imgOmnichannel from '@/assets/landing/card-omnichannel.jpg';
 import imgVoice from '@/assets/landing/card-voice.jpg';
@@ -241,6 +242,8 @@ function Reveal({ children, delay = 0, className }: { children: React.ReactNode;
 }
 
 export default function Landing() {
+  const { masterBrand } = useWhiteLabel();
+  const platformName = masterBrand?.agency_name || 'TORAF';
 
 
   return (
@@ -248,8 +251,8 @@ export default function Landing() {
       {/* ───────── Nav ───────── */}
       <header className="relative z-30 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-center px-4">
-          <Link to="/" aria-label="Realtyz AI" className="mt-5">
-            <img src={realtyzLogo} alt="Realtyz AI" className="h-[3.12rem] w-auto object-contain" />
+          <Link to="/" aria-label={platformName} className="mt-5">
+            <PlatformBrand className="h-[3.12rem]" />
           </Link>
         </div>
       </header>
@@ -468,7 +471,7 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-border/60 py-5 text-center text-sm text-muted-foreground">
-        <p>Realtyz - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
+        <p>{platformName} - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
         <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-semibold">
           <Link to="/terms" className="transition-colors hover:text-foreground">תנאי שימוש</Link>
           <Link to="/privacy-policy" className="transition-colors hover:text-foreground">מדיניות פרטיות</Link>

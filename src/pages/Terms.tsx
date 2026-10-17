@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { PACKAGES } from '@/lib/pricing';
 import { BROKERAGE_COMMISSION_TITLE } from '@/components/public/BrokerageCommissionDisclosure';
 
@@ -18,17 +20,24 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function Terms() {
+  const { masterBrand } = useWhiteLabel();
+  const platformName = masterBrand?.agency_name || 'TORAF';
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <div className="mx-auto w-full max-w-3xl px-4 py-14">
         <Link to="/landing" className="text-sm font-bold text-primary hover:underline">← חזרה לדף הבית</Link>
         <h1 className="mt-6 text-3xl font-extrabold tracking-tight sm:text-4xl">תנאי שימוש</h1>
         <p className="mt-2 text-sm text-muted-foreground">עדכון אחרון: {UPDATED}</p>
+        <div className="mt-5 space-y-2 text-sm text-muted-foreground">
+          <PlatformBrand className="h-10" />
+          {masterBrand?.office_address && <p>{masterBrand.office_address}</p>}
+          {masterBrand?.brokerage_name && <p>מתווך אחראי: {masterBrand.brokerage_name}{masterBrand.brokerage_license ? ` · רישיון ${masterBrand.brokerage_license}` : ''}</p>}
+        </div>
 
         <section id="brokerage-commissions" className="mt-8 scroll-mt-6" aria-labelledby="brokerage-commissions-title">
           <h2 id="brokerage-commissions-title" className="text-xl font-extrabold text-foreground">{BROKERAGE_COMMISSION_TITLE}</h2>
           <div className="mt-3 space-y-4 text-[15px] leading-relaxed text-foreground">
-            <p>שירותי התיווך בנדל״ן של Realtyz ניתנים בישראל באמצעות מתווך בעל רישיון תיווך ישראלי תקף, בהתאם לחוק המתווכים במקרקעין, התשנ״ו–1996, וליתר הוראות הדין החלות. מבנה העמלות שלהלן חל על שירותי התיווך של Realtyz ואינו משנה הסכמים עם מפרסמים או מתווכים אחרים.</p>
+            <p>שירותי התיווך בנדל״ן של {platformName} ניתנים בישראל באמצעות מתווך בעל רישיון תיווך ישראלי תקף, בהתאם לחוק המתווכים במקרקעין, התשנ״ו–1996, וליתר הוראות הדין החלות. מבנה העמלות שלהלן חל על שירותי התיווך של {platformName} ואינו משנה הסכמים עם מפרסמים או מתווכים אחרים.</p>
             <ol className="list-decimal space-y-3 ps-5">
               <li><strong>קונים:</strong> עמלת תיווך בשיעור קבוע של 1% בלבד ממחיר העסקה הסופי שנקבע בהסכם רכישת הנכס. שיעור זה נמוך מעמלת הייחוס המקובלת בשוק של 2%.</li>
               <li><strong>שוכרים:</strong> עמלת תיווך חד־פעמית בשיעור קבוע של 10% בלבד מדמי השכירות החודשיים שנקבעו בהסכם השכירות, ולא 10% מסך דמי השכירות לכל התקופה. זאת לעומת עמלת הייחוס המקובלת של חודש שכירות מלא.</li>
@@ -41,7 +50,7 @@ export default function Terms() {
 
         <Section title="1. כללי והסכמה">
           <p>
-            תנאים אלה מהווים הסכם מחייב בין מפעילת שירות Realtyz ("החברה", "אנחנו") לבין כל אדם או
+            תנאים אלה מהווים הסכם מחייב בין מפעילת שירות {platformName} ("החברה", "אנחנו") לבין כל אדם או
             גוף העושה שימוש בשירות ("המשתמש", "אתם"). עצם ההרשמה, ההתחברות או השימוש בשירות מהווה
             הסכמה מלאה לתנאים אלה ולמסמך <Link to="/privacy-policy" className="font-bold text-primary hover:underline">מדיניות הפרטיות</Link>.
             אם אינכם מסכימים - אין לעשות שימוש בשירות.
@@ -54,7 +63,7 @@ export default function Terms() {
 
         <Section title="2. תיאור השירות">
           <p>
-            Realtyz היא פלטפורמת SaaS לניהול פעילות נדל"ן הכוללת, בין היתר: CRM אנשי קשר ועסקאות;
+            {platformName} היא פלטפורמת SaaS לניהול פעילות נדל"ן הכוללת, בין היתר: CRM אנשי קשר ועסקאות;
             ניהול נכסים ומלאי; תיבת הודעות מרובת ערוצים (ווטסאפ, SMS, אימייל, ערוצי מדיה חברתית);
             יצירת תוכן, תזמון ופרסום לפייסבוק ולאינסטגרם; עוזר AI כולל תמלול הודעות קוליות;
             אוטומציות ומעקבים; סנכרון Gmail ויומן Google; דוחות וניתוח עסקי; פורטל אנשי קשר,
@@ -157,7 +166,7 @@ export default function Terms() {
 
         <Section title="שותפים ועמלות סגירה">
           <p>שותף שהביא פנייה והוא מתווך בעל רישיון תיווך מאומת זכאי ל-80% מעמלת הסגירה, ו-20% נותרים לפלטפורמה.</p>
-          <p>כאשר השותף אינו מתווך בעל רישיון, או כשהפנייה הגיעה מפרסום ישיר בלוח הנכסים, 100% מעמלת הסגירה נותרים לפלטפורמה, והתיווך מתבצע תחת רישיון התיווך של אודי ויטמן.</p>
+          <p>כאשר השותף אינו מתווך בעל רישיון, או כשהפנייה הגיעה מפרסום ישיר בלוח הנכסים, 100% מעמלת הסגירה נותרים לפלטפורמה, והתיווך מתבצע באמצעות מתווך בעל רישיון ישראלי{masterBrand?.brokerage_name ? `: ${masterBrand.brokerage_name}` : ''}.</p>
           <p>שותפים שאינם מתווכים זכאים לתגמולי שיווק דיגיטלי בלבד ואינם נחשפים לעמלות סגירה, למחירי סגירה או לסטטוס סגירת עסקאות.</p>
         </Section>
         <Section title="12. סיום, השעיה וגיבוי נתונים">
@@ -178,7 +187,7 @@ export default function Terms() {
         <Section title="14. שינויים ויצירת קשר">
           <p>
             אנו רשאים לעדכן תנאים אלה מעת לעת; המשך שימוש לאחר פרסום הנוסח המעודכן מהווה הסכמה.
-            לשאלות: <a className="font-bold text-primary hover:underline" href="mailto:support@realtyz.co.il">support@realtyz.co.il</a>.
+            {masterBrand?.public_email && <>לשאלות: <a className="font-bold text-primary hover:underline" href={`mailto:${masterBrand.public_email}`}>{masterBrand.public_email}</a>.</>}
           </p>
         </Section>
 

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
-import realtyzLogo from '@/assets/realtyz-logo.png';
+import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -260,7 +260,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               </div>
               <h1 className="pointer-events-none order-3 w-full text-center text-base font-bold text-foreground sm:absolute sm:left-1/2 sm:top-1/2 sm:order-none sm:w-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:text-2xl">לוח נדל״ן שיתופי</h1>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                <img src={realtyzLogo} alt="Realtyz" className="h-[41.6px] w-auto object-contain sm:h-[52px]" />
+                <PlatformBrand className="h-[41.6px] sm:h-[52px]" />
               </div>
             </div>
           )}

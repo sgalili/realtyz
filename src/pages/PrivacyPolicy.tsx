@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 
 /** מדיניות פרטיות ציבורית (RTL) — משקפת את יכולות המערכת ואת עיבוד הנתונים. */
 const UPDATED = '27 באוגוסט 2026';
@@ -13,6 +14,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function PrivacyPolicy() {
+  const { masterBrand } = useWhiteLabel();
+  const platformName = masterBrand?.agency_name || 'TORAF';
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <div className="mx-auto w-full max-w-3xl px-4 py-14">
@@ -22,7 +25,7 @@ export default function PrivacyPolicy() {
 
         <Section title="1. מי אנחנו ומה תפקידנו">
           <p>
-            Realtyz היא פלטפורמת SaaS לניהול פעילות נדל"ן. ביחס לנתוני אנשי הקשר ואנשי הקשר שאתם
+            {platformName} היא פלטפורמת SaaS לניהול פעילות נדל"ן. ביחס לנתוני אנשי הקשר ואנשי הקשר שאתם
             מעלים למערכת, אתם "בעל השליטה" (Controller) ואנו פועלים כ"מעבד" (Processor) בהתאם
             להוראותיכם. ביחס לנתוני החשבון שלכם (הרשמה, חיוב, שימוש) אנו בעלי השליטה.
           </p>
@@ -119,7 +122,7 @@ export default function PrivacyPolicy() {
           <p>
             זכות לעיין, לתקן, למחוק, לייצא, להגביל עיבוד ולהתנגד לשימוש שיווקי. אם אתם איש קשר או
             לקוח של מתווך שמשתמש במערכת - יש לפנות ישירות למתווך שאסף את פרטיכם, ואנו נסייע לו
-            במימוש הבקשה. פנייה אלינו: <a className="font-bold text-primary hover:underline" href="mailto:privacy@realtyz.co.il">privacy@realtyz.co.il</a>.
+            במימוש הבקשה. {masterBrand?.public_email && <>פנייה אלינו: <a className="font-bold text-primary hover:underline" href={`mailto:${masterBrand.public_email}`}>{masterBrand.public_email}</a>.</>}
           </p>
         </Section>
 

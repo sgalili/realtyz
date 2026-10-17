@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
  */
 export function WorkspaceSwitcher({ className }: { className?: string }) {
   const { workspaces, activeWorkspace, activeWorkspaceId, setActiveWorkspace } = useWorkspace();
-  const { settings } = useWhiteLabel();
+  const { settings, masterBrand } = useWhiteLabel();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -46,7 +46,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const { isSuperAdmin } = useUserRole();
   const [query, setQuery] = useState('');
 
-  const identity = resolveWorkspaceIdentity(activeWorkspace, settings as any);
+  const identity = resolveWorkspaceIdentity(activeWorkspace, settings, masterBrand);
 
   const visibleWorkspaces = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -87,15 +87,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     || (activeWorkspace?.workspace_name ?? '').trim();
 
   // Square workspace logo, shown on the side opposite the name + owner line.
-  // Workspaces without any logo fall back to the workspace owner's picture.
-  const squareLogo = (settings as any)?.logo_url
-    ?? activeWorkspace?.workspace_logo_url
-    ?? identity.logo
-    ?? activeWorkspace?.owner_avatar_url
-    ?? null;
-  const logoIsOwnerPhoto = !((settings as any)?.logo_url
-    || activeWorkspace?.workspace_logo_url
-    || identity.logo) && !!activeWorkspace?.owner_avatar_url;
+  // Only office logos are inherited; profile photos remain independent.
+  const squareLogo = resolveWorkspaceIdentity(activeWorkspace, settings ? { ...settings, landscape_logo_url: settings.logo_url ? null : settings.landscape_logo_url } : null, masterBrand ? { ...masterBrand, landscape_logo_url: masterBrand.logo_url ? null : masterBrand.landscape_logo_url } : null).logo;
 
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
@@ -110,7 +103,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
         <img
           src={squareLogo}
           alt={identity.name}
-          className={logoIsOwnerPhoto ? 'h-full w-full object-cover' : 'h-full w-full object-contain p-0.5'}
+          className="h-full w-full object-contain p-0.5"
           referrerPolicy="no-referrer"
         />
       ) : (
@@ -174,7 +167,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                 <p className="px-2 py-3 text-xs text-muted-foreground">לא נמצאו חשבונות</p>
               )}
               {visibleWorkspaces.map((w) => {
-                const label = resolveWorkspaceIdentity(w).name;
+                const workspaceIdentity = resolveWorkspaceIdentity(w, undefined, masterBrand);
+                const label = workspaceIdentity.name;
                 const active = w.workspace_owner_id === activeWorkspaceId;
                 return (
                   <button
@@ -187,8 +181,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     )}
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
-                      {w.workspace_logo_url || w.owner_avatar_url
-                        ? <img src={w.workspace_logo_url ?? w.owner_avatar_url ?? undefined} alt={label} className={cn('h-full w-full', w.workspace_logo_url ? 'object-contain p-0.5' : 'object-cover')} />
+                      {workspaceIdentity.logo
+                        ? <img src={workspaceIdentity.logo} alt={label} className="h-full w-full object-contain p-0.5" />
                         : <Building2 className="h-3.5 w-3.5 text-primary" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">

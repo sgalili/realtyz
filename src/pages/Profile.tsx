@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { RITA_WORKSPACE_OWNER_ID } from '@/config/workspaceMode';
 import { supabase } from '@/integrations/supabase/client';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { ConnectionsTab } from '@/components/profile/ConnectionsTab';
@@ -415,6 +416,8 @@ function WorkspaceTab() {
   const [agencyName, setAgencyName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [landscapeLogoUrl, setLandscapeLogoUrl] = useState('');
+  const [officeDetails, setOfficeDetails] = useState({ office_address: '', public_email: '', brokerage_name: '', brokerage_license: '' });
+  const isMasterOffice = ownerId === RITA_WORKSPACE_OWNER_ID;
   const [serviceAreaRows, setServiceAreaRows] = useState<Row[]>([newRow('')]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -432,13 +435,14 @@ function WorkspaceTab() {
       try {
         const { data } = await (supabase as any)
           .from('white_label_settings')
-          .select('agency_name, logo_url, landscape_logo_url')
+          .select('agency_name, logo_url, landscape_logo_url, office_address, public_email, brokerage_name, brokerage_license')
           .eq('user_id', ownerId)
           .maybeSingle();
         if (cancelled) return;
         setAgencyName((data as any)?.agency_name || activeWorkspace?.workspace_name || 'רילטיז נדל"ן');
         setLogoUrl((data as any)?.logo_url || activeWorkspace?.workspace_logo_url || '');
         setLandscapeLogoUrl((data as any)?.landscape_logo_url || '');
+        setOfficeDetails({ office_address: data?.office_address || '', public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
 
         const { data: ownerProfile } = await supabase
           .from('profiles')
@@ -539,7 +543,7 @@ function WorkspaceTab() {
     try {
       const { error } = await (supabase as any)
         .from('white_label_settings')
-          .upsert({ user_id: ownerId, agency_name: agencyName || null, logo_url: logoUrl || null, landscape_logo_url: landscapeLogoUrl || null } as any, { onConflict: 'user_id' });
+          .upsert({ user_id: ownerId, agency_name: agencyName || null, logo_url: logoUrl || null, landscape_logo_url: landscapeLogoUrl || null, ...(isMasterOffice ? Object.fromEntries(Object.entries(officeDetails).map(([key, value]) => [key, value.trim() || null])) : {}) } as any, { onConflict: 'user_id' });
       if (error) throw error;
       const serviceAreas = [...new Set(serviceAreaRows.map((r) => r.value.trim()).filter(Boolean))];
       const { error: profileError } = await supabase.from('profiles').update({ service_areas: serviceAreas } as any).eq('id', ownerId);
@@ -606,6 +610,12 @@ function WorkspaceTab() {
             </div>
           </div>
         </div>
+        {isMasterOffice && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {([['office_address', 'כתובת המשרד'], ['public_email', 'דוא״ל ציבורי'], ['brokerage_name', 'שם המתווך האחראי'], ['brokerage_license', 'רישיון תיווך']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
+            <label htmlFor={`office-${key}`} className="text-xs text-muted-foreground">{label}</label>
+            <Input id={`office-${key}`} type={key === 'public_email' ? 'email' : 'text'} dir={key === 'public_email' || key === 'brokerage_license' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={loading} onChange={(event) => setOfficeDetails((previous) => ({ ...previous, [key]: event.target.value }))} />
+          </div>)}
+        </div>}
         <Button onClick={save} size="lg" className="w-full" disabled={saving || loading}>
           {saving ? 'שומר…' : 'שמירת פרטי המשרד'}
         </Button>
