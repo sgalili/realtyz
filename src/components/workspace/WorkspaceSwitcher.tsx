@@ -87,11 +87,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     || (activeWorkspace?.workspace_name ?? '').trim();
 
   // Square workspace logo, shown on the side opposite the name + owner line.
-  // Workspaces without any logo fall back to the workspace owner's picture.
-  const squareLogo = (settings as any)?.logo_url
-    ?? activeWorkspace?.workspace_logo_url
-    ?? identity.logo
-    ?? null;
+  // Only office logos are inherited; profile photos remain independent.
+  const squareLogo = resolveWorkspaceIdentity(activeWorkspace, settings ? { ...settings, landscape_logo_url: null } : null, masterBrand ? { ...masterBrand, landscape_logo_url: null } : null).logo;
 
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
