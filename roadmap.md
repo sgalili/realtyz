@@ -2,3 +2,8 @@
 - [x] Publish safe master office branding from Rita's workspace and synchronize office edits.
 - [x] Inherit missing office logos across workspaces without affecting profile photos.
 - [x] Connect public/home/Terms branding and validate live updates and isolation.
+
+# Board header
+- [x] Swap the public logo and publication action, add the tagline and icon-only sign-in.
+- [x] Rename the public and authenticated board title.
+- [ ] Verify mobile/web layout and sign-in navigation.

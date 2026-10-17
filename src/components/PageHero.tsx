@@ -254,8 +254,8 @@ function CampaignsHeroSyncButton() {
 }
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
-  { match: /^\/$/, title: "לוח נדל״ן שיתופי" },
-  { match: /^\/public-listings/, title: "לוח נדל״ן שיתופי" },
+  { match: /^\/$/, title: "לוח שיווק שותפים" },
+  { match: /^\/public-listings/, title: "לוח שיווק שותפים" },
   { match: /^\/my-ads/, title: "המודעות שלי" },
   { match: /^\/developer-dashboard/, title: "הפרויקטים שלנו" },
   { match: /^\/(command-center|tasks)/, title: "משימות" },
@@ -415,8 +415,8 @@ export function PageHero() {
               size="icon"
               variant="ghost"
               onClick={() => navigate("/public-listings")}
-              aria-label="חזרה ללוח נדל״ן שיתופי"
-              title="חזרה ללוח נדל״ן שיתופי"
+              aria-label="חזרה ללוח שיווק שותפים"
+              title="חזרה ללוח שיווק שותפים"
               className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
             >
               <ArrowLeft className="!h-5 !w-5 -scale-x-100" strokeWidth={2.5} />
