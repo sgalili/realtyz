@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send } from 'lucide-react';
+import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send, UserRound } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
@@ -253,14 +253,15 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       <header className="bg-card">
         <div className="mx-auto max-w-6xl px-4 pb-0 pt-5">
           {embedded ? null : (
-            <div className="relative flex min-h-11 flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
-              <div className="flex items-center gap-2">
-                <PublicListingPublisher autoResume />
-                {!user && <Button size="sm" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" className="h-8 border-0 bg-transparent px-1 text-xs font-semibold shadow-none hover:bg-transparent sm:text-sm">הרשמה / התחברות</Button>}
-              </div>
-              <h1 className="pointer-events-none order-3 w-full text-center text-base font-bold text-foreground sm:absolute sm:left-1/2 sm:top-1/2 sm:order-none sm:w-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:text-2xl">לוח נדל״ן שיתופי</h1>
-              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <div className="relative flex min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-4 sm:flex-nowrap">
+              <div className="flex shrink-0 flex-col items-center gap-1">
                 <PlatformBrand className="h-[41.6px] sm:h-[52px]" />
+                <span className="whitespace-nowrap font-hebrew text-xs font-normal text-[hsl(var(--brand-tagline-foreground))] sm:text-sm">מפרסמים. מרוויחים. יחד.</span>
+              </div>
+              <h1 className="pointer-events-none order-3 w-full text-center text-base font-bold text-foreground sm:absolute sm:left-1/2 sm:top-1/2 sm:order-none sm:w-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:text-2xl">לוח שיווק שותפים</h1>
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                <PublicListingPublisher autoResume />
+                {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-9 w-9 border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><UserRound className="h-5 w-5" /></Button>}
               </div>
             </div>
           )}

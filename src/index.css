@@ -31,6 +31,7 @@
     /* Surfaces — clean white canvas + soft grey neutrals */
     --background: 0 0% 100%;
     --foreground: 213 73% 12%; /* navy ink for legibility on white */
+    --brand-tagline-foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
     --card-foreground: 213 73% 12%;
