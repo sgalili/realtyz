@@ -231,7 +231,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     const first = initializedPublisher.current !== identity;
     initializedPublisher.current = identity;
     setFields(current => ({ ...current, publisherType: 'broker', contactName: changedWorkspace ? publisherName : current.contactName || publisherName, contactWhatsapp: changedWorkspace ? publisherPhone : current.contactWhatsapp || publisherPhone, marketingAccepted: first ? true : current.marketingAccepted }));
-    if (first && step === 0 && !reviewMode) setImportSlide(true);
+    
   }, [open, isBroker, user?.id, activeWorkspaceId, publisherName, publisherPhone, step, reviewMode]);
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
@@ -426,7 +426,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     void readPublicListingDraft('visitor').then((draft) => {
       if (!draft) return;
       setFields(draft); setFiles(draft.files ?? []); setVideos(draft.videos ?? []);
-      setReviewMode(true); setExpandedStep(`step-${draft.resumeStep || 0}`); setOpen(true);
+      // Restore silently: the wizard opens only on an explicit "פרסום חינם" click.
+      setReviewMode(true); setExpandedStep(`step-${draft.resumeStep || 0}`);
     });
   }, [autoResume, user?.id, resumed, entryPending, isDeveloper]);
 
@@ -450,6 +451,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     try { await saveDraft(nextFields); } catch { /* best effort */ }
     if (reviewMode) return;
     if (key === 'publisherType') { setImportSlide(true); return; }
+    if (key === 'dealType' && step === 0) {
+      // Smart skip: a signed-in user with a known role skips the role question.
+      if (isBroker) setImportSlide(true);
+      else if (user && isPropertyOwner) { setFields({ ...nextFields, publisherType: 'private' }); setImportSlide(true); }
+      return;
+    }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
   };
 
@@ -630,10 +637,25 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const renderStep = (step: number) => (
     <>
           {step === 0 && !importSlide && (
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto p-6 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
-              <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} className="h-auto p-6 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>פרטי</Button>
-              <Button type="button" variant="outline" className="col-span-2 h-auto p-6 text-base font-bold" onClick={() => { if (!user) { setPendingSignupRole('developer'); navigate('/auth'); return; } void supabase.rpc('register_as_developer' as any, { _display_name: null }).then(async ({ error }) => { if (error) { toast.error(error.message); return; } await refetchRoles(); navigate('/developer-dashboard?onboarding=1'); }); }}>יזם / קבלן</Button>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-center text-base font-bold">למכירה או להשכרה?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
+                    <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
+                  ))}
+                </div>
+              </div>
+              {fields.dealType && (
+                <div className="space-y-2">
+                  <p className="text-center text-base font-bold">מי מפרסם?</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
+                    <Button type="button" variant="outline" className="h-auto px-2 py-4 text-base font-bold" onClick={() => { if (!user) { setPendingSignupRole('developer'); navigate('/auth'); return; } void supabase.rpc('register_as_developer' as any, { _display_name: null }).then(async ({ error }) => { if (error) { toast.error(error.message); return; } await refetchRoles(); navigate('/developer-dashboard?onboarding=1'); }); }}>יזם</Button>
+                    <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>בעל הנכס</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {step === 0 && importSlide && (
