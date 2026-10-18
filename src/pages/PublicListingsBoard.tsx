@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send, UserRound } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
+import { WelcomeSlides, hasSeenWelcomeSlides } from '@/components/public/WelcomeSlides';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -243,6 +244,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     }
   };
 
+  const [showWelcome, setShowWelcome] = useState(() => !hasSeenWelcomeSlides());
   const filtered = useMemo(() => cards.filter((card) => matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter)), [cards, propFilter]);
   const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, filtered);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
@@ -250,10 +252,15 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
 
   return (
     <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
+      {!embedded && showWelcome && (
+        <div className="fixed inset-x-0 bottom-0 top-14 z-40 overflow-y-auto bg-background sm:top-16">
+          <WelcomeSlides onDone={() => setShowWelcome(false)} />
+        </div>
+      )}
       <header className="bg-card">
         <div className="w-full px-4 pb-0 pt-2">
           {embedded ? null : (
-            <div className="flex min-h-11 items-center gap-x-2 sm:gap-x-3">
+            <div className="relative z-50 flex min-h-11 items-center gap-x-2 bg-card sm:gap-x-3">
               <PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" />
               <h1 className="min-w-0 truncate whitespace-nowrap text-base font-bold text-foreground sm:text-2xl">לוח שיווק שותפים</h1>
               <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
