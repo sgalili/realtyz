@@ -257,10 +257,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           <WelcomeSlides onDone={() => setShowWelcome(false)} />
         </div>
       )}
-      <header className="relative z-50 bg-card">
+      <header className="bg-card">
         <div className="w-full px-4 pb-0 pt-2">
           {embedded ? null : (
-            <div className="flex min-h-11 items-center gap-x-2 sm:gap-x-3">
+            <div className="relative z-50 flex min-h-11 items-center gap-x-2 bg-card sm:gap-x-3">
               <PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" />
               <h1 className="min-w-0 truncate whitespace-nowrap text-base font-bold text-foreground sm:text-2xl">לוח שיווק שותפים</h1>
               <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
