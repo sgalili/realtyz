@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send, UserRound } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
+import { WelcomeSlides, hasSeenWelcomeSlides } from '@/components/public/WelcomeSlides';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -243,6 +244,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     }
   };
 
+  const [showWelcome, setShowWelcome] = useState(() => !hasSeenWelcomeSlides());
   const filtered = useMemo(() => cards.filter((card) => matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter)), [cards, propFilter]);
   const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, filtered);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
@@ -250,7 +252,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
 
   return (
     <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
-      <header className="bg-card">
+      {!embedded && showWelcome && (
+        <div className="fixed inset-x-0 bottom-0 top-14 z-40 overflow-y-auto bg-background sm:top-16">
+          <WelcomeSlides onDone={() => setShowWelcome(false)} />
+        </div>
+      )}
+      <header className="relative z-50 bg-card">
         <div className="w-full px-4 pb-0 pt-2">
           {embedded ? null : (
             <div className="flex min-h-11 items-center gap-x-2 sm:gap-x-3">

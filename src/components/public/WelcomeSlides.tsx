@@ -35,7 +35,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       dir="rtl"
       aria-roledescription="carousel"
       aria-label="היכרות עם TORAFF"
-      className={cn('relative mx-4 mt-3 flex min-h-[calc(100dvh-5rem)] flex-col overflow-hidden rounded-3xl border bg-card transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
+      className={cn('relative mx-4 mt-3 flex min-h-[calc(100%-1.5rem)] h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-3xl border bg-card transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
     >
       <Button type="button" variant="ghost" size="sm" onClick={finish} className="absolute left-3 top-3 z-10 gap-1 text-muted-foreground">
         דלג <X className="h-4 w-4" />
