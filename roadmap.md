@@ -1,4 +1,9 @@
 # Welcome and commission interactions
+ # Lead limits and closing fee
+- [ ] Replace general cap with per-priced-type limits, persisted and enforced.
+- [ ] Add shared LTR closing slider with editable value, correct ranges and honest network feedback.
+- [ ] Verify saved limits and slider on phone and desktop.
+
 - [x] Repeat homepage intro until explicit opt-out and reopen from logo.
 - [x] Make lead commission labels open pricing, limits and requirements through shared controls.
 - [x] Verify intro replay and real signed-in public card/full-property pricing; inventory test loaded no priced controls.
