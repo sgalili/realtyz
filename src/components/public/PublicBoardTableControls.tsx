@@ -18,7 +18,7 @@ const defaults = (): Preferences => ({ order: BOARD_COLUMNS.map(c => c.id), hidd
 const validId = (id: unknown): id is BoardColumnId => BOARD_COLUMNS.some(c => c.id === id);
 export function upgradeBoardColumnOrder(order: BoardColumnId[]): BoardColumnId[] {
   if (order.includes('commissions')) return order;
-  const next = order.filter(id => id !== 'deal');
+  const next: BoardColumnId[] = order.filter(id => id !== 'deal');
   const priceIndex = next.indexOf('price');
   next.splice(priceIndex < 0 ? next.length : priceIndex + 1, 0, 'commissions', 'deal');
   return next;
