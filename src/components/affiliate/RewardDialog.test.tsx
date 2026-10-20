@@ -11,7 +11,7 @@ describe('existing reward settings', () => {
     const form_fields = [{ id: 'q', label: 'תאריך', type: 'date', required: true }];
     const listing = { id: 'listing', affiliate_enabled: true, asking_price: 2000000, deal_type: 'sale', affiliate_tier1_amount: 100, affiliate_tier2_amount: 200, affiliate_tier3_amount: 300, affiliate_tier4_type: type, affiliate_tier4_amount: amount, contact_options: { lead_daily_limits: { form: 5, whatsapp: 3, phone: 2 }, questions: ['תקציב?'], questions_phone: [], form_fields } } as unknown as BrokerAffiliateListing;
     render(<RewardDialog listing={listing} open onOpenChange={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: /שמור/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'שמירה' }));
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ tier4Type: type, tier4Amount: amount, contactOptions: expect.objectContaining({ lead_daily_limits: { form: 5, whatsapp: 3, phone: 2 }, questions: ['תקציב?'], questions_phone: [], form_fields }) }), expect.anything());
   });
 });
