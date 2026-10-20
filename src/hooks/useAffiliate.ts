@@ -361,6 +361,7 @@ export type BrokerAffiliateListing = {
   affiliate_tier4_type?: RewardType;
   affiliate_tier4_amount?: number;
   contact_options?: {
+    lead_daily_limits?: import("@/lib/closingFee").LeadDailyLimits;
     digital?: boolean;
     whatsapp?: boolean;
     phone?: boolean;

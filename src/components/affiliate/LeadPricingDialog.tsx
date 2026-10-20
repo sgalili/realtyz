@@ -18,24 +18,21 @@ type PricingListing = Pick<MarketplaceListing, 'listing_id' | 'broker_id' | 'pro
 
 type PricingDetails = {
   daily_lead_cap?: number | null;
-  contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[] };
+  contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[]; lead_daily_limits?: import('@/lib/closingFee').LeadDailyLimits };
 };
 
 export function LeadPricingInfo({ listing, details, gross = false }: { listing: PricingListing; details: PricingDetails; gross?: boolean }) {
   const { level4Unlocked } = useAffiliateLicense();
   const options = details.contact_options ?? {};
   const rows = [
-    { label: 'ליד דיגיטלי · שם וטלפון', amount: listing.tier1_amount, questions: [] },
-    { label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
-    { label: 'ליד מסונן בשיחת טלפון', amount: listing.tier3_amount, questions: options.questions_phone ?? options.questions ?? [] },
+    { key: 'form' as const, label: 'ליד דיגיטלי · שם וטלפון', amount: listing.tier1_amount, questions: [] },
+    { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
+    { key: 'phone' as const, label: 'ליד מסונן בשיחת טלפון', amount: listing.tier3_amount, questions: options.questions_phone ?? options.questions ?? [] },
   ].filter((row) => Number(row.amount) > 0);
   return <div className="space-y-4 text-sm">
-    <div className="flex justify-between gap-3 border-b pb-3">
-      <span className="text-muted-foreground">כמות לידים מרבית ביממה</span>
-      <strong>{details.daily_lead_cap == null ? 'ללא מגבלה' : details.daily_lead_cap}</strong>
-    </div>
     {rows.map((row) => <section key={row.label} className="space-y-2 border-b pb-3">
       <div className="flex justify-between gap-3"><h3 className="font-semibold">{row.label}</h3><bdi dir="ltr" className="font-bold text-success">{row.label === 'ליד מסונן בשיחת טלפון' && listing.tier3_type === 'percent' ? `${gross ? row.amount : partnerNetReward(row.amount)}%` : `₪${(gross ? row.amount : partnerNetReward(row.amount)).toLocaleString('he-IL')}`}</bdi></div>
+      <div className="flex justify-between gap-3"><span className="text-muted-foreground">מקס׳ ב־24 שעות</span><strong>{options.lead_daily_limits?.[row.key] ?? 'ללא מגבלה'}</strong></div>
       {row.label.startsWith('ליד דיגיטלי') && options.form_fields?.map((field) => <p key={field.id}>{field.label} · {FORM_FIELD_TYPE_LABELS[field.type]} · {field.required ? 'חובה' : 'רשות'}{field.options?.length ? ` · ${field.options.join(', ')}` : ''}</p>)}
       {row.questions.length ? <><h4 className="text-muted-foreground">שאלות הסינון של המפרסם</h4><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></> : !row.label.startsWith('ליד דיגיטלי') ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
     </section>)}

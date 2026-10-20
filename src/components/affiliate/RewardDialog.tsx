@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, ListChecks, Phone, TrendingUp, Trophy } from 'lucide-react';
+import { ClipboardList, ListChecks, Phone, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ClosingFeeSlider } from './ClosingFeeSlider';
+import { activeLeadLimits, closingFeeAmount, clampClosingPercent, type LeadDailyLimits } from '@/lib/closingFee';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { defaultQuestions, deriveContactOptions, leadCost } from '@/lib/leadTiers';
@@ -32,7 +33,7 @@ export function RewardDialog({
   const [tier3, setTier3] = useState("");
   const [tier4Type, setTier4Type] = useState<RewardType>("fixed");
   const [tier4, setTier4] = useState("");
-  const [dailyCap, setDailyCap] = useState("");
+  const [dailyCaps, setDailyCaps] = useState<Record<string, string>>({});
   const [questions, setQuestions] = useState<string[]>([]);
   const [questionsPhone, setQuestionsPhone] = useState<string[]>([]);
   const [editingQuestions, setEditingQuestions] = useState<null | "chat" | "phone">(null);
@@ -54,7 +55,8 @@ export function RewardDialog({
     setTier3(zeroToEmpty(listing.affiliate_tier3_amount));
     setTier4Type((listing.affiliate_tier4_type ?? "fixed") as RewardType);
     setTier4(zeroToEmpty(listing.affiliate_tier4_amount));
-    setDailyCap(zeroToEmpty((listing as any).daily_lead_cap));
+    const limits = listing.contact_options?.lead_daily_limits ?? {};
+    setDailyCaps(Object.fromEntries(Object.entries(limits).map(([key, value]) => [key, zeroToEmpty(value)])));
     const options =
       listing.contact_options && typeof listing.contact_options === "object" ? listing.contact_options : {};
     const base =
@@ -78,7 +80,7 @@ export function RewardDialog({
         if (typeof d.tier3 === "string") setTier3(d.tier3);
         if (d.tier4Type) setTier4Type(d.tier4Type);
         if (typeof d.tier4 === "string") setTier4(d.tier4);
-        if (typeof d.dailyCap === "string") setDailyCap(d.dailyCap);
+        if (d.dailyCaps && typeof d.dailyCaps === "object") setDailyCaps(d.dailyCaps);
         if (Array.isArray(d.questions)) setQuestions(d.questions);
         if (Array.isArray(d.questionsPhone)) setQuestionsPhone(d.questionsPhone);
       }
@@ -97,10 +99,10 @@ export function RewardDialog({
     try {
       localStorage.setItem(
         `affiliate-settings-draft:${listing.id}`,
-        JSON.stringify({ enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCap, questions, questionsPhone }),
+        JSON.stringify({ enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone }),
       );
     } catch { /* storage full / disabled */ }
-  }, [listing, hydratedFor, enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCap, questions, questionsPhone]);
+  }, [listing, hydratedFor, enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone]);
 
   const num = (v: string) => Number(v) || 0;
   const clean = (v: string) => v.replace(/[^\d.]/g, "");
@@ -109,7 +111,7 @@ export function RewardDialog({
 
   const tiers = [
     {
-      key: "tier1",
+      key: "tier1", capKey: "form",
       title: "מילוי טופס",
       hint: "השארת שם מלא + טלפון בעמוד הנכס.",
       Icon: ClipboardList,
@@ -119,7 +121,7 @@ export function RewardDialog({
       questionsKey: null as null | "chat" | "phone",
     },
     {
-      key: "tier2",
+      key: "tier2", capKey: "whatsapp",
       title: "סינון בווטסאפ",
       hint: "ריטה פותחת ווטסאפ ושואלת את שאלות הסינון",
       Icon: WhatsAppIcon,
@@ -129,7 +131,7 @@ export function RewardDialog({
       questionsKey: "chat" as const,
     },
     {
-      key: "tier3",
+      key: "tier3", capKey: "phone",
       title: "סינון בשיחת טלפון",
       hint: "אימות פרטי המתעניין בשיחה טלפונית (נציג או AI) ומענה לשאלות הסינון",
       Icon: Phone,
@@ -148,10 +150,10 @@ export function RewardDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 p-3">
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <div>
-              <div className="text-sm font-semibold text-slate-900">פתוח לשיווק ע״י שותפים</div>
-              <div className="text-[11px] text-slate-500"></div>
+              <div className="text-sm font-semibold text-foreground">פתוח לשיווק ע״י שותפים</div>
+              <div className="text-[11px] text-muted-foreground"></div>
             </div>
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
@@ -168,14 +170,14 @@ export function RewardDialog({
                     <div>
                       <div className="text-muted-foreground">ליד דיגיטלי</div>
                       <div className="h-2 rounded-full bg-muted">
-                        <div className="h-2 w-2/3 rounded-full bg-amber-500" />
+                        <div className="h-2 w-2/3 rounded-full bg-warning" />
                       </div>
                       <bdi dir="ltr">₪{Number(recommendation.tier1_median || 0).toLocaleString("he-IL")}</bdi>
                     </div>
                     <div>
                       <div className="text-muted-foreground">ליד מסונן</div>
                       <div className="h-2 rounded-full bg-muted">
-                        <div className="h-2 w-3/4 rounded-full bg-sky-500" />
+                        <div className="h-2 w-3/4 rounded-full bg-primary" />
                       </div>
                       <bdi dir="ltr">₪{Number(recommendation.tier2_median || 0).toLocaleString("he-IL")}</bdi>
                     </div>
@@ -187,14 +189,14 @@ export function RewardDialog({
               ) : null}
 
               <div className="space-y-3">
-                <div className="text-sm font-semibold text-slate-900">{"\n"}</div>
-                <p className="text-[11px] text-slate-500"></p>
+                <div className="text-sm font-semibold text-foreground">{"\n"}</div>
+                <p className="text-[11px] text-muted-foreground"></p>
 
                 {tiers.map((tier) => (
-                  <div key={tier.key} className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
+                  <div key={tier.key} className="space-y-1.5 rounded-md border border-border p-2.5">
                     <div className="flex items-center gap-2">
-                      <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? "text-primary" : "text-slate-400"}`} />
-                      <div className="text-[12px] font-semibold text-slate-900">{tier.title}</div>
+                      <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? "text-primary" : "text-muted-foreground"}`} />
+                      <div className="text-[12px] font-semibold text-foreground">{tier.title}</div>
                       {tier.questionsKey ? (
                         <Button
                           size="icon"
@@ -208,49 +210,24 @@ export function RewardDialog({
                         </Button>
                       ) : null}
                     </div>
-                    <Label className="text-[11px] font-normal text-slate-500">{tier.hint}</Label>
-                    <div className="flex items-center gap-2">
+                    <Label className="text-[11px] font-normal text-muted-foreground">{tier.hint}</Label>
+                    <div className="flex flex-wrap items-end gap-2">
                       <Input
+                        className="min-w-0 flex-1"
+                        aria-label={`עמלה עבור ${tier.title}`}
                         value={tier.value}
                         inputMode="decimal"
                         onChange={(e) => tier.setValue(clean(e.target.value))}
                       />
-                      <span className="whitespace-nowrap text-[11px] text-slate-500">
+                      {num(tier.value) > 0 && <div className="w-28 shrink-0"><Label htmlFor={`cap-${tier.key}`} className="text-[11px]">מקס׳ ב־24 שעות</Label><Input id={`cap-${tier.key}`} aria-label={`מגבלה יומית עבור ${tier.title}`} inputMode="numeric" placeholder="ללא מגבלה" value={dailyCaps[tier.capKey] ?? ""} onChange={(event) => setDailyCaps(current => ({ ...current, [tier.capKey]: event.target.value.replace(/\D/g, "") }))} /></div>}
+                      <span className="w-full text-[11px] text-muted-foreground">
                         מחיר ליד: <bdi dir="ltr">₪{tier.cost.toLocaleString("he-IL")}</bdi>
                       </span>
                     </div>
                   </div>
                 ))}
 
-                <div className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
-                  <div className="text-[12px] font-semibold text-slate-900">מגבלת פניות ב־24 שעות</div>
-                  <Label className="text-[11px] font-normal text-slate-500">
-                    כשמגיעים למספר הזה, הנכס מפסיק להיות מקודם. פניות שמגיעות אחרי המגבלה לא יחויבו, ותוכלו לבחור אם לרכוש אותן בהנחה. השאירו ריק ללא מגבלה.
-                  </Label>
-                  <Input value={dailyCap} inputMode="numeric" placeholder="ללא מגבלה" onChange={(e) => setDailyCap(e.target.value.replace(/\D/g, ""))} />
-                </div>
-
-                <div className="space-y-1.5 rounded-md border border-slate-200 p-2.5">
-                  <div className="flex items-center gap-2">
-                    <Trophy className={`h-4 w-4 ${num(tier4) > 0 ? "text-success" : "text-slate-400"}`} />
-                    <div className="text-[12px] font-semibold text-slate-900">סגירת עסקה</div>
-                  </div>
-                  <Label className="text-[11px] font-normal text-slate-500">
-                    עמלת תיווך על סגירת עסקה. משולמת לשותפים בעלי רישיון תיווך בתוקף בלבד.
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Select value={tier4Type} onValueChange={(v) => setTier4Type(v as RewardType)}>
-                      <SelectTrigger className="w-[130px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="fixed">סכום קבוע (₪)</SelectItem>
-                        <SelectItem value="percent">אחוז מהעמלה (%)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input value={tier4} inputMode="decimal" onChange={(e) => setTier4(clean(e.target.value))} />
-                  </div>
-                </div>
+                <ClosingFeeSlider dealType={listing.deal_type} price={Number(listing.asking_price) || 0} value={num(tier4)} valueType={tier4Type} onChange={(percent) => { setTier4Type("fixed"); setTier4(String(closingFeeAmount(percent, Number(listing.asking_price) || 0))); }} />
               </div>
             </>
           ) : null}
@@ -262,7 +239,7 @@ export function RewardDialog({
               ביטול
             </Button>
             <Button
-              disabled={save.isPending}
+              disabled={save.isPending || !(Number(listing.asking_price) > 0)}
               onClick={() =>
                 save.mutate(
                   {
@@ -274,10 +251,10 @@ export function RewardDialog({
                     tier2Amount: num(tier2),
                     tier3Type: "fixed",
                     tier3Amount: num(tier3),
-                    tier4Type,
-                    tier4Amount: num(tier4),
-                    dailyLeadCap: num(dailyCap) || null,
-                    contactOptions: { ...listing.contact_options, ...deriveContactOptions({
+                    tier4Type: "fixed",
+                    tier4Amount: closingFeeAmount(clampClosingPercent(tier4Type === "fixed" ? num(tier4) / (Number(listing.asking_price) || 1) * 100 : num(tier4), listing.deal_type), Number(listing.asking_price) || 0),
+                    dailyLeadCap: null,
+                    contactOptions: { ...listing.contact_options, lead_daily_limits: activeLeadLimits([num(tier1), num(tier2), num(tier3)], Object.fromEntries(Object.entries(dailyCaps).map(([key, value]) => [key, num(value)])) as LeadDailyLimits), ...deriveContactOptions({
                       tier1: num(tier1),
                       tier2: num(tier2),
                       tier3: num(tier3),

@@ -13,7 +13,7 @@ const listing = { tier1_amount: 100, tier2_amount: 150, tier3_amount: 0, tier4_a
 afterEach(cleanup);
 describe('partner lead pricing information', () => {
   it('keeps inventory gross prices and percentage prices consistent with clicked labels', () => {
-    render(<LeadPricingInfo gross listing={{ ...listing, tier3_amount: 2, tier3_type: 'percent' }} details={{ daily_lead_cap: 7 }} />);
+    render(<LeadPricingInfo gross listing={{ ...listing, tier3_amount: 2, tier3_type: 'percent' }} details={{ contact_options: { lead_daily_limits: { form: 7 } } }} />);
     expect(screen.getByText('₪100')).toBeTruthy();
     expect(screen.getByText('2%')).toBeTruthy();
     expect(screen.getByText('7')).toBeTruthy();
@@ -29,11 +29,11 @@ describe('partner lead pricing information', () => {
     state.editable = null;
     render(<LeadPricingDialog listing={listing} />);
     fireEvent.click(screen.getByRole('button', { name: 'תמחור לידים' }));
-    expect(screen.getByText('כמות לידים מרבית ביממה')).toBeTruthy();
+    expect(screen.getAllByText('מקס׳ ב־24 שעות')).toHaveLength(2);
     expect(screen.queryByRole('textbox')).toBeNull();
   });
   it('shows offered types, exact net rewards, cap and publisher questions without closing data', () => {
-    render(<LeadPricingInfo listing={listing} details={{ daily_lead_cap: 12, contact_options: { questions: ['מה התקציב שלך?'] } }} />);
+    render(<LeadPricingInfo listing={listing} details={{ contact_options: { lead_daily_limits: { form: 12, whatsapp: 4 }, questions: ['מה התקציב שלך?'] } }} />);
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getByText('₪80')).toBeTruthy();
     expect(screen.getByText('₪120')).toBeTruthy();
@@ -43,7 +43,7 @@ describe('partner lead pricing information', () => {
   });
   it('shows unlimited cap and custom form field requirements and choices', () => {
     render(<LeadPricingInfo listing={listing} details={{ contact_options: { form_fields: [{ id: 'field', label: 'מועד כניסה', type: 'single', required: true, options: ['מיידי', 'בהמשך'] }] } }} />);
-    expect(screen.getByText('ללא מגבלה')).toBeTruthy();
+    expect(screen.getAllByText('ללא מגבלה')).toHaveLength(2);
     expect(screen.getByText(/מועד כניסה · בחירה יחידה · חובה · מיידי, בהמשך/)).toBeTruthy();
     expect(screen.queryByRole('textbox')).toBeNull();
   });

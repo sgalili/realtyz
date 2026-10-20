@@ -281,6 +281,13 @@
       "when": 1792269256949,
       "tag": "0039_master_office_branding",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792539006278,
+      "tag": "0040_individual_lead_type_limits",
+      "breakpoints": true
     }
   ]
 }
