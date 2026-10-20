@@ -20,7 +20,7 @@ describe('saved ad recovery', () => {
   });
   it('preserves custom fields and unrelated contact settings on save', () => {
     const options = draftPricingPayload(listingToDraft(row), row.contact_options).contact_options;
-    expect(options.form_fields).toEqual([{ ...fields[0], options: [] }]); expect(options.custom_flag).toBe(true);
+    expect(options.form_fields).toEqual([{ ...fields[0], options: [] }]); expect(options).toMatchObject({ custom_flag: true });
   });
   it('uses legacy feature-backed fees, limits and questions', () => {
     const draft = listingToDraft({ ...row, contact_options: null, features: { deal_closing_commission: { type: 'fixed', value: 600 }, lead_daily_limits: { form: 7 }, screening_questions: { whatsapp: ['מתי?'], phone: ['מי?'] } } });

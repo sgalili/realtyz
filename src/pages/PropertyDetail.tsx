@@ -293,7 +293,7 @@ export default function PropertyDetail() {
       console.log('[PropertyDetail listing]', row);
       console.log('[PropertyDetail listing.media_photos]', (row as any).media_photos);
       console.log('[PropertyDetail listing.source_metadata]', row.source_metadata);
-      const features = Array.isArray(row.features) ? row.features : [];
+      const features = Array.isArray(row.features) ? row.features : isRecord(row.features) ? [...(Array.isArray(row.features.amenity_labels) ? row.features.amenity_labels : []), row.features] : [];
       const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
 
       // Render every URL already persisted in either the canonical gallery or
