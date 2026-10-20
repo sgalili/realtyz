@@ -12,6 +12,12 @@ vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ le
 const listing = { tier1_amount: 100, tier2_amount: 150, tier3_amount: 0, tier4_amount: 10000 } as MarketplaceListing;
 afterEach(cleanup);
 describe('partner lead pricing information', () => {
+  it('keeps inventory gross prices and percentage prices consistent with clicked labels', () => {
+    render(<LeadPricingInfo gross listing={{ ...listing, tier3_amount: 2, tier3_type: 'percent' }} details={{ daily_lead_cap: 7 }} />);
+    expect(screen.getByText('₪100')).toBeTruthy();
+    expect(screen.getByText('2%')).toBeTruthy();
+    expect(screen.getByText('7')).toBeTruthy();
+  });
   it('opens editable settings when the workspace-scoped authored row is authorized', () => {
     state.editable = { id: 'listing' };
     render(<LeadPricingDialog listing={listing} />);

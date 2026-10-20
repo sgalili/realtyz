@@ -25,7 +25,7 @@ export function AffiliateTierPrices({ config }: { config?: AffiliateConfigRow })
   }
   if (tiers.length === 0) return null;
   return (
-    <LeadPricingDialog readOnly listing={{ listing_id: config?.id ?? '', broker_id: '', property_title: null, tier1_amount: Number(config?.affiliate_tier1_amount ?? 0) / 0.8, tier2_amount: Number(config?.affiliate_tier2_amount ?? 0) / 0.8, tier3_amount: Number(config?.affiliate_tier3_amount ?? 0) / 0.8 }}><div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
+    <LeadPricingDialog readOnly gross listing={{ listing_id: config?.id ?? '', broker_id: '', property_title: null, tier1_amount: Number(config?.affiliate_tier1_amount ?? 0), tier2_amount: Number(config?.affiliate_tier2_amount ?? 0), tier3_amount: Number(config?.affiliate_tier3_amount ?? 0), tier3_type: config?.affiliate_tier3_type ?? 'fixed' }}><div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
       {tiers.map(({ value, label, Icon }) => (
         <div key={label} className="flex items-center justify-start gap-1" title={label}>
           <Icon className="h-3 w-3" />

@@ -248,7 +248,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [showWelcome, setShowWelcome] = useState(() => !hasSeenWelcomeSlides());
   const [welcomeKey, setWelcomeKey] = useState(0);
   useEffect(() => {
-    setShowWelcome(!hasSeenWelcomeSlides());
+    setShowWelcome(location.state?.replayWelcome === true || !hasSeenWelcomeSlides());
     setWelcomeKey((key) => key + 1);
   }, [location.key]);
   useEffect(() => {

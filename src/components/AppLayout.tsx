@@ -488,6 +488,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             {/* Absolute screen center (fixed, so the sidebar width does not shift it). */}
             <Link
               to="/"
+              state={{ replayWelcome: true }}
               onClick={() => window.dispatchEvent(new Event('toraf-welcome-reopen'))}
               aria-label={`${headerName} - דף הבית`}
               className="pointer-events-auto fixed left-1/2 top-[env(safe-area-inset-top)] z-30 flex h-16 max-w-[calc(100vw-9rem)] -translate-x-1/2 items-center gap-1.5 overflow-hidden text-right leading-none"
