@@ -1,8 +1,7 @@
-# Master branding
 # Welcome and commission interactions
-- [ ] Repeat homepage intro until explicit opt-out and reopen from logo.
-- [ ] Make all lead commission labels open pricing, limits and requirements.
-- [ ] Keep full-property commission labels in the advertiser box and verify flows.
+- [x] Repeat homepage intro until explicit opt-out and reopen from logo.
+- [x] Make lead commission labels open pricing, limits and requirements through shared controls.
+- [x] Verify intro replay and real signed-in public card/full-property pricing; inventory test loaded no priced controls.
 
 # Master branding
 - [x] Publish safe master office branding from Rita's workspace and synchronize office edits.

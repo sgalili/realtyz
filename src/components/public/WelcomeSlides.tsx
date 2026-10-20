@@ -52,7 +52,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
         )}
       </div>
 
-      <Button variant="link" className="relative self-center text-muted-foreground" onClick={() => { dismissWelcome(); finish(); }}>Don't show me again.</Button>
+      <Button dir="ltr" variant="link" className="relative self-center text-muted-foreground" onClick={() => { dismissWelcome(); finish(); }}>Don't show me again.</Button>
       <div className="relative flex items-center justify-between px-6 pb-6">
         <Button type="button" variant="ghost" size="icon" aria-label="הקודם" disabled={index === 0} onClick={() => setIndex(index - 1)}>
           <ArrowRight className="h-5 w-5" />
