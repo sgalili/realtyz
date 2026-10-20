@@ -211,14 +211,16 @@ export function RewardDialog({
                       ) : null}
                     </div>
                     <Label className="text-[11px] font-normal text-muted-foreground">{tier.hint}</Label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-end gap-2">
                       <Input
+                        className="min-w-0 flex-1"
+                        aria-label={`עמלה עבור ${tier.title}`}
                         value={tier.value}
                         inputMode="decimal"
                         onChange={(e) => tier.setValue(clean(e.target.value))}
                       />
                       {num(tier.value) > 0 && <div className="w-28 shrink-0"><Label htmlFor={`cap-${tier.key}`} className="text-[11px]">מקס׳ ב־24 שעות</Label><Input id={`cap-${tier.key}`} aria-label={`מגבלה יומית עבור ${tier.title}`} inputMode="numeric" placeholder="ללא מגבלה" value={dailyCaps[tier.capKey] ?? ""} onChange={(event) => setDailyCaps(current => ({ ...current, [tier.capKey]: event.target.value.replace(/\D/g, "") }))} /></div>}
-                      <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+                      <span className="w-full text-[11px] text-muted-foreground">
                         מחיר ליד: <bdi dir="ltr">₪{tier.cost.toLocaleString("he-IL")}</bdi>
                       </span>
                     </div>
@@ -237,7 +239,7 @@ export function RewardDialog({
               ביטול
             </Button>
             <Button
-              disabled={save.isPending}
+              disabled={save.isPending || !(Number(listing.asking_price) > 0)}
               onClick={() =>
                 save.mutate(
                   {
