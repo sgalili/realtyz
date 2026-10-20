@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Network, Coins, Share2, Sparkles, Rocket, ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-const SEEN_KEY = 'toraf-welcome-slides-seen-v1';
+import { dismissWelcome, welcomeDismissed } from '@/lib/welcomePreference';
 
 const SLIDES = [
   { icon: Network, kicker: 'ברוכים הבאים ל־TORAFF', title: 'רשת שותפים מטורפת', text: 'כל הנכסים, כל השותפים, לוח אחד.' },
@@ -14,7 +13,7 @@ const SLIDES = [
 ] as const;
 
 export function hasSeenWelcomeSlides() {
-  try { return window.localStorage.getItem(SEEN_KEY) === '1'; } catch { return true; }
+  return welcomeDismissed();
 }
 
 export function WelcomeSlides({ onDone }: { onDone: () => void }) {
@@ -25,7 +24,6 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
   const last = index === SLIDES.length - 1;
 
   const finish = () => {
-    try { window.localStorage.setItem(SEEN_KEY, '1'); } catch { /* storage disabled */ }
     setLeaving(true);
     window.setTimeout(onDone, 250);
   };
@@ -54,6 +52,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
         )}
       </div>
 
+      <Button variant="link" className="relative self-center text-muted-foreground" onClick={() => { dismissWelcome(); finish(); }}>Don't show me again.</Button>
       <div className="relative flex items-center justify-between px-6 pb-6">
         <Button type="button" variant="ghost" size="icon" aria-label="הקודם" disabled={index === 0} onClick={() => setIndex(index - 1)}>
           <ArrowRight className="h-5 w-5" />
