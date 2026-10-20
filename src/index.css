@@ -102,6 +102,11 @@
 
     /* SUCCESS / WARNING */
     --success: 134 61% 41%;
+    --closing-low: 0 72% 48%;
+    --closing-medium: 26 92% 45%;
+    --closing-high: 45 95% 40%;
+    --closing-max: 142 76% 35%;
+    --closing-track: linear-gradient(to right, hsl(var(--closing-low)), hsl(var(--closing-medium)) 33%, hsl(var(--closing-high)) 66%, hsl(var(--closing-max)));
     --success-foreground: 0 0% 100%;
     --warning: 47 100% 50%;
     --warning-foreground: 213 73% 12%;
