@@ -1,4 +1,5 @@
 import { PriceInput } from "@/components/ui/price-input";
+import { preserveListingFeatures } from '@/lib/adRecovery';
 import { useState, useEffect, useRef } from 'react';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { returnState } from "@/lib/returnNav";
@@ -770,7 +771,7 @@ export default function PropertyDetail() {
         ...(form.status ? { status: form.status } : {}),
         source_url: form.source_url || null,
         media_photos: form.photos,
-        features: Array.from(new Set([...manualFeatures, ...featureLabels])) as never,
+        features: preserveListingFeatures(data?.row?.features, Array.from(new Set([...manualFeatures, ...featureLabels]))) as never,
         source_metadata: newMeta as never,
       }).eq('id', id);
 

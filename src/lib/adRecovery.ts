@@ -1,4 +1,26 @@
 import { EMPTY_PUBLIC_LISTING_DRAFT, type PublicListingDraftFields } from './publicListingDraft';
+import { activeLeadLimits } from './closingFee';
+import { cleanFormFields, defaultQuestions, deriveContactOptions } from './leadTiers';
+
+export function preserveListingFeatures(saved: unknown, labels: string[]) {
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) return { ...saved, amenity_labels: labels };
+  return [...labels, ...(Array.isArray(saved) ? saved.filter(value => value && typeof value === 'object') : [])];
+}
+
+/** Shared serialization keeps recovery and ordinary saves on the same schema. */
+export function draftPricingPayload(draft: PublicListingDraftFields, savedOptions: Record<string, any> = {}) {
+  const number = (value?: string) => Number(String(value ?? '').replace(/[^\d.]/g, '')) || 0;
+  const tier1 = number(draft.commissionForm), tier2 = number(draft.commissionWhatsapp), tier3 = number(draft.commissionPhone);
+  const limits = activeLeadLimits([tier1, tier2, tier3], { form: number(draft.limitForm), whatsapp: number(draft.limitWhatsapp), phone: number(draft.limitPhone) });
+  const questions = draft.questionsWhatsapp ?? defaultQuestions(draft.dealType);
+  const questionsPhone = draft.questionsPhone ?? questions;
+  const options = { ...savedOptions, ...deriveContactOptions({ tier1, tier2, tier3, questions, questionsPhone }), lead_daily_limits: limits, form_fields: cleanFormFields(draft.formFields ?? savedOptions.form_fields) };
+  return {
+    affiliate_tier1_amount: tier1, affiliate_tier2_amount: tier2, affiliate_tier3_amount: tier3,
+    daily_lead_cap: null, contact_options: options,
+    features: { deal_closing_commission: { type: draft.commissionDealType ?? 'percent', value: number(draft.commissionDeal) }, lead_daily_limits: limits, screening_questions: { whatsapp: options.questions, phone: options.questions_phone } },
+  };
+}
 
 export function missingAdFields(f: PublicListingDraftFields): string[] {
   return [!f.dealType && 'סוג עסקה', !f.propertyType && 'סוג נכס', !f.city.trim() && 'עיר', !(f.street.trim() || f.address.trim()) && 'כתובת', !(Number(f.price) > 0) && 'מחיר', !f.contactName.trim() && 'שם מפרסם', f.contactWhatsapp.replace(/\D/g, '').length < 9 && 'מספר ווטסאפ', !f.termsAccepted && 'אישור התקנון'].filter((v): v is string => Boolean(v));
@@ -29,8 +51,18 @@ export function missingPublishFields(f: PublicListingDraftFields, hasMedia: bool
 }
 
 export function listingToDraft(row: Record<string, any>): PublicListingDraftFields {
-  const f = row.features || {};
+  const f = Array.isArray(row.features) ? row.features.find(value => value && typeof value === 'object') ?? {} : row.features || {};
   const a = row.attributes || {};
   const str = (v: unknown) => v == null ? '' : String(v);
-  return { ...EMPTY_PUBLIC_LISTING_DRAFT, listingId: row.id, publisherType: f.publisher_type || '', dealType: row.deal_type || '', propertyType: f.property_type || a.property_type || '', city: row.city || '', address: row.address || '', street: f.street || '', houseNumber: row.house_number || '', neighborhood: row.neighborhood || '', price: row.asking_price > 0 ? str(row.asking_price) : '', rooms: str(row.rooms), sqm: str(row.sqm), floor: str(row.floor), totalFloors: str(f.total_floors || a.total_floors), condition: f.condition || a.condition || '', airDirections: str(f.air_directions || a.air_directions), description: row.long_description || row.description || '', contactName: f.contact_name || '', contactWhatsapp: f.contact_whatsapp || '', elevator: Boolean(row.elevator ?? f.elevator), parking: Boolean(row.parking ?? f.parking), importedListing: { ...row, photos: row.media_photos || (row.image_url ? [row.image_url] : []) }, publicationError: str(row.source_metadata?.publication_error || row.extraction_metadata?.publication_error), resumeStep: 3 };
+  const options = row.contact_options ?? {};
+  const limits = options.lead_daily_limits ?? f.lead_daily_limits ?? {};
+  const closing = f.deal_closing_commission;
+  return { ...EMPTY_PUBLIC_LISTING_DRAFT,
+    commissionForm: str(row.affiliate_tier1_amount), commissionWhatsapp: str(row.affiliate_tier2_amount), commissionPhone: str(row.affiliate_tier3_amount),
+    commissionDeal: str(closing?.value ?? row.affiliate_tier4_amount), commissionDealType: closing?.type ?? row.affiliate_tier4_type ?? 'percent',
+    limitForm: str(limits.form), limitWhatsapp: str(limits.whatsapp), limitPhone: str(limits.phone),
+    questionsWhatsapp: options.questions ?? f.screening_questions?.whatsapp,
+    questionsPhone: options.questions_phone ?? f.screening_questions?.phone ?? options.questions,
+    formFields: options.form_fields ?? [],
+    listingId: row.id, publisherType: f.publisher_type || '', dealType: row.deal_type || '', propertyType: f.property_type || a.property_type || '', city: row.city || '', address: row.address || '', street: f.street || '', houseNumber: row.house_number || '', neighborhood: row.neighborhood || '', price: row.asking_price > 0 ? str(row.asking_price) : '', rooms: str(row.rooms), sqm: str(row.sqm), floor: str(row.floor), totalFloors: str(f.total_floors || a.total_floors), condition: f.condition || a.condition || '', airDirections: str(f.air_directions || a.air_directions), description: row.long_description || row.description || '', contactName: f.contact_name || '', contactWhatsapp: f.contact_whatsapp || '', elevator: Boolean(row.elevator ?? f.elevator), parking: Boolean(row.parking ?? f.parking), importedListing: { ...row, photos: row.media_photos || (row.image_url ? [row.image_url] : []) }, publicationError: str(row.source_metadata?.publication_error || row.extraction_metadata?.publication_error), resumeStep: 3 };
 }
