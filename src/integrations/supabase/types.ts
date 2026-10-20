@@ -8692,6 +8692,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_crm_leads: {
+        Args: { _rows: Json }
+        Returns: {
+          id: string
+        }[]
+      }
       in_current_workspace: { Args: { _row_owner: string }; Returns: boolean }
       inquiry_is_suspicious: { Args: { _phone: string }; Returns: boolean }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }

@@ -19,7 +19,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ClosingFeeSlider } from '@/components/affiliate/ClosingFeeSlider';
-import { activeLeadLimits } from '@/lib/closingFee';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,7 +38,7 @@ import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutoc
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { celebratePublication, preparePublicationSound } from '@/lib/publicationCelebration';
-import { missingAdFields, missingPublishFields } from '@/lib/adRecovery';
+import { missingAdFields, missingPublishFields, draftPricingPayload } from '@/lib/adRecovery';
 
 const isVideoUrl = (s: unknown) => typeof s === 'string' && /\.(mp4|webm|mov|m3u8|m4v)(\?|#|$)/i.test(s);
 const importedVideoUrls = (src: any): string[] => Array.from(new Set([...(Array.isArray(src?.videos) ? src.videos : []), ...(Array.isArray(src?.media_videos) ? src.media_videos : []), ...(src?.video_url ? [src.video_url] : []), ...(Array.isArray(src?.photos) ? src.photos.filter(isVideoUrl) : [])].filter((v: unknown): v is string => typeof v === 'string' && v.length > 0)));
@@ -338,28 +337,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         media_photos: photos, image_url: photos[0] ?? null,
          status: 'live', source: draftFields.listingId ? source?.source || 'manual' : source ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
       };
-      const commissions: Record<string, unknown> = {};
-      const cf = toNum(draftFields.commissionForm), cw = toNum(draftFields.commissionWhatsapp), cp = toNum(draftFields.commissionPhone);
-      if (cf != null) commissions.affiliate_tier1_amount = cf;
-      if (cw != null) commissions.affiliate_tier2_amount = cw;
-      if (cp != null) commissions.affiliate_tier3_amount = cp;
-      const cd = toNum(draftFields.commissionDeal);
-      if (cd != null) (payload.features as Record<string, unknown>).deal_closing_commission = { type: draftFields.commissionDealType === 'percent' ? 'percent' : 'fixed', value: cd };
-      const limits = activeLeadLimits([cf ?? 0, cw ?? 0, cp ?? 0], { form: toInt(draftFields.limitForm), whatsapp: toInt(draftFields.limitWhatsapp), phone: toInt(draftFields.limitPhone) });
-      commissions.daily_lead_cap = null;
-      Object.assign(payload, commissions);
-      (payload.features as Record<string, unknown>).lead_daily_limits = limits;
-      const qClean = (q?: string[]) => (q && q.length ? q : defaultQuestions(draftFields.dealType)).map(x => x.trim()).filter(Boolean);
-      const contactOpts = { lead_daily_limits: limits, ...(((payload as any).contact_options as object) || {}), questions: qClean(draftFields.questionsWhatsapp), questions_phone: qClean(draftFields.questionsPhone), form_fields: cleanFormFields(draftFields.formFields) };
-      (payload as any).contact_options = contactOpts;
-      (payload.features as Record<string, unknown>).screening_questions = { whatsapp: contactOpts.questions, phone: contactOpts.questions_phone };
+      const { features: pricingFeatures, ...pricing } = draftPricingPayload(draftFields, source?.contact_options ?? {});
+      Object.assign(payload, pricing);
+      Object.assign(payload.features, pricingFeatures);
       (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
       let request;
       if (draftFields.listingId && activeWorkspaceId) {
-        const { data: existing, error: readError } = await supabase.from('listings').select('features, source_metadata, additional_details').eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId).single();
+        const { data: existing, error: readError } = await supabase.from('listings').select('features, contact_options, source_metadata, additional_details').eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId).single();
         if (readError) throw readError;
         const { slug, user_id, owner_id, workspace_owner_id, affiliate_enabled, ...updates } = payload;
-        request = supabase.from('listings').update({ ...updates, features: { ...(existing.features as object || {}), ...payload.features }, source_metadata: { ...(existing.source_metadata as object || {}), publication_error: null }, additional_details: existing.additional_details } as never).eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId);
+        request = supabase.from('listings').update({ ...updates, contact_options: { ...(existing.contact_options as object || {}), ...pricing.contact_options }, features: { ...(existing.features as object || {}), ...payload.features }, source_metadata: { ...(existing.source_metadata as object || {}), publication_error: null }, additional_details: existing.additional_details } as never).eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId);
       } else request = supabase.from('listings').insert(payload as never);
       const { data, error } = await request.select('id').single();
       if (error) throw error;

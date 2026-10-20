@@ -121,7 +121,7 @@ export default function MyAds() {
     queryKey: ['my-ad-recovery', user?.id, activeWorkspaceId], enabled: Boolean(user?.id && activeWorkspaceId), refetchOnMount: 'always', refetchOnWindowFocus: true,
     queryFn: async () => {
       if (!user?.id || !activeWorkspaceId) return [];
-      const [local, result] = await Promise.all([readPublicListingDraft(`${user.id}:${activeWorkspaceId}`), supabase.from('listings').select('id, property_title, address, city, house_number, neighborhood, asking_price, deal_type, rooms, sqm, floor, description, long_description, features, attributes, elevator, parking, media_photos, image_url, status, is_published, source_metadata, extraction_metadata, updated_at').eq('workspace_owner_id', activeWorkspaceId).eq('is_published', false).neq('status', 'discarded').order('updated_at', { ascending: false })]);
+      const [local, result] = await Promise.all([readPublicListingDraft(`${user.id}:${activeWorkspaceId}`), supabase.from('listings').select('id, property_title, address, city, house_number, neighborhood, asking_price, deal_type, rooms, sqm, floor, description, long_description, features, attributes, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, affiliate_tier4_amount, affiliate_tier4_type, elevator, parking, media_photos, image_url, status, is_published, source_metadata, extraction_metadata, updated_at').eq('workspace_owner_id', activeWorkspaceId).eq('is_published', false).neq('status', 'discarded').order('updated_at', { ascending: false })]);
       if (result.error) throw result.error;
       const rows = (result.data || []).flatMap(row => {
         const draft = listingToDraft(row);

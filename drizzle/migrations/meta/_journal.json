@@ -288,6 +288,20 @@
       "when": 1792539006278,
       "tag": "0040_individual_lead_type_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792540453202,
+      "tag": "0041_import_crm_leads_expression_conflict",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792540652621,
+      "tag": "0042_import_crm_leads_preserve_optional_defaults",
+      "breakpoints": true
     }
   ]
 }

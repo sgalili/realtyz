@@ -60,12 +60,12 @@ export function RewardDialog({
     const options =
       listing.contact_options && typeof listing.contact_options === "object" ? listing.contact_options : {};
     const base =
-      Array.isArray(options.questions) && options.questions.length
+      Array.isArray(options.questions)
         ? options.questions
         : defaultQuestions(listing.deal_type);
     setQuestions(base);
     setQuestionsPhone(
-      Array.isArray(options.questions_phone) && options.questions_phone.length ? options.questions_phone : base,
+      Array.isArray(options.questions_phone) ? options.questions_phone : base,
     );
     // Restore any unsaved draft (typed before refresh / closing the dialog).
     try {
@@ -251,8 +251,8 @@ export function RewardDialog({
                     tier2Amount: num(tier2),
                     tier3Type: "fixed",
                     tier3Amount: num(tier3),
-                    tier4Type: "fixed",
-                    tier4Amount: closingFeeAmount(clampClosingPercent(tier4Type === "fixed" ? num(tier4) / (Number(listing.asking_price) || 1) * 100 : num(tier4), listing.deal_type), Number(listing.asking_price) || 0),
+                    tier4Type,
+                    tier4Amount: num(tier4),
                     dailyLeadCap: null,
                     contactOptions: { ...listing.contact_options, lead_daily_limits: activeLeadLimits([num(tier1), num(tier2), num(tier3)], Object.fromEntries(Object.entries(dailyCaps).map(([key, value]) => [key, num(value)])) as LeadDailyLimits), ...deriveContactOptions({
                       tier1: num(tier1),
