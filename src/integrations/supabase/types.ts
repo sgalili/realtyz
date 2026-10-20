@@ -8737,6 +8737,10 @@ export type Database = {
         Returns: string
       }
       listing_photo_pool: { Args: { _listing_id: string }; Returns: string[] }
+      listing_tier_cap_reached: {
+        Args: { _listing_id: string; _tier: number }
+        Returns: boolean
+      }
       mark_group_posts_published: {
         Args: { _campaign_log_id: string }
         Returns: number
