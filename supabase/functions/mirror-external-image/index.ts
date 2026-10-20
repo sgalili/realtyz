@@ -1,7 +1,8 @@
 // Mirrors an external image URL into the workspace's media-library bucket and
 // creates a media_library row so downstream flows can rely on DB-hosted URLs.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { isPublicYad2Cache, isTrustedYad2Image } from './imageSource.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -40,10 +41,10 @@ Deno.serve(async (req) => {
     const url = String((body as { url?: unknown }).url ?? "").trim();
     if (!/^https?:\/\//i.test(url)) return json({ ok: false, error: "bad_url" }, 400);
     const yad2Import = (body as { source?: string }).source === 'yad2';
+    const parsed = new URL(url);
+    const cachedYad2 = isPublicYad2Cache(parsed, SUPABASE_URL);
     if (yad2Import) {
-      const parsed = new URL(url);
-      const trustedHost = ['yad2.co.il', 'yad2cdn.com', 'yad2.com'].some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host));
-      if (parsed.protocol !== 'https:' || !trustedHost || parsed.port || parsed.username || parsed.password) return json({ ok: false, error: 'untrusted_yad2_image' }, 400);
+      if (!cachedYad2 && !isTrustedYad2Image(parsed)) return json({ ok: false, error: 'untrusted_yad2_image' }, 400);
     }
 
     let origin = "";
@@ -55,7 +56,8 @@ Deno.serve(async (req) => {
         Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
         ...(origin ? { Referer: origin + "/" } : {}),
       },
-      redirect: yad2Import ? "error" : "follow",
+      redirect: yad2Import || cachedYad2 ? "error" : "follow",
+      signal: AbortSignal.timeout(20_000),
     });
     if (!res.ok) return json({ ok: false, error: `fetch_failed_${res.status}` }, 502);
     let ct = (res.headers.get("content-type") || "").toLowerCase();
@@ -80,6 +82,9 @@ Deno.serve(async (req) => {
     })();
     if (sniff) ct = sniff;
     else if (!ct.startsWith("image/")) return json({ ok: false, error: "not_an_image" }, 415);
+
+    // The cache already hosts this image. Validate it, then preserve its identity.
+    if (cachedYad2) return json({ ok: true, public_url: url });
 
     const ext = extFromContentType(ct);
     const key = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
