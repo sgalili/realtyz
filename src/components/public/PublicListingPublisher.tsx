@@ -18,7 +18,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
+import { ClosingFeeSlider } from '@/components/affiliate/ClosingFeeSlider';
+import { activeLeadLimits } from '@/lib/closingFee';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -344,13 +345,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       if (cp != null) commissions.affiliate_tier3_amount = cp;
       const cd = toNum(draftFields.commissionDeal);
       if (cd != null) (payload.features as Record<string, unknown>).deal_closing_commission = { type: draftFields.commissionDealType === 'percent' ? 'percent' : 'fixed', value: cd };
-      const limits = { form: toInt(draftFields.limitForm), whatsapp: toInt(draftFields.limitWhatsapp), phone: toInt(draftFields.limitPhone) };
-      const limitValues = Object.values(limits).filter((v): v is number => v != null);
-      if (limitValues.length) commissions.daily_lead_cap = limitValues.reduce((a, b) => a + b, 0);
+      const limits = activeLeadLimits([cf ?? 0, cw ?? 0, cp ?? 0], { form: toInt(draftFields.limitForm), whatsapp: toInt(draftFields.limitWhatsapp), phone: toInt(draftFields.limitPhone) });
+      commissions.daily_lead_cap = null;
       Object.assign(payload, commissions);
       (payload.features as Record<string, unknown>).lead_daily_limits = limits;
       const qClean = (q?: string[]) => (q && q.length ? q : defaultQuestions(draftFields.dealType)).map(x => x.trim()).filter(Boolean);
-      const contactOpts = { ...(((payload as any).contact_options as object) || {}), questions: qClean(draftFields.questionsWhatsapp), questions_phone: qClean(draftFields.questionsPhone), form_fields: cleanFormFields(draftFields.formFields) };
+      const contactOpts = { lead_daily_limits: limits, ...(((payload as any).contact_options as object) || {}), questions: qClean(draftFields.questionsWhatsapp), questions_phone: qClean(draftFields.questionsPhone), form_fields: cleanFormFields(draftFields.formFields) };
       (payload as any).contact_options = contactOpts;
       (payload.features as Record<string, unknown>).screening_questions = { whatsapp: contactOpts.questions, phone: contactOpts.questions_phone };
       (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
@@ -798,7 +798,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       </LeadTypeHelp>
                     </span>
                     <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
-                    <Input inputMode="numeric" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} />
+                    {Number((fields as any)[`commission${key}`]) > 0 ? <Input inputMode="numeric" placeholder="ללא מגבלה" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} /> : <span />}
                     {key === 'Form' && (() => {
                       const n = cleanFormFields(fields.formFields).length;
                       return (
@@ -821,41 +821,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 ))}
               </div>
-              {(() => {
-                const isRent = fields.dealType === 'rent';
-                const minPct = isRent ? 10 : 0.2;
-                const maxPct = isRent ? 100 : 2;
-                const step = isRent ? 1 : 0.1;
-                const raw = Number(fields.commissionDeal);
-                const pct = Number.isFinite(raw) && raw >= minPct ? Math.min(raw, maxPct) : minPct;
-                const price = Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0;
-                const amount = price > 0 ? Math.round((price * pct) / 100) : null;
-                return (
-                <div className="space-y-2 rounded-lg border p-2.5 text-sm">
-                  <span className="flex items-center gap-1 font-medium">עמלת סגירה (למתווכים מורשים)<span className="text-destructive"> *</span>
-                    <LeadTypeHelp label="עמלת סגירה"><p>עמלה לשותף שהביא ליד שסגר עסקה בפועל על הנכס. {isRent ? 'הטווח: 10% עד 100% משכר הדירה החודשי.' : 'הטווח: 0.2% עד 2% ממחיר המכירה.'}</p></LeadTypeHelp>
-                  </span>
-                  <div className="flex items-center gap-3" dir="ltr">
-                    <span className="w-10 shrink-0 text-center text-xs text-muted-foreground">{minPct}%</span>
-                    <Slider
-                      aria-label="עמלת סגירה"
-                      min={minPct}
-                      max={maxPct}
-                      step={step}
-                      value={[pct]}
-                      onValueChange={([v]) => { set('commissionDealType', 'percent'); set('commissionDeal', String(v)); }}
-                      className="flex-1"
-                    />
-                    <span className="w-10 shrink-0 text-center text-xs text-muted-foreground">{maxPct}%</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-bold text-primary">{pct}%{amount != null ? ` · ₪${amount.toLocaleString('he-IL')}` : ''}</span>
-                    <span className="text-xs text-muted-foreground">{isRent ? 'משכר הדירה החודשי' : 'ממחיר המכירה'}</span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">עמלת סגירה גבוהה היא היתרון שלך: היא מקנה למודעה חשיפה מקסימלית, מניעה שותפים רבים יותר לקדם את הנכס באופן פעיל, ומגדילה משמעותית את הסיכוי לסגור את העסקה מהר יותר.</p>
-                </div>
-                );
-              })()}
+              <ClosingFeeSlider dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
