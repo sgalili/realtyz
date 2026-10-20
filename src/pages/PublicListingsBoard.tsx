@@ -5,6 +5,7 @@ import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides, hasSeenWelcomeSlides } from '@/components/public/WelcomeSlides';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
+import { WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -245,6 +246,16 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   };
 
   const [showWelcome, setShowWelcome] = useState(() => !hasSeenWelcomeSlides());
+  const [welcomeKey, setWelcomeKey] = useState(0);
+  useEffect(() => {
+    setShowWelcome(location.state?.replayWelcome === true || !hasSeenWelcomeSlides());
+    setWelcomeKey((key) => key + 1);
+  }, [location.key]);
+  useEffect(() => {
+    const reopen = () => { setWelcomeKey((key) => key + 1); setShowWelcome(true); };
+    window.addEventListener(WELCOME_REOPEN_EVENT, reopen);
+    return () => window.removeEventListener(WELCOME_REOPEN_EVENT, reopen);
+  }, []);
   const filtered = useMemo(() => cards.filter((card) => matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter)), [cards, propFilter]);
   const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, filtered);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
@@ -252,16 +263,16 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
 
   return (
     <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
-      {!embedded && showWelcome && (
-        <div className="fixed inset-x-0 bottom-0 top-14 z-40 overflow-y-auto bg-background sm:top-16">
-          <WelcomeSlides onDone={() => setShowWelcome(false)} />
+      {showWelcome && (
+        <div className={cn('fixed inset-x-0 bottom-0 z-40 overflow-y-auto bg-background', embedded ? 'top-16' : 'top-14 sm:top-16')}>
+          <WelcomeSlides key={welcomeKey} onDone={() => setShowWelcome(false)} />
         </div>
       )}
       <header className="bg-card">
         <div className="w-full px-4 pb-0 pt-2">
           {embedded ? null : (
             <div className="relative z-50 flex min-h-11 items-center gap-x-2 bg-card sm:gap-x-3">
-              <PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" />
+              <Button variant="ghost" className="h-auto shrink-0 p-0 hover:bg-transparent" aria-label="פתיחת ההיכרות עם TORAF" onClick={() => { setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" /></Button>
               <h1 className="min-w-0 truncate whitespace-nowrap text-base font-bold text-foreground sm:text-2xl">לוח שיווק שותפים</h1>
               <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-9 w-9 border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><UserRound className="h-5 w-5" /></Button>}

@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { UserPlus } from 'lucide-react';
-import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import {
   listingTiers,
@@ -69,7 +69,7 @@ export function SubmitLeadDialog({ listing }: { listing: MarketplaceListing }) {
         </DialogHeader>
 
         <div className="space-y-3 py-2">
-          <CommissionTierBadges tiers={listingTiers(listing)} level4Locked={!level4Unlocked} />
+          <LeadPricingDialog listing={listing} readOnly compact={false} />
 
           <div className="space-y-1.5">
             <Label>שם המתעניין</Label>

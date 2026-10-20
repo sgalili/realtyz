@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/properties/WhatsAppIcon";
 import { useNavigate } from "react-router-dom";
-import CommissionTierBadges from "@/components/affiliate/CommissionTierBadges";
+import LeadPricingDialog from "@/components/affiliate/LeadPricingDialog";
 import LeadTypeFilterButton from "@/components/affiliate/LeadTypeFilterButton";
 import {
   EMPTY_LEAD_FILTER,
@@ -392,24 +392,16 @@ loading ? (
                     });
                   if (!tierTexts.length) return null;
                   return (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      title="עריכת מחירי העמלות וההגדרות"
-                      aria-label="עריכת מחירי העמלות וההגדרות"
-                      className="grid h-auto grid-cols-2 gap-x-3 gap-y-1 rounded-md px-1 py-0.5 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setEditing(listing);
-                      }}
-                    >
+                    <LeadPricingDialog readOnly gross listing={{ listing_id: listing.id, broker_id: '', property_title: listing.property_title, tier1_amount: t1, tier2_amount: t2, tier3_amount: t3, tier4_amount: t4, tier4_type: t4Type }}>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
                       {tierTexts.map(({ value, label, Icon }) => (
                         <div key={label} className="flex items-center justify-start gap-1" title={label}>
                           <Icon className="h-3 w-3" />
                           <bdi dir="ltr">{value}</bdi>
                         </div>
                       ))}
-                    </Button>
+                      </div>
+                    </LeadPricingDialog>
                   );
                 }}
               />
@@ -485,9 +477,9 @@ loading ? (
                           </span>
                         ) : null}
                         {l.affiliate_enabled && (
-                          <Badge variant="secondary">
+                          <LeadPricingDialog readOnly gross listing={{ listing_id: l.id, broker_id: '', property_title: l.property_title, tier1_amount: Number(l.affiliate_tier1_amount ?? 0), tier2_amount: Number(l.affiliate_tier2_amount ?? 0), tier3_amount: Number(l.affiliate_tier3_amount ?? 0), tier4_amount: Number(l.affiliate_tier4_amount ?? 0), tier4_type: l.affiliate_tier4_type ?? 'fixed' }}><Badge variant="secondary">
                             {formatReward(l.affiliate_reward_type, l.affiliate_reward_amount)}
-                          </Badge>
+                          </Badge></LeadPricingDialog>
                         )}
                         <div className="ms-auto flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
                           <Label htmlFor={`affiliate-${l.id}`} className="text-xs text-muted-foreground">
@@ -693,15 +685,15 @@ loading ? (
                       </div>
                     ) : null}
 
-                    <CommissionTierBadges
-                      tiers={{
-                        tier1: Number(s.tier1_amount),
-                        tier2: Number(s.tier2_amount),
-                        tier3: Number(s.tier3_amount),
-                        tier4Type: s.tier4_type ?? "fixed",
-                        tier4: Number(s.tier4_amount ?? 0),
+                    <LeadPricingDialog readOnly
+                      listing={{
+                        listing_id: s.listing_id ?? '', broker_id: s.broker_id, property_title: s.listing?.property_title ?? null,
+                        tier1_amount: Number(s.tier1_amount),
+                        tier2_amount: Number(s.tier2_amount),
+                        tier3_amount: Number(s.tier3_amount),
+                        tier4_type: s.tier4_type ?? "fixed",
+                        tier4_amount: Number(s.tier4_amount ?? 0),
                       }}
-                      compact
                     />
 
                     <div className="flex flex-wrap items-center gap-2">
