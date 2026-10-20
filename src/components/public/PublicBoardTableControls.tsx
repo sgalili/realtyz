@@ -9,18 +9,25 @@ import type { PublicCard } from '@/pages/PublicListingsBoard';
 
 export const BOARD_COLUMNS = [
   { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' },
-  { id: 'deal', label: 'עסקה' }, { id: 'price', label: 'מחיר' },
+  { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'עמלות' }, { id: 'deal', label: 'עסקה' },
   { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
 ] as const;
 export type BoardColumnId = typeof BOARD_COLUMNS[number]['id'];
 type Preferences = { order: BoardColumnId[]; hidden: BoardColumnId[]; sort: { id: BoardColumnId; descending: boolean } | null };
 const defaults = (): Preferences => ({ order: BOARD_COLUMNS.map(c => c.id), hidden: [], sort: null });
 const validId = (id: unknown): id is BoardColumnId => BOARD_COLUMNS.some(c => c.id === id);
+export function upgradeBoardColumnOrder(order: BoardColumnId[]): BoardColumnId[] {
+  if (order.includes('commissions')) return order;
+  const next: BoardColumnId[] = order.filter(id => id !== 'deal');
+  const priceIndex = next.indexOf('price');
+  next.splice(priceIndex < 0 ? next.length : priceIndex + 1, 0, 'commissions', 'deal');
+  return next;
+}
 function read(key: string): Preferences {
   try {
     const saved = JSON.parse(localStorage.getItem(key) || 'null');
     if (!saved) return defaults();
-    const order = Array.isArray(saved.order) ? [...new Set<BoardColumnId>(saved.order.filter(validId))] : [];
+    const order = upgradeBoardColumnOrder(Array.isArray(saved.order) ? [...new Set<BoardColumnId>(saved.order.filter(validId))] : []);
     BOARD_COLUMNS.forEach(c => { if (!order.includes(c.id)) order.push(c.id); });
     const hidden: BoardColumnId[] = Array.isArray(saved.hidden) ? [...new Set<BoardColumnId>(saved.hidden.filter(validId))] : [];
     return { order, hidden: hidden.length < order.length ? hidden : [], sort: validId(saved.sort?.id) ? { id: saved.sort.id, descending: saved.sort.descending === true } : null };
@@ -31,6 +38,7 @@ function sortValue(card: PublicCard, id: BoardColumnId): string | number | null 
     case 'photo': return card.photos?.length || 0;
     case 'address': return [card.street, card.neighborhood, card.city].filter(Boolean).join(', ') || null;
     case 'deal': return card.deal_type === 'rent' ? 'להשכרה' : 'למכירה';
+    case 'commissions': return null;
     default: return card[id];
   }
 }
