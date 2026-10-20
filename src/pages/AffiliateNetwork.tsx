@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/properties/WhatsAppIcon";
 import { useNavigate } from "react-router-dom";
-import CommissionTierBadges from "@/components/affiliate/CommissionTierBadges";
+import LeadPricingDialog from "@/components/affiliate/LeadPricingDialog";
 import LeadTypeFilterButton from "@/components/affiliate/LeadTypeFilterButton";
 import {
   EMPTY_LEAD_FILTER,
@@ -693,15 +693,15 @@ loading ? (
                       </div>
                     ) : null}
 
-                    <CommissionTierBadges
-                      tiers={{
-                        tier1: Number(s.tier1_amount),
-                        tier2: Number(s.tier2_amount),
-                        tier3: Number(s.tier3_amount),
-                        tier4Type: s.tier4_type ?? "fixed",
-                        tier4: Number(s.tier4_amount ?? 0),
+                    <LeadPricingDialog readOnly
+                      listing={{
+                        listing_id: s.listing_id ?? '', broker_id: s.broker_id, property_title: s.listing?.property_title ?? null,
+                        tier1_amount: Number(s.tier1_amount),
+                        tier2_amount: Number(s.tier2_amount),
+                        tier3_amount: Number(s.tier3_amount),
+                        tier4_type: s.tier4_type ?? "fixed",
+                        tier4_amount: Number(s.tier4_amount ?? 0),
                       }}
-                      compact
                     />
 
                     <div className="flex flex-wrap items-center gap-2">
