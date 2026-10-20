@@ -1,6 +1,6 @@
 # Lead limits and closing fee
-- [ ] Fix CRM import against the actual expression/partial unique index and verify workspace isolation.
-- [ ] Preserve existing-ad pricing, per-tier caps, screening questions and custom fields through hydration and save; test recovery/editors.
+- [x] Fix CRM import against the actual expression/partial unique index with server-authorized workspace scope; focused tests pass. A repeat-import UI check remains unverified without a matching workspace-owned lead.
+- [x] Preserve existing-ad pricing, per-tier caps, screening questions and custom fields through hydration and save; recovery/editor tests pass. Live existing-ad save remains unverified because the active workspace has no ads.
 - [x] Replace general cap with per-priced-type limits, persisted and enforced.
 - [x] Add shared LTR closing slider with editable value, correct ranges and honest network feedback.
 - [x] Verify slider and conditional limits on phone/desktop; verify draft reload and rent amounts. Existing ad save not exercised because screenshot ad is unavailable.
