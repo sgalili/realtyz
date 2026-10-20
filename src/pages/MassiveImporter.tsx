@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { parsePdfToRows } from '@/lib/parsePdfTable';
+import { importLeadBatch } from '@/lib/importLeads';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -307,7 +308,7 @@ export default function MassiveImporter() {
       if (abortRef.current) break;
       const chunk = validRows.slice(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
       if (chunk.length === 0) break;
-      const { error } = await supabase.from('leads').upsert(chunk, { onConflict: 'phone_number' });
+      const { error } = await importLeadBatch(chunk);
       if (error) {
         s.errors += chunk.length;
         console.error('Chunk error:', error);

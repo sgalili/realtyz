@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { parsePdfToRows } from '@/lib/parsePdfTable';
+import { importLeadBatch } from '@/lib/importLeads';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
@@ -1667,7 +1668,8 @@ const LeadCRM = () => {
     setImporting(true);
     setImportProgress(0);
     let totalInserted = 0;
-    const ownerId = await resolveOwnerId();
+    const ownerId = activeWorkspaceId || user?.id;
+    if (!ownerId) { setImporting(false); toast.error('יש להתחבר לפני ייבוא'); return; }
 
     // ---- JSON mode: match existing contacts and update their phone numbers ----
     if (importIsJson) {
@@ -1675,7 +1677,8 @@ const LeadCRM = () => {
         const norm = (s?: string | null) => (s ?? '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
         const { data: existing, error: exErr } = await supabase
           .from('leads')
-          .select('id, full_name, email, phone_number, identity_number');
+          .select('id, full_name, email, phone_number, identity_number')
+          .eq('workspace_owner_id', ownerId);
         if (exErr) throw exErr;
 
         const byEmail: Record<string, string> = {};
@@ -1710,8 +1713,9 @@ const LeadCRM = () => {
             if (r.agency_name) patch.agency_name = r.agency_name;
             if (r.operating_area) patch.operating_area = r.operating_area;
             if (r.notes) patch.notes = r.notes;
-            const { error } = await supabase.from('leads').update(patch).eq('id', matchId);
-            if (!error) updated++;
+            const { error } = await supabase.from('leads').update(patch).eq('id', matchId).eq('workspace_owner_id', ownerId);
+            if (error) throw error;
+            updated++;
           } else {
             toInsert.push({
               full_name: r.full_name,
@@ -1738,10 +1742,7 @@ const LeadCRM = () => {
 
         let inserted = 0;
         for (let i = 0; i < toInsert.length; i += 500) {
-          const { data, error } = await supabase
-            .from('leads')
-            .upsert(toInsert.slice(i, i + 500), { onConflict: 'phone_number' })
-            .select('id');
+          const { data, error } = await importLeadBatch(toInsert.slice(i, i + 500));
           if (error) throw error;
           inserted += data?.length ?? 0;
         }
@@ -1795,10 +1796,7 @@ const LeadCRM = () => {
             ...(r.extra && Object.keys(r.extra).length ? { extra_fields: r.extra } : {}),
           },
         }));
-        const { data, error } = await supabase
-          .from('leads')
-          .upsert(batch, { onConflict: 'phone_number' })
-          .select('id');
+        const { data, error } = await importLeadBatch(batch);
         if (error) throw error;
         totalInserted += data?.length ?? 0;
         setImportProgress(Math.round(((i + batch.length) / totalRows) * 100));
