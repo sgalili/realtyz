@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     // Properties that already hit their daily lead limit stop being promoted.
     const rows = (data ?? []) as any[];
     const capped = new Set<string>();
-    await Promise.all(rows.filter((r) => r.daily_lead_cap).map(async (r) => {
+    await Promise.all(rows.filter((r) => r.contact_options?.lead_daily_limits || r.daily_lead_cap).map(async (r) => {
       const { data: reached } = await admin.rpc("listing_daily_cap_reached", { _listing_id: r.id });
       if (reached === true) capped.add(r.id);
     }));
