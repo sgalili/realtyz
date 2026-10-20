@@ -16,7 +16,7 @@
 - Yad2 checks exact workspace records before daily claims; cache reads keep edits and source timestamps (no sliding freshness). Cache/scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely needs verified workspace status. Counters use completed-search snapshots.
 - Yad2 keeps original publisher snapshots, source buckets and scoped DOM evidence; never null-overwrites or classifies from related ads; license needs evidence.
 - Group selection uses one checkbox per row, immutable deduplicated snapshots and no-op guards.
-- Post media dedup matches original host/path hashes to cached filenames; mirrors and sources are one asset.
+- Media dedup uses host/path hashes; Yad2 reuses validated own public cache, not other hosts. Why: safe reuse.
 - Multi-select lists use the shared controls in src/components/ui/multi-select-controls.tsx so every page behaves the same.
 - Partner rewards freeze into immutable listing_reward_snapshots on pick; charges use the snapshot. Trust scores are server-computed (compute_trust_score), super_admin-overridable, audited.
 - Listing lifecycle advances forward-only via advance_listing_stage; daily cron pauses partner distribution after 3 unanswered checks until confirm_listing_availability.
