@@ -10,6 +10,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
 import { ExtensionDownloadButton, isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
+import { verifyExtensionAlive } from '@/lib/extensionDetect';
 import { pairExtension, readRunnerStatus } from '@/lib/extensionPairing';
 
 const FB_GROUPS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
@@ -139,6 +140,9 @@ export function ExtensionGroupSyncCard({
     let alive = true;
     const tick = async () => {
       if (!alive || !isExtensionInstalled()) return;
+      // Live check before pairing: a stale passive flag must not trigger a
+      // pairing attempt the extension can never answer.
+      if (!(await verifyExtensionAlive(1200))) return;
       const status = await readRunnerStatus();
       if (!alive) return;
       if (!status?.paired) await pairExtension();
