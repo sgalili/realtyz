@@ -420,7 +420,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
                 onToggle={() => setJoinPicked(joinPicked.size > 0 ? new Set() : new Set(sortByPopularity(notJoinedGroups).slice(0, MAX_GROUPS).map((g) => g.id)))}
                 className="rounded-lg border border-border">
                 <Button type="button" size="sm" className="h-7 gap-1 text-[12px]" disabled={joinPicked.size === 0 || joining}
-                  onClick={() => void joinTargets(notJoinedGroups.filter((g) => joinPicked.has(g.id)))}>
+                  onClick={() => void joinTargets(notJoinedGroups.filter((g) => joinPicked.has(g.id)), true)}>
                   {joining ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
                   הצטרפות
                 </Button>
