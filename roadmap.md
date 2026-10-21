@@ -1,3 +1,7 @@
+# Universal broker license enforcement
+- [ ] Enforce official registry evidence for existing/new broker grants and profile/affiliate updates; remove invalid existing broker roles.
+- [ ] Clean numeric-only license fields, test server guards and verify profile flow.
+
 # Post generation repair
 - [x] Restore complete property-specific Hebrew posts and dedicated first-comment generation without changing the model or existing output caps; deploy and verify both return 200 for the selected משה סנה project.
 - [x] Reject truncated/internal-reasoning output; 13 focused tests pass, authenticated regeneration shows full Hebrew copy plus the two-line comment and existing contact link after reload; preview build passes. No post was published.
