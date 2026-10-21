@@ -32,6 +32,7 @@ import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardCol
 import { propertyInquiryRef } from '@/lib/propertyReferral';
 import PropertyReferralButton from '@/components/public/PropertyReferralButton';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
+import BoardSearchControls from '@/components/public/BoardSearchControls';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -281,18 +282,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               </div>
             </div>
           )}
-          <div className={cn('mx-auto flex max-w-6xl -ms-2.5 items-center gap-2', embedded ? '' : 'mt-3')}>
-
-            <div className="relative min-w-0 max-w-md flex-1">
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void load(); }} placeholder="חיפוש חופשי" className="ps-9" />
-              <span className="absolute start-1 top-1/2 flex -translate-y-1/2"><LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} /></span>
-            </div>
-            <div className="inline-flex shrink-0 rounded-md bg-background py-1 ps-1">
-              {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => toggleDeal(value)} className={cn('gap-1.5 px-2 hover:bg-transparent hover:text-inherit focus-visible:bg-transparent', deals[value] ? 'font-semibold text-foreground hover:!text-foreground' : 'text-muted-foreground/60 hover:!text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? (value === 'sale' ? 'bg-success' : 'bg-sale') : 'bg-muted-foreground/30')} />{label}</Button>)}
-            </div>
-            {query.trim() ? <Button type="button" className="shrink-0" onClick={() => void load()}>חיפוש</Button> : null}
-            <Button className="ms-auto shrink-0" size="icon" variant="outline" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
-          </div>
+          <div className={embedded ? '' : 'mt-3'}><BoardSearchControls query={query} onQueryChange={setQuery} onSearch={() => void load()} deals={deals} onDealToggle={toggleDeal} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} />} /></div>
         </div>
       </header>
 
