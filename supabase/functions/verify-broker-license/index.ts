@@ -54,6 +54,8 @@ Deno.serve(async req => {
       if (error) throw new Error('verification_not_saved');
       const { error: completeError } = await admin.rpc('complete_official_license_verification', { _uid: userId, _number: licenseNumber });
       if (completeError) throw new Error('verification_not_completed');
+      const { error: affiliateError } = await admin.from('affiliate_profiles').update({ license_number: licenseNumber, license_holder_name: record['שם המתווך'], license_status: 'verified', license_verified_at: new Date().toISOString(), license_rejection_reason: null }).eq('user_id', userId);
+      if (affiliateError) throw new Error('affiliate_verification_not_completed');
     }
     // Do not expose registry holders' personal information through this endpoint.
     return reply({ valid: true, source: BROKER_REGISTRY_SOURCE, updatedAt });
