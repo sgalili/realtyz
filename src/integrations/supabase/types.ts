@@ -2408,6 +2408,7 @@ export type Database = {
           apartments: Json
           available_units: number | null
           city: string | null
+          commission_config: Json
           created_at: string
           delivery_date: string | null
           description: string | null
@@ -2431,6 +2432,7 @@ export type Database = {
           apartments?: Json
           available_units?: number | null
           city?: string | null
+          commission_config?: Json
           created_at?: string
           delivery_date?: string | null
           description?: string | null
@@ -2454,6 +2456,7 @@ export type Database = {
           apartments?: Json
           available_units?: number | null
           city?: string | null
+          commission_config?: Json
           created_at?: string
           delivery_date?: string | null
           description?: string | null
@@ -4723,6 +4726,8 @@ export type Database = {
           daily_lead_cap: number | null
           deal_type: string | null
           description: string
+          developer_project_id: string | null
+          developer_unit_key: string | null
           distribution_paused: boolean
           distribution_paused_at: string | null
           elevator: boolean | null
@@ -4798,6 +4803,8 @@ export type Database = {
           daily_lead_cap?: number | null
           deal_type?: string | null
           description: string
+          developer_project_id?: string | null
+          developer_unit_key?: string | null
           distribution_paused?: boolean
           distribution_paused_at?: string | null
           elevator?: boolean | null
@@ -4873,6 +4880,8 @@ export type Database = {
           daily_lead_cap?: number | null
           deal_type?: string | null
           description?: string
+          developer_project_id?: string | null
+          developer_unit_key?: string | null
           distribution_paused?: boolean
           distribution_paused_at?: string | null
           elevator?: boolean | null
@@ -4921,7 +4930,15 @@ export type Database = {
           user_id?: string
           workspace_owner_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "listings_developer_project_id_fkey"
+            columns: ["developer_project_id"]
+            isOneToOne: false
+            referencedRelation: "developer_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_listings: {
         Row: {
@@ -8159,6 +8176,10 @@ export type Database = {
         Returns: boolean
       }
       delete_leads_cascade: { Args: { _ids: string[] }; Returns: number }
+      developer_fees_valid: {
+        Args: { _deal: string; _fees: Json; _price: number }
+        Returns: boolean
+      }
       dispatch_automation_run: { Args: { _run_id: string }; Returns: undefined }
       dispatch_smart_notification: {
         Args: {
@@ -8831,6 +8852,10 @@ export type Database = {
       }
       partner_can_view_closing: { Args: { _user_id: string }; Returns: boolean }
       post_media_source_key: { Args: { _url: string }; Returns: string }
+      publish_developer_project: {
+        Args: { _project: string; _unit_key?: string }
+        Returns: Json
+      }
       purchase_leftover_lead: { Args: { _charge_id: string }; Returns: Json }
       queue_autopilot_messages: {
         Args: {
