@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useNavigate } from 'react-router-dom';
 import { SIGNUP_ROLE_LABELS, setPendingSignupRole, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { savePendingBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
@@ -32,12 +33,12 @@ const acceptVerifiedSession = async (data: PhoneAuthResult | null) => {
 };
 
 const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
-  { key: 'h1', render: () => <>כלי העבודה היחיד שכל מתווך חייב בעידן ה<strong>AI</strong></> },
-  { key: 'h2', render: () => <>בלי ספקים חיצוניים: <strong>ווטסאפ, SMS ואימייל</strong> במקום אחד</> },
-  { key: 'h3', render: () => <>ניהול לידים, נכסים ושיחות <strong>בלי בלאגן ובלי גיליונות</strong></> },
-  { key: 'h4', render: () => <>ריטה <strong>מדברת, מדרגת ומזכירה</strong> מתי לחזור להליד</> },
-  { key: 'h5', render: () => <>שיווק בכל הערוצים: <strong>פייסבוק, ווטסאפ ו-SMS</strong> ממסך אחד</> },
-  { key: 'h6', render: () => <>חתימות דיגיטליות, הסכמי סיור ושיתוף נכסים <strong>בקליק אחד</strong></> },
+  { key: 'h1', render: () => <>קונים ומוכרים: נכסים, סוכנים ו<strong>שיתופי פעולה</strong> במקום אחד</> },
+  { key: 'h2', render: () => <>משכירים ושוכרים: פרסום נכס, פניות ושיתופים <strong>בלחיצה אחת</strong></> },
+  { key: 'h3', render: () => <>יזמים וקבלנים: ניהול פרויקטים, דירות ו<strong>לידים חמים</strong></> },
+  { key: 'h4', render: () => <>מתווכים וסוכנויות: CRM, אוטומציה ו<strong>סגירת עסקאות</strong> מהירה</> },
+  { key: 'h5', render: () => <>ריטה <strong>עובדת בשבילך 24/7</strong> — פניות בווטסאפ, SMS ואימייל</> },
+  { key: 'h6', render: () => <>שיווק חכם לפייסבוק וסוכנת AI שמייצרת <strong>הכנסה מסביב לשעון</strong></> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
