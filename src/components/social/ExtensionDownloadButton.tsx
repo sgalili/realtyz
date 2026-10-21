@@ -24,20 +24,10 @@ export function ExtensionDownloadButton({ className }: { className?: string }) {
   }, []);
 
   const download = () => {
-    fetch(ZIP_PATH)
-      .then((res) => {
-        if (!res.ok) throw new Error(`הורדה נכשלה (${res.status})`);
-        return res.blob();
-      })
-      .then((blob) => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'realtyz-extension.zip';
-        a.click();
-        URL.revokeObjectURL(a.href);
-        setOpen(true);
-      })
-      .catch((err) => toast.error('הורדת התוסף נכשלה', { description: err?.message }));
+    void downloadExtension().then((ok) => {
+      if (ok) setOpen(true);
+      else toast.error('הורדת התוסף נכשלה');
+    });
   };
 
   return (
