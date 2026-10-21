@@ -8401,6 +8401,11 @@ export type Database = {
         }
         Returns: Json
       }
+      fb_claim_cloud_group_post: { Args: { _job: string }; Returns: boolean }
+      fb_claim_group_join: {
+        Args: { _job: string; _token: string }
+        Returns: boolean
+      }
       fb_group_key: { Args: { _value: string }; Returns: string }
       fb_group_rejection: { Args: { _reason: string }; Returns: boolean }
       fb_prepare_cloud_group_post: { Args: { _job: string }; Returns: boolean }

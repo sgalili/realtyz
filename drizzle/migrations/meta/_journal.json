@@ -379,6 +379,13 @@
       "when": 1792554925106,
       "tag": "0053_cloud_post_rotation_and_live_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792554971819,
+      "tag": "0054_atomic_cloud_post_and_join_claims",
+      "breakpoints": true
     }
   ]
 }
