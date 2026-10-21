@@ -1110,6 +1110,33 @@ export type Database = {
           },
         ]
       }
+      broker_license_verifications: {
+        Row: {
+          license_number: string
+          registry_holder_name: string
+          source_updated_at: string
+          source_url: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          license_number: string
+          registry_holder_name: string
+          source_updated_at: string
+          source_url: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          license_number?: string
+          registry_holder_name?: string
+          source_updated_at?: string
+          source_url?: string
+          user_id?: string
+          verified_at?: string
+        }
+        Relationships: []
+      }
       broker_referrals: {
         Row: {
           channel: string
