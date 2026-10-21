@@ -211,6 +211,15 @@ function PersonalTab() {
   const [gender, setGender] = useState<string>('');
   const [brokerLicense, setBrokerLicense] = useState<string>('');
   const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
+  const [licenseSuspended, setLicenseSuspended] = useState(false);
+  useEffect(() => {
+    if (!user?.id) return;
+    let alive = true;
+    void supabase.from('broker_role_suspensions').select('role').eq('user_id', user.id).then(({ data }) => {
+      if (alive) setLicenseSuspended((data?.length ?? 0) > 0);
+    });
+    return () => { alive = false; };
+  }, [user?.id]);
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
@@ -294,6 +303,7 @@ function PersonalTab() {
         if (error) throw error;
       }
       toast.success('הפרופיל נשמר');
+      setLicenseSuspended(false);
       window.dispatchEvent(new Event('realtyz:license-verified'));
       window.dispatchEvent(new Event('realtyz:profile-saved'));
     } catch (err: any) {
@@ -390,6 +400,7 @@ function PersonalTab() {
           </Select>
         </ProfileFieldRow>
 
+        {isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
         {isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />}
 
         <div className="flex items-center gap-3 pt-1">
