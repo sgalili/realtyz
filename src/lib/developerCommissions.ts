@@ -1,7 +1,8 @@
 import { sourceRecord, type ProjectUnit } from '../../supabase/functions/_shared/projectHierarchy';
 import { savedProjectHierarchy } from './developerProjectBoard';
 import { closingFeeAmount, closingFeeRange } from './closingFee';
-export type DeveloperFees = { form: number | null; whatsapp: number | null; phone: number | null; caps: { form: number | null; whatsapp: number | null; phone: number | null }; closing: { type: 'fixed' | 'percent'; value: number | null } };
+import type { LeadFormField } from './leadTiers';
+export type DeveloperFees = { form: number | null; whatsapp: number | null; phone: number | null; caps: { form: number | null; whatsapp: number | null; phone: number | null }; closing: { type: 'fixed' | 'percent'; value: number | null }; questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[] };
 export type DeveloperCommissionConfig = { defaults?: DeveloperFees; overrides?: Record<string, DeveloperFees> };
 export const emptyDeveloperFees = (): DeveloperFees => ({ form: null, whatsapp: null, phone: null, caps: { form: null, whatsapp: null, phone: null }, closing: { type: 'percent', value: null } });
 export const unitCommissionKey = (unit: Pick<ProjectUnit, 'building_id' | 'source_unit_id'>) => JSON.stringify([unit.building_id ?? '', unit.source_unit_id]);
