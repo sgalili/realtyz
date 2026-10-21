@@ -6,6 +6,7 @@ vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'works
 vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data: null }) }));
 vi.mock('@/hooks/useGroupQueueLive', () => ({ useGroupQueueLive: () => {} }));
 vi.mock('@/components/social/ExtensionDownloadButton', () => ({ isExtensionInstalled: () => true }));
+vi.mock('@/lib/extensionDetect', () => ({ ensureExtensionReady: () => Promise.resolve(true) }));
 vi.mock('@/components/social/ExtensionGroupSyncCard', () => ({ ExtensionGroupSyncCard: () => null }));
 vi.mock('@/components/social/GroupDiscoveryDialog', () => ({ GroupDiscoveryDialog: () => null }));
 vi.mock('@/lib/extensionGroupDiscovery', () => ({
