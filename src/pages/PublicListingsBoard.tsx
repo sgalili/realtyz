@@ -361,9 +361,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex h-4 w-4 items-center justify-center rounded-bl rounded-tr bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="w-72 min-w-0 max-w-[18rem]">{open ? <div className="flex items-start gap-1"><div className="min-w-0 flex-1"><PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /></div>{user ? <div className="-me-3 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
+                          ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]">{open ? <div className="flex items-start gap-1"><div className="min-w-0 flex-1"><PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /></div>{user ? <div className="-me-3 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
-                          : id === 'price' ? (open ? null : <span className="font-bold">{shekel(card.price)}</span>)
+                          : id === 'price' ? (open ? null : <span className="text-[17px] font-bold">{shekel(card.price)}</span>)
                           : id === 'commissions' ? <PropertyCommissionIcons listingId={card.id} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
