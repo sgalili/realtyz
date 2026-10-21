@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ListOrdered, Loader2 } from 'lucide-react';
+import { IsraeliShekel, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { agorotToCredits, fmtCredits } from '@/lib/credits';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ export function UsagePriceListButton() {
     <>
       <Button size="icon" variant="ghost" onClick={() => setOpen(true)} aria-label="מחירון שימוש בקרדיטים" title="מחירון שימוש בקרדיטים"
         className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground">
-        <ListOrdered className="h-5 w-5" />
+        <IsraeliShekel className="h-5 w-5" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto" aria-describedby={undefined}>
