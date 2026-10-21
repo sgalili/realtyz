@@ -406,10 +406,11 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
           </div>
           <GroupDiscoveryDialog
             open={discoverOpen}
-            onOpenChange={setDiscoverOpen}
+            onOpenChange={(v) => { setDiscoverOpen(v); if (!v) setInstallPrompt(false); }}
             blockedIds={new Set(blockedGroups.map((g) => bareId(g.groupId)))}
             knownIds={new Set(allGroups.filter((g) => !g.blocked).map((g) => bareId(g.groupId)))}
             onJoined={() => void load()}
+            installNeededOnOpen={installPrompt}
           />
           {tab === 'not_joined' ? (
             notJoinedGroups.length === 0 ? (
