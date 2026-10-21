@@ -14,6 +14,7 @@
 
 import http from "node:http";
 import puppeteer from "puppeteer";
+import { membershipOutcome, approvedAnswers } from './groupPolicy.js';
 
 const PORT = Number(process.env.PORT || 8787);
 const SECRET = process.env.CLOUD_WORKER_SHARED_SECRET || "";
@@ -131,15 +132,83 @@ async function publish(job) {
 
 async function report(job, result) {
   if (!job.report_url) return;
+  const callback = new URL(job.report_url);
+  const expected = process.env.CLOUD_CALLBACK_ORIGIN;
+  if (!expected || callback.origin !== new URL(expected).origin || !['/functions/v1/fb-session-vault','/functions/v1/fb-group-manager','/functions/v1/cloud-group-poster'].includes(callback.pathname)) throw new Error('invalid_callback');
   await fetch(job.report_url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-worker-secret": SECRET },
     body: JSON.stringify({
-      action: job.job_type === "group_fetch" ? "fetch_result" : "report",
+      action: job.job_type === 'group_join' ? 'join_result' : job.job_type === "group_fetch" ? "fetch_result" : "report",
       job_id: job.job_id,
+      ...(job.dispatch_token ? { dispatch_token: job.dispatch_token } : {}),
       ...result,
     }),
   }).catch((e) => console.error("report failed", e));
+}
+
+async function joinGroup(job) {
+  const target = new URL(job.group_url);
+  if (target.protocol !== 'https:' || !['facebook.com','www.facebook.com','m.facebook.com'].includes(target.hostname) || !/^\/groups\/[A-Za-z0-9._-]+/.test(target.pathname)) throw new Error('invalid_group_url');
+  const browser = await puppeteer.launch({ headless:true, args:['--no-sandbox','--disable-setuid-sandbox','--lang=he-IL'] });
+  try {
+    const page = await browser.newPage();
+    if(job.user_agent) await page.setUserAgent(job.user_agent);
+    await page.setCookie(...parseCookies(job.session_cookies));
+    await page.goto(target.href,{waitUntil:'domcontentloaded',timeout:60000});
+    await sleep(3000);
+    if(/\/login|\/checkpoint/.test(page.url())) return {outcome:'session_expired',error:'נדרש חידוש התחברות לפייסבוק'};
+    const readOutcome = async () => membershipOutcome(await page.evaluate(() => Array.from(document.querySelectorAll('[role="button"],button')).map(e => e.getAttribute('aria-label') || e.textContent || '').join('\n')));
+    let outcome = await readOutcome();
+    if(outcome) return {outcome};
+    const clickNamed = async (names, root='') => {
+      const elements = await page.$$(`${root} [role="button"],${root} button`);
+      for(const el of elements) {
+        const text = await el.evaluate(e => (e.getAttribute('aria-label') || e.textContent || '').trim());
+        if(names.includes(text)) { await el.click(); return true; }
+      }
+      return false;
+    };
+    if(!await clickNamed(['Join group','הצטרף לקבוצה','הצטרפות לקבוצה'])) return {outcome:'failed',error:'לא נמצא כפתור הצטרפות'};
+    await sleep(3000);
+    const fields = await page.$$('[role="dialog"] textarea, [role="dialog"] input[type="text"]');
+    const requirements = [];
+    for(const field of fields) {
+      const label = await field.evaluate(e => e.getAttribute('aria-label') || e.closest('label')?.textContent || e.parentElement?.textContent || '');
+      requirements.push(label.trim().slice(0,2000));
+    }
+    const rules = await page.$$('[role="dialog"] [role="checkbox"], [role="dialog"] input[type="checkbox"]');
+    const unsupported = await page.$('[role="dialog"] [role="radio"], [role="dialog"] select');
+    if(unsupported) return {outcome:'needs_answers',requirements,error:'הקבוצה דורשת בחירה אישית; יש להשלים בחיבור הענן'};
+    if(fields.length || rules.length) {
+      const answers = approvedAnswers(requirements,job.membership_answers,job.rules_accepted);
+      if(!answers) return {outcome:'needs_answers',requirements,error:'נדרשות תשובות מאושרות והסכמה לכללי הקבוצה'};
+      for(let i=0;i<fields.length;i++) { await fields[i].click(); await fields[i].type(answers[requirements[i]]); }
+      for(const box of rules) {
+        const checked = await box.evaluate(e => e.getAttribute('aria-checked') === 'true' || e.checked === true);
+        if(!checked) await box.click();
+      }
+      if(!await clickNamed(['Submit','שליחה','שלח'],'[role="dialog"]')) return {outcome:'needs_answers',requirements,error:'נדרשת השלמה בחיבור הענן'};
+      await sleep(3000);
+    }
+    outcome = await readOutcome();
+    return outcome ? {outcome} : {outcome:'failed',error:'פייסבוק לא אישר שהבקשה נקלטה'};
+  } finally { await browser.close().catch(() => {}); }
+}
+
+// One serialized lane per Facebook account/workspace, no concurrent joins.
+const lanes = new Map();
+function schedule(job) {
+  const key = job.workspace_owner_id || 'discovery';
+  const previous = lanes.get(key) || Promise.resolve();
+  const next = previous.catch(() => {}).then(async () => {
+    const run = job.job_type === 'group_join' ? joinGroup : job.job_type === 'group_fetch' ? fetchGroups : publish;
+    try { await report(job, await run(job)); }
+    catch { await report(job, job.job_type === 'group_join' ? {outcome:'failed',error:'cloud_join_failed'} : {status:'failed',error:'cloud_task_failed'}); }
+    if(job.job_type === 'group_join') await sleep(120000);
+  });
+  lanes.set(key,next);
+  void next.finally(() => { if(lanes.get(key)===next) lanes.delete(key); }).catch(() => {});
 }
 
 // Cloud-first group discovery: scrape candidate groups for a keyword with the
@@ -215,7 +284,7 @@ http
       res.writeHead(200).end("realtyz cloud runner ok");
       return;
     }
-    if (SECRET && req.headers["x-worker-secret"] !== SECRET) {
+    if (!SECRET || req.headers["x-worker-secret"] !== SECRET) {
       res.writeHead(401).end("unauthorized");
       return;
     }
@@ -231,16 +300,7 @@ http
       }
       // Ack immediately, run in the background, then report.
       res.writeHead(202, { "Content-Type": "application/json" }).end(JSON.stringify({ accepted: true }));
-      const run = job.job_type === "group_fetch" ? fetchGroups : publish;
-      run(job)
-        .then((r) => {
-          console.log("done", job.job_type || "fb_group_post", job.job_id);
-          return report(job, r);
-        })
-        .catch((e) => {
-          console.error("failed", job.job_id, e.message);
-          return report(job, { status: "failed", error: e.message });
-        });
+      schedule(job);
     });
   })
   .listen(PORT, () => console.log(`Realtyz cloud runner listening on :${PORT}`));

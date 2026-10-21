@@ -8,7 +8,7 @@
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
-- Joining indicators follow extension events; workspace overlays stop polling reversing tab migration before persistence.
+- Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
 - Peer expansions use exclusive motion groups.
 - Inquiry tiers need server-only workspace/listing identity and satisfactory screening; first turns/callbacks never qualify. Atomic upgrades charge only unpaid differences.
 - Tables share sort/reorder/hide with visible grips and order-only reset; prefs never store listings. Native scrolling, no overlays. Why: consistency.
@@ -36,5 +36,5 @@
 - Affiliate pricing rules: see src/components/affiliate/AGENTS.md.
 - Facebook extension/group rules: see extension/AGENTS.md.
 - Closing splits: compute_closing_split pays 80% to authorized brokers (partner_can_view_closing) via idempotent paid_amount delta; otherwise platform retains 100%. No subscription plans; billing is credits only. Why: legal license model.
-- Facebook groups are cloud-first: fb_cloud_sessions + Railway runner run 24/7; extension optional, never blocking. fb_rebalance_group_pool keeps ≤100 active, 24h cooldown, blocked never return. Why: server rotation.
+- Facebook groups UI is cloud-only; joins require server evidence and supplied answers/rule consent. Pool rebalancing and quotas are transactional and workspace-scoped. Why: truthful membership and isolation.
 - Global instructions use global_ai_documents/private global-ai-training with Super Admin checks; global_ai_config is legacy only. Brains share BrainResources title-free text entry and derived filenames; global library comes first. Why: one library without tenant leaks.
