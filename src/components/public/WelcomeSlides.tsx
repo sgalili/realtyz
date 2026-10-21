@@ -12,7 +12,7 @@ const SLIDES = [
   { icon: NetworkHomes, theme: 1, title: <>לוח שותפים <Hi tone="gold">מטורף</Hi></>, text: <>כל הנכסים, כל ה<Hi tone="sky">שותפים</Hi> וכל ההזדמנויות במקום אחד.</> },
   { icon: CoinsCurrency, theme: 2, title: <>המוכר קובע את ה<Hi tone="gold">עמלות</Hi></>, text: <>עמלות שקופות מראש. לקונים ולשוכרים מחיר קבוע וברור.</> },
   { icon: ShareShekels, theme: 3, title: <>כאן כולם <Hi tone="red">שותפים</Hi></>, text: <>בעלי נכסים, מתווכים ויזמים משווקים נכסים ומרוויחים <Hi tone="gold">עמלות</Hi>.</> },
-  { icon: Sparkles, theme: 1, title: <>מעלים פעם אחת. <Hi tone="gold">AI</Hi> מפיץ</>, text: <>הנכס מופץ <Hi tone="sky">אוטומטית</Hi> לעשרות קבוצות, עם מענה ולידים.</> },
+  { icon: Sparkles, theme: 1, title: <>הכירו את <Hi tone="gold">ריטה</Hi> — סוכנת ה-AI האישית שלך</>, text: <>עובדת בשבילך <Hi tone="sky">24/7</Hi>, מייצגת אותך נאמנה, יוצרת פוסטים שיווקיים לנכסים שלך, מביאה לידים חמים בוואטסאפ ובטלפון — ומייצרת לך הכנסה אוטומטית מסביב שעון, גם בזמן שאתה ישן.</> },
   { icon: Rocket, theme: 2, title: <>רווחים <Hi tone="gold">אוטומטית</Hi></>, text: <>הפצה, לידים ועמלות עובדים בשבילכם. מתחילים עכשיו.</> },
 ] as const;
 
