@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, ChevronDown, ExternalLink, FileDown, Layers, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Building2, ChevronDown, ExternalLink, FileDown, Layers, Loader2, Pencil, Trash2, Megaphone, Globe, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -19,7 +19,10 @@ import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
 import { developerProjectImages, projectDeal, projectMatches, savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import { cn } from '@/lib/utils';
 import DeveloperCommissionBadges from '@/components/developers/DeveloperCommissionBadges';
-import { projectCommissionErrors, unitCommissionKey } from '@/lib/developerCommissions';
+import { commissionConfig, developerFeesErrors, projectCommissionErrors, unitCommissionKey, type DeveloperCommissionConfig } from '@/lib/developerCommissions';
+import DeveloperCommissionEditor from '@/components/developers/DeveloperCommissionEditor';
+import { projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
+import type { Json } from '@/integrations/supabase/types';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu, type BoardColumnId } from '@/components/public/PublicBoardTableControls';
 
 const projectImages = developerProjectImages;
@@ -35,6 +38,10 @@ export default function DeveloperDashboard() {
   const onboarding = params.get('onboarding') === '1';
   const [mode, setMode] = useState<Mode>(() => params.get('import') === '1' || onboarding ? 'import' : null);
   const [editing, setEditing] = useState<DeveloperProject | undefined>();
+  const [commissionProject, setCommissionProject] = useState<DeveloperProject | null>(null);
+  const [companyPricing, setCompanyPricing] = useState(false);
+  const [feeConfig, setFeeConfig] = useState<DeveloperCommissionConfig>({});
+  const [savingFees, setSavingFees] = useState(false);
   useEffect(() => {
     if (params.get('import') === '1' || params.get('onboarding') === '1') setMode('import');
   }, [params]);
@@ -76,7 +83,28 @@ export default function DeveloperDashboard() {
   const cities = useMemo(() => [...new Set(projects.map(project => project.city).filter(Boolean) as string[])].sort(), [projects]);
   const neighborhoods = useMemo(() => [...new Set(projects.map(project => project.neighborhood).filter(Boolean) as string[])].sort(), [projects]);
   const propertyTypes = useMemo(() => [...new Set(projects.flatMap(project => savedProjectHierarchy(project).apartments.map(unit => unit.type)).filter((type): type is string => typeof type === 'string' && !!type))].sort(), [projects]);
-  const refresh = () => { void qc.invalidateQueries({ queryKey: ['my-developer', ws] }); void qc.invalidateQueries({ queryKey: ['developer-projects', ws] }); };
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ['my-developer', ws] }); void qc.invalidateQueries({ queryKey: ['developer-projects', ws] }); void qc.invalidateQueries({ queryKey: ['sidebar-counts', ws] }); void qc.invalidateQueries({ queryKey: ['campaign-inventory', ws] }); };
+  const openPricing = (project?: DeveloperProject) => {
+    setCommissionProject(project ?? null); setCompanyPricing(!project);
+    setFeeConfig(commissionConfig(project?.commission_config ?? companies[0]?.commission_config));
+  };
+  const saveFees = async () => {
+    if (!ws || savingFees) return;
+    const errors = developerFeesErrors(feeConfig.defaults, 'sale', commissionProject?.price_from || 1);
+    if (errors.length) { toast.error(`יש להשלים: ${errors.join(' · ')}`); return; }
+    setSavingFees(true);
+    try {
+      if (commissionProject) {
+        const { error } = await supabase.from('developer_projects').update({ commission_config: feeConfig as unknown as Json }).eq('id', commissionProject.id).eq('workspace_owner_id', ws).select('id').single();
+        if (error) throw error;
+      } else {
+        const company = companies[0]; if (!company) throw new Error('יש לשמור חברה תחילה');
+        const { error } = await supabase.rpc('set_developer_company_commissions', { _company: company.id, _config: feeConfig as unknown as Json, _apply_existing: true });
+        if (error) throw error;
+      }
+      refresh(); setCommissionProject(null); setCompanyPricing(false); toast.success('העמלות נשמרו');
+    } catch { toast.error('שמירת העמלות נכשלה'); } finally { setSavingFees(false); }
+  };
   const close = () => {
     setMode(null); setEditing(undefined);
     if (params.has('import') || params.has('onboarding')) navigate('/developer-dashboard', { replace: true });
@@ -104,11 +132,13 @@ export default function DeveloperDashboard() {
       return data;
     },
     onSuccess: () => { refresh(); void qc.invalidateQueries({ queryKey: ['public-listings'] }); toast.success('הפרסום בלוח הושלם'); },
-    onError: () => toast.error('הפרסום לא הושלם; יש לבדוק מחיר, עמלות ומגבלות לכל יחידה'),
+    onError: (error) => toast.error(`הפרסום לא הושלם: ${error instanceof Error ? error.message : 'יש לבדוק מחיר, עמלות ומגבלות לכל יחידה'}`),
   });
   const publishProject = (project: DeveloperProject, key?: string) => { if (confirm(key ? 'לפרסם את היחידה בלוח הציבורי?' : 'לפרסם את הפרויקט וכל היחידות בלוח הציבורי?')) publish.mutate({ project, key }); };
   const actions = (p: DeveloperProject) => <div className="flex items-center gap-1" onClick={event => event.stopPropagation()}>
-    <Button size="sm" variant="outline" disabled={publish.isPending || projectCommissionErrors(p).length > 0} title={projectCommissionErrors(p).length > 0 ? 'יש להגדיר מחיר, עמלות ומגבלות בפרויקט ובכל היחידות' : 'פרסום בלוח'} onClick={() => publishProject(p)}>פרסום</Button>
+    <Button size="sm" variant="outline" disabled={publish.isPending} title="קידום הפרויקט בלוח הציבורי" onClick={() => { const errors = projectCommissionErrors(p); if (errors.length) { toast.error(`לפני פרסום יש להשלים: ${[...new Set(errors)].slice(0, 6).join(' · ')}`); openPricing(p); return; } publishProject(p); }}><Globe className="h-4 w-4" />פרסום בלוח</Button>
+    <Button size="icon-sm" variant="ghost" aria-label={`יצירת פוסט ${p.name}`} title="יצירת פוסט" onClick={() => navigate(`/campaigns?tab=create&listing=${encodeURIComponent(`project:${p.id}`)}&fresh=1`)}><Megaphone /></Button>
+    <Button size="icon-sm" variant="ghost" aria-label={`הגדרת עמלות ${p.name}`} title="עמלות ומגבלות" onClick={() => openPricing(p)}><Settings2 /></Button>
     <Button size="icon-sm" variant="ghost" aria-label="עריכת פרויקט" title="עריכת פרויקט" onClick={() => { setEditing(p); setMode('manual'); }}><Pencil /></Button>
     {p.source_url && <Button asChild size="icon-sm" variant="ghost"><a href={p.source_url} target="_blank" rel="noopener noreferrer" aria-label="עמוד הפרויקט ביד2" title="עמוד הפרויקט ביד2"><ExternalLink /></a></Button>}
     <Button size="icon-sm" variant="ghost" className="text-destructive" disabled={remove.isPending} title="מחיקת פרויקט" aria-label="מחיקת פרויקט" onClick={() => { if (confirm('למחוק את הפרויקט?')) remove.mutate(p.id); }}><Trash2 /></Button>
@@ -124,8 +154,10 @@ export default function DeveloperDashboard() {
         <div className="flex items-center gap-3">
           {companies[0]?.logo_url && <img src={companies[0].logo_url} alt="לוגו החברה" className="h-10 w-10 rounded object-contain" />}
           <span className="min-w-0 flex-1 truncate font-semibold">{companies[0]?.company_name}</span>
+          <span aria-label="סך הפרויקטים" className="shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-sm font-semibold">{projects.length} פרויקטים</span>
           <Button variant="ghost" size="sm" onClick={() => setMode('import')}><FileDown className="h-4 w-4" />סנכרון מיד2</Button>
         </div>
+        <Button variant="outline" onClick={() => openPricing()}><Settings2 className="h-4 w-4" />עמלות החברה לכל הפרויקטים</Button>
         {filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו פרויקטים מתאימים</p> : grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(p => { const open = expandedId === p.id; const deal = projectDeal(p); return <article key={p.id} className={cn('flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md', open && 'sm:col-span-2 lg:col-span-3')}>
             <div className="flex flex-wrap items-start gap-2 p-3"><div className="min-w-0 w-full"><div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"><h2 className="min-w-0 whitespace-normal [overflow-wrap:anywhere] text-[19px] font-bold leading-snug">{p.name}</h2>{priceLabel(p.price_from) && <p className={cn('shrink-0 whitespace-nowrap text-[17px] font-bold', deal === 'rent' ? 'text-sale' : 'text-success')}>{priceLabel(p.price_from)}</p>}</div><p className="mt-1 truncate text-sm text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</p></div>{actions(p)}</div>
@@ -134,7 +166,7 @@ export default function DeveloperDashboard() {
               <DeveloperCommissionBadges project={p} />
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">{meta(p).map(item => <span key={item} className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{item}</span>)}</div>
               <Button variant="outline" className="mt-auto justify-between" aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)}>בניינים ויחידות<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button>
-              <AnimatedExpansion open={open}><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></AnimatedExpansion>
+              <AnimatedExpansion open={open}><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => { const target = projectCampaignTargets(p).find(t => t.id.endsWith(`:unit:${encodeURIComponent(`${unit.building_id ?? ''}:${unit.source_unit_id}`)}`)); if (target) navigate(`/campaigns?tab=create&listing=${encodeURIComponent(target.id)}&fresh=1`); }} /></AnimatedExpansion>
             </div>
           </article>; })}
         </div> : <BoardColumnDragArea controls={columns}><div className="w-full min-w-0 overflow-x-auto rounded-lg border bg-card"><table className="w-max min-w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
@@ -160,6 +192,7 @@ export default function DeveloperDashboard() {
           {mode === 'manual' && !busy && <DeveloperProjectWizard key={`${ws}-${editing?.id ?? 'new'}`} project={editing} company={developer} onSaved={saved} onCancel={close} />}
         </DialogContent>
       </Dialog>
+      <Dialog open={companyPricing || !!commissionProject} onOpenChange={open => { if (!open && !savingFees) { setCompanyPricing(false); setCommissionProject(null); } }}><DialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{commissionProject ? `עמלות ${commissionProject.name}` : 'עמלות החברה לכל הפרויקטים'}</DialogTitle><DialogDescription>{commissionProject ? 'ברירת מחדל לפרויקט והתאמות ליחידות' : 'שמירה תחיל את ברירת המחדל על כל פרויקטי החברה, בלי לשנות התאמות אישיות ליחידות. מודעות שכבר פורסמו יתעדכנו רק בפרסום מחדש.'}</DialogDescription></DialogHeader><DeveloperCommissionEditor key={commissionProject?.id ?? 'company'} value={feeConfig} units={commissionProject ? savedProjectHierarchy(commissionProject).apartments : []} price={commissionProject?.price_from || 0} deal="sale" onChange={setFeeConfig} /><Button disabled={savingFees} onClick={() => void saveFees()}>{savingFees && <Loader2 className="animate-spin" />}שמירת עמלות</Button></DialogContent></Dialog>
     </div>
   );
 }
