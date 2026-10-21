@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { driver, type Driver } from 'driver.js';
@@ -14,8 +14,11 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { APP_TOUR_EVENT, buildWalkthrough, useWalkthrough, walkthroughStore } from '@/lib/appWalkthrough';
+import { WelcomeSlides } from '@/components/public/WelcomeSlides';
+import { shouldShowWelcome } from '@/lib/welcomePreference';
 
 export function GlobalAppTour() {
+  const [showWelcome, setShowWelcome] = useState(false);
   const session = useWalkthrough();
   const { user } = useAuth();
   const role = useUserRole();
@@ -27,6 +30,7 @@ export function GlobalAppTour() {
   locationRef.current = location;
   const activeDriver = useRef<Driver | null>(null);
   const close = () => {
+    setShowWelcome(false);
     const current = walkthroughStore.get();
     walkthroughStore.stop();
     setOpenMobile(false); setOpen(false);
@@ -38,6 +42,7 @@ export function GlobalAppTour() {
   useEffect(() => {
     const start = () => {
       if (!user || role.loading || role.error) return;
+      setShowWelcome(false);
       // Read before the drawer closes; no hidden role's menu can enter the tour.
       const menus = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-walkthrough-path]'))
         .map((anchor) => ({ path: anchor.dataset.walkthroughPath ?? '', title: anchor.dataset.walkthroughTitle ?? anchor.textContent ?? '' }));
@@ -51,6 +56,7 @@ export function GlobalAppTour() {
 
   useEffect(() => {
     if (session && (session.userId !== user?.id || session.workspaceId !== (activeWorkspaceId ?? '') || role.error)) {
+      setShowWelcome(false);
       walkthroughStore.stop(); setOpenMobile(false);
     }
   }, [session, user?.id, activeWorkspaceId, role.error, setOpenMobile]);
@@ -133,6 +139,7 @@ export function GlobalAppTour() {
   }, [session]);
 
   if (!session || session.index !== 0) return null;
+  if (showWelcome) return <div className="fixed inset-x-0 bottom-0 top-16 z-[60] overflow-hidden overscroll-none bg-background"><WelcomeSlides onDone={() => setShowWelcome(false)} /></div>;
   return <Dialog open onOpenChange={(open) => { if (!open) close(); }}>
     <DialogContent dir="rtl" className="max-h-[90dvh] max-w-xl overflow-y-auto p-6 sm:p-8">
       <img src={realtyzLogo} alt="Realtyz" className="mx-auto h-14 w-auto object-contain" />
@@ -148,6 +155,7 @@ export function GlobalAppTour() {
           <p className="text-lg leading-relaxed"><strong>סוכנת ה-AI שלכם</strong> מושכת פניות, מנהלת תוכן ועוזרת להפוך הזדמנויות להכנסה. האוטומציות שהפעלתם עובדות על טייס אוטומטי <strong>24/7, גם בזמן שאתם ישנים.</strong></p>
         </div>
       </div>
+      <Button variant="outline" size="lg" className="w-full text-lg" onClick={() => setShowWelcome(shouldShowWelcome('instructions'))}>היכרות עם TORAF<ChevronLeft /></Button>
       <Button size="lg" className="w-full text-lg font-bold" onClick={() => walkthroughStore.move(1)}>מתחילים את הסיור<ChevronLeft /></Button>
     </DialogContent>
   </Dialog>;

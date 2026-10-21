@@ -5,7 +5,7 @@ import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides, hasSeenWelcomeSlides } from '@/components/public/WelcomeSlides';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
-import { WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
+import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -250,11 +250,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [showWelcome, setShowWelcome] = useState(() => !hasSeenWelcomeSlides());
   const [welcomeKey, setWelcomeKey] = useState(0);
   useEffect(() => {
-    setShowWelcome(location.state?.replayWelcome === true || !hasSeenWelcomeSlides());
+    setShowWelcome(shouldShowWelcome('home'));
     setWelcomeKey((key) => key + 1);
   }, [location.key]);
   useEffect(() => {
-    const reopen = () => { setWelcomeKey((key) => key + 1); setShowWelcome(true); };
+    const reopen = () => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); };
     window.addEventListener(WELCOME_REOPEN_EVENT, reopen);
     return () => window.removeEventListener(WELCOME_REOPEN_EVENT, reopen);
   }, []);
@@ -274,7 +274,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         <div className="w-full px-4 pb-0 pt-2">
           {embedded ? null : (
             <div className="relative z-50 flex min-h-11 items-center gap-x-2 bg-card sm:gap-x-3">
-              <Button variant="ghost" className="h-auto shrink-0 p-0 hover:bg-transparent" aria-label="פתיחת ההיכרות עם TORAF" onClick={() => { setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" /></Button>
+              <Button variant="ghost" className="h-auto shrink-0 p-0 hover:bg-transparent" aria-label="TORAF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" /></Button>
               <h1 className="min-w-0 truncate whitespace-nowrap text-base font-bold text-foreground sm:text-2xl">לוח שיווק שותפים</h1>
               <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-9 w-9 border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><UserRound className="h-5 w-5" /></Button>}

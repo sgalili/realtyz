@@ -1,3 +1,8 @@
+# Intro background and opt-out
+- [x] Replace boxed icons with slide-wide drifting line icons and increase regular-weight subtitles by 4px (24px mobile, 28px desktop).
+- [x] Respect opt-out for homepage/logo/header and add explicit replay to app instructions without clearing dismissal.
+- [x] Verify all five mobile slides, desktop appearance, continuous motion, reload/logo dismissal and authenticated instructions replay/header return; five preference tests pass and preview builds successfully.
+
 # Developer New Post repair
 - [x] Load workspace inventory and project/building/unit targets without requiring public publication; Kobi's seven saved projects appear.
 - [x] Authorize generation context server-side and avoid passing project references into listing UUID fields.
