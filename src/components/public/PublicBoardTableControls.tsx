@@ -42,7 +42,7 @@ function sortValue(card: PublicCard, id: BoardColumnId): string | number | null 
     default: return card[id];
   }
 }
-export function usePublicBoardColumns(identity: string, rows: PublicCard[]) {
+export function usePublicBoardColumns<T = PublicCard>(identity: string, rows: T[], configuration?: { columns: { id: BoardColumnId; label: string }[]; value: (row: T, id: BoardColumnId) => string | number | null }) {
   const key = `public-board-columns:v1:${identity}`;
   const [stored, setStored] = useState(() => ({ key, prefs: read(key) }));
   const prefs = useMemo(() => stored.key === key ? stored.prefs : read(key), [stored, key]);
@@ -50,20 +50,21 @@ export function usePublicBoardColumns(identity: string, rows: PublicCard[]) {
     setStored({ key, prefs: next });
     try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* Storage may be disabled. */ }
   };
-  const visible = prefs.order.filter(id => !prefs.hidden.includes(id));
+  const definitions = configuration?.columns ?? BOARD_COLUMNS;
+  const visible = prefs.order.filter(id => !prefs.hidden.includes(id) && definitions.some(column => column.id === id));
   const sorted = useMemo(() => {
     const sort = prefs.sort;
     if (!sort) return rows;
     return [...rows].sort((a, b) => {
-      const av = sortValue(a, sort.id), bv = sortValue(b, sort.id);
+      const av = configuration ? configuration.value(a, sort.id) : sortValue(a as unknown as PublicCard, sort.id), bv = configuration ? configuration.value(b, sort.id) : sortValue(b as unknown as PublicCard, sort.id);
       if (av == null) return bv == null ? 0 : 1;
       if (bv == null) return -1;
       const result = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'he', { numeric: true });
       return sort.descending ? -result : result;
     });
-  }, [rows, prefs.sort]);
+  }, [rows, prefs.sort, configuration]);
   return {
-    visible, sorted, sort: prefs.sort,
+    visible, sorted, definitions, sort: prefs.sort,
     toggleSort: (id: BoardColumnId) => update({ ...prefs, sort: { id, descending: prefs.sort?.id === id ? !prefs.sort.descending : false } }),
     reorder: ({ active, over }: DragEndEvent) => {
       if (!over || active.id === over.id || !validId(active.id) || !validId(over.id)) return;
@@ -77,14 +78,14 @@ export function usePublicBoardColumns(identity: string, rows: PublicCard[]) {
     resetOrder: () => update({ ...prefs, order: defaults().order }),
   };
 }
-export type BoardColumnControls = ReturnType<typeof usePublicBoardColumns>;
+export type BoardColumnControls = Omit<ReturnType<typeof usePublicBoardColumns>, 'sorted'>;
 export function BoardColumnDragArea({ controls, children }: { controls: BoardColumnControls; children: ReactNode }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={controls.reorder}><SortableContext items={controls.visible} strategy={horizontalListSortingStrategy}>{children}</SortableContext></DndContext>;
 }
 export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; controls: BoardColumnControls }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const label = BOARD_COLUMNS.find(c => c.id === id)?.label;
+  const label = controls.definitions.find(c => c.id === id)?.label;
   const sorted = controls.sort?.id === id;
   return <th ref={setNodeRef} data-column={id} aria-sort={sorted ? controls.sort?.descending ? 'descending' : 'ascending' : 'none'} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group/column px-2 pb-0 pt-2 text-right font-semibold ${isDragging ? 'relative z-10 bg-muted opacity-80' : ''}`}>
     <div className="flex items-center gap-0.5 whitespace-nowrap">
@@ -97,7 +98,7 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
 }
 export function BoardColumnMenu({ controls }: { controls: BoardColumnControls }) {
   return <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="התאמת עמודות" title="התאמת עמודות"><Columns3 className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
-    {BOARD_COLUMNS.map(c => <DropdownMenuCheckboxItem key={c.id} checked={controls.visible.includes(c.id)} disabled={controls.visible.length === 1 && controls.visible.includes(c.id)} onSelect={e => e.preventDefault()} onCheckedChange={() => controls.toggleVisible(c.id)}>{c.label}</DropdownMenuCheckboxItem>)}
+    {controls.definitions.map(c => <DropdownMenuCheckboxItem key={c.id} checked={controls.visible.includes(c.id)} disabled={controls.visible.length === 1 && controls.visible.includes(c.id)} onSelect={e => e.preventDefault()} onCheckedChange={() => controls.toggleVisible(c.id)}>{c.label}</DropdownMenuCheckboxItem>)}
     <DropdownMenuSeparator /><DropdownMenuItem onSelect={controls.resetOrder}>איפוס סדר עמודות</DropdownMenuItem><DropdownMenuItem onSelect={controls.reset}>איפוס עמודות</DropdownMenuItem>
   </DropdownMenuContent></DropdownMenu>;
 }

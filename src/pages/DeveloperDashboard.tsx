@@ -18,9 +18,11 @@ import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
 import { projectDeal, projectMatches, savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import { cn } from '@/lib/utils';
+import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu, type BoardColumnId } from '@/components/public/PublicBoardTableControls';
 
 const projectImages = (project: DeveloperProject) => [...new Set([...(Array.isArray(project.images) ? project.images.filter((image): image is string => typeof image === 'string') : []), ...(project.image_url ? [project.image_url] : [])])];
 const priceLabel = (price: number | null) => price && price > 0 ? `החל מ־₪${Number(price).toLocaleString('he-IL')}` : '';
+const PROJECT_COLUMNS = { columns: [{ id: 'photo', label: 'תמונה' }, { id: 'address', label: 'פרויקט' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'בניינים' }, { id: 'deal', label: 'עסקה' }, { id: 'rooms', label: 'סוגי יחידות' }, { id: 'floor', label: 'סטטוס' }] as { id: BoardColumnId; label: string }[], value: (p: DeveloperProject, id: BoardColumnId) => id === 'price' ? p.price_from : id === 'address' ? p.name : id === 'commissions' ? savedProjectHierarchy(p).buildings.length : id === 'rooms' ? savedProjectHierarchy(p).apartments.length : id === 'floor' ? p.status : id === 'deal' ? projectDeal(p) : projectImages(p).length };
 
 type Mode = 'choose' | 'import' | 'manual' | null;
 export default function DeveloperDashboard() {
@@ -68,6 +70,7 @@ export default function DeveloperDashboard() {
   });
   const developer = editing ? companies.find(company => company.id === editing.developer_id) : companies[0];
   const filtered = useMemo(() => projects.filter(project => projectMatches(project, query, deals, { ...propFilter, dealType: 'all' })), [projects, query, deals, propFilter]);
+  const columns = usePublicBoardColumns(`developer-projects:${ws ?? ''}`, filtered, PROJECT_COLUMNS);
   const cities = useMemo(() => [...new Set(projects.map(project => project.city).filter(Boolean) as string[])].sort(), [projects]);
   const neighborhoods = useMemo(() => [...new Set(projects.map(project => project.neighborhood).filter(Boolean) as string[])].sort(), [projects]);
   const propertyTypes = useMemo(() => [...new Set(projects.flatMap(project => savedProjectHierarchy(project).apartments.map(unit => unit.type)).filter((type): type is string => typeof type === 'string' && !!type))].sort(), [projects]);
@@ -119,14 +122,17 @@ export default function DeveloperDashboard() {
               <AnimatedExpansion open={open}><ProjectHierarchyDetails project={p} /></AnimatedExpansion>
             </div>
           </article>; })}
-        </div> : <div className="w-full min-w-0 overflow-x-auto rounded-lg border bg-card"><table className="w-max min-w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{['תמונה', 'פרויקט', 'מחיר', 'עסקה', 'מבנה', 'סטטוס', ''].map(label => <th key={label} className="p-2 text-right font-semibold">{label}</th>)}</tr></thead><tbody>
-          {filtered.flatMap(p => { const open = expandedId === p.id; const deal = projectDeal(p); return [<tr key={p.id} tabIndex={0} aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? null : p.id); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <td className="p-2">{projectImages(p)[0] ? <img src={projectImages(p)[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>}</td>
-            <td className="w-72 p-2"><strong className="block truncate">{p.name}</strong><span className="block truncate text-xs text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</span></td>
-            <td className={cn('whitespace-nowrap p-2 font-bold', deal === 'rent' ? 'text-sale' : 'text-success')}>{priceLabel(p.price_from)}</td><td className={cn('whitespace-nowrap p-2', deal === 'rent' ? 'text-sale' : 'text-success')}>{deal === 'rent' ? 'להשכרה' : 'למכירה'}</td>
-            <td className="whitespace-nowrap p-2">{meta(p).join(' · ')}</td><td className="whitespace-nowrap p-2">{PROJECT_STATUS[p.status] ?? p.status}</td><td className="p-2"><div className="flex items-center">{actions(p)}<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></div></td>
-          </tr>, <tr key={`${p.id}-details`}><td colSpan={7} className="p-0"><AnimatedExpansion open={open}><div className="sticky right-0 max-w-[calc(100vw-2rem)] space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails project={p} /></div></AnimatedExpansion></td></tr>]; })}
-        </tbody></table></div>}
+        </div> : <BoardColumnDragArea controls={columns}><div className="w-full min-w-0 overflow-x-auto rounded-lg border bg-card"><table className="w-max min-w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
+          {columns.sorted.flatMap(p => { const open = expandedId === p.id; const deal = projectDeal(p); const hierarchy = savedProjectHierarchy(p); return [<tr key={p.id} tabIndex={0} aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? null : p.id); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {columns.visible.map(id => <td key={id} className={cn('p-2', id === 'price' && 'whitespace-nowrap font-bold', id === 'price' && (deal === 'rent' ? 'text-sale' : 'text-success'))}>
+              {id === 'photo' ? projectImages(p)[0] ? <img src={projectImages(p)[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>
+              : id === 'address' ? <div className="w-64"><strong className="block truncate">{p.name}</strong><span className="block truncate text-xs text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</span></div>
+              : id === 'price' ? priceLabel(p.price_from) : id === 'deal' ? <span className={cn('whitespace-nowrap', deal === 'rent' ? 'text-sale' : 'text-success')}>{deal === 'rent' ? 'להשכרה' : 'למכירה'}</span>
+              : id === 'commissions' ? hierarchy.buildings.length || '' : id === 'rooms' ? hierarchy.apartments.length || '' : PROJECT_STATUS[p.status] ?? p.status}
+            </td>)}
+            <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
+          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><AnimatedExpansion open={open}><div className="sticky right-0 max-w-[calc(100vw-2rem)] space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails project={p} /></div></AnimatedExpansion></td></tr>]; })}
+        </tbody></table></div></BoardColumnDragArea>}
       </>}
       <Dialog open={mode !== null} onOpenChange={open => { if (!open) close(); }}>
         <DialogContent dir="rtl" className="max-h-[92dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-lg p-4 sm:p-6">
