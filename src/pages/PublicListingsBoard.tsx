@@ -279,14 +279,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <div className="flex items-center justify-start">
                 {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-9 w-9 border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><UserRound className="h-5 w-5" /></Button>}
               </div>
-              <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" /></Button>
+              <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
                 <PublicListingPublisher autoResume />
               </div>
             </div>
-          )}
-          {embedded ? null : (
-            <p dir="rtl" className="flex w-full items-center justify-between text-xs font-normal text-black"><span>מפרסמים.</span><span>מרוויחים.</span><span>יחד</span></p>
           )}
           <div className={embedded ? '' : 'mt-3'}><BoardSearchControls query={query} onQueryChange={setQuery} onSearch={() => void load()} deals={deals} onDealToggle={toggleDeal} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} />} /></div>
         </div>
