@@ -266,7 +266,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   return (
     <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
       {showWelcome && (
-        <div className={cn('fixed inset-x-0 bottom-0 z-40 overflow-y-auto bg-background', embedded ? 'top-16' : 'top-14 sm:top-16')}>
+        <div className={cn('fixed inset-x-0 bottom-0 z-40 overflow-hidden overscroll-none bg-background', embedded ? 'top-16' : 'top-14 sm:top-16')}>
           <WelcomeSlides key={welcomeKey} onDone={() => setShowWelcome(false)} />
         </div>
       )}

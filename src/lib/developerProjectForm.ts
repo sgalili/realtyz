@@ -21,7 +21,7 @@ export function projectForm(project?: DeveloperProject, company?: DeveloperCompa
   const details = asRecord(project?.source_details);
   const manual = asRecord(details.manual);
   return {
-    commission_config: commissionConfig(project?.commission_config), deal_type: (details.deal_type ?? manual.deal_type) === 'rent' ? 'rent' : 'sale',
+    commission_config: commissionConfig(project?.commission_config), deal_type: 'sale',
     company_name: company?.company_name ?? '', phone: company?.phone ?? '', company_source_url: company?.source_url ?? '', logo_url: company?.logo_url ?? '',
     name: project?.name ?? '', description: project?.description ?? '', source_url: project?.source_url ?? '', city: project?.city ?? '', neighborhood: project?.neighborhood ?? '', address: project?.address ?? '',
     status: project?.status ?? 'marketing', total_units: str(project?.total_units), available_units: str(project?.available_units), price_from: str(project?.price_from), delivery_date: project?.delivery_date ?? '',

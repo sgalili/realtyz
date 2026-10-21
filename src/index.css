@@ -1595,6 +1595,27 @@
 
 
 .closing-fee { --closing-current: var(--closing-low); }
+
+.welcome-slide { --welcome-a: var(--brand-deep); --welcome-b: var(--brand-navy); --welcome-c: var(--deal-blue); color: hsl(var(--primary-foreground)); font-family: 'Heebo', 'Assistant', sans-serif; background: radial-gradient(circle at 15% 15%, hsl(var(--welcome-c) / .75), transparent 38%), linear-gradient(145deg, hsl(var(--welcome-a)), hsl(var(--welcome-b)) 58%, hsl(var(--brand-red) / .82)); }
+.welcome-slide[data-theme="2"] { --welcome-a: var(--brand-deep); --welcome-b: var(--brand-red); --welcome-c: var(--brand-gold); }
+.welcome-slide[data-theme="3"] { --welcome-a: var(--brand-navy); --welcome-b: var(--brand-deep); --welcome-c: var(--sale); }
+.welcome-title { text-wrap: balance; }
+.welcome-copy { color: hsl(var(--primary-foreground) / .86); }
+.welcome-accent-gold { color: hsl(var(--brand-gold)); text-shadow: 0 0 22px hsl(var(--brand-gold) / .45); }
+.welcome-accent-red { color: hsl(var(--brand-red-soft)); }
+.welcome-accent-sky { color: hsl(var(--social-telegram)); }
+.welcome-icon { color: hsl(var(--brand-gold)); background: hsl(var(--primary-foreground) / .13); border: 1px solid hsl(var(--primary-foreground) / .22); box-shadow: 0 0 34px hsl(var(--brand-gold) / .35); animation: welcome-float 3.4s ease-in-out infinite, welcome-pulse 2.8s ease-in-out infinite; will-change: transform; }
+.welcome-enter { animation: welcome-enter .52s cubic-bezier(.22,1,.36,1) both; }
+.welcome-control { color: hsl(var(--primary-foreground)); background: hsl(var(--primary-foreground) / .13); }
+.welcome-control:hover { color: hsl(var(--primary-foreground)); background: hsl(var(--primary-foreground) / .24); }
+.welcome-cta { color: hsl(var(--warning-foreground)); background: hsl(var(--brand-gold)); box-shadow: 0 14px 34px hsl(var(--brand-gold) / .35); }
+.welcome-cta:hover { background: hsl(var(--brand-gold-soft)); }
+.welcome-dot { background: hsl(var(--brand-gold)); }
+.welcome-dismiss { color: hsl(var(--primary-foreground) / .85); }
+@keyframes welcome-float { 50% { transform: translate3d(0,-10px,0); } }
+@keyframes welcome-pulse { 50% { box-shadow: 0 0 52px hsl(var(--brand-gold) / .55); } }
+@keyframes welcome-enter { from { opacity: 0; transform: translate3d(0,18px,0); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .welcome-icon, .welcome-enter { animation: none; } }
 .closing-fee[data-level="1"] { --closing-current: var(--closing-medium); }
 .closing-fee[data-level="2"] { --closing-current: var(--closing-high); }
 .closing-fee[data-level="3"] { --closing-current: var(--closing-max); }
