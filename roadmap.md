@@ -1,3 +1,8 @@
+# Developer projects board
+- [ ] Match the global board search, advanced filters, deal controls and grid/list presentation.
+- [ ] Preserve and display project/building/unit hierarchy through Yad2 extraction and sync.
+- [ ] Test hierarchy retention and verify project browsing on mobile and desktop.
+
 # Lead limits and closing fee
 - [x] Fix CRM import against the actual expression/partial unique index with server-authorized workspace scope; focused tests pass. A repeat-import UI check remains unverified without a matching workspace-owned lead.
 - [x] Preserve existing-ad pricing, per-tier caps, screening questions and custom fields through hydration and save; recovery/editor tests pass. Live existing-ad save remains unverified because the active workspace has no ads.
