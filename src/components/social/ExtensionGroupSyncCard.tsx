@@ -221,6 +221,17 @@ export function ExtensionGroupSyncCard({
               ודא שתוסף Realtyz מותקן ופעיל בדפדפן, ואז פתח את עמוד הקבוצות שלך בפייסבוק. התוסף יאסוף את הקבוצות
               והמערכת תשמור אותן אוטומטית כאן.
             </DialogDescription>
+            {extAlive === true && (
+              <p className="text-[14px] font-medium text-emerald-600">✓ התוסף מזוהה ופעיל בדפדפן</p>
+            )}
+            {extAlive === false && (
+              <p className="text-[14px] font-medium text-destructive">
+                התוסף לא זוהה בדפדפן — השתמש בכפתור "תוסף" להורדה והתקנה, ואז נסה שוב.
+              </p>
+            )}
+            {extAlive === null && (
+              <p className="text-[14px] text-muted-foreground">בודק שהתוסף פעיל בדפדפן…</p>
+            )}
           </DialogHeader>
           <ol className="list-inside list-decimal space-y-1 text-[15px] leading-relaxed text-muted-foreground">
             <li>ודא שהתוסף פעיל (סמל Realtyz בסרגל הדפדפן).</li>
