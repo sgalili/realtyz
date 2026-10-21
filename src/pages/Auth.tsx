@@ -349,8 +349,8 @@ const Auth = () => {
                 <Button type="button" className="text-lg" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
                 <Button type="button" className="text-lg" variant={signup ? 'default' : 'ghost'} onClick={() => setSignup(true)}>הרשמה</Button>
               </div>
-              <div className={cn('h-44 overflow-y-auto space-y-3', !signup && 'invisible')} inert={!signup ? '' : undefined} aria-hidden={!signup}>
-                <Select value={signupType} onValueChange={value => {
+              <div className="h-44 overflow-y-auto space-y-3">
+                {signup && <><Select value={signupType} onValueChange={value => {
                   if (value === 'partner') { clearPendingSignupRole(); navigate('/affiliates'); return; }
                   setSignupType(value as SignupRole);
                 }}>
@@ -362,6 +362,7 @@ const Auth = () => {
                   <Input id="signup-full-name" name="name" autoComplete="name" value={fullName} onChange={event => setFullName(event.target.value)} disabled={!signup} />
                 </div>
                 {signupType === 'broker' && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
+                </>}
               </div>
             </>}
             <form onSubmit={handleSendCode} className={codeSent ? "space-y-4 animate-fade-in" : "space-y-4 rounded-lg border border-border/60 bg-background p-4 animate-fade-in"}>

@@ -1,6 +1,6 @@
 # Auth screen refinements
-- [ ] Merge company dropdown option, add full-name input, stabilize tabs and apply requested typography, logo spacing, ticker and footer changes.
-- [ ] Verify tab geometry and signup controls on phone/desktop and run signup tests.
+- [x] Merge company dropdown option, add full-name input, stabilize tabs and apply requested typography, logo spacing, ticker and footer changes; no account/profile persistence changes.
+- [x] Verify exact unchanged tab/scroll geometry and signup controls on phone/desktop; all 11 signup tests pass. No OTP sent or account created.
 
 # Closing split explanations
 - [x] Added shared broker signup/onboarding disclosure, dynamic closing-slider gross/net breakdown and asterisk notes in authorized closing pricing and public-board cells; no payout or permission changes.
