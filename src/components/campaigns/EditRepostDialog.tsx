@@ -435,6 +435,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
 
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
+          purpose: 'first_comment',
           topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
           platform: campaign.channel,
           customInstructions: instructions,

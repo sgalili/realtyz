@@ -1841,7 +1841,8 @@ const InlineComposer = ({
     } catch (e: any) {
       if (ctrl.signal.aborted || e?.name === 'AbortError') return; // silent kill
       const status = e?.context?.status;
-      toast.error(status === 429 ? 'יותר מדי בקשות. נסו שוב בעוד רגע.' : status === 402 ? 'אין מספיק קרדיטים ליצירת הפוסט.' : status === 404 ? 'הנכס לא נמצא בסביבת העבודה הפעילה. בחרו אותו מחדש.' : 'יצירת הטקסט נכשלה. נסו שוב.');
+      const detail = await e?.context?.clone?.().json().catch(() => null);
+      toast.error(detail?.error || (status === 429 ? 'יותר מדי בקשות. נסו שוב בעוד רגע.' : status === 402 ? 'אין מספיק קרדיטים ליצירת הפוסט.' : status === 404 ? 'הנכס לא נמצא בסביבת העבודה הפעילה. בחרו אותו מחדש.' : 'יצירת הטקסט נכשלה. נסו שוב.'));
     } finally {
       releaseGeneration(ctrl);
       setGenerating(false);
@@ -1880,6 +1881,7 @@ const InlineComposer = ({
         const waUrl = waShortUrl || (await mintOfficialWaShortLink());
         const { data, error } = await supabase.functions.invoke('generate-content', {
           body: {
+            purpose: 'first_comment',
             topic: 'תגובה ראשונה לפוסט שיווקי של פלטפורמת Realtyz — שתי שורות בלבד',
             platform: channel.id,
             customInstructions: [
@@ -1927,6 +1929,7 @@ const InlineComposer = ({
       ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
+          purpose: 'first_comment',
           topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
           platform: channel.id,
           customInstructions: styleInstructions,
