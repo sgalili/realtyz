@@ -19,6 +19,8 @@ import { RealtyzWave } from '@/components/RealtyzWave';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SIGNUP_ROLE_LABELS, setPendingSignupRole, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
+import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
+import { savePendingBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 
 
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
@@ -83,6 +85,8 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [signup, setSignup] = useState(false);
   const [signupType, setSignupType] = useState<SignupRole | ''>('');
+  const [brokerLicense, setBrokerLicense] = useState('');
+  const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   // SMS is the default sign-in / sign-up channel on both screens.
@@ -132,10 +136,13 @@ const Auth = () => {
   const identifierValid = isPhoneFlow ? /^05\d-\d{7}$/.test(formattedPhone) : /\S+@\S+\.\S+/.test(email);
   // Signing in needs only a valid identifier. Brand-new accounts pick their role
   // (מתווך / שותף) right after the first successful sign-in.
-  const canSubmit = identifierValid && (!signup || !!signupType);
+  const brokerReady = !signup || signupType !== 'broker' || (!!brokerLicense && verifiedBrokerLicense === brokerLicense);
+  const canSubmit = identifierValid && (!signup || !!signupType) && brokerReady;
 
   const prepareSignup = () => {
     if (signup && !signupType) { toast.error('יש לבחור סוג משתמש'); return false; }
+    if (!brokerReady) { toast.error(INVALID_BROKER_LICENSE); return false; }
+    savePendingBrokerLicense(signup && signupType === 'broker' ? brokerLicense : '');
     if (signup && signupType) setPendingSignupRole(signupType);
     return true;
   };
@@ -348,6 +355,7 @@ const Auth = () => {
                   <SelectContent>{(['broker', 'developer', 'contractor', 'property_owner', 'property_seeker'] as const).map(type => <SelectItem key={type} value={type}>{SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>}
+              {signup && signupType === 'broker' && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
             </>}
             <form onSubmit={handleSendCode} className={codeSent ? "space-y-4 animate-fade-in" : "space-y-4 rounded-lg border border-border/60 bg-background p-4 animate-fade-in"}>
               {codeSent && !isGoogleFlow ? (
@@ -372,7 +380,7 @@ const Auth = () => {
                   )}
                 </div>
               ) : isGoogleFlow ? (
-                <Button type="button" className="auth-provider-button auth-provider-google" onClick={handleGoogleLogin} disabled={loading}>
+                <Button type="button" className="auth-provider-button auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || (signup && !signupType)}>
                   <GoogleLogo />
                   כניסה עם גוגל
                 </Button>
@@ -412,7 +420,7 @@ const Auth = () => {
             </div>}
 
             {!codeSent && <div className="auth-method-tabs" role="tablist" aria-label="אפשרויות כניסה">
-              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || (signup && !signupType)} aria-pressed={activeMethod === 'google'}>
+              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || (signup && !signupType)} aria-pressed={activeMethod === 'google'}>
                 <GoogleLogo />
                 גוגל
               </Button>

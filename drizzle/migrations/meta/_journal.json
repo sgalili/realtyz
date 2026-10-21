@@ -337,6 +337,13 @@
       "when": 1792542924075,
       "tag": "0047_mandatory_primary_signup_type",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792545059271,
+      "tag": "0048_broker_signup_registry_evidence",
+      "breakpoints": true
     }
   ]
 }

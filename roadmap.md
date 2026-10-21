@@ -1,3 +1,9 @@
+# Broker signup registry and wallet navigation
+- [x] Require empty numeric broker license input and official registry validation before broker registration; exact active-license lookup uses the Ministry of Justice data.gov.il dataset.
+- [x] Enforce private server-written registry evidence before new broker grants; signup, post-auth choice and publisher share validation, without trusting editable profile licenses.
+- [x] Replace affiliate gift with wallet navigation and wallet shortcut with previous-page back arrow; authenticated return to affiliate-network verified.
+- [x] 20 focused tests pass; live signup checks reject an unknown number and accept an official entry; authenticated invalid verification rejected and latest preview build passes. A new account and positive broker-role grant were not created, so complete OTP signup remains unverified.
+
 # Intro background and opt-out
 - [x] Replace boxed icons with slide-wide drifting line icons and increase regular-weight subtitles by 4px (24px mobile, 28px desktop).
 - [x] Respect opt-out for homepage/logo/header and add explicit replay to app instructions without clearing dismissal.

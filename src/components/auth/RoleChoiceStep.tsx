@@ -9,17 +9,25 @@ import { useAuth } from '@/hooks/useAuth';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import { SIGNUP_ROLE_LABELS, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
 import realtyzLogo from '@/assets/realtyz-logo.png';
+import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
+import { verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 
 export const PRIMARY_SIGNUP_TYPES = ['broker', 'developer', 'contractor', 'property_owner', 'property_seeker'] as const;
 export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const [busy, setBusy] = useState<SignupRole | null>(null);
+  const [brokerSelected, setBrokerSelected] = useState(false);
+  const [license, setLicense] = useState('');
+  const [verifiedLicense, setVerifiedLicense] = useState<string | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const pick = async (type: typeof PRIMARY_SIGNUP_TYPES[number]) => {
     if (busy || !user) return;
+    if (type === 'broker' && !brokerSelected) { setBrokerSelected(true); return; }
+    if (type === 'broker' && (!license || verifiedLicense !== license)) { toast.error(INVALID_BROKER_LICENSE); return; }
     setBusy(type);
     try {
+      if (type === 'broker') await verifyBrokerLicense(license, 'verify');
       const { data, error } = await supabase.rpc('select_signup_user_type', { _type: type });
       if (error) throw error;
       if (!(data as { ok?: boolean } | null)?.ok) throw new Error('בחירת סוג המשתמש לא נשמרה');
@@ -31,8 +39,8 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       ]);
       onDone?.();
       navigate(type === 'developer' || type === 'contractor' ? '/developer-dashboard?onboarding=1' : type === 'property_owner' ? '/owner/properties' : type === 'property_seeker' ? '/public-listings' : '/dashboard', { replace: true });
-    } catch {
-      toast.error('לא ניתן לשמור את סוג המשתמש. נסו שוב.');
+    } catch (error) {
+      toast.error(type === 'broker' ? (error instanceof Error ? error.message : INVALID_BROKER_LICENSE) : 'לא ניתן לשמור את סוג המשתמש. נסו שוב.');
       setBusy(null);
     }
   };
@@ -40,6 +48,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     <img src={realtyzLogo} alt="Realtyz AI" className="h-14 w-auto object-contain" />
     <h1 className="text-xl font-bold">מה סוג המשתמש שלך?</h1>
     <div className="grid w-full max-w-lg grid-cols-2 gap-3">{PRIMARY_SIGNUP_TYPES.map(type => <Button key={type} variant="outline" className="h-auto whitespace-normal py-6 text-lg font-bold" disabled={!!busy} onClick={() => void pick(type)}>{SIGNUP_ROLE_LABELS[type]}</Button>)}</div>
+    {brokerSelected && <div className="w-full max-w-lg space-y-3"><BrokerLicenseField value={license} onChange={setLicense} onVerified={setVerifiedLicense} /><Button className="w-full" disabled={!!busy || !license || verifiedLicense !== license} onClick={() => void pick('broker')}>הרשמה כמתווך</Button></div>}
     {busy && <RealtyzLoader size="sm" label="שומר את סוג המשתמש..." />}
   </div>;
 }
