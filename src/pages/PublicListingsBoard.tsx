@@ -284,7 +284,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </div>
           )}
           {embedded ? null : (
-            <p dir="rtl" className="flex w-full items-center justify-between text-xs font-normal text-black">מפרסמים. מרוויחים. יחד</p>
+            <p dir="rtl" className="flex w-full items-center justify-between text-xs font-normal text-black"><span>מפרסמים.</span><span>מרוויחים.</span><span>יחד</span></p>
           )}
           <div className={embedded ? '' : 'mt-3'}><BoardSearchControls query={query} onQueryChange={setQuery} onSearch={() => void load()} deals={deals} onDealToggle={toggleDeal} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} />} /></div>
         </div>
