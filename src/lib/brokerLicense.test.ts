@@ -1,7 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
 import { BROKER_LICENSE_PATTERN, exactRegistryRecord, registrySourceIsFresh } from '../../supabase/functions/_shared/brokerRegistry';
+import { brokerLicenseDigits, brokerLicenseSchema } from './brokerLicense';
 
 describe('official broker license validation', () => {
+  it('accepts only ASCII digits in the input, including pasted content', () => {
+    expect(brokerLicenseDigits(' 30A-19₪283 ')).toBe('3019283');
+    expect(brokerLicenseDigits('abc١٢٣')).toBe('');
+  });
+  it('rejects whitespace, letters and symbols at the validation boundary', () => {
+    for (const value of [' 3019283', '3019283 ', '30 19283', '3019283A', '3019283₪']) expect(brokerLicenseSchema.safeParse(value).success).toBe(false);
+    expect(brokerLicenseSchema.safeParse('3019283').success).toBe(true);
+  });
   it('requires a numeric positive license number, without assuming a fixed length', () => {
     expect(BROKER_LICENSE_PATTERN.test('')).toBe(false);
     expect(BROKER_LICENSE_PATTERN.test('123A')).toBe(false);

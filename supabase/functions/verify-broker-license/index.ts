@@ -3,7 +3,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { BROKER_LICENSE_PATTERN, BROKER_REGISTRY_DATASET, BROKER_REGISTRY_RESOURCE, BROKER_REGISTRY_SOURCE, INVALID_BROKER_LICENSE, BROKER_REGISTRY_UNAVAILABLE, exactRegistryRecord, registrySourceIsFresh } from '../_shared/brokerRegistry.ts';
 
-const schema = z.object({ licenseNumber: z.string().trim().regex(BROKER_LICENSE_PATTERN), action: z.enum(['check', 'verify']).default('check') }).strict();
+const schema = z.object({ licenseNumber: z.string().regex(BROKER_LICENSE_PATTERN), action: z.enum(['check', 'verify']).default('check') }).strict();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 
 async function officialJson(url: URL) {
@@ -48,8 +48,12 @@ Deno.serve(async req => {
       const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       if (!key || !url || !userId) throw new Error('registry_unavailable');
       const admin = createClient(url, key);
+      const { error: registryError } = await admin.from('official_brokers_registry').upsert({ license_number: licenseNumber, holder_name: record['שם המתווך'], source_url: BROKER_REGISTRY_SOURCE, source_updated_at: updatedAt, checked_at: new Date().toISOString() });
+      if (registryError) throw new Error('registry_not_saved');
       const { error } = await admin.from('broker_license_verifications').upsert({ user_id: userId, license_number: licenseNumber, registry_holder_name: record['שם המתווך'], source_url: BROKER_REGISTRY_SOURCE, source_updated_at: updatedAt, verified_at: new Date().toISOString() });
       if (error) throw new Error('verification_not_saved');
+      const { error: completeError } = await admin.rpc('complete_official_license_verification', { _uid: userId, _number: licenseNumber });
+      if (completeError) throw new Error('verification_not_completed');
     }
     // Do not expose registry holders' personal information through this endpoint.
     return reply({ valid: true, source: BROKER_REGISTRY_SOURCE, updatedAt });
