@@ -372,6 +372,13 @@
       "when": 1792554778992,
       "tag": "0052_cloud_group_join_and_pool_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1792554925106,
+      "tag": "0053_cloud_post_rotation_and_live_sessions",
+      "breakpoints": true
     }
   ]
 }

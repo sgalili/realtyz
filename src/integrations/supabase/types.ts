@@ -8403,6 +8403,7 @@ export type Database = {
       }
       fb_group_key: { Args: { _value: string }; Returns: string }
       fb_group_rejection: { Args: { _reason: string }; Returns: boolean }
+      fb_prepare_cloud_group_post: { Args: { _job: string }; Returns: boolean }
       fb_rebalance_all_group_pools: { Args: never; Returns: undefined }
       fb_rebalance_group_pool: { Args: { _owner: string }; Returns: number }
       finish_market_scrape_run: {
