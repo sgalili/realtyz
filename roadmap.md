@@ -1,3 +1,9 @@
+# Broker signup registry and wallet navigation
+- [ ] Require empty numeric broker license input and official registry validation before broker registration.
+- [ ] Enforce registry evidence server-side without client-granted broker privileges.
+- [ ] Replace affiliate gift with wallet navigation and wallet shortcut with previous-page back arrow.
+- [ ] Test validation, registry failures and wallet return navigation.
+
 # Intro background and opt-out
 - [x] Replace boxed icons with slide-wide drifting line icons and increase regular-weight subtitles by 4px (24px mobile, 28px desktop).
 - [x] Respect opt-out for homepage/logo/header and add explicit replay to app instructions without clearing dismissal.

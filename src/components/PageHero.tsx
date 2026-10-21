@@ -21,7 +21,7 @@ import {
   DownloadCloud,
   Loader2,
   RefreshCw,
-  Gift,
+  Wallet,
   Bot,
 } from "lucide-react";
 import { useAffiliatePreferences } from "@/hooks/useAffiliate";
@@ -449,6 +449,7 @@ export function PageHero() {
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
           {location.pathname.startsWith('/wallet') && <UsagePriceListButton />}
+          {location.pathname.startsWith('/wallet') && <Button size="icon" variant="ghost" onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/public-listings')} aria-label="חזרה לעמוד הקודם" title="חזרה לעמוד הקודם" className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><ArrowRight className="!h-5 !w-5" strokeWidth={2.5} /></Button>}
           {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
           {isPublicBoard && !user && (
             <Button
@@ -469,12 +470,12 @@ export function PageHero() {
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => navigate("/affiliate-pricing")}
-              aria-label="חבילות שותפים"
-              title="חבילות שותפים"
-              className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+              onClick={() => navigate("/wallet")}
+              aria-label="הארנק שלי"
+              title="הארנק שלי"
+              className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
             >
-              <Gift className="!h-5 !w-5" strokeWidth={2.5} />
+              <Wallet className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
           ) : null}
           {location.pathname.startsWith('/inbox') && inboxChatOpen && (
