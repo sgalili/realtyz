@@ -27,6 +27,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const { setOpen: setSidebarOpen, setOpenMobile } = useSidebar();
 
@@ -113,7 +114,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   );
 
   return (
-    <div className={cn('flex w-full items-center gap-2', className)}>
+    <div ref={setPortalContainer} className={cn('flex w-full items-center gap-2', className)}>
       <button
         type="button"
         onClick={goProfile}
@@ -147,7 +148,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
               <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" />
             </button>
           </PopoverTrigger>
-          <PopoverContent dir="rtl" align="end" side="bottom" sideOffset={6} className="flex max-h-[var(--radix-popover-content-available-height)] w-72 flex-col overflow-hidden p-1.5" onWheel={event => event.stopPropagation()}>
+          <PopoverContent portalContainer={portalContainer} dir="rtl" align="end" side="bottom" sideOffset={6} className="flex max-h-[var(--radix-popover-content-available-height)] w-72 flex-col overflow-hidden p-1.5" onWheel={event => event.stopPropagation()}>
             <p className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground">
               {isSuperAdmin ? '\n' : 'מרחבי עבודה'}
             </p>
