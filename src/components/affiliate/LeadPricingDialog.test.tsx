@@ -3,15 +3,28 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import LeadPricingDialog, { LeadPricingInfo } from './LeadPricingDialog';
 import type { MarketplaceListing } from '@/hooks/useAffiliate';
 
-const state = vi.hoisted(() => ({ editable: null as unknown }));
+const state = vi.hoisted(() => ({ editable: null as unknown, level4Unlocked: false }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: { editable: state.editable, details: { daily_lead_cap: 12 } }, isLoading: false, isError: false }) }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'poster' } }) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace' }));
 vi.mock('./RewardDialog', () => ({ RewardDialog: () => <div role="dialog"><label>הגדרות לידים<input aria-label="מחיר ליד" /></label></div> }));
-vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: false }) }));
+vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: state.level4Unlocked }) }));
 const listing = { tier1_amount: 100, tier2_amount: 150, tier3_amount: 0, tier4_amount: 10000 } as MarketplaceListing;
-afterEach(cleanup);
+afterEach(() => { cleanup(); state.level4Unlocked = false; });
 describe('partner lead pricing information', () => {
+  it('shows 0.8% net and 0.2% platform share of a 1% closing fee for an authorized broker', () => {
+    state.level4Unlocked = true;
+    render(<LeadPricingInfo closingOnly listing={{ ...listing, tier4_amount: 1, tier4_type: 'percent' }} details={{}} />);
+    expect(screen.getAllByText('0.8%')).toHaveLength(2);
+    expect(screen.getByText('0.2%')).toBeTruthy();
+    expect(screen.getByText('1%')).toBeTruthy();
+  });
+  it('does not expose closing gross or split amounts to an unauthorized viewer', () => {
+    render(<LeadPricingInfo closingOnly listing={{ ...listing, tier4_amount: 1, tier4_type: 'percent' }} details={{}} />);
+    expect(screen.queryByText('0.8%')).toBeNull();
+    expect(screen.queryByText('0.2%')).toBeNull();
+    expect(screen.queryByText('1%')).toBeNull();
+  });
   it('keeps inventory gross prices and percentage prices consistent with clicked labels', () => {
     render(<LeadPricingInfo gross listing={{ ...listing, tier3_amount: 2, tier3_type: 'percent' }} details={{ contact_options: { lead_daily_limits: { form: 7 } } }} />);
     expect(screen.getByText('₪100')).toBeTruthy();
