@@ -1,6 +1,6 @@
 # Partner company inventory and wallet controls
-- [ ] Show every saved active-workspace project and imported unit in the partner properties tab, with existing property records and no automatic publication.
-- [ ] Move wallet back chevron left and shekel price-list icon right; verify real company inventory and wallet return.
+- [x] Show saved active-workspace projects and imported units alongside existing properties, without automatic publication; real company shows seven projects with names/photos, search and details in mobile/desktop views. Missing source apartments remain absent; 20 focused tests pass.
+- [x] Move wallet back chevron left and shekel price-list icon right; authenticated opening of six price entries and return to partner marketing verified without runtime errors; preview build passes.
 
 # Developer project counters and promotion
 - [x] Add workspace project counters in the sidebar and company header; authenticated company header shows 7 and project queries page through the full workspace inventory.
