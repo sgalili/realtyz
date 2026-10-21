@@ -1,3 +1,7 @@
+# Post generation repair
+- [ ] Restore complete property-specific Hebrew posts and dedicated first-comment generation without changing the model or existing output caps.
+- [ ] Reject truncated/internal-reasoning output and verify real property generation and comments without publishing.
+
 # Partner company inventory and wallet controls
 - [x] Show saved active-workspace projects and imported units alongside existing properties, without automatic publication; real company shows seven projects with names/photos, search and details in mobile/desktop views. Missing source apartments remain absent; 20 focused tests pass.
 - [x] Move wallet back chevron left and shekel price-list icon right; authenticated opening of six price entries and return to partner marketing verified without runtime errors; preview build passes.
