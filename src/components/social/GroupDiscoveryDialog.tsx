@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Download, Loader2, Plus, Search, Users, ExternalLink, UserPlus, Activity } from "lucide-react";
+import { Check, Cloud, Download, Loader2, Plus, Search, Settings2, Users, ExternalLink, UserPlus, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import { openExternal } from "@/lib/openExternal";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { useMetaPageBinding } from "@/hooks/useMetaPageBinding";
 import { downloadExtension, ensureExtensionReady } from "@/lib/extensionDetect";
+import { getCloudSessionState, type CloudSessionState } from "@/lib/cloudSession";
+import { fetchGroupsViaCloud } from "@/lib/cloudGroupDiscovery";
 import {
   joinGroupsViaExtension, searchGroupsViaExtension, sortDiscovered,
   type DiscoveredGroup, type JoinStatus,
@@ -23,7 +26,7 @@ const SORTS = [
   { id: "activity", label: "פעילות" },
 ] as const;
 
-const STATUS_LABEL: Record<JoinStatus | "queued" | "joining", string> = {
+const STATUS_LABEL: Record<JoinStatus | "queued" | "joining" | "saved", string> = {
   queued: "בתור",
   joining: "מצטרף…",
   joined: "הצטרפת",
@@ -31,6 +34,7 @@ const STATUS_LABEL: Record<JoinStatus | "queued" | "joining", string> = {
   already_member: "כבר חבר",
   needs_answers: "דורש מענה לשאלות",
   failed: "נכשל",
+  saved: "נשמר",
 };
 
 /** Hard cap per run so Facebook does not flag the account. */
@@ -43,6 +47,16 @@ const fmtActivity = (n: number | null) => {
   return week > 0 ? `${week} פוסטים בשבוע` : null;
 };
 
+/**
+ * GroupDiscoveryDialog — cloud-first group search.
+ *
+ * Primary path: search through the workspace's saved cloud Facebook session
+ * (Railway cloud runner). No local browser extension needed. Results can be
+ * saved straight into the workspace posting pool.
+ *
+ * Secondary path (optional): the local extension can still search and
+ * auto-join in the user's own browser. It is never required.
+ */
 export function GroupDiscoveryDialog({
   open, onOpenChange, blockedIds, knownIds, onJoined, installNeededOnOpen,
 }: {
@@ -53,19 +67,24 @@ export function GroupDiscoveryDialog({
   /** Bare ids already saved in this workspace. */
   knownIds?: Set<string>;
   onJoined?: () => void;
-  /** Open directly on the "install the extension" panel (set by the parent
-   *  when an extension-only action was blocked). */
+  /** Parent asked for the extension panel (legacy prop). Opens the optional
+   *  extension tab instead of the cloud-first default. */
   installNeededOnOpen?: boolean;
 }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const navigate = useNavigate();
   const { data: pageBinding } = useMetaPageBinding();
   const [query, setQuery] = useState("נכסים ודירות למכירה והשכרה");
+  const [mode, setMode] = useState<"cloud" | "extension">("cloud");
+  const [cloud, setCloud] = useState<CloudSessionState | null>(null);
+  const [cloudLoaded, setCloudLoaded] = useState(false);
+  const [cloudScanning, setCloudScanning] = useState(false);
   const [results, setResults] = useState<DiscoveredGroup[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [sortBy, setSortBy] = useState<(typeof SORTS)[number]["id"]>("popularity");
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [progress, setProgress] = useState<Record<string, JoinStatus | "queued" | "joining">>({});
+  const [progress, setProgress] = useState<Record<string, JoinStatus | "queued" | "joining" | "saved">>({});
   const [joining, setJoining] = useState(false);
   const [installNeeded, setInstallNeeded] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -75,9 +94,28 @@ export function GroupDiscoveryDialog({
   const cancelRef = useRef<(() => void) | null>(null);
   const cancelledRef = useRef(false);
 
-  // Parent asked for the install panel (an extension-only action was blocked).
+  // On open: load the cloud session state and pick the default tab.
   useEffect(() => {
-    if (open && installNeededOnOpen) setInstallNeeded(true);
+    if (!open) return;
+    setSearched(false);
+    setResults([]);
+    setPicked(new Set());
+    setProgress({});
+    if (installNeededOnOpen) {
+      setMode("extension");
+      setInstallNeeded(true);
+    } else {
+      setMode("cloud");
+      setInstallNeeded(false);
+    }
+    setCloudLoaded(false);
+    let alive = true;
+    void getCloudSessionState().then((state) => {
+      if (!alive) return;
+      setCloud(state);
+      setCloudLoaded(true);
+    });
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, installNeededOnOpen]);
 
@@ -110,7 +148,7 @@ export function GroupDiscoveryDialog({
     }
   };
 
-  /** Manual entry: add a Facebook group by link, without the extension. */
+  /** Manual entry: add a Facebook group by link, without any tooling. */
   const addManualGroup = async () => {
     const name = manualName.trim();
     const absoluteUrl = fbGroupUrl(manualUrl.trim());
@@ -154,6 +192,36 @@ export function GroupDiscoveryDialog({
   const selectable = visible.filter((g) => !g.is_member && !knownIds?.has(g.group_id));
   const allPicked = selectable.length > 0 && selectable.every((g) => picked.has(g.group_id));
 
+  const preselect = (fresh: DiscoveredGroup[]) => {
+    const toPick = fresh.filter((g) => !g.is_member && !knownIds?.has(g.group_id) && !blockedIds?.has(g.group_id));
+    setPicked(new Set(toPick.map((g) => g.group_id)));
+  };
+
+  /** Cloud-first search: the Railway runner scrapes with the saved session. */
+  const runCloudSearch = async () => {
+    const q = query.trim();
+    if (!q || cloudScanning) return;
+    setCloudScanning(true);
+    setPicked(new Set());
+    setProgress({});
+    try {
+      const rows = await fetchGroupsViaCloud(q);
+      const seen = new Set<string>();
+      const fresh = rows.filter((g) => g?.group_id && !seen.has(g.group_id) && seen.add(g.group_id)).slice(0, 100);
+      setResults(fresh);
+      preselect(fresh);
+      setSearched(true);
+      if (!fresh.length) toast.info("לא נמצאו קבוצות — נסו מילת חיפוש אחרת");
+    } catch (e: any) {
+      toast.error("הסריקה בענן נכשלה", { description: e?.message });
+      if (e?.message?.includes("חיבור פייסבוק")) {
+        setCloud((c) => (c ? { ...c, active: false } : c));
+      }
+    } finally {
+      setCloudScanning(false);
+    }
+  };
+
   const runSearch = async () => {
     const q = query.trim();
     if (!q) return;
@@ -166,10 +234,9 @@ export function GroupDiscoveryDialog({
       const seen = new Set<string>();
       const fresh = rows.filter((g) => g?.group_id && !seen.has(g.group_id) && seen.add(g.group_id)).slice(0, 100);
       setResults(fresh);
-      // Every new group found is pre-selected for automatic joining.
-      const toJoin = fresh.filter((g) => !g.is_member && !knownIds?.has(g.group_id) && !blockedIds?.has(g.group_id));
-      setPicked(new Set(toJoin.map((g) => g.group_id)));
+      preselect(fresh);
       setSearching(false);
+      const toJoin = fresh.filter((g) => !g.is_member && !knownIds?.has(g.group_id) && !blockedIds?.has(g.group_id));
       if (toJoin.length) void runJoin(toJoin);
       setSearched(true);
     } catch (e: any) {
@@ -186,24 +253,53 @@ export function GroupDiscoveryDialog({
   });
   const toggleAll = () => setPicked(allPicked ? new Set() : new Set(selectable.map((g) => g.group_id)));
 
-  const saveGroup = async (g: DiscoveredGroup, joinStatus: 'joined' | 'pending' = 'joined') => {
-    if (!workspaceOwnerId) return;
+  const saveGroup = async (
+    g: DiscoveredGroup,
+    joinStatus: "joined" | "pending" = "joined",
+    prefix = "ext",
+    source = "extension",
+  ): Promise<boolean> => {
+    if (!workspaceOwnerId) return false;
     const now = new Date().toISOString();
     const { error } = await (supabase as any).from("fb_user_groups").upsert({
       workspace_owner_id: workspaceOwnerId,
-      group_id: `ext:${g.group_id}`,
+      group_id: `${prefix}:${g.group_id}`,
       group_name: g.group_name,
       group_icon: g.group_icon,
       group_url: g.group_url,
       ...(g.member_count !== null ? { member_count: g.member_count } : {}),
       page_id: pageBinding?.pageId ?? null,
-      source: "extension",
+      source,
       join_status: joinStatus,
       is_selected: true,
       imported_at: now,
       updated_at: now,
     }, { onConflict: "workspace_owner_id,group_id" });
-    if (error && /group_limit_reached/.test(error.message)) toast.error("הגעת למגבלה של 100 קבוצות");
+    if (error && /group_limit_reached/.test(error.message)) {
+      toast.error("הגעת למגבלה של 100 קבוצות");
+      return false;
+    }
+    return !error;
+  };
+
+  /** Cloud mode: save the picked groups into the workspace posting pool. */
+  const runCloudSave = async () => {
+    const list = visible.filter((g) => picked.has(g.group_id)).slice(0, 100);
+    if (!list.length) return;
+    setJoining(true);
+    let ok = 0;
+    for (const g of list) {
+      if (await saveGroup(g, "pending", "fb", "cloud")) {
+        ok += 1;
+        setProgress((prev) => ({ ...prev, [g.group_id]: "saved" }));
+      }
+    }
+    setJoining(false);
+    setPicked(new Set());
+    if (ok > 0) {
+      toast.success(`נשמרו ${ok} קבוצות לרשימת הפרסום`, { description: "להצטרפות בפועל: לשונית התוסף, או הצטרפות ידנית בפייסבוק" });
+      onJoined?.();
+    }
   };
 
   const joinBatch = (targets: DiscoveredGroup[]) => new Promise<number>((resolve) => {
@@ -217,7 +313,7 @@ export function GroupDiscoveryDialog({
         const g = byId.get(gid);
         if (g && (status === "joined" || status === "already_member" || status === "requested")) {
           ok += 1;
-           void saveGroup(g, status === "requested" ? "pending" : "joined").then(() => onJoined?.());
+          void saveGroup(g, status === "requested" ? "pending" : "joined").then(() => onJoined?.());
         }
       },
     );
@@ -250,57 +346,141 @@ export function GroupDiscoveryDialog({
     onJoined?.();
   };
 
+  const busy = cloudScanning || searching || joining;
   const needsSteps = visible.filter((g) => progress[g.group_id] === "needs_answers" || progress[g.group_id] === "failed");
+
+  const goConnectCloud = () => {
+    onOpenChange(false);
+    navigate("/api-settings#cloud-automation");
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!joining) onOpenChange(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100vw-1.5rem)] max-w-lg p-4">
         <DialogTitle className="sr-only">חיפוש והצטרפות לקבוצות</DialogTitle>
 
-        <form className="flex min-w-0 gap-2" onSubmit={(e) => { e.preventDefault(); void runSearch(); }}>
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש והצטרפות לקבוצות"
-            className="min-w-0 flex-1 text-[15px]" disabled={searching || joining} aria-label="מילות חיפוש" />
-          <Button type="submit" disabled={searching || joining || !query.trim()} className="shrink-0 gap-1">
-            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            חיפוש
-          </Button>
-        </form>
+        {/* Cloud-first tab switcher. The extension is optional, never required. */}
+        <div className="flex gap-1.5 rounded-lg bg-muted p-1" role="tablist" aria-label="שיטת חיפוש קבוצות">
+          <button type="button" role="tab" aria-selected={mode === "cloud"}
+            onClick={() => { setMode("cloud"); setInstallNeeded(false); }}
+            className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[14px] font-medium",
+              mode === "cloud" ? "bg-background shadow-sm" : "text-muted-foreground")}>
+            <Cloud className="h-4 w-4" /> חיפוש בענן
+          </button>
+          <button type="button" role="tab" aria-selected={mode === "extension"}
+            onClick={() => setMode("extension")}
+            className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[14px] font-medium",
+              mode === "extension" ? "bg-background shadow-sm" : "text-muted-foreground")}>
+            <Download className="h-4 w-4" /> חיפוש מהדפדפן (תוסף)
+          </button>
+        </div>
 
-        {installNeeded && (
-          <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3 text-right">
-            <p className="text-[15px] font-semibold">כדי לחפש ולהצטרף לקבוצות צריך את תוסף Realtyz</p>
-            <p className="text-[14px] leading-relaxed text-muted-foreground">
-              התוסף אוסף קבוצות מהדפדפן שלך. התקנה חד-פעמית בשני שלבים:
-            </p>
-            <ol className="list-inside list-decimal space-y-1 text-[14px] leading-relaxed text-muted-foreground">
-              <li>הורד את קובץ התוסף (כפתור למטה) וחלץ אותו לתיקייה קבועה.</li>
-              <li>פתח chrome://extensions/ , הפעל "מצב פיתוח" ולחץ "טען תוסף לא ארוז" ובחר את התיקייה שחילצת.</li>
-            </ol>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" className="h-8 gap-1 text-[14px]" onClick={() => void onDownloadExtension()}>
-                <Download className="h-3.5 w-3.5" /> הורדת התוסף
-              </Button>
-              <Button type="button" size="sm" variant="outline" className="h-8 gap-1 text-[14px]" disabled={retrying} onClick={() => void retryExtension()}>
-                {retrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} בדקתי — נסה שוב
-              </Button>
-            </div>
-            <div className="space-y-2 border-t border-border pt-3">
-              <p className="text-[14px] font-medium">אין אפשרות להתקין כרגע? הוסף קבוצה ידנית:</p>
-              <div className="flex min-w-0 flex-wrap gap-2">
-                <Input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="שם הקבוצה"
-                  className="min-w-0 flex-1 text-[14px]" aria-label="שם הקבוצה" />
-                <Input value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} placeholder="קישור הקבוצה (facebook.com/groups/…)"
-                  className="min-w-0 flex-1 text-[14px]" dir="ltr" aria-label="קישור הקבוצה" />
-                <Button type="button" size="sm" variant="outline" className="h-9 shrink-0 gap-1 text-[14px]"
-                  disabled={addingManual || !manualName.trim() || !manualUrl.trim()} onClick={() => void addManualGroup()}>
-                  {addingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} הוספה
+        {/* ── Cloud mode ─────────────────────────────────────────────────── */}
+        {mode === "cloud" && (
+          <>
+            {!cloudLoaded ? (
+              <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> בודק את חיבור הענן…
+              </div>
+            ) : cloud?.active ? (
+              <form className="flex min-w-0 gap-2" onSubmit={(e) => { e.preventDefault(); void runCloudSearch(); }}>
+                <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש קבוצות לפי נושא"
+                  className="min-w-0 flex-1 text-[15px]" disabled={busy} aria-label="מילות חיפוש" />
+                <Button type="submit" disabled={busy || !query.trim()} className="shrink-0 gap-1">
+                  {cloudScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  חיפוש בענן
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3 text-right">
+                <p className="text-[15px] font-semibold">חברו את פייסבוק בענן — ללא התקנת תוסף</p>
+                <p className="text-[14px] leading-relaxed text-muted-foreground">
+                  שמירת חיבור פייסבוק מוצפן מאפשרת לחיפוש קבוצות, לסנכרון ולפרסום לרוץ בשרת שלנו 24/7 —
+                  גם כשהמחשב כבוי, ובלי להתקין שום דבר בדפדפן.
+                </p>
+                <Button type="button" size="sm" className="h-8 gap-1 text-[14px]" onClick={goConnectCloud}>
+                  <Settings2 className="h-3.5 w-3.5" /> חיבור פייסבוק בענן
+                </Button>
+                <p className="text-[13px] text-muted-foreground">
+                  אפשר גם לעבור ללשונית "חיפוש מהדפדפן" ולהשתמש בתוסף, או להוסיף קבוצות ידנית למטה.
+                </p>
+              </div>
+            )}
+
+            {cloudScanning && (
+              <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> סורק קבוצות בענן… זה עשוי לקחת עד דקה
+              </div>
+            )}
+            {!cloudScanning && searched && visible.length === 0 && (
+              <p className="py-4 text-center text-[14px] text-muted-foreground">לא נמצאו קבוצות. נסה מילות חיפוש אחרות.</p>
+            )}
+            {!cloudScanning && visible.length > 0 && (
+              <div className="flex gap-2">
+                <Button type="button" className="flex-1 gap-1" disabled={joining || picked.size === 0} onClick={() => void runCloudSave()}>
+                  {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {picked.size > 0 ? `שמור לרשימת הפרסום (${picked.size})` : "שמור לרשימת הפרסום"}
                 </Button>
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
 
-        {!installNeeded && visible.length > 0 && (
+        {/* ── Optional extension mode ────────────────────────────────────── */}
+        {mode === "extension" && (
+          <>
+            {installNeeded ? (
+              <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3 text-right">
+                <p className="text-[15px] font-semibold">חיפוש והצטרפות מהדפדפן (אופציונלי)</p>
+                <p className="text-[14px] leading-relaxed text-muted-foreground">
+                  התוסף מאפשר חיפוש והצטרפות אוטומטית מתוך הדפדפן שלך. התקנה חד-פעמית בשני שלבים:
+                </p>
+                <ol className="list-inside list-decimal space-y-1 text-[14px] leading-relaxed text-muted-foreground">
+                  <li>הורד את קובץ התוסף (כפתור למטה) וחלץ אותו לתיקייה קבועה.</li>
+                  <li>פתח chrome://extensions/ , הפעל "מצב פיתוח" ולחץ "טען תוסף לא ארוז" ובחר את התיקייה שחילצת.</li>
+                </ol>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" className="h-8 gap-1 text-[14px]" onClick={() => void onDownloadExtension()}>
+                    <Download className="h-3.5 w-3.5" /> הורדת התוסף
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" className="h-8 gap-1 text-[14px]" disabled={retrying} onClick={() => void retryExtension()}>
+                    {retrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} בדקתי — נסה שוב
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <form className="flex min-w-0 gap-2" onSubmit={(e) => { e.preventDefault(); void runSearch(); }}>
+                <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש קבוצות לפי נושא"
+                  className="min-w-0 flex-1 text-[15px]" disabled={busy} aria-label="מילות חיפוש" />
+                <Button type="submit" disabled={busy || !query.trim()} className="shrink-0 gap-1">
+                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  חיפוש
+                </Button>
+              </form>
+            )}
+
+            {searching && (
+              <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> מחפש קבוצות בפייסבוק…
+              </div>
+            )}
+            {!searching && searched && visible.length === 0 && (
+              <p className="py-4 text-center text-[14px] text-muted-foreground">לא נמצאו קבוצות. נסה מילות חיפוש אחרות.</p>
+            )}
+            {!installNeeded && visible.length > 0 && (
+              <div className="flex gap-2">
+                <Button type="button" className="flex-1 gap-1" disabled={joining || picked.size === 0} onClick={() => void runJoin()}>
+                  {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                  {picked.size > 0 ? `הצטרפות אוטומטית (${picked.size})` : "הצטרפות אוטומטית"}
+                </Button>
+                {joining && <Button type="button" variant="outline" onClick={() => cancelRef.current?.()}>עצירה</Button>}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Shared results list ────────────────────────────────────────── */}
+        {visible.length > 0 && (
           <div className="flex min-w-0 flex-wrap items-center gap-2 text-[14px]">
             <span className="text-muted-foreground">מיון:</span>
             {SORTS.map((s) => (
@@ -312,17 +492,7 @@ export function GroupDiscoveryDialog({
           </div>
         )}
 
-        {searching && (
-          <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> מחפש קבוצות בפייסבוק…
-          </div>
-        )}
-
-        {!searching && searched && visible.length === 0 && (
-          <p className="py-4 text-center text-[14px] text-muted-foreground">לא נמצאו קבוצות. נסה מילות חיפוש אחרות.</p>
-        )}
-
-        {!installNeeded && !searching && visible.length > 0 && (
+        {!busy && visible.length > 0 && (
           <div className="min-w-0 overflow-hidden rounded-lg border border-border">
             {selectable.length > 0 && (
               <button type="button" role="checkbox" aria-checked={allPicked} onClick={toggleAll} disabled={joining}
@@ -362,9 +532,9 @@ export function GroupDiscoveryDialog({
                           )}
                           {activity && <span className="inline-flex items-center gap-1"><Activity className="h-3 w-3" />{activity}</span>}
                           {member && !st && <span className="text-primary">כבר חבר</span>}
-                           {st && <span className={cn("inline-flex items-center gap-1", st === "failed" ? "text-destructive" : "text-primary")}>
-                             {st === "joining" && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-label="הצטרפות בתהליך" />}
-                             {STATUS_LABEL[st]}</span>}
+                          {st && <span className={cn("inline-flex items-center gap-1", st === "failed" ? "text-destructive" : "text-primary")}>
+                            {st === "joining" && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-label="הצטרפות בתהליך" />}
+                            {STATUS_LABEL[st]}</span>}
                         </span>
                       </span>
                     </button>
@@ -385,21 +555,26 @@ export function GroupDiscoveryDialog({
           </div>
         )}
 
-        {!installNeeded && needsSteps.length > 0 && !joining && (
+        {needsSteps.length > 0 && !joining && (
           <p className="rounded-lg bg-muted px-3 py-2 text-[14px] leading-relaxed">
             {needsSteps.length} קבוצות דורשות צעד נוסף (שאלות או אישור). לחץ "השלמה" כדי לפתוח את הקבוצה, ענה על השאלות בפייסבוק ואז לחץ "סיימתי".
           </p>
         )}
 
-        {!installNeeded && visible.length > 0 && (
-          <div className="flex gap-2">
-            <Button type="button" className="flex-1 gap-1" disabled={joining || picked.size === 0} onClick={() => void runJoin()}>
-              {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-              {picked.size > 0 ? `הצטרפות אוטומטית (${picked.size})` : "הצטרפות אוטומטית"}
+        {/* ── Manual entry — always available, no tooling needed ─────────── */}
+        <div className="space-y-2 border-t border-border pt-3">
+          <p className="text-[14px] font-medium">הוספת קבוצה ידנית:</p>
+          <div className="flex min-w-0 flex-wrap gap-2">
+            <Input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="שם הקבוצה"
+              className="min-w-0 flex-1 text-[14px]" aria-label="שם הקבוצה" />
+            <Input value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} placeholder="קישור הקבוצה (facebook.com/groups/…)"
+              className="min-w-0 flex-1 text-[14px]" dir="ltr" aria-label="קישור הקבוצה" />
+            <Button type="button" size="sm" variant="outline" className="h-9 shrink-0 gap-1 text-[14px]"
+              disabled={addingManual || !manualName.trim() || !manualUrl.trim()} onClick={() => void addManualGroup()}>
+              {addingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} הוספה
             </Button>
-            {joining && <Button type="button" variant="outline" onClick={() => cancelRef.current?.()}>עצירה</Button>}
           </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   );
