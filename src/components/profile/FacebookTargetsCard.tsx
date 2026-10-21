@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Ban, Hourglass, ExternalLink, Loader2, Search, Trash2, Undo2, UserPlus, Users } from 'lucide-react';
 import { isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
+import { ensureExtensionReady } from '@/lib/extensionDetect';
 import { joinGroupsViaExtension, type JoinStatus } from '@/lib/extensionGroupDiscovery';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { Button } from '@/components/ui/button';
@@ -106,6 +107,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
   const [joining, setJoining] = useState(false);
   const autoJoinRef = useRef<string | null>(null);
   const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(false);
   const scopeRef = useRef(workspaceOwnerId);
   scopeRef.current = workspaceOwnerId;
   const requestRef = useRef(0);
@@ -268,9 +270,15 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
   };
 
 
-  const joinTargets = async (picked: GroupTarget[]) => {
+  const joinTargets = async (picked: GroupTarget[], fromUser = false) => {
     if (!picked.length || joining || !workspaceOwnerId) return;
-    if (!isExtensionInstalled()) { toast.error('כדי להצטרף לקבוצות יש להתקין את תוסף Realtyz'); return; }
+    // Live-check the extension; when the user asked for this explicitly, open
+    // the discovery dialog on its friendly install/manual panel instead of a
+    // dead-end error. Auto-joins fail silently.
+    if (!(await ensureExtensionReady())) {
+      if (fromUser) { setInstallPrompt(true); setDiscoverOpen(true); }
+      return;
+    }
     // Safety: never exceed 100 joined groups; most popular groups first.
     const capacity = Math.max(0, MAX_GROUPS - groups.length);
     if (capacity === 0) { toast.error(`הגעת למגבלה של ${MAX_GROUPS} קבוצות פעילות`); return; }
