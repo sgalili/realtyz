@@ -10,7 +10,7 @@ import { useAppMode, type AppMode } from '@/hooks/useAppMode';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useState } from 'react';
-import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
@@ -69,10 +69,16 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
       role="group"
       aria-label="החלפת מצב עבודה"
       data-keep-terms
-      className={cn("inline-flex shrink-0 items-center justify-between gap-2 rounded-md border border-border bg-muted/60 px-2 py-1", className)}
+      className={cn("inline-flex shrink-0 items-center gap-0.5 rounded-md border border-border bg-muted/60 p-0.5", className)}
     >
-      <span className="whitespace-nowrap text-xs font-semibold">מצב שותף</span>
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Switch aria-label="מצב שותף" checked={mode === 'partner'} disabled={unavailable || (!identity.canSwitch && mode === 'partner')} onCheckedChange={checked => activation.mutate(checked ? 'partner' : 'broker')} />}
+      {(['broker', 'partner'] as const).map(option => <Button key={option}
+        type="button" size="sm" variant={mode === option ? 'default' : 'ghost'}
+        aria-pressed={mode === option} aria-label={option === 'broker' ? identity.label : 'שותף'}
+        disabled={!!unavailable || (!identity.canSwitch && option === 'broker')}
+        onClick={() => { if (mode !== option) activation.mutate(option); }}
+        className="h-8 min-w-0 flex-1 whitespace-nowrap rounded-sm px-1 text-xs font-semibold">
+        {busy && activation.variables === option ? <Loader2 className="h-3 w-3 animate-spin" /> : option === 'broker' ? identity.label : 'שותף'}
+      </Button>)}
     </div>
     <Dialog open={onboarding} onOpenChange={setOnboarding}>
       <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto p-2 [&>button]:hidden" onInteractOutside={(e) => e.preventDefault()}>
