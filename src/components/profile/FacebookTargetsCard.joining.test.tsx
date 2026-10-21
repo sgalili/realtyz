@@ -58,7 +58,7 @@ describe('live group joining card', () => {
     act(() => mocks.progress?.('123', 'joining'));
     act(() => mocks.progress?.('123', 'requested'));
     expect(screen.queryByLabelText('הצטרפות בתהליך')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('בקשה ממתינה')).toBeInTheDocument();
+    expect(screen.getByLabelText('בקשה ממתינה לאישור')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '0 פעילות' })).toBeInTheDocument();
     view.unmount();
   });
