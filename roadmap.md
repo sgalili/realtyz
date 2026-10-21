@@ -1,3 +1,8 @@
+# Intro, property headings and developer defaults
+- [ ] Redesign five intro slides with vivid gradients, concise Hebrew copy, swipe/side navigation and explicit dismissal; lock scrolling.
+- [ ] Wrap long property headings without displacing prices across shared views.
+- [ ] Remove developer deal question and use sale by default; verify behavior and existing tests.
+
 # Signup identity and partner sidebar
 - [x] Require five explicit primary signup types; persist through a constrained authenticated operation without changing established core roles.
 - [x] Show primary workspace identity and persistent partner switch; adapt company/office profile and authorized menus.

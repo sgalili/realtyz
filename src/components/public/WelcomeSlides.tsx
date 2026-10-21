@@ -47,7 +47,6 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
       <Button type="button" variant="ghost" size="sm" onClick={finish} className="welcome-control absolute left-3 top-3 z-20 gap-1">דלג <X className="h-4 w-4" /></Button>
-      <div aria-hidden="true" className="welcome-orb absolute -left-16 top-16 h-56 w-56 rounded-full" />
       <div key={index} className="relative z-10 flex flex-1 flex-col justify-center px-14 pb-6 pt-12 text-right" aria-live="polite">
         <div className="welcome-icon mb-7 flex h-24 w-24 items-center justify-center rounded-[2rem]"><Icon aria-hidden="true" className="h-12 w-12" strokeWidth={1.7} /></div>
         <h2 className="welcome-title welcome-enter text-5xl font-black leading-[1.02] sm:text-7xl">{slide.title}</h2>
@@ -57,7 +56,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       {index > 0 && <Button type="button" variant="ghost" size="icon" aria-label="הקודם" onClick={() => go(index - 1)} className="welcome-control absolute right-2 top-1/2 z-20 h-12 w-12 -translate-y-1/2 rounded-full"><ChevronRight className="h-8 w-8" /></Button>}
       {!last && <Button type="button" variant="ghost" size="icon" aria-label="הבא" onClick={() => go(index + 1)} className="welcome-control absolute left-2 top-1/2 z-20 h-12 w-12 -translate-y-1/2 rounded-full"><ChevronLeft className="h-8 w-8" /></Button>}
       <div className="relative z-10 flex flex-col items-center gap-3 pb-5">
-        <div className="flex gap-2">{SLIDES.map((_, i) => <button key={i} type="button" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className={cn('welcome-dot h-2.5 rounded-full transition-all duration-300', i === index ? 'w-8' : 'w-2.5 opacity-45')} />)}</div>
+        <div className="flex gap-1">{SLIDES.map((_, i) => <Button key={i} type="button" variant="ghost" size="icon" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className="h-8 w-8 hover:bg-transparent"><span className={cn('welcome-dot h-2.5 rounded-full transition-all duration-300', i === index ? 'w-8' : 'w-2.5 opacity-45')} /></Button>)}</div>
         <Button variant="link" className="welcome-dismiss h-auto p-0 text-base" onClick={() => { dismissWelcome(); finish(); }}>אל תציגו לי יותר</Button>
       </div>
     </section>

@@ -25,7 +25,7 @@ type Props = { project?: DeveloperProject; company?: DeveloperCompany | null; on
 export default function DeveloperProjectWizard({ project, company, onSaved, onCancel }: Props) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
-  const [form, setForm] = useState(() => ({ ...projectForm(project, company), deal_type: 'sale' as const }));
+  const [form, setForm] = useState(() => projectForm(project, company));
   const [openStep, setOpenStep] = useState('step-0');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);

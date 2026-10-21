@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { projectForm, projectPayload, validateProjectStep, type DeveloperProject } from './developerProjectForm';
 
 describe('developer project editor', () => {
+  it('developer creation and saved project reopening use sale without a deal question', () => {
+    expect(projectForm().deal_type).toBe('sale');
+    const original = { source_details: { deal_type: 'rent', retained: 'source evidence' } } as unknown as DeveloperProject;
+    const form = projectForm(original);
+    expect(form.deal_type).toBe('sale');
+    expect(projectPayload(form, original).source_details).toMatchObject({ deal_type: 'sale', retained: 'source evidence' });
+  });
   it('requires company and project names at their own steps', () => {
     const form = projectForm();
     expect(validateProjectStep(form, 0)).toBeTruthy();
