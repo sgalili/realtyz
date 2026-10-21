@@ -1,7 +1,4 @@
-// Registration role: a Realtyz account is either a broker (מתווך) who gets the
-// full office workspace, or a partner (שותף) who only gets the partner portal.
-// Buyers / sellers / renters / landlords are CRM contact types, never account
-// roles, so they are deliberately absent here.
+// Pending choices are signup intentions only; the authenticated RPC owns grants.
 import { supabase } from '@/integrations/supabase/client';
 import { PUBLIC_LISTING_RESUME_KEY } from '@/lib/publicListingDraft';
 
@@ -47,7 +44,7 @@ export function clearPendingSignupRole() {
 
 /**
  * Applies the role picked at registration to the freshly signed-in account.
- * Idempotent: both RPCs only add a role when the account has none yet.
+ * The server validates primary identity and existing roles atomically.
  * Returns the path the user should land on, or null when nothing was pending.
  */
 export async function applyPendingSignupRole(): Promise<string | null> {
@@ -62,10 +59,8 @@ export async function applyPendingSignupRole(): Promise<string | null> {
     return null;
   }
   if (role === 'partner') {
-    const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
-    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
     clearPendingSignupRole();
-    return '/affiliate';
+    return null;
   }
   const { data, error } = await supabase.rpc('select_signup_user_type', { _type: role });
   if (error || !(data as { ok?: boolean } | null)?.ok) return null;
