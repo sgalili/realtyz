@@ -1,3 +1,7 @@
+# Auth screen refinements
+- [ ] Merge company dropdown option, add full-name input, stabilize tabs and apply requested typography, logo spacing, ticker and footer changes.
+- [ ] Verify tab geometry and signup controls on phone/desktop and run signup tests.
+
 # Closing split explanations
 - [x] Added shared broker signup/onboarding disclosure, dynamic closing-slider gross/net breakdown and asterisk notes in authorized closing pricing and public-board cells; no payout or permission changes.
 - [x] 11 focused tests pass, including the 1.0% → 0.8%/0.2% example and unauthorized hiding. Broker signup explanation and empty license field verified in mobile/desktop browser; preview build passes. Authorized broker public-board display was tested at component level, not in a live broker session.
