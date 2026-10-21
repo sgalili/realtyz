@@ -95,6 +95,10 @@ import { useDeleteListings } from "@/hooks/useDeleteListings";
 import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
 import AffiliateAutomationCards from "@/components/affiliate/AffiliateAutomationCards";
 import { PartnerPageIntroduction } from '@/components/affiliate/PartnerProgramIntro';
+import { useWorkspaceDeveloperProjects } from '@/hooks/useWorkspaceDeveloperProjects';
+import { partnerProjectInventory } from '@/lib/partnerProjectInventory';
+import PartnerProjectInventory from '@/components/developers/PartnerProjectInventory';
+import { commissionConfig, effectiveUnitFees } from '@/lib/developerCommissions';
 
 const AFFILIATE_SCROLL_KEY = "affiliate-network:scroll-y";
 
@@ -144,6 +148,7 @@ function toUnifiedResult(listing: BrokerAffiliateListing): UnifiedResult {
 function BrokerAffiliateNetwork() {
   const navigate = useNavigate();
   const { data: listings = [], isLoading: listingsLoading } = useBrokerAffiliateListings();
+  const { data: projects = [], isLoading: projectsLoading, isError: projectsError, refetch: reloadProjects } = useWorkspaceDeveloperProjects();
   const { data: referrals = [], isLoading: refsLoading } = useBrokerReferrals();
   const referralListingIds = useMemo(
     () => [...new Set(referrals.map((r: any) => r.listing?.id).filter(Boolean))] as string[],
@@ -235,6 +240,16 @@ function BrokerAffiliateNetwork() {
       return !propsActive || matchesPropertyFilter(row, propertyFilter);
     });
   }, [listings, search, leadFilter, propertyFilter]);
+
+  const projectRecords = useMemo(() => partnerProjectInventory(projects), [projects]);
+  const filteredProjects = useMemo(() => projectRecords.filter(record => {
+    const result = record.result;
+    const q = search.trim().toLowerCase();
+    if (q && ![result.title, result.address, result.city].some(value => value?.toLowerCase().includes(q))) return false;
+    const fees = effectiveUnitFees(commissionConfig(record.project.commission_config), record.unit);
+    return matchesPropertyFilter({ ...result, deal_type: result.listing_type }, propertyFilter)
+      && matchesLeadFilter({ tier1: Number(fees?.form ?? 0), tier2: Number(fees?.whatsapp ?? 0), tier3: Number(fees?.phone ?? 0), tier4: Number(fees?.closing?.value ?? 0) }, leadFilter);
+  }), [projectRecords, search, leadFilter, propertyFilter]);
 
   // Marketing and lead tabs each get their own text search.
   const filteredReferrals = useMemo(() => {
@@ -553,7 +568,7 @@ loading ? (
               value="rewards"
               className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
             >
-              {listings.length} נכסים
+              {listings.length + projectRecords.length} נכסים
             </TabsTrigger>
             <TabsTrigger
               value="tracking"
@@ -612,7 +627,10 @@ loading ? (
               </div>
             ) : null}
 
-            {renderPropertyRows(filteredListings, listingsLoading)}
+            {projectsLoading && <Skeleton className="h-64 w-full" />}
+            {projectsError && <div role="alert" className="space-y-2 text-destructive"><p>טעינת פרויקטי החברה נכשלה.</p><Button variant="outline" onClick={() => void reloadProjects()}>ניסיון נוסף</Button></div>}
+            <PartnerProjectInventory records={filteredProjects} grid={viewMode === 'grid'} />
+            {(filteredListings.length > 0 || (!projectsLoading && !projectsError && filteredProjects.length === 0)) && renderPropertyRows(filteredListings, listingsLoading)}
           </TabsContent>
 
           <TabsContent value="submissions" className="space-y-2.5 pt-4">

@@ -1608,6 +1608,7 @@ export function ResultTable({
   commissionCell,
   onEdit,
   propertyHref,
+  propertyTitle,
   hideDefaultActions = false,
   publishedAt,
   publishedLabel = 'תאריך פרסום/עדכון',
@@ -1633,6 +1634,7 @@ export function ResultTable({
   onEdit?: (r: UnifiedResult) => void;
   /** Optional safe destination for rows rendered outside the owning workspace. */
   propertyHref?: (r: UnifiedResult) => string | null;
+  propertyTitle?: (r: UnifiedResult) => string;
   /** Hide workspace-only campaign, share and edit controls. */
   hideDefaultActions?: boolean;
   affiliateSortValue?: (r: UnifiedResult) => string | number | null;
@@ -1795,7 +1797,7 @@ export function ResultTable({
                 <td className="px-2 py-1.5 w-64 max-w-[320px] whitespace-normal">
                   {(() => {
                     // Internal table "רחוב" column: street name + property type only.
-                    const label = formatStreetTypeTitle({
+                    const label = propertyTitle?.(r) ?? formatStreetTypeTitle({
                       address: r.address,
                       city: r.city,
                       neighborhood: r.neighborhood,

@@ -1,3 +1,7 @@
+# Partner company inventory and wallet controls
+- [x] Show saved active-workspace projects and imported units alongside existing properties, without automatic publication; real company shows seven projects with names/photos, search and details in mobile/desktop views. Missing source apartments remain absent; 20 focused tests pass.
+- [x] Move wallet back chevron left and shekel price-list icon right; authenticated opening of six price entries and return to partner marketing verified without runtime errors; preview build passes.
+
 # Developer project counters and promotion
 - [x] Add workspace project counters in the sidebar and company header; authenticated company header shows 7 and project queries page through the full workspace inventory.
 - [x] Separate commission settings, add company-wide defaults, daily caps and shared screening/form-field dialogs; authenticated save/reload verifies form 10, phone cap 3, fixed closing 5000 and questions across all 7 projects; original values restored.

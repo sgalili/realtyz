@@ -91,6 +91,10 @@ import { partnerNetReward } from '@/lib/affiliatePlans';
 import { supabase } from '@/integrations/supabase/client';
 import { ISRAELI_CITIES } from '@/data/israeliCities';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
+import { useWorkspaceDeveloperProjects } from '@/hooks/useWorkspaceDeveloperProjects';
+import { partnerProjectInventory } from '@/lib/partnerProjectInventory';
+import PartnerProjectInventory from '@/components/developers/PartnerProjectInventory';
+import { commissionConfig, effectiveUnitFees } from '@/lib/developerCommissions';
 import {
   EMPTY_LEAD_FILTER,
   LEAD_TYPE_LABELS,
@@ -655,6 +659,7 @@ export default function AffiliatePortal() {
   const location = useLocation();
   const { isAffiliate, loading: roleLoading } = useUserRole();
   const { data: marketplace = [], isLoading: marketLoading, isError: marketError, refetch: reloadMarketplace } = useAffiliateMarketplace();
+  const { data: projects = [], isLoading: projectsLoading, isError: projectsError, refetch: reloadProjects } = useWorkspaceDeveloperProjects();
   const { data: referrals = [], isLoading: refLoading } = useMyReferrals();
   const { data: referralListings = [], isLoading: refListingsLoading } = useMyReferralListings();
   const { data: submissions = [], isLoading: subsLoading } = useMySubmissions();
@@ -784,6 +789,22 @@ export default function AffiliatePortal() {
     setLeadFilter(EMPTY_LEAD_FILTER);
     setInlinePropertyFilter(EMPTY_PROPERTY_FILTER);
   };
+
+  const projectRecords = useMemo(() => partnerProjectInventory(projects), [projects]);
+  const filteredProjects = useMemo(() => projectRecords.filter(record => {
+    const result = record.result;
+    const q = search.trim().toLowerCase();
+    if (q && ![result.title, result.address, result.city, result.neighborhood].some(value => value?.toLowerCase().includes(q))) return false;
+    const fees = effectiveUnitFees(commissionConfig(record.project.commission_config), record.unit);
+    return (dealType === 'all' || result.listing_type === dealType)
+      && (city === 'all' || result.city === city)
+      && (neighborhood === 'all' || result.neighborhood === neighborhood)
+      && (propertyType === 'all' || result.property_type === propertyType)
+      && (rooms === 'all' || Number(result.rooms) >= Number(rooms))
+      && (priceRange[1] === 0 || Number(result.price ?? 0) >= priceRange[0] && Number(result.price ?? 0) <= priceRange[1])
+      && matchesPropertyFilter({ ...result, deal_type: result.listing_type }, inlinePropertyFilter)
+      && matchesLeadFilter({ tier1: Number(fees?.form ?? 0), tier2: Number(fees?.whatsapp ?? 0), tier3: Number(fees?.phone ?? 0), tier4: level4Unlocked ? Number(fees?.closing?.value ?? 0) : 0 }, leadFilter);
+  }), [projectRecords, search, dealType, city, neighborhood, propertyType, rooms, priceRange, inlinePropertyFilter, leadFilter, level4Unlocked]);
 
   const filteredSubmissions = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -992,7 +1013,7 @@ export default function AffiliatePortal() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
             <TabsList>
-              <TabsTrigger value="marketplace">{marketplace.length} נכסים</TabsTrigger>
+              <TabsTrigger value="marketplace">{marketplace.length + projectRecords.length} נכסים</TabsTrigger>
               <TabsTrigger value="leads">{submissions.length} לידים</TabsTrigger>
               <TabsTrigger value="mine">{referralCampaigns.filter((row) => row.listing).length} בשיווק</TabsTrigger>
               <TabsTrigger value="earnings">{earningRows.length} רווחים</TabsTrigger>
@@ -1023,6 +1044,10 @@ export default function AffiliatePortal() {
             })() : null}
           <TabsContent value="marketplace" className="space-y-4 pt-4">
 
+            {projectsLoading && <Skeleton className="h-64 w-full" />}
+            {projectsError && <div role="alert" className="space-y-2 text-destructive"><p>טעינת פרויקטי החברה נכשלה.</p><Button variant="outline" onClick={() => void reloadProjects()}>ניסיון נוסף</Button></div>}
+            <PartnerProjectInventory records={filteredProjects} grid={viewMode === 'grid'} />
+
             {marketLoading ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {[0, 1, 2].map((i) => <Skeleton key={i} className="h-72 w-full" />)}
@@ -1032,7 +1057,7 @@ export default function AffiliatePortal() {
                 <p>לא ניתן לטעון את הנכסים כרגע.</p>
                 <Button variant="outline" onClick={() => void reloadMarketplace()}>ניסיון נוסף</Button>
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filtered.length === 0 && filteredProjects.length > 0 ? null : filtered.length === 0 ? (
               <div className="space-y-3 py-10 text-center text-muted-foreground">
                 <p>{marketplace.length > 0 ? 'אין נכסים שתואמים לחיפוש.' : 'אין כרגע נכסים פתוחים לשיווק.'}</p>
                 {(activeFilterCount > 0 || search) && <Button variant="outline" onClick={clearFilters}>ניקוי סינונים</Button>}

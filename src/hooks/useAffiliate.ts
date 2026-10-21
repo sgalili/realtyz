@@ -378,6 +378,8 @@ export function useBrokerAffiliateListings() {
     enabled: !!ownerId,
     queryFn: async (): Promise<BrokerAffiliateListing[]> => {
       if (!ownerId) return [];
+      const listings: BrokerAffiliateListing[] = [];
+      for (let from = 0; ; from += 500) {
       const { data, error } = await supabase
         .from('listings')
         .select(
@@ -385,9 +387,11 @@ export function useBrokerAffiliateListings() {
         )
         .eq('workspace_owner_id', ownerId)
         .order('affiliate_enabled', { ascending: false })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }).order('id').range(from, from + 499);
       if (error) throw error;
-      return (data ?? []) as BrokerAffiliateListing[];
+      listings.push(...((data ?? []) as BrokerAffiliateListing[]));
+      if (!data || data.length < 500) return listings;
+      }
     },
   });
 }
