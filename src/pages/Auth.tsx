@@ -62,6 +62,7 @@ const WhatsAppLogo = () => (
 
 const Auth = () => {
   const { setDemoMode } = useDemoMode();
+  const navigate = useNavigate();
 
   // Force demo OFF whenever the user lands on /auth
   useEffect(() => {
@@ -313,7 +314,7 @@ const Auth = () => {
       className="auth-gradient-shell min-h-screen relative flex flex-col overflow-hidden bg-background px-4 py-8"
     >
       {codeSent && !isGoogleFlow && (
-        <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-16 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
+        <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-4 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
           <ArrowRight className="h-10 w-10" />
         </button>
       )}
