@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
 
     try {
       const r = await fetch(url, {
-        headers: { 'User-Agent': 'RealtyzAI/1.0 (+market-pulse)' },
+        headers: { 'User-Agent': 'TORAFF/1.0 (+market-pulse)' },
         signal: AbortSignal.timeout(8000),
       });
       if (!r.ok) {
