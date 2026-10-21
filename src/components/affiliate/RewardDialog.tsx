@@ -13,6 +13,8 @@ import { defaultQuestions, deriveContactOptions, leadCost } from '@/lib/leadTier
 import { useSetAffiliateReward, type BrokerAffiliateListing, type RewardType } from '@/hooks/useAffiliate';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export function RewardDialog({
   listing,
@@ -24,6 +26,9 @@ export function RewardDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const save = useSetAffiliateReward();
+  const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
+  const draftKey = `affiliate-settings-draft:${user?.id ?? ''}:${activeWorkspaceId ?? ''}:${listing?.id ?? ''}`;
   const zeroToEmpty = (v: unknown) => (v == null || Number(v) === 0 ? "" : String(v));
   const [enabled, setEnabled] = useState(false);
   const [rewardType, setRewardType] = useState<RewardType>("fixed");
@@ -45,8 +50,8 @@ export function RewardDialog({
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
   // Sync form state to the listing being edited (render-time, no effect needed).
-  if (listing && hydratedFor !== listing.id) {
-    setHydratedFor(listing.id);
+  if (listing && hydratedFor !== draftKey) {
+    setHydratedFor(draftKey);
     setEnabled(listing.affiliate_enabled);
     setRewardType(listing.affiliate_reward_type ?? "fixed");
     setAmount(zeroToEmpty(listing.affiliate_reward_amount));
@@ -69,7 +74,7 @@ export function RewardDialog({
     );
     // Restore any unsaved draft (typed before refresh / closing the dialog).
     try {
-      const raw = localStorage.getItem(`affiliate-settings-draft:${listing.id}`);
+      const raw = localStorage.getItem(draftKey);
       const d = raw ? JSON.parse(raw) : null;
       if (d && typeof d === "object") {
         if (typeof d.enabled === "boolean") setEnabled(d.enabled);
@@ -95,14 +100,14 @@ export function RewardDialog({
 
   // Persist every keystroke/selection so refresh or reopening never wipes inputs.
   useEffect(() => {
-    if (!listing || hydratedFor !== listing.id) return;
+    if (!listing || hydratedFor !== draftKey || !user || !activeWorkspaceId) return;
     try {
       localStorage.setItem(
-        `affiliate-settings-draft:${listing.id}`,
+        draftKey,
         JSON.stringify({ enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone }),
       );
     } catch { /* storage full / disabled */ }
-  }, [listing, hydratedFor, enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone]);
+  }, [listing, hydratedFor, draftKey, user, activeWorkspaceId, enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone]);
 
   const num = (v: string) => Number(v) || 0;
   const clean = (v: string) => v.replace(/[^\d.]/g, "");
@@ -265,7 +270,7 @@ export function RewardDialog({
                   {
                     onSuccess: () => {
                       toast.success("התגמול נשמר");
-                      if (listing) { try { localStorage.removeItem(`affiliate-settings-draft:${listing.id}`); } catch { /* noop */ } }
+                      if (listing) { try { localStorage.removeItem(draftKey); } catch { /* noop */ } }
                       onOpenChange(false);
                     },
                     onError: () => toast.error("השמירה נכשלה"),

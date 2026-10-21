@@ -261,7 +261,7 @@ function DemoSidebarPeek() {
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { settings: brand, masterBrand } = useWhiteLabel();
-  const { activeWorkspace } = useWorkspace();
+  const { activeWorkspace, activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
   const { isDemoMode, setDemoMode, demoCandidateId, setDemoCandidateId } = useDemoMode();
@@ -520,9 +520,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </header>
           <PageHero />
           <main className={`realtyz-main-surface flex-1 overscroll-contain overflow-x-hidden px-3 sm:px-6 ${location.pathname.startsWith('/properties') ? 'pt-0' : 'pt-[20px]'} ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
-            <div className={`w-full lg:mx-auto lg:w-[60vw] lg:max-w-[60vw] ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
+            <div key={`${user?.id}:${activeWorkspaceId}`} className={`w-full lg:mx-auto lg:w-[60vw] lg:max-w-[60vw] ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
               <FacebookConnectionBanner />
-              {children}
+              {user && (workspaceLoading || !activeWorkspaceId) ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : children}
               <DemoSidebarPeek />
             </div>
           </main>
