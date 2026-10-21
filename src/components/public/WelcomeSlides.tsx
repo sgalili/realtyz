@@ -9,7 +9,7 @@ type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
 
 const SLIDES = [
-  { icon: NetworkHomes, theme: 1, title: <>לוח שותפים <Hi tone="gold">מטורף</Hi></>, text: <>כל הנכסים, כל ה<Hi tone="sky">שותפים</Hi> וכל ההזדמנויות במקום אחד.</> },
+  { icon: NetworkHomes, theme: 1, title: <>מהפכת ה<Hi tone="gold">אוטומציה</Hi> בנדל"ן</>, text: <>האקוסיסטם הראשון שמחבר בין מתווכים, יזמים ובעלי נכסים לרשת <Hi tone="sky">שותפים</Hi> חכמה אחת שעובדת בשבילך אוטומטית מקצה לקצה.</> },
   { icon: CoinsCurrency, theme: 2, title: <>המוכר קובע את ה<Hi tone="gold">עמלות</Hi></>, text: <>עמלות שקופות מראש. לקונים ולשוכרים מחיר קבוע וברור.</> },
   { icon: ShareShekels, theme: 3, title: <>כאן כולם <Hi tone="red">שותפים</Hi></>, text: <>בעלי נכסים, מתווכים ויזמים משווקים נכסים ומרוויחים <Hi tone="gold">עמלות</Hi>.</> },
   { icon: Sparkles, theme: 1, title: <>הכירו את <Hi tone="gold">ריטה</Hi> — סוכנת ה-AI האישית שלך</>, text: <>עובדת בשבילך <Hi tone="sky">24/7</Hi>, מייצגת אותך נאמנה, יוצרת פוסטים שיווקיים לנכסים שלך, מביאה לידים חמים בוואטסאפ ובטלפון — ומייצרת לך הכנסה אוטומטית מסביב שעון, גם בזמן שאתה ישן.</> },
