@@ -1,3 +1,7 @@
+# Closing split explanations
+- [x] Added shared broker signup/onboarding disclosure, dynamic closing-slider gross/net breakdown and asterisk notes in authorized closing pricing and public-board cells; no payout or permission changes.
+- [x] 11 focused tests pass, including the 1.0% → 0.8%/0.2% example and unauthorized hiding. Broker signup explanation and empty license field verified in mobile/desktop browser; preview build passes. Authorized broker public-board display was tested at component level, not in a live broker session.
+
 # Universal broker license enforcement
 - [x] Added private official-registry evidence and database guards for grants/profile/affiliate updates; checked every existing broker license against the current government source, archived and removed 8 invalid role rows; zero unverified broker roles remain.
 - [x] Removed placeholders and restricted license fields to ASCII digits; 17 focused tests pass, browser signup filters pasted letters/symbols and shows the exact Hebrew error; authenticated invalid profile write and unknown-license verification are blocked. Preview build passes. Successful license-save/restoration was not exercised because the available session is a developer and no broker-account change was authorized for testing.
