@@ -22,7 +22,7 @@
 - Listing lifecycle advances forward-only via advance_listing_stage; daily cron pauses partner distribution after 3 unanswered checks until confirm_listing_availability.
 - Lead disputes, appeals and bans run only through audited security-definer RPCs; appeals need a neutral reviewer; bans freeze, never delete.
 - Lead categories come from generated `leads.lead_category` (lead_kind → interest_tag → deal_type); filters, counts and badges read it. Why: legacy leads stored type only in interest_tag.
-- Core identity survives partner membership; RPC-only profile consent gates entry. Mode grants no roles.
+- Core labels use authorized owner roles; developer signup never grants broker roles. Cancel/clear queries and remount tenant pages on switch. Mode grants no roles; consent stays RPC-only. Why: isolation.
 - Wallet lock: credit_wallets trigger locks at balance<=0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards.
 - Personal links use auth RPCs; service attribution validates listing/workspace.
