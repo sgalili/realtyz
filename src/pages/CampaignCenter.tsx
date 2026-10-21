@@ -1989,7 +1989,7 @@ const InlineComposer = ({
     }, 120);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedListingId, hydrated]);
+  }, [selectedListingId, hydrated, listings]);
 
   // Keep the per-property cache fresh (debounced) so the next visit is instant.
   useEffect(() => {

@@ -2,14 +2,14 @@
 - Cloud monitoring mounts only for authenticated super_admin roles and its read-only endpoint rechecks user_roles server-side; queue counts resolve and authorize the active workspace, while Railway heartbeat and scheduler ticks remain separate. Why: prevent operational data leaks and false readiness.
 - Wallet usage pricing is read-only and loaded from action_pricing on opening its hero dialog; reuse the admin query key without exposing editing controls. Why: display current configured costs consistently.
 - Profile and office image uploads use the shared fixed-aspect crop dialog before storage; crop percentages map to original pixels and pending selections clear on workspace changes. Why: consistent image framing without premature uploads or tenant drift.
-- Tours use authorized menus and route-stable state; never auto-mutate.
+- Tours use authorized menus and stable state; never auto-mutate.
 - Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts. Fee notices require workflow context, never browsing. Why: relevance.
-- Inventory/history/publication are workspace-scoped; reload on entry/focus, retain partial imports/commissions; DB-authorize publication.
+- Inventory and project campaign targets are workspace-scoped; authorize AI targets server-side, never store project refs in listing UUID fields. Why: isolation.
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Joining indicators follow extension events; workspace overlays stop polling reversing tab migration before persistence.
-- Peer expansions use exclusive motion groups to avoid hover leaks.
+- Peer expansions use exclusive motion groups.
 - Inquiry tiers need server-only workspace/listing identity and satisfactory screening; first turns/callbacks never qualify. Atomic upgrades charge only unpaid differences.
 - Tables share sort/reorder/hide with visible grips and order-only reset; prefs never store listings. Native scrolling, no overlays. Why: consistency.
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe.
