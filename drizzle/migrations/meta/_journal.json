@@ -351,6 +351,13 @@
       "when": 1792545697011,
       "tag": "0049_developer_company_commission_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792545925699,
+      "tag": "0050_developer_publication_source_specifications",
+      "breakpoints": true
     }
   ]
 }
