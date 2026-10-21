@@ -1,3 +1,8 @@
+# Signup identity and partner sidebar
+- [ ] Require explicit primary type at registration and persist with safe server role assignment.
+- [ ] Always show primary identity and universal partner switch in sidebar; tailor office profile and menus.
+- [ ] Test role rules and verify signup selection/sidebar/profile without changing existing account permissions.
+
 # Developer commissions and sidebar
 - [x] Align view options after deal controls across board, partners, inventory and developer projects. Mobile/desktop loaded board, partner and real developer project toolbars verified; inventory initial toolbar verified before developer redirection. Existing mandatory fee/bulk/unit/save tests: 21 pass. No live publication performed; successful project/unit publishing still requires source units and explicit approval. Public closing-price fallback outside the authorized marketplace remains unverified; do not expose raw closing fees.
 - [x] Fix workspace dropdown scrolling and remove the lead button icon; actual wheel scrolling verified from 0 to 365px.
