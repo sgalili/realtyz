@@ -931,11 +931,11 @@ const ApiSettings = () => {
 
       </SectionShell>
 
-      {isSuperAdmin && <SectionShell title="אוטומציית ענן (24/7)" subtitle="פרסום בקבוצות גם כשהמחשב כבוי">
+      <SectionShell title="אוטומציית ענן (24/7)" subtitle="חיבור פייסבוק בענן — חיפוש קבוצות ופרסום ללא תוסף">
         <div id="cloud-automation" className="scroll-mt-24">
           <CloudPostingSessionCard />
         </div>
-      </SectionShell>}
+      </SectionShell>
 
       <SectionShell title="AI Fine-Tuning" subtitle="כיול סגנון מהשיחות שלך">
         <PersonaCalibrationPanel />
