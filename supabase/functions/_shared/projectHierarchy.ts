@@ -19,14 +19,14 @@ function images(value: unknown): string[] {
   walk(value); return [...out];
 }
 export function mergeSource(old: unknown, fresh: unknown): unknown {
-  if (fresh == null || fresh === '') return old;
+  if (fresh == null || fresh === '') return old ?? fresh;
   if (Array.isArray(fresh)) {
     const previous = Array.isArray(old) ? old : [];
     const result = [...previous];
     for (const value of fresh) {
       const row = sourceRecord(value);
       const identity = first(row, ['source_building_id', 'source_unit_id', 'buildingId', 'apartmentId', 'unitId', 'id', 'token']);
-      const index = result.findIndex(item => identity != null ? first(sourceRecord(item), ['source_building_id', 'source_unit_id', 'buildingId', 'apartmentId', 'unitId', 'id', 'token']) === identity : JSON.stringify(item) === JSON.stringify(value));
+      const index = result.findIndex(item => identity != null ? first(sourceRecord(item), ['source_building_id', 'source_unit_id', 'buildingId', 'apartmentId', 'unitId', 'id', 'token']) === identity && (sourceRecord(item).building_id ?? null) === (row.building_id ?? null) : JSON.stringify(item) === JSON.stringify(value));
       if (index < 0) result.push(value); else result[index] = mergeSource(result[index], value);
     }
     return result;
@@ -59,7 +59,7 @@ export function extractProjectHierarchy(source: unknown): { buildings: ProjectBu
       const buildingId = string(first(row, ['building_id', 'buildingId', 'towerId'])) ?? building?.source_building_id ?? null;
       const unit: ProjectUnit = { ...row, source_unit_id: id, building_id: buildingId, building_name: string(row.building_name) ?? building?.name ?? null,
         rooms: numeric(first(row, ['rooms', 'roomsCount', 'numberOfRooms'])), floor: string(first(row, ['floor', 'floorNumber'])), size_sqm: numeric(first(row, ['size_sqm', 'squareMeter', 'squareMeters', 'area', 'size'])), price: numeric(first(row, ['price', 'priceFrom', 'askingPrice'])),
-        balcony_sqm: numeric(first(row, ['balcony_sqm', 'balconyArea', 'balconySize'])), count: numeric(first(row, ['count', 'availableUnits', 'unitsCount'])), type: string(first(row, ['propertyType', 'assetType', 'type'])), images: images(row), source_details: row };
+        balcony_sqm: numeric(first(row, ['balcony_sqm', 'balconyArea', 'balconySize'])), count: numeric(first(row, ['count', 'availableUnits', 'unitsCount'])), type: string(first(row, ['propertyType', 'assetType', 'type'])), images: images(row), source_details: row.source_details ?? row };
       const key = `${buildingId ?? ''}:${id}`;
       apartments.set(key, mergeSource(apartments.get(key), unit) as ProjectUnit);
     }
@@ -81,7 +81,7 @@ export function savedProjectHierarchy(project: { apartments?: unknown; source_de
   const edited = extractProjectHierarchy({ apartments: project.apartments ?? [] });
   const units = new Map(original.apartments.map(unit => [`${unit.building_id ?? ''}:${unit.source_unit_id}`, unit]));
   edited.apartments.forEach(unit => units.set(`${unit.building_id ?? ''}:${unit.source_unit_id}`, mergeSource(units.get(`${unit.building_id ?? ''}:${unit.source_unit_id}`), unit) as ProjectUnit));
-  const grouped = original.buildings.map(building => ({ ...building, units: [...units.values()].filter(unit => unit.building_id === building.source_building_id) }));
+  const grouped: ProjectBuilding[] = original.buildings.map(building => ({ ...building, units: [...units.values()].filter(unit => unit.building_id === building.source_building_id) }));
   [...units.values()].forEach(unit => { if (unit.building_id && !grouped.some(building => building.source_building_id === unit.building_id)) grouped.push({ source_building_id: unit.building_id, name: unit.building_name, units: [...units.values()].filter(item => item.building_id === unit.building_id) }); });
   return { buildings: grouped, apartments: [...units.values()], unassigned: [...units.values()].filter(unit => !unit.building_id) };
 }

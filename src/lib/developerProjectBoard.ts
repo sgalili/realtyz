@@ -13,7 +13,7 @@ export function projectMatches(project: { name: string; city?: string | null; ne
   const base = { deal_type: deal, city: project.city, neighborhood: project.neighborhood };
   return units.length ? units.some(unit => matchesPropertyFilter({ ...base, ...unit, property_type: unit.type }, filters)) : matchesPropertyFilter({ ...base, price: project.price_from }, filters);
 }
-export function mergeImportedProject(old: Record<string, unknown> | undefined, fresh: Record<string, unknown>) {
+export function mergeImportedProject(old: Record<string, unknown> | undefined, fresh: Record<string, unknown>): Record<string, unknown> {
   const merged = mergeSource(old, fresh) as Record<string, unknown>;
   // Editing overrides remain authoritative when a later source page is sparse or changed.
   const manual = sourceRecord(sourceRecord(old?.source_details).manual);

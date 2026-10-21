@@ -41,7 +41,7 @@ export default function DeveloperDashboard() {
     window.addEventListener('developer-projects:add', add);
     return () => window.removeEventListener('developer-projects:add', add);
   }, []);
-  useEffect(() => { setEditing(undefined); }, [ws]);
+  useEffect(() => { setEditing(undefined); setExpandedId(null); setQuery(''); setPropFilter(EMPTY_PROPERTY_FILTER); }, [ws]);
   const [query, setQuery] = useState('');
   const [deals, setDeals] = useState({ sale: true, rent: true });
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
@@ -69,7 +69,7 @@ export default function DeveloperDashboard() {
     },
   });
   const developer = editing ? companies.find(company => company.id === editing.developer_id) : companies[0];
-  const filtered = useMemo(() => projects.filter(project => projectMatches(project, query, deals, { ...propFilter, dealType: 'all' })), [projects, query, deals, propFilter]);
+  const filtered = useMemo(() => projects.filter(project => projectMatches(project, query, deals, propFilter)), [projects, query, deals, propFilter]);
   const columns = usePublicBoardColumns(`developer-projects:${ws ?? ''}`, filtered, PROJECT_COLUMNS);
   const cities = useMemo(() => [...new Set(projects.map(project => project.city).filter(Boolean) as string[])].sort(), [projects]);
   const neighborhoods = useMemo(() => [...new Set(projects.map(project => project.neighborhood).filter(Boolean) as string[])].sort(), [projects]);
