@@ -376,14 +376,15 @@ loading ? (
                     : chatQuestions;
                   const t1 = Number(listing.affiliate_tier1_amount ?? 0);
                   const t2 = leadCost(Number(listing.affiliate_tier2_amount ?? 0), chatQuestions);
-                  const t3 = leadCost(Number(listing.affiliate_tier3_amount ?? 0), phoneQuestions);
+                  const t3Type = listing.affiliate_tier3_type ?? 'fixed';
+                  const t3 = t3Type === 'percent' ? Number(listing.affiliate_tier3_amount ?? 0) : leadCost(Number(listing.affiliate_tier3_amount ?? 0), phoneQuestions);
                   const t4 = Number(listing.affiliate_tier4_amount ?? 0);
                   const t4Type = (listing.affiliate_tier4_type ?? "fixed") as RewardType;
                   if (t1) tierTexts.push({ value: money(t1), label: "שם וטלפון", Icon: ClipboardList });
                   if (Number(listing.affiliate_tier2_amount ?? 0))
                     tierTexts.push({ value: money(t2), label: "סינון ב-WhatsApp", Icon: WhatsAppIcon });
                   if (Number(listing.affiliate_tier3_amount ?? 0))
-                    tierTexts.push({ value: money(t3), label: "שיחת טלפון", Icon: Phone });
+                    tierTexts.push({ value: t3Type === 'percent' ? `${t3}%` : money(t3), label: "שיחת טלפון", Icon: Phone });
                   if (t4)
                     tierTexts.push({
                       value: t4Type === "percent" ? `${t4}%` : money(t4),
@@ -392,7 +393,7 @@ loading ? (
                     });
                   if (!tierTexts.length) return null;
                   return (
-                    <LeadPricingDialog readOnly gross listing={{ listing_id: listing.id, broker_id: '', property_title: listing.property_title, tier1_amount: t1, tier2_amount: t2, tier3_amount: t3, tier4_amount: t4, tier4_type: t4Type }}>
+                    <LeadPricingDialog readOnly gross listing={{ listing_id: listing.id, broker_id: '', property_title: listing.property_title, tier1_amount: t1, tier2_amount: t2, tier3_amount: t3, tier3_type: t3Type, tier4_amount: t4, tier4_type: t4Type }}>
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
                       {tierTexts.map(({ value, label, Icon }) => (
                         <div key={label} className="flex items-center justify-start gap-1" title={label}>
@@ -477,7 +478,7 @@ loading ? (
                           </span>
                         ) : null}
                         {l.affiliate_enabled && (
-                          <LeadPricingDialog readOnly gross listing={{ listing_id: l.id, broker_id: '', property_title: l.property_title, tier1_amount: Number(l.affiliate_tier1_amount ?? 0), tier2_amount: Number(l.affiliate_tier2_amount ?? 0), tier3_amount: Number(l.affiliate_tier3_amount ?? 0), tier4_amount: Number(l.affiliate_tier4_amount ?? 0), tier4_type: l.affiliate_tier4_type ?? 'fixed' }}><Badge variant="secondary">
+                          <LeadPricingDialog readOnly gross listing={{ listing_id: l.id, broker_id: '', property_title: l.property_title, tier1_amount: Number(l.affiliate_tier1_amount ?? 0), tier2_amount: Number(l.affiliate_tier2_amount ?? 0), tier3_amount: Number(l.affiliate_tier3_amount ?? 0), tier3_type: l.affiliate_tier3_type ?? 'fixed', tier4_amount: Number(l.affiliate_tier4_amount ?? 0), tier4_type: l.affiliate_tier4_type ?? 'fixed' }}><Badge variant="secondary">
                             {formatReward(l.affiliate_reward_type, l.affiliate_reward_amount)}
                           </Badge></LeadPricingDialog>
                         )}
