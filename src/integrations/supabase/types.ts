@@ -6146,6 +6146,7 @@ export type Database = {
           partner_terms_version: string | null
           phone: string | null
           plan_status: string
+          primary_user_type: string | null
           referral_code: string | null
           service_areas: string[]
           trial_end_date: string | null
@@ -6180,6 +6181,7 @@ export type Database = {
           partner_terms_version?: string | null
           phone?: string | null
           plan_status?: string
+          primary_user_type?: string | null
           referral_code?: string | null
           service_areas?: string[]
           trial_end_date?: string | null
@@ -6214,6 +6216,7 @@ export type Database = {
           partner_terms_version?: string | null
           phone?: string | null
           plan_status?: string
+          primary_user_type?: string | null
           referral_code?: string | null
           service_areas?: string[]
           trial_end_date?: string | null
@@ -8939,6 +8942,7 @@ export type Database = {
         Args: { _billing_period?: string; _plan_slug: string }
         Returns: Json
       }
+      select_signup_user_type: { Args: { _type: string }; Returns: Json }
       set_active_workspace: { Args: { _owner: string }; Returns: undefined }
       set_card_auto_recharge: {
         Args: { _amount: number; _enabled: boolean; _id: string }

@@ -330,6 +330,13 @@
       "when": 1792542186858,
       "tag": "0046_harden_developer_publication_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1792542924075,
+      "tag": "0047_mandatory_primary_signup_type",
+      "breakpoints": true
     }
   ]
 }
