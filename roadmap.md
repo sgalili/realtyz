@@ -1,7 +1,7 @@
 # Developer New Post repair
-- [ ] Load workspace inventory and project/building/unit targets without requiring public publication.
-- [ ] Authorize generation context server-side and avoid passing project references into listing UUID fields.
-- [ ] Test hierarchy mapping and verify real project generation; schedule only on explicit confirmation.
+- [x] Load workspace inventory and project/building/unit targets without requiring public publication; Kobi's seven saved projects appear.
+- [x] Authorize generation context server-side and avoid passing project references into listing UUID fields.
+- [x] Six focused tests pass; real project generation returns 200 and text appears with photos. Scheduling/publishing was not submitted to avoid live distribution; its persistence remains unverified.
 
 # Intro, property headings and developer defaults
 - [x] Redesign five intro slides with gradients, highlighted Hebrew copy, swipe/side navigation and explicit dismissal; mobile/desktop checks confirm edge arrows, scroll lock and opt-out after reload.
