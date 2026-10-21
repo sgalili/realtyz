@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
  */
 export type AppMode = 'broker' | 'partner';
 
-const KEY = 'realtyz-app-mode';
+const KEY = 'realtyz-session-app-mode';
 const EVENT = 'realtyz-app-mode-change';
 
 /** Paths a partner-mode session is allowed to reach. */
@@ -34,7 +34,7 @@ export const PARTNER_MODE_PATHS = [
 export function readAppMode(userId?: string): AppMode {
   if (!userId) return 'broker';
   try {
-    return window.localStorage.getItem(`${KEY}:${userId}`) === 'partner' ? 'partner' : 'broker';
+    return window.sessionStorage.getItem(`${KEY}:${userId}`) === 'partner' ? 'partner' : 'broker';
   } catch {
     return 'broker';
   }
@@ -43,7 +43,7 @@ export function readAppMode(userId?: string): AppMode {
 export function writeAppMode(mode: AppMode, userId?: string) {
   if (!userId) return;
   try {
-    window.localStorage.setItem(`${KEY}:${userId}`, mode);
+    window.sessionStorage.setItem(`${KEY}:${userId}`, mode);
   } catch {
     /* storage disabled */
   }

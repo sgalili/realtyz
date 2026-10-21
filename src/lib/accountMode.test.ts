@@ -33,6 +33,7 @@ describe('universal account identity', () => {
   });
   it('isolates preferences by account and ignores the legacy global key', () => {
     localStorage.clear();
+    sessionStorage.clear();
     localStorage.setItem('realtyz-app-mode', 'partner');
     expect(readAppMode('first')).toBe('broker');
     writeAppMode('partner', 'first');
@@ -40,6 +41,15 @@ describe('universal account identity', () => {
     expect(readAppMode('second')).toBe('broker');
     expect(readAppMode()).toBe('broker');
     writeAppMode('broker', 'first');
+    expect(readAppMode('first')).toBe('broker');
+  });
+  it('defaults to the primary type in a new session even with a previously saved partner preference', () => {
+    sessionStorage.clear();
+    localStorage.setItem('realtyz-app-mode:first', 'partner');
+    expect(readAppMode('first')).toBe('broker');
+    writeAppMode('partner', 'first');
+    expect(readAppMode('first')).toBe('partner');
+    sessionStorage.clear();
     expect(readAppMode('first')).toBe('broker');
   });
 });
