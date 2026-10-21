@@ -3,6 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanPayload } from "../_shared/cleanValues.ts";
 import { maskContactText, toPublicCard } from "../_shared/publicMask.ts";
 import { verifiedSourceLicense, licenseNumber } from "../_shared/yad2Publisher.ts";
+import { publicDeveloperDetails } from '../_shared/publicDeveloperDetails.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -83,6 +84,10 @@ Deno.serve(async (req) => {
       safe.description = maskContactText(safe.description);
       safe.short_description = maskContactText(safe.short_description);
       safe.long_description = maskContactText(safe.long_description);
+      if (row.developer_project_id) {
+        const f = row.features ?? {};
+        safe.features = { publisher_type: 'developer', property_type: f.property_type, amenity_labels: Array.isArray(f.amenity_labels) ? f.amenity_labels.map(maskContactText) : [], developer_unit_details: publicDeveloperDetails(f.developer_unit_details), specifications: publicDeveloperDetails({ specifications: f.specifications }).specifications };
+      }
       const cleaned = cleanPayload(safe) as Record<string, any>;
       cleaned.contact_options = toPublicCard(row).contact_options;
       // Keep stable app identifiers for map selection and lead-gate actions.

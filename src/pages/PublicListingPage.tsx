@@ -133,6 +133,8 @@ function detailRows(row: any): Array<{ label: string; value: string }> {
 /** Every remaining rich block from the DB / original ad, kept human-readable. */
 function detailGroups(row: any): Array<{ title: string; rows: Array<{ label: string; value: string }> }> {
   const sources: Array<[string, unknown]> = [
+    ['פרטי דירת הפרויקט', row?.features?.developer_unit_details],
+    ['מפרט הפרויקט', row?.features?.specifications ? { specifications: row.features.specifications } : null],
     ['הסביבה', row?.area_perks],
     ['היסטוריית מחיר', row?.price_history],
   ];
