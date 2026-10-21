@@ -142,7 +142,9 @@ serve(async (req) => {
     if (isSaas) promotedListing = null;
 
 
-    const BROKER_PERSONA = isSaas
+    const BROKER_PERSONA = isProjectTarget(selectedListingId)
+      ? `${renderPersonaBlock(wsPersona)}\nYou represent ${brokerName}'s developer or contractor company. Market only the selected project's evidenced facts. Never claim to be a real-estate broker or invent a brokerage licence, building, unit, delivery date or price.`
+      : isSaas
       ? `${renderPersonaBlock(wsPersona)}
 
 You write the workspace's own marketing posts, aimed at real-estate agents and agencies who could become customers of the software. You are NOT a broker and you never market apartments, listings or property prices. Every claim about features, pricing or results must come from the workspace knowledge base. The goal of every post is to get the reader to book a short (about 15 minute) Zoom demo.`
@@ -614,7 +616,7 @@ ${EMOJI_BULLET_LAW}
         byline: branding.byline,
         name: branding.name,
         phone: branding.phone,
-        withLicense: !isSaas && !!promotedListing && !skipLicenseFooter,
+        withLicense: !isSaas && !isProjectTarget(selectedListingId) && !!promotedListing && !skipLicenseFooter,
       });
     } catch (_e) { /* never block on enforcement failure */ }
 
