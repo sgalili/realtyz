@@ -280,6 +280,10 @@ async function fetchGroups(job) {
 
 http
   .createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/capabilities') {
+      res.writeHead(200, {'Content-Type':'application/json'}).end(JSON.stringify({group_fetch:true,group_join:true,cloud_posts:true}));
+      return;
+    }
     if (req.method !== "POST") {
       res.writeHead(200).end("realtyz cloud runner ok");
       return;

@@ -81,6 +81,9 @@ Deno.serve(async req => {
   const {data:claimed} = await db.rpc('fb_claim_group_join',{_job:job.id,_token:body.dispatch_token});
   if(!claimed) return json({success:true,dispatched:false});
   try {
+    const capabilityResponse = await fetch(new URL('/capabilities',worker),{signal:AbortSignal.timeout(5000),redirect:'error'});
+    const capabilities = await capabilityResponse.json();
+    if(!capabilityResponse.ok || capabilities.group_join !== true) throw new Error('worker_join_not_deployed');
     const cookies = await decryptSession(s.cookies_encrypted,enc);
     await db.from('fb_user_groups').update({cloud_join_state:'processing',waiting_reason:null}).eq('id',g.id).eq('workspace_owner_id',job.workspace_owner_id);
     const response = await fetch(worker,{method:'POST',headers:{'Content-Type':'application/json','x-worker-secret':secret},signal:AbortSignal.timeout(20_000),redirect:'error',body:JSON.stringify({job_type:'group_join',job_id:job.id,dispatch_token:job.dispatch_token,workspace_owner_id:job.workspace_owner_id,group_url:g.group_url,session_cookies:cookies,user_agent:s.user_agent,membership_answers:g.membership_answers,rules_accepted:g.rules_accepted,report_url:`${url}/functions/v1/fb-group-manager`})});

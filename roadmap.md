@@ -98,6 +98,7 @@
 - [x] 15 focused tests pass; build OK. Railway runner must be redeployed for group_fetch support.
 
 # Cloud-only group quotas and joining
-- [ ] Remove all local extension controls from group connection/discovery; display persisted cloud status.
-- [ ] Enforce 100 active/200 reserve per authorized affiliate connection, enqueue cloud joins and rotate eligible reserves.
-- [ ] Handle membership questions/rules without fabricated answers; verify tests and UI, identify external worker deployment blockers.
+- [x] Removed extension controls from group connection/discovery; mobile authenticated UI checked, cloud state and group events are server-derived, no cached membership overrides.
+- [x] Added locked workspace 100-active/200-reserve pools, canonical duplicate detection, event-driven join jobs and atomic preflight/rotation in both cloud dispatchers. Current pools have no invalid active members.
+- [x] Added supplied-answer/rule-consent handling, serialized joins, approval rechecks and interrupted-job recovery on existing scheduler ticks; 13 focused tests and preview checks pass.
+- [ ] Live joining/search/post rotation acceptance waits for Railway worker redeployment with CLOUD_CALLBACK_ORIGIN and an active Facebook cloud session. No live Facebook join or post sent; arbitrary question types require the remote cloud browser.
