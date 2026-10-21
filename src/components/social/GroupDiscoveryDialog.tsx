@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { Check, Loader2, Search, Users, ExternalLink, UserPlus, Activity } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Download, Loader2, Plus, Search, Users, ExternalLink, UserPlus, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
+import { fbGroupUrl } from "@/lib/fbGroupUrl";
 import { openExternal } from "@/lib/openExternal";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { useMetaPageBinding } from "@/hooks/useMetaPageBinding";
-import { isExtensionInstalled } from "@/components/social/ExtensionDownloadButton";
+import { downloadExtension, ensureExtensionReady } from "@/lib/extensionDetect";
 import {
   joinGroupsViaExtension, searchGroupsViaExtension, sortDiscovered,
   type DiscoveredGroup, type JoinStatus,
