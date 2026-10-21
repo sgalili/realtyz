@@ -63,7 +63,7 @@ export const CoinsCurrency = ({ className, strokeWidth = 2 }: WelcomeIconProps) 
 const SHEKEL_PATH = 'M-1.39 1.7V-1.52H-.43Q.21 -1.52 .52 -.38V.44M1.39 -1.7V1.52H.43Q-.14 1.52 -.52 .38V-.44';
 
 const Shekel = ({ x, y }: { x: number; y: number }) => (
-  <g transform={`translate(${x} ${y}) scale(1.15)`} strokeWidth={0.62}>
+  <g transform={`translate(${x} ${y}) scale(.95)`} strokeWidth={0.55}>
     <path d={SHEKEL_PATH} />
   </g>
 );
