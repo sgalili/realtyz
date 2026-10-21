@@ -1,5 +1,6 @@
 import type { Tables } from '@/integrations/supabase/types';
 import { savedProjectHierarchy } from '../../supabase/functions/_shared/projectHierarchy';
+import { commissionConfig, type DeveloperCommissionConfig } from './developerCommissions';
 
 export type DeveloperProject = Tables<'developer_projects'>;
 export type DeveloperCompany = Tables<'developers'>;
@@ -10,7 +11,7 @@ export type ProjectForm = {
   company_name: string; phone: string; company_source_url: string; logo_url: string;
   name: string; description: string; source_url: string; city: string; neighborhood: string; address: string;
   status: string; total_units: string; available_units: string; price_from: string; delivery_date: string;
-  units: UnitForm[]; images: string[]; specifications: string; amenities: string[];
+  units: UnitForm[]; images: string[]; specifications: string; amenities: string[]; commission_config: DeveloperCommissionConfig; deal_type: 'sale' | 'rent';
 };
 const str = (v: unknown) => v == null ? '' : String(v);
 export const asRecord = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
@@ -20,6 +21,7 @@ export function projectForm(project?: DeveloperProject, company?: DeveloperCompa
   const details = asRecord(project?.source_details);
   const manual = asRecord(details.manual);
   return {
+    commission_config: commissionConfig(project?.commission_config), deal_type: (details.deal_type ?? manual.deal_type) === 'rent' ? 'rent' : 'sale',
     company_name: company?.company_name ?? '', phone: company?.phone ?? '', company_source_url: company?.source_url ?? '', logo_url: company?.logo_url ?? '',
     name: project?.name ?? '', description: project?.description ?? '', source_url: project?.source_url ?? '', city: project?.city ?? '', neighborhood: project?.neighborhood ?? '', address: project?.address ?? '',
     status: project?.status ?? 'marketing', total_units: str(project?.total_units), available_units: str(project?.available_units), price_from: str(project?.price_from), delivery_date: project?.delivery_date ?? '',
@@ -44,10 +46,11 @@ export function validateProjectStep(form: ProjectForm, step: number): string | n
 export function projectPayload(form: ProjectForm, original?: DeveloperProject) {
   const details = asRecord(original?.source_details);
   return {
+    commission_config: form.commission_config,
     name: form.name.trim(), city: form.city.trim() || null, neighborhood: form.neighborhood.trim() || null, address: form.address.trim() || null,
     status: form.status, total_units: projectNumber(form.total_units), available_units: projectNumber(form.available_units), price_from: projectNumber(form.price_from), delivery_date: form.delivery_date.trim() || null,
     description: form.description.trim() || null, source_url: form.source_url.trim() || null, images: [...new Set(form.images)], image_url: form.images[0] ?? null,
     apartments: form.units.map(u => ({ ...u, rooms: projectNumber(u.rooms), size_sqm: projectNumber(u.size_sqm), price: projectNumber(u.price), count: projectNumber(u.count), balcony_sqm: projectNumber(u.balcony_sqm), parking: projectNumber(u.parking) })),
-    source_details: { ...details, manual: { ...asRecord(details.manual), specifications: form.specifications, amenities: form.amenities, project_overrides: { name: form.name.trim(), city: form.city.trim() || null, neighborhood: form.neighborhood.trim() || null, address: form.address.trim() || null, description: form.description.trim() || null, price_from: projectNumber(form.price_from), total_units: projectNumber(form.total_units), available_units: projectNumber(form.available_units), delivery_date: form.delivery_date.trim() || null } } },
+    source_details: { ...details, deal_type: form.deal_type, manual: { ...asRecord(details.manual), specifications: form.specifications, amenities: form.amenities, project_overrides: { name: form.name.trim(), city: form.city.trim() || null, neighborhood: form.neighborhood.trim() || null, address: form.address.trim() || null, description: form.description.trim() || null, price_from: projectNumber(form.price_from), total_units: projectNumber(form.total_units), available_units: projectNumber(form.available_units), delivery_date: form.delivery_date.trim() || null } } },
   };
 }
