@@ -88,3 +88,11 @@
 - [x] Replace the dead-end "install the extension" toast with a friendly panel: download button, install steps, retry, and manual group entry by link.
 - [x] Show a live connection status line in the sync dialog (detected / not detected / checking).
 - [x] Unify detection in src/lib/extensionDetect.ts; update stale joining tests; 11 focused tests pass.
+
+# Cloud-first Facebook pipeline (no extension required)
+- [x] fb_group_fetch_jobs table (workspace-scoped RLS) + fetch_groups/fetch_status/fetch_result actions in fb-session-vault (deployed).
+- [x] fb-session-vault resolves+authorizes the active workspace server-side for all actions; members manage the shared cloud session.
+- [x] cloud-runner/index.js handles job_type=group_fetch (scrapes groups with the saved session, reports back).
+- [x] GroupDiscoveryDialog is cloud-first with tabs: cloud search/save + optional extension tab + always-available manual add; no blocking "must install" prompt.
+- [x] CloudPostingSessionCard visible to all workspace members at /api-settings#cloud-automation; sync dialog shows cloud status.
+- [x] 15 focused tests pass; build OK. Railway runner must be redeployed for group_fetch support.
