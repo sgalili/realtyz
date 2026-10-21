@@ -82,3 +82,9 @@
 - [x] Drop the slogan line, its colour token, and restore the office name to TORAF.
 - [x] Order the row right to left: logo, board title, account icon, publish action.
 - [x] Tighten the gap above the search row and confirm phone/web rendering.
+
+# Facebook groups extension sync flow
+- [x] Live-verify the extension (RZ_EXT_STATUS ping) before search/join/sync/pair; clear stale install flags.
+- [x] Replace the dead-end "install the extension" toast with a friendly panel: download button, install steps, retry, and manual group entry by link.
+- [x] Show a live connection status line in the sync dialog (detected / not detected / checking).
+- [x] Unify detection in src/lib/extensionDetect.ts; update stale joining tests; 11 focused tests pass.
