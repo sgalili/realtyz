@@ -11,12 +11,12 @@ export function developerFeesErrors(fees: DeveloperFees | undefined, deal: strin
   if (!fees) return ['עמלות'];
   const missing: string[] = [];
   for (const [key, label] of [['form', 'טופס'], ['whatsapp', 'WhatsApp'], ['phone', 'טלפון']] as const) {
-    if (!(Number(fees[key]) > 0) || !Number.isFinite(Number(fees[key]))) missing.push(`עמלת ${label}`);
+    if (!(Number(fees[key]) > 0) || Number(fees[key]) > 500 || !Number.isFinite(Number(fees[key]))) missing.push(`עמלת ${label}`);
     const cap = fees.caps?.[key];
     if (!(Number(cap) > 0) || !Number.isInteger(cap)) missing.push(`מגבלת ${label}`);
   }
   const amount = fees.closing?.value;
-  if (!(Number(amount) > 0) || !Number.isFinite(Number(amount))) missing.push('סגירת עסקה');
+  if (!(Number(amount) > 0) || !Number.isFinite(Number(amount)) || !['fixed', 'percent'].includes(fees.closing?.type)) missing.push('סגירת עסקה');
   if (!(price > 0)) missing.push('מחיר');
   if (fees.closing?.type === 'percent' && Number(amount) > 0) {
     const range = closingFeeRange(deal, price);
