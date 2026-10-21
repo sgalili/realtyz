@@ -9,6 +9,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { verifyBrokerLicense } from '@/lib/brokerLicense';
 
 export type LicenseStatus = 'none' | 'pending' | 'verified' | 'rejected';
 
@@ -88,6 +89,7 @@ export function useAffiliateLicense() {
 
   const submit = useMutation({
     mutationFn: async (input: { licenseNumber: string; holderName?: string }) => {
+      await verifyBrokerLicense(input.licenseNumber, 'verify');
       const { data, error } = await supabase.rpc('submit_affiliate_license', {
         _license_number: input.licenseNumber,
         _holder_name: input.holderName ?? null,
@@ -96,7 +98,11 @@ export function useAffiliateLicense() {
       const result = (data ?? null) as { ok?: boolean; error?: string } | null;
       if (!result?.ok) throw new Error(result?.error || 'submit_failed');
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey });
+      await queryClient.invalidateQueries({ queryKey: ['partner-closing-access'] });
+      await queryClient.invalidateQueries({ queryKey: ['user-roles'] });
+    },
   });
 
   const acceptTerms = useMutation({

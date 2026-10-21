@@ -33,6 +33,8 @@ import { cn } from '@/lib/utils';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { useUserRole } from '@/hooks/useUserRole';
+import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
+import { verifyBrokerLicense } from '@/lib/brokerLicense';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
@@ -208,6 +210,7 @@ function PersonalTab() {
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<string>('');
   const [brokerLicense, setBrokerLicense] = useState<string>('');
+  const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
@@ -272,6 +275,7 @@ function PersonalTab() {
     if (!profileOwnerId) return;
     try { window.localStorage.setItem(profileStorageKey(profileOwnerId), JSON.stringify(payload)); } catch {}
     try {
+      if (brokerLicense && isOwnProfile) await verifyBrokerLicense(brokerLicense, 'verify');
       const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
       const { error: profErr } = await supabase
         .from('profiles')
@@ -290,6 +294,7 @@ function PersonalTab() {
         if (error) throw error;
       }
       toast.success('הפרופיל נשמר');
+      window.dispatchEvent(new Event('realtyz:license-verified'));
       window.dispatchEvent(new Event('realtyz:profile-saved'));
     } catch (err: any) {
       toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
@@ -385,19 +390,10 @@ function PersonalTab() {
           </Select>
         </ProfileFieldRow>
 
-        <div className="space-y-1" dir="rtl">
-          <label className="text-xs font-medium text-muted-foreground">מספר רישיון תיווך (יצורף אוטומטית לתחתית כל פוסט/הודעה)</label>
-          <Input
-            dir="rtl"
-            value={brokerLicense}
-            onChange={(e) => setBrokerLicense(e.target.value)}
-            placeholder="לדוגמה: 3019283"
-            className="text-right"
-          />
-        </div>
+        {isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />}
 
         <div className="flex items-center gap-3 pt-1">
-          <Button onClick={save} size="lg" className="flex-1">שמירת הפרופיל</Button>
+          <Button onClick={save} disabled={isOwnProfile && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1">שמירת הפרופיל</Button>
           <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10">
             <LogOut className="h-4 w-4" />
             התנתקות

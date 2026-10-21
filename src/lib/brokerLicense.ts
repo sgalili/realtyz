@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { BROKER_LICENSE_PATTERN, INVALID_BROKER_LICENSE, BROKER_REGISTRY_UNAVAILABLE } from '../../supabase/functions/_shared/brokerRegistry';
 export { INVALID_BROKER_LICENSE };
-export const brokerLicenseSchema = z.string().trim().regex(BROKER_LICENSE_PATTERN, INVALID_BROKER_LICENSE);
+export const brokerLicenseSchema = z.string().regex(BROKER_LICENSE_PATTERN, INVALID_BROKER_LICENSE);
+export const brokerLicenseDigits = (value: string) => value.replace(/[^0-9]/g, '').slice(0, 10);
 const PENDING_LICENSE_KEY = 'toraf-pending-broker-license';
 
 export function savePendingBrokerLicense(value: string) {
