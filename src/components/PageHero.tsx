@@ -449,7 +449,12 @@ export function PageHero() {
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
           {location.pathname.startsWith('/wallet') && <UsagePriceListButton />}
-          {location.pathname.startsWith('/wallet') && <Button size="icon" variant="ghost" onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/public-listings')} aria-label="חזרה לעמוד הקודם" title="חזרה לעמוד הקודם" className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><ArrowRight className="!h-5 !w-5" strokeWidth={2.5} /></Button>}
+          {location.pathname.startsWith('/wallet') && <Button size="icon" variant="ghost" onClick={() => {
+            const returnTo = location.state?.walletReturnTo;
+            if (typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.startsWith('/wallet')) navigate(returnTo);
+            else if (window.history.state?.idx > 0) navigate(-1);
+            else navigate('/public-listings');
+          }} aria-label="חזרה לעמוד הקודם" title="חזרה לעמוד הקודם" className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><ArrowRight className="!h-5 !w-5" strokeWidth={2.5} /></Button>}
           {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
           {isPublicBoard && !user && (
             <Button
@@ -470,7 +475,7 @@ export function PageHero() {
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => navigate("/wallet")}
+              onClick={() => navigate("/wallet", { state: { walletReturnTo: location.pathname + location.search } })}
               aria-label="הארנק שלי"
               title="הארנק שלי"
               className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
