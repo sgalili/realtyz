@@ -1,4 +1,5 @@
 # Developer commissions and sidebar
+- [x] Align view options after deal controls across board, partners, inventory and developer projects. Mobile/desktop loaded board, partner and real developer project toolbars verified; inventory initial toolbar verified before developer redirection. Existing mandatory fee/bulk/unit/save tests: 21 pass. No live publication performed; successful project/unit publishing still requires source units and explicit approval. Public closing-price fallback outside the authorized marketplace remains unverified; do not expose raw closing fees.
 - [x] Fix workspace dropdown scrolling and remove the lead button icon; actual wheel scrolling verified from 0 to 365px.
 - [x] Add mandatory project/unit commission setup, scoped bulk assignment and individual overrides, preserving authored fees on sync.
 - [x] Enforce publication on the server and reuse standard commission badges; public publication creates ordinary listings with existing visibility guards.

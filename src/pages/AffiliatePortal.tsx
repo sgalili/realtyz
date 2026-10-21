@@ -81,7 +81,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
+import { DealViewControls } from '@/components/ui/deal-view-controls';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { ResultTable } from '@/pages/Properties';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
@@ -816,13 +816,13 @@ export default function AffiliatePortal() {
 
   const filteredReferrals = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const withListing = referralCampaigns.filter((row) => row.listing);
+    const withListing = referralCampaigns.filter((row) => row.listing && (dealType === 'all' || row.listing.deal_type === dealType));
     if (!q) return withListing;
     return withListing.filter(({ referral, listing }) => [
       listing?.property_title, listing?.address, listing?.city, listing?.neighborhood,
       REFERRAL_STATUS_LABELS[referral.status], SETTLEMENT_LABELS[referral.settlement_status],
     ].some((value) => (value ?? '').toLowerCase().includes(q)));
-  }, [referralCampaigns, search]);
+  }, [referralCampaigns, search, dealType]);
 
   const searchPlaceholder = activeTab === 'leads'
     ? 'חיפוש לידים שהגשתי'
@@ -963,14 +963,14 @@ export default function AffiliatePortal() {
         )}
 
 
-        <div className="mt-4 flex max-w-lg items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <SelectModeToggle
             total={activeTab === 'marketplace' ? filtered.length : activeTab === 'mine' ? filteredReferrals.length : 0}
             active={multiSelectMode} count={selectedIds.size}
             onToggle={() => { setMultiSelectMode(v => !v); setSelectedIds(new Set()); }}
           />
           {/* Filter button at the start of the field, before the placeholder. */}
-          <div className="relative flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background">
+          <div className="relative flex h-10 min-w-0 flex-[1_1_12rem] items-center gap-2 rounded-md border border-input bg-background sm:max-w-lg">
             <span className="absolute start-2 top-1/2 flex -translate-y-1/2">
               <LeadTypeFilterButton
                 state={leadFilter}
@@ -984,6 +984,7 @@ export default function AffiliatePortal() {
             </span>
             <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-10 h-8 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0" />
           </div>
+          <DealViewControls deal={dealType} onDealChange={setDealType} isGrid={viewMode === 'grid'} onViewToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
         </div>
 
 
@@ -996,9 +997,6 @@ export default function AffiliatePortal() {
               <TabsTrigger value="mine">{referralCampaigns.filter((row) => row.listing).length} בשיווק</TabsTrigger>
               <TabsTrigger value="earnings">{earningRows.length} רווחים</TabsTrigger>
             </TabsList>
-            </div>
-            <div className="flex shrink-0 items-center" aria-label="בחירת תצוגה">
-              <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
             </div>
           </div>
 

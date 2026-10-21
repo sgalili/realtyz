@@ -877,6 +877,7 @@ export default function Properties() {
         </div>
         <div className="inline-flex shrink-0 items-center" role="group" aria-label="סוג עסקה">
           {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1.5 px-2 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full bg-success ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
+          <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
         </div>
         </div>
 
@@ -1130,10 +1131,6 @@ export default function Properties() {
 
 
 
-          {/* Side B — single mutually-exclusive view switch */}
-          <div className="ms-auto inline-flex items-center">
-            <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
-          </div>
         </div>
 
 
