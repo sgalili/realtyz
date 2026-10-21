@@ -43,7 +43,7 @@ const fmtActivity = (n: number | null) => {
 };
 
 export function GroupDiscoveryDialog({
-  open, onOpenChange, blockedIds, knownIds, onJoined,
+  open, onOpenChange, blockedIds, knownIds, onJoined, installNeededOnOpen,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -52,6 +52,9 @@ export function GroupDiscoveryDialog({
   /** Bare ids already saved in this workspace. */
   knownIds?: Set<string>;
   onJoined?: () => void;
+  /** Open directly on the "install the extension" panel (set by the parent
+   *  when an extension-only action was blocked). */
+  installNeededOnOpen?: boolean;
 }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { data: pageBinding } = useMetaPageBinding();
