@@ -451,7 +451,8 @@
     align-items: center;
     justify-content: center;
     gap: 1.25rem;
-    transform: translateY(-90px);
+    justify-content: flex-start;
+    transform: none;
     padding-bottom: 5rem;
   }
 
@@ -470,11 +471,11 @@
 
   .auth-header-ticker-line {
     font-family: 'Assistant', 'Heebo', 'Inter', system-ui, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
-    font-size: calc(clamp(0.75rem, 1.25vw, 0.95rem) + 5px);
+    font-size: 20px;
     font-weight: 400;
     line-height: 1.5;
     max-width: 30rem;
-    letter-spacing: 0.01em;
+    letter-spacing: 0;
     white-space: normal;
     text-wrap: balance;
     text-align: center;
@@ -485,6 +486,10 @@
   .auth-header-ticker-line strong {
     font-weight: 800;
     color: hsl(var(--primary));
+  }
+
+  @media (min-width: 768px) {
+    .auth-header-ticker-line { font-size: 23.2px; }
   }
 
   .auth-text-logo {

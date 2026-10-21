@@ -33,12 +33,12 @@ const acceptVerifiedSession = async (data: PhoneAuthResult | null) => {
 };
 
 const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
-  { key: 'h1', render: () => <>קונים ומוכרים: נכסים, סוכנים ו<strong>שיתופי פעולה</strong> במקום אחד</> },
-  { key: 'h2', render: () => <>משכירים ושוכרים: פרסום נכס, פניות ושיתופים <strong>בלחיצה אחת</strong></> },
-  { key: 'h3', render: () => <>יזמים וקבלנים: ניהול פרויקטים, דירות ו<strong>לידים חמים</strong></> },
-  { key: 'h4', render: () => <>מתווכים וסוכנויות: CRM, אוטומציה ו<strong>סגירת עסקאות</strong> מהירה</> },
-  { key: 'h5', render: () => <>ריטה <strong>עובדת בשבילך 24/7</strong> — פניות בווטסאפ, SMS ואימייל</> },
-  { key: 'h6', render: () => <>שיווק חכם לפייסבוק וסוכנת AI שמייצרת <strong>הכנסה מסביב לשעון</strong></> },
+  { key: 'h1', render: () => <>קונים ומוכרים:<br />נכסים, סוכנים ו<strong>שיתופי פעולה</strong> במקום אחד</> },
+  { key: 'h2', render: () => <>משכירים ושוכרים:<br />פרסום נכס, פניות ושיתופים <strong>בלחיצה אחת</strong></> },
+  { key: 'h3', render: () => <>יזמים וקבלנים:<br />ניהול פרויקטים, דירות ו<strong>לידים חמים</strong></> },
+  { key: 'h4', render: () => <>מתווכים וסוכנויות:<br />CRM, אוטומציה ו<strong>סגירת עסקאות</strong> מהירה</> },
+  { key: 'h5', render: () => <>ריטה:<br /><strong>עובדת בשבילך 24/7</strong> פניות בווטסאפ, SMS ואימייל</> },
+  { key: 'h6', render: () => <>שיווק חכם:<br />לפייסבוק וסוכנת AI שמייצרת <strong>הכנסה מסביב לשעון</strong></> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
@@ -87,6 +87,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [signup, setSignup] = useState(false);
   const [signupType, setSignupType] = useState<SignupRole | ''>('');
+  const [fullName, setFullName] = useState('');
   const [brokerLicense, setBrokerLicense] = useState('');
   const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
@@ -324,7 +325,7 @@ const Auth = () => {
           <img
             src={realtyzLogo}
             alt="TORAFF"
-            className="auth-official-logo mx-auto mb-4 mt-[40px] h-[3.6rem] w-auto object-contain"
+            className="auth-official-logo mx-auto mb-[36px] mt-[55px] h-[3.6rem] w-auto object-contain"
           />
           <div className="auth-header-ticker mx-auto" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
@@ -348,16 +349,21 @@ const Auth = () => {
                 <Button type="button" className="text-lg" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
                 <Button type="button" className="text-lg" variant={signup ? 'default' : 'ghost'} onClick={() => setSignup(true)}>הרשמה</Button>
               </div>
-              {signup && <div className="space-y-2">
-                <Select value={signupType} onValueChange={value => {
+              <div className="h-44 overflow-y-auto space-y-3">
+                {signup && <><Select value={signupType} onValueChange={value => {
                   if (value === 'partner') { clearPendingSignupRole(); navigate('/affiliates'); return; }
                   setSignupType(value as SignupRole);
                 }}>
-                  <SelectTrigger id="signup-type" aria-required="true" aria-label="סוג משתמש"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
-                  <SelectContent>{(['property_seeker', 'property_owner', 'developer', 'contractor', 'broker', 'partner'] as const).map(type => <SelectItem key={type} value={type}>{SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="text-lg" id="signup-type" aria-required="true" aria-label="סוג משתמש"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
+                  <SelectContent>{(['property_seeker', 'property_owner', 'developer', 'broker', 'partner'] as const).map(type => <SelectItem className="text-lg" key={type} value={type}>{type === 'developer' ? 'יזם / קבלן' : SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
                 </Select>
-              </div>}
-              {signup && signupType === 'broker' && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
+                <div className="space-y-2">
+                  <Label htmlFor="signup-full-name">שם מלא</Label>
+                  <Input id="signup-full-name" name="name" autoComplete="name" value={fullName} onChange={event => setFullName(event.target.value)} disabled={!signup} />
+                </div>
+                {signupType === 'broker' && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
+                </>}
+              </div>
             </>}
             <form onSubmit={handleSendCode} className={codeSent ? "space-y-4 animate-fade-in" : "space-y-4 rounded-lg border border-border/60 bg-background p-4 animate-fade-in"}>
               {codeSent && !isGoogleFlow ? (
@@ -410,8 +416,8 @@ const Auth = () => {
                   </div>
                 </div>
               )}
-              {!codeSent && !isGoogleFlow && canSubmit && (
-                <Button type="submit" className={`auth-submit-button auth-submit-${activeMethod} w-full animate-fade-in`} disabled={loading}>
+              {!codeSent && !isGoogleFlow && (
+                <Button type="submit" className={cn(`auth-submit-button auth-submit-${activeMethod} w-full`, !canSubmit && 'invisible')} tabIndex={canSubmit ? 0 : -1} disabled={loading || !canSubmit}>
                   {loading ? 'שולח...' : activeMethod === 'whatsapp' ? 'שלחו לי קוד בווטסאפ' : activeMethod === 'sms' ? 'שלחו לי קוד ב SMS' : 'שלחו לי קוד באימייל'}
                 </Button>
               )}
@@ -454,9 +460,6 @@ const Auth = () => {
       </div>
 
       <footer className="auth-page-footer" dir="rtl">
-        <p className="auth-footer-credit">
-          נבנה ב- <span className="auth-heart" aria-label="אהבה">❤️</span> עבור סוכני הנדל"ן המובילים בישראל
-        </p>
         <div className="auth-footer-wave-band">
           <div className="auth-footer-white-wave" aria-hidden="true" />
         </div>
