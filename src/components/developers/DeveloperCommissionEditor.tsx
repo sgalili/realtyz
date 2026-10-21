@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import ClosingFeeSlider from '@/components/affiliate/ClosingFeeSlider';
+import { ClosingFeeSlider } from '@/components/affiliate/ClosingFeeSlider';
 import { assignDeveloperFees, emptyDeveloperFees, matchingCommissionUnits, unitCommissionKey, type DeveloperCommissionConfig } from '@/lib/developerCommissions';
 import type { ProjectUnit } from '../../../supabase/functions/_shared/projectHierarchy';
 export default function DeveloperCommissionEditor({ value, units, price, deal, onChange }: { value: DeveloperCommissionConfig; units: ProjectUnit[]; price: number; deal: string; onChange: (value: DeveloperCommissionConfig) => void }) {

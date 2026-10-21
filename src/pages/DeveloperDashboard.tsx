@@ -18,11 +18,13 @@ import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
 import { developerProjectImages, projectDeal, projectMatches, savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import { cn } from '@/lib/utils';
+import DeveloperCommissionBadges from '@/components/developers/DeveloperCommissionBadges';
+import { projectCommissionErrors, unitCommissionKey } from '@/lib/developerCommissions';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu, type BoardColumnId } from '@/components/public/PublicBoardTableControls';
 
 const projectImages = developerProjectImages;
 const priceLabel = (price: number | null) => price && price > 0 ? `החל מ־₪${Number(price).toLocaleString('he-IL')}` : '';
-const PROJECT_COLUMNS = { columns: [{ id: 'photo', label: 'תמונה' }, { id: 'address', label: 'פרויקט' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'בניינים' }, { id: 'deal', label: 'עסקה' }, { id: 'rooms', label: 'סוגי יחידות' }, { id: 'floor', label: 'סטטוס' }] as { id: BoardColumnId; label: string }[], value: (p: DeveloperProject, id: BoardColumnId) => id === 'price' ? p.price_from : id === 'address' ? p.name : id === 'commissions' ? savedProjectHierarchy(p).buildings.length : id === 'rooms' ? savedProjectHierarchy(p).apartments.length : id === 'floor' ? p.status : id === 'deal' ? projectDeal(p) : projectImages(p).length };
+const PROJECT_COLUMNS = { columns: [{ id: 'photo', label: 'תמונה' }, { id: 'address', label: 'פרויקט' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'עמלות' }, { id: 'deal', label: 'עסקה' }, { id: 'rooms', label: 'סוגי יחידות' }, { id: 'floor', label: 'סטטוס' }] as { id: BoardColumnId; label: string }[], value: (p: DeveloperProject, id: BoardColumnId) => id === 'price' ? p.price_from : id === 'address' ? p.name : id === 'commissions' ? savedProjectHierarchy(p).buildings.length : id === 'rooms' ? savedProjectHierarchy(p).apartments.length : id === 'floor' ? p.status : id === 'deal' ? projectDeal(p) : projectImages(p).length };
 
 type Mode = 'choose' | 'import' | 'manual' | null;
 export default function DeveloperDashboard() {
@@ -94,7 +96,19 @@ export default function DeveloperDashboard() {
     onError: () => toast.error('מחיקת הפרויקט נכשלה'),
   });
   const busy = !ws || isLoading || companiesLoading;
+  const publish = useMutation({
+    mutationFn: async ({ project, key }: { project: DeveloperProject; key?: string }) => {
+      if (!ws || project.workspace_owner_id !== ws) throw new Error('יש לבחור סביבת עבודה');
+      const { data, error } = await supabase.rpc('publish_developer_project', { _project: project.id, _unit_key: key });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => { refresh(); void qc.invalidateQueries({ queryKey: ['public-listings'] }); toast.success('הפרסום בלוח הושלם'); },
+    onError: () => toast.error('הפרסום לא הושלם; יש לבדוק מחיר, עמלות ומגבלות לכל יחידה'),
+  });
+  const publishProject = (project: DeveloperProject, key?: string) => { if (confirm(key ? 'לפרסם את היחידה בלוח הציבורי?' : 'לפרסם את הפרויקט וכל היחידות בלוח הציבורי?')) publish.mutate({ project, key }); };
   const actions = (p: DeveloperProject) => <div className="flex items-center gap-1" onClick={event => event.stopPropagation()}>
+    <Button size="sm" variant="outline" disabled={publish.isPending || projectCommissionErrors(p).length > 0} title={projectCommissionErrors(p).length > 0 ? 'יש להגדיר מחיר, עמלות ומגבלות בפרויקט ובכל היחידות' : 'פרסום בלוח'} onClick={() => publishProject(p)}>פרסום</Button>
     <Button size="icon-sm" variant="ghost" aria-label="עריכת פרויקט" title="עריכת פרויקט" onClick={() => { setEditing(p); setMode('manual'); }}><Pencil /></Button>
     {p.source_url && <Button asChild size="icon-sm" variant="ghost"><a href={p.source_url} target="_blank" rel="noopener noreferrer" aria-label="עמוד הפרויקט ביד2" title="עמוד הפרויקט ביד2"><ExternalLink /></a></Button>}
     <Button size="icon-sm" variant="ghost" className="text-destructive" disabled={remove.isPending} title="מחיקת פרויקט" aria-label="מחיקת פרויקט" onClick={() => { if (confirm('למחוק את הפרויקט?')) remove.mutate(p.id); }}><Trash2 /></Button>
@@ -117,9 +131,10 @@ export default function DeveloperDashboard() {
             <div className="flex items-start gap-2 p-3"><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-3"><h2 className="min-w-0 break-words text-[19px] font-bold leading-snug">{p.name}</h2>{priceLabel(p.price_from) && <p className={cn('shrink-0 whitespace-nowrap text-[17px] font-bold', deal === 'rent' ? 'text-sale' : 'text-success')}>{priceLabel(p.price_from)}</p>}</div><p className="mt-1 truncate text-sm text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</p></div>{actions(p)}</div>
             <PropertyGallerySlider photos={projectImages(p)} alt={p.name} overlay={<span className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">{PROJECT_STATUS[p.status] ?? p.status}</span>} />
             <div className="flex flex-1 flex-col gap-3 p-4">
+              <DeveloperCommissionBadges project={p} />
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">{meta(p).map(item => <span key={item} className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{item}</span>)}</div>
               <Button variant="outline" className="mt-auto justify-between" aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)}>בניינים ויחידות<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button>
-              <AnimatedExpansion open={open}><ProjectHierarchyDetails project={p} /></AnimatedExpansion>
+              <AnimatedExpansion open={open}><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></AnimatedExpansion>
             </div>
           </article>; })}
         </div> : <BoardColumnDragArea controls={columns}><div className="w-full min-w-0 overflow-x-auto rounded-lg border bg-card"><table className="w-max min-w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
@@ -128,10 +143,10 @@ export default function DeveloperDashboard() {
               {id === 'photo' ? projectImages(p)[0] ? <img src={projectImages(p)[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>
               : id === 'address' ? <div className="w-64"><strong className="block truncate">{p.name}</strong><span className="block truncate text-xs text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</span></div>
               : id === 'price' ? priceLabel(p.price_from) : id === 'deal' ? <span className={cn('whitespace-nowrap', deal === 'rent' ? 'text-sale' : 'text-success')}>{deal === 'rent' ? 'להשכרה' : 'למכירה'}</span>
-              : id === 'commissions' ? hierarchy.buildings.length || '' : id === 'rooms' ? hierarchy.apartments.length || '' : PROJECT_STATUS[p.status] ?? p.status}
+              : id === 'commissions' ? <DeveloperCommissionBadges project={p} /> : id === 'rooms' ? hierarchy.apartments.length || '' : PROJECT_STATUS[p.status] ?? p.status}
             </td>)}
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
-          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><AnimatedExpansion open={open}><div className="sticky right-0 max-w-[calc(100vw-2rem)] space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails project={p} /></div></AnimatedExpansion></td></tr>]; })}
+          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><AnimatedExpansion open={open}><div className="sticky right-0 max-w-[calc(100vw-2rem)] space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></div></AnimatedExpansion></td></tr>]; })}
         </tbody></table></div></BoardColumnDragArea>}
       </>}
       <Dialog open={mode !== null} onOpenChange={open => { if (!open) close(); }}>
