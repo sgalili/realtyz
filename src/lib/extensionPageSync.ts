@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { requestExtensionPagePosts } from '@/lib/extensionPostBridge';
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { isExtensionInstalled } from '@/lib/extensionDetect';
 
 export type ExtensionPageSyncResult = {
   status: 'synced' | 'no_extension' | 'empty' | 'error' | 'timeout';
@@ -12,10 +13,6 @@ export type ExtensionPageSyncResult = {
 /** Hard cap on a single extension page-scrape round trip. */
 export const EXT_PAGE_SYNC_TIMEOUT_MS = 45_000;
 
-const isExtensionInstalled = (): boolean =>
-  typeof document !== 'undefined' &&
-  (document.documentElement.dataset.realtyzExtension === '1' ||
-    document.documentElement.hasAttribute('data-realtyz-extension'));
 
 /**
  * Page post + engagement sync through the Realtyz browser extension. The
