@@ -4,6 +4,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { clampClosingPercent, closingFeeAmount, closingFeeRange } from '@/lib/closingFee';
+import { ClosingSplitNote } from './ClosingSplitNote';
 
 export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange }: {
   dealType: string | null | undefined;
@@ -26,7 +27,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     setEditing(false);
   };
   return <section className="closing-fee space-y-4 border-t pt-4" data-level={level}>
-    <div className="flex items-center gap-2 text-sm font-semibold"><Trophy className="h-4 w-4 closing-tone" />סגירת עסקה</div>
+    <div className="flex items-center gap-2 text-sm font-semibold"><Trophy className="h-4 w-4 closing-tone" />סגירת עסקה *</div>
     <div className="text-center">
       <div className="flex h-14 items-center justify-center" dir="ltr">
         {editing ? <Input autoFocus aria-label="עריכת עמלת סגירה" inputMode="decimal" dir="ltr" className="h-12 w-44 text-center text-3xl font-bold" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') setEditing(false); }} /> :
@@ -44,6 +45,6 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
       <p className="flex items-center justify-center gap-1 text-xs closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p>
       <p className="text-[11px] leading-relaxed text-muted-foreground">המחשה בלבד, לא מספר שותפים בפועל. ההפצה תלויה בשותפים ובקבוצות הזמינות; אין התחייבות לכמות פרסומים או לסגירה.</p>
     </div>
-    <p className="text-[11px] text-muted-foreground">תגמול סגירה למתווכים מורשים בלבד.</p>
+    <ClosingSplitNote gross={displayAmount ? amount : percent} valueType={displayAmount ? 'fixed' : 'percent'} />
   </section>;
 }

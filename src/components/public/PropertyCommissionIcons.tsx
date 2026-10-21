@@ -4,6 +4,7 @@ import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { CLOSING_SPLIT_EXPLANATION } from '@/components/affiliate/ClosingSplitNote';
 
 export default function PropertyCommissionIcons({ listingId, raw }: { listingId: string; raw?: Record<string, unknown> }) {
   const { user } = useAuth();
@@ -32,5 +33,5 @@ export default function PropertyCommissionIcons({ listingId, raw }: { listingId:
     tier4Type: 'fixed' as const,
   };
   if (Number(tiers.tier4) <= 0) return null;
-  return <LeadPricingDialog readOnly closingOnly listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }} />;
+  return <div className="space-y-1"><LeadPricingDialog readOnly closingOnly listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }} /><p title={CLOSING_SPLIT_EXPLANATION} className="text-[10px] font-normal leading-relaxed text-muted-foreground">* נטו למתווך: 80% · TORAFF: 20%</p></div>;
 }

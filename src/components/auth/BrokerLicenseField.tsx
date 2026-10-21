@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { brokerLicenseSchema, brokerLicenseDigits, verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
+import { ClosingSplitNote } from '@/components/affiliate/ClosingSplitNote';
 
 export function BrokerLicenseField({ value, onChange, onVerified }: { value: string; onChange: (value: string) => void; onVerified: (value: string | null) => void }) {
   const [status, setStatus] = useState<'idle' | 'checking' | 'valid' | 'error'>('idle');
@@ -32,5 +33,6 @@ export function BrokerLicenseField({ value, onChange, onVerified }: { value: str
       {status === 'valid' && <span className="text-success">הרישיון נמצא בפנקס המתווכים המורשים</span>}
       {status === 'error' && <span role="alert" className="text-destructive">{message}</span>}
     </div>
+    <ClosingSplitNote registration />
   </div>;
 }

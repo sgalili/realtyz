@@ -9,6 +9,7 @@ import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import type { CommissionTiers, RewardType } from '@/hooks/useAffiliate';
 import { partnerNetReward } from '@/lib/affiliatePlans';
+import { CLOSING_SPLIT_EXPLANATION } from './ClosingSplitNote';
 
 function money(amount: number): string {
   return `₪${Number(amount || 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
@@ -45,8 +46,8 @@ export function CommissionTierBadges({
     return (
       <div className="grid grid-cols-2 items-center gap-x-3 gap-y-1 text-xs font-semibold text-success" data-commission-icons>
         {rows.map((r) => (
-          <div key={r.key} className="flex items-center gap-1" title={r.label} aria-label={`${r.label}: ${r.value}`}>
-            <r.icon className="h-3 w-3" /><bdi dir="ltr">{r.value}</bdi>
+          <div key={r.key} className="flex items-center gap-1" title={r.key === 'tier4' ? CLOSING_SPLIT_EXPLANATION : r.label} aria-label={`${r.label}: ${r.value}${r.key === 'tier4' ? ' נטו לשותף, 80% מהעמלה; 20% דמי פלטפורמה ל־TORAFF' : ''}`}>
+            <r.icon className="h-3 w-3" /><bdi dir="ltr">{r.value}{r.key === 'tier4' ? '*' : ''}</bdi>
           </div>
         ))}
       </div>
@@ -56,14 +57,15 @@ export function CommissionTierBadges({
   return (
     <div className="grid grid-cols-2 gap-1.5">
       {rows.map((r) => (
-        <div key={r.key} className={`rounded-md px-2 py-1.5 ring-1 ${r.tone}`}>
+        <div key={r.key} title={r.key === 'tier4' ? CLOSING_SPLIT_EXPLANATION : undefined} className={`rounded-md px-2 py-1.5 ring-1 ${r.tone}`}>
           <div className="flex items-center gap-1 text-[10px] font-semibold opacity-80">
             <r.icon className="h-3 w-3 shrink-0" />
             {r.label}
           </div>
           <div className={`truncate text-[11px] font-bold ${r.locked ? 'line-through' : ''}`}>
-            <bdi dir="ltr">{r.value}</bdi>
+            <bdi dir="ltr">{r.value}{r.key === 'tier4' ? '*' : ''}</bdi>
           </div>
+          {r.key === 'tier4' && <p className="mt-1 text-[10px] font-normal leading-relaxed">* נטו למתווך: 80% · TORAFF: 20%</p>}
         </div>
       ))}
     </div>
