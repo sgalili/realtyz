@@ -48,6 +48,7 @@ import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
 import { useAppMode } from '@/hooks/useAppMode';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
+import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 
 
 type NavItem = {
@@ -215,6 +216,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { settings } = useWhiteLabel();
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
+  const identity = useAccountIdentity();
 
   // Navigation follows the ACTIVE workspace: Rita's marketing workspace hides
   // properties, deals and partners; every other workspace shows them all.
@@ -303,9 +305,10 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               <div onClick={(e) => e.stopPropagation()}>
                 <WorkspaceSwitcher />
               </div>
+              <div className="mt-1 text-sm font-semibold text-primary" role="status">{identity.label}{isPartnerMode ? ' · מצב שותף' : ''}</div>
 
               {/* Settings + Tutorial + broker/partner toggle share one row. */}
-              <div className="mt-2 grid w-full grid-cols-[1fr_1fr_1.35fr] items-stretch gap-1" dir="rtl" onClick={(e) => e.stopPropagation()}>
+              <div className="mt-2 grid w-full grid-cols-[1fr_1fr_1.5fr] items-stretch gap-1" dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {/* Settings shortcut: opens /profile and closes the sidebar.
                     Hidden in Rita's marketing workspace. */}
                 {(

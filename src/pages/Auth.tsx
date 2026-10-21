@@ -17,6 +17,8 @@ import { useDemoMode } from '@/hooks/useDemoMode';
 import { cn } from '@/lib/utils';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import realtyzLogo from '@/assets/realtyz-logo.png';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SIGNUP_ROLE_LABELS, setPendingSignupRole, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
 
 
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
@@ -79,6 +81,8 @@ const Auth = () => {
   };
 
   const [email, setEmail] = useState('');
+  const [signup, setSignup] = useState(false);
+  const [signupType, setSignupType] = useState<SignupRole | ''>('');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   // SMS is the default sign-in / sign-up channel on both screens.
@@ -128,7 +132,13 @@ const Auth = () => {
   const identifierValid = isPhoneFlow ? /^05\d-\d{7}$/.test(formattedPhone) : /\S+@\S+\.\S+/.test(email);
   // Signing in needs only a valid identifier. Brand-new accounts pick their role
   // (מתווך / שותף) right after the first successful sign-in.
-  const canSubmit = identifierValid;
+  const canSubmit = identifierValid && (!signup || !!signupType);
+
+  const prepareSignup = () => {
+    if (signup && !signupType) { toast.error('יש לבחור סוג משתמש'); return false; }
+    if (signup && signupType) setPendingSignupRole(signupType);
+    return true;
+  };
 
   // Preview host = Lovable preview sandbox. Skip real OTP delivery and accept
   // the master secret OTP "9321" for sign-in / sign-up (super-admin override).
@@ -148,6 +158,7 @@ const Auth = () => {
 
   const handleSendCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!prepareSignup()) return;
     if (isGoogleFlow) return;
     setLoading(true);
 
@@ -265,6 +276,7 @@ const Auth = () => {
   };
 
   const handleGoogleLogin = async () => {
+    if (!prepareSignup()) return;
     setLoading(true);
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
     // After the managed Google login completes, the app will auto-redirect
@@ -324,6 +336,19 @@ const Auth = () => {
 
         <Card variant="active" className="auth-login-card border border-border/60 bg-card shadow-sm" dir="rtl">
           <CardContent className={codeSent ? "p-0" : "space-y-5 p-6"}>
+            {!codeSent && <>
+              <div className="grid grid-cols-2 gap-1" role="group" aria-label="כניסה או הרשמה">
+                <Button type="button" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
+                <Button type="button" variant={signup ? 'default' : 'ghost'} onClick={() => setSignup(true)}>הרשמה</Button>
+              </div>
+              {signup && <div className="space-y-2">
+                <Label htmlFor="signup-type">סוג משתמש *</Label>
+                <Select value={signupType} onValueChange={value => setSignupType(value as SignupRole)}>
+                  <SelectTrigger id="signup-type" aria-required="true"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
+                  <SelectContent>{(['broker', 'developer', 'contractor', 'property_owner', 'property_seeker'] as const).map(type => <SelectItem key={type} value={type}>{SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>}
+            </>}
             <form onSubmit={handleSendCode} className={codeSent ? "space-y-4 animate-fade-in" : "space-y-4 rounded-lg border border-border/60 bg-background p-4 animate-fade-in"}>
               {codeSent && !isGoogleFlow ? (
                 <div className="space-y-4 text-center animate-fade-in">
@@ -387,7 +412,7 @@ const Auth = () => {
             </div>}
 
             {!codeSent && <div className="auth-method-tabs" role="tablist" aria-label="אפשרויות כניסה">
-              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading} aria-pressed={activeMethod === 'google'}>
+              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || (signup && !signupType)} aria-pressed={activeMethod === 'google'}>
                 <GoogleLogo />
                 גוגל
               </Button>

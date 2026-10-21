@@ -13,6 +13,8 @@ import { useAppMode, type AppMode } from '@/hooks/useAppMode';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useState } from 'react';
+import { Switch } from '@/components/ui/switch';
+import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -31,7 +33,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
   const queryClient = useQueryClient();
   const ownerRoles = useWorkspaceOwnerRoles();
   const { loading: workspaceLoading, activeWorkspaceId } = useWorkspace();
-  const identity = accountIdentity(ownerRoles.length ? ownerRoles : roles);
+  const identity = useAccountIdentity();
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const busy = useIsMutating({ mutationKey: ['activate-partner', user?.id] }) > 0;
   const activation = useMutation({
@@ -62,44 +64,19 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
     onError: () => toast.error('החלפת המצב נכשלה. אפשר לנסות שוב.'),
   });
 
-  if (loading || workspaceLoading || !activeWorkspaceId || !ownerRoles.length || roleError || !user || !identity.canSwitch) return null;
-
-  const options: { value: AppMode; label: string }[] = [
-    { value: 'broker', label: identity.label },
-    { value: 'partner', label: 'שותף' },
-  ];
+  if (!user) return null;
+  const unavailable = loading || workspaceLoading || !activeWorkspaceId || roleError || busy || consent.isLoading || consent.isError;
 
   return (
     <><div
       dir="rtl"
-      role="radiogroup"
+      role="group"
       aria-label="החלפת מצב עבודה"
       data-keep-terms
-      className={cn("inline-flex shrink-0 items-center overflow-hidden rounded-md border border-border bg-muted/60", className)}
+      className={cn("inline-flex shrink-0 items-center justify-between gap-2 rounded-md border border-border bg-muted/60 px-2 py-1", className)}
     >
-      {options.map((opt) => {
-        const active = mode === opt.value;
-        return (
-          <Button
-            variant={active ? 'default' : 'ghost'}
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            disabled={active || busy || consent.isLoading || consent.isError}
-            onClick={() => { if (opt.value !== mode && !busy) activation.mutate(opt.value); }}
-            title={opt.label}
-            className={cn(
-              'h-8 rounded-none px-1.5 text-xs font-semibold transition-colors disabled:opacity-100',
-              active
-                ? 'bg-deal-blue text-deal-blue-foreground shadow-sm hover:bg-deal-blue'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {busy && opt.value === 'partner' && <Loader2 className="h-3 w-3 animate-spin" />}<span>{opt.label}</span>
-          </Button>
-        );
-      })}
+      <span className="whitespace-nowrap text-xs font-semibold">מצב שותף</span>
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Switch aria-label="מצב שותף" checked={mode === 'partner'} disabled={unavailable || (!identity.canSwitch && mode === 'partner')} onCheckedChange={checked => activation.mutate(checked ? 'partner' : 'broker')} />}
     </div>
     <Dialog open={onboarding} onOpenChange={setOnboarding}>
       <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto p-2 [&>button]:hidden" onInteractOutside={(e) => e.preventDefault()}>
