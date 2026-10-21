@@ -1,15 +1,18 @@
-import { useState } from 'react';
-import { Network, Coins, Share2, Sparkles, Rocket, ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Network, Coins, Share2, Sparkles, Rocket, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dismissWelcome, welcomeDismissed } from '@/lib/welcomePreference';
 
+type Accent = 'gold' | 'red' | 'sky';
+const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
+
 const SLIDES = [
-  { icon: Network, kicker: 'ברוכים הבאים ל־TORAFF', title: 'רשת שותפים מטורפת', text: 'כל הנכסים, כל השותפים, לוח אחד.' },
-  { icon: Coins, kicker: 'עמלות חכמות', title: 'המוכר קובע עמלות', text: 'קונים ושוכרים משלמים פיקס פרייס.' },
-  { icon: Share2, kicker: 'כולם שותפים', title: 'אצלנו כולם שותפים!', text: 'לא משנה אם אתה פרטי, מתווך או יזם – יש לך אזור שותף שבו מפרסמים נכסים של אחרים ומרוויחים עמלות בקלות.' },
-  { icon: Sparkles, kicker: 'AI והפצה אוטומטית', title: 'מעלים נכס פעם אחת', text: 'וה־AI מפיץ אוטומטית לעשרות קבוצות, עונה לתגובות ומייצר לידים.' },
-  { icon: Rocket, kicker: 'אוטומציות רווח', title: 'מוכנים לטירוף?', text: 'להרוויח כסף בצורה אוטומטית.' },
+  { icon: Network, theme: 1, title: <>לוח שותפים <Hi tone="gold">מטורף</Hi></>, text: <>כל הנכסים, כל ה<Hi tone="sky">שותפים</Hi> וכל ההזדמנויות במקום אחד.</> },
+  { icon: Coins, theme: 2, title: <>המוכר קובע את ה<Hi tone="gold">עמלות</Hi></>, text: <>עמלות שקופות מראש. לקונים ולשוכרים מחיר קבוע וברור.</> },
+  { icon: Share2, theme: 3, title: <>כאן כולם <Hi tone="red">שותפים</Hi></>, text: <>פרטיים, מתווכים ויזמים משווקים נכסים ומרוויחים <Hi tone="gold">עמלות</Hi>.</> },
+  { icon: Sparkles, theme: 1, title: <>מעלים פעם אחת. <Hi tone="gold">AI</Hi> מפיץ</>, text: <>הנכס מופץ <Hi tone="sky">אוטומטית</Hi> לעשרות קבוצות, עם מענה ולידים.</> },
+  { icon: Rocket, theme: 2, title: <>רווחים <Hi tone="gold">אוטומטית</Hi></>, text: <>הפצה, לידים ועמלות עובדים בשבילכם. מתחילים עכשיו.</> },
 ] as const;
 
 export function hasSeenWelcomeSlides() {
@@ -19,52 +22,43 @@ export function hasSeenWelcomeSlides() {
 export function WelcomeSlides({ onDone }: { onDone: () => void }) {
   const [index, setIndex] = useState(0);
   const [leaving, setLeaving] = useState(false);
+  const touch = useRef<{ x: number; y: number } | null>(null);
   const slide = SLIDES[index];
   const Icon = slide.icon;
   const last = index === SLIDES.length - 1;
+  const go = (next: number) => setIndex(Math.max(0, Math.min(SLIDES.length - 1, next)));
 
-  const finish = () => {
-    setLeaving(true);
-    window.setTimeout(onDone, 250);
-  };
+  useEffect(() => {
+    const html = document.documentElement.style.overflow, body = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden';
+    return () => { document.documentElement.style.overflow = html; document.body.style.overflow = body; };
+  }, []);
+
+  const finish = () => { setLeaving(true); window.setTimeout(onDone, 250); };
 
   return (
     <section
       dir="rtl"
       aria-roledescription="carousel"
       aria-label="היכרות עם TORAFF"
-      className={cn('relative mx-4 mt-3 flex min-h-[calc(100%-1.5rem)] h-[calc(100dvh-5.5rem)] flex-col overflow-hidden rounded-3xl border bg-card transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
+      data-theme={slide.theme}
+      className={cn('welcome-slide relative mx-3 mt-2 flex h-[calc(100dvh-4.75rem)] touch-none select-none flex-col overflow-hidden rounded-3xl transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
+      onTouchStart={e => { const t = e.touches[0]; touch.current = t ? { x: t.clientX, y: t.clientY } : null; }}
+      onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
-      <Button type="button" variant="ghost" size="sm" onClick={finish} className="absolute left-3 top-3 z-10 gap-1 text-muted-foreground">
-        דלג <X className="h-4 w-4" />
-      </Button>
-
-      <Icon aria-hidden="true" strokeWidth={0.6} className="pointer-events-none absolute -bottom-10 -left-10 h-[min(80vw,26rem)] w-[min(80vw,26rem)] text-primary/10" />
-
-      <div key={index} className="relative flex flex-1 flex-col justify-center px-6 py-12 text-right animate-fade-in motion-reduce:animate-none" aria-live="polite">
-        <span className="mb-3 text-sm font-bold text-primary">{slide.kicker}</span>
-        <h2 className="font-['Assistant',sans-serif] text-4xl font-extrabold leading-tight text-foreground sm:text-6xl">{slide.title}</h2>
-        <p className="mt-4 max-w-md text-lg font-medium text-muted-foreground sm:text-xl">{slide.text}</p>
-        {last && (
-          <Button type="button" onClick={finish} className="mt-8 h-14 w-full max-w-sm rounded-2xl text-lg font-extrabold">
-            יאללה, נכנסים ללוח!
-          </Button>
-        )}
+      <Button type="button" variant="ghost" size="sm" onClick={finish} className="welcome-control absolute left-3 top-3 z-20 gap-1">דלג <X className="h-4 w-4" /></Button>
+      <div aria-hidden="true" className="welcome-orb absolute -left-16 top-16 h-56 w-56 rounded-full" />
+      <div key={index} className="relative z-10 flex flex-1 flex-col justify-center px-14 pb-6 pt-12 text-right" aria-live="polite">
+        <div className="welcome-icon mb-7 flex h-24 w-24 items-center justify-center rounded-[2rem]"><Icon aria-hidden="true" className="h-12 w-12" strokeWidth={1.7} /></div>
+        <h2 className="welcome-title welcome-enter text-5xl font-black leading-[1.02] sm:text-7xl">{slide.title}</h2>
+        <p className="welcome-copy welcome-enter mt-5 max-w-lg text-xl font-bold leading-relaxed sm:text-2xl [animation-delay:80ms]">{slide.text}</p>
+        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter mt-8 h-16 w-full max-w-sm rounded-2xl text-xl font-black [animation-delay:150ms]">יאללה, נכנסים ללוח!</Button>}
       </div>
-
-      <Button dir="ltr" variant="link" className="relative self-center text-muted-foreground" onClick={() => { dismissWelcome(); finish(); }}>Don't show me again.</Button>
-      <div className="relative flex items-center justify-between px-6 pb-6">
-        <Button type="button" variant="ghost" size="icon" aria-label="הקודם" disabled={index === 0} onClick={() => setIndex(index - 1)}>
-          <ArrowRight className="h-5 w-5" />
-        </Button>
-        <div className="flex gap-1.5">
-          {SLIDES.map((_, i) => (
-            <button key={i} type="button" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => setIndex(i)} className={cn('h-2 rounded-full transition-all', i === index ? 'w-6 bg-primary' : 'w-2 bg-muted')} />
-          ))}
-        </div>
-        <Button type="button" variant="ghost" size="icon" aria-label="הבא" disabled={last} onClick={() => setIndex(index + 1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+      {index > 0 && <Button type="button" variant="ghost" size="icon" aria-label="הקודם" onClick={() => go(index - 1)} className="welcome-control absolute right-2 top-1/2 z-20 h-12 w-12 -translate-y-1/2 rounded-full"><ChevronRight className="h-8 w-8" /></Button>}
+      {!last && <Button type="button" variant="ghost" size="icon" aria-label="הבא" onClick={() => go(index + 1)} className="welcome-control absolute left-2 top-1/2 z-20 h-12 w-12 -translate-y-1/2 rounded-full"><ChevronLeft className="h-8 w-8" /></Button>}
+      <div className="relative z-10 flex flex-col items-center gap-3 pb-5">
+        <div className="flex gap-2">{SLIDES.map((_, i) => <button key={i} type="button" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className={cn('welcome-dot h-2.5 rounded-full transition-all duration-300', i === index ? 'w-8' : 'w-2.5 opacity-45')} />)}</div>
+        <Button variant="link" className="welcome-dismiss h-auto p-0 text-base" onClick={() => { dismissWelcome(); finish(); }}>אל תציגו לי יותר</Button>
       </div>
     </section>
   );

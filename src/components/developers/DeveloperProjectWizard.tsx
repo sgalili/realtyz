@@ -25,7 +25,7 @@ type Props = { project?: DeveloperProject; company?: DeveloperCompany | null; on
 export default function DeveloperProjectWizard({ project, company, onSaved, onCancel }: Props) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
-  const [form, setForm] = useState(() => projectForm(project, company));
+  const [form, setForm] = useState(() => ({ ...projectForm(project, company), deal_type: 'sale' as const }));
   const [openStep, setOpenStep] = useState('step-0');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -86,7 +86,6 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
     {i === 1 && <>{field('name', 'שם הפרויקט *')}<div className="space-y-2"><Label htmlFor="project-description" className="text-base">תיאור הפרויקט</Label><Textarea id="project-description" className="min-h-28 text-base" value={form.description} onChange={e => set('description', e.target.value)} /></div>{field('source_url', 'קישור לפרויקט ביד2')}</>}
     {i === 2 && <>{field('city', 'עיר')}{field('neighborhood', 'שכונה')}{field('address', 'כתובת')}</>}
     {i === 3 && <>
-      <div className="space-y-2"><Label>סוג עסקה</Label><Select value={form.deal_type} onValueChange={v => set('deal_type', v === 'rent' ? 'rent' : 'sale')}><SelectTrigger aria-label="סוג עסקה"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sale">למכירה</SelectItem><SelectItem value="rent">להשכרה</SelectItem></SelectContent></Select></div>
       <div className="space-y-2"><Label className="text-base" htmlFor="project-status">שלב הפרויקט</Label><Select value={form.status} onValueChange={v => set('status', v)}><SelectTrigger id="project-status" className="h-11 text-base"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(PROJECT_STATUS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
       <div className="grid grid-cols-2 gap-3">{field('total_units', 'סך יחידות דיור', true)}{field('available_units', 'יחידות זמינות', true)}</div>
       {field('price_from', 'מחיר החל מ־₪', true)}{field('delivery_date', 'מועד מסירה')}
