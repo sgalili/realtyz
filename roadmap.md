@@ -1,6 +1,6 @@
 # Universal broker license enforcement
-- [ ] Enforce official registry evidence for existing/new broker grants and profile/affiliate updates; remove invalid existing broker roles.
-- [ ] Clean numeric-only license fields, test server guards and verify profile flow.
+- [x] Added private official-registry evidence and database guards for grants/profile/affiliate updates; checked every existing broker license against the current government source, archived and removed 8 invalid role rows; zero unverified broker roles remain.
+- [x] Removed placeholders and restricted license fields to ASCII digits; 17 focused tests pass, browser signup filters pasted letters/symbols and shows the exact Hebrew error; authenticated invalid profile write and unknown-license verification are blocked. Preview build passes. Successful license-save/restoration was not exercised because the available session is a developer and no broker-account change was authorized for testing.
 
 # Post generation repair
 - [x] Restore complete property-specific Hebrew posts and dedicated first-comment generation without changing the model or existing output caps; deploy and verify both return 200 for the selected משה סנה project.
