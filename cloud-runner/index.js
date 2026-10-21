@@ -134,8 +134,79 @@ async function report(job, result) {
   await fetch(job.report_url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-worker-secret": SECRET },
-    body: JSON.stringify({ action: "report", job_id: job.job_id, ...result }),
+    body: JSON.stringify({
+      action: job.job_type === "group_fetch" ? "fetch_result" : "report",
+      job_id: job.job_id,
+      ...result,
+    }),
   }).catch((e) => console.error("report failed", e));
+}
+
+// Cloud-first group discovery: scrape candidate groups for a keyword with the
+// saved session, so users never need a local browser extension.
+async function fetchGroups(job) {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--lang=he-IL"],
+  });
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 1000 });
+    if (job.user_agent) await page.setUserAgent(job.user_agent);
+    await page.setCookie(...parseCookies(job.session_cookies, job.user_agent));
+
+    const url = `https://www.facebook.com/search/groups/?q=${encodeURIComponent(String(job.query || ""))}`;
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await sleep(4000);
+    if (page.url().includes("/login")) throw new Error("החיבור לפייסבוק פג – יש לשמור חיבור חדש בהגדרות");
+
+    // Scroll to load more result cards.
+    for (let i = 0; i < 6; i++) {
+      await page.evaluate(() => window.scrollBy(0, 1800));
+      await sleep(1200);
+    }
+
+    const groups = await page.evaluate(() => {
+      const out = [];
+      const seen = new Set();
+      const reserved = ["joins", "feed", "discover", "create", "search"];
+      for (const a of document.querySelectorAll('a[href*="/groups/"]')) {
+        const m = String(a.href).match(/facebook\.com\/groups\/([A-Za-z0-9._-]+)/);
+        if (!m) continue;
+        const id = m[1];
+        if (reserved.includes(id) || seen.has(id)) continue;
+        const name = String(a.getAttribute("aria-label") || a.textContent || "").trim().split("\n")[0].slice(0, 200);
+        if (name.length < 2) continue;
+        seen.add(id);
+        const card = a.closest('div[role="article"]') || a.parentElement;
+        const text = card ? String(card.textContent || "") : "";
+        const mem = text.match(/([\d.,]+)\s*(K|אלף)?\s*(חברים|members)/i);
+        let member_count = null;
+        if (mem) {
+          const base = parseFloat(mem[1].replace(/,/g, ""));
+          member_count = Number.isFinite(base) ? Math.round(base * (mem[2] ? 1000 : 1)) : null;
+        }
+        out.push({
+          group_id: id,
+          group_name: name,
+          group_url: `https://www.facebook.com/groups/${id}`,
+          group_icon: null,
+          member_count,
+          posts_per_day: null,
+          privacy: null,
+          is_member: false,
+          activity_text: null,
+        });
+        if (out.length >= 60) break;
+      }
+      return out;
+    });
+
+    if (!groups.length) throw new Error("לא נמצאו קבוצות מתאימות – נסו מילת חיפוש אחרת");
+    return { status: "completed", groups };
+  } finally {
+    await browser.close().catch(() => {});
+  }
 }
 
 http
@@ -158,11 +229,12 @@ http
         res.writeHead(400).end("bad json");
         return;
       }
-      // Ack immediately, publish in the background, then report.
+      // Ack immediately, run in the background, then report.
       res.writeHead(202, { "Content-Type": "application/json" }).end(JSON.stringify({ accepted: true }));
-      publish(job)
+      const run = job.job_type === "group_fetch" ? fetchGroups : publish;
+      run(job)
         .then((r) => {
-          console.log("published", job.job_id, r.post_url);
+          console.log("done", job.job_type || "fb_group_post", job.job_id);
           return report(job, r);
         })
         .catch((e) => {

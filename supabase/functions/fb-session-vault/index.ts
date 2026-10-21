@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       base().in("status", ["pending", "processing"]),
       base().eq("status", "failed").gte("processed_at", dayStart.toISOString()),
       admin.from("fb_user_groups").select("id", { count: "exact", head: true })
-        .eq("workspace_owner_id", user.id).eq("pool_status", "active").eq("is_blocked", false),
+        .eq("workspace_owner_id", owner).eq("pool_status", "active").eq("is_blocked", false),
     ]);
     return json({ success: true, summary: {
       sent_today: sent.count ?? 0, pending: pending.count ?? 0,
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     try {
       if (!profileId) {
         const r = await fetch("https://api.gologin.com/browser/quick", {
-          method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${user.id.slice(0, 8)}` }),
+          method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${String(owner).slice(0, 8)}` }),
         });
         if (!r.ok) throw new Error(`profile_${r.status}`);
         profileId = (await r.json())?.id;
