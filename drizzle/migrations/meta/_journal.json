@@ -302,6 +302,13 @@
       "when": 1792540652621,
       "tag": "0042_import_crm_leads_preserve_optional_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792541517332,
+      "tag": "0043_secure_developer_registration_and_workspace_listing_scope",
+      "breakpoints": true
     }
   ]
 }
