@@ -28,7 +28,7 @@ import { FacebookTargetsCard } from './FacebookTargetsCard';
 describe('live group joining card', () => {
   beforeEach(() => {
     localStorage.clear();
-    mocks.rows = [{ id: 'group-row', group_id: 'ext:123', group_name: 'קבוצת בדיקה', join_status: 'pending', is_selected: true }];
+    mocks.rows = [{ id: 'group-row', group_id: 'ext:123', group_name: 'קבוצת בדיקה', join_status: 'pending', pool_status: 'active', is_selected: true }];
     mocks.progress = null;
   });
 
