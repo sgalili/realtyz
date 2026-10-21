@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +19,15 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const [license, setLicense] = useState('');
   const [verifiedLicense, setVerifiedLicense] = useState<string | null>(null);
   const { user } = useAuth();
+  const [licenseSuspended, setLicenseSuspended] = useState(false);
+  useEffect(() => {
+    if (!user?.id) return;
+    let alive = true;
+    void supabase.from('broker_role_suspensions').select('role').eq('user_id', user.id).then(({ data }) => {
+      if (alive && (data?.length ?? 0) > 0) { setLicenseSuspended(true); setBrokerSelected(true); }
+    });
+    return () => { alive = false; };
+  }, [user?.id]);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const pick = async (type: typeof PRIMARY_SIGNUP_TYPES[number]) => {
@@ -47,6 +56,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   return <div dir="rtl" className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6">
     <img src={realtyzLogo} alt="Realtyz AI" className="h-14 w-auto object-contain" />
     <h1 className="text-xl font-bold">מה סוג המשתמש שלך?</h1>
+    {licenseSuspended && <div role="alert" className="w-full max-w-lg border border-destructive bg-destructive/10 p-3 text-destructive">{INVALID_BROKER_LICENSE}. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
     <div className="grid w-full max-w-lg grid-cols-2 gap-3">{PRIMARY_SIGNUP_TYPES.map(type => <Button key={type} variant="outline" className="h-auto whitespace-normal py-6 text-lg font-bold" disabled={!!busy} onClick={() => void pick(type)}>{SIGNUP_ROLE_LABELS[type]}</Button>)}</div>
     {brokerSelected && <div className="w-full max-w-lg space-y-3"><BrokerLicenseField value={license} onChange={setLicense} onVerified={setVerifiedLicense} /><Button className="w-full" disabled={!!busy || !license || verifiedLicense !== license} onClick={() => void pick('broker')}>הרשמה כמתווך</Button></div>}
     {busy && <RealtyzLoader size="sm" label="שומר את סוג המשתמש..." />}
