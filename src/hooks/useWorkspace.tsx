@@ -106,7 +106,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const cachedInit = readWorkspaceCache(user?.id ?? null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>(cachedInit.list);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(cachedInit.activeId);
-  const [loading, setLoading] = useState(cachedInit.list.length === 0);
+  const [loading, setLoading] = useState(true);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const initializedUserRef = useRef<string | null>(null);
 
@@ -121,7 +121,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const accountCache = readWorkspaceCache(user.id);
     setWorkspaces(accountCache.list);
     setActiveWorkspaceId(accountCache.activeId);
-    setLoading(accountCache.list.length === 0);
+    setLoading(true);
     try {
       const [{ data, error }, { data: profile }] = await Promise.all([
         supabase.rpc('get_my_workspaces'),
@@ -141,19 +141,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Trust the server selection only after proving the signed-in member can
       // access it. This preserves invited tenant assignments without accepting
       // stale or foreign workspace ids.
-      const nextActive = validStored ?? validProfileActive ?? fallback;
+      const nextActive = validProfileActive ?? validStored ?? fallback;
+      if (profileActive !== nextActive) {
+        const { error: switchError } = await supabase.rpc('set_active_workspace', { _owner: nextActive });
+        if (switchError) throw switchError;
+      }
       setActiveWorkspaceId(nextActive);
       if (nextActive) {
         window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
       }
       writeWorkspaceCache(user.id, rows, nextActive);
-      if (profileActive !== nextActive) {
-        void supabase.rpc('set_active_workspace', { _owner: nextActive });
-      }
     } catch (err) {
-      // Fail open: keep whatever we already have on screen (cached list) and
-      // fall back to self so the UI never blanks out.
-      setActiveWorkspaceId((prev) => prev ?? user.id);
+      // Cached branding never authorizes a tenant after membership validation fails.
+      setWorkspaces([]);
+      setActiveWorkspaceId(null);
+      queryClient.clear();
     } finally {
       setLoading(false);
     }
@@ -182,20 +184,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
+    setLoading(true);
+    await queryClient.cancelQueries();
     // Change the server-side workspace first. Refetching before this completes
     // can briefly return rows from the previous tenant under the new UI label.
     const { error } = await supabase.rpc('set_active_workspace', { _owner: ownerId });
     if (error) {
+      setLoading(false);
       toast.error('לא ניתן לעבור למרחב העבודה שנבחר');
       throw error;
     }
 
+    queryClient.clear();
     setActiveWorkspaceId(ownerId);
+    setLoading(false);
     window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
     writeWorkspaceCache(user.id, workspaces, ownerId);
 
-    // A workspace hand-off always lands in broker mode, so the מתווך/שותף
-    // toggle and the routes it guards never keep the previous tenant's state.
+    // Reset only the display preference; destination roles determine core identity.
     writeAppMode('broker', user.id);
 
     // Remove old tenant results before any observer can repaint, then refetch

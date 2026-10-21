@@ -11,6 +11,10 @@ describe('saved ad recovery', () => {
   it('preserves the saved closing fee and type', () => {
     expect(draftPricingPayload(listingToDraft(row)).features.deal_closing_commission).toEqual({ type: 'percent', value: 1.2 });
   });
+  it.each([['sale', 'fixed', 10000], ['sale', 'percent', 0.2], ['rent', 'fixed', 600], ['rent', 'percent', 100]])('round-trips %s %s closing fees without conversion', (deal, type, value) => {
+    const saved = { ...row, deal_type: deal, features: { deal_closing_commission: { type, value } } };
+    expect(draftPricingPayload(listingToDraft(saved)).features.deal_closing_commission).toEqual({ type, value });
+  });
   it('round-trips each individual daily cap without using the legacy global cap', () => {
     expect(draftPricingPayload(listingToDraft({ ...row, daily_lead_cap: 999 })).contact_options.lead_daily_limits).toEqual({ form: 5, whatsapp: 3, phone: 2 });
   });

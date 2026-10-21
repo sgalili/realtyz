@@ -427,6 +427,7 @@ export function useAffiliateConfigs(listingIds: string[]) {
 /** Broker sets / clears the reward + 3-tier payouts offered per property. */
 export function useSetAffiliateReward() {
   const queryClient = useQueryClient();
+  const ownerId = useActiveWorkspaceOwnerId();
   return useMutation({
     mutationFn: async (input: {
       listingId: string;
@@ -442,6 +443,7 @@ export function useSetAffiliateReward() {
       contactOptions?: Record<string, unknown>;
       dailyLeadCap?: number | null;
     }) => {
+      if (!ownerId) throw new Error('workspace_required');
       const patch: Record<string, unknown> = {
         affiliate_enabled: input.enabled,
         affiliate_reward_type: input.rewardType,
@@ -460,7 +462,9 @@ export function useSetAffiliateReward() {
       const { error } = await supabase
         .from('listings')
         .update(patch as never)
-        .eq('id', input.listingId);
+        .eq('id', input.listingId)
+        .eq('workspace_owner_id', ownerId)
+        .select('id').single();
       if (error) throw error;
     },
     onSuccess: () => {

@@ -1,0 +1,10 @@
+CREATE OR REPLACE FUNCTION public.register_as_developer(_display_name text DEFAULT NULL::text) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE _uid uuid := auth.uid(); BEGIN IF _uid IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF; PERFORM public.ensure_profile_row(_uid); IF NULLIF(btrim(_display_name),'') IS NOT NULL THEN UPDATE public.profiles SET full_name=COALESCE(NULLIF(btrim(full_name),''),btrim(_display_name)) WHERE id=_uid; END IF; INSERT INTO public.user_roles(user_id,role) VALUES (_uid,'developer') ON CONFLICT(user_id,role) DO NOTHING; UPDATE public.workspace_memberships SET account_type='developer' WHERE user_id=_uid AND workspace_owner_id=_uid; RETURN jsonb_build_object('ok',true,'role','developer','user_id',_uid); END $$;
+REVOKE ALL ON FUNCTION public.register_as_developer(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.register_as_developer(text) TO authenticated,service_role;
+DROP POLICY IF EXISTS "superadmin_all_listings_full_access" ON public.listings;
+DROP POLICY IF EXISTS "Private owners update their own listings" ON public.listings;
+CREATE POLICY "Private owners update their own listings" ON public.listings FOR UPDATE TO authenticated USING (owner_id=auth.uid() AND public.ws_current_access(workspace_owner_id)) WITH CHECK (owner_id=auth.uid() AND public.ws_current_access(workspace_owner_id));
+DROP POLICY IF EXISTS "Private owners view their own listings" ON public.listings;
+CREATE POLICY "Private owners view their own listings" ON public.listings FOR SELECT TO authenticated USING (owner_id=auth.uid() AND public.ws_current_access(workspace_owner_id));
+DROP POLICY IF EXISTS "User updates own membership last_accessed" ON public.workspace_memberships;
+COMMENT ON FUNCTION public.register_as_developer(text) IS 'Adds developer identity only; does not call broker registration or grant broker permissions.';

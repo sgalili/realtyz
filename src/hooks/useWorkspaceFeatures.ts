@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { workspaceFeatures, type WorkspaceFeatures } from '@/config/workspaceMode';
-import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useActiveWorkspaceOwnerId, useWorkspace } from '@/hooks/useWorkspace';
 import type { AppRole } from '@/hooks/useUserRole';
 
 /**
@@ -12,9 +12,10 @@ import type { AppRole } from '@/hooks/useUserRole';
  */
 export function useWorkspaceOwnerRoles(): AppRole[] {
   const ownerId = useActiveWorkspaceOwnerId();
+  const { loading, activeWorkspaceId } = useWorkspace();
   const { data } = useQuery({
     queryKey: ['workspace-owner-roles', ownerId],
-    enabled: !!ownerId,
+    enabled: !!ownerId && !!activeWorkspaceId && !loading,
     queryFn: async () => {
       // Cast: generated types lag behind the migration that added this RPC.
       const { data, error } = await (supabase.rpc as CallableFunction)('get_workspace_owner_roles', { _owner: ownerId }) as { data: string[] | null; error: unknown };
@@ -23,7 +24,7 @@ export function useWorkspaceOwnerRoles(): AppRole[] {
     },
     staleTime: 60_000,
   });
-  return data ?? [];
+  return !loading && activeWorkspaceId ? data ?? [] : [];
 }
 
 /**

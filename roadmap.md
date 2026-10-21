@@ -1,3 +1,8 @@
+# Role isolation and pricing audit
+- [x] Audit core role/listing/lead/project policies; remove developer signup's unintended broker grant and broad listing policies; fail closed during workspace validation and remount tenant content. Kobi retains developer+affiliate only.
+- [x] Verify positive-price-only caps, LTR slider bounds/colors and fixed/percent preservation; isolate pricing drafts by user/workspace/listing. Correct percentage-type propagation.
+- [x] 33 focused tests pass; authenticated browser confirms Kobi workspace shows יזם/שותף without runtime errors. Full multi-account switching and live existing-ad save/reload remain unverified: current session has one workspace and no editable priced ad. This is a core-path audit, not exhaustive all-table certification.
+
 # Developer projects board
 - [x] Match the global board search, advanced filters, deal controls and grid/list presentation.
 - [x] Preserve and display project/building/unit hierarchy through Yad2 extraction and sync; missing source unit data is explicitly reported, never invented.
