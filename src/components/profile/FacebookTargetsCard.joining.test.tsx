@@ -35,31 +35,31 @@ describe('live group joining card', () => {
   it('spins only after the extension starts and moves confirmed membership immediately', async () => {
     const view = render(<FacebookTargetsCard />);
     await waitFor(() => expect(mocks.progress).not.toBeNull());
-    fireEvent.click(screen.getByRole('tab', { name: 'בהמתנה (1)' }));
+    fireEvent.click(screen.getByRole('tab', { name: '1 בהמתנה' }));
     expect(screen.queryByLabelText('הצטרפות בתהליך')).not.toBeInTheDocument();
     act(() => mocks.progress?.('123', 'joining'));
     expect(screen.getByLabelText('הצטרפות בתהליך')).toHaveClass('animate-spin');
     act(() => mocks.progress?.('123', 'joined'));
     expect(screen.queryByLabelText('הצטרפות בתהליך')).not.toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'פעילות (1)' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'בהמתנה (0)' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: 'פעילות (1)' }));
+    expect(screen.getByRole('tab', { name: '1 פעילות' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '0 בהמתנה' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: '1 פעילות' }));
     expect(screen.getByText('קבוצת בדיקה')).toBeInTheDocument();
     // Finish while persistence is unresolved: a stale DB load must not move it back.
     await act(async () => { mocks.finish?.(); });
-    expect(screen.getByRole('tab', { name: 'פעילות (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '1 פעילות' })).toBeInTheDocument();
     view.unmount();
   });
 
   it('stops the animation but retains the Pending tab for approval requests', async () => {
     const view = render(<FacebookTargetsCard />);
     await waitFor(() => expect(mocks.progress).not.toBeNull());
-    fireEvent.click(screen.getByRole('tab', { name: 'בהמתנה (1)' }));
+    fireEvent.click(screen.getByRole('tab', { name: '1 בהמתנה' }));
     act(() => mocks.progress?.('123', 'joining'));
     act(() => mocks.progress?.('123', 'requested'));
     expect(screen.queryByLabelText('הצטרפות בתהליך')).not.toBeInTheDocument();
     expect(screen.getByLabelText('בקשה ממתינה')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'פעילות (0)' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '0 פעילות' })).toBeInTheDocument();
     view.unmount();
   });
 });
