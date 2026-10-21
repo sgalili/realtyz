@@ -3220,6 +3220,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fb_group_fetch_jobs: {
+        Row: {
+          claim_expires_at: string | null
+          claimed_at: string | null
+          created_at: string
+          error: string | null
+          groups: Json | null
+          id: string
+          query: string
+          requested_by: string | null
+          status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          claim_expires_at?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          error?: string | null
+          groups?: Json | null
+          id?: string
+          query: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          claim_expires_at?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          error?: string | null
+          groups?: Json | null
+          id?: string
+          query?: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       fb_group_post_log: {
         Row: {
           created_at: string

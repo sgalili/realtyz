@@ -358,6 +358,13 @@
       "when": 1792545925699,
       "tag": "0050_developer_publication_source_specifications",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1792554068686,
+      "tag": "0051_create_fb_group_fetch_jobs",
+      "breakpoints": true
     }
   ]
 }
