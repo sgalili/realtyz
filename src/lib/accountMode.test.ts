@@ -23,6 +23,9 @@ describe('universal account identity', () => {
     expect(isAffiliateOnlyAccount(['affiliate'])).toBe(true);
     expect(accountIdentity([] as AppRole[]).canSwitch).toBe(false);
   });
+  it('retains developer identity even with legacy broker and partner roles', () => {
+    expect(accountIdentity(['agent', 'developer', 'affiliate'])).toEqual({ label: 'יזם', home: '/developer-dashboard', canSwitch: true });
+  });
   it('isolates preferences by account and ignores the legacy global key', () => {
     localStorage.clear();
     localStorage.setItem('realtyz-app-mode', 'partner');

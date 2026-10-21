@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole, userRolesQueryKey } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { accountIdentity } from '@/lib/accountMode';
+import { useWorkspaceOwnerRoles } from '@/hooks/useWorkspaceFeatures';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useAppMode, type AppMode } from '@/hooks/useAppMode';
@@ -27,7 +28,8 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
   const { roles, isAffiliate, loading, error: roleError } = useUserRole();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const identity = accountIdentity(roles);
+  const ownerRoles = useWorkspaceOwnerRoles();
+  const identity = accountIdentity(ownerRoles.length ? ownerRoles : roles);
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const busy = useIsMutating({ mutationKey: ['activate-partner', user?.id] }) > 0;
   const activation = useMutation({
