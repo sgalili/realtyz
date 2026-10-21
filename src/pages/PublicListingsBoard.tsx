@@ -360,7 +360,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       if (open) { setExpandedId(null); return; }
                       setExpandedId(card.id);
                       // Scroll the expanded card's top to the top of the view.
-                      requestAnimationFrame(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                      // A short delay lets the expansion animation start first,
+                      // otherwise the smooth scroll is cancelled by the reflow.
+                      window.setTimeout(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
                     };
                     return [
                       <tr key={card.id} id={`row-${card.id}`} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
