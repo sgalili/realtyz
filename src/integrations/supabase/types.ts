@@ -3262,6 +3262,56 @@ export type Database = {
         }
         Relationships: []
       }
+      fb_group_join_jobs: {
+        Row: {
+          attempts: number
+          available_at: string
+          claim_expires_at: string | null
+          created_at: string
+          dispatch_token: string
+          group_row_id: string
+          id: string
+          last_error: string | null
+          status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          attempts?: number
+          available_at?: string
+          claim_expires_at?: string | null
+          created_at?: string
+          dispatch_token?: string
+          group_row_id: string
+          id?: string
+          last_error?: string | null
+          status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          attempts?: number
+          available_at?: string
+          claim_expires_at?: string | null
+          created_at?: string
+          dispatch_token?: string
+          group_row_id?: string
+          id?: string
+          last_error?: string | null
+          status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_group_join_jobs_group_row_id_fkey"
+            columns: ["group_row_id"]
+            isOneToOne: true
+            referencedRelation: "fb_user_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fb_group_post_log: {
         Row: {
           created_at: string
@@ -3347,6 +3397,8 @@ export type Database = {
         Row: {
           blocked_at: string | null
           blocked_reason: string | null
+          cloud_checked_at: string | null
+          cloud_join_state: string
           cooldown_until: string | null
           created_at: string
           fail_count: number
@@ -3362,9 +3414,12 @@ export type Database = {
           join_status: string
           max_posts_per_day: number | null
           member_count: number | null
+          membership_answers: Json
+          membership_requirements: Json
           page_id: string | null
           pool_status: string
           privacy: string | null
+          rules_accepted: boolean
           source: string | null
           updated_at: string
           waiting_reason: string | null
@@ -3373,6 +3428,8 @@ export type Database = {
         Insert: {
           blocked_at?: string | null
           blocked_reason?: string | null
+          cloud_checked_at?: string | null
+          cloud_join_state?: string
           cooldown_until?: string | null
           created_at?: string
           fail_count?: number
@@ -3388,9 +3445,12 @@ export type Database = {
           join_status?: string
           max_posts_per_day?: number | null
           member_count?: number | null
+          membership_answers?: Json
+          membership_requirements?: Json
           page_id?: string | null
           pool_status?: string
           privacy?: string | null
+          rules_accepted?: boolean
           source?: string | null
           updated_at?: string
           waiting_reason?: string | null
@@ -3399,6 +3459,8 @@ export type Database = {
         Update: {
           blocked_at?: string | null
           blocked_reason?: string | null
+          cloud_checked_at?: string | null
+          cloud_join_state?: string
           cooldown_until?: string | null
           created_at?: string
           fail_count?: number
@@ -3414,9 +3476,12 @@ export type Database = {
           join_status?: string
           max_posts_per_day?: number | null
           member_count?: number | null
+          membership_answers?: Json
+          membership_requirements?: Json
           page_id?: string | null
           pool_status?: string
           privacy?: string | null
+          rules_accepted?: boolean
           source?: string | null
           updated_at?: string
           waiting_reason?: string | null
