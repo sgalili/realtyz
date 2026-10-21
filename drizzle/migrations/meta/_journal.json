@@ -344,6 +344,13 @@
       "when": 1792545059271,
       "tag": "0048_broker_signup_registry_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1792545697011,
+      "tag": "0049_developer_company_commission_defaults",
+      "breakpoints": true
     }
   ]
 }
