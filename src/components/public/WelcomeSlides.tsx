@@ -47,8 +47,8 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
       <Button type="button" variant="ghost" size="sm" onClick={finish} className="welcome-control absolute left-3 top-3 z-20 gap-1">דלג <X className="h-4 w-4" /></Button>
-      <div key={index} className="relative z-10 flex flex-1 flex-col justify-center px-14 pb-6 pt-12 text-right" aria-live="polite">
-        <div className="welcome-icon mb-7 flex h-24 w-24 items-center justify-center rounded-[2rem]"><Icon aria-hidden="true" className="h-12 w-12" strokeWidth={1.7} /></div>
+      <div key={index} className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col justify-start px-14 pb-6 pt-24 text-right sm:pt-20" aria-live="polite">
+        <div className="welcome-icon mb-7 flex h-24 w-24 shrink-0 items-center justify-center rounded-[2rem] sm:h-40 sm:w-40"><Icon aria-hidden="true" className="h-12 w-12 sm:h-20 sm:w-20" strokeWidth={1.7} /></div>
         <h2 className="welcome-title welcome-enter text-5xl font-black leading-[1.02] sm:text-7xl">{slide.title}</h2>
         <p className="welcome-copy welcome-enter mt-5 max-w-lg text-xl font-bold leading-relaxed sm:text-2xl [animation-delay:80ms]">{slide.text}</p>
         {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter mt-8 h-16 w-full max-w-sm rounded-2xl text-xl font-black [animation-delay:150ms]">יאללה, נכנסים ללוח!</Button>}

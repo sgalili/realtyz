@@ -433,7 +433,7 @@ loading ? (
                       </div>
                     ) : null}
                     <div className="border-b px-4 pb-2 pt-3">
-                      <h3 className="truncate text-base font-semibold" title={l.property_title || undefined}>
+                      <h3 className="whitespace-normal [overflow-wrap:anywhere] text-base font-semibold" title={l.property_title || undefined}>
                         {l.property_title || "נכס ללא כותרת"}
                       </h3>
                       <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -781,7 +781,7 @@ loading ? (
                       <div className="flex flex-wrap items-center gap-3">
                         {r.listing ? <PropertyThumb p={r.listing} size={52} /> : null}
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-bold text-slate-900">
+                          <div className="whitespace-normal [overflow-wrap:anywhere] text-sm font-bold text-foreground">
                             {r.listing?.property_title || "נכס לא ידוע"}
                           </div>
                           <div className="truncate text-[11px] text-slate-500">

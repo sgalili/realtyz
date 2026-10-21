@@ -1598,7 +1598,7 @@
 
 .welcome-slide { --welcome-a: var(--brand-deep); --welcome-b: var(--brand-navy); --welcome-c: var(--deal-blue); color: hsl(var(--primary-foreground)); font-family: 'Heebo', 'Assistant', sans-serif; background: radial-gradient(circle at 15% 15%, hsl(var(--welcome-c) / .75), transparent 38%), linear-gradient(145deg, hsl(var(--welcome-a)), hsl(var(--welcome-b)) 58%, hsl(var(--brand-red) / .82)); }
 .welcome-slide[data-theme="2"] { --welcome-a: var(--brand-deep); --welcome-b: var(--brand-red); --welcome-c: var(--brand-gold); }
-.welcome-slide[data-theme="3"] { --welcome-a: var(--brand-navy); --welcome-b: var(--sale); --welcome-c: var(--brand-red-soft); }
+.welcome-slide[data-theme="3"] { --welcome-a: var(--brand-navy); --welcome-b: var(--brand-deep); --welcome-c: var(--sale); }
 .welcome-title { text-wrap: balance; }
 .welcome-copy { color: hsl(var(--primary-foreground) / .86); }
 .welcome-accent-gold { color: hsl(var(--brand-gold)); text-shadow: 0 0 22px hsl(var(--brand-gold) / .45); }

@@ -96,7 +96,7 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
 
       </Link>
       <div className="min-w-0 flex-1 space-y-1">
-        <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block truncate font-semibold text-foreground" title={title}>{title}</Link>
+        <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block whitespace-normal [overflow-wrap:anywhere] font-semibold text-foreground" title={title}>{title}</Link>
         <p className="font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}</p>
         {owned && <ListingLifecycleStatus listingId={r.listing_id} />}
         <div className="flex flex-wrap gap-x-3 gap-y-1">

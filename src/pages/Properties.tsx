@@ -1394,7 +1394,7 @@ function ResultCard({
       ) : null}
       {/* Dedicated full-width title row — always the first element of the card. */}
       <div className="w-full px-4 pt-3 pb-2 border-b">
-        <h3 className="w-full font-semibold text-base leading-tight truncate" title={result.title}>
+        <h3 className="w-full whitespace-normal [overflow-wrap:anywhere] font-semibold text-base leading-tight" title={result.title}>
           {result.title}
         </h3>
       </div>
@@ -1792,7 +1792,7 @@ export function ResultTable({
                     })()}
                   </div>
                 </td>
-                <td className="px-2 py-1.5 max-w-[320px] truncate">
+                <td className="px-2 py-1.5 w-64 max-w-[320px] whitespace-normal">
                   {(() => {
                     // Internal table "רחוב" column: street name + property type only.
                     const label = formatStreetTypeTitle({
@@ -1814,7 +1814,7 @@ export function ResultTable({
                         ) : isOldListing(r) ? (
                           <span className="shrink-0 rounded-full bg-slate-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm">ותיק</span>
                         ) : null}
-                        <span className="truncate">{link}</span>
+                        <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">{link}</span>
                       </span>
                     );
                   })()}
