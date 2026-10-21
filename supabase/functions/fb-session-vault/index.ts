@@ -122,7 +122,10 @@ Deno.serve(async (req) => {
       .select("status, last_verified_at, expires_at, user_agent, updated_at, last_error")
       .eq("workspace_owner_id", owner)
       .maybeSingle();
-    return json({ success: true, session: data ?? null, worker_ready: !!Deno.env.get("CLOUD_BROWSER_WORKER_URL") });
+    let ready = false;
+    const workerUrl = Deno.env.get('CLOUD_BROWSER_WORKER_URL');
+    if (workerUrl) { try { const response = await fetch(new URL('/health', workerUrl), { signal: AbortSignal.timeout(5000), redirect: 'error' }); ready = response.ok && (await response.text()).trim() === 'realtyz cloud runner ok'; } catch { /* unavailable */ } }
+    return json({ success: true, session: data ?? null, worker_ready: ready });
   }
 
   if (action === "summary") {

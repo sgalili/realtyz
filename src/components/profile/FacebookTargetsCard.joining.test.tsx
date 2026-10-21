@@ -1,65 +1,33 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const mocks = vi.hoisted(() => ({ progress: null as null | ((id: string, status: string) => void), finish: null as null | (() => void), rows: [] as unknown[] }));
+const mocks = vi.hoisted(() => ({ rows: [] as unknown[], notify: null as null | (() => void) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace-a' }));
-vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data: null }) }));
-vi.mock('@/hooks/useGroupQueueLive', () => ({ useGroupQueueLive: () => {} }));
-vi.mock('@/components/social/ExtensionDownloadButton', () => ({ isExtensionInstalled: () => true }));
-vi.mock('@/lib/extensionDetect', () => ({ ensureExtensionReady: () => Promise.resolve(true) }));
-vi.mock('@/components/social/ExtensionGroupSyncCard', () => ({ ExtensionGroupSyncCard: () => null }));
+vi.mock('@/hooks/useGroupQueueLive', () => ({ useGroupQueueLive: (_owner: string, callback: () => void) => { mocks.notify = callback; } }));
+vi.mock('@/components/social/CloudGroupConnection', () => ({ CloudGroupConnection: () => null }));
 vi.mock('@/components/social/GroupDiscoveryDialog', () => ({ GroupDiscoveryDialog: () => null }));
-vi.mock('@/lib/extensionGroupDiscovery', () => ({
-  joinGroupsViaExtension: (_groups: unknown, progress: typeof mocks.progress) => {
-    mocks.progress = progress;
-    return { cancel: vi.fn(), done: new Promise<void>((resolve) => { mocks.finish = resolve; }) };
-  },
-}));
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { from: () => {
-  const query: Record<string, unknown> = {};
-  query.select = () => query;
-  query.eq = () => query;
-  query.order = () => Promise.resolve({ data: mocks.rows, error: null });
-  query.update = () => ({ eq: () => ({ eq: () => new Promise(() => {}) }) });
-  return query;
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: () => Promise.resolve({}), from: () => {
+ const query: Record<string, unknown> = {}; query.select = () => query; query.eq = () => query; query.order = () => Promise.resolve({data:mocks.rows,error:null}); return query;
 } } }));
 import { FacebookTargetsCard } from './FacebookTargetsCard';
-
-describe('live group joining card', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    mocks.rows = [{ id: 'group-row', group_id: 'ext:123', group_name: 'קבוצת בדיקה', join_status: 'pending', pool_status: 'active', is_selected: true }];
-    mocks.progress = null;
-  });
-
-  it('spins only after the extension starts and moves confirmed membership immediately', async () => {
-    const view = render(<FacebookTargetsCard />);
-    await waitFor(() => expect(mocks.progress).not.toBeNull());
-    fireEvent.click(screen.getByRole('tab', { name: '1 בהמתנה' }));
-    expect(screen.queryByLabelText('הצטרפות בתהליך')).not.toBeInTheDocument();
-    act(() => mocks.progress?.('123', 'joining'));
-    expect(screen.getByLabelText('הצטרפות בתהליך')).toHaveClass('animate-spin');
-    act(() => mocks.progress?.('123', 'joined'));
-    expect(screen.queryByLabelText('הצטרפות בתהליך')).not.toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '1 פעילות' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '0 בהמתנה' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: '1 פעילות' }));
-    expect(screen.getByText('קבוצת בדיקה')).toBeInTheDocument();
-    // Finish while persistence is unresolved: a stale DB load must not move it back.
-    await act(async () => { mocks.finish?.(); });
-    expect(screen.getByRole('tab', { name: '1 פעילות' })).toBeInTheDocument();
-    view.unmount();
-  });
-
-  it('stops the animation but retains the Pending tab for approval requests', async () => {
-    const view = render(<FacebookTargetsCard />);
-    await waitFor(() => expect(mocks.progress).not.toBeNull());
-    fireEvent.click(screen.getByRole('tab', { name: '1 בהמתנה' }));
-    act(() => mocks.progress?.('123', 'joining'));
-    act(() => mocks.progress?.('123', 'requested'));
-    expect(screen.queryByLabelText('הצטרפות בתהליך')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('בקשה ממתינה לאישור')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '0 פעילות' })).toBeInTheDocument();
-    view.unmount();
-  });
+describe('cloud-confirmed membership', () => {
+ beforeEach(() => { mocks.rows = [{id:'g',group_id:'fb:123',group_name:'בדיקה',join_status:'not_joined',pool_status:'waiting',is_selected:true,cloud_join_state:'processing'}]; });
+ it('does not publish until cloud confirms joined and active', async () => {
+  const view = render(<FacebookTargetsCard />);
+  await waitFor(() => expect(screen.getByRole('tab', {name:'1 בהמתנה / 200'})).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('tab',{name:'1 בהמתנה / 200'}));
+  expect(screen.getByLabelText('הצטרפות בתהליך')).toBeInTheDocument();
+  mocks.rows = [{id:'g',group_id:'fb:123',group_name:'בדיקה',join_status:'joined',pool_status:'active',is_selected:true,cloud_join_state:'joined'}];
+  await act(async () => mocks.notify?.());
+  expect(screen.getByRole('tab',{name:'1 פעילות / 100'})).toBeInTheDocument();
+  expect(screen.getByRole('tab',{name:'0 בהמתנה / 200'})).toBeInTheDocument();
+  view.unmount();
+ });
+ it('approval pending remains outside active publishing', async () => {
+  mocks.rows = [{id:'g',group_id:'fb:123',group_name:'בדיקה',join_status:'pending',pool_status:'waiting',is_selected:true,cloud_join_state:'requested'}];
+  const view = render(<FacebookTargetsCard />);
+  await waitFor(() => expect(screen.getByRole('tab',{name:'1 בהמתנה / 200'})).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('tab',{name:'1 בהמתנה / 200'}));
+  expect(screen.getByLabelText('בקשה ממתינה לאישור')).toBeInTheDocument();
+  expect(screen.getByRole('tab',{name:'0 פעילות / 100'})).toBeInTheDocument(); view.unmount();
+ });
 });

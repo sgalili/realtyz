@@ -16,15 +16,19 @@ export function useGroupQueueLive(owner: string | null | undefined, onChange: ()
     if (!owner) return;
     let entry = live.get(owner);
     if (!entry) {
-      const channel = safeChannel(`group-queue-${owner}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'campaign_activity_queue', filter: `workspace_owner_id=eq.${owner}` }, () => {
+      const notify = () => {
           const current = live.get(owner);
           if (!current || current.timer) return;
           current.timer = setTimeout(() => {
             current.timer = undefined;
             current.listeners.forEach((notify) => notify());
           }, 100);
-        }).subscribe();
+        };
+      const channel = safeChannel(`group-queue-${owner}`);
+      for (const table of ['campaign_activity_queue', 'fb_user_groups', 'fb_cloud_sessions']) {
+        channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `workspace_owner_id=eq.${owner}` }, notify);
+      }
+      channel.subscribe();
       entry = { channel, listeners: new Set() };
       live.set(owner, entry);
     }

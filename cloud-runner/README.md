@@ -6,8 +6,7 @@ computer is off.
 ## How it fits together
 
 1. Realtyz stores each group post in the queue with its publish time.
-2. Every 5 minutes the Realtyz server checks for posts that are due and have no
-   active browser extension, and sends them to this runner.
+2. The server dispatches due cloud posts and event-driven group joins to this runner.
 3. This runner opens Facebook headlessly with your saved connection, writes the
    post (and the first comment, if any), and reports back "done" or "failed".
 4. The status pill on the post card updates automatically.
@@ -27,6 +26,11 @@ Then send me the public URL of the runner (e.g. `https://runner.example.com/`)
 and I'll connect it to Realtyz. Nothing else is needed on your side.
 
 ## Notes
+
+- Set `CLOUD_CALLBACK_ORIGIN` to the Cloud function origin used by the dispatcher; callbacks reject all other origins.
+- Redeploy this worker to enable `group_join` and `group_fetch`. Code changes in the app do not redeploy Railway.
+- Joins are serialized per workspace and spaced by two minutes. Facebook approval is never treated as confirmed membership; checkpoints pause the connection.
+- Membership questions use only owner-supplied answers with explicit rule consent. Unsupported question types require completion in the remote cloud browser.
 
 - Save your Facebook connection first in Settings → Social networks → "פרסום מהענן".
   Cookies are encrypted before storage and are only decrypted when a job is sent here.

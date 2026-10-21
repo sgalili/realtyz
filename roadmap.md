@@ -96,3 +96,9 @@
 - [x] GroupDiscoveryDialog is cloud-first with tabs: cloud search/save + optional extension tab + always-available manual add; no blocking "must install" prompt.
 - [x] CloudPostingSessionCard visible to all workspace members at /api-settings#cloud-automation; sync dialog shows cloud status.
 - [x] 15 focused tests pass; build OK. Railway runner must be redeployed for group_fetch support.
+
+# Cloud-only group quotas and joining
+- [x] Removed extension controls from group connection/discovery; mobile authenticated UI checked, cloud state and group events are server-derived, no cached membership overrides.
+- [x] Added locked workspace 100-active/200-reserve pools, canonical duplicate detection, event-driven join jobs and atomic preflight/rotation in both cloud dispatchers. Current pools have no invalid active members.
+- [x] Added supplied-answer/rule-consent handling, serialized joins, approval rechecks and interrupted-job recovery on existing scheduler ticks; 13 focused tests and preview checks pass.
+- [ ] Live joining/search/post rotation acceptance waits for Railway worker redeployment with CLOUD_CALLBACK_ORIGIN and an active Facebook cloud session. No live Facebook join or post sent; arbitrary question types require the remote cloud browser.

@@ -37,7 +37,7 @@ export async function getCloudSessionState(): Promise<CloudSessionState> {
       active: s?.status === 'active' && !expired && !s?.last_error,
       status: s?.status ?? null,
       expiresAt: s?.expires_at ?? null,
-      workerReady: data?.worker_ready !== false,
+      workerReady: data?.worker_ready === true,
       lastError: s?.last_error ?? null,
     };
   } catch {
