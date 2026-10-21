@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
         claimed_by: null,
         claim_expires_at: null,
       })
-      .eq("id", jobId);
+      .eq("id", jobId).eq("runner", "cloud").eq("status", "processing");
     if (error) return json({ error: error.message }, 500);
     return json({ success: true });
   }
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     return out;
   }
 
-  for (const row of due ?? []) {
+  for (let row of due ?? []) {
     const ws = row.workspace_owner_id as string;
 
     if (!WORKER_URL) {
@@ -137,21 +137,11 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Atomic claim: only one worker tick may take the row.
-    const { data: claimed } = await admin
-      .from("campaign_activity_queue")
-      .update({
-        status: "processing",
-        claim_expires_at: new Date(Date.now() + LEASE_MIN * 60_000).toISOString(),
-        processed_at: nowIso,
-        cloud_attempts: (row.cloud_attempts ?? 0) + 1,
-        last_error: null,
-      })
-      .eq("id", row.id)
-      .eq("status", "pending")
-      .select("id")
-      .maybeSingle();
-    if (!claimed) { results.push({ id: row.id, status: "skipped", reason: "claimed_elsewhere" }); continue; }
+    const { data: ready, error: preflightError } = await admin.rpc('fb_prepare_cloud_group_post', { _job: row.id });
+    if (preflightError || !ready) { results.push({ id: row.id, status: 'deferred', reason: 'group_not_ready' }); continue; }
+    const { data: prepared } = await admin.from('campaign_activity_queue').select('*').eq('id', row.id).eq('status', 'processing').maybeSingle();
+    if (!prepared) continue;
+    row = prepared;
 
     const payload = row.payload ?? {};
     const jobBody = {

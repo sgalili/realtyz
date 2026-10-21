@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 
   const sessions = new Map<string, { cookies: string; user_agent: string | null } | null>();
   async function sessionFor(ws: string) {
-    if (sessions.has(ws)) return sessions.get(ws)!;
+    if (sessions.has(ws)) return sessions.get(ws) ?? null;
     const { data } = await admin
       .from("fb_cloud_sessions")
       .select("cookies_encrypted, user_agent, status, expires_at")
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
   }
 
   const jobs: any[] = [];
-  for (const row of due ?? []) {
+  for (let row of due ?? []) {
     const ws = row.workspace_owner_id as string;
     const session = await sessionFor(ws);
     if (!session) {
@@ -146,14 +146,11 @@ Deno.serve(async (req) => {
         .eq("id", row.id).eq("status", "pending");
       continue;
     }
-    const { data: claimed } = await admin.from("campaign_activity_queue")
-      .update({
-        status: "processing", processed_at: nowIso, last_error: null,
-        claim_expires_at: new Date(Date.now() + LEASE_MIN * 60_000).toISOString(),
-        cloud_attempts: (row.cloud_attempts ?? 0) + 1,
-      })
-      .eq("id", row.id).eq("status", "pending").select("id").maybeSingle();
-    if (!claimed) continue;
+    const { data: ready, error: preflightError } = await admin.rpc('fb_prepare_cloud_group_post', { _job: row.id });
+    if (preflightError || !ready) continue;
+    const { data: prepared } = await admin.from('campaign_activity_queue').select('*').eq('id', row.id).eq('status', 'processing').maybeSingle();
+    if (!prepared) continue;
+    row = prepared;
 
     const p = row.payload ?? {};
     jobs.push({
