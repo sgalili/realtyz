@@ -1,7 +1,7 @@
 # Intro, property headings and developer defaults
-- [ ] Redesign five intro slides with vivid gradients, concise Hebrew copy, swipe/side navigation and explicit dismissal; lock scrolling.
-- [ ] Wrap long property headings without displacing prices across shared views.
-- [ ] Remove developer deal question and use sale by default; verify behavior and existing tests.
+- [x] Redesign five intro slides with gradients, highlighted Hebrew copy, swipe/side navigation and explicit dismissal; mobile/desktop checks confirm edge arrows, scroll lock and opt-out after reload.
+- [x] Wrap shared public, inventory, partner, My Ads and developer headings; a real public heading with long test text keeps its price inside with no overlap.
+- [x] Remove developer deal question and use sale by default; real Kobi project editor checked without saving. All 16 focused welcome/developer form/commission tests pass.
 
 # Signup identity and partner sidebar
 - [x] Require five explicit primary signup types; persist through a constrained authenticated operation without changing established core roles.
