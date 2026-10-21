@@ -1,3 +1,9 @@
+# Developer project counters and promotion
+- [ ] Add workspace project counters in the sidebar and company header.
+- [ ] Separate commission settings, add company-wide defaults, daily caps and shared screening/form-field dialogs.
+- [ ] Connect explicit project promotion and public building/unit details; preserve source evidence and make saved units available to posting.
+- [ ] Test persistence, promotion guards, public hierarchy and authenticated controls without unsolicited live publication.
+
 # Broker signup registry and wallet navigation
 - [x] Require empty numeric broker license input and official registry validation before broker registration; exact active-license lookup uses the Ministry of Justice data.gov.il dataset.
 - [x] Enforce private server-written registry evidence before new broker grants; signup, post-auth choice and publisher share validation, without trusting editable profile licenses.

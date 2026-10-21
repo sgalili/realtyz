@@ -123,7 +123,7 @@ export function useSidebarCounts() {
 
       const invitationsCount = async (): Promise<number> => safeCount('referrals');
 
-      const [leads, listings, chats, deals, campaigns, tasks, sharedListings, invitations] = await Promise.all([
+      const [leads, listings, chats, deals, campaigns, tasks, sharedListings, invitations, projects] = await Promise.all([
         safeCount('leads'),
         allListingsCount(),
         distinctChatLeads(),
@@ -132,9 +132,10 @@ export function useSidebarCounts() {
         waitingTasksAndTours(),
         sharedListingsCount(),
         invitationsCount(),
+        safeCount('developer_projects', q => q.eq('workspace_owner_id', workspaceOwnerId)),
       ]);
 
-      return { leads, listings, chats, deals, campaigns, tasks, sharedListings, invitations };
+      return { leads, listings, chats, deals, campaigns, tasks, sharedListings, invitations, projects };
 
 
     },
