@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
+import { shouldShowWelcome, WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
 import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -488,8 +489,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             {/* Absolute screen center (fixed, so the sidebar width does not shift it). */}
             <Link
               to="/"
-              state={{ replayWelcome: true }}
-              onClick={() => window.dispatchEvent(new Event('toraf-welcome-reopen'))}
+              onClick={() => { if (shouldShowWelcome('logo')) window.dispatchEvent(new Event(WELCOME_REOPEN_EVENT)); }}
               aria-label={`${headerName} - דף הבית`}
               className="pointer-events-auto fixed left-1/2 top-[env(safe-area-inset-top)] z-30 flex h-16 max-w-[calc(100vw-9rem)] -translate-x-1/2 items-center gap-1.5 overflow-hidden text-right leading-none"
             >
