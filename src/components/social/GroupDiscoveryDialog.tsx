@@ -157,7 +157,7 @@ export function GroupDiscoveryDialog({
   const runSearch = async () => {
     const q = query.trim();
     if (!q) return;
-    if (!isExtensionInstalled()) { toast.error("כדי לחפש קבוצות יש להתקין את תוסף Realtyz"); return; }
+    if (!(await requireExtension())) return;
     setSearching(true);
     setPicked(new Set());
     setProgress({});
@@ -228,7 +228,7 @@ export function GroupDiscoveryDialog({
   const runJoin = async (list?: DiscoveredGroup[]) => {
     const all = [...(list ?? visible.filter((g) => picked.has(g.group_id)))].sort((a, b) => (b.member_count ?? -1) - (a.member_count ?? -1)).slice(0, 100);
     if (!all.length) return;
-    if (!isExtensionInstalled()) { toast.error("כדי להצטרף לקבוצות יש להתקין את תוסף Realtyz"); return; }
+    if (!(await requireExtension())) return;
     setJoining(true);
     cancelledRef.current = false;
     setProgress(Object.fromEntries(all.map((g) => [g.group_id, "queued"])));
