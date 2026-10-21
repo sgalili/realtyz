@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Cloud, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
 import { ExtensionDownloadButton, isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
 import { verifyExtensionAlive } from '@/lib/extensionDetect';
+import { getCloudSessionState, type CloudSessionState } from '@/lib/cloudSession';
 import { pairExtension, readRunnerStatus } from '@/lib/extensionPairing';
 
 const FB_GROUPS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
@@ -64,13 +65,17 @@ export function ExtensionGroupSyncCard({
   const [checking, setChecking] = useState(false);
   const [open, setOpen] = useState(false);
   const [extAlive, setExtAlive] = useState<boolean | null>(null);
+  const [cloudState, setCloudState] = useState<CloudSessionState | null>(null);
   const savedRef = useRef<string>('');
 
   // Live extension status while the sync dialog is open — no false "connected".
+  // The cloud session state is loaded alongside: it is the primary, no-extension path.
   useEffect(() => {
     if (!open) return;
     setExtAlive(null);
+    setCloudState(null);
     let alive = true;
+    void getCloudSessionState().then((s) => { if (alive) setCloudState(s); });
     void verifyExtensionAlive(1500).then((ok) => { if (alive) setExtAlive(ok); });
     const id = window.setInterval(() => {
       void verifyExtensionAlive(1200).then((ok) => { if (alive) setExtAlive(ok); });
@@ -216,17 +221,24 @@ export function ExtensionGroupSyncCard({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl" className="text-right sm:max-w-md">
           <DialogHeader className="text-right">
-            <DialogTitle>סנכרון קבוצות פייסבוק דרך התוסף</DialogTitle>
+            <DialogTitle>סנכרון קבוצות פייסבוק (אופציונלי)</DialogTitle>
             <DialogDescription>
-              ודא שתוסף Realtyz מותקן ופעיל בדפדפן, ואז פתח את עמוד הקבוצות שלך בפייסבוק. התוסף יאסוף את הקבוצות
+              הדרך המומלצת היא חיבור פייסבוק בענן — חיפוש וסנכרון קבוצות רצים בשרת בלי תוסף.
+              אפשר גם לסנכרן מהדפדפן: ודא שתוסף Realtyz פעיל, פתח את עמוד הקבוצות שלך בפייסבוק,
               והמערכת תשמור אותן אוטומטית כאן.
             </DialogDescription>
+            {cloudState?.active && (
+              <p className="flex items-center gap-1 text-[14px] font-medium text-emerald-600">
+                <Cloud className="h-3.5 w-3.5" /> חיבור הענן פעיל — אין צורך בתוסף
+              </p>
+            )}
             {extAlive === true && (
               <p className="text-[14px] font-medium text-emerald-600">✓ התוסף מזוהה ופעיל בדפדפן</p>
             )}
             {extAlive === false && (
-              <p className="text-[14px] font-medium text-destructive">
-                התוסף לא זוהה בדפדפן — השתמש בכפתור "תוסף" להורדה והתקנה, ואז נסה שוב.
+              <p className="text-[14px] font-medium text-muted-foreground">
+                התוסף לא זוהה בדפדפן — אפשר להשתמש בחיפוש בענן בלשונית "הוספת קבוצות", או להוריד
+                את התוסף מהכפתור "תוסף".
               </p>
             )}
             {extAlive === null && (
