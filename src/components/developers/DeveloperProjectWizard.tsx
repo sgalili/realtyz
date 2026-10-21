@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import DeveloperCommissionEditor from './DeveloperCommissionEditor';
+import { savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 import { ArrowRight, Loader2, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -30,7 +32,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
   const [uploading, setUploading] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const set = <K extends keyof ProjectForm>(key: K, value: ProjectForm[K]) => setForm(old => ({ ...old, [key]: value }));
-  const field = (key: keyof Omit<ProjectForm, 'units' | 'images' | 'amenities'>, label: string, numeric = false) => (
+  const field = (key: keyof Omit<ProjectForm, 'units' | 'images' | 'amenities' | 'commission_config' | 'deal_type'>, label: string, numeric = false) => (
     <div className="space-y-2" key={key}>
       <Label htmlFor={`project-${key}`} className="text-base font-semibold">{label}</Label>
       <Input id={`project-${key}`} className="h-11 text-base" value={form[key]} inputMode={numeric ? 'decimal' : undefined}
@@ -69,7 +71,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
         developerId = data.id;
       }
       const payload = projectPayload(form, project);
-      const row = { ...payload, apartments: payload.apartments as Json, source_details: payload.source_details as Json };
+      const row = { ...payload, commission_config: payload.commission_config as unknown as Json, apartments: payload.apartments as Json, source_details: payload.source_details as Json };
       const result = project
         ? await supabase.from('developer_projects').update(row).eq('id', project.id).eq('workspace_owner_id', ws).select('id').single()
         : await supabase.from('developer_projects').insert({ ...row, developer_id: developerId, workspace_owner_id: ws }).select('id').single();
@@ -84,6 +86,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
     {i === 1 && <>{field('name', 'שם הפרויקט *')}<div className="space-y-2"><Label htmlFor="project-description" className="text-base">תיאור הפרויקט</Label><Textarea id="project-description" className="min-h-28 text-base" value={form.description} onChange={e => set('description', e.target.value)} /></div>{field('source_url', 'קישור לפרויקט ביד2')}</>}
     {i === 2 && <>{field('city', 'עיר')}{field('neighborhood', 'שכונה')}{field('address', 'כתובת')}</>}
     {i === 3 && <>
+      <div className="space-y-2"><Label>סוג עסקה</Label><Select value={form.deal_type} onValueChange={v => set('deal_type', v === 'rent' ? 'rent' : 'sale')}><SelectTrigger aria-label="סוג עסקה"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sale">למכירה</SelectItem><SelectItem value="rent">להשכרה</SelectItem></SelectContent></Select></div>
       <div className="space-y-2"><Label className="text-base" htmlFor="project-status">שלב הפרויקט</Label><Select value={form.status} onValueChange={v => set('status', v)}><SelectTrigger id="project-status" className="h-11 text-base"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(PROJECT_STATUS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
       <div className="grid grid-cols-2 gap-3">{field('total_units', 'סך יחידות דיור', true)}{field('available_units', 'יחידות זמינות', true)}</div>
       {field('price_from', 'מחיר החל מ־₪', true)}{field('delivery_date', 'מועד מסירה')}
@@ -95,6 +98,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
         <div className="grid grid-cols-2 gap-3">{([['type', 'סוג דירה'], ['rooms', 'חדרים'], ['floor', 'קומה'], ['size_sqm', 'שטח במ״ר'], ['price', 'מחיר ₪'], ['count', 'מספר יחידות'], ['balcony_sqm', 'מרפסת במ״ר'], ['parking', 'חניות']] as const).map(([key, label]) => <div key={key} className="space-y-1"><Label htmlFor={`unit-${idx}-${key}`} className="text-base">{label}</Label><Input id={`unit-${idx}-${key}`} className="h-11 text-base" value={u[key]} inputMode={key === 'type' || key === 'floor' ? undefined : 'decimal'} onChange={e => set('units', form.units.map((unit, index) => index === idx ? { ...unit, [key]: e.target.value } : unit))} /></div>)}</div>
       </fieldset>)}
       <Button variant="outline" onClick={() => set('units', [...form.units, newUnit()])}><Plus />הוספת דגם דירה</Button>
+      <DeveloperCommissionEditor value={form.commission_config} units={savedProjectHierarchy({ apartments: projectPayload(form).apartments }).apartments} price={Number(form.price_from.replace(/,/g, '')) || 0} deal={form.deal_type} onChange={v => set('commission_config', v)} />
     </>}
     {i === 5 && <>
       <Label htmlFor="project-images" className="flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border text-base font-semibold">{uploading ? <Loader2 className="animate-spin" /> : <Upload />}העלאת תמונות</Label>

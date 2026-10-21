@@ -316,6 +316,20 @@
       "when": 1792541822048,
       "tag": "0044_preserve_developer_registration_contact_provisioning",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792541985846,
+      "tag": "0045_developer_commission_configuration_and_publication",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1792542186858,
+      "tag": "0046_harden_developer_publication_validation",
+      "breakpoints": true
     }
   ]
 }

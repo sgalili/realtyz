@@ -1,3 +1,9 @@
+# Developer commissions and sidebar
+- [x] Fix workspace dropdown scrolling and remove the lead button icon; actual wheel scrolling verified from 0 to 365px.
+- [x] Add mandatory project/unit commission setup, scoped bulk assignment and individual overrides, preserving authored fees on sync.
+- [x] Enforce publication on the server and reuse standard commission badges; public publication creates ordinary listings with existing visibility guards.
+- [x] 21 focused tests pass; authenticated real-project save/reopen returned form fee 10 and phone cap 3; original values restored. Incomplete publication rejected by the server. No public ads were created; successful live project/unit publication remains unverified because saved projects have no source units and publication requires explicit approval.
+
 # Role isolation and pricing audit
 - [x] Audit core role/listing/lead/project policies; remove developer signup's unintended broker grant and broad listing policies; fail closed during workspace validation and remount tenant content. Kobi retains developer+affiliate only.
 - [x] Verify positive-price-only caps, LTR slider bounds/colors and fixed/percent preservation; isolate pricing drafts by user/workspace/listing. Correct percentage-type propagation.

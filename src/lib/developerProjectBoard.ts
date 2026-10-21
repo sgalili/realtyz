@@ -25,5 +25,5 @@ export function mergeImportedProject(old: Record<string, unknown> | undefined, f
   // Editing overrides remain authoritative when a later source page is sparse or changed.
   const manual = sourceRecord(sourceRecord(old?.source_details).manual);
   const overrides = sourceRecord(manual.project_overrides);
-  return { ...merged, ...overrides, source_details: { ...sourceRecord(merged.source_details), manual: { ...sourceRecord(sourceRecord(merged.source_details).manual), ...manual } } };
+  return { ...merged, ...overrides, ...(old?.commission_config ? { commission_config: old.commission_config } : {}), source_details: { ...sourceRecord(merged.source_details), manual: { ...sourceRecord(sourceRecord(merged.source_details).manual), ...manual } } };
 }
