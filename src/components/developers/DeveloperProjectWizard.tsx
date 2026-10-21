@@ -97,7 +97,6 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
         <div className="grid grid-cols-2 gap-3">{([['type', 'סוג דירה'], ['rooms', 'חדרים'], ['floor', 'קומה'], ['size_sqm', 'שטח במ״ר'], ['price', 'מחיר ₪'], ['count', 'מספר יחידות'], ['balcony_sqm', 'מרפסת במ״ר'], ['parking', 'חניות']] as const).map(([key, label]) => <div key={key} className="space-y-1"><Label htmlFor={`unit-${idx}-${key}`} className="text-base">{label}</Label><Input id={`unit-${idx}-${key}`} className="h-11 text-base" value={u[key]} inputMode={key === 'type' || key === 'floor' ? undefined : 'decimal'} onChange={e => set('units', form.units.map((unit, index) => index === idx ? { ...unit, [key]: e.target.value } : unit))} /></div>)}</div>
       </fieldset>)}
       <Button variant="outline" onClick={() => set('units', [...form.units, newUnit()])}><Plus />הוספת דגם דירה</Button>
-      <DeveloperCommissionEditor value={form.commission_config} units={savedProjectHierarchy({ apartments: projectPayload(form).apartments }).apartments} price={Number(form.price_from.replace(/,/g, '')) || 0} deal={form.deal_type} onChange={v => set('commission_config', v)} />
     </>}
     {i === 5 && <>
       <Label htmlFor="project-images" className="flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border text-base font-semibold">{uploading ? <Loader2 className="animate-spin" /> : <Upload />}העלאת תמונות</Label>
@@ -137,6 +136,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
         </AccordionItem>
       ))}
     </Accordion>
+    <Accordion type="single" collapsible className="border-t border-border"><AccordionItem value="commissions"><AccordionTrigger className="text-lg font-semibold">עמלות, מגבלות ושאלות סינון</AccordionTrigger><AccordionContent><DeveloperCommissionEditor value={form.commission_config} units={savedProjectHierarchy({ apartments: projectPayload(form).apartments }).apartments} price={Number(form.price_from.replace(/,/g, '')) || 0} deal={form.deal_type} onChange={v => set('commission_config', v)} /></AccordionContent></AccordionItem></Accordion>
     {error && <p role="alert" className="text-base text-destructive">{error}</p>}
     <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
       <Button variant="ghost" disabled={saving || uploading} onClick={onCancel}>ביטול</Button>

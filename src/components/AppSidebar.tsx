@@ -236,7 +236,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     if ((isDeveloper && !isSuperAdmin) || features.isDeveloperWorkspace) {
       const base = NAV_ITEMS.filter((i) => !['/properties', '/deal-room', '/developers', '/dashboard'].includes(i.url));
       const projects = NAV_ITEMS.find((i) => i.url === '/developers');
-      return projects ? [{ ...projects, title: 'הפרויקטים שלי', url: '/developer-dashboard' }, ...base] : base;
+      return projects ? [{ ...projects, title: 'הפרויקטים שלנו', url: '/developer-dashboard' }, ...base] : base;
     }
     return NAV_ITEMS.filter((item) => {
       if (item.url === '/developers') return isDeveloper;
@@ -253,6 +253,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       case '/command-center': return counts.tasks;
       case '/lead-crm': return counts.leads;
       case '/properties': return counts.listings;
+      case '/developer-dashboard': return counts.projects;
       case '/inbox': return counts.chats;
       case '/deal-room': return counts.deals;
       case '/campaigns': return counts.campaigns;
@@ -392,7 +393,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         )}
                         {!collapsed && !item.badge && (() => {
                           const c = countFor(item.url);
-                          if (c === undefined || c === 0) return null;
+                          if (c === undefined || (c === 0 && item.url !== '/developer-dashboard')) return null;
                           return (
                             <span className="ms-auto rounded-full bg-background px-2 py-0.5 text-[11px] font-bold leading-none text-foreground ring-1 ring-border">
                               {formatCount(c)}

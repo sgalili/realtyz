@@ -1,3 +1,10 @@
+# Developer project counters and promotion
+- [x] Add workspace project counters in the sidebar and company header; authenticated company header shows 7 and project queries page through the full workspace inventory.
+- [x] Separate commission settings, add company-wide defaults, daily caps and shared screening/form-field dialogs; authenticated save/reload verifies form 10, phone cap 3, fixed closing 5000 and questions across all 7 projects; original values restored.
+- [x] Connect explicit project promotion and public published-unit grouping/details; use public-safe property specifications, retain source evidence and make saved project/unit targets available to posting. Real project deep link selects KATA IDOL and its photos.
+- [x] Run 21 focused tests and authenticated persistence/publication-guard checks; no runtime errors and latest preview build passes.
+- [ ] Successful public project/unit publication and public hierarchy round-trip: blocked by missing imported apartment records and prices in all seven saved projects, and no approval for live publication; no source details or units fabricated.
+
 # Broker signup registry and wallet navigation
 - [x] Require empty numeric broker license input and official registry validation before broker registration; exact active-license lookup uses the Ministry of Justice data.gov.il dataset.
 - [x] Enforce private server-written registry evidence before new broker grants; signup, post-auth choice and publisher share validation, without trusting editable profile licenses.

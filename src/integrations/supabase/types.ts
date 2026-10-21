@@ -2514,6 +2514,7 @@ export type Database = {
       }
       developers: {
         Row: {
+          commission_config: Json
           company_name: string
           created_at: string
           first_project_name: string | null
@@ -2528,6 +2529,7 @@ export type Database = {
           workspace_owner_id: string
         }
         Insert: {
+          commission_config?: Json
           company_name: string
           created_at?: string
           first_project_name?: string | null
@@ -2542,6 +2544,7 @@ export type Database = {
           workspace_owner_id: string
         }
         Update: {
+          commission_config?: Json
           company_name?: string
           created_at?: string
           first_project_name?: string | null
@@ -8974,6 +8977,10 @@ export type Database = {
       set_card_auto_recharge: {
         Args: { _amount: number; _enabled: boolean; _id: string }
         Returns: undefined
+      }
+      set_developer_company_commissions: {
+        Args: { _apply_existing?: boolean; _company: string; _config: Json }
+        Returns: Json
       }
       set_homely_broker_disabled: {
         Args: { _disabled: boolean; _reason?: string; _user_id: string }
