@@ -1,5 +1,5 @@
 /**
- * Realtyz — מודל "מגעי קרדיט" (Touch Credits / T.C.) ותעריפי הפצה פרטית.
+ * TORAFF — מודל "מגעי קרדיט" (Touch Credits / T.C.) ותעריפי הפצה פרטית.
  * Single source of truth למסך "חבילות וקרדיטים" ולעמוד הנחיתה.
  */
 

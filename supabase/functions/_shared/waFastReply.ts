@@ -49,7 +49,7 @@ export interface FastReplyInput {
   domain?: "real_estate" | "software" | "generic";
   /**
    * Rita's broker-recruitment mode: the contact is a real-estate agent replying
-   * to the Realtyz outreach, not a property seeker.
+   * to the TORAFF outreach, not a property seeker.
    */
   recruitment?: boolean;
   /**
@@ -129,7 +129,7 @@ ${agency ? `Workspace: ${agency}` : ""}
 
 חוקים מחייבים:
 1. התייחסי אליו מיד כמנהל/אדמין פנימי. בלי הצגה עצמית מחדש, בלי שאלות היכרות, בלי "נעים להכיר".
-2. אסור בהחלט להציע דמו, זום שיווקי, תיאום שיחת מכירה, הרשמה, תמחור או פיץ' על Realtyz. הוא כבר בפנים.
+2. אסור בהחלט להציע דמו, זום שיווקי, תיאום שיחת מכירה, הרשמה, תמחור או פיץ' על TORAFF. הוא כבר בפנים.
 3. אסור לשאול אותו שאלות סינון של ליד (תקציב, סוג נכס, עיר מבוקשת) אלא אם הוא ביקש זאת עבור לקוח שלו.
 4. תפקידך: תמיכה תפעולית וניהולית. עזרה בהגדרות, חיבורי ערוצים, פרסום, קמפיינים, אנשי קשר, נכסים, דוחות, ניווט בלוח הבקרה, ופעולות שהוא מבקש לבצע.
 5. אם הוא מבקש נתון או פעולה, תני תשובה מעשית וקצרה או צעד מדויק לביצוע. בלי ענן, בלי הבטחות.
@@ -141,7 +141,7 @@ ${contextBlock ? `\nנתונים מהמערכת:\n${contextBlock}` : ""}
 }
 
 /**
- * Rita's recruitment prompt: she talks to an AGENT about Realtyz itself and
+ * Rita's recruitment prompt: she talks to an AGENT about TORAFF itself and
  * closes on a short Zoom demo. No properties, no budgets, no viewings.
  */
 export function buildRecruitmentReplyPrompt(lead: FastReplyLead, contextBlock?: string): string {
@@ -157,7 +157,7 @@ ${genderPromptBlock(resolveLeadGender(lead), name)}
 חוקי כתיבה:
 1. עד 70 מילים, משפטים קצרים, שורות קצרות, אפשר שורה ריקה בין רעיונות.
 2. פותחים בהתייחסות אמיתית למה שהוא כתב עכשיו, בלי "אשמח לסייע" ובלי חזרה על השאלה.
-3. אחר כך יתרון ה-All-in-One של Realtyz במשפט או שניים: לידים, אנשי קשר, נכסים, מעקבים, התאמות, פרסום וכלי AI במערכת אחת במקום חמש מערכות.
+3. אחר כך יתרון ה-All-in-One של TORAFF במשפט או שניים: לידים, אנשי קשר, נכסים, מעקבים, התאמות, פרסום וכלי AI במערכת אחת במקום חמש מערכות.
 4. לסיים בשאלה אחת בלבד על מועד נוח לזום קצר של כ-15 דקות להדגמה חיה.
 5. בלי מקפים ארוכים, בלי markdown, בלי רשימות ממוספרות, עד אימוג'י אחד.
 6. לא להמציא מחירים, אחוזי הצלחה, שמות לקוחות או אינטגרציות. אם נשאלת ואין לך נתון, לומר שתבדקי ותעבירי תשובה מדויקת, ולהציע לכסות את זה בזום.

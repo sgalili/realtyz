@@ -14,7 +14,7 @@ interface BrandMarkProps {
 
 /**
  * Renders the agency logo + name when white-label branding is configured,
- * otherwise falls back to the Realtyz AI wordmark unless the user explicitly hid it.
+ * otherwise falls back to the TORAFF wordmark unless the user explicitly hid it.
  *
  * Both sources (white-label settings and the workspace list) hydrate
  * synchronously from localStorage, so the workspace logo paints on the FIRST
@@ -32,7 +32,7 @@ export function BrandMark({ className = '', to = '/', fallbackLabel }: BrandMark
   const hideRealtyz = !!settings?.hide_kalpiz_branding;
   const isDefaultBrand = !identity.isTenant && agencyName === (masterBrand?.agency_name || 'TORAF');
 
-  // While branding is still resolving we render nothing rather than the Realtyz
+  // While branding is still resolving we render nothing rather than the TORAFF
   // fallback, which used to flicker in before the workspace logo arrived.
   const labelToShow = agencyName && !isDefaultBrand
     ? agencyName
@@ -45,7 +45,7 @@ export function BrandMark({ className = '', to = '/', fallbackLabel }: BrandMark
       aria-label={`${labelToShow || 'Home'} - דף הבית`}
       className={`realtyz-logo inline-flex items-center gap-2 ${className}`}
     >
-      {/* Office logo when one is uploaded, otherwise the default Realtyz AI logo.
+      {/* Office logo when one is uploaded, otherwise the default TORAFF logo.
           A personal profile picture is never used here. */}
       {logoUrl ? (
         <img

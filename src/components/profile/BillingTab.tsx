@@ -72,7 +72,7 @@ function downloadInvoice(row: { id: string; created_at: string; amount: number; 
 h1{margin:0 0 4px}table{width:100%;border-collapse:collapse;margin-top:24px}
 td,th{border:1px solid #dbe1ee;padding:10px;text-align:right}
 .total{font-size:20px;font-weight:800;margin-top:20px}</style></head><body>
-<h1>Realtyz — חשבונית / קבלה</h1>
+<h1>TORAFF — חשבונית / קבלה</h1>
 <div>מספר מסמך: ${row.id.slice(0, 8).toUpperCase()}</div>
 <div>תאריך: ${heDate(row.created_at)}</div>
 <div>לקוח: ${email ?? '—'}</div>

@@ -475,7 +475,7 @@ export async function handleSmsInbound(req: Request, endpointName = "sms-inbound
     const factAnswer = isProductInquiry ? null : answerPropertyFact(bodyText, focusRow as any, history);
     if (factAnswer) reply = factAnswer;
 
-    // Realtyz product questions: answer about the tool + demo invite, never buyer qualification.
+    // TORAFF product questions: answer about the tool + demo invite, never buyer qualification.
     if (!reply && isProductInquiry) {
       const product = await generateFastReply({
         lead: { id: lead.id, full_name: realName, preferences: (lead as any).preferences ?? null },

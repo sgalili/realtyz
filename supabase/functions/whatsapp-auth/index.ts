@@ -64,7 +64,7 @@ const buildOtpComponents = (bodyText: string, code: string, varCount: number): u
   const count = Math.max(keys.length, varCount || 0);
   if (count === 0) return [];
   const parameters = Array.from({ length: count }, (_, i) => {
-    const text = i === 0 ? code : "Realtyz";
+    const text = i === 0 ? code : "TORAFF";
     const key = keys[i];
     return key && !/^\d+$/.test(key)
       ? { type: "text", parameter_name: key, text }
@@ -157,7 +157,7 @@ const resolveOtpTemplate = async (admin: any, code: string) => {
     // Positional templates must NOT carry `parameter_name`; named ones must.
     const named = row.parameterFormat === "NAMED" || keys.some((k) => !/^\d+$/.test(k));
     const parameters = keys.map((key, i) => {
-      const text = i === 0 ? code : "Realtyz";
+      const text = i === 0 ? code : "TORAFF";
       return named ? { type: "text", parameter_name: key, text } : { type: "text", text };
     });
     if (parameters.length === 0) return null;
@@ -394,7 +394,7 @@ Deno.serve(async (req) => {
       const codeHash = await hashCode(phone, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
       const owner = await resolveWorkspaceOwnerForPhone(admin, phone);
-      const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-Realtyz: ${code}`, owner);
+      const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-TORAFF: ${code}`, owner);
       if (!sms.ok) {
         console.error("whatsapp-auth SMS OTP send failed", { phone_last4: phone.slice(-4), error: sms.error, scope: sms.scope ?? null });
         await logIntegrationError({
@@ -441,7 +441,7 @@ Deno.serve(async (req) => {
         : {
             phone_number: phone,
             force_official: true,
-            message: `קוד האימות שלך ל-Realtyz: ${code}`,
+            message: `קוד האימות שלך ל-TORAFF: ${code}`,
           };
 
       let sendResponse: Response;
@@ -506,7 +506,7 @@ Deno.serve(async (req) => {
                 Authorization: `Bearer ${serviceRoleKey}`,
                 apikey: serviceRoleKey,
               },
-              body: JSON.stringify({ phone_number: phone, force_official: true, message: `קוד האימות שלך ל-Realtyz: ${code}` }),
+              body: JSON.stringify({ phone_number: phone, force_official: true, message: `קוד האימות שלך ל-TORAFF: ${code}` }),
             });
             const retryPayload: any = await retryRes.json().catch(() => ({}));
             if (retryRes.ok && retryPayload?.message_id) {
@@ -528,7 +528,7 @@ Deno.serve(async (req) => {
         // to the workspace's own 019 SMS number (isolated per workspace, with
         // the shared platform 019 account as a last resort).
         const owner = await resolveWorkspaceOwnerForPhone(admin, phone);
-        const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-Realtyz: ${code}`, owner);
+        const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-TORAFF: ${code}`, owner);
 
         if (sms.ok) {
           const { error: smsInsertError } = await admin.from("whatsapp_login_otps").insert({

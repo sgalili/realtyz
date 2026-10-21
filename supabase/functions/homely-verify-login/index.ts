@@ -2,9 +2,9 @@
 //
 // Primary check (per Webtiv OpenCardApi docs):
 //   POST https://webtivapi.webtiv.co.il/api/WebtivLid/WebtivLidPost
-//   Body: { client, provider:"RealtyZ", category:"מוכר", remark:"בדיקת תקינות ממשק RealtyZ" }
+//   Body: { client, provider:"TORAFF", category:"מוכר", remark:"בדיקת תקינות ממשק TORAFF" }
 // A 2xx response means the agency code (client) is valid and Homely
-// accepted a lead from the RealtyZ provider — i.e. the OpenCard pipeline
+// accepted a lead from the TORAFF provider — i.e. the OpenCard pipeline
 // is wired correctly end-to-end.
 //
 // Secondary check (only when username+password are stored): legacy
@@ -36,9 +36,9 @@ async function attemptOpenCard(agency: string): Promise<{ ok: boolean; status: n
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify({
         client: agency,
-        provider: "RealtyZ",
+        provider: "TORAFF",
         category: "מוכר",
-        remark: "בדיקת תקינות ממשק RealtyZ",
+        remark: "בדיקת תקינות ממשק TORAFF",
       }),
     });
     const text = await res.text();
@@ -79,7 +79,7 @@ async function attemptHomelyLogin(agency: string, username: string, password: st
         password,
         theme: "",
         version: "realtyz-1.0",
-        deviceInfo: { DeviceType: "server", UserAgent: "Realtyz/1.0 (+https://realtyz.udiman.com)", Os: "deno", Platform: "edge-function" },
+        deviceInfo: { DeviceType: "server", UserAgent: "TORAFF/1.0 (+https://realtyz.udiman.com)", Os: "deno", Platform: "edge-function" },
       }),
     });
     let data: any = null;

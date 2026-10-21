@@ -31,7 +31,7 @@ export default function KnowledgeBase() {
   const blockDemoAction = useDemoGuard();
   const qc = useQueryClient();
 
-  const brand = settings?.agency_name || 'Realtyz AI';
+  const brand = settings?.agency_name || 'TORAFF';
 
   /* ── Knowledge tester chat ── */
   const [chatInput, setChatInput] = useState('');

@@ -1,6 +1,6 @@
-/* Realtyz Group Sync — background worker.
+/* TORAFF Group Sync — background worker.
  *
- * Every 60 seconds (while the browser is open) it asks the Realtyz backend for
+ * Every 60 seconds (while the browser is open) it asks the TORAFF backend for
  * Facebook group posts that are due, opens the group in a background tab,
  * runs the local posting automation (poster.js) and reports the outcome back.
  */
@@ -8,18 +8,18 @@
 /* Startup marker: must be the very first executable statement so the extension
  * console proves the service worker parsed and evaluated the whole file. */
 try {
-  console.log('[Realtyz] Background worker initialized successfully');
+  console.log('[TORAFF] Background worker initialized successfully');
 } catch (e) { /* noop */ }
 
 /* Top-level safety net: an unhandled rejection anywhere in the worker would
  * otherwise kill the listener registrations silently. */
 try {
   self.addEventListener('unhandledrejection', (event) => {
-    try { console.error('[Realtyz] Unhandled rejection in background worker:', event && event.reason); } catch (e) { /* noop */ }
+    try { console.error('[TORAFF] Unhandled rejection in background worker:', event && event.reason); } catch (e) { /* noop */ }
     try { event.preventDefault(); } catch (e) { /* noop */ }
   });
   self.addEventListener('error', (event) => {
-    try { console.error('[Realtyz] Background worker error:', event && event.message); } catch (e) { /* noop */ }
+    try { console.error('[TORAFF] Background worker error:', event && event.message); } catch (e) { /* noop */ }
   });
 } catch (e) { /* noop */ }
 
@@ -681,7 +681,7 @@ async function drainQueue() {
     for (const entry of ordered) {
       if (!entry || entry.status !== 'pending') continue;
       // Browser storage is shared across tenants. Execute only jobs belonging
-      // to the workspace currently open in the Realtyz app.
+      // to the workspace currently open in the TORAFF app.
       if (!activeWorkspaceOwner || entry.workspaceOwnerId !== activeWorkspaceOwner) continue;
       if (Number(entry.scheduledTime || 0) > Date.now()) continue;
 
@@ -777,11 +777,11 @@ async function poll() {
   pollAgain = false;
   try {
     try { await flushReports(); } catch (e) { /* retried next poll */ }
-    // The local browser queue runs regardless of Realtyz pairing.
+    // The local browser queue runs regardless of TORAFF pairing.
     await drainQueue();
     const token = await getToken();
     if (!token) {
-      await setState({ paired: false, last_error: 'התוסף לא מחובר לחשבון Realtyz' });
+      await setState({ paired: false, last_error: 'התוסף לא מחובר לחשבון TORAFF' });
       return;
     }
 
@@ -796,7 +796,7 @@ async function poll() {
       return;
     }
     if (!json || json.ok !== true) {
-      await setState({ paired: true, last_error: 'החיבור לשרת Realtyz נכשל' });
+      await setState({ paired: true, last_error: 'החיבור לשרת TORAFF נכשל' });
       return;
     }
 
@@ -828,15 +828,15 @@ const initQueue = () => {
   try {
     chrome.alarms.create(ALARM, { periodInMinutes: 1 });
   } catch (e) {
-    try { console.error('[Realtyz] Failed to create queue alarm:', e); } catch (e2) { /* noop */ }
+    try { console.error('[TORAFF] Failed to create queue alarm:', e); } catch (e2) { /* noop */ }
   }
-  try { poll(); } catch (e) { try { console.error('[Realtyz] Initial queue poll failed:', e); } catch (e2) { /* noop */ } }
+  try { poll(); } catch (e) { try { console.error('[TORAFF] Initial queue poll failed:', e); } catch (e2) { /* noop */ } }
 };
 
 try { chrome.alarms.create(ALARM, { periodInMinutes: 1 }); } catch (e) { /* noop */ }
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name !== ALARM) return;
-  try { poll(); } catch (e) { try { console.error('[Realtyz] Queue poll failed:', e); } catch (e2) { /* noop */ } }
+  try { poll(); } catch (e) { try { console.error('[TORAFF] Queue poll failed:', e); } catch (e2) { /* noop */ } }
 });
 chrome.runtime.onInstalled.addListener(() => initQueue());
 chrome.runtime.onStartup.addListener(() => initQueue());
@@ -931,7 +931,7 @@ const handleMessage = (msg, _sender, sendResponse) => {
 
 chrome.runtime.onMessage.addListener(handleMessage);
 
-/* Direct web-app bridge: the Realtyz dashboard can message the extension
+/* Direct web-app bridge: the TORAFF dashboard can message the extension
  * without the content script when the origin is listed in
  * manifest.externally_connectable. Same handlers, same semantics. */
 try {
@@ -949,13 +949,13 @@ try {
       }
       return handleMessage(msg, sender, sendResponse);
     } catch (e) {
-      try { console.error('[Realtyz] External message handling failed:', e); } catch (e2) { /* noop */ }
+      try { console.error('[TORAFF] External message handling failed:', e); } catch (e2) { /* noop */ }
       try { sendResponse({ ok: false, error: String((e && e.message) || e) }); } catch (e2) { /* noop */ }
       return true;
     }
   });
 } catch (e) {
-  try { console.error('[Realtyz] Failed to register external message listener:', e); } catch (e2) { /* noop */ }
+  try { console.error('[TORAFF] Failed to register external message listener:', e); } catch (e2) { /* noop */ }
 }
 
 /* ── Live engagement metrics ────────────────────────────────────────────
@@ -1013,7 +1013,7 @@ async function syncMetrics() {
         const m = (res && res.result) || null;
         if (m) await api('ext-metrics', { token, action: 'report', job_id: t.job_id, likes: m.likes, comments: m.comments, shares: m.shares });
       } catch (e) {
-        try { console.warn('[Realtyz] metrics scrape failed', e); } catch (e2) { /* noop */ }
+        try { console.warn('[TORAFF] metrics scrape failed', e); } catch (e2) { /* noop */ }
       } finally {
         if (tabId != null) { try { await chrome.tabs.remove(tabId); } catch (e) { /* noop */ } }
       }

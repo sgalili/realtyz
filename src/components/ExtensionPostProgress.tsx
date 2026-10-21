@@ -4,7 +4,7 @@ import { AlertTriangle, Check, Loader2, XCircle } from 'lucide-react';
 import { FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 
 /**
- * Live status badge + progress bar for a post the Realtyz browser extension
+ * Live status badge + progress bar for a post the TORAFF browser extension
  * publishes into Facebook groups. Reflects the extension's real stage:
  * queued → navigating → writing → commenting → completed / failed.
  */

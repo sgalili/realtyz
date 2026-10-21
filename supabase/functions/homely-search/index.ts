@@ -44,7 +44,7 @@ async function webtivLogin(agency: string, username: string, password: string) {
     body: JSON.stringify({
       client: agency, username, password,
       theme: "", version: "realtyz-1.0",
-      deviceInfo: { DeviceType: "server", UserAgent: "Realtyz/1.0", Os: "deno", Platform: "edge-function" },
+      deviceInfo: { DeviceType: "server", UserAgent: "TORAFF/1.0", Os: "deno", Platform: "edge-function" },
     }),
   });
   const text = await res.text();

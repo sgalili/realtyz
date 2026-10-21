@@ -15,8 +15,8 @@ export const BROKER_WA_TEMPLATE_ID = "1543480823752149";
 
 /** Distinctive phrases that only appear in the recruitment outreach copy. */
 const RECRUITMENT_ANCHORS = [
-  "RealtyZ",
-  "Realtyz",
+  "TORAFF",
+  "TORAFF",
   "מערכת AI שנבנתה במיוחד למתווכים",
   "שיחת זום קצרה להדגמה",
   "ההתנסות בחינם",
@@ -41,7 +41,7 @@ export function ritaRecruitmentFallback(
     : "מתי נוח לך לזום קצר של כ-15 דקות כדי שאראה לך את זה על הנכסים שאתה מנהל?";
   return (
     `${hello}תודה על התגובה, שמחה לשמוע.\n` +
-    "בקצרה: Realtyz מרכזת במקום אחד את הלידים, אנשי הקשר, הנכסים, המעקבים וההתאמות, " +
+    "בקצרה: TORAFF מרכזת במקום אחד את הלידים, אנשי הקשר, הנכסים, המעקבים וההתאמות, " +
     "וגם את הפרסום וכלי ה-AI שעונים לפניות בשמך מסביב לשעון. במקום חמש מערכות נפרדות, מערכת אחת שבה שום פנייה לא נופלת.\n" +
     closing
   );

@@ -33,14 +33,14 @@ export function WorkspaceMailboxCard() {
       return toast.error(error.message);
     }
     qc.invalidateQueries({ queryKey: ['workspace-mailbox'] });
-    toast.success(gmail ? 'השליחה תתבצע דרך Gmail' : 'השליחה תתבצע מכתובת Realtyz');
+    toast.success(gmail ? 'השליחה תתבצע דרך Gmail' : 'השליחה תתבצע מכתובת TORAFF');
   };
 
   return (
     <div data-plain className="space-y-4">
       <div className="flex items-center justify-between gap-3 rounded-lg border p-3" dir="rtl">
         <span className="text-sm font-medium">תיבה לשליחה</span>
-        {/* RTL: Gmail on the right, Realtyz on the left; the thumb moves toward the active label. */}
+        {/* RTL: Gmail on the right, TORAFF on the left; the thumb moves toward the active label. */}
         <div className="flex items-center gap-2 text-sm" dir="rtl">
           <span className={useGmail ? 'font-semibold text-destructive' : 'text-muted-foreground'}>Gmail</span>
           <Switch
@@ -50,7 +50,7 @@ export function WorkspaceMailboxCard() {
             aria-label="בחירת תיבת מייל"
             className="data-[state=checked]:!bg-destructive data-[state=unchecked]:!bg-primary"
           />
-          <span className={!useGmail ? 'font-semibold text-primary' : 'text-muted-foreground'}>Realtyz</span>
+          <span className={!useGmail ? 'font-semibold text-primary' : 'text-muted-foreground'}>TORAFF</span>
         </div>
       </div>
       {useGmail && (

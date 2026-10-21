@@ -11,7 +11,7 @@ export const OAUTH_CALLBACK_PATH = '/oauth/callback';
 /**
  * Origins that may appear as return targets after Meta lands on the canonical
  * production callback. These are validated when decoding the OAuth state so
- * the user is bounced back only to known Realtyz domains.
+ * the user is bounced back only to known TORAFF domains.
  */
 const APPROVED_ORIGINS = [
   'https://realtyz.co.il',

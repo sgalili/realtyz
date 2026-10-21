@@ -7,9 +7,9 @@ type Props = { audience?: 'buyer' | 'renter' | 'seller' | 'landlord' | null };
 export default function BrokerageCommissionDisclosure({ audience }: Props) {
   if (!audience) return null;
   const text = audience === 'buyer'
-    ? 'לקונים: עמלת התיווך של Realtyz היא 1% ממחיר הסגירה הסופי של הנכס.'
+    ? 'לקונים: עמלת התיווך של TORAFF היא 1% ממחיר הסגירה הסופי של הנכס.'
     : audience === 'renter'
-      ? 'לשוכרים: עמלת התיווך של Realtyz היא 10% משכר דירה של חודש אחד בלבד.'
+      ? 'לשוכרים: עמלת התיווך של TORAFF היא 10% משכר דירה של חודש אחד בלבד.'
       : audience === 'seller'
         ? 'למוכרים: תנאי השירות ועמלת התיווך נקבעים לפי הסכם התיווך הספציפי החתום עמכם.'
         : 'למשכירים: תנאי השירות ועמלת התיווך נקבעים לפי הסכם התיווך הספציפי החתום עמכם.';

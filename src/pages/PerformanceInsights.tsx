@@ -1,4 +1,4 @@
-// Performance Insights — KPI dashboard for the Realtyz Deal Room
+// Performance Insights — KPI dashboard for the TORAFF Deal Room
 //
 // Metrics computed live from the database (no placeholders):
 //   • Total Leads Engaged  — distinct leads with ≥1 outbound or inbound message in window

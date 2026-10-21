@@ -421,7 +421,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const action = String(body?.action ?? "status");
     let caller = await resolveCaller(admin, req);
 
-    // The canonical Facebook callback can be on a different Realtyz domain
+    // The canonical Facebook callback can be on a different TORAFF domain
     // than the user's session. Resolve it through short-lived, single-use state
     // stored when the authenticated user starts the flow.
     if (!caller && action === "exchange") {

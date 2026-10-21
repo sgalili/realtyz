@@ -106,7 +106,7 @@ export function EmailAliasCard() {
         <GoogleServiceConnectCard
           platform="gmail"
           title="חיבור Gmail"
-          hint="חבר את כתובת ה-Gmail שלך כדי לשלוח ולקרוא מיילים ישירות מ-Realtyz."
+          hint="חבר את כתובת ה-Gmail שלך כדי לשלוח ולקרוא מיילים ישירות מ-TORAFF."
         />
       </CardContent>
     </Card>

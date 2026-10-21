@@ -1,5 +1,5 @@
-/* Realtyz Group Sync — hands the collected groups, posts and comments to the
- * Realtyz app. */
+/* TORAFF Group Sync — hands the collected groups, posts and comments to the
+ * TORAFF app. */
 (function () {
   /* Safe runtime messaging: after the extension is reloaded/updated the old
    * content script keeps running with an invalidated context, and any

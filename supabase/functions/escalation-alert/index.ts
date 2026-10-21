@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
       // 3) Send a WhatsApp message to the human Agent via the gateway.
       const leadHint = body.lead_id ? `\nLead ID: ${body.lead_id}` : "";
       const text =
-        `🚨 Realtyz Escalation Alert (${body.severity || "high"})\n` +
+        `🚨 TORAFF Escalation Alert (${body.severity || "high"})\n` +
         `Category: ${body.category}\n` +
         `Keywords: ${(body.matched_keywords || []).join(", ") || "—"}${leadHint}\n` +
         `\nLead said:\n"${body.lead_message.slice(0, 600)}"\n\n` +

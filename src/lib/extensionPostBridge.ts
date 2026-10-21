@@ -3,7 +3,7 @@
  *
  * When Meta's Graph API blocks the read (typically `#10 pages_read_engagement`
  * on an app that hasn't passed App Review for that permission), we ask the
- * companion Realtyz browser extension to scrape the Page's posts straight from
+ * companion TORAFF browser extension to scrape the Page's posts straight from
  * the logged-in Facebook DOM and hand them back to the app.
  *
  * Transport mirrors extensionGroupBridge:

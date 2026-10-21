@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { LifeBuoy } from 'lucide-react';
 
 /**
- * Channels Realtyz publishes to natively (direct Meta Graph / internal
+ * Channels TORAFF publishes to natively (direct Meta Graph / internal
  * gateways). Everything else still requires a managed aggregator account and
  * must be enabled manually by support.
  */
@@ -37,7 +37,7 @@ export function SupportRequiredDialog({
           </DialogTitle>
           <DialogDescription className="text-right leading-relaxed">
             החיבור ל{channelLabel ?? 'ערוץ הזה'} מחייב חשבון מנוהל חיצוני שאינו נפתח אוטומטית.
-            יש לפנות לתמיכה של Realtyz כדי להפעיל את הערוץ עבור החשבון שלך.
+            יש לפנות לתמיכה של TORAFF כדי להפעיל את הערוץ עבור החשבון שלך.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-row-reverse gap-2 sm:justify-start">

@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Facebook group posts are executed ONLY by the Realtyz browser extension
+    // Facebook group posts are executed ONLY by the TORAFF browser extension
     // (it claims the row itself through ext-queue-claim). The server never
     // publishes to a group through Meta's Graph API, so the row stays pending
     // until an extension picks it up. Surface a hint when none is paired.

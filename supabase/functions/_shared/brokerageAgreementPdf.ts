@@ -128,11 +128,11 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
     } catch { /* a bad logo must never break the document */ }
   }
 
-  // Realtyz digital-signature seal
+  // TORAFF digital-signature seal
   doc.setDrawColor(20, 110, 90).setLineWidth(1.2).circle(M + 32, headerTop + 22, 30);
   doc.setDrawColor(20, 110, 90).setLineWidth(0.5).circle(M + 32, headerTop + 22, 25);
   doc.setTextColor(20, 110, 90);
-  heAt("Realtyz", M + 32, headerTop + 18, 11, true, "center");
+  heAt("TORAFF", M + 32, headerTop + 18, 11, true, "center");
   heAt("החתמה דיגיטלית", M + 32, headerTop + 32, 6, false, "center");
   doc.setTextColor(0);
 
@@ -289,7 +289,7 @@ export async function buildBrokerageAgreementPdf(opts: AgreementOptions): Promis
     doc.setPage(p);
     doc.setDrawColor(225).setLineWidth(0.5).line(M, H - 44, RIGHT, H - 44);
     doc.setTextColor(130);
-    heAt("מסמך זה הופק על ידי מערכת ההחתמות הדיגיטליות של Realtyz", RIGHT, H - 30, 7.5);
+    heAt("מסמך זה הופק על ידי מערכת ההחתמות הדיגיטליות של TORAFF", RIGHT, H - 30, 7.5);
     doc.setFont(HE_FONT, "normal").setFontSize(7.5);
     doc.text(rtl(`עמוד ${p} מתוך ${pages}`), M, H - 30, { align: "left" });
     doc.setTextColor(0);

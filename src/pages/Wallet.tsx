@@ -165,7 +165,7 @@ export default function Wallet() {
           <div className="grid grid-cols-3 gap-2">
             {[200, 500, 1000].map((a) => <Button key={a} variant="outline" disabled>{ils(a)}</Button>)}
           </div>
-          <p className="text-sm text-muted-foreground">טעינה בכרטיס וחיוב אוטומטי עדיין אינם זמינים. לטעינת הארנק יש לפנות לצוות Realtyz.</p>
+          <p className="text-sm text-muted-foreground">טעינה בכרטיס וחיוב אוטומטי עדיין אינם זמינים. לטעינת הארנק יש לפנות לצוות TORAFF.</p>
         <div className="space-y-3 border-t border-border pt-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="flex items-center gap-2 text-sm text-muted-foreground"><CreditCard className="h-4 w-4" />כרטיס לחיוב אוטומטי</p>

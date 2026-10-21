@@ -8,7 +8,7 @@ export function RealtyzLoader({ size = 'md', label }: { size?: 'sm' | 'md' | 'lg
     <div className="flex flex-col items-center gap-3">
       <div className={`relative ${sizeMap[size]} flex items-center justify-center`}>
         <div className={`absolute inset-0 rounded-full border-2 border-transparent border-t-primary border-r-primary animate-spin`} />
-        <RealtyzWordmarkSvg className={`text-primary ${logoMap[size]} animate-realtyz-pulse`} title="Realtyz AI" />
+        <RealtyzWordmarkSvg className={`text-primary ${logoMap[size]} animate-realtyz-pulse`} title="TORAFF" />
       </div>
       {label && <p className="text-xs text-muted-foreground animate-pulse">{label}</p>}
     </div>

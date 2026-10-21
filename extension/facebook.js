@@ -1,4 +1,4 @@
-/* Realtyz Group Sync — collects the user's Facebook groups, Page posts and
+/* TORAFF Group Sync — collects the user's Facebook groups, Page posts and
  * comment trees straight from the live logged-in session, so the app can keep
  * importing even when the Graph API refuses the request (permission errors /
  * "Unsupported get request"). */

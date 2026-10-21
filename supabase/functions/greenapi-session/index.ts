@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: "Realtyz WhatsApp",
+            name: "TORAFF WhatsApp",
             webhookUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/greenapi-webhook`,
             incomingWebhook: "yes",
             outgoingWebhook: "yes",

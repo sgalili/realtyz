@@ -56,7 +56,7 @@ async function webtivLogin(agency: string, username: string, password: string) {
       body: JSON.stringify({
         client: agency, username, password,
         theme: "", version: "realtyz-daily-1.0",
-        deviceInfo: { DeviceType: "server", UserAgent: "Realtyz/1.0", Os: "deno", Platform: "edge-function" },
+        deviceInfo: { DeviceType: "server", UserAgent: "TORAFF/1.0", Os: "deno", Platform: "edge-function" },
       }),
     });
     const text = await res.text();
@@ -77,8 +77,8 @@ async function verifyOpenCard(agency: string): Promise<{ ok: boolean; note: stri
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
-        client: agency, provider: "RealtyZ", category: "מוכר",
-        remark: "RealtyZ daily-sync heartbeat",
+        client: agency, provider: "TORAFF", category: "מוכר",
+        remark: "TORAFF daily-sync heartbeat",
       }),
     });
     const text = await res.text();

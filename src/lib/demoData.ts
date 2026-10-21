@@ -1,4 +1,4 @@
-//   High-density demo mock data for Realtyz AI  
+//   High-density demo mock data for TORAFF  
 
 import voter01 from '@/assets/demo-headshots/voter-01.jpg';
 import voter02 from '@/assets/demo-headshots/voter-02.jpg';
@@ -489,7 +489,7 @@ export const getDemoCandidateSummary = (candidateId?: DemoCandidateId | null) =>
   };
 };
 
-// Realtyz global pricing (matches https://realtyz.co.il/pricing).
+// TORAFF global pricing (matches https://realtyz.co.il/pricing).
 // Single source of truth for plan base + setup fee, keeps in-app numbers
 // consistent with the public pricing list across demo + real modes.
 export const REALTYZ_PLANS = {
@@ -507,7 +507,7 @@ export const pickRealtyzPlan = (mandates: number) => {
 };
 
 // Realistic billing snapshot for the currently-viewed demo profile.
-// Anchored to the recommended Realtyz plan (base subscription + setup fee)
+// Anchored to the recommended TORAFF plan (base subscription + setup fee)
 // plus variable usage by service, so all balance/spend numbers in the app
 // reflect the public pricing list and the listing's asking price.
 export const getDemoBilling = (candidateId?: DemoCandidateId | null) => {
@@ -765,7 +765,7 @@ export const getDemoServiceInclusions = (candidateId?: DemoCandidateId | null) =
   return [
     { label: 'תובנות AI ללא הגבלה', value: 'פעיל', tone: 'ok' as const },
     { label: 'ערוצי WhatsApp מחוברים', value: `${waChannelsConnected}/${waChannelsTotal}`, tone: 'ok' as const },
-    { label: 'ספק SMS פעיל', value: 'Realtyz', tone: 'ok' as const },
+    { label: 'ספק SMS פעיל', value: 'TORAFF', tone: 'ok' as const },
     { label: 'שימוש בקול אנושי / מוקלט', value: '0.20 ₪ לדקה', tone: 'ok' as const },
     { label: 'יצירת קול AI מבוסס טקסט (TTS)', value: '1.00 ₪ לדקה', tone: 'ok' as const },
     { label: 'ניתוח סנטימנט בזמן אמת', value: 'פעיל', tone: 'ok' as const },

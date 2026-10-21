@@ -321,7 +321,7 @@ const Auth = () => {
         <div className="mb-6 text-center">
           <img
             src={realtyzLogo}
-            alt="Realtyz AI"
+            alt="TORAFF"
             className="auth-official-logo mx-auto mb-4 mt-[40px] h-[3.6rem] w-auto object-contain"
           />
           <div className="auth-header-ticker mx-auto" aria-live="polite">
@@ -459,7 +459,7 @@ const Auth = () => {
           <div className="auth-footer-white-wave" aria-hidden="true" />
         </div>
         <div className="auth-footer-legal">
-          <span dir="ltr" className="auth-footer-copyright">© 2026 Realtyz. All rights reserved</span>
+          <span dir="ltr" className="auth-footer-copyright">© 2026 TORAFF. All rights reserved</span>
           <div className="auth-footer-links">
             <a href="/privacy-policy">מדיניות פרטיות</a>
             <a href="/terms">תנאי שימוש</a>

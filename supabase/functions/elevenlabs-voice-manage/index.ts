@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       const fd = new FormData();
       fd.append("name", name);
       fd.append("files", new Blob([bytes], { type: mime }), filename);
-      fd.append("description", `Cloned via Realtyz AI by ${user.email ?? user.id}`);
+      fd.append("description", `Cloned via TORAFF by ${user.email ?? user.id}`);
 
       const r = await fetch("https://api.elevenlabs.io/v1/voices/add", {
         method: "POST",

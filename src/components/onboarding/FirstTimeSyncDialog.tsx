@@ -131,7 +131,7 @@ export function FirstTimeSyncDialog() {
         {step === 0 && <>
           <DialogHeader className="text-right">
             <DialogTitle>השותף החכם שלכם לנדל״ן</DialogTitle>
-            <DialogDescription>Realtyz מחברת אתכם לנכסים, לידים ותגמולים — וריטה ממשיכה את העבודה עבורכם.</DialogDescription>
+            <DialogDescription>TORAFF מחברת אתכם לנכסים, לידים ותגמולים — וריטה ממשיכה את העבודה עבורכם.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-3">
             {[

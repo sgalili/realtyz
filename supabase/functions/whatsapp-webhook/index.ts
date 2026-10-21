@@ -1089,7 +1089,7 @@ async function handleLeadInboxInbound(
   const agentCommand = isAgentCommand(inboundText);
 
   // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
-  // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
+  // reply to the outreach template is answered with the TORAFF pitch + Zoom ask
   // instead of property talk.
   const leadPrefs = ((lead as any)?.preferences ?? {}) as Record<string, unknown>;
 
@@ -1115,9 +1115,9 @@ async function handleLeadInboxInbound(
   }
 
   // Rita's recruitment mode: this workspace only talks to agents/brokers, so a
-  // reply to the outreach template is answered with the Realtyz pitch + Zoom ask
+  // reply to the outreach template is answered with the TORAFF pitch + Zoom ask
   // instead of property talk. Internal staff are never in recruitment mode.
-  // Deterministic intent: a question about Realtyz itself never enters buyer qualification.
+  // Deterministic intent: a question about TORAFF itself never enters buyer qualification.
   const productInquiry = !staffSender && classifyInquiryIntent(stripRefTag(inboundText)) === "product";
   const recruitmentMode =
     !staffSender &&
@@ -1963,7 +1963,7 @@ Deno.serve(async (req) => {
     // owner command router. Detected either by an active recruitment
     // thread or because the last outbound message to this phone WAS the
     // outreach itself. Rita then keeps the conversation in recruitment
-    // mode: Realtyz all-in-one value + a short Zoom demo.
+    // mode: TORAFF all-in-one value + a short Zoom demo.
     // ============================================================
     // Internal staff are never recruitment targets.
     if (!senderRoleInfo) try {

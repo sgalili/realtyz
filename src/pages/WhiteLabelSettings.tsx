@@ -249,13 +249,13 @@ export default function WhiteLabelSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">מיתוג Realtyz</CardTitle>
+          <CardTitle className="text-lg">מיתוג TORAFF</CardTitle>
           <CardDescription>בחר אם להציג את שם הפלטפורמה בכותרות הצוות.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
             <div>
-              <div className="font-semibold text-sm">הסתר את כיתוב "Realtyz"</div>
+              <div className="font-semibold text-sm">הסתר את כיתוב "TORAFF"</div>
               <div className="text-xs text-muted-foreground">
                 כאשר מופעל, ה-header יציג רק את שם / לוגו הסוכנות.
               </div>

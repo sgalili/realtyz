@@ -29,7 +29,7 @@ function norm(v?: string | null) {
  *   the personal profile name/avatar is never consulted.
  * - For the user's own workspace, the workspace name usually mirrors the
  *   personal full name, so it is suppressed in favour of the configured
- *   white-label agency branding, and finally the Realtyz wordmark.
+ *   white-label agency branding, and finally the TORAFF wordmark.
  */
 /**
  * A personal profile picture is NEVER office branding. Anything served from the

@@ -10,7 +10,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const variantClass: Record<CardVariant, string> = {
   default: "bg-card text-card-foreground rounded-xl border border-border/70 shadow-sm",
-  /* legacy "glass" → flat clean card (Realtyz style) */
+  /* legacy "glass" → flat clean card (TORAFF style) */
   glass: "bg-card text-card-foreground rounded-xl border border-border/70 shadow-sm",
   /* legacy "active" → primary-tinted border */
   active: "bg-card text-card-foreground rounded-xl border border-primary/30 shadow-md",

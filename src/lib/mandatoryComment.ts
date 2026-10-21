@@ -1,7 +1,7 @@
 /**
  * mandatoryComment (client mirror of supabase/functions/_shared/mandatoryComment.ts)
  * --------------------------------------------------------------------------------
- * HARD RULE: every Facebook post Realtyz publishes carries a first comment with
+ * HARD RULE: every Facebook post TORAFF publishes carries a first comment with
  * the official contact line and its tracking short link.
  */
 export const MANDATORY_COMMENT_LINK = 'https://realtyz.co.il/r/94mp59n9';
@@ -22,7 +22,7 @@ export function repairEmojis(input: string | null | undefined): string {
 
 
 /** Rita identity: first name only ("ריטה"), never a surname; one brief AI disclosure. */
-export const RITA_DISCLOSURE = 'ריטה, סוכנת ה-AI של Realtyz';
+export const RITA_DISCLOSURE = 'ריטה, סוכנת ה-AI של TORAFF';
 export function enforceRitaIdentity(input: string | null | undefined): string {
   let t = String(input ?? '')
     .replace(/ריטה[ \t]+גלילי/g, 'ריטה')
@@ -30,7 +30,7 @@ export function enforceRitaIdentity(input: string | null | undefined): string {
     .replace(/\bRita\b/g, 'ריטה')
     .replace(/(ריטה)[ \t]+(?:גלילי|Galili)/gi, '$1');
   if (!/ריטה/.test(t)) return t;
-  const discRe = /(?:ריטה[,\s]*)?(?:סוכנת|הסוכנת|סוכן)\s*(?:ה-?\s*)?AI(?:\s*(?:הרשמית\s*)?של\s*(?:Realtyz|רילטיז|המשרד))?/g;
+  const discRe = /(?:ריטה[,\s]*)?(?:סוכנת|הסוכנת|סוכן)\s*(?:ה-?\s*)?AI(?:\s*(?:הרשמית\s*)?של\s*(?:TORAFF|רילטיז|המשרד))?/g;
   let count = 0;
   t = t.replace(discRe, (m) => (count++ === 0 ? RITA_DISCLOSURE : '')).replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+,/g, ',');
   return t;

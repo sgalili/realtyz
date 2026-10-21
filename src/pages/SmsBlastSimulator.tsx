@@ -830,7 +830,7 @@ export default function SmsBlastSimulator() {
           channel,
           recipient,
           message: messageBody,
-          subject: blastName || 'Realtyz AI - בדיקה',
+          subject: blastName || 'TORAFF - בדיקה',
           preview_name: user?.user_metadata?.full_name ?? user?.email ?? '',
           wa_template: channel === 'whatsapp' ? waTemplate ?? undefined : undefined,
         },
@@ -1734,7 +1734,7 @@ export default function SmsBlastSimulator() {
                           <div className="rounded-md border border-border bg-background p-3 text-sm leading-relaxed text-foreground" dir="rtl">
                             {personalize(getChannelText('email'))}
                             <div className="mt-3 border-t border-border pt-2 text-center text-[11px] text-muted-foreground">
-                              קיבלת הודעה זו כחלק ממאגר התומכים של Realtyz. <span className="underline">לחצ/י כאן להסרה</span>.
+                              קיבלת הודעה זו כחלק ממאגר התומכים של TORAFF. <span className="underline">לחצ/י כאן להסרה</span>.
                             </div>
                           </div>
 

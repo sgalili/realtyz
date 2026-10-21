@@ -22,7 +22,7 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
     <Preview>קוד האימות שלך</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Realtyz AI+</Text>
+        <Text style={brand}>TORAFF+</Text>
         <Heading style={h1}>אימות זהות</Heading>
         <Text style={text}>יש להזין את הקוד הבא כדי לאמת את זהותך:</Text>
         <Text style={codeStyle}>{token}</Text>

@@ -18,7 +18,7 @@ import { cleanSqm } from "./measures.ts";
 
 const DASHBOARD_BASE = "https://realtyz.co.il";
 
-// Realtyz AI Master GreenAPI Instance. All owner-companion routing and
+// TORAFF Master GreenAPI Instance. All owner-companion routing and
 // outbound replies are scoped to this single instance.
 export const MASTER_INSTANCE_ID = "7103164675";
 
@@ -465,7 +465,7 @@ async function handleGreeting(ctx: RouterContext): Promise<RouterResult> {
   const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId, ctx.senderPhone);
   const greet = firstName ? `היי ${firstName}` : "היי";
   const reply = [
-    `${greet}, ריטה מ-Realtyz מוכנה לפעולה.`,
+    `${greet}, ריטה מ-TORAFF מוכנה לפעולה.`,
     "אפשר לדבר איתי טבעי: בדיקת אזור, איתור נכסים, עדכון מתעניינים, הכנת פוסט, שליחת הודעה או ניתוח שיחה.",
     "מה תרצה שאבצע עכשיו?",
   ].join("\n");

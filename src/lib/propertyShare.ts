@@ -206,7 +206,7 @@ export async function shareProperties(
   if (mode === 'email') {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('יש להזין כתובת אימייל תקינה');
     const { data, error } = await supabase.functions.invoke('dispatch-campaign', {
-      body: { mode: 'test', channel: 'email', recipient: email, subject: `נכס שעשוי להתאים לך · Realtyz`, message: text },
+      body: { mode: 'test', channel: 'email', recipient: email, subject: `נכס שעשוי להתאים לך · TORAFF`, message: text },
     });
     if (error || !(data as { ok?: boolean } | null)?.ok) {
       throw new Error((data as { failure_reason?: string } | null)?.failure_reason || 'שליחת האימייל נכשלה');

@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
         file: {
           base64: parsed.data.pdf_base64,
           file_name: parsed.data.file_name,
-          caption: "דוח אסטרטגי Realtyz AI",
+          caption: "דוח אסטרטגי TORAFF",
           mime_type: "application/pdf",
         },
       }),

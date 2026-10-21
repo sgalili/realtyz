@@ -1,7 +1,7 @@
 /**
  * Per-workspace UI mode.
  *
- * Rita's own workspace exists only to market Realtyz to new real-estate
+ * Rita's own workspace exists only to market TORAFF to new real-estate
  * agents, so it hides deal/partner/listing surfaces and shows an
  * acquisition-focused dashboard. EVERY other workspace (standard broker
  * workspaces such as Udi Vitman's, and affiliate workspaces) gets the full
@@ -49,7 +49,7 @@ export function workspaceFeatures(activeOwnerId?: string | null, ownerRoles: str
   };
 }
 
-/** Personal support contact for brokers joining Realtyz. */
+/** Personal support contact for brokers joining TORAFF. */
 export const SUPPORT_CONTACT = {
   name: 'ריטה',
   phone: '0537983832',

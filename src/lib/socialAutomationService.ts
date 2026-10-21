@@ -62,11 +62,11 @@ export interface ConnectedAccount {
  */
 const DEMO_LABELS: Record<string, string> = {
   whatsapp_green:  'WBA · 054-***-1841',
-  whatsapp_wba:    'WBA רשמי · Realtyz Business',
+  whatsapp_wba:    'WBA רשמי · TORAFF Business',
   whatsapp:        'WhatsApp · 054-***-1841',
   telegram:        '@realtyz_bot',
   instagram:       '@realtyz.official',
-  facebook:        'Realtyz Page · 12.4K',
+  facebook:        'TORAFF Page · 12.4K',
   x:               '@RealtyzAI',
   tiktok:          '@realtyz.live',
   signal:          'Signal · 054-***-1841',

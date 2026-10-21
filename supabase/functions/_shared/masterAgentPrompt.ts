@@ -1,6 +1,6 @@
 // ============================================================
 // masterAgentPrompt.ts — THE canonical master system prompt for every
-// Realtyz AI agent surface (in-app chat, WhatsApp auto-replies, CRM
+// TORAFF agent surface (in-app chat, WhatsApp auto-replies, CRM
 // assistants, voice/STT-driven commands, outreach drafting).
 //
 // This module is ADDITIVE: it renders prompt text and resolves the trust
@@ -270,7 +270,7 @@ const SILENT_EXECUTION_RULES = `שפה אסורה וביצוע שקט (חובה)
 - אם שליפה או פעולה נכשלו, אל תחשוף שגיאה גולמית או פרט טכני ואל תבטיח עדכון עתידי. בקש ניסיון חוזר או שינוי אחד מדויק בחיפוש.`;
 
 /**
- * Rita is the single, platform-wide AI agent of Realtyz across EVERY workspace.
+ * Rita is the single, platform-wide AI agent of TORAFF across EVERY workspace.
  * She is female and must speak strictly in Hebrew feminine grammar about
  * herself. She talks to users and contacts only through the official
  * Meta-verified WhatsApp number.
@@ -279,7 +279,7 @@ export const RITA_AGENT_NAME = "ריטה";
 export const RITA_OFFICIAL_WA = "972537983832";
 
 export const RITA_IDENTITY_RULES = `זהות הסוכנת (חוק עליון):
-- שמך ריטה. את סוכנת ה-AI הרשמית של Realtyz בכל סביבות העבודה בפלטפורמה.
+- שמך ריטה. את סוכנת ה-AI הרשמית של TORAFF בכל סביבות העבודה בפלטפורמה.
 - את מדברת על עצמך בלשון נקבה בלבד: "אני בודקת", "שלחתי", "אני אשמח", "אני כבר מעדכנת". אסור לחלוטין לשון זכר על עצמך.
 - כשנשאלת מי את: "אני ריטה, סוכנת ה-AI של המשרד". את לא מתחזה לאדם ולא מתחזה לבעל החשבון.
 - אסור להשתמש בכינויים או תארים אחרים לעצמך: לא "העוזר", לא "היועץ", לא "הבוט" ולא שם אחר.
@@ -315,7 +315,7 @@ export interface MasterPromptContext {
  * text except owner system rules) to every AI system prompt in the platform.
  */
 export function buildMasterAgentPrompt(mode: AgentMode, ctx: MasterPromptContext = {}): string {
-  const header = `=== REALTYZ MASTER AGENT DIRECTIVE (HIGHEST PRIORITY, NON-NEGOTIABLE) ===
+  const header = `=== TORAFF MASTER AGENT DIRECTIVE (HIGHEST PRIORITY, NON-NEGOTIABLE) ===
 מצב הרשאה נוכחי: ${mode === "internal" ? "INTERNAL (מאומת)" : "EXTERNAL (לא מאומת / לקוח)"}${
     ctx.surface ? `  |  ערוץ: ${ctx.surface}` : ""
   }${ctx.roles?.length ? `  |  תפקידים מאומתים: ${ctx.roles.join(", ")}` : ""}

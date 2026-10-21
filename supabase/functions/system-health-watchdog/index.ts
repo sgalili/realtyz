@@ -62,7 +62,7 @@ async function sendEmailAlert(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      from: "Realtyz Watchdog <onboarding@resend.dev>",
+      from: "TORAFF Watchdog <onboarding@resend.dev>",
       to: [to],
       subject,
       text,
@@ -113,9 +113,9 @@ Deno.serve(async (req) => {
 
     if (failures >= FAILURE_THRESHOLD && !inCooldown) {
       const label = INTEGRATION_LABEL[integration] ?? integration;
-      const subject = `🚨 Realtyz Alert: ${label} integration down`;
+      const subject = `🚨 TORAFF Alert: ${label} integration down`;
       const body =
-        `🚨 התראת מערכת Realtyz\n\nהאינטגרציה ${label} נכשלה ${failures} פעמים ב-${WINDOW_MINUTES} הדקות האחרונות.\n` +
+        `🚨 התראת מערכת TORAFF\n\nהאינטגרציה ${label} נכשלה ${failures} פעמים ב-${WINDOW_MINUTES} הדקות האחרונות.\n` +
         `יש לבדוק את ה-Settings ואת לוגי ה-Edge Functions בהקדם.`;
 
       if (alertPhone) await sendWhatsAppAlert(sb, alertPhone, body);

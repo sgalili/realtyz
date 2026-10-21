@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-/** Bridge between the app page and the Realtyz browser extension (content.js). */
+/** Bridge between the app page and the TORAFF browser extension (content.js). */
 
 export type ExtensionRunnerStatus = {
   paired: boolean;

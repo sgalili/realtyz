@@ -52,7 +52,7 @@ const DEFAULT_AGENT: PropertyAgent = {
   name: 'דניאל לוי',
   phone: '052-555-1234',
   email: 'daniel@realtyz.ai',
-  agency: 'Realtyz AI',
+  agency: 'TORAFF',
 };
 
 export type PropertyType = "apartment" | "penthouse" | "house" | "duplex" | "garden_apt";

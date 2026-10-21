@@ -54,7 +54,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     }
   };
   return <div dir="rtl" className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6">
-    <img src={realtyzLogo} alt="Realtyz AI" className="h-14 w-auto object-contain" />
+    <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto object-contain" />
     <h1 className="text-xl font-bold">מה סוג המשתמש שלך?</h1>
     {licenseSuspended && <div role="alert" className="w-full max-w-lg border border-destructive bg-destructive/10 p-3 text-destructive">{INVALID_BROKER_LICENSE}. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
     <div className="grid w-full max-w-lg grid-cols-2 gap-3">{PRIMARY_SIGNUP_TYPES.map(type => <Button key={type} variant="outline" className="h-auto whitespace-normal py-6 text-lg font-bold" disabled={!!busy} onClick={() => void pick(type)}>{SIGNUP_ROLE_LABELS[type]}</Button>)}</div>

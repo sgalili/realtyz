@@ -151,7 +151,7 @@ serve(async (req) => {
     const persona = await loadAgentPersona(supabaseUrl, anonKey, authHeader);
     const personaBlock = renderPersonaPrompt(persona);
 
-    const systemPrompt = `You are an elite Israeli real-estate Agent's writing assistant for Realtyz AI.
+    const systemPrompt = `You are an elite Israeli real-estate Agent's writing assistant for TORAFF.
 Write a personalized outreach in Hebrew that introduces a specific listing to a specific Lead.
 Match the Lead's interests and city. Never invent facts not present in the listing data.
 Channel format: ${channel.toUpperCase()} — ${channelGuide[channel]}

@@ -1,4 +1,4 @@
-// Shared compliance guardrails for the Realtyz AI Agent.
+// Shared compliance guardrails for the TORAFF Agent.
 //
 // Three layers, all exported as small pure-ish helpers so any edge function
 // (ai-agent, generate-outreach-message, trial-inbound-webhook) can import them.

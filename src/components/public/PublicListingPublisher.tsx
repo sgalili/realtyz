@@ -376,7 +376,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           localStorage.setItem(welcomeKey, '1');
           const name = draftFields.contactName.trim() || 'שלום';
           const address = [street, draftFields.city].filter(Boolean).join(', ');
-          const message = `היי ${name}, ברוכים הבאים ל-Realtyz!\n\nהנכס שלך${address ? ` ב${address}` : ''} פורסם וכבר מופיע בלוח הנדל״ן השיתופי.\n\nסטטוס פרסום ראשוני:\n• לוח שיתופי: פעיל\n• שותפים: הנכס פתוח לקידום על ידי שותפים\n• הפצה לקבוצות: ממתין לתור ההפצה לאחר חיבור קבוצות הפייסבוק בחשבון\n\nלכל שאלה אפשר לענות כאן. ריטה, Realtyz`;
+          const message = `היי ${name}, ברוכים הבאים ל-TORAFF!\n\nהנכס שלך${address ? ` ב${address}` : ''} פורסם וכבר מופיע בלוח הנדל״ן השיתופי.\n\nסטטוס פרסום ראשוני:\n• לוח שיתופי: פעיל\n• שותפים: הנכס פתוח לקידום על ידי שותפים\n• הפצה לקבוצות: ממתין לתור ההפצה לאחר חיבור קבוצות הפייסבוק בחשבון\n\nלכל שאלה אפשר לענות כאן. ריטה, TORAFF`;
           void supabase.functions.invoke('send-whatsapp', { body: { phone_number: phone, message, listing_id: publishedListingId } })
             .then(({ error: waErr }) => { if (waErr) console.warn('welcome whatsapp failed', waErr); });
         }

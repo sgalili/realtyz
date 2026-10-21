@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
 
     // ── 1. Confirmation to the lead, from Rita ──────────────────────────────
     const leadMessage =
-      `היי ${leadName}, זו ריטה, הסוכנת הדיגיטלית של Realtyz.\n` +
+      `היי ${leadName}, זו ריטה, הסוכנת הדיגיטלית של TORAFF.\n` +
       `קיבלתי את הבקשה שלך להדגמה בזום, ורשמתי אותה ל${slot}.\n` +
       `ההדגמה נמשכת כ-15 דקות.\n` +
       `אפשר לאשר לי שהמועד נוח לך? אם צריך מועד אחר, פשוט תכתוב לי מתי ואתאם מחדש.`;
@@ -159,9 +159,9 @@ Deno.serve(async (req) => {
           accessToken: token.accessToken,
           calendarId: token.calendarId,
           timezone: token.timezone,
-          summary: `הדגמת Realtyz בזום — ${leadName}`,
+          summary: `הדגמת TORAFF בזום — ${leadName}`,
           description:
-            `הדגמה אישית של Realtyz (15 דקות).\n` +
+            `הדגמה אישית של TORAFF (15 דקות).\n` +
             `שם: ${leadName}\n` +
             `טלפון: ${row.phone}\n` +
             `מקור: ${row.source ?? "landing"}\n` +

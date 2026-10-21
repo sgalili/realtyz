@@ -23,7 +23,7 @@ const CONTACT_CAP = FREE_CONTACTS;
 const PROPERTY_CAP = FREE_PROPERTIES;
 
 /**
- * Realtyz freemium guardrails: 30-day trial · 100 contacts max · ₪50 starting wallet.
+ * TORAFF freemium guardrails: 30-day trial · 100 contacts max · ₪50 starting wallet.
  * Returns live status used by CRM/Broadcast/Autopilot to gate writes.
  */
 export function useFreemiumStatus(): FreemiumStatus {

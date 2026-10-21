@@ -7,7 +7,7 @@ export default function AutomationStudioPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">Automation Studio</h1>
         <p className="text-sm text-muted-foreground">
-          Build simple "If this, then that" workflows. Pick a trigger, choose an action, and Realtyz handles the rest.
+          Build simple "If this, then that" workflows. Pick a trigger, choose an action, and TORAFF handles the rest.
         </p>
       </header>
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">

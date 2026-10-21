@@ -99,7 +99,7 @@ export default function ClientPortal() {
         }
         const title = json?.branding?.agency_name
           ? `${json.branding.agency_name} · פורטל לקוח`
-          : "פורטל לקוח · Realtyz AI";
+          : "פורטל לקוח · TORAFF";
         document.title = title;
       } catch (e: any) {
         setError(e?.message ?? "Unable to load portal");
@@ -367,7 +367,7 @@ export default function ClientPortal() {
         </section>
 
         <footer className="pt-6 pb-10 text-center text-[11px] text-muted-foreground">
-          מופעל על ידי <span className="font-medium">Realtyz AI</span>
+          מופעל על ידי <span className="font-medium">TORAFF</span>
         </footer>
       </main>
     </div>

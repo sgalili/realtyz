@@ -18,7 +18,7 @@ import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { useQueryClient } from '@tanstack/react-query';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 
-/* Realtyz — סיור מוצר לנרשמים חדשים.
+/* TORAFF — סיור מוצר לנרשמים חדשים.
    טקסט גדול, הסברים קצרים, וכולל מקטע תמחור לפי חבילות. */
 
 /** One short, bold line per slide — no eyebrow, no bullet duplication. */
@@ -30,7 +30,7 @@ type TourStep = {
 };
 
 const BROKER_STEPS: TourStep[] = [
-  { title: 'Realtyz מנהלת את הלידים שלך 24/7' },
+  { title: 'TORAFF מנהלת את הלידים שלך 24/7' },
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
   { title: 'לוח הבקרה אומר לך מה לעשות עכשיו', cta: { label: 'פתח את משימות היום', to: '/command-center' } },
   { title: 'תיבה אחת לכל הערוצים', cta: { label: 'פתח שיחות', to: '/live-conversations' } },
@@ -239,7 +239,7 @@ export function ProductTour() {
       >
         <div className="bg-primary/10 px-8 pt-8 pb-6">
           <div className="flex items-center justify-between gap-4">
-            <img src={realtyzLogo} alt="Realtyz AI" className="h-9 w-auto object-contain" />
+            <img src={realtyzLogo} alt="TORAFF" className="h-9 w-auto object-contain" />
             <span className="text-sm font-bold text-muted-foreground">
               {index + 1} מתוך {steps.length}
             </span>

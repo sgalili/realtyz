@@ -56,8 +56,8 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
       posts = sync.upserted;
       counters = sync.scraped;
       if (sync.status === 'no_extension') {
-        problems.push('תוסף Realtyz לא זוהה בדפדפן.');
-        fixes.push('התקן את תוסף Realtyz (גרסה 1.7.0 ומעלה), הישאר מחובר לפייסבוק, ואז הרץ ייבוא שוב.');
+        problems.push('תוסף TORAFF לא זוהה בדפדפן.');
+        fixes.push('התקן את תוסף TORAFF (גרסה 1.7.0 ומעלה), הישאר מחובר לפייסבוק, ואז הרץ ייבוא שוב.');
       } else if (sync.status === 'empty') {
         problems.push('התוסף לא מצא פוסטים בעמוד.');
         fixes.push('ודא שאתה מחובר לפייסבוק בדפדפן הזה ושיש לך גישה לעמוד, ואז נסה שוב.');
@@ -94,7 +94,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
               res = { ...extRes, message: null, failures: [], failed_posts: 0 };
             }
           } else {
-            fixes.push('התקן את תוסף Realtyz לדפדפן והישאר מחובר לפייסבוק כדי לייבא תגובות מפוסטים חסומים.');
+            fixes.push('התקן את תוסף TORAFF לדפדפן והישאר מחובר לפייסבוק כדי לייבא תגובות מפוסטים חסומים.');
           }
         }
 

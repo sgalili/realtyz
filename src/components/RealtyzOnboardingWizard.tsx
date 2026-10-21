@@ -132,7 +132,7 @@ export function RealtyzOnboardingWizard() {
     try {
       const nextCompleted = { ...completedSteps, goal: true };
       await persist(TOTAL_STEPS, nextCompleted, { closed_deal_goal: Number(goal) || 0 }, true);
-      toast.success("ברוכים הבאים ל־Realtyz AI!");
+      toast.success("ברוכים הבאים ל־TORAFF!");
       setOpen(false);
       navigate("/profile");
     } catch (e: any) {

@@ -213,7 +213,7 @@ export default function SharedProperty() {
               />
             ) : null}
             <h1 className="text-center text-[18px] font-bold text-slate-900">
-              {data?.agency_name || data?.workspace_name || 'Realtyz'}
+              {data?.agency_name || data?.workspace_name || 'TORAFF'}
             </h1>
           </div>
         </div>

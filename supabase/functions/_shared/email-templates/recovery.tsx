@@ -29,7 +29,7 @@ export const RecoveryEmail = ({
     <Preview>איפוס הסיסמה שלך ב{siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Realtyz AI+</Text>
+        <Text style={brand}>TORAFF+</Text>
         <Heading style={h1}>איפוס סיסמה</Heading>
         <Text style={text}>
           קיבלנו בקשה לאיפוס הסיסמה שלך ב{siteName}. לחיצה על הכפתור תאפשר לך
