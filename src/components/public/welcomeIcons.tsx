@@ -54,3 +54,38 @@ export const CoinsCurrency = ({ className, strokeWidth = 2 }: WelcomeIconProps) 
     </g>
   </svg>
 );
+
+/**
+ * Israeli shekel sign, single-stroke: left upright with its arm arcing down to the
+ * right, right upright with its arm arcing up to the left. Traced from the real
+ * ₪ outline, drawn centered on the origin at 3.4 units tall.
+ */
+const SHEKEL_PATH = 'M-1.39 1.7V-1.52H-.43Q.21 -1.52 .52 -.38V.44M1.39 -1.7V1.52H.43Q-.14 1.52 -.52 .38V-.44';
+
+const Shekel = ({ x, y }: { x: number; y: number }) => (
+  <g transform={`translate(${x} ${y}) scale(1.15)`} strokeWidth={0.62}>
+    <path d={SHEKEL_PATH} />
+  </g>
+);
+
+/** Three linked nodes, each holding an Israeli shekel sign — used behind slide 3. */
+export const ShareShekels = ({ className, strokeWidth = 2 }: WelcomeIconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="M8.59 13.51 15.42 17.49M15.41 6.51 8.59 10.49" />
+    <Shekel x={18} y={5} />
+    <Shekel x={6} y={12} />
+    <Shekel x={18} y={19} />
+  </svg>
+);
