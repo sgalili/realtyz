@@ -266,7 +266,41 @@ export function GroupDiscoveryDialog({
           </Button>
         </form>
 
-        {visible.length > 0 && (
+        {installNeeded && (
+          <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3 text-right">
+            <p className="text-[15px] font-semibold">כדי לחפש ולהצטרף לקבוצות צריך את תוסף Realtyz</p>
+            <p className="text-[14px] leading-relaxed text-muted-foreground">
+              התוסף אוסף קבוצות מהדפדפן שלך. התקנה חד-פעמית בשני שלבים:
+            </p>
+            <ol className="list-inside list-decimal space-y-1 text-[14px] leading-relaxed text-muted-foreground">
+              <li>הורד את קובץ התוסף (כפתור למטה) וחלץ אותו לתיקייה קבועה.</li>
+              <li>פתח chrome://extensions/ , הפעל "מצב פיתוח" ולחץ "טען תוסף לא ארוז" ובחר את התיקייה שחילצת.</li>
+            </ol>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" className="h-8 gap-1 text-[14px]" onClick={() => void onDownloadExtension()}>
+                <Download className="h-3.5 w-3.5" /> הורדת התוסף
+              </Button>
+              <Button type="button" size="sm" variant="outline" className="h-8 gap-1 text-[14px]" disabled={retrying} onClick={() => void retryExtension()}>
+                {retrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null} בדקתי — נסה שוב
+              </Button>
+            </div>
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-[14px] font-medium">אין אפשרות להתקין כרגע? הוסף קבוצה ידנית:</p>
+              <div className="flex min-w-0 flex-wrap gap-2">
+                <Input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="שם הקבוצה"
+                  className="min-w-0 flex-1 text-[14px]" aria-label="שם הקבוצה" />
+                <Input value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} placeholder="קישור הקבוצה (facebook.com/groups/…)"
+                  className="min-w-0 flex-1 text-[14px]" dir="ltr" aria-label="קישור הקבוצה" />
+                <Button type="button" size="sm" variant="outline" className="h-9 shrink-0 gap-1 text-[14px]"
+                  disabled={addingManual || !manualName.trim() || !manualUrl.trim()} onClick={() => void addManualGroup()}>
+                  {addingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} הוספה
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!installNeeded && visible.length > 0 && (
           <div className="flex min-w-0 flex-wrap items-center gap-2 text-[14px]">
             <span className="text-muted-foreground">מיון:</span>
             {SORTS.map((s) => (
