@@ -5,7 +5,7 @@ import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides, hasSeenWelcomeSlides } from '@/components/public/WelcomeSlides';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
-import { WELCOME_REOPEN_EVENT, WELCOME_INSTRUCTIONS_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
+import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
