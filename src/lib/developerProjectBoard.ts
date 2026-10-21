@@ -1,6 +1,13 @@
 import { savedProjectHierarchy, sourceRecord, mergeSource } from '../../supabase/functions/_shared/projectHierarchy';
 import { matchesPropertyFilter, type PropertyFilterState } from './leadTypeFilter';
 export { savedProjectHierarchy };
+export function developerProjectImages(project: { images?: unknown; image_url?: string | null; source_details?: unknown }) {
+  const details = sourceRecord(project.source_details);
+  const cover = typeof details.coverImage === 'string' ? details.coverImage : sourceRecord(details.coverImage).url;
+  const gallery = [...new Set([...(typeof cover === 'string' ? [cover] : []), ...(Array.isArray(details.images) ? details.images.filter((image): image is string => typeof image === 'string') : []), ...(Array.isArray(project.images) ? project.images.filter((image): image is string => typeof image === 'string') : []), ...(project.image_url ? [project.image_url] : [])])];
+  const photos = gallery.filter(image => !/\/(?:logo|logos)\//i.test(image) && image !== details.projectLogo && image !== sourceRecord(details.companyDetails).logo);
+  return photos.length ? photos : gallery;
+}
 export function projectDeal(project: { source_details?: unknown }) {
   const details = sourceRecord(project.source_details);
   return (details.deal_type ?? sourceRecord(details.manual).deal_type) === 'rent' ? 'rent' : 'sale';

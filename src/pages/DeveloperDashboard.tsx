@@ -16,11 +16,11 @@ import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
 import ProjectHierarchyDetails from '@/components/developers/ProjectHierarchyDetails';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
-import { projectDeal, projectMatches, savedProjectHierarchy } from '@/lib/developerProjectBoard';
+import { developerProjectImages, projectDeal, projectMatches, savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import { cn } from '@/lib/utils';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu, type BoardColumnId } from '@/components/public/PublicBoardTableControls';
 
-const projectImages = (project: DeveloperProject) => [...new Set([...(Array.isArray(project.images) ? project.images.filter((image): image is string => typeof image === 'string') : []), ...(project.image_url ? [project.image_url] : [])])];
+const projectImages = developerProjectImages;
 const priceLabel = (price: number | null) => price && price > 0 ? `החל מ־₪${Number(price).toLocaleString('he-IL')}` : '';
 const PROJECT_COLUMNS = { columns: [{ id: 'photo', label: 'תמונה' }, { id: 'address', label: 'פרויקט' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'בניינים' }, { id: 'deal', label: 'עסקה' }, { id: 'rooms', label: 'סוגי יחידות' }, { id: 'floor', label: 'סטטוס' }] as { id: BoardColumnId; label: string }[], value: (p: DeveloperProject, id: BoardColumnId) => id === 'price' ? p.price_from : id === 'address' ? p.name : id === 'commissions' ? savedProjectHierarchy(p).buildings.length : id === 'rooms' ? savedProjectHierarchy(p).apartments.length : id === 'floor' ? p.status : id === 'deal' ? projectDeal(p) : projectImages(p).length };
 

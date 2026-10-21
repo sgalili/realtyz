@@ -36,7 +36,7 @@ export default function ProjectHierarchyDetails({ project }: { project: Develope
   const manual = sourceRecord(details.manual);
   const specs = labelValue(manual.specifications ?? details.specifications ?? details.specification);
   return <div className="min-w-0 space-y-4">
-    {project.description && <p className="whitespace-pre-line text-sm leading-relaxed">{project.description}</p>}
+    {(project.description || labelValue(details.info)) && <p className="whitespace-pre-line text-sm leading-relaxed">{project.description || labelValue(details.info)}</p>}
     <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">{project.address && <span>{project.address}</span>}{project.delivery_date && <span>מסירה: {project.delivery_date}</span>}{project.total_units != null && <span>{project.total_units} יח״ד</span>}{project.available_units != null && <span>{project.available_units} זמינות</span>}</div>
     {specs && <p className="whitespace-pre-line text-sm">{specs}</p>}
     {labelValue(manual.amenities ?? details.amenities) && <p className="text-sm text-muted-foreground">{labelValue(manual.amenities ?? details.amenities)}</p>}

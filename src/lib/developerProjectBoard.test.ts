@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { extractProjectHierarchy, savedProjectHierarchy } from '../../supabase/functions/_shared/projectHierarchy';
-import { mergeImportedProject, projectMatches } from './developerProjectBoard';
+import { developerProjectImages, mergeImportedProject, projectMatches } from './developerProjectBoard';
 import { EMPTY_PROPERTY_FILTER } from './leadTypeFilter';
 const source = { buildings: [
   { id: 'a', name: 'A', units: [{ id: '1', rooms: 3, price: 1800000, floor: 0, size: 80, balconyArea: 12 }] },
   { id: 'b', name: 'B', units: [{ id: '1', price: 2500000, floor: 4, size: 110, specifications: 'ממ״ד' }] },
 ] };
 describe('developer project hierarchy', () => {
+  it('uses the actual project cover rather than advertiser logos as the first photo', () => {
+    expect(developerProjectImages({ image_url: 'https://media.test/logo/company.webp', images: ['https://media.test/logo/company.webp', 'https://media.test/gallery/2.webp'], source_details: { coverImage: 'https://media.test/mainImage/1.webp' } })).toEqual(['https://media.test/mainImage/1.webp', 'https://media.test/gallery/2.webp']);
+  });
   it('keeps repeated unit IDs in distinct buildings and units without rooms', () => {
     const result = extractProjectHierarchy(source);
     expect(result.buildings).toHaveLength(2);
