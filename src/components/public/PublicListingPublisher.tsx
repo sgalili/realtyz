@@ -34,6 +34,8 @@ import {
   type PublicListingDraftFields,
 } from '@/lib/publicListingDraft';
 import { setPendingSignupRole } from '@/lib/signupRole';
+import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
+import { verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutocomplete';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -138,12 +140,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       return data;
     },
   });
-  const isBroker = Boolean(user && activeWorkspace && (isSuperAdmin || ['managing_broker', 'lead_agent', 'agent', 'junior_agent'].includes(activeWorkspace.role) || (activeWorkspace.is_self && (isAgent || publisherProfile?.broker_license_number))));
+  const isBroker = Boolean(user && activeWorkspace && (isSuperAdmin || ['managing_broker', 'lead_agent', 'agent', 'junior_agent'].includes(activeWorkspace.role) || (activeWorkspace.is_self && isAgent)));
   const publisherName = publisherProfile?.full_name || user?.user_metadata?.full_name || '';
   const publisherPhone = publisherProfile?.phone || user?.phone || '';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [brokerLicense, setBrokerLicense] = useState('');
+  const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [importSlide, setImportSlide] = useState(false);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
@@ -263,6 +267,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       setPublishStage('השלמת הרשאת מפרסם');
       // The account type follows what the poster picked: מתווך → broker, פרטי → private owner.
        if (draftFields.publisherType === 'broker' && !isBroker) {
+        if (!brokerLicense || verifiedBrokerLicense !== brokerLicense) throw new Error(INVALID_BROKER_LICENSE);
+        await verifyBrokerLicense(brokerLicense, 'verify');
         const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();
@@ -619,7 +625,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   // The publish button stays disabled until every mandatory detail is complete.
   const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || importedVideoUrls(fields.importedListing).length > 0 || files.length > 0 || videos.length > 0;
   const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia), [fields, hasMedia]);
-  const canPublish = missingPublish.length === 0;
+  const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker || (!!brokerLicense && verifiedBrokerLicense === brokerLicense));
 
   const renderStep = (step: number) => (
     <>
@@ -754,6 +760,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 7 && (
             <div className="space-y-3">
+              {fields.publisherType === 'broker' && !isBroker && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
                <div><Label htmlFor="publisher-name">השם שלך<span className="text-destructive"> *</span></Label><Input id="publisher-name" placeholder={publisherName} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
                 <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ<span className="text-destructive"> *</span></Label><Input id="publisher-whatsapp" inputMode="tel" dir="ltr" placeholder="050-1234567" className="text-right" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
                 <div><Label htmlFor="publisher-email">אימייל</Label><Input id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>

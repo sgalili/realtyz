@@ -420,7 +420,7 @@ const Auth = () => {
             </div>}
 
             {!codeSent && <div className="auth-method-tabs" role="tablist" aria-label="אפשרויות כניסה">
-              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || (signup && !signupType)} aria-pressed={activeMethod === 'google'}>
+              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || (signup && !signupType)} aria-pressed={activeMethod === 'google'}>
                 <GoogleLogo />
                 גוגל
               </Button>
