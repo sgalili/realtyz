@@ -1,6 +1,6 @@
 # Post generation repair
-- [ ] Restore complete property-specific Hebrew posts and dedicated first-comment generation without changing the model or existing output caps.
-- [ ] Reject truncated/internal-reasoning output and verify real property generation and comments without publishing.
+- [x] Restore complete property-specific Hebrew posts and dedicated first-comment generation without changing the model or existing output caps; deploy and verify both return 200 for the selected משה סנה project.
+- [x] Reject truncated/internal-reasoning output; 13 focused tests pass, authenticated regeneration shows full Hebrew copy plus the two-line comment and existing contact link after reload; preview build passes. No post was published.
 
 # Partner company inventory and wallet controls
 - [x] Show saved active-workspace projects and imported units alongside existing properties, without automatic publication; real company shows seven projects with names/photos, search and details in mobile/desktop views. Missing source apartments remain absent; 20 focused tests pass.
