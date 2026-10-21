@@ -10,7 +10,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { encryptSession } from "../_shared/sessionCrypto.ts";
+import { encryptSession, decryptSession } from "../_shared/sessionCrypto.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -25,32 +25,55 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const authHeader = req.headers.get("Authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
-
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-  const { data: userRes, error: userErr } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
-  const user = userRes?.user;
-  if (userErr || !user) return json({ error: "unauthorized" }, 401);
 
   let body: any = {};
   try { body = await req.json(); } catch { body = {}; }
   const action = String(body?.action ?? "status");
+
+  // ── Cloud runner callback: group-fetch results (worker secret, no user JWT).
+  if (action === "fetch_result") {
+    const workerSecret = Deno.env.get("CLOUD_WORKER_SHARED_SECRET") ?? "";
+    if (!workerSecret || req.headers.get("x-worker-secret") !== workerSecret) {
+      return json({ error: "unauthorized" }, 401);
+    }
+    const jobId = String(body?.job_id ?? "");
+    if (!jobId) return json({ error: "missing_job_id" }, 400);
+    const ok = body?.status === "completed";
+    const { error: updateError } = await admin.from("fb_group_fetch_jobs").update({
+      status: ok ? "completed" : "failed",
+      groups: ok && Array.isArray(body?.groups) ? body.groups.slice(0, 500) : null,
+      error: ok ? null : String(body?.error ?? "סריקת הקבוצות בענן נכשלה").slice(0, 1000),
+      claim_expires_at: null,
+    }).eq("id", jobId).eq("status", "processing");
+    if (updateError) return json({ error: updateError.message }, 500);
+    return json({ success: true });
+  }
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
+
+  const { data: userRes, error: userErr } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
+  const user = userRes?.user;
+  if (userErr || !user) return json({ error: "unauthorized" }, 401);
+
+  // Cloud-first: every action is scoped to the caller's active workspace
+  // (resolved and authorized server-side), so any member with workspace
+  // access manages the workspace's Facebook cloud connection — not just the
+  // super admin, and never a personal one.
+  const scoped = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+    global: { headers: { Authorization: authHeader } }, auth: { persistSession: false },
+  });
+  const { data: owner, error: ownerError } = await scoped.rpc("current_workspace_owner");
+  if (ownerError || !owner) return json({ error: "workspace_unavailable" }, 403);
+  const { data: allowed, error: accessError } = await scoped.rpc("ws_current_access", { _ws: owner });
+  if (accessError || !allowed) return json({ error: "workspace_forbidden" }, 403);
 
   if (action === "monitor") {
     const { data: role, error: roleError } = await admin.from("user_roles")
       .select("role").eq("user_id", user.id).eq("role", "super_admin").maybeSingle();
     if (roleError) return json({ error: "role_check_failed" }, 500);
     if (!role) return json({ error: "forbidden" }, 403);
-
-    // Resolve workspace on the server, then authorize it using the caller's JWT.
-    const scoped = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-      global: { headers: { Authorization: authHeader } }, auth: { persistSession: false },
-    });
-    const { data: owner, error: ownerError } = await scoped.rpc("current_workspace_owner");
-    if (ownerError || !owner) return json({ error: "workspace_unavailable" }, 403);
-    const { data: allowed, error: accessError } = await scoped.rpc("ws_current_access", { _ws: owner });
-    if (accessError || !allowed) return json({ error: "workspace_forbidden" }, 403);
 
     const now = new Date();
     const dayStart = new Date(now); dayStart.setUTCHours(0, 0, 0, 0);
@@ -97,7 +120,7 @@ Deno.serve(async (req) => {
     const { data } = await admin
       .from("fb_cloud_sessions")
       .select("status, last_verified_at, expires_at, user_agent, updated_at, last_error")
-      .eq("workspace_owner_id", user.id)
+      .eq("workspace_owner_id", owner)
       .maybeSingle();
     return json({ success: true, session: data ?? null, worker_ready: !!Deno.env.get("CLOUD_BROWSER_WORKER_URL") });
   }
@@ -105,13 +128,13 @@ Deno.serve(async (req) => {
   if (action === "summary") {
     const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
     const base = () => admin.from("campaign_activity_queue").select("id", { count: "exact", head: true })
-      .eq("workspace_owner_id", user.id).eq("runner", "cloud").eq("activity_type", "fb_group_post");
+      .eq("workspace_owner_id", owner).eq("runner", "cloud").eq("activity_type", "fb_group_post");
     const [sent, pending, failed, pool] = await Promise.all([
       base().eq("status", "completed").gte("completed_at", dayStart.toISOString()),
       base().in("status", ["pending", "processing"]),
       base().eq("status", "failed").gte("processed_at", dayStart.toISOString()),
       admin.from("fb_user_groups").select("id", { count: "exact", head: true })
-        .eq("workspace_owner_id", user.id).eq("pool_status", "active").eq("is_blocked", false),
+        .eq("workspace_owner_id", owner).eq("pool_status", "active").eq("is_blocked", false),
     ]);
     return json({ success: true, summary: {
       sent_today: sent.count ?? 0, pending: pending.count ?? 0,
@@ -123,7 +146,7 @@ Deno.serve(async (req) => {
     const [{ data: last }, { data: mine }] = await Promise.all([
       admin.from("cloud_poster_runs").select("ran_at").order("ran_at", { ascending: false }).limit(1).maybeSingle(),
       admin.from("cloud_poster_runs").select("ran_at, processed, dispatched, deferred, failed, note")
-        .eq("workspace_owner_id", user.id).order("ran_at", { ascending: false }).limit(10),
+        .eq("workspace_owner_id", owner).order("ran_at", { ascending: false }).limit(10),
     ]);
     return json({ success: true, last_tick: last?.ran_at ?? null, runs: mine ?? [] });
   }
@@ -133,12 +156,12 @@ Deno.serve(async (req) => {
     if (!token) return json({ error: "not_configured", message: "שירות הדפדפן בענן עדיין לא הוגדר. פנו למנהל המערכת" }, 400);
     const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     const { data: row } = await admin.from("fb_cloud_sessions")
-      .select("remote_profile_id").eq("workspace_owner_id", user.id).maybeSingle();
+      .select("remote_profile_id").eq("workspace_owner_id", owner).maybeSingle();
     let profileId = row?.remote_profile_id as string | undefined;
     try {
       if (!profileId) {
         const r = await fetch("https://api.gologin.com/browser/quick", {
-          method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${user.id.slice(0, 8)}` }),
+          method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${String(owner).slice(0, 8)}` }),
         });
         if (!r.ok) throw new Error(`profile_${r.status}`);
         profileId = (await r.json())?.id;
@@ -149,7 +172,7 @@ Deno.serve(async (req) => {
       const url = (await w.json())?.remoteOrbitaUrl;
       if (!url || !String(url).startsWith("https://")) throw new Error("no_url");
       await admin.from("fb_cloud_sessions").upsert({
-        workspace_owner_id: user.id, remote_profile_id: profileId, status: "connecting", last_error: null,
+        workspace_owner_id: owner, remote_profile_id: profileId, status: "connecting", last_error: null,
       }, { onConflict: "workspace_owner_id" });
       return json({ success: true, url });
     } catch (e) {
@@ -158,7 +181,7 @@ Deno.serve(async (req) => {
   }
 
   if (action === "clear") {
-    const { error } = await admin.from("fb_cloud_sessions").delete().eq("workspace_owner_id", user.id);
+    const { error } = await admin.from("fb_cloud_sessions").delete().eq("workspace_owner_id", owner);
     if (error) return json({ error: error.message }, 500);
     return json({ success: true, session: null });
   }
@@ -194,7 +217,7 @@ Deno.serve(async (req) => {
 
     const { error } = await admin.from("fb_cloud_sessions").upsert(
       {
-        workspace_owner_id: user.id,
+        workspace_owner_id: owner,
         cookies_encrypted,
         user_agent: typeof body?.user_agent === "string" ? body.user_agent.slice(0, 512) : null,
         status: "active",
@@ -209,9 +232,80 @@ Deno.serve(async (req) => {
     const { data: saved } = await admin
       .from("fb_cloud_sessions")
       .select("status, last_verified_at, expires_at, user_agent, updated_at, last_error")
-      .eq("workspace_owner_id", user.id)
+      .eq("workspace_owner_id", owner)
       .maybeSingle();
     return json({ success: true, session: saved ?? { status: "active", expires_at, last_error: null } });
+  }
+
+  /* ── Cloud-first group discovery ─────────────────────────────────────── */
+
+  if (action === "fetch_groups") {
+    const query = String(body?.query ?? "").trim().slice(0, 120);
+    if (query.length < 2) return json({ error: "invalid_query", message: "יש להזין מילת חיפוש" }, 400);
+
+    const { data: session } = await admin.from("fb_cloud_sessions")
+      .select("cookies_encrypted, user_agent, status, expires_at")
+      .eq("workspace_owner_id", owner).maybeSingle();
+    const expired = session?.expires_at ? new Date(session.expires_at).getTime() < Date.now() : false;
+    if (!session?.cookies_encrypted || session.status !== "active" || expired) {
+      return json({ error: "no_cloud_session", message: "אין חיבור פייסבוק פעיל בענן – חברו את פייסבוק תחילה" }, 400);
+    }
+    const workerUrl = Deno.env.get("CLOUD_BROWSER_WORKER_URL") ?? "";
+    if (!workerUrl || !ENC_KEY) {
+      return json({ error: "cloud_worker_not_configured", message: "שירות הדפדפן בענן עדיין לא הוגדר" }, 400);
+    }
+
+    let cookies: string;
+    try { cookies = await decryptSession(session.cookies_encrypted, ENC_KEY); }
+    catch { return json({ error: "decrypt_failed", message: "שחזור החיבור נכשל – שמרו חיבור חדש" }, 500); }
+
+    const { data: job, error: insertError } = await admin.from("fb_group_fetch_jobs").insert({
+      workspace_owner_id: owner, requested_by: user.id, query, status: "pending",
+    }).select("id").single();
+    if (insertError || !job) return json({ error: "enqueue_failed" }, 500);
+
+    try {
+      const res = await fetch(workerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-worker-secret": Deno.env.get("CLOUD_WORKER_SHARED_SECRET") ?? "" },
+        body: JSON.stringify({
+          job_type: "group_fetch", job_id: job.id, query,
+          session_cookies: cookies, user_agent: session.user_agent ?? null,
+          report_url: `${SUPABASE_URL}/functions/v1/fb-session-vault`,
+        }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) throw new Error(`worker_http_${res.status}`);
+      await admin.from("fb_group_fetch_jobs").update({
+        status: "processing",
+        claimed_at: new Date().toISOString(),
+        claim_expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+      }).eq("id", job.id);
+    } catch (e) {
+      await admin.from("fb_group_fetch_jobs").update({
+        status: "failed", error: `שגיאת ענן: ${String((e as Error).message)}`,
+      }).eq("id", job.id);
+      return json({ error: "dispatch_failed", message: "סריקת הקבוצות בענן נכשלה, נסו שוב" }, 502);
+    }
+    return json({ success: true, job_id: job.id });
+  }
+
+  if (action === "fetch_status") {
+    const jobId = String(body?.job_id ?? "");
+    if (!jobId) return json({ error: "missing_job_id" }, 400);
+    const { data: job } = await admin.from("fb_group_fetch_jobs")
+      .select("id, status, groups, error, created_at, claim_expires_at")
+      .eq("id", jobId).eq("workspace_owner_id", owner).maybeSingle();
+    if (!job) return json({ error: "not_found" }, 404);
+    // Expired lease: the cloud runner crashed or timed out mid-scan.
+    if (job.status === "processing" && job.claim_expires_at && new Date(job.claim_expires_at).getTime() < Date.now()) {
+      const timeoutError = "הסריקה בענן ארכה יותר מדי – נסו שוב";
+      await admin.from("fb_group_fetch_jobs").update({
+        status: "failed", error: timeoutError,
+      }).eq("id", job.id).eq("status", "processing");
+      job.status = "failed"; job.error = timeoutError;
+    }
+    return json({ success: true, job });
   }
 
   return json({ error: "unknown_action" }, 400);

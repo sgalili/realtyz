@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Cloud, ShieldCheck, Trash2, ExternalLink, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useUserRole } from '@/hooks/useUserRole';
 
 type CloudSession = {
   status: string;
@@ -19,11 +18,11 @@ type CloudSession = {
 
 /**
  * Manages the encrypted Facebook session used by the cloud publishing worker,
- * so scheduled group posts run even when the laptop is off.
+ * so group search, sync and posting run 24/7 on the server — with no local
+ * browser extension. Workspace-scoped: any member with access to the active
+ * workspace can view and manage the workspace's connection.
  */
 export function CloudPostingSessionCard() {
-  const { isSuperAdmin, loading, error } = useUserRole();
-  if (loading || error || !isSuperAdmin) return null;
   return <CloudPostingSessionContent />;
 }
 
@@ -137,8 +136,9 @@ function CloudPostingSessionContent() {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          שמירת חיבור הפייסבוק שלך בצורה מוצפנת מאפשרת לשרת לפרסם בקבוצות בזמנים שקבעת,
-          גם בלי דפדפן פתוח. הנתונים מוצפנים ואינם מוצגים שוב אחרי השמירה.
+          שמירת חיבור הפייסבוק שלך בצורה מוצפנת מאפשרת לשרת לחפש קבוצות, לסנכרן ולפרסם
+          בזמנים שקבעת — גם בלי דפדפן פתוח וללא התקנת תוסף. הנתונים מוצפנים ואינם מוצגים
+          שוב אחרי השמירה, ומשותפים לכל חברי סביבת העבודה.
         </p>
 
         {state === 'active' && !workerReady && (
