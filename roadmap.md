@@ -1,4 +1,5 @@
 # Auth screen refinements
+- [ ] Fix header/tabs positions, contiguous uniform fields and viewport-fixed footer; verify tab stability and scrolling without sending OTP or changing account data.
 - [x] Merge company dropdown option, add full-name input, stabilize tabs and apply requested typography, logo spacing, ticker and footer changes; no account/profile persistence changes.
 - [x] Verify exact unchanged tab/scroll geometry and signup controls on phone/desktop; all 11 signup tests pass. No OTP sent or account created.
 

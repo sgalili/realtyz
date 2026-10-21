@@ -38,7 +38,7 @@ const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
   { key: 'h3', render: () => <>יזמים וקבלנים:<br />ניהול פרויקטים, דירות ו<strong>לידים חמים</strong></> },
   { key: 'h4', render: () => <>מתווכים וסוכנויות:<br />CRM, אוטומציה ו<strong>סגירת עסקאות</strong> מהירה</> },
   { key: 'h5', render: () => <>תוכנית שותפים:<br />משתפים נכסים ומרוויחים <strong>עמלות</strong>.</> },
-  { key: 'h6', render: () => <>סוכני ה-AI:<br />סוכני ה-AI עובדים בשבילך ומייצרים לך <strong>הכנסות מסביב לשעון</strong>.</> },
+  { key: 'h6', render: () => <>סוכני ה-AI:<br />עובדים בשבילך ומייצרים לך <strong>הכנסות מסביב לשעון</strong>.</> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
@@ -312,7 +312,7 @@ const Auth = () => {
 
   return (
     <div
-      className="auth-gradient-shell min-h-screen relative flex flex-col overflow-hidden bg-background px-4 py-8"
+      className="auth-gradient-shell relative flex flex-col overflow-hidden bg-background px-4"
     >
       {codeSent && !isGoogleFlow && (
         <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-4 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
@@ -321,7 +321,7 @@ const Auth = () => {
       )}
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
-        <div className="mb-6 text-center">
+        <div className="auth-fixed-header w-full shrink-0 text-center">
           <img
             src={realtyzLogo}
             alt="TORAFF"
@@ -343,29 +343,24 @@ const Auth = () => {
         </div>
 
         <Card variant="active" className="auth-login-card border border-border/60 bg-card shadow-sm" dir="rtl">
-          <CardContent className={codeSent ? "p-0" : "space-y-5 p-6"}>
+          <CardContent className="auth-card-content p-6">
             {!codeSent && <>
-              <div className="grid grid-cols-2 gap-1" role="group" aria-label="כניסה או הרשמה">
+              <div className="grid shrink-0 grid-cols-2 gap-1" role="group" aria-label="כניסה או הרשמה">
                 <Button type="button" className="text-lg" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
                 <Button type="button" className="text-lg" variant={signup ? 'default' : 'ghost'} onClick={() => setSignup(true)}>הרשמה</Button>
               </div>
-              <div className="h-44 overflow-y-auto space-y-3">
-                {signup && <><Select value={signupType} onValueChange={value => {
+            </>}
+            <div className="auth-dynamic-content">
+            <form onSubmit={handleSendCode} className="space-y-3">
+                {!codeSent && signup && <><Select value={signupType} onValueChange={value => {
                   if (value === 'partner') { clearPendingSignupRole(); navigate('/affiliates'); return; }
                   setSignupType(value as SignupRole);
                 }}>
-                  <SelectTrigger className="text-lg" id="signup-type" aria-required="true" aria-label="סוג משתמש"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
+                  <SelectTrigger className="auth-unified-field" id="signup-type" aria-required="true" aria-label="סוג משתמש"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
                   <SelectContent>{(['property_seeker', 'property_owner', 'developer', 'broker', 'partner'] as const).map(type => <SelectItem className="text-lg" key={type} value={type}>{type === 'developer' ? 'יזם / קבלן' : SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
                 </Select>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-full-name">שם מלא</Label>
-                  <Input id="signup-full-name" name="name" autoComplete="name" value={fullName} onChange={event => setFullName(event.target.value)} disabled={!signup} />
-                </div>
-                {signupType === 'broker' && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
+                <Input className="auth-unified-field" id="signup-full-name" name="name" autoComplete="name" aria-label="שם מלא" placeholder="מה השם המלא שלך?" value={fullName} onChange={event => setFullName(event.target.value)} />
                 </>}
-              </div>
-            </>}
-            <form onSubmit={handleSendCode} className={codeSent ? "space-y-4 animate-fade-in" : "space-y-4 rounded-lg border border-border/60 bg-background p-4 animate-fade-in"}>
               {codeSent && !isGoogleFlow ? (
                 <div className="space-y-4 text-center animate-fade-in">
                   <Label className="block text-xl font-bold text-foreground">הזינו את הקוד שקיבלתם {activeMethod === 'whatsapp' ? 'בווטסאפ' : activeMethod === 'sms' ? 'ב-SMS' : 'באימייל'}</Label>
@@ -393,29 +388,20 @@ const Auth = () => {
                   כניסה עם גוגל
                 </Button>
               ) : (
-                <div className="space-y-2">
-                  <Label className="auth-method-label" htmlFor={isPhoneFlow ? 'auth-phone' : 'auth-email'}>{activeMethod === 'whatsapp' ? 'מה מספר הווטסאפ שלך?' : isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}</Label>
-                  <div className={`auth-method-field ${activeMethod === 'whatsapp' ? 'auth-method-field-whatsapp' : ''} ${activeMethod === 'sms' ? 'auth-method-field-sms' : ''} ${activeMethod === 'email' ? 'auth-method-field-email' : ''}`}>
-                    {activeMethod === 'whatsapp' ? (
-                      <WhatsAppLogo />
-                    ) : activeMethod === 'sms' ? (
-                      <MessageSquareText className="auth-sms-mark h-5 w-5" />
-                    ) : (
-                      <Mail className="h-5 w-5" />
-                    )}
                     <Input
                       id={isPhoneFlow ? 'auth-phone' : 'auth-email'}
-                      className="auth-method-input"
+                      className="auth-unified-field"
+                      aria-label={isPhoneFlow ? 'מספר טלפון' : 'אימייל'}
+                      placeholder={isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}
                       type={isPhoneFlow ? 'tel' : 'email'}
                       inputMode={isPhoneFlow ? 'tel' : 'email'}
                       value={isPhoneFlow ? formattedPhone : email}
                       onChange={(e) => (isPhoneFlow ? handlePhoneChange(e.target.value) : setEmail(e.target.value))}
                       required
-                      dir="ltr"
+                      dir={isPhoneFlow && !formattedPhone || !isPhoneFlow && !email ? 'rtl' : 'ltr'}
                     />
-                  </div>
-                </div>
               )}
+              {!codeSent && signup && signupType === 'broker' && <BrokerLicenseField compact value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
               {!codeSent && !isGoogleFlow && (
                 <Button type="submit" className={cn(`auth-submit-button auth-submit-${activeMethod} w-full`, !canSubmit && 'invisible')} tabIndex={canSubmit ? 0 : -1} disabled={loading || !canSubmit}>
                   {loading ? 'שולח...' : activeMethod === 'whatsapp' ? 'שלחו לי קוד בווטסאפ' : activeMethod === 'sms' ? 'שלחו לי קוד ב SMS' : 'שלחו לי קוד באימייל'}
@@ -423,9 +409,10 @@ const Auth = () => {
               )}
             </form>
 
-            {!codeSent && <div className="text-center text-sm font-bold text-muted-foreground">
+            {!codeSent && <div className="my-4 text-center text-sm font-bold text-muted-foreground">
               <div>או באמצעות:</div>
             </div>}
+            </div>
 
             {!codeSent && <div className="auth-method-tabs" role="tablist" aria-label="אפשרויות כניסה">
               <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || (signup && !signupType)} aria-pressed={activeMethod === 'google'}>
