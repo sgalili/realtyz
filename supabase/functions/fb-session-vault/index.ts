@@ -10,7 +10,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { encryptSession } from "../_shared/sessionCrypto.ts";
+import { encryptSession, decryptSession } from "../_shared/sessionCrypto.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -25,32 +25,55 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const authHeader = req.headers.get("Authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
-
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-  const { data: userRes, error: userErr } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
-  const user = userRes?.user;
-  if (userErr || !user) return json({ error: "unauthorized" }, 401);
 
   let body: any = {};
   try { body = await req.json(); } catch { body = {}; }
   const action = String(body?.action ?? "status");
+
+  // ── Cloud runner callback: group-fetch results (worker secret, no user JWT).
+  if (action === "fetch_result") {
+    const workerSecret = Deno.env.get("CLOUD_WORKER_SHARED_SECRET") ?? "";
+    if (!workerSecret || req.headers.get("x-worker-secret") !== workerSecret) {
+      return json({ error: "unauthorized" }, 401);
+    }
+    const jobId = String(body?.job_id ?? "");
+    if (!jobId) return json({ error: "missing_job_id" }, 400);
+    const ok = body?.status === "completed";
+    const { error: updateError } = await admin.from("fb_group_fetch_jobs").update({
+      status: ok ? "completed" : "failed",
+      groups: ok && Array.isArray(body?.groups) ? body.groups.slice(0, 500) : null,
+      error: ok ? null : String(body?.error ?? "סריקת הקבוצות בענן נכשלה").slice(0, 1000),
+      claim_expires_at: null,
+    }).eq("id", jobId).eq("status", "processing");
+    if (updateError) return json({ error: updateError.message }, 500);
+    return json({ success: true });
+  }
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
+
+  const { data: userRes, error: userErr } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
+  const user = userRes?.user;
+  if (userErr || !user) return json({ error: "unauthorized" }, 401);
+
+  // Cloud-first: every action is scoped to the caller's active workspace
+  // (resolved and authorized server-side), so any member with workspace
+  // access manages the workspace's Facebook cloud connection — not just the
+  // super admin, and never a personal one.
+  const scoped = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+    global: { headers: { Authorization: authHeader } }, auth: { persistSession: false },
+  });
+  const { data: owner, error: ownerError } = await scoped.rpc("current_workspace_owner");
+  if (ownerError || !owner) return json({ error: "workspace_unavailable" }, 403);
+  const { data: allowed, error: accessError } = await scoped.rpc("ws_current_access", { _ws: owner });
+  if (accessError || !allowed) return json({ error: "workspace_forbidden" }, 403);
 
   if (action === "monitor") {
     const { data: role, error: roleError } = await admin.from("user_roles")
       .select("role").eq("user_id", user.id).eq("role", "super_admin").maybeSingle();
     if (roleError) return json({ error: "role_check_failed" }, 500);
     if (!role) return json({ error: "forbidden" }, 403);
-
-    // Resolve workspace on the server, then authorize it using the caller's JWT.
-    const scoped = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-      global: { headers: { Authorization: authHeader } }, auth: { persistSession: false },
-    });
-    const { data: owner, error: ownerError } = await scoped.rpc("current_workspace_owner");
-    if (ownerError || !owner) return json({ error: "workspace_unavailable" }, 403);
-    const { data: allowed, error: accessError } = await scoped.rpc("ws_current_access", { _ws: owner });
-    if (accessError || !allowed) return json({ error: "workspace_forbidden" }, 403);
 
     const now = new Date();
     const dayStart = new Date(now); dayStart.setUTCHours(0, 0, 0, 0);
