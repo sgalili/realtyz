@@ -21,10 +21,10 @@ type PricingDetails = {
   contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[]; lead_daily_limits?: import('@/lib/closingFee').LeadDailyLimits };
 };
 
-export function LeadPricingInfo({ listing, details, gross = false }: { listing: PricingListing; details: PricingDetails; gross?: boolean }) {
+export function LeadPricingInfo({ listing, details, gross = false, closingOnly = false }: { listing: PricingListing; details: PricingDetails; gross?: boolean; closingOnly?: boolean }) {
   const { level4Unlocked } = useAffiliateLicense();
   const options = details.contact_options ?? {};
-  const rows = [
+  const rows = closingOnly ? [] : [
     { key: 'form' as const, label: 'ליד דיגיטלי · שם וטלפון', amount: listing.tier1_amount, questions: [] },
     { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
     { key: 'phone' as const, label: 'ליד מסונן בשיחת טלפון', amount: listing.tier3_amount, questions: options.questions_phone ?? options.questions ?? [] },
