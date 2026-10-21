@@ -6,10 +6,10 @@ const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unse
 
 export default defineMcp({
   name: "realtyz-ai",
-  title: "Realtyz AI+",
+  title: "TORAFF+",
   version: "0.1.0",
   instructions:
-    "Tools for Realtyz AI+, a real-estate CRM. Use `list_contacts` to search the signed-in user's workspace contacts and `list_properties` to browse their properties. Data is limited to the caller's workspace.",
+    "Tools for TORAFF+, a real-estate CRM. Use `list_contacts` to search the signed-in user's workspace contacts and `list_properties` to browse their properties. Data is limited to the caller's workspace.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

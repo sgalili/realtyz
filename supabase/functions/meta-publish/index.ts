@@ -529,7 +529,7 @@ Deno.serve(async (req) => {
       .map((u: unknown) => String(u || "").trim())
       .filter((u: string) => /^https:\/\//i.test(u)));
     const link = String(body?.link ?? "").trim() || null;
-    const campaignName = String(body?.campaign_name ?? "Realtyz").trim();
+    const campaignName = String(body?.campaign_name ?? "TORAFF").trim();
     const scheduledIso = body?.scheduled_at ? String(body.scheduled_at) : null;
     // HARD RULE: every published post carries the mandatory contact comment.
     const firstComment = ensureMandatoryComment(body?.first_comment, typeof body?.link === "string" ? body.link : null);
@@ -576,7 +576,7 @@ Deno.serve(async (req) => {
     // Facebook Groups are NEVER published through Meta's Graph API (group
     // publishing requires App Review). Every group target is staged as an
     // `fb_group_post` job in campaign_activity_queue and executed locally by
-    // the Realtyz browser extension from the broker's own Facebook session.
+    // the TORAFF browser extension from the broker's own Facebook session.
     
     // Optional per-group text variations (anti-duplicate filter): { [group_id]: text }
     const groupTexts: Record<string, string> =
@@ -675,7 +675,7 @@ Deno.serve(async (req) => {
             group_id: String(row.target_ref),
             ok: true,
             code: "queued_for_extension",
-            reason: "ממתין לפרסום דרך תוסף הדפדפן של Realtyz",
+            reason: "ממתין לפרסום דרך תוסף הדפדפן של TORAFF",
             queue_id: row.id,
             post_id: null,
           });
@@ -852,7 +852,7 @@ Deno.serve(async (req) => {
               firstCommentIds.push({ target: res.id, comment_id: c.comment_id });
             } else if (c.blocked) {
               // Meta blocks comment creation until the app passes App Review for
-              // Page Public Content Access. Hand the comment off to the Realtyz
+              // Page Public Content Access. Hand the comment off to the TORAFF
               // browser extension, which runs from the broker's own Facebook
               // session and is not subject to this Graph restriction.
               console.warn("[meta-publish] first comment blocked by Meta; deferring to extension", res.id);

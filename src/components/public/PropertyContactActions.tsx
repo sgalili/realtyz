@@ -224,7 +224,7 @@ export default function PropertyContactActions({
         <DialogContent dir="rtl" className="sm:max-w-md">
           <DialogHeader><DialogTitle className="text-right">שתפו נכסים והרוויחו</DialogTitle></DialogHeader>
           <div className="space-y-3 text-sm text-foreground">
-            <p>הצטרפו בחינם לרשת השותפים של Realtyz ותקבלו תגמול על כל פנייה איכותית שמגיעה דרך הקישור שלכם.</p>
+            <p>הצטרפו בחינם לרשת השותפים של TORAFF ותקבלו תגמול על כל פנייה איכותית שמגיעה דרך הקישור שלכם.</p>
             <ol className="list-decimal space-y-1.5 ps-5">
               <li>נרשמים בחינם בדקה אחת.</li>
               <li>משתפים את הנכס עם קישור אישי בווטסאפ, SMS, מייל או ברשתות.</li>

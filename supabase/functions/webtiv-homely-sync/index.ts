@@ -22,7 +22,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Homely endpoint kept for reference only — READ-ONLY: never posted to.
 const HOMELY_URL = "https://webtivapi.webtiv.co.il/api/WebtivLid/WebtivLidPost";
 const STREAM_BASE = "https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx";
-const PROVIDER = "RealtyZ";
+const PROVIDER = "TORAFF";
 
 // Optional proxy gateway (Cloudflare Worker / similar) to bypass edge egress
 // blocks against the Webtiv firewall. When set, every outbound Webtiv URL is
@@ -66,7 +66,7 @@ function strOrUndef(v: unknown): string | undefined {
 async function fetchStream(guid: string): Promise<any[]> {
   try {
     const res = await fetch(proxied(`${STREAM_BASE}?guid=${encodeURIComponent(guid)}`), {
-      headers: { "Accept": "application/json", "User-Agent": "Realtyz-Webtiv-Sync/1.0" },
+      headers: { "Accept": "application/json", "User-Agent": "TORAFF-Webtiv-Sync/1.0" },
     });
     if (!res.ok) return [];
     const arr = await res.json().catch(() => []);
@@ -202,7 +202,7 @@ async function syncBroker(
       const res = await pushToHomely(mapped.payload);
       const homelySerial = res.parsed?.serial != null ? String(res.parsed.serial) : null;
 
-      // Auto-create a Realtyz CRM profile for every synced contact so
+      // Auto-create a TORAFF CRM profile for every synced contact so
       // owners (sellers) and buyers get a personal card the moment they
       // arrive. Matches by phone first, then by name+workspace.
       try {

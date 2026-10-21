@@ -39,7 +39,7 @@ export const EmailChangeEmail = ({
     <Preview>אישור שינוי כתובת האימייל ב{siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Realtyz AI+</Text>
+        <Text style={brand}>TORAFF+</Text>
         <Heading style={h1}>אישור שינוי כתובת אימייל</Heading>
         <Text style={text}>
           התקבלה בקשה לשנות את כתובת האימייל שלך ב{siteName} מהכתובת{' '}

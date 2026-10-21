@@ -5,7 +5,7 @@ type RealtyzWordmarkSvgProps = {
   title?: string;
 };
 
-export function RealtyzWordmarkSvg({ className, title = 'Realtyz AI' }: RealtyzWordmarkSvgProps) {
+export function RealtyzWordmarkSvg({ className, title = 'TORAFF' }: RealtyzWordmarkSvgProps) {
   return (
     <svg
       className={cn('h-9 w-auto text-primary-foreground', className)}
@@ -24,7 +24,7 @@ export function RealtyzWordmarkSvg({ className, title = 'Realtyz AI' }: RealtyzW
         fontWeight="900"
         letterSpacing="-4"
       >
-        Realtyz AI
+        TORAFF
       </text>
     </svg>
   );

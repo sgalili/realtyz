@@ -1,6 +1,6 @@
 import { ensureMandatoryComment, enforceRitaIdentity } from "@/lib/mandatoryComment";
 /**
- * extensionGroupBridge — connects the companion Realtyz browser extension to
+ * extensionGroupBridge — connects the companion TORAFF browser extension to
  * the app's Facebook group selection + publishing state.
  *
  * Transport (all three are supported, any one is enough):
@@ -627,7 +627,7 @@ export const enqueueExtensionPosts = (input: {
 /**
  * Queue a first-comment job for a published Facebook Page post.
  * Used when Meta's Graph API blocks server-side comments (App Review/PPAC)
- * and the Realtyz browser extension should post the comment from the user's
+ * and the TORAFF browser extension should post the comment from the user's
  * own Facebook session instead.
  */
 export const enqueuePageFirstComment = (input: {

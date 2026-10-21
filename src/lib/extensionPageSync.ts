@@ -15,7 +15,7 @@ export const EXT_PAGE_SYNC_TIMEOUT_MS = 45_000;
 
 
 /**
- * Page post + engagement sync through the Realtyz browser extension. The
+ * Page post + engagement sync through the TORAFF browser extension. The
  * extension opens the Page in a background tab, reads posts and visible
  * counters from the DOM, and the result is saved for the active workspace.
  * No Meta Graph read permissions are involved.

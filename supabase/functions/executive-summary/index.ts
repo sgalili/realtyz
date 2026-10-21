@@ -123,7 +123,7 @@ Campaign stats:
         messages: [
           {
             role: "system",
-            content: "You are the Realtyz Intelligence Officer. Write exactly 2 sentences in Hebrew summarizing the campaign status. Be specific with numbers and trends. Sound confident and strategic.",
+            content: "You are the TORAFF Intelligence Officer. Write exactly 2 sentences in Hebrew summarizing the campaign status. Be specific with numbers and trends. Sound confident and strategic.",
           },
           { role: "user", content: statsContext },
         ],

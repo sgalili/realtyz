@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
     const sent = await sendSms019(
       admin as any,
       target,
-      "Realtyz: הודעת בדיקה משער ה-SMS של 019. החיבור פעיל.",
+      "TORAFF: הודעת בדיקה משער ה-SMS של 019. החיבור פעיל.",
       workspaceOwnerId,
     );
     console.log("[test-sms-connection] test send", cfg.scope, sent.ok, sent.error ?? "");

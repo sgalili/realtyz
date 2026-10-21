@@ -27,7 +27,7 @@ export function ComplianceReport({ data }: { data?: ReportData }) {
 
       // Build CSV compliance report
       const lines: string[] = [];
-      lines.push('דוח תאימות מערכת - Realtyz AI');
+      lines.push('דוח תאימות מערכת - TORAFF');
       lines.push(`תאריך: ${dateStr} ${timeStr}`);
       lines.push('');
       lines.push('=== סיכום כללי ===');
@@ -54,7 +54,7 @@ export function ComplianceReport({ data }: { data?: ReportData }) {
       lines.push('=== אישור תאימות ===');
       lines.push('כל הנתונים מאוחסנים בהתאם לתקנות הגנת הפרטיות');
       lines.push('גישה לנתונים מוגנת באמצעות Row-Level Security');
-      lines.push(`חתימת דוח: REALTYZ-${Date.now().toString(36).toUpperCase()}`);
+      lines.push(`חתימת דוח: TORAFF-${Date.now().toString(36).toUpperCase()}`);
 
       // Add BOM for Excel Hebrew support
       const BOM = '\uFEFF';

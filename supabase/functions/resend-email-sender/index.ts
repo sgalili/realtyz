@@ -1,4 +1,4 @@
-// Resend-powered branded email sender for Realtyz brokers.
+// Resend-powered branded email sender for TORAFF brokers.
 // - Reads the authenticated broker's `email_alias` from `profiles`
 // - Builds From: "<Broker Name> <alias@realtyz.co.il>"
 // - Renders a corporate Dark Blue + Gold property template
@@ -48,7 +48,7 @@ function buildHtml(opts: {
 <body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:${TEXT};">
   <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
     <div style="background:${NAVY};padding:28px 24px;text-align:right;border-bottom:4px solid ${GOLD};">
-      <div style="color:${GOLD};font-size:12px;letter-spacing:2px;font-weight:bold;">REALTYZ · ${escapeHtml(SENDER_DOMAIN.toUpperCase())}</div>
+      <div style="color:${GOLD};font-size:12px;letter-spacing:2px;font-weight:bold;">TORAFF · ${escapeHtml(SENDER_DOMAIN.toUpperCase())}</div>
       <h1 style="color:#ffffff;font-size:22px;margin:6px 0 0 0;font-weight:700;">${escapeHtml(opts.subject)}</h1>
     </div>
     <div style="padding:24px;text-align:right;line-height:1.7;font-size:15px;">
@@ -67,7 +67,7 @@ function buildHtml(opts: {
       </div>
       <p style="margin:22px 0 0 0;color:${MUTED};font-size:13px;">בברכה,<br><span style="color:${NAVY_DEEP};font-weight:700;">${escapeHtml(opts.brokerName)}</span><br>${escapeHtml(opts.signatureLine)}</p>
     </div>
-    <div style="background:#f3f4f6;padding:14px 24px;text-align:center;color:${MUTED};font-size:11px;">© ${new Date().getFullYear()} Realtyz · ${escapeHtml(SENDER_DOMAIN)}</div>
+    <div style="background:#f3f4f6;padding:14px 24px;text-align:center;color:${MUTED};font-size:11px;">© ${new Date().getFullYear()} TORAFF · ${escapeHtml(SENDER_DOMAIN)}</div>
   </div>
 </body></html>`;
 }
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const brokerName = (profile?.full_name || "מתווך Realtyz").trim();
+    const brokerName = (profile?.full_name || "מתווך TORAFF").trim();
     const fromAddress = `${brokerName} <${alias}@${SENDER_DOMAIN}>`;
 
     let listing: any = null;

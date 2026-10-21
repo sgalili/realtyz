@@ -16,7 +16,7 @@ const STEPS = [
 export function AffiliateInviteCard() {
   const { data, isLoading, isError, refetch } = useReferralProgram();
   const link = data?.code ? referralLink(data.code) : '';
-  const message = `בואו ל־Realtyz! אחרי העסקה המאושרת הראשונה שלכם, תקבלו ${fmtCredits(ilsToCredits(100))} לארנק ואני אקבל ${fmtCredits(ilsToCredits(200))}. מצטרפים דרך הקישור שלי: ${link}`;
+  const message = `בואו ל־TORAFF! אחרי העסקה המאושרת הראשונה שלכם, תקבלו ${fmtCredits(ilsToCredits(100))} לארנק ואני אקבל ${fmtCredits(ilsToCredits(200))}. מצטרפים דרך הקישור שלי: ${link}`;
   const copy = async () => {
     if (!link) return;
     try {
@@ -67,7 +67,7 @@ export function AffiliateInviteCard() {
         <Button className="w-full gap-2" size="lg" disabled={!link} onClick={() => void copy()}><Copy className="h-5 w-5" />העתק קישור אישי</Button>
         <div className="grid grid-cols-2 gap-3">
           <Button variant="outline" className="gap-2" disabled={!link} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><FaWhatsapp className="h-5 w-5 text-social-whatsapp" />וואטסאפ</Button>
-          <Button variant="outline" className="gap-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־Realtyz · בונוס כפול')}&body=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 text-social-email" />אימייל</Button>
+          <Button variant="outline" className="gap-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־TORAFF · בונוס כפול')}&body=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 text-social-email" />אימייל</Button>
         </div>
       </div>
       {!!data?.total && <div className="grid grid-cols-3 gap-2 text-center">

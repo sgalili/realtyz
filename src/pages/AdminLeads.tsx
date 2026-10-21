@@ -45,7 +45,7 @@ const AdminLeads = () => {
         lead_id: lead.id,
         phone: lead.phone_number,
         name: lead.full_name,
-        message: `שלום ${lead.full_name}, תודה שיצרת קשר! נשמח לדבר איתך. צוות Realtyz AI 🚀`,
+        message: `שלום ${lead.full_name}, תודה שיצרת קשר! נשמח לדבר איתך. צוות TORAFF 🚀`,
       });
 
       if (!result.ok && !result.skipped) throw new Error('Failed to send');

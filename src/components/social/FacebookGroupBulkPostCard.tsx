@@ -29,7 +29,7 @@ type Result = { ok: boolean; reason?: string };
 /**
  * FacebookGroupBulkPostCard — write one property post (text + image + link)
  * and broadcast it to every selected Facebook group through the official
- * Realtyz browser extension (local rzPostQueue, never Meta Graph), optionally generating a unique
+ * TORAFF browser extension (local rzPostQueue, never Meta Graph), optionally generating a unique
  * AI variation per group so Facebook's duplicate filters stay quiet.
  */
 export const FacebookGroupBulkPostCard = () => {
@@ -208,7 +208,7 @@ export const FacebookGroupBulkPostCard = () => {
   };
 
   // Group posts never touch Meta's Graph API: they are written to the local
-  // rzPostQueue and executed by the Realtyz browser extension from the
+  // rzPostQueue and executed by the TORAFF browser extension from the
   // broker's own Facebook session.
   const publish = async () => {
     if (!message.trim()) {
@@ -251,7 +251,7 @@ export const FacebookGroupBulkPostCard = () => {
     setProgress(null);
     if (queued > 0) {
       toast.success(`${queued} פוסטים נוספו לתור הפרסום האוטומטי של התוסף בדפדפן`, {
-        description: 'ודא שתוסף Realtyz מותקן ופעיל בכרום ושאתה מחובר לפייסבוק.',
+        description: 'ודא שתוסף TORAFF מותקן ופעיל בכרום ושאתה מחובר לפייסבוק.',
       });
     } else {
       toast.error('לא נוספו פוסטים לתור התוסף');

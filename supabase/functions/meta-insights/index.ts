@@ -1,4 +1,4 @@
-// Realtyz meta-insights — direct Meta Graph API analytics.
+// TORAFF meta-insights — direct Meta Graph API analytics.
 //
 // Actions:
 //   posts (default) → per-post likes/comments/shares/impressions for the

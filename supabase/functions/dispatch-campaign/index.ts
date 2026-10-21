@@ -384,7 +384,7 @@ function appendUnsubscribeFooter(htmlBody: string, recipientEmail: string, campa
   const footer = `
     <hr style="margin-top:24px;border:none;border-top:1px solid #e2e8f0" />
     <div dir="rtl" style="margin-top:12px;font-family:Assistant,Arial,sans-serif;font-size:12px;color:#64748b;text-align:center">
-      קיבלת הודעה זו כחלק ממאגר התומכים של Realtyz. אם אינך מעוניין/ת לקבל הודעות נוספות,
+      קיבלת הודעה זו כחלק ממאגר התומכים של TORAFF. אם אינך מעוניין/ת לקבל הודעות נוספות,
       <a href="${link}" style="color:#0369a1;text-decoration:underline">לחצ/י כאן להסרה</a>.
     </div>`;
   return htmlBody + footer;
@@ -595,7 +595,7 @@ Deno.serve(async (req) => {
       if (r.is_active && r.api_key) providers.set(r.service_name, r.api_key);
     }
     const greenRaw = providers.get("Green API");
-    const fromAddress = "Realtyz <updates@realtyz.co.il>"; // legacy display only
+    const fromAddress = "TORAFF <updates@realtyz.co.il>"; // legacy display only
 
     // 019 readiness is per workspace (own credentials first, platform fallback).
     const sms019Cfg = await resolveSms019Config(admin as any, ownerUserId);
@@ -620,10 +620,10 @@ Deno.serve(async (req) => {
     const { data: wsOwnerProfile } = await admin
       .from("profiles").select("email_alias, full_name").eq("id", ownerUserId).maybeSingle();
     const wsAlias = String((wsOwnerProfile as any)?.email_alias ?? "").trim();
-    const wsName = String((wsOwnerProfile as any)?.full_name ?? "Realtyz").trim().replace(/[<>"]/g, "");
+    const wsName = String((wsOwnerProfile as any)?.full_name ?? "TORAFF").trim().replace(/[<>"]/g, "");
     const resendFromAddress = wsAlias
       ? `${wsName} <${wsAlias}@realtyz.co.il>`
-      : (Deno.env.get("RESEND_FROM_ADDRESS") ?? "Realtyz <info@realtyz.co.il>");
+      : (Deno.env.get("RESEND_FROM_ADDRESS") ?? "TORAFF <info@realtyz.co.il>");
 
     // Load the user's connected Green API (with shared admin row as fallback)
     const { session: waSession, reason: waReason } =
@@ -677,8 +677,8 @@ Deno.serve(async (req) => {
     if (mode === "test") {
       const channel = String(body.channel ?? "sms");
       const recipient = String(body.recipient ?? "");
-      const message = String(body.message ?? "Realtyz test send");
-      const subject = String(body.subject ?? "Realtyz - בדיקת שיגור");
+      const message = String(body.message ?? "TORAFF test send");
+      const subject = String(body.subject ?? "TORAFF - בדיקת שיגור");
       // Personalize using sender's own profile if voter data not provided
       const ctx = {
         full_name: body?.preview_name ?? userData.user.user_metadata?.full_name ?? "",

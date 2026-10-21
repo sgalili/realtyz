@@ -1,5 +1,5 @@
 // Fetches the authenticated user's own WhatsApp profile photo (Green API)
-// and stores it as their Realtyz profile avatar. Best-effort, never throws.
+// and stores it as their TORAFF profile avatar. Best-effort, never throws.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 import { resolveGreenCreds, fetchGreenAvatar, toIntlDigits } from "../_shared/greenApiCreds.ts";
 import { getLinkedPhone } from "../_shared/greenApi.ts";

@@ -1,14 +1,14 @@
-// Realtyz cloud runner — headless Facebook group publisher.
+// TORAFF cloud runner — headless Facebook group publisher.
 //
 // Run this anywhere Node 20+ works (Render, Railway, a VPS, an old laptop).
-// It exposes a single HTTP endpoint that the Realtyz cloud dispatcher calls
+// It exposes a single HTTP endpoint that the TORAFF cloud dispatcher calls
 // (CLOUD_BROWSER_WORKER_URL). Each request carries one group post job plus the
 // decrypted Facebook session cookies. The runner posts it with Puppeteer and
 // reports the outcome back to the dispatcher.
 //
 // Env:
 //   PORT                        default 8787
-//   CLOUD_WORKER_SHARED_SECRET  must match the Realtyz secret
+//   CLOUD_WORKER_SHARED_SECRET  must match the TORAFF secret
 //
 // Start:  npm install && npm start
 
@@ -307,4 +307,4 @@ http
       schedule(job);
     });
   })
-  .listen(PORT, () => console.log(`Realtyz cloud runner listening on :${PORT}`));
+  .listen(PORT, () => console.log(`TORAFF cloud runner listening on :${PORT}`));

@@ -32,7 +32,7 @@ export const InviteEmail = ({
     <Preview>הוזמנת להצטרף ל{siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Realtyz AI+</Text>
+        <Text style={brand}>TORAFF+</Text>
         <Heading style={h1}>הוזמנת להצטרף</Heading>
         <Text style={text}>
           הוזמנת להצטרף ל

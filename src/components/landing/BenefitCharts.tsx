@@ -3,14 +3,14 @@ import {
   Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 
-/* Realtyz landing — visual proof charts. Navy + gold brand palette only. */
+/* TORAFF landing — visual proof charts. Navy + gold brand palette only. */
 
 const NAVY = 'hsl(var(--brand-navy))';
 const GOLD = 'hsl(var(--brand-gold))';
 
 const RESPONSE = [
   { label: 'ידני', minutes: 240 },
-  { label: 'עם Realtyz', minutes: 1 },
+  { label: 'עם TORAFF', minutes: 1 },
 ];
 
 const PIPELINE = [

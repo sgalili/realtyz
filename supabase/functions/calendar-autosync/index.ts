@@ -194,7 +194,7 @@ function normalize(kind: Kind, row: Record<string, any>): Normalized {
     ownerId: row.workspace_owner_id ?? null,
     startISO: start,
     endISO: start ? plusMinutes(start, 15) : null,
-    title: `הדגמת Realtyz בזום — ${leadName || "ליד חדש"}`,
+    title: `הדגמת TORAFF בזום — ${leadName || "ליד חדש"}`,
     description: [leadName && `שם: ${leadName}`, row.phone && `טלפון: ${row.phone}`, row.notes].filter(Boolean).join("\n"),
     eventIdColumn: "google_event_id",
     eventLinkColumn: "google_event_link",

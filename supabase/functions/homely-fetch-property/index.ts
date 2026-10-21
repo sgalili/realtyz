@@ -452,7 +452,7 @@ async function webtivLogin(agency: string, username: string, password: string) {
       password,
       theme: "",
       version: "realtyz-1.0",
-      deviceInfo: { DeviceType: "server", UserAgent: "Realtyz/1.0", Os: "deno", Platform: "edge-function" },
+      deviceInfo: { DeviceType: "server", UserAgent: "TORAFF/1.0", Os: "deno", Platform: "edge-function" },
     }),
   });
   const text = await res.text();
@@ -573,7 +573,7 @@ async function getJson(url: string) {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 20000);
     const r = await fetch(proxied(url), {
-      headers: { Accept: "application/json", "User-Agent": "Realtyz/1.0" },
+      headers: { Accept: "application/json", "User-Agent": "TORAFF/1.0" },
       signal: ctl.signal,
     });
     clearTimeout(t);
@@ -598,7 +598,7 @@ async function postJson(url: string, payload: Record<string, unknown>) {
     const t = setTimeout(() => ctl.abort(), 20000);
     const r = await fetch(proxied(url), {
       method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": "Realtyz/1.0" },
+      headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": "TORAFF/1.0" },
       body: JSON.stringify(payload),
       signal: ctl.signal,
     });
@@ -1545,7 +1545,7 @@ async function mirrorOne(
     let resp: Response;
     try {
       resp = await fetch(proxied(originalUrl), {
-        headers: { "User-Agent": "Realtyz/1.0", Accept: "*/*" },
+        headers: { "User-Agent": "TORAFF/1.0", Accept: "*/*" },
         signal: ctl.signal,
       });
     } finally {
@@ -1971,7 +1971,7 @@ async function scrapePublicListing(pageUrl: string): Promise<{ ogImages: string[
   try {
     const res = await fetch(pageUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; Realtyz-MediaResolver/1.0; +https://realtyz.co.il)",
+        "User-Agent": "Mozilla/5.0 (compatible; TORAFF-MediaResolver/1.0; +https://realtyz.co.il)",
         Accept: "text/html,application/xhtml+xml",
       },
       redirect: "follow",

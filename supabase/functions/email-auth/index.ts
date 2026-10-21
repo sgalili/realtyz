@@ -51,11 +51,11 @@ Deno.serve(async (req) => {
       // Login codes always go out from the platform mailbox info@realtyz.co.il.
       const html = `<!doctype html><html lang="he" dir="rtl"><body style="margin:0;background:#ffffff;font-family:Arial,sans-serif;">
 <div style="max-width:480px;margin:0 auto;padding:24px;text-align:right;">
-<h1 style="font-size:22px;color:#0f172a;margin:0 0 16px;">קוד כניסה ל-Realtyz</h1>
+<h1 style="font-size:22px;color:#0f172a;margin:0 0 16px;">קוד כניסה ל-TORAFF</h1>
 <p style="font-size:15px;color:#475569;">הזן את הקוד הבא במסך הכניסה כדי להמשיך:</p>
 <div style="background:#f1f5f9;border-radius:12px;padding:20px;margin:20px 0;text-align:center;font-size:40px;font-weight:900;letter-spacing:12px;font-family:monospace;color:#0f172a;" dir="ltr">${code}</div>
 <p style="font-size:15px;color:#475569;">הקוד תקף ל-10 דקות. אם לא ביקשת קוד זה, אפשר להתעלם מהמייל.</p>
-<p style="font-size:12px;color:#94a3b8;">בברכה, צוות Realtyz</p></div></body></html>`;
+<p style="font-size:12px;color:#94a3b8;">בברכה, צוות TORAFF</p></div></body></html>`;
       const res = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
         method: "POST",
         headers: {
@@ -64,11 +64,11 @@ Deno.serve(async (req) => {
           "X-Connection-Api-Key": Deno.env.get("RESEND_API_KEY") ?? "",
         },
         body: JSON.stringify({
-          from: "Realtyz <info@realtyz.co.il>",
+          from: "TORAFF <info@realtyz.co.il>",
           to: [email],
-          subject: `קוד הכניסה שלך ל-Realtyz: ${code}`,
+          subject: `קוד הכניסה שלך ל-TORAFF: ${code}`,
           html,
-          text: `קוד הכניסה שלך ל-Realtyz: ${code} (תקף ל-10 דקות)`,
+          text: `קוד הכניסה שלך ל-TORAFF: ${code} (תקף ל-10 דקות)`,
         }),
       });
       if (!res.ok) {

@@ -1,4 +1,4 @@
-// Business Performance — KPI dashboard for the Realtyz agent
+// Business Performance — KPI dashboard for the TORAFF agent
 //
 // Sections:
 //   1) Funnel: Leads → Qualified → Meetings Scheduled → Offers → Closed Deals

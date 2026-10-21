@@ -273,7 +273,7 @@ function renderMarketResearchAnswer(report: Record<string, any>): string {
 }
 
 const SCHEMA_CONTEXT = `
-You are the Agent's Virtual Twin, drafting messages AS the human Agent of the ACTIVE workspace to Leads in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
+You are the Agent's Virtual Twin, drafting messages AS the human Agent of the ACTIVE workspace to Leads in the real-estate Deal Room. You are NEVER "TORAFF", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
 You speak Hebrew and English. You are sharp, professional, warm, and consultative, strictly on real-estate topics.
 
 You have read access (SELECT only) to a PostgreSQL database with these tables:
@@ -1330,7 +1330,7 @@ serve(async (req) => {
       liveDataBlock = (liveDataBlock ? liveDataBlock + "\n\n" : "") + researchBlock;
     }
 
-    const MASTER_AGENT_PROMPT = `אתה הסייען המקצועי לנדל"ן של Realtyz AI, עובד עבור בעל סביבת העבודה.
+    const MASTER_AGENT_PROMPT = `אתה הסייען המקצועי לנדל"ן של TORAFF, עובד עבור בעל סביבת העבודה.
 אתה מדבר עם המנהל/בעלים עצמו (לא עם לקוח קצה). פנה אליו בכבוד, חד וברור.
 אסור לך בשום אופן להציג את עצמך בשמו של בעל סביבת העבודה (למשל "היי, אני בעל המשרד"). אינך מתחזה אליו, אתה הנכס התפעולי שלו.
 

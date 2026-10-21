@@ -67,7 +67,7 @@ export async function resolveSms019Config(
 ): Promise<Sms019Config | null> {
   // A workspace override only wins when it is COMPLETE (user + token/password +
   // approved sender). Otherwise every workspace falls back to the global
-  // Realtyz 019 gateway so OTP/SMS always ships.
+  // TORAFF 019 gateway so OTP/SMS always ships.
   if (workspaceOwnerId) {
     const { data } = await admin
       .from("workspace_sms_settings")
@@ -110,7 +110,7 @@ export async function resolveSms019Config(
     };
   }
 
-  // Last resort: the platform-wide Realtyz 019 credentials from env secrets.
+  // Last resort: the platform-wide TORAFF 019 credentials from env secrets.
   return envSms019Config();
 }
 

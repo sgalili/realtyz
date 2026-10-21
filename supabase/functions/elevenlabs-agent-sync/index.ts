@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
         method: "PATCH",
         headers: { "xi-api-key": ELEVEN_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: `Realtyz · ${agentName}`,
+          name: `TORAFF · ${agentName}`,
           conversation_config: conversationConfig,
           platform_settings: { client_tools: clientTools },
         }),
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { "xi-api-key": ELEVEN_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: `Realtyz · ${agentName}`,
+          name: `TORAFF · ${agentName}`,
           conversation_config: conversationConfig,
           platform_settings: { client_tools: clientTools },
         }),

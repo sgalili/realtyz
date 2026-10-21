@@ -1,4 +1,4 @@
-/* Realtyz Group Sync — local posting automation.
+/* TORAFF Group Sync — local posting automation.
  *
  * Runs inside facebook.com/groups/<id>. Opens the group composer, injects the
  * post text (React-safe), attaches media if provided, clicks "פרסם"/"Post" and
@@ -42,7 +42,7 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   /* Visible debug logging — every step shows up in the Facebook tab's F12 console. */
-  const log = (...args) => { try { console.log('[Realtyz Extension]', ...args); } catch (e) { /* noop */ } };
+  const log = (...args) => { try { console.log('[TORAFF Extension]', ...args); } catch (e) { /* noop */ } };
 
   const visible = (el) => {
     if (!el) return false;

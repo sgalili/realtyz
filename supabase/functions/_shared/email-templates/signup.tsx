@@ -34,7 +34,7 @@ export const SignupEmail = ({
     <Preview>אישור כתובת האימייל שלך ב{siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Realtyz AI+</Text>
+        <Text style={brand}>TORAFF+</Text>
         <Heading style={h1}>אישור כתובת האימייל</Heading>
         <Text style={text}>
           תודה שנרשמת ל

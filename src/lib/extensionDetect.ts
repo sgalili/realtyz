@@ -1,5 +1,5 @@
 /**
- * extensionDetect — one source of truth for "is the Realtyz browser extension
+ * extensionDetect — one source of truth for "is the TORAFF browser extension
  * present in this browser?".
  *
  * Two signals are combined:

@@ -30,7 +30,7 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 
 /* ────────────────────────────────────────────────────────────────────
-   Realtyz — Real-Estate Dashboard
+   TORAFF — Real-Estate Dashboard
    KPI widgets, neighborhood pie chart, real-estate activity feed.
    No campaign / political widgets.
    ──────────────────────────────────────────────────────────────────── */

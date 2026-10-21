@@ -1,4 +1,4 @@
-// Push a Realtyz lead to Homely's "Open Card" CRM API.
+// Push a TORAFF lead to Homely's "Open Card" CRM API.
 // Triggered automatically (via DB trigger -> pg_net) on lead INSERT, OR
 // invoked manually by an authenticated user via supabase.functions.invoke.
 //
@@ -11,7 +11,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const HOMELY_URL = "https://webtivapi.webtiv.co.il/api/WebtivLid/WebtivLidPost";
-const PROVIDER = "RealtyZ";
+const PROVIDER = "TORAFF";
 
 // Allowed Webtiv category values (exact, case-sensitive Hebrew strings).
 const ALLOWED_CATEGORIES = new Set([
@@ -57,7 +57,7 @@ function splitName(full: string): { name: string; family: string } {
   return { name: parts[0], family: parts.slice(1).join(" ") };
 }
 
-// Convert Realtyz internal phone (9725XXXXXXXX) to local 0XXXXXXXXX format.
+// Convert TORAFF internal phone (9725XXXXXXXX) to local 0XXXXXXXXX format.
 function denormalizePhone(p: string): string {
   const d = String(p || "").replace(/\D/g, "");
   if (d.startsWith("972")) return "0" + d.slice(3);

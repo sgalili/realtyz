@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
       try {
         const msg = [
           `שלום${full_name ? ` ${full_name}` : ""},`,
-          `נפתח עבורך חשבון ב-Realtyz AI.`,
+          `נפתח עבורך חשבון ב-TORAFF.`,
           ``,
           `כתובת התחברות: ${new URL(req.url).origin.replace(/functions.*/, "")}`,
           `אימייל: ${email}`,

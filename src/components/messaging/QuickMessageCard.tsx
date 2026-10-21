@@ -40,7 +40,7 @@ export default function QuickMessageCard({ scope, leadId, phone, vars, listingId
   const [open, setOpen] = useState(!collapsible);
   const queryClient = useQueryClient();
 
-  // Brokers get the Realtyz recruitment sequence on top of the workspace
+  // Brokers get the TORAFF recruitment sequence on top of the workspace
   // templates; every contact also gets the short onboarding messages for new
   // brokers and new affiliate partners.
   const isBroker = leadKind === 'broker';

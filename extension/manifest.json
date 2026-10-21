@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Realtyz Group Sync",
+  "name": "TORAFF Group Sync",
   "version": "1.9.5",
-  "description": "מסנכרן את קבוצות הפייסבוק שלך אל Realtyz ומפרסם את התור המתוזמן ישירות מהדפדפן שלך.",
+  "description": "מסנכרן את קבוצות הפייסבוק שלך אל TORAFF ומפרסם את התור המתוזמן ישירות מהדפדפן שלך.",
   "permissions": [
     "storage",
     "alarms",

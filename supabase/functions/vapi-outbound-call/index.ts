@@ -1,4 +1,4 @@
-// Vapi outbound call — Realtyz real-estate port (KI parity).
+// Vapi outbound call — TORAFF real-estate port (KI parity).
 //
 // Cleaned payload — strips fields Vapi rejects with HTTP 400:
 //   • variableValues, voter_historical_context, idleMessageMaxSpokenCount,
@@ -49,7 +49,7 @@ function buildAssistant(opts: {
     headers: { "x-realtyz-user": opts.userId, "x-realtyz-lead": opts.leadId ?? "" },
   };
   return {
-    name: "Realtyz Broker AI",
+    name: "TORAFF Broker AI",
     transcriber: {
       provider: "deepgram",
       model: "nova-2",

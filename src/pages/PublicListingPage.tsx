@@ -333,7 +333,7 @@ function PublicListingContent() {
   useEffect(() => {
     if (!data) return;
     try {
-      document.title = `${data.title} | Realtyz`;
+      document.title = `${data.title} | TORAFF`;
       const description = (data.description || data.location || data.title).slice(0, 155);
       const setMeta = (key: string, content: string) => {
         let tag = document.querySelector(`meta[property="${key}"], meta[name="${key}"]`) as HTMLMetaElement | null;
@@ -345,7 +345,7 @@ function PublicListingContent() {
         tag.content = content;
       };
       setMeta('description', description);
-      setMeta('og:title', `${data.title} | Realtyz`);
+      setMeta('og:title', `${data.title} | TORAFF`);
       setMeta('og:description', description);
       setMeta('og:url', shareUrl);
       setMeta('og:type', 'website');

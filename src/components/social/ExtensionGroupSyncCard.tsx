@@ -224,7 +224,7 @@ export function ExtensionGroupSyncCard({
             <DialogTitle>סנכרון קבוצות פייסבוק (אופציונלי)</DialogTitle>
             <DialogDescription>
               הדרך המומלצת היא חיבור פייסבוק בענן — חיפוש וסנכרון קבוצות רצים בשרת בלי תוסף.
-              אפשר גם לסנכרן מהדפדפן: ודא שתוסף Realtyz פעיל, פתח את עמוד הקבוצות שלך בפייסבוק,
+              אפשר גם לסנכרן מהדפדפן: ודא שתוסף TORAFF פעיל, פתח את עמוד הקבוצות שלך בפייסבוק,
               והמערכת תשמור אותן אוטומטית כאן.
             </DialogDescription>
             {cloudState?.active && (
@@ -246,7 +246,7 @@ export function ExtensionGroupSyncCard({
             )}
           </DialogHeader>
           <ol className="list-inside list-decimal space-y-1 text-[15px] leading-relaxed text-muted-foreground">
-            <li>ודא שהתוסף פעיל (סמל Realtyz בסרגל הדפדפן).</li>
+            <li>ודא שהתוסף פעיל (סמל TORAFF בסרגל הדפדפן).</li>
             <li>פתח את עמוד הקבוצות בפייסבוק בלשונית חדשה.</li>
             <li>גלול עד סוף רשימת הקבוצות וחזור לכאן — הרשימה תתעדכן לבד.</li>
           </ol>

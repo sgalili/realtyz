@@ -3,7 +3,7 @@ import { BrandIcon } from '@/components/BrandIcon';
 import greenApiLogo from '@/assets/brands/green-api.svg';
 import logo019 from '@/assets/brands/019-mobile.png';
 
-/* Realtyz landing — infinite auto-scrolling logo tickers.
+/* TORAFF landing — infinite auto-scrolling logo tickers.
    Social platforms use their official brand colors (BrandLogo).
    Infrastructure row shows the operating tech stack logos + wordmarks. */
 

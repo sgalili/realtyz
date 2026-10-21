@@ -39,7 +39,7 @@ type DealType = "sale" | "rent";
 
 // Yad2 uses numeric area+city codes for its structured search filters.
 // This table mirrors yad2-search/index.ts and covers Udi's primary zones
-// plus the major Israeli cities Realtyz users search most often. When a
+// plus the major Israeli cities TORAFF users search most often. When a
 // city isn't listed we fall back to a `text` query.
 const YAD2_CITY_CODES: Record<string, { area: string; city: string }> = {
   "הרצליה": { area: "18", city: "6400" },

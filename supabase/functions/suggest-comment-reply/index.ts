@@ -1,4 +1,4 @@
-// Realtyz suggest-comment-reply — generates a single AI draft reply to a
+// TORAFF suggest-comment-reply — generates a single AI draft reply to a
 // public social comment in the SAME language as the inbound text. Grounded in
 // workspace KB + live CRM/listings snapshot, locked to the workspace owner persona,
 // with anti-spam high-entropy phrasing. Pure compose-and-return.

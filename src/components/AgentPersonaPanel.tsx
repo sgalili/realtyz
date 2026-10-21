@@ -182,7 +182,7 @@ export function AgentPersonaPanel() {
                 id="vt-signature"
                 value={signature}
                 onChange={(e) => setSignature(e.target.value)}
-                placeholder="— דנה כהן, סוכנת נדל&quot;ן Realtyz"
+                placeholder="— דנה כהן, סוכנת נדל&quot;ן TORAFF"
                 className="h-11"
                 maxLength={200}
               />

@@ -57,7 +57,7 @@ export function sanitizeReplyText(raw: string | null | undefined): string {
   );
   // Leftover empty brackets/parentheses after stripping internal markers.
   text = text.replace(/\[\s*\]|\(\s*\)/g, " ");
-  text = text.replace(/^\s*(?:===\s*)?(?:REALTYZ MASTER AGENT DIRECTIVE|END MASTER AGENT DIRECTIVE)[^\n]*\n?/gim, "");
+  text = text.replace(/^\s*(?:===\s*)?(?:TORAFF MASTER AGENT DIRECTIVE|END MASTER AGENT DIRECTIVE)[^\n]*\n?/gim, "");
   text = text.replace(/\*\*\s*\*\*/g, "").replace(/__\s*__/g, "");
 
   // Final hard guard: no code fences, JSON blobs or action schemas survive.

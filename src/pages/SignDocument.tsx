@@ -231,7 +231,7 @@ export default function SignDocument() {
           <FileSignature className="h-6 w-6 text-primary" />
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold truncate">{doc.title}</h1>
-            <p className="text-xs text-muted-foreground">חתימה מאובטחת — חדר סגירה דיגיטלי של Realtyz</p>
+            <p className="text-xs text-muted-foreground">חתימה מאובטחת — חדר סגירה דיגיטלי של TORAFF</p>
           </div>
           <span className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
             <ShieldCheck className="h-4 w-4" /> קישור מוצפן

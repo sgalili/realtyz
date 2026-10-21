@@ -10,10 +10,10 @@ const KEY = 'realtyz-signup-role';
 export const DEVELOPER_ONBOARDING_PATH = '/developer-dashboard?onboarding=1';
 
 export const SIGNUP_ROLE_LABELS: Record<SignupRole, string> = {
-  broker: 'מתווך',
-  partner: 'שותף',
-  property_owner: 'בעל הנכס',
-  property_seeker: 'קונה פרטי',
+  broker: 'מתווך/סוכנות',
+  partner: 'תכנית שותפים',
+  property_owner: 'משכיר/שוכר פרטי',
+  property_seeker: 'קונה/מוכר פרטי',
   developer: 'יזם',
   contractor: 'קבלן',
 };

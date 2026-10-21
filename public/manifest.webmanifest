@@ -1,7 +1,7 @@
 {
-  "name": "Realtyz AI",
-  "short_name": "Realtyz",
-  "description": "Realtyz AI — Real-estate CRM for field agents",
+  "name": "TORAFF",
+  "short_name": "TORAFF",
+  "description": "TORAFF — Real-estate CRM for field agents",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

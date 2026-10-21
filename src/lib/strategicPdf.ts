@@ -83,7 +83,7 @@ export async function createStrategicPdf(data: StrategicPdfData) {
   ctx.fillStyle = navy;
   ctx.font = `900 150px ${font}`;
   ctx.textAlign = 'center';
-  ctx.fillText('REALTYZ AI', 0, 0);
+  ctx.fillText('TORAFF AI', 0, 0);
   ctx.restore();
 
   // ===== HEADER =====
@@ -93,8 +93,8 @@ export async function createStrategicPdf(data: StrategicPdfData) {
   rtl('דוח אסטרטגי חסוי', 1160, 88, 42, '#ffffff', 900);
   rtl(data.name ? `הוכן עבור ${data.name}` : 'מסמך ייעוץ אסטרטגי', 1160, 138, 26, silver, 700);
   rtl(date, 1160, 172, 20, '#94a3b8', 600);
-  // Left side - Realtyz brand (LTR)
-  ltr('REALTYZ', 80, 92, 38, '#ffffff', 900);
+  // Left side - TORAFF brand (LTR)
+  ltr('TORAFF', 80, 92, 38, '#ffffff', 900);
   ltr('AI Strategy Engine', 80, 132, 18, '#94a3b8', 600);
 
   // Accent line
@@ -286,7 +286,7 @@ export async function createStrategicPdf(data: StrategicPdfData) {
   ctx.fillStyle = navy;
   ctx.fillRect(0, 1660, 1240, 94);
   ltr('CONFIDENTIAL · STRATEGIC BRIEF', 80, 1718, 18, silver, 800);
-  rtl('הופק ע״י Realtyz AI · מערכת לניהול נדל"ן', 1160, 1718, 20, '#ffffff', 800);
+  rtl('הופק ע״י TORAFF · מערכת לניהול נדל"ן', 1160, 1718, 20, '#ffffff', 800);
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 595.28, 841.89);

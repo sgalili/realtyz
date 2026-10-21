@@ -87,7 +87,7 @@ function applyTheme(s: WhiteLabelSettings | null) {
 
 /**
  * Branding is cached per workspace so the header logo paints on the FIRST frame
- * (published site included) instead of flashing the Realtyz fallback while the
+ * (published site included) instead of flashing the TORAFF fallback while the
  * white_label_settings row loads.
  */
 const BRAND_CACHE_KEY = 'realtyz_brand_cache';
@@ -160,7 +160,7 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
         };
       }
       // NO global fallback: a workspace without branding keeps the default
-      // Realtyz identity rather than borrowing another workspace's logo.
+      // TORAFF identity rather than borrowing another workspace's logo.
       if (request !== generation.current || currentOwner.current !== requestedOwner) return;
       setSettings(row);
       applyTheme(row);

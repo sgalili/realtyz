@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
         code: 'missing_video',
       });
     }
-    const title = String(body.title || '').trim().slice(0, 100) || 'Realtyz';
+    const title = String(body.title || '').trim().slice(0, 100) || 'TORAFF';
     const description = String(body.description || '').slice(0, 5000);
     const tags = Array.isArray(body.tags) ? body.tags.map((t) => String(t)).filter(Boolean).slice(0, 30) : [];
     const privacy = ['public', 'unlisted', 'private'].includes(String(body.privacy_status))

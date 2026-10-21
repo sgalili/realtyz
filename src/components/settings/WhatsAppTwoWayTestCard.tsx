@@ -44,7 +44,7 @@ export function WhatsAppTwoWayTestCard() {
   const [template, setTemplate] = useState<WaTemplateSelection | null>(null);
   const { data: templateDefs } = useMetaWaTemplates();
 
-  const [body, setBody] = useState('בדיקת חיבור WhatsApp מ-Realtyz AI+ ✅ אנא השב/י בהודעה כלשהי כדי לאמת תקשורת דו-כיוונית.');
+  const [body, setBody] = useState('בדיקת חיבור WhatsApp מ-TORAFF+ ✅ אנא השב/י בהודעה כלשהי כדי לאמת תקשורת דו-כיוונית.');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<SendResult | null>(null);
   const [listening, setListening] = useState(false);

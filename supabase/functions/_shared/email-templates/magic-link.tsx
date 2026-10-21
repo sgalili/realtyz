@@ -29,7 +29,7 @@ export const MagicLinkEmail = ({
     <Preview>קישור ההתחברות שלך ל{siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>Realtyz AI+</Text>
+        <Text style={brand}>TORAFF+</Text>
         <Heading style={h1}>קישור התחברות</Heading>
         <Text style={text}>
           לחיצה על הכפתור תחבר אותך ל{siteName}. הקישור בתוקף לזמן קצר בלבד.

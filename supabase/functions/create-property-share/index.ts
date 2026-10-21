@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       .eq("user_id", uid)
       .maybeSingle();
 
-    const workspace_name = wl?.agency_name || prof?.full_name || "Realtyz";
+    const workspace_name = wl?.agency_name || prof?.full_name || "TORAFF";
     const broker_wa = prof?.phone ?? null;
 
     const token = crypto.randomUUID().replace(/-/g, "");

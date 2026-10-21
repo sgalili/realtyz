@@ -1,6 +1,6 @@
 /* ============================================================================
  * SubscriptionManager — high-fidelity ROI calculator
- * Clean, light-theme overhaul matching Realtyz dashboard identity:
+ * Clean, light-theme overhaul matching TORAFF dashboard identity:
  *  - Off-white surface, navy headers, blue primary accents
  *  - White cards with subtle borders + soft shadows
  *  - 2-col grid for ROI results, horizontal slider, semantic tokens only
@@ -1093,7 +1093,7 @@ function CalculatorBody() {
         </section>
 
         <p className="mx-auto mt-8 max-w-3xl text-center text-[11px] leading-relaxed text-muted-foreground">
-          החישוב מבוסס על תמהיל רשימות לידים: {warmPct}% המרה ללידים חמים ו-{coldPct}% ללידים קרים בעבודה אינטנסיבית עם Realtyz AI.
+          החישוב מבוסס על תמהיל רשימות לידים: {warmPct}% המרה ללידים חמים ו-{coldPct}% ללידים קרים בעבודה אינטנסיבית עם TORAFF.
           המספרים המוצגים הם הערכה מקצועית בלבד ואינם מהווים התחייבות לתוצאת מכירות. המחיר אינו כולל מע״מ ועלויות מדיה ישירות ל-Meta.
         </p>
       </div>

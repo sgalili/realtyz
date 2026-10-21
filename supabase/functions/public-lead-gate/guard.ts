@@ -85,7 +85,7 @@ const SUSPENDED = { blocked: true, error: "שליחת פניות הושעתה ז
 async function sendOtp(admin: any, ch: { id: string; otp_sent_count?: number }, phone: string, workspaceOwnerId: string | null) {
   if ((ch.otp_sent_count ?? 0) >= OTP_MAX_SENDS) return { ok: false, error: "נשלחו יותר מדי קודים. נסו שוב מאוחר יותר." };
   const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");
-  const res = await sendSms019(admin, phone, `קוד האימות שלך ב-Realtyz: ${code}\nהקוד בתוקף ל-10 דקות.`, workspaceOwnerId);
+  const res = await sendSms019(admin, phone, `קוד האימות שלך ב-TORAFF: ${code}\nהקוד בתוקף ל-10 דקות.`, workspaceOwnerId);
   if (!res.ok) {
     console.error("[public-lead-gate] otp send failed", { error: res.error });
     return { ok: false, error: "לא הצלחנו לשלוח קוד אימות. נסו שוב בעוד מספר דקות." };

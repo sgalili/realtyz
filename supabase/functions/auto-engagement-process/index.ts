@@ -1,4 +1,4 @@
-// Realtyz auto-engagement-process — for a new inbound comment/DM:
+// TORAFF auto-engagement-process — for a new inbound comment/DM:
 //  1. Run sentiment + KB-grounded analysis via Lovable AI.
 //  2. Persist sentiment + draft into engagement_events (creating row if needed).
 //  3. Dispatch private DM / auto-like only when the relevant auto-reply switch

@@ -17,7 +17,7 @@ import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 /* ────────────────────────────────────────────────────────────────────
-   Rita's workspace dashboard — marketing Realtyz to real-estate agents.
+   Rita's workspace dashboard — marketing TORAFF to real-estate agents.
    Agent acquisition, publishing and communication only.
    No properties, no deals, no partners.
    ──────────────────────────────────────────────────────────────────── */
@@ -100,7 +100,7 @@ export function RecruitmentDashboard() {
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight text-primary">לוח בקרה</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          גיוס מתווכים ל-Realtyz: פרסום, שיחות והרשמות
+          גיוס מתווכים ל-TORAFF: פרסום, שיחות והרשמות
         </p>
       </div>
 

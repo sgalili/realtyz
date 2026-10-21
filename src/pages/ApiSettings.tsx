@@ -279,7 +279,7 @@ const ApiSettings = () => {
   const [homelyLoaded, setHomelyLoaded] = useState(false);
   // Open Card (auto-push) credentials
   const [homelyClientCode, setHomelyClientCode] = useState('');
-  const [homelyProvider, setHomelyProvider] = useState('Realtyz');
+  const [homelyProvider, setHomelyProvider] = useState('TORAFF');
   const [homelyDefaultAgent, setHomelyDefaultAgent] = useState('');
   // Per-broker Homely login (stored encrypted server-side)
   const [homelyAgency, setHomelyAgency] = useState('');
@@ -537,7 +537,7 @@ const ApiSettings = () => {
       }
       if (data) {
         setHomelyClientCode((data as any).homely_client_code || '');
-        setHomelyProvider((data as any).homely_provider || 'Realtyz');
+        setHomelyProvider((data as any).homely_provider || 'TORAFF');
         setHomelyDefaultAgent((data as any).homely_default_agent || '');
       }
       setHomelyLoaded(true);
@@ -641,7 +641,7 @@ const ApiSettings = () => {
         {
           user_id: authUser.id,
           homely_client_code: homelyClientCode.trim(),
-          homely_provider: homelyProvider.trim() || 'Realtyz',
+          homely_provider: homelyProvider.trim() || 'TORAFF',
           homely_default_agent: homelyDefaultAgent.trim() || null,
           homely_auto_push: false,
           updated_at: new Date().toISOString(),
@@ -742,7 +742,7 @@ const ApiSettings = () => {
       const res = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ webhook_url: url, auth_token: token && token !== 'none' ? token : undefined, payload: { type: 'ping', source: 'Realtyz AI', timestamp: new Date().toISOString() } }),
+        body: JSON.stringify({ webhook_url: url, auth_token: token && token !== 'none' ? token : undefined, payload: { type: 'ping', source: 'TORAFF', timestamp: new Date().toISOString() } }),
       });
       const data = await res.json();
       if (data.success) toast.success('✅ חיבור n8n תקין - ה-Webhook פעיל!');
@@ -1009,7 +1009,7 @@ const ApiSettings = () => {
             <div>
               <p className="text-sm font-semibold">פרטי גישה ל-Homely (קריאה בלבד)</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Realtyz מושכת נתונים מ‑Homely / WebTiv בלבד ואינה כותבת אליהם מידע.
+                TORAFF מושכת נתונים מ‑Homely / WebTiv בלבד ואינה כותבת אליהם מידע.
               </p>
             </div>
           </div>
@@ -1028,7 +1028,7 @@ const ApiSettings = () => {
             <div className="space-y-1">
               <Label className="text-xs">שם ספק (Provider)</Label>
               <Input
-                placeholder="Realtyz"
+                placeholder="TORAFF"
                 value={homelyProvider}
                 onChange={(e) => setHomelyProvider(e.target.value)}
               />
@@ -1168,7 +1168,7 @@ const ApiSettings = () => {
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                הדבק כתובת זו בהגדרות ה‑Webhook בחשבון ה‑Homely שלך כדי שלידים ועדכוני סטטוס יזרמו אוטומטית ל‑Realtyz.
+                הדבק כתובת זו בהגדרות ה‑Webhook בחשבון ה‑Homely שלך כדי שלידים ועדכוני סטטוס יזרמו אוטומטית ל‑TORAFF.
               </p>
             </div>
           )}
@@ -1529,7 +1529,7 @@ const ApiSettings = () => {
           <div className="space-y-2">
             <Label className="text-xs">שולח / Sender ID</Label>
             <Input
-              placeholder="לדוגמה: Realtyz או מספר משרד מאושר"
+              placeholder="לדוגמה: TORAFF או מספר משרד מאושר"
               value={smsSender}
               onChange={(e) => setSmsSender(e.target.value)}
               dir="ltr"

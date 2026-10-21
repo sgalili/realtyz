@@ -1,11 +1,11 @@
-# Realtyz Cloud Runner
+# TORAFF Cloud Runner
 
 Publishes Facebook group posts from the cloud, so posts go out even when your
 computer is off.
 
 ## How it fits together
 
-1. Realtyz stores each group post in the queue with its publish time.
+1. TORAFF stores each group post in the queue with its publish time.
 2. The server dispatches due cloud posts and event-driven group joins to this runner.
 3. This runner opens Facebook headlessly with your saved connection, writes the
    post (and the first comment, if any), and reports back "done" or "failed".
@@ -16,14 +16,14 @@ computer is off.
 ```bash
 cd cloud-runner
 npm install
-CLOUD_WORKER_SHARED_SECRET=<the same secret saved in Realtyz> PORT=8787 npm start
+CLOUD_WORKER_SHARED_SECRET=<the same secret saved in TORAFF> PORT=8787 npm start
 ```
 
 Deploy anywhere reachable over HTTPS (Render, Railway, Fly, a VPS). On Render use
 a Web Service, build `npm install`, start `npm start`.
 
 Then send me the public URL of the runner (e.g. `https://runner.example.com/`)
-and I'll connect it to Realtyz. Nothing else is needed on your side.
+and I'll connect it to TORAFF. Nothing else is needed on your side.
 
 ## Notes
 

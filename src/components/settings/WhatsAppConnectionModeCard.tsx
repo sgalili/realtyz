@@ -22,7 +22,7 @@ type Mode = 'official_meta' | 'qr_session';
 const OPTIONS: Array<{ value: Mode; title: string; hint: string }> = [
   {
     value: 'official_meta',
-    title: 'מספר Realtyz הרשמי (Meta)',
+    title: 'מספר TORAFF הרשמי (Meta)',
     hint: '',
   },
   {
@@ -35,7 +35,7 @@ const OPTIONS: Array<{ value: Mode; title: string; hint: string }> = [
 /**
  * Workspace-wide WhatsApp method selection. The chosen method applies to every
  * message the workspace sends and receives across the app.
- * Exception: verification codes (OTP) always ship from the official Realtyz
+ * Exception: verification codes (OTP) always ship from the official TORAFF
  * Meta number, whatever is selected here.
  */
 export function WhatsAppConnectionModeCard() {

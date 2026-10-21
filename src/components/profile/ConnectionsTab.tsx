@@ -527,7 +527,7 @@ export function ConnectionsTab() {
       titleLead: mailboxInfo?.provider === 'realtyz'
         ? <Mail className={cn('h-5 w-5 shrink-0 text-primary', !mailboxInfo?.address && 'grayscale opacity-40')} strokeWidth={2.25} />
         : <GoogleBrandGlyph brand="gmail" connected={gmailLive} />,
-      status: mailboxInfo?.provider === 'realtyz' ? 'Realtyz' : gmailLive ? 'Gmail · מחובר' : 'Gmail · לא מחובר',
+      status: mailboxInfo?.provider === 'realtyz' ? 'TORAFF' : gmailLive ? 'Gmail · מחובר' : 'Gmail · לא מחובר',
       tone: (mailboxInfo?.provider === 'realtyz' ? !!mailboxInfo?.address : gmailLive) ? 'ok' as Tone : 'idle' as Tone,
       node: <WorkspaceMailboxCard />,
     },
@@ -592,7 +592,7 @@ export function ConnectionsTab() {
       ),
     },
     // The 019 SMS gateway is a PLATFORM service: every workspace sends OTP/SMS
-    // through the global Realtyz 019 number automatically. Only Super Admin may
+    // through the global TORAFF 019 number automatically. Only Super Admin may
     // see or override the credentials.
     ...(isSuperAdmin ? [{
       id: 'sms019',

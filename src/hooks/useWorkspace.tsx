@@ -66,7 +66,7 @@ function dedupeWorkspaces(rows: Workspace[], currentUserId?: string): Workspace[
 /**
  * Workspaces (name + logo) are cached locally so the sidebar/header brand
  * paints on the FIRST frame after a refresh instead of flashing the default
- * Realtyz logo for ~2s while get_my_workspaces() round-trips.
+ * TORAFF logo for ~2s while get_my_workspaces() round-trips.
  */
 function readWorkspaceCache(userId: string | null): { list: Workspace[]; activeId: string | null } {
   if (!userId) return { list: [], activeId: null };

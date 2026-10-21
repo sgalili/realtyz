@@ -142,7 +142,7 @@ export function GlobalAppTour() {
   if (showWelcome) return <div className="fixed inset-x-0 bottom-0 top-16 z-[60] overflow-hidden overscroll-none bg-background"><WelcomeSlides onDone={() => setShowWelcome(false)} /></div>;
   return <Dialog open onOpenChange={(open) => { if (!open) close(); }}>
     <DialogContent dir="rtl" className="max-h-[90dvh] max-w-xl overflow-y-auto p-6 sm:p-8">
-      <img src={realtyzLogo} alt="Realtyz" className="mx-auto h-14 w-auto object-contain" />
+      <img src={realtyzLogo} alt="TORAFF" className="mx-auto h-14 w-auto object-contain" />
       <DialogTitle className="text-center text-3xl font-extrabold">ברוכים הבאים לרילטיז</DialogTitle>
       <DialogDescription className="text-center text-xl leading-relaxed text-foreground">
         נכסים, אנשים והזדמנויות נפגשים במקום אחד.

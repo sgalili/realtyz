@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     const outForm = new FormData();
     outForm.append("name", name);
-    outForm.append("description", "Realtyz quick clone");
+    outForm.append("description", "TORAFF quick clone");
     outForm.append("files", file, file.name || "sample.webm");
 
     const r = await fetch("https://api.elevenlabs.io/v1/voices/add", {

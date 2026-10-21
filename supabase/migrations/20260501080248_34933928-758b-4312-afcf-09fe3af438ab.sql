@@ -30,7 +30,7 @@ CREATE TABLE public.broker_referrals (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   -- Sender (the local user who initiated the referral)
   sender_user_id UUID NOT NULL,
-  -- Optional internal recipient (if the partner is also a Realtyz user)
+  -- Optional internal recipient (if the partner is also a TORAFF user)
   recipient_user_id UUID,
   -- Partner record (from sender's address book) when sending out
   partner_broker_id UUID REFERENCES public.partner_brokers(id) ON DELETE SET NULL,

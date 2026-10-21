@@ -1,4 +1,4 @@
-// Dedicated /referral screen: the RealtyZ Partner Network invite page.
+// Dedicated /referral screen: the TORAFF Partner Network invite page.
 import { AffiliateInviteCard } from '@/components/affiliate/AffiliateInviteCard';
 
 const PartnerNetwork = () => (

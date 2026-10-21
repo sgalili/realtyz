@@ -532,10 +532,10 @@ const ChannelGrid = ({
                   </span>
                 ) : isConnected && accountNames[c.id] && (() => {
                   const raw = accountNames[c.id];
-                  // Strip any "Realtyz Workspace - " prefix, trailing "- 1234" numeric ids,
+                  // Strip any "TORAFF Workspace - " prefix, trailing "- 1234" numeric ids,
                   // and profile-key / refId tokens so only the human page name remains.
                   const cleaned = String(raw)
-                    .replace(/^Realtyz Workspace\s*[-–]\s*/i, '')
+                    .replace(/^TORAFF Workspace\s*[-–]\s*/i, '')
                     .replace(/\s*[-–]\s*\d{2,}$/, '')
                     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4,}\b/gi, '')
                     .replace(/\b[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}\b/g, '')
@@ -1858,7 +1858,7 @@ const InlineComposer = ({
    */
   const mintOfficialWaShortLink = async (): Promise<string> => {
     const phone = await getOfficialWaNumber();
-    const intro = 'היי, ראיתי את הפוסט של Realtyz ואשמח לשמוע איך זה עובד.';
+    const intro = 'היי, ראיתי את הפוסט של TORAFF ואשמח לשמוע איך זה עובד.';
     const longUrl = `https://wa.me/${phone}?text=${encodeURIComponent(intro)}`;
     try {
       const { data } = await supabase.functions.invoke('shortlink-create', { body: { long_url: longUrl } });
@@ -1882,7 +1882,7 @@ const InlineComposer = ({
         const { data, error } = await supabase.functions.invoke('generate-content', {
           body: {
             purpose: 'first_comment',
-            topic: 'תגובה ראשונה לפוסט שיווקי של פלטפורמת Realtyz — שתי שורות בלבד',
+            topic: 'תגובה ראשונה לפוסט שיווקי של פלטפורמת TORAFF — שתי שורות בלבד',
             platform: channel.id,
             customInstructions: [
               'כתוב תגובה ראשונה (First Comment) בשתי שורות בלבד, בעברית, פונה ישירות לסוכן נדל"ן.',
@@ -3550,7 +3550,7 @@ const ConfirmDispatchDialog = ({
         }
         // Group posts never touch Meta's Graph API (App Review blocks group
         // publishing): they are queued locally in localStorage['rzPostQueue']
-        // and the Realtyz browser extension posts them from the broker's own
+        // and the TORAFF browser extension posts them from the broker's own
         // Facebook session.
         let queuedGroups = 0;
         if (channel.id === 'facebook' && apiGroupIds.length > 0) {
@@ -5530,7 +5530,7 @@ const PublishedFeed = ({
             setExtSync({ state: res.status, count: 0, at: Date.now() });
             hadTransientIssue = true;
             console.warn('[campaign] manual sync not completed', res);
-            refreshWarning = res.status === 'no_extension' ? 'יש להתקין ולחבר את תוסף Realtyz כדי לסנכרן' : 'הסנכרון לא הושלם, נסה שוב';
+            refreshWarning = res.status === 'no_extension' ? 'יש להתקין ולחבר את תוסף TORAFF כדי לסנכרן' : 'הסנכרון לא הושלם, נסה שוב';
           }
         }
         // Repaint only from persisted rows. mergeRowsById keeps existing cards
@@ -6195,7 +6195,7 @@ const PublishedFeed = ({
             <p className="min-w-0 truncate text-xs text-muted-foreground">
               {extSync.state === 'running' && 'מסנכרן פוסטים מעמוד הפייסבוק…'}
               {extSync.state === 'done' && `סונכרנו ${extSync.count} פוסטים בהצלחה`}
-              {extSync.state === 'no_extension' && 'התקן את תוסף Realtyz כדי לסנכרן פוסטים ומדדים'}
+              {extSync.state === 'no_extension' && 'התקן את תוסף TORAFF כדי לסנכרן פוסטים ומדדים'}
               {extSync.state === 'empty' && 'לא נמצאו פוסטים — ודא שאתה מחובר לפייסבוק בדפדפן'}
               {extSync.state === 'error' && 'הסנכרון לא הושלם, נסה שוב'}
               {extSync.state === 'timeout' && 'הסנכרון ארך יותר מדי זמן — נסה שוב'}
@@ -7635,7 +7635,7 @@ const CampaignCenter = () => {
   const { user } = useAuth();
   const { settings } = useWhiteLabel();
 
-  const brandName = settings?.agency_name || 'Realtyz AI';
+  const brandName = settings?.agency_name || 'TORAFF';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
   const [pickedChannelIds, setPickedChannelIds] = useState<Set<string>>(new Set());
 

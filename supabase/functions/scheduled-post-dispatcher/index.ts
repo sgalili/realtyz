@@ -1,4 +1,4 @@
-// Realtyz — Scheduled Post Dispatcher (JIT lazy-generator for recurring campaigns)
+// TORAFF — Scheduled Post Dispatcher (JIT lazy-generator for recurring campaigns)
 //
 // Called by pg_cron every minute. Finds `campaign_logs` rows that were inserted
 // as lightweight placeholders (status='scheduled', needs_regeneration=true) and
