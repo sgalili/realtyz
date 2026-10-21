@@ -56,6 +56,8 @@ Deno.serve(async req => {
     if(groupError) return json({error:'group_update_failed'},500);
     if(body.outcome==='session_expired') await db.from('fb_cloud_sessions').update({status:'expired',last_error:'Facebook requires sign-in',last_verified_at:now}).eq('workspace_owner_id',job.workspace_owner_id);
     await db.rpc('fb_rebalance_group_pool',{_owner:job.workspace_owner_id});
+    const {data:next} = await db.from('fb_group_join_jobs').select('id,dispatch_token').eq('workspace_owner_id',job.workspace_owner_id).eq('status','queued').order('created_at').limit(1).maybeSingle();
+    if(next) await fetch(`${url}/functions/v1/fb-group-manager`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'dispatch',job_id:next.id,dispatch_token:next.dispatch_token})});
     return json({success:true});
   }
   if(job.status!=='queued') return json({success:true,dispatched:false});
@@ -67,7 +69,7 @@ Deno.serve(async req => {
     await db.from('fb_user_groups').update({cloud_join_state:'queued',waiting_reason:'נדרש חיבור פייסבוק ושירות ענן פעיל'}).eq('id',g.id).eq('workspace_owner_id',job.workspace_owner_id);
     return json({error:'cloud_unavailable'},409);
   }
-  const {data:claimed} = await db.from('fb_group_join_jobs').update({status:'processing',attempts:job.attempts+1,claim_expires_at:new Date(Date.now()+10*60_000).toISOString()}).eq('id',job.id).eq('status','queued').eq('dispatch_token',body.dispatch_token).select('id').maybeSingle();
+  const {data:claimed} = await db.rpc('fb_claim_group_join',{_job:job.id,_token:body.dispatch_token});
   if(!claimed) return json({success:true,dispatched:false});
   try {
     const cookies = await decryptSession(s.cookies_encrypted,enc);

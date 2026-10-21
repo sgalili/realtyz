@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
         .eq("id", row.id).eq("status", "pending");
       continue;
     }
-    const { data: ready, error: preflightError } = await admin.rpc('fb_prepare_cloud_group_post', { _job: row.id });
+    const { data: ready, error: preflightError } = await admin.rpc('fb_claim_cloud_group_post', { _job: row.id });
     if (preflightError || !ready) continue;
     const { data: prepared } = await admin.from('campaign_activity_queue').select('*').eq('id', row.id).eq('status', 'processing').maybeSingle();
     if (!prepared) continue;
