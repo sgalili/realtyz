@@ -322,7 +322,7 @@ export function GroupDiscoveryDialog({
           <p className="py-4 text-center text-[14px] text-muted-foreground">לא נמצאו קבוצות. נסה מילות חיפוש אחרות.</p>
         )}
 
-        {!searching && visible.length > 0 && (
+        {!installNeeded && !searching && visible.length > 0 && (
           <div className="min-w-0 overflow-hidden rounded-lg border border-border">
             {selectable.length > 0 && (
               <button type="button" role="checkbox" aria-checked={allPicked} onClick={toggleAll} disabled={joining}
@@ -385,13 +385,13 @@ export function GroupDiscoveryDialog({
           </div>
         )}
 
-        {needsSteps.length > 0 && !joining && (
+        {!installNeeded && needsSteps.length > 0 && !joining && (
           <p className="rounded-lg bg-muted px-3 py-2 text-[14px] leading-relaxed">
             {needsSteps.length} קבוצות דורשות צעד נוסף (שאלות או אישור). לחץ "השלמה" כדי לפתוח את הקבוצה, ענה על השאלות בפייסבוק ואז לחץ "סיימתי".
           </p>
         )}
 
-        {visible.length > 0 && (
+        {!installNeeded && visible.length > 0 && (
           <div className="flex gap-2">
             <Button type="button" className="flex-1 gap-1" disabled={joining || picked.size === 0} onClick={() => void runJoin()}>
               {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
