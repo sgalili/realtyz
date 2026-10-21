@@ -5,7 +5,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { PUBLIC_LISTING_RESUME_KEY } from '@/lib/publicListingDraft';
 
-export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer';
+export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer' | 'contractor';
 
 const KEY = 'realtyz-signup-role';
 /** Developers land straight on the Yad2 import step after verification. */
@@ -14,9 +14,10 @@ export const DEVELOPER_ONBOARDING_PATH = '/developer-dashboard?onboarding=1';
 export const SIGNUP_ROLE_LABELS: Record<SignupRole, string> = {
   broker: 'מתווך',
   partner: 'שותף',
-  property_owner: 'מפרסם נכס',
-  property_seeker: 'מחפש נכס',
-  developer: 'יזם / קבלן',
+  property_owner: 'בעל הנכס',
+  property_seeker: 'קונה פרטי',
+  developer: 'יזם',
+  contractor: 'קבלן',
 };
 
 export function setPendingSignupRole(role: SignupRole) {
@@ -30,7 +31,7 @@ export function setPendingSignupRole(role: SignupRole) {
 export function readPendingSignupRole(): SignupRole | null {
   try {
     const v = window.localStorage.getItem(KEY);
-    return v === 'broker' || v === 'partner' || v === 'property_owner' || v === 'property_seeker' || v === 'developer' ? v : null;
+    return v === 'broker' || v === 'partner' || v === 'property_owner' || v === 'property_seeker' || v === 'developer' || v === 'contractor' ? v : null;
   } catch {
     return null;
   }
@@ -56,9 +57,9 @@ export async function applyPendingSignupRole(): Promise<string | null> {
   if (!user) return null;
   const { data: savedRoles, error: rolesError } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
   if (rolesError) return null;
-  if (savedRoles?.some(r => r.role === 'developer')) {
+  if (savedRoles?.some(r => !['user', 'affiliate'].includes(r.role))) {
     clearPendingSignupRole();
-    return '/developer-dashboard?import=1';
+    return null;
   }
   if (role === 'partner') {
     const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
@@ -66,29 +67,14 @@ export async function applyPendingSignupRole(): Promise<string | null> {
     clearPendingSignupRole();
     return '/affiliate';
   }
-  if (role === 'property_owner') {
-    const { data, error } = await supabase.rpc('register_as_property_owner', { _display_name: null });
-    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
-    clearPendingSignupRole();
-    try {
-      if (window.localStorage.getItem(PUBLIC_LISTING_RESUME_KEY) === '1') return '/public-listings';
-    } catch { /* storage disabled */ }
-    return '/owner/properties';
-  }
-  if (role === 'developer') {
-    const { data, error } = await supabase.rpc('register_as_developer' as any, { _display_name: null });
-    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
-    clearPendingSignupRole();
-    return DEVELOPER_ONBOARDING_PATH;
-  }
-  if (role === 'property_seeker') {
-    const { data, error } = await supabase.rpc('register_as_property_seeker', { _display_name: null });
-    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
-    clearPendingSignupRole();
-    return '/public-listings';
-  }
-  const { data, error } = await supabase.rpc('register_as_broker', { _display_name: null });
+  const { data, error } = await supabase.rpc('select_signup_user_type', { _type: role });
   if (error || !(data as { ok?: boolean } | null)?.ok) return null;
   clearPendingSignupRole();
+  if (role === 'developer' || role === 'contractor') return DEVELOPER_ONBOARDING_PATH;
+  if (role === 'property_seeker') return '/public-listings';
+  if (role === 'property_owner') {
+    try { if (window.localStorage.getItem(PUBLIC_LISTING_RESUME_KEY) === '1') return '/public-listings'; } catch { /* storage disabled */ }
+    return '/owner/properties';
+  }
   return '/dashboard';
 }
