@@ -1,3 +1,8 @@
+# Role isolation and pricing audit
+- [ ] Audit role assignment and workspace RLS; correct developer identity toggle and stale workspace state.
+- [ ] Verify positive-price-only daily limits and closing slider bounds, visuals and saved values.
+- [ ] Run focused tests and authenticated workspace/identity checks; document limits of verification.
+
 # Developer projects board
 - [x] Match the global board search, advanced filters, deal controls and grid/list presentation.
 - [x] Preserve and display project/building/unit hierarchy through Yad2 extraction and sync; missing source unit data is explicitly reported, never invented.
