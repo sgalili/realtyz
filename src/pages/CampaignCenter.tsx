@@ -1162,7 +1162,7 @@ const InlineComposer = ({
           purpose: 'social_post',
           // Signals the backend that no property is attached — the broker
           // license footer must be OMITTED for general/brand posts.
-          listing_id: selectedListingId ?? null,
+          listing_id: isProjectTarget(selectedListingId) ? null : selectedListingId ?? null,
         },
       });
       if (error) throw error;
@@ -1418,7 +1418,7 @@ const InlineComposer = ({
         media_urls: attachments
           .filter((a) => a.url && !a.url.startsWith('blob:'))
           .map((a) => ({ name: a.name, kind: a.kind, url: a.url })),
-        listing_id: selectedListingId,
+        listing_id: isProjectTarget(selectedListingId) ? null : selectedListingId,
         updated_at: new Date().toISOString(),
       };
       if (logId) {
@@ -1930,6 +1930,7 @@ const InlineComposer = ({
           topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
           platform: channel.id,
           customInstructions: styleInstructions,
+          selectedListingId: selectedListingId || undefined,
           listingFocusOnly: false,
           skipLicenseFooter: true,
         },
@@ -1966,7 +1967,7 @@ const InlineComposer = ({
   useEffect(() => {
     if (editorMode || !hydrated) return;
     const id = selectedListingId;
-    if (!id) return;
+    if (!id || (isProjectTarget(id) && !listings.some(l => l.id === id))) return;
     if (listingAutoGenRef.current === id) return;
     listingAutoGenRef.current = id;
     const cached = readListingCache(id);
@@ -2086,7 +2087,7 @@ const InlineComposer = ({
       // of the "download WhatsApp" web page.
       let url = nativeWaLink(officialPhone);
       try {
-        if (selectedListingId) {
+        if (selectedListingId && !isProjectTarget(selectedListingId)) {
           const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
             body: { property_id: selectedListingId },
           });

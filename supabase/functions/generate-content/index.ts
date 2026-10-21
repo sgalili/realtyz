@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { isProjectTarget, projectCampaignTargets } from '../_shared/projectCampaignTargets.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import {
   adminClient,
@@ -67,14 +68,18 @@ serve(async (req) => {
     });
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData?.user?.id ?? null;
+    const jsonError = (error: string, status: number) => new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!userId) return jsonError('Authentication required', 401);
+    const { data: workspaceOwnerId, error: workspaceError } = await supabase.rpc('current_workspace_owner');
+    if (workspaceError || !workspaceOwnerId) return jsonError('Workspace unavailable', 403);
 
     // Mandatory grounding: workspace KB + live CRM/listings snapshot.
     const admin = adminClient();
     const [kb, kbInstructions, kbTemplates, snap] = await Promise.all([
-      loadKbSnippets(admin, userId),
-      loadKbInstructions(admin, userId),
-      loadKbPostTemplates(admin, userId),
-      loadCrmSnapshot(admin, userId),
+      loadKbSnippets(admin, workspaceOwnerId),
+      loadKbInstructions(admin, workspaceOwnerId),
+      loadKbPostTemplates(admin, workspaceOwnerId),
+      loadCrmSnapshot(admin, workspaceOwnerId),
     ]);
     const kbInstructionsBlock = renderKbInstructionsBlock(kbInstructions);
     const kbTemplatesBlock = renderKbTemplatesBlock(kbTemplates);
@@ -97,14 +102,21 @@ serve(async (req) => {
     // Fetch a specific promoted listing when supplied by the UI.
     let promotedListing: any = null;
     if (selectedListingId && userId) {
-      try {
-        const { data: row } = await admin
+      if (isProjectTarget(selectedListingId)) {
+        const projectId = String(selectedListingId).split(':')[1];
+        const { data: project, error } = await supabase.from('developer_projects').select('*').eq('id', projectId).eq('workspace_owner_id', workspaceOwnerId).maybeSingle();
+        if (error || !project) return jsonError('Project not found in active workspace', 404);
+        promotedListing = projectCampaignTargets(project).find(target => target.id === selectedListingId);
+      } else {
+        const { data: row } = await supabase
           .from("listings")
           .select("*")
           .eq("id", selectedListingId)
+          .eq('workspace_owner_id', workspaceOwnerId)
           .maybeSingle();
         if (row) promotedListing = row;
-      } catch { /* non-fatal */ }
+      }
+      if (!promotedListing) return jsonError('Property not found in active workspace', 404);
     }
 
     const platformRules: Record<string, string> = {
@@ -125,7 +137,7 @@ serve(async (req) => {
     const brokerFirst = brokerName.split(/\s+/)[0];
 
     const wsPersona = await fetchWorkspacePersona(admin as any, userId);
-    const isSaas = wsPersona.domain === "software";
+    const isSaas = wsPersona.domain === "software" && !isProjectTarget(selectedListingId);
     // A software / SaaS workspace never markets a property listing.
     if (isSaas) promotedListing = null;
 
@@ -417,6 +429,7 @@ ${EMOJI_BULLET_LAW}
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
+      signal: AbortSignal.timeout(60000),
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
@@ -478,6 +491,7 @@ ${EMOJI_BULLET_LAW}
 
     const data = await response.json();
     let content: string = data.choices?.[0]?.message?.content || "";
+    if (!content.trim()) return jsonError('AI returned no text; retry generation', 502);
 
     // Persona post-processing: strip bullets/markdown/dashes, collapse blank lines.
     content = content
