@@ -24,7 +24,6 @@ import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
 import PublicCardSummary from '@/components/public/PublicCardSummary';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
-import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 import { useWorkspace } from '@/hooks/useWorkspace';
