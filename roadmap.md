@@ -1,4 +1,5 @@
 # Developer commissions and sidebar
+- [ ] Align view options after deal controls across board, partners, inventory and developer projects; verify mobile toolbar and existing commission validation/bulk/unit tests.
 - [x] Fix workspace dropdown scrolling and remove the lead button icon; actual wheel scrolling verified from 0 to 365px.
 - [x] Add mandatory project/unit commission setup, scoped bulk assignment and individual overrides, preserving authored fees on sync.
 - [x] Enforce publication on the server and reuse standard commission badges; public publication creates ordinary listings with existing visibility guards.
