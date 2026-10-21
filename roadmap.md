@@ -1,3 +1,8 @@
+# Developer New Post repair
+- [ ] Load workspace inventory and project/building/unit targets without requiring public publication.
+- [ ] Authorize generation context server-side and avoid passing project references into listing UUID fields.
+- [ ] Test hierarchy mapping and verify real project generation; schedule only on explicit confirmation.
+
 # Intro, property headings and developer defaults
 - [x] Redesign five intro slides with gradients, highlighted Hebrew copy, swipe/side navigation and explicit dismissal; mobile/desktop checks confirm edge arrows, scroll lock and opt-out after reload.
 - [x] Wrap shared public, inventory, partner, My Ads and developer headings; a real public heading with long test text keeps its price inside with no overlap.

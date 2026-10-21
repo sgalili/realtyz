@@ -1,4 +1,5 @@
 import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
+import { isProjectTarget, projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { resolvePosterDestination, applyContactCta } from '@/lib/posterDestination';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -649,6 +650,7 @@ const listingSearchText = (listing: CampaignListing) => [
 ].map(normalizeListingText).join(' ').toLowerCase();
 
 const listingDedupeKey = (listing: CampaignListing) => {
+  if (isProjectTarget(listing.id)) return listing.id;
   const key = [listing.address, listing.city, listing.property_title, listing.rooms, listing.asking_price]
     .map((value) => normalizeListingText(value).toLowerCase())
     .join('|');
@@ -666,6 +668,7 @@ const dedupeListings = (rows: CampaignListing[]) => {
 };
 
 const listingOptionLabel = (listing: CampaignListing) => {
+  if (isProjectTarget(listing.id)) return [listing.property_title, listing.city, listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null].filter(Boolean).join(' · ');
   const location = [stripAddressNumbers(listing.address) || listing.property_title || 'נכס', listing.city].filter(Boolean).join(', ');
   const price = listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null;
   return price ? `${location} — ${price}` : location;
@@ -1159,7 +1162,7 @@ const InlineComposer = ({
           purpose: 'social_post',
           // Signals the backend that no property is attached — the broker
           // license footer must be OMITTED for general/brand posts.
-          listing_id: selectedListingId ?? null,
+          listing_id: isProjectTarget(selectedListingId) ? null : selectedListingId ?? null,
         },
       });
       if (error) throw error;
@@ -1194,6 +1197,7 @@ const InlineComposer = ({
   const [listingQuery, setListingQuery] = useState('');
   const [listings, setListings] = useState<CampaignListing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
+  const [listingsError, setListingsError] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(usesGroupTopics ? null : (initial.selectedListingId ?? null));
   const [selectedGroupTopicId, setSelectedGroupTopicId] = useState(() => groupPostTopic(initial.selectedGroupTopicId).id);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
@@ -1414,7 +1418,7 @@ const InlineComposer = ({
         media_urls: attachments
           .filter((a) => a.url && !a.url.startsWith('blob:'))
           .map((a) => ({ name: a.name, kind: a.kind, url: a.url })),
-        listing_id: selectedListingId,
+        listing_id: isProjectTarget(selectedListingId) ? null : selectedListingId,
         updated_at: new Date().toISOString(),
       };
       if (logId) {
@@ -1450,6 +1454,8 @@ const InlineComposer = ({
     let cancelled = false;
     (async () => {
       setListingsLoading(true);
+      setListingsError(false);
+      if (!workspaceOwnerId) { setListings([]); setListingsLoading(false); return; }
       try {
         const pageSize = 1000;
         const rows: CampaignListing[] = [];
@@ -1457,8 +1463,7 @@ const InlineComposer = ({
           const { data, error } = await supabase
             .from('listings')
             .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
-            .eq('status', 'live')
-            .eq('is_published', true)
+            .eq('workspace_owner_id', workspaceOwnerId)
             .order('created_at', { ascending: false })
             .range(from, from + pageSize - 1);
 
@@ -1467,23 +1472,29 @@ const InlineComposer = ({
           rows.push(...page);
           if (page.length < pageSize) break;
         }
+        for (let from = 0; ; from += pageSize) {
+          const { data, error } = await supabase.from('developer_projects').select('*').eq('workspace_owner_id', workspaceOwnerId).order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+          if (error) throw error;
+          rows.push(...(data ?? []).flatMap(p => projectCampaignTargets(p) as unknown as CampaignListing[]));
+          if ((data ?? []).length < pageSize) break;
+        }
         if (!cancelled) setListings(dedupeListings(rows));
       } catch (error) {
         console.error('[CampaignCenter] listings fetch failed', error);
-        if (!cancelled) setListings([]);
+        if (!cancelled) { setListings([]); setListingsError(true); }
       } finally {
         if (!cancelled) setListingsLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [listingPickerOpen]);
+  }, [listingPickerOpen, workspaceOwnerId]);
 
   // The full listing list is only loaded when the picker opens, so a deep-linked
   // draft fetches its own row. That way the card title shows the REAL property
   // (type + address) instead of a generic placeholder.
   const [soloListing, setSoloListing] = useState<CampaignListing | null>(null);
   useEffect(() => {
-    if (!selectedListingId) { setSoloListing(null); return; }
+    if (!selectedListingId || isProjectTarget(selectedListingId)) { setSoloListing(null); return; }
     if (listings.some((l) => l.id === selectedListingId)) return;
     let cancelled = false;
     (async () => {
@@ -1491,11 +1502,12 @@ const InlineComposer = ({
         .from('listings')
         .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
         .eq('id', selectedListingId)
+        .eq('workspace_owner_id', workspaceOwnerId ?? '')
         .maybeSingle();
       if (!cancelled && data) setSoloListing(data as unknown as CampaignListing);
     })();
     return () => { cancelled = true; };
-  }, [selectedListingId, listings]);
+  }, [selectedListingId, listings, workspaceOwnerId]);
 
   const selectedListing = listings.find((l) => l.id === selectedListingId)
     || (soloListing && soloListing.id === selectedListingId ? soloListing : null)
@@ -1519,7 +1531,9 @@ const InlineComposer = ({
     (async () => {
       const local = listings.find((l) => l.id === selectedListingId) || null;
       let pool: string[] = [];
+      if (isProjectTarget(selectedListingId)) pool = extractListingPhotoUrls(local);
       try {
+        if (isProjectTarget(selectedListingId)) throw new Error('project-local-gallery');
         const { data } = await (supabase as any).rpc('listing_photo_pool', {
           _listing_id: selectedListingId,
         });
@@ -1528,7 +1542,7 @@ const InlineComposer = ({
         );
       } catch { /* fall back to the locally cached gallery */ }
       if (pool.length === 0) pool = extractListingPhotoUrls(local as CampaignListing | null);
-      if (pool.length === 0) {
+      if (pool.length === 0 && !isProjectTarget(selectedListingId)) {
         try {
           const { data } = await supabase
             .from('listings')
@@ -1539,7 +1553,7 @@ const InlineComposer = ({
         } catch { /* ignore */ }
       }
       // Background cleanup: permanently drop logo-only frames and photos of people.
-      requestSmartMediaFilter(selectedListingId);
+      if (!isProjectTarget(selectedListingId)) requestSmartMediaFilter(selectedListingId);
       const urls = randomImageSet(pool, MAX_POST_IMAGES);
       if (cancelled) return;
       if (urls.length === 0) { setPhotosLoading(false); return; }
@@ -1575,7 +1589,7 @@ const InlineComposer = ({
    * Yad2 / Homely / Facebook sync (or any other workspace) can resurrect it.
    */
   const blocklistListingImage = async (listingId: string, url: string) => {
-    if (!listingId || !url) return;
+    if (!listingId || !url || isProjectTarget(listingId)) return;
     try {
       const { data: row, error } = await supabase
         .from('listings').select('media_photos, source_metadata').eq('id', listingId).maybeSingle();
@@ -1598,6 +1612,7 @@ const InlineComposer = ({
   // Append user-uploaded campaign images to the selected listing's gallery so
   // they survive beyond the current post and stay available everywhere.
   const appendImagesToListing = async (listingId: string, newUrls: string[]) => {
+    if (isProjectTarget(listingId)) return;
     if (!listingId || !newUrls.length) return;
     try {
       const { data: row, error } = await supabase.from('listings').select('media_photos').eq('id', listingId).maybeSingle();
@@ -1825,7 +1840,8 @@ const InlineComposer = ({
       }
     } catch (e: any) {
       if (ctrl.signal.aborted || e?.name === 'AbortError') return; // silent kill
-      toast.error('יצירת טקסט נכשלה');
+      const status = e?.context?.status;
+      toast.error(status === 429 ? 'יותר מדי בקשות. נסו שוב בעוד רגע.' : status === 402 ? 'אין מספיק קרדיטים ליצירת הפוסט.' : status === 404 ? 'הנכס לא נמצא בסביבת העבודה הפעילה. בחרו אותו מחדש.' : 'יצירת הטקסט נכשלה. נסו שוב.');
     } finally {
       releaseGeneration(ctrl);
       setGenerating(false);
@@ -1914,6 +1930,7 @@ const InlineComposer = ({
           topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
           platform: channel.id,
           customInstructions: styleInstructions,
+          selectedListingId: selectedListingId || undefined,
           listingFocusOnly: false,
           skipLicenseFooter: true,
         },
@@ -1950,7 +1967,7 @@ const InlineComposer = ({
   useEffect(() => {
     if (editorMode || !hydrated) return;
     const id = selectedListingId;
-    if (!id) return;
+    if (!id || (isProjectTarget(id) && !listings.some(l => l.id === id))) return;
     if (listingAutoGenRef.current === id) return;
     listingAutoGenRef.current = id;
     const cached = readListingCache(id);
@@ -2070,7 +2087,7 @@ const InlineComposer = ({
       // of the "download WhatsApp" web page.
       let url = nativeWaLink(officialPhone);
       try {
-        if (selectedListingId) {
+        if (selectedListingId && !isProjectTarget(selectedListingId)) {
           const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
             body: { property_id: selectedListingId },
           });
@@ -2215,7 +2232,7 @@ const InlineComposer = ({
     onConfirm({
       body,
       original_ai_body: originalAiBody,
-      listing_id: selectedListingId || null,
+      listing_id: isProjectTarget(selectedListingId) ? null : selectedListingId || null,
       mode,
       media_urls: attachments
         .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
@@ -2337,7 +2354,7 @@ const InlineComposer = ({
                 </button>
               )}
               <div className="mb-2 px-1 text-[11px] text-muted-foreground">
-                {listingsLoading ? 'טוען נכסים מהמאגר…' : `${visibleListings.length} נכסים במאגר`}
+                {listingsLoading ? 'טוען נכסים מהמאגר…' : listingsError ? 'טעינת המאגר נכשלה. סגרו ופתחו שוב כדי לנסות מחדש.' : `${visibleListings.length} נכסים במאגר`}
               </div>
               {!listingsLoading && visibleListings.length === 0 ? (
                 <p className="px-3 py-4 text-center text-xs text-muted-foreground">לא נמצאו נכסים תואמים לחיפוש</p>
