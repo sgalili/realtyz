@@ -72,9 +72,13 @@ export default function DeveloperDashboard() {
     queryKey: ['developer-projects', ws], enabled: !!ws, refetchOnMount: 'always',
     queryFn: async () => {
       if (!ws) return [];
-      const { data, error } = await supabase.from('developer_projects').select('*').eq('workspace_owner_id', ws).order('created_at', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      const projects: DeveloperProject[] = [];
+      for (let from = 0; ; from += 500) {
+        const { data, error } = await supabase.from('developer_projects').select('*').eq('workspace_owner_id', ws).order('created_at', { ascending: false }).order('id').range(from, from + 499);
+        if (error) throw error;
+        projects.push(...(data ?? []));
+        if (!data || data.length < 500) return projects;
+      }
     },
   });
   const developer = editing ? companies.find(company => company.id === editing.developer_id) : companies[0];
