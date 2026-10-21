@@ -444,9 +444,6 @@ export function useSetAffiliateReward() {
       dailyLeadCap?: number | null;
     }) => {
       if (!ownerId) throw new Error('workspace_required');
-      const { data: saved, error: readError } = await supabase.from('listings').select('features').eq('id', input.listingId).eq('workspace_owner_id', ownerId).single();
-      if (readError) throw readError;
-      const features = saved.features && typeof saved.features === 'object' && !Array.isArray(saved.features) ? saved.features : {};
       const patch: Record<string, unknown> = {
         affiliate_enabled: input.enabled,
         affiliate_reward_type: input.rewardType,
@@ -458,7 +455,6 @@ export function useSetAffiliateReward() {
         affiliate_tier3_amount: input.tier3Amount ?? 0,
         affiliate_tier4_type: input.tier4Type ?? 'fixed',
         affiliate_tier4_amount: input.tier4Amount ?? 0,
-        features: { ...features, deal_closing_commission: { type: input.tier4Type ?? 'fixed', value: input.tier4Amount ?? 0 } },
       };
       if (input.contactOptions) patch.contact_options = input.contactOptions;
       if (input.dailyLeadCap !== undefined) patch.daily_lead_cap = input.dailyLeadCap && input.dailyLeadCap > 0 ? Math.floor(input.dailyLeadCap) : null;
