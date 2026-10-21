@@ -9,6 +9,7 @@ const worker = Deno.env.get('CLOUD_BROWSER_WORKER_URL') ?? '';
 const enc = Deno.env.get('FB_SESSION_ENC_KEY') ?? '';
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const Body = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('tick') }),
   z.object({ action: z.literal('dispatch'), job_id: z.string().uuid(), dispatch_token: z.string().uuid() }),
   z.object({ action: z.literal('retry'), group_ids: z.array(z.string().uuid()).min(1).max(200) }),
   z.object({ action: z.literal('join_result'), job_id: z.string().uuid(), dispatch_token: z.string().uuid(), outcome: z.enum(['joined','requested','needs_answers','failed','session_expired']), requirements: z.array(z.string().max(2000)).max(20).optional(), error: z.string().max(1000).optional() }),
@@ -21,6 +22,14 @@ Deno.serve(async req => {
   if (!parsed.success) return json({error:'invalid_input'},400);
   const body = parsed.data;
   const db = createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',{auth:{persistSession:false}});
+  if (body.action === 'tick') {
+    if(!secret || req.headers.get('x-worker-secret') !== secret) return json({error:'unauthorized'},401);
+    await db.from('fb_group_join_jobs').update({status:'queued',dispatch_token:crypto.randomUUID(),claim_expires_at:null}).eq('status','processing').lt('claim_expires_at',new Date().toISOString());
+    const {data:due} = await db.from('fb_group_join_jobs').select('id,dispatch_token,workspace_owner_id').in('status',['queued','requested']).lte('available_at',new Date().toISOString()).order('available_at').limit(30);
+    const seen = new Set<string>();
+    for(const j of due ?? []) { if(seen.has(j.workspace_owner_id)) continue; seen.add(j.workspace_owner_id); await fetch(`${url}/functions/v1/fb-group-manager`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'dispatch',job_id:j.id,dispatch_token:j.dispatch_token})}); }
+    return json({success:true});
+  }
   if (body.action === 'retry') {
     const auth = req.headers.get('Authorization') ?? '';
     const scoped = createClient(url,Deno.env.get('SUPABASE_ANON_KEY') ?? '',{global:{headers:{Authorization:auth}},auth:{persistSession:false}});
@@ -49,7 +58,7 @@ Deno.serve(async req => {
   if(body.action==='join_result') {
     if(job.status!=='processing') return json({success:true,updated:false});
     const now = new Date().toISOString();
-    const {data:claimed,error} = await db.from('fb_group_join_jobs').update({status:body.outcome,claim_expires_at:null,last_error:body.error ?? null,updated_at:now}).eq('id',job.id).eq('status','processing').eq('dispatch_token',body.dispatch_token).select('id').maybeSingle();
+    const {data:claimed,error} = await db.from('fb_group_join_jobs').update({status:body.outcome,available_at:new Date(Date.now()+60*60_000).toISOString(),claim_expires_at:null,last_error:body.error ?? null,updated_at:now}).eq('id',job.id).eq('status','processing').eq('dispatch_token',body.dispatch_token).select('id').maybeSingle();
     if(error) return json({error:'report_failed'},500);
     if(!claimed) return json({success:true,updated:false});
     const {error:groupError} = await db.from('fb_user_groups').update({join_status:body.outcome==='joined'?'joined':body.outcome==='requested'?'pending':'not_joined',cloud_join_state:body.outcome,cloud_checked_at:now,membership_requirements:body.requirements ?? [],waiting_reason:body.error ?? (body.outcome==='needs_answers'?'נדרשות תשובות והסכמה לכללי הקבוצה':null)}).eq('id',job.group_row_id).eq('workspace_owner_id',job.workspace_owner_id).eq('is_blocked',false);
@@ -60,7 +69,7 @@ Deno.serve(async req => {
     if(next) await fetch(`${url}/functions/v1/fb-group-manager`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'dispatch',job_id:next.id,dispatch_token:next.dispatch_token})});
     return json({success:true});
   }
-  if(job.status!=='queued') return json({success:true,dispatched:false});
+  if(!['queued','requested'].includes(job.status)) return json({success:true,dispatched:false});
   const {data:g} = await db.from('fb_user_groups').select('*').eq('id',job.group_row_id).eq('workspace_owner_id',job.workspace_owner_id).maybeSingle();
   if(!g || g.is_blocked || g.pool_status==='overflow') return json({error:'group_unavailable'},409);
   const {data:s} = await db.from('fb_cloud_sessions').select('cookies_encrypted,user_agent,status,expires_at').eq('workspace_owner_id',job.workspace_owner_id).maybeSingle();

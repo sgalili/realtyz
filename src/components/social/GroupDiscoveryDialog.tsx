@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Cloud, Loader2, Plus, Search, Settings2, Users, ExternalLink, UserPlus, Activity } from "lucide-react";
+import { Check, Cloud, Loader2, Plus, Search, Settings2, Users, ExternalLink, Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,8 +36,6 @@ const STATUS_LABEL: Record<JoinStatus | "queued" | "joining" | "saved", string> 
   saved: "נשמר",
 };
 
-/** Hard cap per run so Facebook does not flag the account. */
-const MAX_JOIN_BATCH = 5;
 
 const fmtActivity = (n: number | null) => {
   if (n === null) return null;
@@ -53,8 +51,6 @@ const fmtActivity = (n: number | null) => {
  * (Railway cloud runner). No local browser extension needed. Results can be
  * saved straight into the workspace posting pool.
  *
- * Secondary path (optional): the local extension can still search and
- * auto-join in the user's own browser. It is never required.
  */
 export function GroupDiscoveryDialog({
   open, onOpenChange, blockedIds, knownIds, onJoined,

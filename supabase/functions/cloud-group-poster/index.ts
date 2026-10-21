@@ -62,6 +62,10 @@ Deno.serve(async (req) => {
     return json({ success: true });
   }
 
+  if (WORKER_SECRET) {
+    await fetch(`${SUPABASE_URL}/functions/v1/fb-group-manager`, { method:'POST', headers:{'Content-Type':'application/json','x-worker-secret':WORKER_SECRET}, body:JSON.stringify({action:'tick'}), signal:AbortSignal.timeout(20000) }).catch(() => {});
+  }
+
   /* ── dispatch tick ───────────────────────────────────────────────────── */
   const now = new Date();
   const nowIso = now.toISOString();
