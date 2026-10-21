@@ -11,7 +11,7 @@ export function partnerProjectInventory(projects: DeveloperProject[]): PartnerPr
       title: project.name, description: project.description, price: project.price_from,
       city: project.city, address: project.address, neighborhood: project.neighborhood,
       rooms: null, size_sqm: null, photos: developerProjectImages(project), url: null,
-      listing_type: projectDeal(project), property_type: 'פרויקט', raw: project,
+      listing_type: projectDeal(project), property_type: 'פרויקט', raw: { ...project, property_title: project.name, deal_type: projectDeal(project) },
       created_at: project.created_at, updated_at: project.updated_at,
     };
     return [{ project, result: base }, ...savedProjectHierarchy(project).apartments.map(unit => {
