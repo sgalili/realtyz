@@ -96,3 +96,8 @@
 - [x] GroupDiscoveryDialog is cloud-first with tabs: cloud search/save + optional extension tab + always-available manual add; no blocking "must install" prompt.
 - [x] CloudPostingSessionCard visible to all workspace members at /api-settings#cloud-automation; sync dialog shows cloud status.
 - [x] 15 focused tests pass; build OK. Railway runner must be redeployed for group_fetch support.
+
+# Cloud-only group quotas and joining
+- [ ] Remove all local extension controls from group connection/discovery; display persisted cloud status.
+- [ ] Enforce 100 active/200 reserve per authorized affiliate connection, enqueue cloud joins and rotate eligible reserves.
+- [ ] Handle membership questions/rules without fabricated answers; verify tests and UI, identify external worker deployment blockers.
