@@ -1,6 +1,6 @@
 # Closing split explanations
-- [ ] Add broker registration/onboarding disclosure and shared closing slider/pricing notes; preserve visibility gates and payout logic.
-- [ ] Run focused checks and verify registration/pricing UI.
+- [x] Added shared broker signup/onboarding disclosure, dynamic closing-slider gross/net breakdown and asterisk notes in authorized closing pricing and public-board cells; no payout or permission changes.
+- [x] 11 focused tests pass, including the 1.0% → 0.8%/0.2% example and unauthorized hiding. Broker signup explanation and empty license field verified in mobile/desktop browser; preview build passes. Authorized broker public-board display was tested at component level, not in a live broker session.
 
 # Universal broker license enforcement
 - [x] Added private official-registry evidence and database guards for grants/profile/affiliate updates; checked every existing broker license against the current government source, archived and removed 8 invalid role rows; zero unverified broker roles remain.
