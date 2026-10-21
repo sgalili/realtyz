@@ -147,7 +147,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
               <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" />
             </button>
           </PopoverTrigger>
-          <PopoverContent dir="rtl" align="end" side="bottom" sideOffset={6} className="w-72 p-1.5">
+          <PopoverContent dir="rtl" align="end" side="bottom" sideOffset={6} className="flex max-h-[var(--radix-popover-content-available-height)] w-72 flex-col overflow-hidden p-1.5" onWheel={event => event.stopPropagation()}>
             <p className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground">
               {isSuperAdmin ? '\n' : 'מרחבי עבודה'}
             </p>
@@ -162,7 +162,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                 />
               </div>
             )}
-            <div className="flex max-h-72 flex-col overflow-y-auto">
+            <div role="region" aria-label="רשימת מרחבי עבודה" tabIndex={0} className="min-h-0 max-h-72 overflow-y-auto overscroll-contain touch-pan-y">
               {visibleWorkspaces.length === 0 && (
                 <p className="px-2 py-3 text-xs text-muted-foreground">לא נמצאו חשבונות</p>
               )}
@@ -176,7 +176,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     type="button"
                     onClick={() => pick(w.workspace_owner_id, label)}
                     className={cn(
-                      'flex items-center gap-2.5 rounded-md px-2 py-2 text-right text-sm transition-colors hover:bg-primary/10',
+                      'flex w-full shrink-0 items-center gap-2.5 rounded-md px-2 py-2 text-right text-sm transition-colors hover:bg-primary/10',
                       active && 'bg-primary/5 font-semibold text-primary',
                     )}
                   >
