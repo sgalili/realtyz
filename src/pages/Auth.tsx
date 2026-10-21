@@ -341,20 +341,20 @@ const Auth = () => {
           </div>
         </div>
 
-        {!codeSent && <h1 className="auth-login-title">הרשמה/התחברות</h1>}
-
         <Card variant="active" className="auth-login-card border border-border/60 bg-card shadow-sm" dir="rtl">
           <CardContent className={codeSent ? "p-0" : "space-y-5 p-6"}>
             {!codeSent && <>
               <div className="grid grid-cols-2 gap-1" role="group" aria-label="כניסה או הרשמה">
-                <Button type="button" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
-                <Button type="button" variant={signup ? 'default' : 'ghost'} onClick={() => setSignup(true)}>הרשמה</Button>
+                <Button type="button" className="text-lg" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
+                <Button type="button" className="text-lg" variant={signup ? 'default' : 'ghost'} onClick={() => setSignup(true)}>הרשמה</Button>
               </div>
               {signup && <div className="space-y-2">
-                <Label htmlFor="signup-type">סוג משתמש *</Label>
-                <Select value={signupType} onValueChange={value => setSignupType(value as SignupRole)}>
-                  <SelectTrigger id="signup-type" aria-required="true"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
-                  <SelectContent>{(['broker', 'developer', 'contractor', 'property_owner', 'property_seeker'] as const).map(type => <SelectItem key={type} value={type}>{SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
+                <Select value={signupType} onValueChange={value => {
+                  if (value === 'partner') { clearPendingSignupRole(); navigate('/affiliates'); return; }
+                  setSignupType(value as SignupRole);
+                }}>
+                  <SelectTrigger id="signup-type" aria-required="true" aria-label="סוג משתמש"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
+                  <SelectContent>{(['property_seeker', 'property_owner', 'developer', 'contractor', 'broker', 'partner'] as const).map(type => <SelectItem key={type} value={type}>{SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>}
               {signup && signupType === 'broker' && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
