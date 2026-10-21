@@ -19,7 +19,7 @@ export function partnerProjectInventory(projects: DeveloperProject[]): PartnerPr
       return { project, unit, result: { ...base, key: id, localId: id,
         title: [project.name, unit.building_name ? `בניין ${unit.building_name}` : '', unit.rooms != null ? `${unit.rooms} חדרים` : `יחידה ${unit.source_unit_id}`].filter(Boolean).join(' · '),
         price: unit.price, rooms: unit.rooms, size_sqm: unit.size_sqm,
-        photos: unit.images.length ? unit.images : base.photos, property_type: unit.type ?? 'דירה',
+        photos: unit.images.length ? unit.images : base.photos, property_type: typeof unit.type === 'string' ? unit.type : 'דירה',
         raw: { ...unit, deal_type: base.listing_type, city: project.city, neighborhood: project.neighborhood },
       } };
     })];
