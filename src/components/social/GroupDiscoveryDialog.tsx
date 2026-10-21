@@ -67,8 +67,85 @@ export function GroupDiscoveryDialog({
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<Record<string, JoinStatus | "queued" | "joining">>({});
   const [joining, setJoining] = useState(false);
+  const [installNeeded, setInstallNeeded] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualUrl, setManualUrl] = useState("");
+  const [addingManual, setAddingManual] = useState(false);
   const cancelRef = useRef<(() => void) | null>(null);
   const cancelledRef = useRef(false);
+
+  // Parent asked for the install panel (an extension-only action was blocked).
+  useEffect(() => {
+    if (open && installNeededOnOpen) setInstallNeeded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, installNeededOnOpen]);
+
+  /** Live-check the extension before any extension-only action. */
+  const requireExtension = async (): Promise<boolean> => {
+    const ok = await ensureExtensionReady();
+    setInstallNeeded(!ok);
+    return ok;
+  };
+
+  const retryExtension = async () => {
+    setRetrying(true);
+    try {
+      if (await ensureExtensionReady()) {
+        setInstallNeeded(false);
+        toast.success("התוסף זוהה — אפשר לחפש ולהצטרף");
+      } else {
+        toast.error("התוסף עדיין לא זוהה", { description: "ודא שהתוסף מותקן ופעיל בדפדפן, ואז נסה שוב" });
+      }
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  const onDownloadExtension = async () => {
+    if (await downloadExtension()) {
+      toast.success("התוסף הורד — עקוב אחרי שלבי ההתקנה למעלה");
+    } else {
+      toast.error("הורדת התוסף נכשלה");
+    }
+  };
+
+  /** Manual entry: add a Facebook group by link, without the extension. */
+  const addManualGroup = async () => {
+    const name = manualName.trim();
+    const absoluteUrl = fbGroupUrl(manualUrl.trim());
+    if (!name) { toast.error("יש למלא שם קבוצה"); return; }
+    if (!absoluteUrl) { toast.error("הקישור חייב להיות כתובת קבוצת פייסבוק (facebook.com/groups/…)"); return; }
+    if (!workspaceOwnerId) return;
+    const idMatch = absoluteUrl.match(/facebook\.com\/groups\/([A-Za-z0-9._-]+)/i);
+    if (!idMatch) { toast.error("לא הצלחתי לזהות את מזהה הקבוצה מהקישור"); return; }
+    setAddingManual(true);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await (supabase as any).from("fb_user_groups").upsert({
+        workspace_owner_id: workspaceOwnerId,
+        group_id: `manual:${idMatch[1]}`,
+        group_name: name,
+        group_url: absoluteUrl,
+        page_id: pageBinding?.pageId ?? null,
+        source: "manual",
+        join_status: "pending",
+        is_selected: true,
+        imported_at: now,
+        updated_at: now,
+      }, { onConflict: "workspace_owner_id,group_id" });
+      if (error) {
+        toast.error(/group_limit_reached/.test(error.message) ? "הגעת למגבלה של 100 קבוצות" : "הוספת הקבוצה נכשלה", { description: /group_limit_reached/.test(error.message) ? undefined : error.message });
+        return;
+      }
+      setManualName("");
+      setManualUrl("");
+      toast.success("הקבוצה נוספה ידנית ותיכנס לפרסום");
+      onJoined?.();
+    } finally {
+      setAddingManual(false);
+    }
+  };
 
   const visible = useMemo(
     () => sortDiscovered(results.filter((g) => !blockedIds?.has(g.group_id)), sortBy),
