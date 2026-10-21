@@ -274,11 +274,13 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       <header className="bg-card">
         <div className="w-full px-4 pb-0 pt-2">
           {embedded ? null : (
-            <div className="relative z-50 flex min-h-11 items-center gap-x-2 bg-card sm:gap-x-3">
-              <Button variant="ghost" className="h-auto shrink-0 p-0 hover:bg-transparent" aria-label="TORAF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" /></Button>
-              <h1 className="min-w-0 truncate whitespace-nowrap text-base font-bold text-foreground sm:text-2xl">לוח שיווק שותפים</h1>
-              <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
+              <h1 className="sr-only">לוח שיווק שותפים</h1>
+              <div className="flex items-center justify-start">
                 {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-9 w-9 border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><UserRound className="h-5 w-5" /></Button>}
+              </div>
+              <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[41.6px] shrink-0 sm:h-[52px]" /></Button>
+              <div className="flex items-center justify-end">
                 <PublicListingPublisher autoResume />
               </div>
             </div>
