@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Network, Coins, Share2, Sparkles, Rocket, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Share2, Sparkles, Rocket, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { CoinsCurrency, NetworkHomes } from '@/components/public/welcomeIcons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dismissWelcome, welcomeDismissed } from '@/lib/welcomePreference';
@@ -8,8 +9,8 @@ type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
 
 const SLIDES = [
-  { icon: Network, theme: 1, title: <>לוח שותפים <Hi tone="gold">מטורף</Hi></>, text: <>כל הנכסים, כל ה<Hi tone="sky">שותפים</Hi> וכל ההזדמנויות במקום אחד.</> },
-  { icon: Coins, theme: 2, title: <>המוכר קובע את ה<Hi tone="gold">עמלות</Hi></>, text: <>עמלות שקופות מראש. לקונים ולשוכרים מחיר קבוע וברור.</> },
+  { icon: NetworkHomes, theme: 1, title: <>לוח שותפים <Hi tone="gold">מטורף</Hi></>, text: <>כל הנכסים, כל ה<Hi tone="sky">שותפים</Hi> וכל ההזדמנויות במקום אחד.</> },
+  { icon: CoinsCurrency, theme: 2, title: <>המוכר קובע את ה<Hi tone="gold">עמלות</Hi></>, text: <>עמלות שקופות מראש. לקונים ולשוכרים מחיר קבוע וברור.</> },
   { icon: Share2, theme: 3, title: <>כאן כולם <Hi tone="red">שותפים</Hi></>, text: <>פרטיים, מתווכים ויזמים משווקים נכסים ומרוויחים <Hi tone="gold">עמלות</Hi>.</> },
   { icon: Sparkles, theme: 1, title: <>מעלים פעם אחת. <Hi tone="gold">AI</Hi> מפיץ</>, text: <>הנכס מופץ <Hi tone="sky">אוטומטית</Hi> לעשרות קבוצות, עם מענה ולידים.</> },
   { icon: Rocket, theme: 2, title: <>רווחים <Hi tone="gold">אוטומטית</Hi></>, text: <>הפצה, לידים ועמלות עובדים בשבילכם. מתחילים עכשיו.</> },
