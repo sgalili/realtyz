@@ -11,7 +11,7 @@ describe('developer import', () => {
     const data = { developer: { name: 'Company' }, projects: [
       { id: 'a', name: 'A', city: { text: 'אשדוד' }, url: '/yad1/project/a', images: [{ url: 'https://media.example/a' }], apartments: [{ id: 'u', rooms: 4, floor: 0, price: 2000000, images: ['https://media.example/unit'], balconyArea: 12 }] },
       { id: 'b', name: 'B', units: [{ rooms: 3, size: 80, price: 1800000 }] },
-    ], related: [{ title: 'Unrelated ad', city: 'Other', rooms: 2, price: 1 }] };
+    ], related: [{ projectName: 'Unrelated project', projectId: 'unrelated', city: 'Other', apartments: [{ rooms: 2, price: 1 }] }] };
     const result = readPage(`<script type="application/json">${JSON.stringify(data)}</script>`, 'https://www.yad2.co.il/yad1/developers/company');
     expect(result.projects).toHaveLength(2);
     expect(result.projects[0].city).toBe('אשדוד');

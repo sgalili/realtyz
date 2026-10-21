@@ -1,3 +1,4 @@
+import { extractProjectHierarchy, mergeSource } from '../_shared/projectHierarchy.ts';
 type RecordValue = Record<string, any>;
 const record = (v: unknown): v is RecordValue => !!v && typeof v === 'object' && !Array.isArray(v);
 const text = (v: unknown): string | null => typeof v === 'string' || typeof v === 'number' ? String(v).trim() || null : null;
@@ -19,16 +20,6 @@ export function imagesOf(o: unknown): string[] {
   walk(o);
   return [...out];
 }
-function units(o: unknown, base: string, out: any[] = [], depth = 0): any[] {
-  if (depth > 18) return out;
-  if (Array.isArray(o)) o.forEach(x => units(x, base, out, depth + 1));
-  else if (record(o)) {
-    if ((o.rooms != null || o.roomsCount != null) && ['price', 'floor', 'floorNumber', 'squareMeter', 'squareMeters', 'area', 'size'].some(k => o[k] != null)) {
-      out.push({ source_unit_id: pick(o, ['id', 'apartmentId', 'unitId', 'token']), rooms: number(o.rooms ?? o.roomsCount), floor: pick(o, ['floor', 'floorNumber']), size_sqm: number(o.squareMeter ?? o.squareMeters ?? o.area ?? o.size), price: number(o.price ?? o.priceFrom), type: pick(o, ['propertyType', 'assetType', 'type.text', 'type']), source_url: sourceUrl(pick(o, ['url', 'link']), base), images: imagesOf(o), source_details: o });
-    } else Object.values(o).forEach(x => units(x, base, out, depth + 1));
-  }
-  return out.filter((u, i, all) => all.findIndex(v => JSON.stringify(v) === JSON.stringify(u)) === i);
-}
 export function extractDeveloper(payloads: unknown[], base: string) {
   const projects = new Map<string, any>();
   let developer = { company_name: null as string | null, phone: null as string | null, logo_url: null as string | null };
@@ -44,20 +35,21 @@ export function extractDeveloper(payloads: unknown[], base: string) {
     const name = pick(v, ['projectName', 'project_name', 'title', 'name']);
     const isProject = name && !/developer|company/i.test(String(v.__typename ?? '')) && (v.projectName != null || v.projectId != null || /^(projects|project|projectDetails|developerProjects)$/i.test(context));
     if (isProject) {
-      const apts = units(v, base);
+      const hierarchy = extractProjectHierarchy(v);
+      const apts = hierarchy.apartments;
       const p = { source_project_id: pick(v, ['projectId', 'project_id', 'id', 'token', 'slug']), name,
         city: pick(v, ['city.text', 'cityName', 'city', 'address.city.text', 'address.city', 'location.city']),
         neighborhood: pick(v, ['neighborhood.text', 'neighborhood', 'address.neighborhood.text']), address: pick(v, ['fullAddress', 'address.street.text', 'street.text', 'street', 'streetName', 'address']),
         total_units: number(v.totalUnits ?? v.unitsCount ?? v.numberOfUnits ?? v.apartmentsCount ?? v.totalApartments), available_units: number(v.availableUnits ?? v.availableApartments ?? v.unitsForSale),
         price_from: number(v.priceFrom ?? v.minPrice ?? v.startingPrice), delivery_date: pick(v, ['deliveryDate', 'occupancyDate', 'entryDate', 'completionDate']),
         status: pick(v, ['projectStatus.text', 'projectStatus', 'status.text', 'status', 'stage']), description: pick(v, ['description', 'about', 'info']), images: imagesOf(v),
-        source_url: sourceUrl(pick(v, ['projectUrl', 'url', 'link']), base), apartments: apts, source_details: v };
+        source_url: sourceUrl(pick(v, ['projectUrl', 'url', 'link']), base), apartments: apts, buildings: hierarchy.buildings, source_details: { ...v, hierarchy } };
       const key = p.source_project_id ?? p.source_url ?? p.name;
       const old = projects.get(key);
       projects.set(key, old ? mergeProject(old, p) : p);
       return; // Units and nested metadata remain within their parent project.
     }
-    Object.entries(v).forEach(([k, x]) => walk(x, k, depth + 1));
+    Object.entries(v).forEach(([k, x]) => { if (!/related|recommendations|similar/i.test(k)) walk(x, k, depth + 1); });
   };
   payloads.forEach(p => walk(p));
   return { developer, projects: [...projects.values()] };
@@ -67,9 +59,10 @@ export function mergeProject(old: any, fresh: any) {
   Object.entries(fresh).forEach(([k, v]) => { if (v != null && v !== '' && !Array.isArray(v)) merged[k] = v; });
   merged.images = [...new Set([...old.images, ...fresh.images])];
   const apts = new Map<string, any>();
-  [...old.apartments, ...fresh.apartments].forEach(u => apts.set(u.source_unit_id ?? u.source_url ?? JSON.stringify(u), u));
+  [...old.apartments, ...fresh.apartments].forEach(u => { const key = `${u.building_id ?? ''}:${u.source_unit_id ?? u.source_url ?? JSON.stringify(u)}`; apts.set(key, mergeSource(apts.get(key), u)); });
   merged.apartments = [...apts.values()];
-  merged.source_details = { ...old.source_details, ...fresh.source_details };
+  merged.buildings = mergeSource(old.buildings ?? [], fresh.buildings ?? []);
+  merged.source_details = mergeSource(old.source_details, fresh.source_details);
   return merged;
 }
 export function readPage(html: string, base: string) {

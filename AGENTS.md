@@ -23,7 +23,6 @@
 - Lead disputes, appeals and bans run only through audited security-definer RPCs; appeals need a neutral reviewer; bans freeze, never delete.
 - Lead categories come from generated `leads.lead_category` (lead_kind → interest_tag → deal_type); filters, counts and badges read it. Why: legacy leads stored type only in interest_tag.
 - Core identity survives partner membership; RPC-only profile consent gates entry. Mode grants no roles.
-- Developer editors preserve source JSON in scoped eight-step forms; confirm saves, never publishes.
 - Wallet lock: credit_wallets trigger locks at balance<=0; ProtectedRoute sends locked non-superadmins to /wallet. Why: billing state lives in DB.
 - payment_methods.provider_token is never client-granted; only provider backends insert cards.
 - Personal links use auth RPCs; service attribution validates listing/workspace.

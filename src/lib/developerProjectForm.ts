@@ -1,4 +1,5 @@
 import type { Tables } from '@/integrations/supabase/types';
+import { savedProjectHierarchy } from '../../supabase/functions/_shared/projectHierarchy';
 
 export type DeveloperProject = Tables<'developer_projects'>;
 export type DeveloperCompany = Tables<'developers'>;
@@ -22,7 +23,7 @@ export function projectForm(project?: DeveloperProject, company?: DeveloperCompa
     company_name: company?.company_name ?? '', phone: company?.phone ?? '', company_source_url: company?.source_url ?? '', logo_url: company?.logo_url ?? '',
     name: project?.name ?? '', description: project?.description ?? '', source_url: project?.source_url ?? '', city: project?.city ?? '', neighborhood: project?.neighborhood ?? '', address: project?.address ?? '',
     status: project?.status ?? 'marketing', total_units: str(project?.total_units), available_units: str(project?.available_units), price_from: str(project?.price_from), delivery_date: project?.delivery_date ?? '',
-    units: Array.isArray(project?.apartments) ? project.apartments.map(raw => { const u = asRecord(raw); return { ...u, source_unit_id: str(u.source_unit_id) || crypto.randomUUID(), type: str(u.type), rooms: str(u.rooms), floor: str(u.floor), size_sqm: str(u.size_sqm), price: str(u.price), count: str(u.count), balcony_sqm: str(u.balcony_sqm), parking: str(u.parking) }; }) : [],
+    units: project ? savedProjectHierarchy(project).apartments.map(raw => { const u = asRecord(raw); return { ...u, source_unit_id: str(u.source_unit_id) || crypto.randomUUID(), type: str(u.type), rooms: str(u.rooms), floor: str(u.floor), size_sqm: str(u.size_sqm), price: str(u.price), count: str(u.count), balcony_sqm: str(u.balcony_sqm), parking: str(u.parking) }; }) : [],
     images: Array.isArray(project?.images) ? project.images.filter((v): v is string => typeof v === 'string') : project?.image_url ? [project.image_url] : [],
     specifications: str(manual.specifications ?? details.specifications ?? details.specification), amenities: Array.isArray(manual.amenities) ? manual.amenities.filter((v): v is string => typeof v === 'string') : [],
   };
@@ -47,6 +48,6 @@ export function projectPayload(form: ProjectForm, original?: DeveloperProject) {
     status: form.status, total_units: projectNumber(form.total_units), available_units: projectNumber(form.available_units), price_from: projectNumber(form.price_from), delivery_date: form.delivery_date.trim() || null,
     description: form.description.trim() || null, source_url: form.source_url.trim() || null, images: [...new Set(form.images)], image_url: form.images[0] ?? null,
     apartments: form.units.map(u => ({ ...u, rooms: projectNumber(u.rooms), size_sqm: projectNumber(u.size_sqm), price: projectNumber(u.price), count: projectNumber(u.count), balcony_sqm: projectNumber(u.balcony_sqm), parking: projectNumber(u.parking) })),
-    source_details: { ...details, manual: { ...asRecord(details.manual), specifications: form.specifications, amenities: form.amenities } },
+    source_details: { ...details, manual: { ...asRecord(details.manual), specifications: form.specifications, amenities: form.amenities, project_overrides: { name: form.name.trim(), city: form.city.trim() || null, neighborhood: form.neighborhood.trim() || null, address: form.address.trim() || null, description: form.description.trim() || null, price_from: projectNumber(form.price_from), total_units: projectNumber(form.total_units), available_units: projectNumber(form.available_units), delivery_date: form.delivery_date.trim() || null } } },
   };
 }

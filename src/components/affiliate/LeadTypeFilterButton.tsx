@@ -83,6 +83,7 @@ export default function LeadTypeFilterButton({
   cities = [],
   neighborhoods = [],
   propertyTypes = [],
+  hideLeadFilters = false,
   className = '',
 }: {
   state: LeadFilterState;
@@ -93,12 +94,13 @@ export default function LeadTypeFilterButton({
   cities?: string[];
   neighborhoods?: string[];
   propertyTypes?: string[];
+  hideLeadFilters?: boolean;
   className?: string;
 }) {
   const { user } = useAuth();
   const { isAffiliate, isTeamMember } = useUserRole();
   // Lead type/value filters are for partners and brokers only.
-  const showLeadFilters = !!user && (isAffiliate || isTeamMember);
+  const showLeadFilters = !hideLeadFilters && !!user && (isAffiliate || isTeamMember);
   const property = propertyState ?? null;
   const active = leadFilterActiveCount(state) + (property ? propertyFilterActiveCount(property) : 0);
 
