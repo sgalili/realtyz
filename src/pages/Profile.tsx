@@ -31,6 +31,8 @@ import { ImageCropDialog } from '@/components/profile/ImageCropDialog';
 import { ManagersTab } from '@/components/profile/ManagersTab';
 import { cn } from '@/lib/utils';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
+import { useAccountIdentity } from '@/hooks/useAccountIdentity';
+import { useUserRole } from '@/hooks/useUserRole';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
@@ -408,6 +410,8 @@ function PersonalTab() {
 }
 
 function WorkspaceTab() {
+  const identity = useAccountIdentity();
+  const company = ['יזם', 'קבלן'].includes(identity.label);
   const { user } = useAuth();
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { refresh: refreshBrand } = useWhiteLabel();
@@ -576,7 +580,7 @@ function WorkspaceTab() {
           <div className="rounded-lg border bg-card/40 p-3 text-right">
             <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" />
-              <span>שם המשרד</span>
+              <span>{company ? 'שם החברה' : ['מפרסם', 'פרטי'].includes(identity.label) ? 'שם המפרסם' : 'שם המשרד'}</span>
             </div>
             <Input dir="rtl" value={agencyName} disabled={loading} onChange={(e) => setAgencyName(e.target.value)} className="h-9 text-right text-sm font-semibold" />
           </div>
@@ -656,8 +660,11 @@ export default function Profile() {
   const [params, setParams] = useSearchParams();
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { user } = useAuth();
+  const identity = useAccountIdentity();
+  const { canInviteTeam } = useUserRole();
+  const officeLabel = ['יזם', 'קבלן'].includes(identity.label) ? 'חברה' : ['מפרסם', 'פרטי', 'שותף'].includes(identity.label) ? 'פרטי מפרסם' : 'משרד';
   // Managers are only relevant for agencies with multiple brokers.
-  const isAgency = (activeWorkspace?.account_type ?? '').toLowerCase() === 'agency';
+  const isAgency = canInviteTeam && identity.label === 'מתווך' && (activeWorkspace?.account_type ?? '').toLowerCase() === 'agency';
   const tab = params.get('tab') === 'billing' ? 'personal' : params.get('tab') ?? 'personal';
   const setTab = (v: string) => {
     const next = new URLSearchParams(params);
@@ -749,7 +756,7 @@ export default function Profile() {
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <TabsList className={`grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px]`}>
           <TabsTrigger value="personal">פרופיל</TabsTrigger>
-          <TabsTrigger value="workspace">משרד</TabsTrigger>
+          <TabsTrigger value="workspace">{officeLabel}</TabsTrigger>
           <TabsTrigger value="aibrain">מח AI</TabsTrigger>
           <TabsTrigger value="connections">חיבורים</TabsTrigger>
           {isAgency && <TabsTrigger value="managers">מנהלים</TabsTrigger>}

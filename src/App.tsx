@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -169,6 +169,7 @@ const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', 
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
   // A role picked during registration (מתווך / שותף) is applied on the first
   // authenticated render, then the account lands on the matching product.
   const [roleApplied, setRoleApplied] = React.useState(false);
@@ -177,6 +178,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     let alive = true;
     void applyPendingSignupRole().then((path) => {
       if (!alive) return;
+      if (path) {
+        void queryClient.invalidateQueries({ queryKey: ['user-roles', user.id] });
+        void queryClient.invalidateQueries({ queryKey: ['workspace-owner-roles'] });
+        void queryClient.invalidateQueries({ queryKey: ['primary-user-type'] });
+      }
       setRoleApplied(true);
       if (path === '/affiliate' && window.location.pathname !== '/affiliate') {
         window.location.assign('/affiliate');
@@ -185,7 +191,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
       }
     });
     return () => { alive = false; };
-  }, [user, roleApplied]);
+  }, [user, roleApplied, queryClient]);
   const { data: walletState } = useCreditWallet();
   const walletLocked = !!walletState?.lockedAt;
   const { roles, isSuperAdmin, isAffiliate, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
@@ -208,7 +214,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     </div>
   );
 
-  if (rolesFetched && !roleLoading && roles.length === 0) {
+  if (rolesFetched && !roleLoading && (roles.length === 0 || roles.every(role => role === 'user'))) {
     if (!roleApplied) return <PageLoader />;
     return <Suspense fallback={<PageLoader />}><RoleChoiceStep /></Suspense>;
   }

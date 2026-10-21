@@ -1,3 +1,8 @@
+# Signup identity and partner sidebar
+- [x] Require five explicit primary signup types; persist through a constrained authenticated operation without changing established core roles.
+- [x] Show primary workspace identity and persistent partner switch; adapt company/office profile and authorized menus.
+- [x] Verify five signup choices, Kobi's developer identity, company tab and partner switch in the authenticated mobile drawer. Focused role/signup/commission tests run; new-account OTP registration and every role's full signup remain unverified without creating new accounts.
+
 # Developer commissions and sidebar
 - [x] Align view options after deal controls across board, partners, inventory and developer projects. Mobile/desktop loaded board, partner and real developer project toolbars verified; inventory initial toolbar verified before developer redirection. Existing mandatory fee/bulk/unit/save tests: 21 pass. No live publication performed; successful project/unit publishing still requires source units and explicit approval. Public closing-price fallback outside the authorized marketplace remains unverified; do not expose raw closing fees.
 - [x] Fix workspace dropdown scrolling and remove the lead button icon; actual wheel scrolling verified from 0 to 365px.

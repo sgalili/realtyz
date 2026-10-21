@@ -4,6 +4,11 @@ import type { AppRole } from '@/hooks/useUserRole';
 import { readAppMode, writeAppMode } from '@/hooks/useAppMode';
 
 describe('universal account identity', () => {
+  it('contractors share developer tools without acquiring broker identity', () => {
+    expect(accountIdentity(['developer'], 'contractor')).toEqual({ label: 'קבלן', home: '/developer-dashboard', canSwitch: true });
+    expect(accountIdentity(['developer', 'affiliate'], 'contractor')).toEqual(accountIdentity(['developer'], 'contractor'));
+    expect(accountIdentity(['property_seeker'], 'contractor').label).toBe('פרטי');
+  });
   it.each([
     ['developer', 'יזם', '/developer-dashboard'],
     ['agent', 'מתווך', '/'],
