@@ -464,8 +464,6 @@ ${EMOJI_BULLET_LAW}
         ],
         temperature: 1.0,
         top_p: 0.95,
-        presence_penalty: 0.7,
-        frequency_penalty: 0.85,
         max_tokens: focusOnly ? 700 : 800,
       }),
     });
