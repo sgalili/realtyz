@@ -216,6 +216,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
 
   if (rolesFetched && !roleLoading && (roles.length === 0 || roles.every(role => role === 'user'))) {
     if (!roleApplied) return <PageLoader />;
+    if (location.pathname === '/profile') return <>{children}</>;
     return <Suspense fallback={<PageLoader />}><RoleChoiceStep /></Suspense>;
   }
 

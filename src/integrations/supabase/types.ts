@@ -1223,6 +1223,27 @@ export type Database = {
           },
         ]
       }
+      broker_role_suspensions: {
+        Row: {
+          reason: string
+          role: Database["public"]["Enums"]["app_role"]
+          suspended_at: string
+          user_id: string
+        }
+        Insert: {
+          reason?: string
+          role: Database["public"]["Enums"]["app_role"]
+          suspended_at?: string
+          user_id: string
+        }
+        Update: {
+          reason?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          suspended_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       budget_limits: {
         Row: {
           created_at: string
@@ -5742,6 +5763,30 @@ export type Database = {
         }
         Relationships: []
       }
+      official_brokers_registry: {
+        Row: {
+          checked_at: string
+          holder_name: string
+          license_number: string
+          source_updated_at: string
+          source_url: string
+        }
+        Insert: {
+          checked_at?: string
+          holder_name: string
+          license_number: string
+          source_updated_at: string
+          source_url: string
+        }
+        Update: {
+          checked_at?: string
+          holder_name?: string
+          license_number?: string
+          source_updated_at?: string
+          source_url?: string
+        }
+        Relationships: []
+      }
       onboarding_progress: {
         Row: {
           completed_at: string | null
@@ -8235,6 +8280,10 @@ export type Database = {
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
+      complete_official_license_verification: {
+        Args: { _number: string; _uid: string }
+        Returns: undefined
+      }
       compute_closing_split: {
         Args: { _submission_id: string }
         Returns: undefined
@@ -8837,6 +8886,10 @@ export type Database = {
           total_topups: number
         }[]
       }
+      get_verified_user_roles: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"][]
+      }
       get_workspace_mailbox: { Args: never; Returns: Json }
       get_workspace_member_ids: {
         Args: { _owner: string }
@@ -8859,6 +8912,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_verified_broker_license: { Args: { _uid: string }; Returns: boolean }
       import_crm_leads: {
         Args: { _rows: Json }
         Returns: {
@@ -8988,6 +9042,7 @@ export type Database = {
         }
         Returns: number
       }
+      official_license_exists: { Args: { _number: string }; Returns: boolean }
       open_lead_dispute: {
         Args: { _charge_id: string; _details?: string; _reason: string }
         Returns: Json
@@ -9166,6 +9221,7 @@ export type Database = {
         }
       }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
+      suspend_unverified_broker_roles: { Args: never; Returns: number }
       track_affiliate_click: { Args: { _code: string }; Returns: undefined }
       track_listing_referral_view: {
         Args: { _code?: string; _id_or_slug: string }

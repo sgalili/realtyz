@@ -386,6 +386,20 @@
       "when": 1792554971819,
       "tag": "0054_atomic_cloud_post_and_join_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1792556101974,
+      "tag": "0055_universal_official_broker_license_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1792556177614,
+      "tag": "0056_complete_affiliate_official_license_enforcement",
+      "breakpoints": true
     }
   ]
 }

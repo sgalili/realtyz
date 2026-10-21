@@ -30,16 +30,14 @@ export function useUserRole() {
     enabled: !!user?.id,
     queryFn: async () => {
       if (!user?.id) return [] as AppRole[];
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
+      const { data, error } = await supabase.rpc('get_verified_user_roles');
       if (error) throw error;
-      return (data ?? []).map((r) => r.role as AppRole);
+      return (data ?? []) as AppRole[];
     },
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
   });
 
   // Force re-sync of role data whenever the user id changes (e.g. after login).

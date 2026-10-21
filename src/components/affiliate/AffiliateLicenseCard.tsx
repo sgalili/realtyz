@@ -13,6 +13,7 @@ import { BadgeCheck, ShieldCheck } from 'lucide-react';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import AffiliateEligibilityBadge from '@/components/affiliate/AffiliateEligibilityBadge';
 import { formatIsoDate } from '@/lib/listingDates';
+import { brokerLicenseDigits, brokerLicenseSchema, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 
 export function AffiliateLicenseCard() {
   const { license, isLoading, level4Unlocked, submit, isSubmitting } = useAffiliateLicense();
@@ -27,10 +28,10 @@ export function AffiliateLicenseCard() {
   const save = async () => {
     try {
       await submit({ licenseNumber: number, holderName: holder });
-      toast.success('הרישיון נשלח לאימות');
+      toast.success('הרישיון אומת מול פנקס המתווכים המורשים');
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
-      toast.error(message === 'invalid_license_number' ? 'מספר רישיון לא תקין' : 'שליחת הרישיון נכשלה');
+      toast.error(message || INVALID_BROKER_LICENSE);
     }
   };
 
@@ -68,7 +69,9 @@ export function AffiliateLicenseCard() {
                 <Input
                   id="affiliate-license-number"
                   value={number}
-                  onChange={(e) => setNumber(e.target.value)}
+                  onChange={(e) => setNumber(brokerLicenseDigits(e.target.value))}
+                  maxLength={10}
+                  pattern="[1-9][0-9]{0,9}"
                   inputMode="numeric"
                   dir="ltr"
                 />
@@ -82,7 +85,7 @@ export function AffiliateLicenseCard() {
                 />
               </div>
             </div>
-            <Button className="w-full sm:w-auto" disabled={isLoading || isSubmitting || number.trim().length < 3} onClick={() => void save()}>
+            <Button className="w-full sm:w-auto" disabled={isLoading || isSubmitting || !brokerLicenseSchema.safeParse(number).success} onClick={() => void save()}>
               {isSubmitting ? 'שולח...' : 'שליחת רישיון לאימות'}
             </Button>
           </div>
