@@ -9,6 +9,13 @@ vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ activeWorkspaceI
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: async () => ({ data: null }) } }));
 afterEach(() => { cleanup(); localStorage.clear(); save.mockClear(); });
 describe('existing reward settings', () => {
+  it('does not load pricing drafts belonging to another workspace', () => {
+    localStorage.setItem('affiliate-settings-draft:viewer:other:isolated', JSON.stringify({ tier4: '99999' }));
+    const listing = { id: 'isolated', affiliate_enabled: true, asking_price: 2000000, deal_type: 'sale', affiliate_tier4_type: 'fixed', affiliate_tier4_amount: 10000 } as unknown as BrokerAffiliateListing;
+    render(<RewardDialog listing={listing} open onOpenChange={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'שמירה' }));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ tier4Amount: 10000 }), expect.anything());
+  });
   it('clears each daily cap when its own price is cleared', () => {
     const listing = { id: 'limits', affiliate_enabled: true, asking_price: 2000000, deal_type: 'sale', affiliate_tier1_amount: 100, affiliate_tier2_amount: 200, affiliate_tier3_amount: 300, contact_options: { lead_daily_limits: { form: 5, whatsapp: 3, phone: 2 } } } as unknown as BrokerAffiliateListing;
     render(<RewardDialog listing={listing} open onOpenChange={() => {}} />);
