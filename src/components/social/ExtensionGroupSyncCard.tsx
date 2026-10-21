@@ -63,7 +63,20 @@ export function ExtensionGroupSyncCard({
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [open, setOpen] = useState(false);
+  const [extAlive, setExtAlive] = useState<boolean | null>(null);
   const savedRef = useRef<string>('');
+
+  // Live extension status while the sync dialog is open — no false "connected".
+  useEffect(() => {
+    if (!open) return;
+    setExtAlive(null);
+    let alive = true;
+    void verifyExtensionAlive(1500).then((ok) => { if (alive) setExtAlive(ok); });
+    const id = window.setInterval(() => {
+      void verifyExtensionAlive(1200).then((ok) => { if (alive) setExtAlive(ok); });
+    }, 5000);
+    return () => { alive = false; window.clearInterval(id); };
+  }, [open]);
 
   const signature = useMemo(() => groups.map((g) => g.group_id).sort().join('|'), [groups]);
 
