@@ -106,7 +106,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const cachedInit = readWorkspaceCache(user?.id ?? null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>(cachedInit.list);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(cachedInit.activeId);
-  const [loading, setLoading] = useState(cachedInit.list.length === 0);
+  const [loading, setLoading] = useState(true);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const initializedUserRef = useRef<string | null>(null);
 
@@ -121,7 +121,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const accountCache = readWorkspaceCache(user.id);
     setWorkspaces(accountCache.list);
     setActiveWorkspaceId(accountCache.activeId);
-    setLoading(accountCache.list.length === 0);
+    setLoading(true);
     try {
       const [{ data, error }, { data: profile }] = await Promise.all([
         supabase.rpc('get_my_workspaces'),
@@ -184,17 +184,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
+    setLoading(true);
     await queryClient.cancelQueries();
     // Change the server-side workspace first. Refetching before this completes
     // can briefly return rows from the previous tenant under the new UI label.
     const { error } = await supabase.rpc('set_active_workspace', { _owner: ownerId });
     if (error) {
+      setLoading(false);
       toast.error('לא ניתן לעבור למרחב העבודה שנבחר');
       throw error;
     }
 
     queryClient.clear();
     setActiveWorkspaceId(ownerId);
+    setLoading(false);
     window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
     writeWorkspaceCache(user.id, workspaces, ownerId);
 

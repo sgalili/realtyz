@@ -6,6 +6,7 @@ import { useUserRole, userRolesQueryKey } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { accountIdentity } from '@/lib/accountMode';
 import { useWorkspaceOwnerRoles } from '@/hooks/useWorkspaceFeatures';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useAppMode, type AppMode } from '@/hooks/useAppMode';
@@ -29,6 +30,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const ownerRoles = useWorkspaceOwnerRoles();
+  const { loading: workspaceLoading, activeWorkspaceId } = useWorkspace();
   const identity = accountIdentity(ownerRoles.length ? ownerRoles : roles);
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const busy = useIsMutating({ mutationKey: ['activate-partner', user?.id] }) > 0;
@@ -60,7 +62,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
     onError: () => toast.error('החלפת המצב נכשלה. אפשר לנסות שוב.'),
   });
 
-  if (loading || roleError || !user || !identity.canSwitch) return null;
+  if (loading || workspaceLoading || !activeWorkspaceId || !ownerRoles.length || roleError || !user || !identity.canSwitch) return null;
 
   const options: { value: AppMode; label: string }[] = [
     { value: 'broker', label: identity.label },
