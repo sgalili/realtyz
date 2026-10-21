@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { developerImportUrl } from '@/lib/developerImportUrl';
+import { mergeImportedProject } from '@/lib/developerProjectBoard';
+import ProjectHierarchyDetails from '@/components/developers/ProjectHierarchyDetails';
+import type { DeveloperProject } from '@/lib/developerProjectForm';
 
 type ImportedProject = {
   source_project_id: string | null; name: string; city: string | null; neighborhood: string | null;
@@ -55,14 +58,19 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState('');
+  const workspaceRef = useRef(activeWorkspaceId);
+  workspaceRef.current = activeWorkspaceId;
+  useEffect(() => { setPreview(null); setError(''); setBlocked(false); setLoading(false); setUrl(initialUrl ?? ''); }, [activeWorkspaceId, initialUrl]);
 
   const fetchPreview = async (value: string) => {
     if (loading) return;
     const clean = developerImportUrl(value);
     if (!clean) { setError('הדביקו את הקישור לעמוד הראשי של היזם ביד2, ולא למודעה או לפרויקט בודד'); return; }
     setUrl(clean);
+    const originWorkspace = activeWorkspaceId;
     setLoading(true); setError(''); setBlocked(false); setPreview(null);
     const { data, error: fnError } = await supabase.functions.invoke('yad2-developer-import', { body: { url: clean } });
+    if (workspaceRef.current !== originWorkspace) return;
     setLoading(false);
     if (fnError || !data?.ok) {
       let msg = 'הייבוא נכשל. אפשר להמשיך ולהוסיף פרויקטים ידנית.';
@@ -81,8 +89,8 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
   const cities = [...new Set((preview?.projects ?? []).map((p) => p.city).filter(Boolean))] as string[];
 
   const save = async () => {
-    if (!preview || !user) return;
-    const ws = activeWorkspaceId ?? user.id;
+    if (!preview || !user || !activeWorkspaceId) return;
+    const ws = activeWorkspaceId;
     setSaving(true);
     try {
       const { data: existing, error: existingError } = await supabase.from('developers').select('id,company_name,phone,logo_url,first_project_name,first_project_units').eq('workspace_owner_id', ws).eq('source_url', preview.source_url).maybeSingle();
@@ -113,17 +121,17 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
         const { data: savedProjects, error: readError } = await supabase.from('developer_projects').select('*').eq('workspace_owner_id', ws).eq('developer_id', devId);
         if (readError) throw readError;
         const rows = preview.projects.map((p) => {
-          const old = savedProjects?.find(row => row.source_project_id === (p.source_project_id ?? p.source_url ?? p.name));
+          const old = savedProjects?.find(row => row.source_project_id === (p.source_project_id ?? p.source_url ?? p.name) || !!p.source_url && row.source_url === p.source_url);
           const imported = {
           workspace_owner_id: ws, developer_id: devId, name: p.name, city: p.city, neighborhood: p.neighborhood,
           address: p.address, total_units: p.total_units, available_units: p.available_units, price_from: p.price_from,
           delivery_date: p.delivery_date, description: p.description, image_url: p.images[0] ?? null,
           images: p.images.length ? p.images : old?.images ?? [], apartments: p.apartments.length ? p.apartments as any : old?.apartments ?? [], source_url: p.source_url,
           source_details: p.source_details as any,
-          source_project_id: p.source_project_id ?? p.source_url ?? p.name, status: old?.status ?? 'marketing',
+          source_project_id: old?.source_project_id ?? p.source_project_id ?? p.source_url ?? p.name, status: old?.status ?? 'marketing',
           };
           // Partial source reads must not erase previously saved project details.
-          return Object.fromEntries(Object.entries(imported).map(([key, value]) => [key, value ?? (old as Record<string, unknown> | undefined)?.[key] ?? null])) as typeof imported;
+          return mergeImportedProject(old, imported) as typeof imported;
         });
         const { error: e } = await supabase.from('developer_projects').upsert(rows, { onConflict: 'developer_id,source_project_id' });
         if (e) throw e;
@@ -192,19 +200,7 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
                     </div>
                   </div>
                   </div>
-                  <details className="mt-2 text-sm">
-                    <summary className="cursor-pointer font-semibold">פרטי הפרויקט והדירות</summary>
-                    {p.description && <p className="mt-2 whitespace-pre-line">{p.description}</p>}
-                    <p className="mt-2">{[p.address, p.delivery_date, p.status].filter(Boolean).join(' · ')}</p>
-                    <div className="mt-2 flex gap-2 overflow-x-auto">{p.images.map(image => <img key={image} src={image} alt={p.name} className="h-24 w-32 shrink-0 rounded object-cover" />)}</div>
-                    {p.apartments.map((unit, index) => {
-                      const u = unit as { source_unit_id?: string; rooms?: number; floor?: string; size_sqm?: number; price?: number; images?: string[] };
-                      return <div key={u.source_unit_id ?? index} className="border-b py-2">
-                        <div>{[u.rooms != null ? `${u.rooms} חדרים` : '', u.floor != null ? `קומה ${u.floor}` : '', u.size_sqm != null ? `${u.size_sqm} מ״ר` : ''].filter(Boolean).join(' · ')}{u.price != null && <strong> · ₪{u.price.toLocaleString('he-IL')}</strong>}</div>
-                        {!!u.images?.length && <div className="mt-1 flex gap-2 overflow-x-auto">{u.images.map(image => <img key={image} src={image} alt="תמונת הדירה" className="h-20 w-28 shrink-0 rounded object-cover" />)}</div>}
-                      </div>;
-                    })}
-                  </details>
+                  <details className="mt-2 text-sm"><summary className="cursor-pointer font-semibold">פרטי הפרויקט והדירות</summary><div className="pt-3"><ProjectHierarchyDetails project={{ ...p, id: p.source_project_id ?? p.name } as unknown as DeveloperProject} /></div></details>
                 </li>
               ))}
             </ul>
