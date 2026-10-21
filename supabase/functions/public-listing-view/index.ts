@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!backendUrl || !serviceKey) throw new Error("missing backend configuration");
     const admin = createClient(backendUrl, serviceKey);
-    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, daily_lead_cap, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, is_published, status, affiliate_enabled, workspace_owner_id, user_id, source, source_metadata, owner_id";
+    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, daily_lead_cap, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, is_published, status, affiliate_enabled, workspace_owner_id, user_id, source, source_metadata, owner_id, developer_project_id, developer_unit_key";
 
     let query = admin.from("listings").select(columns).limit(1);
     query = UUID_RE.test(identifier) ? query.eq("id", identifier) : query.eq("slug", identifier);
@@ -39,6 +39,20 @@ Deno.serve(async (req) => {
     }
 
     const ownerId = listing.workspace_owner_id ?? listing.user_id;
+    // Hierarchy is built solely from explicitly published listing snapshots,
+    // never from private company/project rows or unpublished units.
+    const projectRows: Record<string, any>[] = [];
+    if (listing.developer_project_id && listing.developer_unit_key === 'project') {
+      for (let from = 0; ; from += 200) {
+        const { data: units, error: unitError } = await admin.from('listings').select(columns)
+          .eq('workspace_owner_id', ownerId).eq('developer_project_id', listing.developer_project_id)
+          .eq('is_published', true).eq('status', 'live').neq('developer_unit_key', 'project')
+          .order('id').range(from, from + 199);
+        if (unitError) throw unitError;
+        projectRows.push(...(units ?? []));
+        if (!units || units.length < 200) break;
+      }
+    }
     const [{ data: profile }, { data: brand }, { data: workspace }] = await Promise.all([
       admin.from("profiles").select("full_name, broker_byline, broker_license_number").eq("id", ownerId).maybeSingle(),
       admin.from("white_label_settings").select("agency_name, logo_url, landscape_logo_url").eq("user_id", ownerId).maybeSingle(),
@@ -61,6 +75,8 @@ Deno.serve(async (req) => {
         user_id: _userId,
         is_published: _isPublished,
         affiliate_enabled: _affiliateEnabled,
+        developer_project_id: _projectId,
+        developer_unit_key: _unitKey,
         ...safe
       } = row;
       // Full address (street, house number, apartment) is public.
@@ -116,6 +132,7 @@ Deno.serve(async (req) => {
       property: { ...strip(property), attribution: (listing as any).__attr },
       workspace_properties: (workspaceRows ?? []).map((r: any, i: number) => ({ ...strip(workspace_properties[i]), attribution: r.__attr })),
       attribution: (listing as any).__attr,
+      project_units: projectRows.map(row => ({ ...strip(publicProperty(row)), attribution: attributionFor(row), building_name: maskContactText(row.features?.developer_unit_details?.building_name ?? '') })),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("[public-listing-view]", error);

@@ -276,7 +276,7 @@ function PublicListingContent() {
     queryKey: ['public-listing', slug],
     enabled: !!slug,
     retry: 1,
-    queryFn: async (): Promise<{ property: PublicListing; properties: PublicListing[] } | null> => {
+    queryFn: async (): Promise<{ property: PublicListing; properties: PublicListing[]; projectUnits: (PublicListing & { buildingName: string })[] } | null> => {
       const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-listing-view?id=${encodeURIComponent(slug)}`;
       const response = await fetch(endpoint, { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } });
       if (response.status === 404) return null;
@@ -286,6 +286,7 @@ function PublicListingContent() {
       const workspaceProperties = Array.isArray(payload.workspace_properties) ? payload.workspace_properties : [];
       return {
         property: normalizeListing(payload.property, payload.property?.attribution ?? payload.attribution),
+        projectUnits: (Array.isArray(payload.project_units) ? payload.project_units : []).map((row: any) => ({ ...normalizeListing(row, row.attribution), buildingName: row.building_name || 'דירות הפרויקט' })),
         properties: [payload.property, ...workspaceProperties]
           .map((row: any) => normalizeListing(row, row?.attribution ?? payload.attribution)),
       };
@@ -471,6 +472,7 @@ function PublicListingContent() {
             {data.description && (
               <p className="whitespace-pre-line text-base leading-7 text-foreground">{data.description}</p>
             )}
+            {!!payload?.projectUnits.length && <section className="space-y-5 border-t pt-4" aria-label="דירות הפרויקט"><h2 className="text-lg font-bold">דירות הפרויקט · {payload.projectUnits.length}</h2>{[...new Set(payload.projectUnits.map(unit => unit.buildingName))].map(building => <div key={building} className="space-y-3"><h3 className="font-semibold">{building}</h3><div className="grid gap-3 sm:grid-cols-2">{payload.projectUnits.filter(unit => unit.buildingName === building).map(unit => <article key={unit.id} className="min-w-0 space-y-2 rounded-lg border border-border p-3">{unit.photos[0] && <img src={unit.photos[0]} alt={unit.title} loading="lazy" className="aspect-[4/3] w-full rounded-md object-cover" />}<div className="flex items-start justify-between gap-3"><h4 className="min-w-0 break-words font-semibold">{unit.title}</h4><bdi className="shrink-0 font-bold">{formatPrice(unit.price, unit.dealType)}</bdi></div><p className="text-sm text-muted-foreground">{unit.location}</p><p className="text-sm">{[unit.rooms ? `${unit.rooms} חדרים` : '', unit.sqm ? `${unit.sqm} מ״ר` : '', unit.floor !== null ? `קומה ${unit.floor}` : ''].filter(Boolean).join(' · ')}</p>{unit.id && <PropertyCommissionIcons listingId={unit.id} />}<Button asChild variant="outline" className="w-full"><a href={`/p/${encodeURIComponent(unit.slug || unit.id || '')}${refCode ? `?ref=${encodeURIComponent(refCode)}` : ''}`}>כל פרטי הדירה</a></Button></article>)}</div></div>)}</section>}
 
             {data.attributes.length > 0 && (
               <div className="border-t pt-4">

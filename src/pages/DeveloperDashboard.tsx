@@ -50,7 +50,7 @@ export default function DeveloperDashboard() {
     window.addEventListener('developer-projects:add', add);
     return () => window.removeEventListener('developer-projects:add', add);
   }, []);
-  useEffect(() => { setEditing(undefined); setExpandedId(null); setQuery(''); setPropFilter(EMPTY_PROPERTY_FILTER); }, [ws]);
+  useEffect(() => { setEditing(undefined); setExpandedId(null); setQuery(''); setPropFilter(EMPTY_PROPERTY_FILTER); setCommissionProject(null); setCompanyPricing(false); setFeeConfig({}); }, [ws]);
   const [query, setQuery] = useState('');
   const [deals, setDeals] = useState({ sale: true, rent: true });
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
