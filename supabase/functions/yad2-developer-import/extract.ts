@@ -20,16 +20,6 @@ export function imagesOf(o: unknown): string[] {
   walk(o);
   return [...out];
 }
-function units(o: unknown, base: string, out: any[] = [], depth = 0): any[] {
-  if (depth > 18) return out;
-  if (Array.isArray(o)) o.forEach(x => units(x, base, out, depth + 1));
-  else if (record(o)) {
-    if ((o.rooms != null || o.roomsCount != null) && ['price', 'floor', 'floorNumber', 'squareMeter', 'squareMeters', 'area', 'size'].some(k => o[k] != null)) {
-      out.push({ source_unit_id: pick(o, ['id', 'apartmentId', 'unitId', 'token']), rooms: number(o.rooms ?? o.roomsCount), floor: pick(o, ['floor', 'floorNumber']), size_sqm: number(o.squareMeter ?? o.squareMeters ?? o.area ?? o.size), price: number(o.price ?? o.priceFrom), type: pick(o, ['propertyType', 'assetType', 'type.text', 'type']), source_url: sourceUrl(pick(o, ['url', 'link']), base), images: imagesOf(o), source_details: o });
-    } else Object.values(o).forEach(x => units(x, base, out, depth + 1));
-  }
-  return out.filter((u, i, all) => all.findIndex(v => JSON.stringify(v) === JSON.stringify(u)) === i);
-}
 export function extractDeveloper(payloads: unknown[], base: string) {
   const projects = new Map<string, any>();
   let developer = { company_name: null as string | null, phone: null as string | null, logo_url: null as string | null };
@@ -59,7 +49,7 @@ export function extractDeveloper(payloads: unknown[], base: string) {
       projects.set(key, old ? mergeProject(old, p) : p);
       return; // Units and nested metadata remain within their parent project.
     }
-    Object.entries(v).forEach(([k, x]) => walk(x, k, depth + 1));
+    Object.entries(v).forEach(([k, x]) => { if (!/related|recommendations|similar/i.test(k)) walk(x, k, depth + 1); });
   };
   payloads.forEach(p => walk(p));
   return { developer, projects: [...projects.values()] };
