@@ -10,6 +10,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { useExtensionGroups, readExtensionGroups, type ExtensionGroup } from '@/lib/extensionGroupBridge';
 import { ExtensionDownloadButton, isExtensionInstalled } from '@/components/social/ExtensionDownloadButton';
+import { verifyExtensionAlive } from '@/lib/extensionDetect';
 import { pairExtension, readRunnerStatus } from '@/lib/extensionPairing';
 
 const FB_GROUPS_URL = 'https://www.facebook.com/groups/joins/?nav_source=tab';
@@ -62,7 +63,20 @@ export function ExtensionGroupSyncCard({
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [open, setOpen] = useState(false);
+  const [extAlive, setExtAlive] = useState<boolean | null>(null);
   const savedRef = useRef<string>('');
+
+  // Live extension status while the sync dialog is open — no false "connected".
+  useEffect(() => {
+    if (!open) return;
+    setExtAlive(null);
+    let alive = true;
+    void verifyExtensionAlive(1500).then((ok) => { if (alive) setExtAlive(ok); });
+    const id = window.setInterval(() => {
+      void verifyExtensionAlive(1200).then((ok) => { if (alive) setExtAlive(ok); });
+    }, 5000);
+    return () => { alive = false; window.clearInterval(id); };
+  }, [open]);
 
   const signature = useMemo(() => groups.map((g) => g.group_id).sort().join('|'), [groups]);
 
@@ -139,6 +153,9 @@ export function ExtensionGroupSyncCard({
     let alive = true;
     const tick = async () => {
       if (!alive || !isExtensionInstalled()) return;
+      // Live check before pairing: a stale passive flag must not trigger a
+      // pairing attempt the extension can never answer.
+      if (!(await verifyExtensionAlive(1200))) return;
       const status = await readRunnerStatus();
       if (!alive) return;
       if (!status?.paired) await pairExtension();
@@ -204,6 +221,17 @@ export function ExtensionGroupSyncCard({
               ודא שתוסף Realtyz מותקן ופעיל בדפדפן, ואז פתח את עמוד הקבוצות שלך בפייסבוק. התוסף יאסוף את הקבוצות
               והמערכת תשמור אותן אוטומטית כאן.
             </DialogDescription>
+            {extAlive === true && (
+              <p className="text-[14px] font-medium text-emerald-600">✓ התוסף מזוהה ופעיל בדפדפן</p>
+            )}
+            {extAlive === false && (
+              <p className="text-[14px] font-medium text-destructive">
+                התוסף לא זוהה בדפדפן — השתמש בכפתור "תוסף" להורדה והתקנה, ואז נסה שוב.
+              </p>
+            )}
+            {extAlive === null && (
+              <p className="text-[14px] text-muted-foreground">בודק שהתוסף פעיל בדפדפן…</p>
+            )}
           </DialogHeader>
           <ol className="list-inside list-decimal space-y-1 text-[15px] leading-relaxed text-muted-foreground">
             <li>ודא שהתוסף פעיל (סמל Realtyz בסרגל הדפדפן).</li>

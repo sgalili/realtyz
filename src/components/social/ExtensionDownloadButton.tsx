@@ -4,19 +4,10 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { readExtensionGroups } from '@/lib/extensionGroupBridge';
+import { downloadExtension, isExtensionInstalled } from '@/lib/extensionDetect';
 
-const EXT_INSTALLED_KEY = 'rz-ext-installed';
-const ZIP_PATH = '/realtyz-extension.zip';
-
-/** True once the companion extension has touched this page (or pushed groups). */
-export const isExtensionInstalled = (): boolean => {
-  try {
-    if (document.documentElement.getAttribute('data-realtyz-extension') === '1') return true;
-    if (localStorage.getItem(EXT_INSTALLED_KEY) === '1') return true;
-  } catch { /* noop */ }
-  return readExtensionGroups().length > 0;
-};
+// Re-exported for existing callers; the logic lives in @/lib/extensionDetect.
+export { isExtensionInstalled };
 
 /**
  * "תוסף" — one-click download of the pre-packaged Chrome extension.
@@ -33,20 +24,10 @@ export function ExtensionDownloadButton({ className }: { className?: string }) {
   }, []);
 
   const download = () => {
-    fetch(ZIP_PATH)
-      .then((res) => {
-        if (!res.ok) throw new Error(`הורדה נכשלה (${res.status})`);
-        return res.blob();
-      })
-      .then((blob) => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'realtyz-extension.zip';
-        a.click();
-        URL.revokeObjectURL(a.href);
-        setOpen(true);
-      })
-      .catch((err) => toast.error('הורדת התוסף נכשלה', { description: err?.message }));
+    void downloadExtension().then((ok) => {
+      if (ok) setOpen(true);
+      else toast.error('הורדת התוסף נכשלה');
+    });
   };
 
   return (
