@@ -21,10 +21,10 @@ type PricingDetails = {
   contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[]; lead_daily_limits?: import('@/lib/closingFee').LeadDailyLimits };
 };
 
-export function LeadPricingInfo({ listing, details, gross = false }: { listing: PricingListing; details: PricingDetails; gross?: boolean }) {
+export function LeadPricingInfo({ listing, details, gross = false, closingOnly = false }: { listing: PricingListing; details: PricingDetails; gross?: boolean; closingOnly?: boolean }) {
   const { level4Unlocked } = useAffiliateLicense();
   const options = details.contact_options ?? {};
-  const rows = [
+  const rows = closingOnly ? [] : [
     { key: 'form' as const, label: 'ליד דיגיטלי · שם וטלפון', amount: listing.tier1_amount, questions: [] },
     { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
     { key: 'phone' as const, label: 'ליד מסונן בשיחת טלפון', amount: listing.tier3_amount, questions: options.questions_phone ?? options.questions ?? [] },
@@ -41,7 +41,7 @@ export function LeadPricingInfo({ listing, details, gross = false }: { listing: 
   </div>;
 }
 
-export default function LeadPricingDialog({ listing, referralId, children, readOnly = false, compact = true, gross = false }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean }) {
+export default function LeadPricingDialog({ listing, referralId, children, readOnly = false, compact = true, gross = false, closingOnly = false }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean; closingOnly?: boolean }) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const workspaceId = useActiveWorkspaceOwnerId();
@@ -63,13 +63,13 @@ export default function LeadPricingDialog({ listing, referralId, children, readO
   });
   return <>
     <Button variant="ghost" className="h-auto justify-start px-1 py-1" aria-label="תמחור לידים" title="תמחור לידים" onClick={(event) => { event.stopPropagation(); setOpen(true); }}>
-      {children ?? <CommissionTierBadges tiers={{ tier1: listing.tier1_amount, tier2: listing.tier2_amount, tier3: listing.tier3_amount, tier4: Number(listing.tier4_amount ?? 0), tier4Type: listing.tier4_type ?? 'fixed' }} compact={compact} />}
+      {children ?? <CommissionTierBadges tiers={{ tier1: listing.tier1_amount, tier2: listing.tier2_amount, tier3: listing.tier3_amount, tier4: Number(listing.tier4_amount ?? 0), tier4Type: listing.tier4_type ?? 'fixed' }} compact={compact} closingOnly={closingOnly} />}
     </Button>
     {query.data?.editable && open ? <RewardDialog listing={query.data.editable} open={open} onOpenChange={setOpen} /> : <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader><DialogTitle>תמחור לידים · {listing.property_title || 'נכס'}</DialogTitle><DialogDescription>סוגי הלידים והתגמולים לשותף</DialogDescription></DialogHeader>
         {query.isLoading ? <p role="status">טוען פרטי תמחור…</p> : query.isError ? <div role="alert" className="space-y-2"><p>לא ניתן לטעון את פרטי התמחור כרגע.</p><Button variant="outline" onClick={() => void query.refetch()}>ניסיון נוסף</Button></div> : query.data ? <>
-          <LeadPricingInfo listing={listing} details={query.data.details} gross={gross} />
+          <LeadPricingInfo listing={listing} details={query.data.details} gross={gross} closingOnly={closingOnly} />
           {referralId && <section className="border-t pt-4"><LeftoverDiscountButton referralId={referralId} inline /></section>}
         </> : null}
       </DialogContent>

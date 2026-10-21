@@ -22,11 +22,14 @@ export function CommissionTierBadges({
   tiers,
   compact = false,
   level4Locked = false,
+  closingOnly = false,
 }: {
   tiers: CommissionTiers;
   compact?: boolean;
   /** True for partners without a verified broker license (locks level 4). */
   level4Locked?: boolean;
+  /** Show only the deal-closing commission (used by the public board column). */
+  closingOnly?: boolean;
 }) {
   const { level4Unlocked } = useAffiliateLicense();
   const showClosing = level4Unlocked && !level4Locked;
@@ -36,7 +39,7 @@ export function CommissionTierBadges({
     { key: 'tier2', label: 'סינון בווטסאפ', value: tierValue(tiers.tier2), icon: WhatsAppIcon, tone: 'bg-primary/10 text-primary ring-primary/20', locked: false, show: tiers.tier2 > 0 },
     { key: 'tier3', label: 'שיחת טלפון', value: tierValue(tiers.tier3), icon: Phone, tone: 'bg-accent text-accent-foreground ring-border', locked: false, show: tiers.tier3 > 0 },
     { key: 'tier4', label: 'סגירת עסקה', value: showClosing ? tierValue(tiers.tier4, tiers.tier4Type) : '', icon: Trophy, tone: 'bg-success/10 text-success ring-success/20', locked: false, show: tiers.tier4 > 0 && showClosing },
-  ].filter((row) => row.show);
+  ].filter((row) => row.show && (!closingOnly || row.key === 'tier4'));
 
   if (compact) {
     return (

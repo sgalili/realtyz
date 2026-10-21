@@ -24,7 +24,6 @@ import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
 import PublicCardSummary from '@/components/public/PublicCardSummary';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
-import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import type { LeadContactOptions } from '@/lib/leadTiers';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -260,6 +259,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   }, []);
   const filtered = useMemo(() => cards.filter((card) => matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter)), [cards, propFilter]);
   const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, filtered);
+  // Signed-out visitors never see the commissions column at all.
+  const visibleColumns = useMemo(() => (user ? columns.visible : columns.visible.filter((id) => id !== 'commissions')), [columns.visible, user]);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
   const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
@@ -281,6 +282,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 <PublicListingPublisher autoResume />
               </div>
             </div>
+          )}
+          {embedded ? null : (
+            <p dir="rtl" className="flex w-full items-center justify-between text-xs font-normal text-black"><span>מפרסמים.</span><span>מרוויחים.</span><span>יחד</span></p>
           )}
           <div className={embedded ? '' : 'mt-3'}><BoardSearchControls query={query} onQueryChange={setQuery} onSearch={() => void load()} deals={deals} onDealToggle={toggleDeal} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} />} /></div>
         </div>
@@ -325,11 +329,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
-                    {columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
+                    {visibleColumns.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
                     <th className="w-10 px-2 pb-0 pt-2"><BoardColumnMenu controls={columns} /></th>
                   </tr>
                   <tr>
-                    <td colSpan={columns.visible.length + 1} className="p-0">
+                    <td colSpan={visibleColumns.length + 1} className="p-0">
 <div className="sticky start-0 px-3 pb-2 pt-[7px]" style={wrapWidth ? { width: wrapWidth } : undefined}>
                         {scrollIndicator.width < 99.5 && (
                           <div
@@ -352,18 +356,25 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     const title = cleanTitle(card);
                     const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
                     const open = expandedId === card.id;
-                    const toggle = () => setExpandedId(open ? null : card.id);
+                    const toggle = () => {
+                      if (open) { setExpandedId(null); return; }
+                      setExpandedId(card.id);
+                      // Scroll the expanded card's top to the top of the view.
+                      // A short delay lets the expansion animation start first,
+                      // otherwise the smooth scroll is cancelled by the reflow.
+                      window.setTimeout(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+                    };
                     return [
                       <tr key={card.id} id={`row-${card.id}`} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        {columns.visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap')}>
+                        {visibleColumns.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap')}>
                           {id === 'photo' ? (
                           <div className="relative w-12">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex h-4 w-4 items-center justify-center rounded-bl rounded-tr bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]">{open ? <div className="flex items-start gap-1"><div className="min-w-0 flex-1"><PublicAdHeading title={title} price={shekel(card.price)} dealType={card.deal_type} compact /></div>{user ? <div className="-me-3 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div> : <PublicCardSummary card={card} showBroker={false} dense />}</div>
+                          ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showBroker={false} dense /></div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
-                          : id === 'price' ? (open ? null : <span className="text-[17px] font-bold">{shekel(card.price)}</span>)
+                          : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}</span>
                           : id === 'commissions' ? <PropertyCommissionIcons listingId={card.id} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
@@ -376,7 +387,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                         </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
-                        <td colSpan={columns.visible.length + 1} className="p-0">
+                        <td colSpan={visibleColumns.length + 1} className="p-0">
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">

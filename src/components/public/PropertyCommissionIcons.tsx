@@ -1,11 +1,13 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useAffiliateMarketplace, listingTiers } from '@/hooks/useAffiliate';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function PropertyCommissionIcons({ listingId, raw }: { listingId: string; raw?: Record<string, unknown> }) {
   const { user } = useAuth();
+  const { level4Unlocked } = useAffiliateLicense();
   const marketplace = useAffiliateMarketplace();
   const { data: property } = useQuery({
     queryKey: ['public-commission-pricing', listingId],
@@ -16,7 +18,10 @@ export default function PropertyCommissionIcons({ listingId, raw }: { listingId:
       return data?.property as Record<string, unknown> | undefined;
     },
   });
-  if (!user) return null;
+  // Closing commissions are a licensed-brokerage activity: only registered
+  // brokers (verified license or broker roles, server-gated by
+  // partner_can_view_closing) may see this column at all.
+  if (!user || !level4Unlocked) return null;
   const source = raw ?? property;
   const listing = marketplace.data?.find((row) => row.listing_id === listingId);
   const tiers = listing ? listingTiers(listing) : {
@@ -26,6 +31,6 @@ export default function PropertyCommissionIcons({ listingId, raw }: { listingId:
     tier4: 0,
     tier4Type: 'fixed' as const,
   };
-  if (![tiers.tier1, tiers.tier2, tiers.tier3, tiers.tier4].some((value) => value > 0)) return null;
-  return <LeadPricingDialog readOnly listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }} />;
+  if (Number(tiers.tier4) <= 0) return null;
+  return <LeadPricingDialog readOnly closingOnly listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }} />;
 }
