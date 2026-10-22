@@ -1682,7 +1682,7 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .welcome-copy { color: currentColor; }
 .welcome-accent-gold { color: hsl(var(--brand-gold)); text-shadow: 0 0 22px hsl(var(--brand-gold) / .45); }
 .welcome-accent-red { color: hsl(var(--brand-red)); }
-.welcome-slide[data-theme="2"] .welcome-accent-gold { color: inherit; text-shadow: none; }
+.welcome-slide[data-theme="2"] .welcome-accent-gold { color: #FFD700; text-shadow: none; }
 .welcome-accent-sky { color: hsl(var(--social-telegram)); }
 .welcome-icon { color: currentColor; opacity: .12; will-change: transform; }
 .welcome-enter { animation: welcome-enter .52s cubic-bezier(.22,1,.36,1) both; }
