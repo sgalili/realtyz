@@ -38,7 +38,7 @@ const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
   { key: 'h3', render: () => <>יזמים וקבלנים:<br />ניהול פרויקטים, דירות ו<strong>לידים חמים</strong></> },
   { key: 'h4', render: () => <>מתווכים וסוכנויות:<br />CRM, אוטומציה ו<strong>סגירת עסקאות</strong> מהירה</> },
   { key: 'h5', render: () => <>תוכנית שותפים:<br />משתפים נכסים ומרוויחים <strong>עמלות</strong>.</> },
-  { key: 'h6', render: () => <>סוכני ה-AI:<br />עובדים בשבילך ומייצרים לך <strong>הכנסות מסביב לשעון</strong>.</> },
+  { key: 'h6', render: () => <>סוכני ה-AI:<br />עובדים בשבילך ומייצרים לך <strong>הכנסה פאסיבית</strong>.</> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
@@ -322,12 +322,7 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="auth-fixed-header w-full shrink-0 text-center">
-          <img
-            src={realtyzLogo}
-            alt="TORAFF"
-            className="auth-official-logo mx-auto mb-[36px] mt-[55px] h-[3.6rem] w-auto object-contain"
-          />
-          <div className="auth-header-ticker mx-auto" aria-live="polite">
+          <div className="auth-header-ticker mx-auto mb-[24px] mt-[55px]" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
               <span
                 key={line.key}
@@ -340,6 +335,11 @@ const Auth = () => {
               </span>
             ))}
           </div>
+          <img
+            src={realtyzLogo}
+            alt="TORAFF"
+            className="auth-official-logo mx-auto mb-[30px] h-[3.6rem] w-auto object-contain"
+          />
         </div>
 
         <Card variant="active" className="auth-login-card border border-border/60 bg-card shadow-sm" dir="rtl">
@@ -401,31 +401,28 @@ const Auth = () => {
                   dir={isPhoneFlow && !formattedPhone || !isPhoneFlow && !email ? 'rtl' : 'ltr'}
                 />
               ) : (
-                <div className="space-y-2">
-                  <Label className="auth-method-label" htmlFor={isPhoneFlow ? 'auth-phone' : 'auth-email'}>
-                    {activeMethod === 'whatsapp' ? 'מה מספר הווטסאפ שלך?' : isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}
-                  </Label>
-                  <div
-                    className={`auth-method-field ${activeMethod === 'whatsapp' ? 'auth-method-field-whatsapp' : ''} ${activeMethod === 'sms' ? 'auth-method-field-sms' : ''} ${activeMethod === 'email' ? 'auth-method-field-email' : ''}`}
-                  >
-                    {activeMethod === 'whatsapp' ? (
-                      <WhatsAppLogo />
-                    ) : activeMethod === 'sms' ? (
-                      <MessageSquareText className="auth-sms-mark h-5 w-5" />
-                    ) : (
-                      <Mail className="h-5 w-5" />
-                    )}
-                    <Input
-                      id={isPhoneFlow ? 'auth-phone' : 'auth-email'}
-                      className="auth-method-input"
-                      type={isPhoneFlow ? 'tel' : 'email'}
-                      inputMode={isPhoneFlow ? 'tel' : 'email'}
-                      value={isPhoneFlow ? formattedPhone : email}
-                      onChange={(e) => (isPhoneFlow ? handlePhoneChange(e.target.value) : setEmail(e.target.value))}
-                      required
-                      dir="ltr"
-                    />
-                  </div>
+                <div
+                  className={`auth-method-field ${activeMethod === 'whatsapp' ? 'auth-method-field-whatsapp' : ''} ${activeMethod === 'sms' ? 'auth-method-field-sms' : ''} ${activeMethod === 'email' ? 'auth-method-field-email' : ''}`}
+                >
+                  {activeMethod === 'whatsapp' ? (
+                    <WhatsAppLogo />
+                  ) : activeMethod === 'sms' ? (
+                    <MessageSquareText className="auth-sms-mark h-5 w-5" />
+                  ) : (
+                    <Mail className="h-5 w-5" />
+                  )}
+                  <Input
+                    id={isPhoneFlow ? 'auth-phone' : 'auth-email'}
+                    className="auth-method-input"
+                    aria-label={isPhoneFlow ? 'מספר טלפון' : 'אימייל'}
+                    placeholder={activeMethod === 'whatsapp' ? 'מה מספר הווטסאפ שלך?' : isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}
+                    type={isPhoneFlow ? 'tel' : 'email'}
+                    inputMode={isPhoneFlow ? 'tel' : 'email'}
+                    value={isPhoneFlow ? formattedPhone : email}
+                    onChange={(e) => (isPhoneFlow ? handlePhoneChange(e.target.value) : setEmail(e.target.value))}
+                    required
+                    dir={isPhoneFlow ? (formattedPhone ? 'ltr' : 'rtl') : (email ? 'ltr' : 'rtl')}
+                  />
                 </div>
               )}
               {!codeSent && signup && signupType === 'broker' && <BrokerLicenseField compact value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
