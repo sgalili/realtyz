@@ -30,7 +30,6 @@ import type { LeadContactOptions } from '@/lib/leadTiers';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
 import { propertyInquiryRef } from '@/lib/propertyReferral';
-import PropertyReferralButton from '@/components/public/PropertyReferralButton';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 import BoardSearchControls from '@/components/public/BoardSearchControls';
 import HomeActivityPill from '@/components/public/HomeActivityPill';
