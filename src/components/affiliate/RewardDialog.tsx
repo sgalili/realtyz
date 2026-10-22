@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, ListChecks, Phone, TrendingUp } from 'lucide-react';
+import { ClipboardList, ListChecks, Phone, Plus, TrendingUp } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
+import { formatPrice } from '@/pages/PublicListingPage';
+import type { LeadFormField } from '@/lib/leadTiers';
+import { LEAD_PRICE_RANGES, clampLeadPrice, DAILY_UNLIMITED } from '@/lib/leadPriceRanges';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -42,6 +46,8 @@ export function RewardDialog({
   const [questions, setQuestions] = useState<string[]>([]);
   const [questionsPhone, setQuestionsPhone] = useState<string[]>([]);
   const [editingQuestions, setEditingQuestions] = useState<null | "chat" | "phone">(null);
+  const [formFields, setFormFields] = useState<LeadFormField[]>([]);
+  const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const [recommendation, setRecommendation] = useState<{
     tier1_median?: number;
     tier2_median?: number;
@@ -69,6 +75,7 @@ export function RewardDialog({
         ? options.questions
         : defaultQuestions(listing.deal_type);
     setQuestions(base);
+    setFormFields(Array.isArray((options as { form_fields?: LeadFormField[] }).form_fields) ? (options as { form_fields: LeadFormField[] }).form_fields : []);
     setQuestionsPhone(
       Array.isArray(options.questions_phone) ? options.questions_phone : base,
     );
@@ -149,9 +156,10 @@ export function RewardDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent dir="rtl" className="sm:max-w-2xl max-h-[85dvh] overflow-y-auto pb-0">
         <DialogHeader>
-          <DialogTitle className="text-right">תמחור לידים · {listing.property_title || "נכס"}</DialogTitle>
+          <DialogTitle className="text-right">תמחור לידים</DialogTitle>
+          <div className="text-right text-sm"><p className="font-semibold [overflow-wrap:anywhere]">{[[listing.address, listing.house_number].filter(Boolean).join(" "), listing.city].filter(Boolean).join(", ") || listing.property_title || "נכס"}</p>{Number(listing.asking_price) > 0 && <p className="font-bold text-primary">{formatPrice(Number(listing.asking_price), listing.deal_type === "rent" ? "rent" : "sale")}</p>}</div>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -216,19 +224,28 @@ export function RewardDialog({
                       ) : null}
                     </div>
                     <Label className="text-[11px] font-normal text-muted-foreground">{tier.hint}</Label>
-                    <div className="flex flex-wrap items-end gap-2">
-                      <Input
-                        className="min-w-0 flex-1"
-                        aria-label={`עמלה עבור ${tier.title}`}
-                        value={tier.value}
-                        inputMode="decimal"
-                        onChange={(e) => tier.setValue(clean(e.target.value))}
-                      />
-                      {num(tier.value) > 0 && <div className="w-28 shrink-0"><Label htmlFor={`cap-${tier.key}`} className="text-[11px]">מקס׳ ב־24 שעות</Label><Input id={`cap-${tier.key}`} aria-label={`מגבלה יומית עבור ${tier.title}`} inputMode="numeric" placeholder="ללא מגבלה" value={dailyCaps[tier.capKey] ?? ""} onChange={(event) => setDailyCaps(current => ({ ...current, [tier.capKey]: event.target.value.replace(/\D/g, "") }))} /></div>}
-                      <span className="w-full text-[11px] text-muted-foreground">
-                        מחיר ליד: <bdi dir="ltr">₪{tier.cost.toLocaleString("he-IL")}</bdi>
-                      </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">{num(tier.value) > 0 ? 'פעיל' : 'כבוי'}</span>
+                      <Switch aria-label={`הפעלת ${tier.title}`} checked={num(tier.value) > 0} onCheckedChange={(on) => tier.setValue(on ? String(LEAD_PRICE_RANGES[tier.capKey].min) : "")} />
                     </div>
+                    {num(tier.value) > 0 && <>
+                      <div className="text-center"><bdi dir="ltr" className="text-2xl font-bold text-primary">₪{num(tier.value).toLocaleString("he-IL")}</bdi></div>
+                      <div dir="ltr" className="space-y-1 px-2">
+                        <Slider dir="ltr" aria-label={`עמלה עבור ${tier.title}`} min={LEAD_PRICE_RANGES[tier.capKey].min} max={LEAD_PRICE_RANGES[tier.capKey].max} step={5} value={[clampLeadPrice(tier.capKey, num(tier.value))]} onValueChange={(v) => v[0] !== undefined && tier.setValue(String(v[0]))} className="closing-slider h-6" />
+                        <div className="flex justify-between text-xs tabular-nums text-muted-foreground"><span>₪{LEAD_PRICE_RANGES[tier.capKey].min}</span><span>₪{LEAD_PRICE_RANGES[tier.capKey].max}</span></div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">מקס׳ לידים ב־24 שעות</span><strong>{num(dailyCaps[tier.capKey] ?? "") > 0 ? num(dailyCaps[tier.capKey] ?? "") : "ללא הגבלה"}</strong></div>
+                        <div dir="ltr" className="px-2"><Slider dir="ltr" aria-label={`מגבלה יומית עבור ${tier.title}`} min={1} max={DAILY_UNLIMITED} step={1} value={[num(dailyCaps[tier.capKey] ?? "") > 0 ? Math.min(DAILY_UNLIMITED - 1, num(dailyCaps[tier.capKey] ?? "")) : DAILY_UNLIMITED]} onValueChange={(v) => setDailyCaps(c => ({ ...c, [tier.capKey]: v[0] === undefined || v[0] >= DAILY_UNLIMITED ? "" : String(v[0]) }))} className="h-6" /></div>
+                      </div>
+                      {tier.questionsKey ? <div className="space-y-1 rounded-md bg-muted/40 p-2">
+                        <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">שאלות הסינון</span><Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => setEditingQuestions(tier.questionsKey)}><ListChecks className="h-3.5 w-3.5" />עריכה</Button></div>
+                        {(tier.questionsKey === "phone" ? questionsPhone : questions).length ? <ol className="list-inside list-decimal space-y-0.5 text-xs">{(tier.questionsKey === "phone" ? questionsPhone : questions).map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol> : <p className="text-xs text-muted-foreground">לא הוגדרו שאלות</p>}
+                      </div> : <div className="space-y-1 rounded-md bg-muted/40 p-2">
+                        <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">שדות בטופס דף נחיתה</span><Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => setFormFieldsOpen(true)}><Plus className="h-3.5 w-3.5" />הוספת שדה</Button></div>
+                        <ol className="list-inside list-decimal space-y-0.5 text-xs"><li>שם מלא · חובה</li><li>טלפון · חובה</li>{formFields.filter(f => f.label.trim()).map(f => <li key={f.id}>{f.label} · {f.required ? "חובה" : "רשות"}</li>)}</ol>
+                      </div>}
+                    </>}
                   </div>
                 ))}
 
@@ -239,7 +256,7 @@ export function RewardDialog({
         </div>
 
         {enabled ? (
-          <DialogFooter className="flex-row items-center justify-between sm:justify-between">
+          <DialogFooter className="sticky bottom-0 z-10 -mx-6 flex-row items-center justify-between border-t bg-background px-6 py-3 sm:justify-between">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               ביטול
             </Button>
@@ -259,7 +276,7 @@ export function RewardDialog({
                     tier4Type,
                     tier4Amount: num(tier4),
                     dailyLeadCap: null,
-                    contactOptions: { ...listing.contact_options, lead_daily_limits: activeLeadLimits([num(tier1), num(tier2), num(tier3)], Object.fromEntries(Object.entries(dailyCaps).map(([key, value]) => [key, num(value)])) as LeadDailyLimits), ...deriveContactOptions({
+                    contactOptions: { ...listing.contact_options, form_fields: formFields.filter(f => f.label.trim()), lead_daily_limits: activeLeadLimits([num(tier1), num(tier2), num(tier3)], Object.fromEntries(Object.entries(dailyCaps).map(([key, value]) => [key, num(value)])) as LeadDailyLimits), ...deriveContactOptions({
                       tier1: num(tier1),
                       tier2: num(tier2),
                       tier3: num(tier3),
@@ -283,6 +300,7 @@ export function RewardDialog({
           </DialogFooter>
         ) : null}
 
+        <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={formFields} onChange={setFormFields} />
         <LeadQuestionsDialog
           open={editingQuestions !== null}
           onOpenChange={(v) => setEditingQuestions(v ? editingQuestions : null)}
