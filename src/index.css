@@ -1743,5 +1743,5 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .closing-slider [role="slider"] { height: 22px; width: 22px; background: hsl(var(--card)); border: 3px solid hsl(var(--closing-current)); }
 @media (prefers-reduced-motion: reduce) { .closing-tone { transition: none; } }
 .welcome-slide[data-theme="3"] .welcome-title, .welcome-slide[data-theme="3"] .welcome-copy { position: relative; z-index: 2; }
-.welcome-slide[data-theme="3"] .welcome-rita { position: relative; z-index: 1; transform: scale(-1.6, 1.6); transform-origin: 20% bottom; -webkit-mask-image: linear-gradient(to top, transparent 0, #000 22%); mask-image: linear-gradient(to top, transparent 0, #000 22%); pointer-events: none; }
+.welcome-slide[data-theme="3"] .welcome-rita { position: relative; z-index: 1; transform: scale(-1.6, 1.6); transform-origin: 20% top; -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 62%); mask-image: linear-gradient(to bottom, #000 45%, transparent 62%); pointer-events: none; }
 .welcome-slide[data-theme="3"] .welcome-cta { position: relative; z-index: 3; }
