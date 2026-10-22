@@ -13,11 +13,11 @@ const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span 
 const SLIDES = [
   { icon: NetworkHomes, theme: 1, title: <>מחברים בין <Hi tone="red">מתווכים</Hi>, יזמים ובעלי נכסים</>, text: <>האקוסיסטם הראשון בעולם ה<Hi tone="red">נדל"ן</Hi> שמחבר את כולם לרשת <Hi tone="red">שותפים</Hi> חכמה אחת שעובדת בשבילכם אוטומטית.</> },
   { icon: CoinsCurrency, theme: 2, title: <>כאן כולם <Hi tone="gold">מרוויחים</Hi></>, text: <div className="space-y-4">
-    <p><strong>מוכרים / משכירים / מתווכים?</strong><br />אתם קובעים מראש את עמלת הסגירה ומחיר הלידים שאתם מוכנים לשלם.</p>
-    <p><strong>קונים / שוכרים?</strong><br />עמלת תיווך קבועה של 1% על מכירה (בפיקוח לאחר הקנייה) ו-10% מגובה השכירות החודשית לאחר סגירה.</p>
+    <p><strong>בעלי נכס</strong><br />אתם קובעים מראש את עמלת הסגירה ומחיר הלידים שאתם מוכנים לשלם.</p>
+    <p><strong>קונים / סוחרים</strong><br />עמלת תיווך קבועה של 1% לאחר הקנייה ו-10% מגובה השכירות החודשית לאחר חתימת חוזה.</p>
     <p><strong>חברים בתוכנית השותפים?</strong><br />משתפים נכסים. יוצרים קמפיינים אוטומטיים ומרוויחים עמלות גבוהות באוטומציה מלאה.</p>
   </div> },
-  { icon: null, theme: 3, title: <>היי, אני ריטה.<br />סוכנת ה-AI האישית שלך</>, text: <>מייצגת אתכם נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות. במילים פשוטות: ריטה מייצרת לכם הכנסה פאסיבית בזמן שאתם ישנים 😍</> },
+  { icon: null, theme: 3, title: <>היי, אני <span className="text-destructive">ריטה</span>.<br />סוכנת ה-AI האישית שלך</>, text: <>מייצגת אותך נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות.<br /><br />במילים פשוטות: אני מייצרת לך הכנסה פסיבית בזמן שאתה ישן 😍</> },
 ] as const;
 
 const FLOATING = [
@@ -96,7 +96,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
           <div className="welcome-copy welcome-enter mt-5 max-w-2xl text-[22px] font-normal leading-[1.35] [animation-delay:80ms] sm:text-[26px]">{slide.text}</div>
         </div>
         {last && <img src={ritaPointing} alt="ריטה" width={768} height={1376} decoding="async" className="welcome-rita w-auto object-contain" />}
-        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter h-9 min-h-0 whitespace-nowrap rounded-lg px-3 py-1 text-[18px] font-medium leading-tight [animation-delay:150ms]">יאללה, נכנסים ללוח!</Button>}
+        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter h-12 min-h-0 whitespace-nowrap rounded-xl px-7 py-2 text-[20px] font-extrabold leading-tight shadow-lg ring-2 ring-background/60 [animation-delay:150ms]">יאללה, נכנסים ללוח! 🚀</Button>}
       </div>
       <div className="welcome-footer relative z-10 flex shrink-0 flex-col items-center gap-2 pb-4">
         <div className="flex items-center gap-1">
