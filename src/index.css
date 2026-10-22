@@ -1412,8 +1412,10 @@
 /* Auth field typography lives outside @layer components on purpose: the Input and
    SelectTrigger components ship unlayered text-base/md:text-sm utilities that would
    otherwise beat a layered rule, leaving the user-type dropdown smaller than the
-   full-name and phone placeholders. 18px keeps all three identical. */
-.auth-unified-field {
+   full-name and phone placeholders. The class is doubled so the rule also beats the
+   md:text-sm variant regardless of where the bundler emits that media query.
+   18px keeps all three identical. */
+.auth-unified-field.auth-unified-field {
   font-size: 18px;
 }
 
