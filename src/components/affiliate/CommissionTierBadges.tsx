@@ -72,4 +72,26 @@ export function CommissionTierBadges({
   );
 }
 
+/**
+ * Soft-gate for signed-out visitors: shows only the lead-type icons
+ * (landing-page form, WhatsApp, phone) with no cash values, to drive signup.
+ */
+export function GuestTierIcons() {
+  const icons = [ClipboardList, WhatsAppIcon, Phone];
+  return (
+    <div
+      data-commission-icons
+      className="flex items-center gap-1.5 text-muted-foreground"
+      title="התחברו כדי לראות את התגמולים"
+      aria-label="סוגי לידים זמינים — התחברו כדי לראות את התגמולים"
+    >
+      {icons.map((Icon, i) => (
+        <span key={i} className="flex h-6 w-6 items-center justify-center rounded-md bg-muted ring-1 ring-border">
+          <Icon className="h-3 w-3" />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default CommissionTierBadges;
