@@ -322,12 +322,7 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="auth-fixed-header w-full shrink-0 text-center">
-          <img
-            src={realtyzLogo}
-            alt="TORAFF"
-            className="auth-official-logo mx-auto mb-[36px] mt-[55px] h-[3.6rem] w-auto object-contain"
-          />
-          <div className="auth-header-ticker mx-auto" aria-live="polite">
+          <div className="auth-header-ticker mx-auto mb-[24px] mt-[55px]" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
               <span
                 key={line.key}
@@ -340,6 +335,11 @@ const Auth = () => {
               </span>
             ))}
           </div>
+          <img
+            src={realtyzLogo}
+            alt="TORAFF"
+            className="auth-official-logo mx-auto mb-[30px] h-[3.6rem] w-auto object-contain"
+          />
         </div>
 
         <Card variant="active" className="auth-login-card border border-border/60 bg-card shadow-sm" dir="rtl">
