@@ -38,7 +38,7 @@ const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
   { key: 'h3', render: () => <>יזמים וקבלנים:<br />ניהול פרויקטים, דירות ו<strong>לידים חמים</strong></> },
   { key: 'h4', render: () => <>מתווכים וסוכנויות:<br />CRM, אוטומציה ו<strong>סגירת עסקאות</strong> מהירה</> },
   { key: 'h5', render: () => <>תוכנית שותפים:<br />משתפים נכסים ומרוויחים <strong>עמלות</strong>.</> },
-  { key: 'h6', render: () => <>סוכני ה-AI:<br />עובדים בשבילך ומייצרים לך <strong>הכנסות מסביב לשעון</strong>.</> },
+  { key: 'h6', render: () => <>סוכני ה-AI:<br />עובדים בשבילך ומייצרים לך <strong>הכנסה פאסיבית</strong>.</> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;
