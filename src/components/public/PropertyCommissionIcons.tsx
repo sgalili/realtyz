@@ -2,6 +2,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAffiliateMarketplace, listingTiers } from '@/hooks/useAffiliate';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
+import { GuestTierIcons } from '@/components/affiliate/CommissionTierBadges';
+import { BrokerClosingInfo } from '@/components/affiliate/BrokerClosingInfo';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CLOSING_SPLIT_EXPLANATION } from '@/components/affiliate/ClosingSplitNote';
