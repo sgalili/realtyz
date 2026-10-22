@@ -9,7 +9,9 @@ import PropertyReferralButton from '@/components/public/PropertyReferralButton';
 import { readPublicListingDraft, clearPublicListingDraft, type PublicListingDraft } from '@/lib/publicListingDraft';
 import { SelectModeToggle, SelectBox, SelectAllRow } from '@/components/ui/multi-select-controls';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Share2, Megaphone } from 'lucide-react';
+import { useDeleteListings } from '@/hooks/useDeleteListings';
+import { publicUrl } from '@/lib/publicUrl';
 import { listingToDraft, missingAdFields } from '@/lib/adRecovery';
 import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown, BadgeCheck } from 'lucide-react';
 import ListingLifecycleStatus from '@/components/listings/ListingLifecycleStatus';
@@ -116,49 +118,59 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
 function ActivityProperties() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
-  const [limit, setLimit] = useState(24);
-  const [saving, setSaving] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
+  const remove = useDeleteListings();
+  const [limit, setLimit] = useState(30);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [confirm, setConfirm] = useState(false);
+  useEffect(() => { setSelectMode(false); setSelected(new Set()); }, [user?.id, activeWorkspaceId]);
   const ads = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId], enabled: !!user?.id && !!activeWorkspaceId,
     refetchInterval: 30_000, refetchOnWindowFocus: true,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
   });
-  const favorites = useQuery({
-    queryKey: ['activity-favorites', user?.id], enabled: !!user?.id,
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const ids: string[] = [];
-      for (let offset = 0; ; offset += 500) {
-        const { data, error } = await supabase.from('listing_favorites').select('listing_id').eq('user_id', user.id).order('listing_id').range(offset, offset + 499);
-        if (error) throw error;
-        ids.push(...(data ?? []).map(row => row.listing_id));
-        if ((data?.length ?? 0) < 500) break;
-      }
-      return ids;
-    },
-  });
-  const toggleFavorite = async (id: string) => {
-    if (!user?.id || saving.has(id) || !favorites.isSuccess) return;
-    setSaving(current => new Set(current).add(id));
-    const { error } = favorites.data.includes(id)
-      ? await supabase.from('listing_favorites').delete().eq('user_id', user.id).eq('listing_id', id)
-      : await supabase.from('listing_favorites').insert({ user_id: user.id, listing_id: id });
-    if (error) toast.error('שמירת המועדף נכשלה, נסו שוב');
-    else await favorites.refetch();
-    setSaving(current => { const next = new Set(current); next.delete(id); return next; });
-  };
   const owned = (ads.data ?? []).filter(row => row.relation === 'owned');
   if (ads.isLoading) return <p role="status" className="py-8 text-center text-muted-foreground">טוען נכסים…</p>;
   if (ads.isError) return <div role="alert" className="py-8 text-center">לא ניתן לטעון את הנכסים <Button variant="link" onClick={() => void ads.refetch()}>ניסיון נוסף</Button></div>;
   if (!owned.length) return <p className="py-8 text-center text-muted-foreground">עדיין אין נכסים שפרסמתם בלוח.</p>;
-  return <div className="space-y-4 py-3">
-    <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {owned.slice(0, limit).map(row => {
-        const card: PublicCard = { id: row.listing_id, slug: row.slug, title: row.title, city: row.city, street: row.address ?? '', neighborhood: null, deal_type: row.deal_type, price: row.asking_price, photos: row.image_url ? [row.image_url] : [], rooms: null, sqm: null, floor: null, total_floors: null, description: null, contact_options: null };
-        return <StandardPropertyCard key={row.listing_id} card={card} signedIn isMine isFav={favorites.data?.includes(row.listing_id)} onFavorite={() => void toggleFavorite(row.listing_id)} summary={<div className="space-y-2"><PublicAdHeading compact title={publicAdTitle(card)} price={formatPrice(Number(row.asking_price) || 0, row.deal_type === 'rent' ? 'rent' : row.deal_type === 'sale' ? 'sale' : null)} dealType={row.deal_type} /><ListingLifecycleStatus listingId={row.listing_id} /></div>} />;
-      })}
+  const ids = [...selected];
+  const toggle = (id: string) => setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const share = async () => {
+    const links = owned.filter(r => selected.has(r.listing_id)).map(r => publicUrl(`/p/${r.slug || r.listing_id}`)).join('\n');
+    try { if (navigator.share) await navigator.share({ text: links }); else { await navigator.clipboard.writeText(links); toast.success('הקישורים הועתקו'); } } catch { /* cancelled */ }
+  };
+  const sharingPartners = owned.reduce((total, r) => total + Number(r.affiliates || 0), 0);
+  return <div className="space-y-2 py-2">
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-muted-foreground"><Users className="ms-0 me-1 inline h-3.5 w-3.5" />{number(sharingPartners)} שיתופים פעילים של שותפים</span>
+      <SelectModeToggle active={selectMode} onToggle={() => { setSelectMode(v => !v); setSelected(new Set()); }} count={selected.size} total={owned.length} onSelectAll={() => setSelected(selected.size === owned.length ? new Set() : new Set(owned.map(r => r.listing_id)))} />
     </div>
-    {owned.length > limit && <div className="text-center"><Button variant="outline" onClick={() => setLimit(value => value + 24)}>נכסים נוספים</Button></div>}
+    {selectMode && selected.size > 0 && <div className="flex items-center justify-end gap-1 border-b pb-2">
+      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="שיתוף" title="שיתוף" onClick={() => void share()}><Share2 className="h-4 w-4" /></Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="צור קמפיין" title="צור קמפיין" onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${ids.join(',')}&listing=${ids[0]}`)}><Megaphone className="h-4 w-4" /></Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label="מחיקה" title="מחיקה" onClick={() => setConfirm(true)}><Trash2 className="h-4 w-4" /></Button>
+    </div>}
+    <ul className="divide-y">
+      {owned.slice(0, limit).map(r => {
+        const title = [r.address, r.city].filter(Boolean).join(', ') || r.title || 'נכס';
+        return <li key={r.listing_id} className="flex min-w-0 items-center gap-2 py-2">
+          {selectMode && <SelectBox checked={selected.has(r.listing_id)} onChange={() => toggle(r.listing_id)} label={`בחירת ${title}`} />}
+          <Link to={`/p/${r.slug || r.listing_id}`} className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>{r.image_url ? <img src={r.image_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}</Link>
+          <div className="min-w-0 flex-1">
+            <Link to={`/p/${r.slug || r.listing_id}`} className="block truncate text-sm font-semibold" title={title}>{title}</Link>
+            <p className="text-sm font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}</p>
+            <div className="flex flex-wrap gap-x-3 text-[11px] text-muted-foreground"><span className="font-semibold text-foreground"><Users className="me-0.5 inline h-3 w-3" />{number(r.affiliates)} שותפים משתפים</span><span><Eye className="me-0.5 inline h-3 w-3" />{number(r.views)}</span><span><MousePointerClick className="me-0.5 inline h-3 w-3" />{number(r.clicks)}</span></div>
+          </div>
+        </li>;
+      })}
+    </ul>
+    {owned.length > limit && <div className="text-center"><Button variant="outline" onClick={() => setLimit(value => value + 30)}>נכסים נוספים</Button></div>}
+    <AlertDialog open={confirm} onOpenChange={setConfirm}>
+      <AlertDialogContent dir="rtl"><AlertDialogHeader><AlertDialogTitle>למחוק {selected.size} נכסים?</AlertDialogTitle><AlertDialogDescription>הנכסים יימחקו לצמיתות מהלוח.</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogFooter><AlertDialogCancel>ביטול</AlertDialogCancel><AlertDialogAction disabled={remove.isPending} onClick={() => remove.mutate(ids, { onSuccess: () => { toast.success('הנכסים נמחקו'); setSelected(new Set()); void ads.refetch(); }, onError: (e) => toast.error(e instanceof Error ? e.message : 'המחיקה נכשלה') })}>מחיקה</AlertDialogAction></AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>;
 }
 
