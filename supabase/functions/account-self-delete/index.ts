@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       await admin.from("account_deletion_otps").update({ attempts: otp.attempts + 1 }).eq("user_id", user.id);
       return json({ error: "wrong_code" }, 400);
     }
-    const { data: profile } = await admin.from("profiles").select("full_name, phone, city, primary_user_type, agency_name").eq("id", user.id).maybeSingle();
+    const { data: profile } = await admin.from("profiles").select("*").eq("id", user.id).maybeSingle();
     const { error: aErr } = await admin.from("deleted_accounts_archive").insert({ user_id: user.id, phone: phone || null, email: user.email ?? null, full_name: (profile as any)?.full_name ?? null, roles: roleList, profile: profile ?? null });
     if (aErr) throw aErr;
     const { error: pErr } = await admin.rpc("admin_purge_user_data", { _uid: user.id });
