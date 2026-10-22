@@ -1,5 +1,6 @@
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
-import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
+import Terms from '@/pages/Terms';
+import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
 import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
 import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
@@ -146,6 +147,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [legalSection, setLegalSection] = useState<'terms' | 'brokerage' | null>(null);
+  const { data: readyProperties, isLoading: readyPropertiesLoading, isError: readyPropertiesError } = useReadyBoardProperties(open && isBroker);
   // Pure partners must state who they publish as; other identities are never asked.
   const { isAffiliateOnly } = useUserRole();
   const [askPublishAs, setAskPublishAs] = useState(false);
@@ -360,6 +363,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] });
       onRecovered?.();
       void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
+      void queryClient.invalidateQueries({ queryKey: ['ready-board-properties'] });
        void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
       toast.success('הנכס פורסם בלוח השיתופי');
        celebratePublication(publicationAudio.current);
@@ -659,9 +663,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     <>
                       <Button type="button" variant={importOption === 'mine' ? 'secondary' : 'outline'} className="w-full justify-between" aria-expanded={importOption === 'mine'} onClick={() => setImportOption((current) => (current === 'mine' ? null : 'mine'))}>
                         הנכסים שלי
+                        {' '}({readyPropertiesLoading ? '…' : readyPropertiesError ? 'לא זמין' : readyProperties?.length ?? 0})
                         <ChevronDown className={cn('h-4 w-4 transition-transform', importOption === 'mine' && 'rotate-180')} />
                       </Button>
-                      {importOption === 'mine' && <MyPropertiesPicker />}
+                  {importOption === 'mine' && <MyPropertiesPicker key={draftScope} />}
                     </>
                   )}
                   {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
@@ -885,13 +890,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     <Dialog open={open && !entryPending && !isDeveloper} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6">
         <DialogHeader className="text-center">
+          {(reviewMode || step > 0 || importSlide) && <Button type="button" variant="ghost" size="icon" className="absolute left-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <BrokerageCommissionDisclosure audience={fields.dealType === 'rent' ? 'landlord' : 'seller'} />
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
@@ -916,12 +921,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
           {reviewMode || isLast ? (
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex w-full flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-center">
               {!canPublish && <span className="hidden text-xs text-muted-foreground sm:inline" title={missingPublish.join(' · ')}>חסר: {missingPublish[0]}{missingPublish.length > 1 ? ` +${missingPublish.length - 1}` : ''}</span>}
-              <label className="flex max-w-sm items-start gap-2 text-xs leading-snug">
-                <Checkbox checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} className="mt-0.5" />
-                <span>אני מאשר/ת את <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">התקנון</a> ואת <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">מדיניות הפרטיות</a> ומצהיר/ה שיש לי הרשאה לפרסם את הנכס והתמונות</span>
-              </label>
+              <div className="flex max-w-sm items-start gap-2 text-xs leading-snug">
+                <Checkbox id="publication-consent" aria-label="אישור התנאים והרשאת הפרסום" checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} className="mt-0.5" />
+                <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
+              </div>
               <Button type="button" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()} className="shrink-0 bg-success text-[18px] font-bold text-success-foreground hover:bg-success/90">
                 {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> מפרסם…</> : user ? 'פרסום הנכס' : 'הרשמה ופרסום'}
               </Button>
@@ -931,6 +936,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           ) : <span />}
         </div>
       </DialogContent>
+      <Dialog open={legalSection !== null} onOpenChange={value => { if (!value) setLegalSection(null); }}>
+        <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none p-4 sm:max-w-3xl" onOpenAutoFocus={event => { event.preventDefault(); if (legalSection === 'brokerage') requestAnimationFrame(() => document.querySelector('[data-publisher-legal] #brokerage-commissions')?.scrollIntoView({ block: 'start' })); }}>
+          <DialogHeader><DialogTitle>{legalSection === 'brokerage' ? 'תנאי התיווך' : 'התקנון'}</DialogTitle></DialogHeader>
+          <div data-publisher-legal><Terms embedded /></div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader>
         <div className="space-y-3">
           {primaryPhoto && <img src={primaryPhoto} alt="תמונת הנכס הראשית" className="aspect-video w-full rounded-md object-cover" />}
