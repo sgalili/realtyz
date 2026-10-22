@@ -8159,6 +8159,7 @@ export type Database = {
         Args: { _referred: string; _referrer: string }
         Returns: Json
       }
+      admin_purge_user_data: { Args: { _uid: string }; Returns: number }
       admin_unlink_referral: { Args: { _referred: string }; Returns: Json }
       advance_listing_stage: {
         Args: { _listing: string; _stage: string }

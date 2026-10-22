@@ -407,6 +407,13 @@
       "when": 1792673139472,
       "tag": "0057_signup_partner_identity_and_name",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792675699533,
+      "tag": "0058_admin_purge_user_data",
+      "breakpoints": true
     }
   ]
 }
