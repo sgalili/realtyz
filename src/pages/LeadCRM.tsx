@@ -506,7 +506,7 @@ function EditableInlineText({
 }
 
 
-const LeadCRM = () => {
+const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
   const { connected: homelyConnected } = useHomelyConnection();
   const { user } = useAuth();
   const { recruitmentMode, listingsEnabled } = useWorkspaceFeatures();
@@ -1834,7 +1834,7 @@ const LeadCRM = () => {
 
 
       <input type="file" ref={fileInputRef} accept=".csv,.xlsx,.xls,.json,.pdf,application/json,text/csv" className="hidden" onChange={handleFileSelect} />
-      {freemium.isTrial && (
+      {!activityOnly && freemium.isTrial && (
         <div className="hidden sm:flex items-center gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground w-fit ms-auto">
           <span>נותרו <span className="font-semibold text-foreground tabular-nums">{freemium.daysLeft}</span> ימי התנסות</span>
           <span className="text-border">·</span>
@@ -2985,6 +2985,6 @@ const LeadCRM = () => {
   );
 };
 
-export default function LeadCRMPage() {
-  return <LeadDirectionTabs><LeadCRM /></LeadDirectionTabs>;
+export default function LeadCRMPage({ activityOnly = false }: { activityOnly?: boolean } = {}) {
+  return activityOnly ? <LeadCRM activityOnly /> : <LeadDirectionTabs><LeadCRM /></LeadDirectionTabs>;
 }
