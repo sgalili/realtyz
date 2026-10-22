@@ -1742,6 +1742,14 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .closing-slider [data-orientation="horizontal"] > span { background: hsl(var(--closing-current) / .15); }
 .closing-slider [role="slider"] { height: 22px; width: 22px; background: hsl(var(--card)); border: 3px solid hsl(var(--closing-current)); }
 @media (prefers-reduced-motion: reduce) { .closing-tone { transition: none; } }
+.welcome-slide[data-theme="3"] .welcome-content { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto; row-gap: 6px; }
 .welcome-slide[data-theme="3"] .welcome-title, .welcome-slide[data-theme="3"] .welcome-copy { position: relative; z-index: 2; }
-.welcome-slide[data-theme="3"] .welcome-rita { position: relative; z-index: 1; transform: scale(-1.6, 1.6); transform-origin: 20% top; -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 62%); mask-image: linear-gradient(to bottom, #000 45%, transparent 62%); pointer-events: none; }
-.welcome-slide[data-theme="3"] .welcome-cta { position: relative; z-index: 3; }
+.welcome-slide[data-theme="3"] .welcome-rita { position: relative; z-index: 1; grid-row: 2 / 4; align-self: stretch; height: 100%; min-height: 0; object-fit: cover; object-position: center top; pointer-events: none; }
+.welcome-slide[data-theme="3"] .welcome-divider { grid-column: 1 / -1; grid-row: 4; height: 2px; background: #fff; margin: -6px -18px 0; }
+.welcome-slide[data-theme="3"] .welcome-marquee { grid-column: 1 / -1; grid-row: 5; margin: 0 -18px; overflow: hidden; }
+.welcome-slide[data-theme="3"] .welcome-marquee .landing-ticker-group { gap: 18px; padding-inline: 9px; }
+.welcome-slide[data-theme="3"] .welcome-marquee svg, .welcome-slide[data-theme="3"] .welcome-marquee img { max-height: 28px; max-width: 28px; }
+.welcome-slide[data-theme="3"] .welcome-cta { position: relative; z-index: 3; grid-row: 6 !important; grid-column: 1 / -1 !important; justify-self: center !important; }
+.welcome-sparkle svg { stroke-width: 4px; vector-effect: non-scaling-stroke; }
+.welcome-slide[data-theme="2"] .welcome-icon { opacity: .2; }
+@media (min-width: 640px) { .welcome-slide[data-theme="3"] .welcome-rita { grid-row: 1 / 4; } .welcome-slide[data-theme="3"] .welcome-divider, .welcome-slide[data-theme="3"] .welcome-marquee { margin-inline: -40px; } }
