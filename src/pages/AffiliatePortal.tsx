@@ -689,6 +689,7 @@ export default function AffiliatePortal() {
   const scrollKey = 'affiliate-portal:marketplace-scroll';
   const [automationCardsVisible, setAutomationCardsVisible] = useState(false);
   const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [detailListing, setDetailListing] = useState<MarketplaceListing | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkRemoving, setBulkRemoving] = useState(false);
   const bulkQueryClient = useQueryClient();
@@ -1303,6 +1304,7 @@ export default function AffiliatePortal() {
             )}
           </TabsContent>
         </Tabs>
+        <PartnerPropertyModal listing={detailListing} onClose={() => setDetailListing(null)} actions={detailListing ? <PartnerListingActions listing={detailListing} referralId={referrals.find((r) => r.listing_id === detailListing.listing_id)?.id ?? null} /> : null} />
 
         <Dialog open={funnelDialogOpen} onOpenChange={setFunnelDialogOpen}>
           <DialogContent dir="rtl" className="max-w-md">
