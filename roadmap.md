@@ -123,3 +123,7 @@
 # Auth header swap, tagline wording and login placeholder
 - [x] Moved the rotating sentences above the TORAFF logo (the logo now sits directly above the form), replaced "הכנסות מסביב לשעון" with "הכנסה פאסיבית", and moved "מה מספר הטלפון שלך?" inside the login field as a placeholder at 18px to match the full-name field; no label remains above that field.
 - [x] Verified at 411x802: ticker above logo, identical card geometry on both tabs (top 259, height 440), no page scroll, footer 11px from the bottom, and all field texts render 18px. 17 focused tests pass and the preview build is OK.
+
+# Auth text nudge and borderless central section
+- [x] Shifted the rotating sentences 20px upward (mobile and desktop top 67 -> 47) while the TORAFF logo and form kept their exact positions (mobile logo top 151, card top 259, card height 440, footer 11px from the bottom, no page scroll).
+- [x] Removed the central section's rounded box, background and border (computed background transparent, border 0px, no shadow); tabs, fields and buttons stay fully legible on the page background in phone and desktop views.

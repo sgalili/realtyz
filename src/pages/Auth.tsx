@@ -322,7 +322,7 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="auth-fixed-header w-full shrink-0 text-center">
-          <div className="auth-header-ticker mx-auto mb-[24px] mt-[55px]" aria-live="polite">
+          <div className="auth-header-ticker mx-auto mb-[44px] mt-[35px]" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
               <span
                 key={line.key}
@@ -342,7 +342,7 @@ const Auth = () => {
           />
         </div>
 
-        <Card variant="active" className="auth-login-card border border-border/60 bg-card shadow-sm" dir="rtl">
+        <Card variant="active" className="auth-login-card border-0 bg-transparent shadow-none" dir="rtl">
           <CardContent className="auth-card-content p-6">
             {!codeSent && <>
               <div className="grid shrink-0 grid-cols-2 gap-1" role="group" aria-label="כניסה או הרשמה">
