@@ -18,8 +18,8 @@ export default function PrivacyPolicy() {
   const platformName = masterBrand?.agency_name || 'TORAFF';
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
+      <PageCloseButton />
       <div className="mx-auto w-full max-w-3xl px-4 py-14">
-        <Link to="/landing" className="text-sm font-bold text-primary hover:underline">← חזרה לדף הבית</Link>
         <h1 className="mt-6 text-3xl font-extrabold tracking-tight sm:text-4xl">מדיניות פרטיות</h1>
         <p className="mt-2 text-sm text-muted-foreground">עדכון אחרון: {UPDATED}</p>
 
