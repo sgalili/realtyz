@@ -165,3 +165,10 @@
 
 # Tab order and default tab
 - [x] Swapped the two tabs so הרשמה sits on the right and התחברות on the left, and the page now opens on the sign-up tab; switching still keeps identical card geometry (top 259, height 440, footer 11px, no scroll) and 16 related tests pass.
+
+# Intro, registration, drawer and tour refinements
+- [x] Slide 3: two-line title "היי, אני ריטה." / "סוכנת ה-AI האישית שלך", full-figure mirrored Rita cropped at the card edge, description raised and +1px. Verified at 372×682: no overlap, object-fit contain, 19px copy.
+- [x] Slide 2: dark gray-to-black gradient, gold title, three white bold subheadings with light-gray body, exact wording and reorder verified in mobile browser.
+- [x] Registration page: X top-right returns home; header compressed on short screens so all fields plus submit fit with zero scrolling (dynOverflow 0, submit visible).
+- [x] Activity drawer: multi-select toggle swapped next to the active-shares counter; select checkbox borders solid black (rgb(0,0,0) verified).
+- [x] Welcome modal: both buttons in one bottom row (verified same row, no dialog scroll), subtitle reduced to 19px; legacy "רילטיז" brand strings replaced with TORAFF.
