@@ -397,6 +397,7 @@ const App = () => (
             <DemoModeProvider>
             <ElectionTypeProvider>
             <MandateProvider>
+            <Suspense fallback={<PageLoader />}>
             <ReferralCapture />
             <WorkspaceSelectorModal />
             <PostSignupWelcome />
@@ -503,6 +504,7 @@ const App = () => (
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
             </WorkspaceScope>
+            </Suspense>
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>
