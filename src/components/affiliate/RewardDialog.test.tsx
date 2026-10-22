@@ -19,7 +19,7 @@ describe('existing reward settings', () => {
   it('clears each daily cap when its own price is cleared', () => {
     const listing = { id: 'limits', affiliate_enabled: true, asking_price: 2000000, deal_type: 'sale', affiliate_tier1_amount: 100, affiliate_tier2_amount: 200, affiliate_tier3_amount: 300, contact_options: { lead_daily_limits: { form: 5, whatsapp: 3, phone: 2 } } } as unknown as BrokerAffiliateListing;
     render(<RewardDialog listing={listing} open onOpenChange={() => {}} />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'עמלה עבור סינון בווטסאפ' }), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('switch', { name: 'הפעלת סינון בווטסאפ' }));
     fireEvent.click(screen.getByRole('button', { name: 'שמירה' }));
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ contactOptions: expect.objectContaining({ lead_daily_limits: { form: 5, whatsapp: null, phone: 2 } }) }), expect.anything());
   });
