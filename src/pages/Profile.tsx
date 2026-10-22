@@ -35,6 +35,7 @@ import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { useUserRole } from '@/hooks/useUserRole';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
+import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
@@ -200,6 +201,8 @@ function hasRealEmailLogin(user: any): boolean {
 
 function PersonalTab() {
   const { user, signOut } = useAuth();
+  const queryClient = useQueryClient();
+  const identity = useAccountIdentity();
   const { activeWorkspaceId } = useWorkspace();
   const profileOwnerId = activeWorkspaceId ?? user?.id ?? null;
   const isOwnProfile = profileOwnerId === user?.id;
@@ -212,14 +215,16 @@ function PersonalTab() {
   const [brokerLicense, setBrokerLicense] = useState<string>('');
   const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [licenseSuspended, setLicenseSuspended] = useState(false);
+  const showBrokerFields = identity.label === 'מתווך' || licenseSuspended;
   useEffect(() => {
-    if (!user?.id) return;
+    setLicenseSuspended(false);
+    if (!profileOwnerId) return;
     let alive = true;
-    void supabase.from('broker_role_suspensions').select('role').eq('user_id', user.id).then(({ data }) => {
+    void supabase.from('broker_role_suspensions').select('role').eq('user_id', profileOwnerId).then(({ data }) => {
       if (alive) setLicenseSuspended((data?.length ?? 0) > 0);
     });
     return () => { alive = false; };
-  }, [user?.id]);
+  }, [profileOwnerId]);
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
@@ -233,7 +238,7 @@ function PersonalTab() {
     const meta = isOwnProfile ? (user.user_metadata ?? {}) as Record<string, any> : {};
     const contacts = isOwnProfile ? meta.profile_contacts ?? null : null;
     const userPhone = isOwnProfile ? ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString() : '';
-    const defaultName = isOwnProfile ? String(meta.full_name || meta.name || '').trim() : '';
+    const defaultName = isOwnProfile ? friendlyUserDisplayName(user, '') : '';
     const firstVal = (list: any) => {
       const it = Array.isArray(list) ? list[0] : null;
       return String((typeof it === 'string' ? it : it?.value) ?? '').trim().toLowerCase();
@@ -251,7 +256,7 @@ function PersonalTab() {
         // A profile email equal to a placeholder auth email is never shown.
         const storedEmail = realEmail(server.email);
         const serverEmail = (storedEmail && (storedEmail.toLowerCase() !== String(user.email ?? '').toLowerCase() || loginEmail) ? storedEmail : '') || loginEmail;
-        const serverName = String(server.full_name ?? '').trim() || defaultName;
+        const serverName = friendlyUserDisplayName({ user_metadata: { full_name: server.full_name, name: defaultName } }, '');
         let local: any = null;
         try {
           const raw = window.localStorage.getItem(profileStorageKey(ownerId));
@@ -284,7 +289,7 @@ function PersonalTab() {
     if (!profileOwnerId) return;
     try { window.localStorage.setItem(profileStorageKey(profileOwnerId), JSON.stringify(payload)); } catch {}
     try {
-      if (brokerLicense && isOwnProfile) await verifyBrokerLicense(brokerLicense, 'verify');
+      if (showBrokerFields && brokerLicense && isOwnProfile) await verifyBrokerLicense(brokerLicense, 'verify');
       const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
       const { error: profErr } = await supabase
         .from('profiles')
@@ -294,15 +299,16 @@ function PersonalTab() {
           phone: primaryPhone,
           full_name: fullName || null,
           email: realEmail(emails[0]?.value) || null,
-          broker_license_number: brokerLicense.trim() || null,
+          ...(showBrokerFields ? { broker_license_number: brokerLicense.trim() || null } : {}),
         } as any)
         .eq('id', profileOwnerId);
       if (profErr) throw profErr;
       if (isOwnProfile) {
-        const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload } });
+        const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload, full_name: fullName } });
         if (error) throw error;
       }
       toast.success('הפרופיל נשמר');
+      void queryClient.invalidateQueries({ queryKey: ['app-header-user-profile'] });
       setLicenseSuspended(false);
       window.dispatchEvent(new Event('realtyz:license-verified'));
       window.dispatchEvent(new Event('realtyz:profile-saved'));
@@ -400,11 +406,11 @@ function PersonalTab() {
           </Select>
         </ProfileFieldRow>
 
-        {isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
-        {isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />}
+        {showBrokerFields && isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
+        {showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
 
         <div className="flex items-center gap-3 pt-1">
-          <Button onClick={save} disabled={isOwnProfile && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1">שמירת הפרופיל</Button>
+          <Button onClick={save} disabled={showBrokerFields && isOwnProfile && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1">שמירת הפרופיל</Button>
           <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10">
             <LogOut className="h-4 w-4" />
             התנתקות
@@ -450,7 +456,7 @@ function WorkspaceTab() {
           .eq('user_id', ownerId)
           .maybeSingle();
         if (cancelled) return;
-        setAgencyName((data as any)?.agency_name || activeWorkspace?.workspace_name || 'רילטיז נדל"ן');
+        setAgencyName((data as any)?.agency_name || (['שותף', 'פרטי', 'מפרסם'].includes(identity.label) ? '' : activeWorkspace?.workspace_name) || '');
         setLogoUrl((data as any)?.logo_url || activeWorkspace?.workspace_logo_url || '');
         setLandscapeLogoUrl((data as any)?.landscape_logo_url || '');
         setOfficeDetails({ office_address: data?.office_address || '', public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
@@ -587,7 +593,7 @@ function WorkspaceTab() {
           <div className="rounded-lg border bg-card/40 p-3 text-right">
             <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" />
-              <span>{company ? 'שם החברה' : ['מפרסם', 'פרטי'].includes(identity.label) ? 'שם המפרסם' : 'שם המשרד'}</span>
+              <span>{company ? 'שם החברה' : ['מפרסם', 'פרטי', 'שותף'].includes(identity.label) ? 'שם לתצוגה (לא חובה)' : 'שם המשרד'}</span>
             </div>
             <Input dir="rtl" value={agencyName} disabled={loading} onChange={(e) => setAgencyName(e.target.value)} className="h-9 text-right text-sm font-semibold" />
           </div>

@@ -465,7 +465,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const headerIdentity = resolveWorkspaceIdentity(activeWorkspace, brand, masterBrand);
   const headerLogo = headerIdentity.logo || '';
   const headerName = headerIdentity.name;
-  const headerUserName = String((activeWorkspace && !(activeWorkspace as any).is_self ? (activeWorkspace as any).owner_full_name : '') || (headerUserProfile as any)?.full_name || friendlyUserDisplayName(user, '') || '').trim();
+  const headerUserName = friendlyUserDisplayName({ user_metadata: { full_name: activeWorkspace && !activeWorkspace.is_self ? activeWorkspace.owner_full_name : headerUserProfile?.full_name, name: friendlyUserDisplayName(user, '') } }, 'ללא שם');
 
 
   return (

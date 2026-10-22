@@ -10,7 +10,7 @@ const isSyntheticWhatsAppEmail = (value: string) =>
 export function friendlyUserDisplayName(user: AuthUserLike, fallback = 'ללא שם'): string {
   const meta = user?.user_metadata ?? {};
   const named = [meta.full_name, meta.name, meta.display_name]
-    .find((value) => typeof value === 'string' && value.trim()) as string | undefined;
+    .find((value) => typeof value === 'string' && value.trim() && !value.includes('@')) as string | undefined;
   if (named) return named.trim();
   // Never fall back to an email address or a phone number: the default display
   // name is always the neutral Hebrew placeholder.

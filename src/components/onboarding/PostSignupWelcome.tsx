@@ -28,6 +28,7 @@ export function PostSignupWelcome() {
   }, [user]);
   if (!user || !role) return null;
   const b = BENEFITS[role];
+  const personal = ['partner', 'property_owner', 'property_seeker'].includes(role);
   const close = () => { clearPostSignupWelcome(); setRole(null); };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) close(); }}>
@@ -41,10 +42,10 @@ export function PostSignupWelcome() {
         </ul>
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
           <div className="mb-1 flex items-center gap-2 font-semibold"><ShieldCheck className="h-5 w-5 text-primary" />בונים אמון ברשת</div>
-          <p className="text-sm text-muted-foreground">מומלץ להשלים עכשיו את פרטי המשרד/החברה והפרטים האישיים. פרופיל מלא מעורר אמון אצל שותפים ולקוחות ומגדיל את סיכויי שיתופי הפעולה.</p>
+          <p className="text-sm text-muted-foreground">{personal ? 'מומלץ להשלים את הפרטים האישיים. אין צורך בשם חברה או משרד.' : 'מומלץ להשלים עכשיו את פרטי המשרד/החברה והפרטים האישיים.'} פרופיל מלא מעורר אמון אצל שותפים ולקוחות ומגדיל את סיכויי שיתופי הפעולה.</p>
         </div>
         <div className="flex gap-2">
-          <Button className="flex-1" onClick={() => { close(); navigate('/profile?tab=workspace'); }}>השלמת פרטים</Button>
+          <Button className="flex-1" onClick={() => { close(); navigate(personal ? '/profile?tab=personal' : '/profile?tab=workspace'); }}>השלמת פרטים</Button>
           <Button variant="ghost" onClick={close}>אחר כך</Button>
         </div>
       </DialogContent>
