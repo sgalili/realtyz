@@ -24,7 +24,11 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen }:
   // Closing commissions are a licensed-brokerage activity: only registered
   // brokers (verified license or broker roles, server-gated by
   // partner_can_view_closing) may see this column at all.
-  if (!user) return null;
+  // Signed-out visitors get a soft gate: only the lead-type icons, never cash
+  // values. Site-only properties keep their neutral note.
+  if (!user) return networkOpen === false
+    ? <span title="לפרסום באתר בלבד" className="block max-w-[7rem] truncate text-[11px] text-muted-foreground">לפרסום באתר בלבד</span>
+    : <GuestTierIcons />;
   if (networkOpen === false) return <span title="לפרסום באתר בלבד" className="block max-w-[7rem] truncate text-[11px] text-muted-foreground">לפרסום באתר בלבד</span>;
   const source = property ?? raw;
   const listing = marketplace.data?.find((row) => row.listing_id === listingId);
@@ -37,5 +41,5 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen }:
   };
   const showClosing = level4Unlocked && Number(tiers.tier4) > 0;
   if (!showClosing && Number(tiers.tier1) + Number(tiers.tier2) + Number(tiers.tier3) <= 0) return null;
-  return <div className="max-w-[9rem] space-y-1 overflow-hidden"><LeadPricingDialog readOnly listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }} />{showClosing && <p title={CLOSING_SPLIT_EXPLANATION} className="text-[10px] font-normal leading-relaxed text-muted-foreground">* נטו למתווך: 80% · TORAFF: 20%</p>}</div>;
+  return <div className="max-w-[9rem] space-y-1 overflow-hidden"><LeadPricingDialog readOnly listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }} />{showClosing && <p title={CLOSING_SPLIT_EXPLANATION} className="flex items-center gap-1 text-[10px] font-normal leading-relaxed text-muted-foreground">* נטו למתווך: 80% · TORAFF: 20%<BrokerClosingInfo /></p>}</div>;
 }
