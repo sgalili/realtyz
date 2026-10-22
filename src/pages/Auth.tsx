@@ -353,7 +353,6 @@ const Auth = () => {
             <div className="auth-dynamic-content">
             <form onSubmit={handleSendCode} className="space-y-3">
                 {!codeSent && signup && <><Select value={signupType} onValueChange={value => {
-                  if (value === 'partner') { clearPendingSignupRole(); navigate('/affiliates'); return; }
                   setSignupType(value as SignupRole);
                 }}>
                   <SelectTrigger className="auth-unified-field" id="signup-type" aria-required="true" aria-label="סוג משתמש"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>

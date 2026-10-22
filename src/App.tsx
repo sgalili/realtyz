@@ -24,6 +24,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
 import { applyPendingSignupRole } from '@/lib/signupRole';
+import { PostSignupWelcome } from '@/components/onboarding/PostSignupWelcome';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
@@ -398,6 +399,7 @@ const App = () => (
             <MandateProvider>
             <ReferralCapture />
             <WorkspaceSelectorModal />
+            <PostSignupWelcome />
             <WorkspaceScope>
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
