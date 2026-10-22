@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 import { APP_TOUR_EVENT } from '@/lib/appWalkthrough';
 import { HelpHint } from "@/components/tutorial/TutorialHost";
