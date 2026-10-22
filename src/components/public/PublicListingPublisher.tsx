@@ -146,6 +146,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  // Pure partners must state who they publish as; other identities are never asked.
+  const { isAffiliateOnly } = useUserRole();
+  const [askPublishAs, setAskPublishAs] = useState(false);
+  const [publishAs, setPublishAs] = useState<'owner' | 'broker' | null>(null);
+  void publishAs;
   const [brokerLicense, setBrokerLicense] = useState('');
   const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [step, setStep] = useState(0);
@@ -857,10 +862,19 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   if (isDeveloper && user && !entryPending) return <Button disabled={disabled} onClick={() => navigate('/developer-dashboard?import=1')} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>;
 
   return (
+    <>
+    {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => { if (user && isAffiliateOnly) { setPublishAs(null); setAskPublishAs(true); } else setOpen(true); }} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
+    <Dialog open={askPublishAs} onOpenChange={setAskPublishAs}>
+      <DialogContent dir="rtl" className="sm:max-w-sm">
+        <DialogHeader><DialogTitle className="text-right">בתור מי אתה מפרסם את הנכס?</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          {([['owner', 'בעל הנכס'], ['broker', 'מתווך']] as const).map(([value, text]) => (
+            <Button key={value} type="button" variant="outline" className="h-14 text-base font-bold" onClick={() => { setPublishAs(value); setAskPublishAs(false); setOpen(true); }}>{text}</Button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
     <Dialog open={open && !entryPending && !isDeveloper} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
-      {!resumeDraft && <DialogTrigger asChild>
-        <Button disabled={disabled || entryPending} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>
-      </DialogTrigger>}
       <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6">
         <div className="relative flex flex-row-reverse items-center justify-between gap-2 self-start">
           <Button type="button" variant="ghost" size="icon" aria-label="איפוס והתחלה מחדש" title="איפוס והתחלה מחדש" disabled={publishing || importing} onClick={resetAll} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
