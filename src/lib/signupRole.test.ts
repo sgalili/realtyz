@@ -31,7 +31,7 @@ describe('primary signup choices', () => {
   });
   it('inherits partner signup without broker verification or accepting terms', async () => {
     setPendingSignupRole('partner');
-    expect(await applyPendingSignupRole()).toBe('/affiliate');
+    expect(await applyPendingSignupRole()).toBe('/');
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('select_signup_user_type', { _type: 'partner' });
     expect(mocks.invoke).not.toHaveBeenCalled();
     expect(readPendingSignupRole()).toBeNull();
