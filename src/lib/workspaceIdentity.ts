@@ -16,7 +16,7 @@ export type WorkspaceIdentity = {
   isTenant: boolean;
 };
 
-const DEFAULT_NAME = 'TORAF';
+const DEFAULT_NAME = 'TORAFF';
 
 function norm(v?: string | null) {
   const value = (v ?? '').trim();

@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Heebo:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -1658,7 +1657,8 @@
 .closing-fee { --closing-current: var(--closing-low); }
 
 .welcome-slide { color: hsl(var(--foreground)); font-family: 'Heebo', 'Assistant', sans-serif; background: linear-gradient(135deg, hsl(var(--brand-gold-soft)), hsl(var(--brand-gold)) 55%, hsl(var(--warning))); }
-.welcome-slide[data-theme="2"] { color: hsl(var(--primary-foreground)); background: linear-gradient(135deg, hsl(var(--brand-red-soft)), hsl(var(--brand-red)) 55%, hsl(var(--brand-deep))); }
+.welcome-slide[data-theme="2"] { color: hsl(var(--primary-foreground)); background: linear-gradient(135deg, hsl(var(--brand-red-soft)), hsl(var(--brand-red))); }
+.welcome-slide[data-theme="2"] .welcome-strong { color: hsl(var(--brand-gold)); }
 .welcome-slide[data-theme="3"] { color: hsl(var(--primary-foreground)); background: linear-gradient(135deg, hsl(var(--success) / .75), hsl(var(--success)) 55%, hsl(var(--brand-deep))); }
 .welcome-strong { color: hsl(var(--foreground)); font-weight: 800; }
 .welcome-float { animation: welcome-float 6s ease-in-out infinite; }
@@ -1667,7 +1667,7 @@
 .welcome-copy { color: currentColor; opacity: .92; }
 .welcome-accent-gold { color: hsl(var(--brand-gold)); text-shadow: 0 0 22px hsl(var(--brand-gold) / .45); }
 .welcome-accent-red { color: hsl(var(--brand-red)); }
-.welcome-slide[data-theme="2"] .welcome-accent-gold { color: hsl(var(--foreground)); text-shadow: none; }
+.welcome-slide[data-theme="2"] .welcome-accent-gold { color: hsl(var(--brand-gold)); text-shadow: none; }
 .welcome-accent-sky { color: hsl(var(--social-telegram)); }
 .welcome-icon { color: currentColor; opacity: .12; will-change: transform; }
 .welcome-enter { animation: welcome-enter .52s cubic-bezier(.22,1,.36,1) both; }

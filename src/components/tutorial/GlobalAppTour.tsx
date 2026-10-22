@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { RitaAvatar } from '@/components/RitaAvatar';
-import realtyzLogo from '@/assets/realtyz-logo.png';
+import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { APP_TOUR_EVENT, buildWalkthrough, useWalkthrough, walkthroughStore } from '@/lib/appWalkthrough';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
 import { shouldShowWelcome } from '@/lib/welcomePreference';
@@ -155,7 +155,7 @@ export function GlobalAppTour() {
           <p className="text-lg leading-relaxed"><strong>סוכנת ה-AI שלכם</strong> מושכת פניות, מנהלת תוכן ועוזרת להפוך הזדמנויות להכנסה. האוטומציות שהפעלתם עובדות על טייס אוטומטי <strong>24/7, גם בזמן שאתם ישנים.</strong></p>
         </div>
       </div>
-      <Button variant="outline" size="lg" className="w-full text-lg" onClick={() => setShowWelcome(shouldShowWelcome('instructions'))}>היכרות עם TORAF<ChevronLeft /></Button>
+      <Button variant="outline" size="lg" className="w-full text-lg" onClick={() => setShowWelcome(shouldShowWelcome('instructions'))}>היכרות עם TORAFF<ChevronLeft /></Button>
       <Button size="lg" className="w-full text-lg font-bold" onClick={() => walkthroughStore.move(1)}>מתחילים את הסיור<ChevronLeft /></Button>
     </DialogContent>
   </Dialog>;

@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { useQueryClient } from '@tanstack/react-query';
-import realtyzLogo from '@/assets/realtyz-logo.png';
+import realtyzLogo from '@/assets/realtyz-logo.webp';
 
 /* TORAFF — סיור מוצר לנרשמים חדשים.
    טקסט גדול, הסברים קצרים, וכולל מקטע תמחור לפי חבילות. */

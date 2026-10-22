@@ -32,7 +32,6 @@ import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardCol
 import { propertyInquiryRef } from '@/lib/propertyReferral';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 import BoardSearchControls from '@/components/public/BoardSearchControls';
-import HomeActivityPill from '@/components/public/HomeActivityPill';
 import { useAffiliateMarketplace, useMyReferrals } from '@/hooks/useAffiliate';
 import { useUserRole } from '@/hooks/useUserRole';
 import { PartnerListingActions } from '@/pages/AffiliatePortal';
@@ -333,7 +332,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <div className="flex items-center justify-start">
                 {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-9 w-9 border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><UserRound className="h-5 w-5" /></Button>}
               </div>
-              <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
+              <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
                 <PublicListingPublisher autoResume />
               </div>
@@ -344,7 +343,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       </header>
 
       <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6">
-        {user && <div className="mb-3"><HomeActivityPill key={`${user.id}:${activeWorkspaceId}`} /></div>}
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>

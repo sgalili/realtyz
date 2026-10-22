@@ -243,7 +243,7 @@ function Reveal({ children, delay = 0, className }: { children: React.ReactNode;
 
 export default function Landing() {
   const { masterBrand } = useWhiteLabel();
-  const platformName = masterBrand?.agency_name || 'TORAF';
+  const platformName = masterBrand?.agency_name || 'TORAFF';
 
 
   return (

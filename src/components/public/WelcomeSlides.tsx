@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { BrandLogo } from '@/components/social/BrandLogo';
-import ritaPointing from '@/assets/rita-pointing.png';
+import ritaPointing from '@/assets/rita-pointing.webp';
 import { CoinsCurrency, NetworkHomes, ShareShekels } from '@/components/public/welcomeIcons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -11,11 +11,11 @@ type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
 
 const SLIDES = [
-  { icon: NetworkHomes, theme: 1, title: <>מחברים את עולם ה<Hi tone="red">נדל"ן</Hi> לאוטומציה</>, text: <>האקוסיסטם הראשון שמחבר מתווכים, יזמים ובעלי נכסים לרשת <Hi tone="red">שותפים</Hi> חכמה אחת שעובדת בשבילכם אוטומטית.</> },
+  { icon: NetworkHomes, theme: 1, title: <>מחברים בין <Hi tone="red">מתווכים</Hi>, יזמים ובעלי נכסים</>, text: <>האקוסיסטם הראשון בעולם ה<Hi tone="red">נדל"ן</Hi> שמחבר את כולם לרשת <Hi tone="red">שותפים</Hi> חכמה אחת שעובדת בשבילכם אוטומטית.</> },
   { icon: CoinsCurrency, theme: 2, title: <>כאן כולם <Hi tone="gold">מרוויחים</Hi></>, text: <div className="space-y-4">
+    <p><strong className="welcome-strong">משתפים נכסים. יוצרים קמפיינים אוטומטיים</strong> ומרוויחים עמלות גבוהות באוטומציה מלאה.</p>
     <p><strong className="welcome-strong">מוכרים / משכירים / מתווכים?</strong><br />קובעים מראש את עמלת הסגירה ומחיר הלידים לוהטים בשקלים 🔥</p>
     <p><strong className="welcome-strong">קונים / שוכרים?</strong><br />עמלת תיווך קבועה של 1% על מכירה ו-10% על שכירות חודשית.</p>
-    <p><strong className="welcome-strong">חברים בתוכנית השותפים?</strong><br />משתפים, יוצרים קמפיינים אוטומטיים ומרוויחים עמלות גבוהות באוטומציה מלאה.</p>
   </div> },
   { icon: null, theme: 3, title: <>ריטה, סוכנת ה-AI האישית שלכם</>, text: <>מייצגת אתכם נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות. במילים פשוטות: ריטה מייצרת לכם הכנסה פאסיבית בזמן שאתם ישנים 😍</> },
 ] as const;
@@ -87,13 +87,13 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
     >
       <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon && <Icon className="h-full w-full" strokeWidth={2} />}</div>
       {!Icon && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
-        {FLOATING.map((f, i) => <span key={f.platform} className={cn('welcome-float absolute flex h-12 w-12 items-center justify-center rounded-2xl bg-card shadow-lg', f.pos)} style={{ animationDelay: `${i * -0.9}s` }}>{f.platform === 'calendar' ? <CalendarDays className="h-7 w-7 text-deal-blue" strokeWidth={2} /> : <BrandLogo platform={f.platform} className="h-7 w-7" />}</span>)}
-        <img src={ritaPointing} alt="" className="welcome-enter absolute bottom-0 left-0 h-[58%] w-auto -scale-x-100 object-contain sm:h-[70%]" />
+        {FLOATING.map((f, i) => <span key={f.platform} className={cn('welcome-float absolute flex h-12 w-12 items-center justify-center opacity-50', f.pos)} style={{ animationDelay: `${i * -0.9}s` }}>{f.platform === 'calendar' ? <CalendarDays className="h-7 w-7 text-deal-blue" strokeWidth={2} /> : <BrandLogo platform={f.platform} className="h-7 w-7" />}</span>)}
+        <img src={ritaPointing} alt="" decoding="async" className="welcome-enter absolute bottom-0 left-0 h-[58%] w-auto object-contain sm:h-[70%]" />
       </div>}
-      <Button type="button" variant="ghost" size="sm" onClick={finish} className="welcome-control absolute left-3 top-3 z-20 gap-1">דלג <X className="h-4 w-4" /></Button>
-      <div key={index} className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col justify-start px-14 pb-6 pt-24 text-right sm:pt-20" aria-live="polite">
+      <Button type="button" variant="ghost" size="sm" onClick={finish} className="welcome-control absolute right-3 top-3 z-20 gap-1">דלג <X className="h-4 w-4" /></Button>
+      <div key={index} className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col justify-start px-6 pb-4 pt-14 text-right sm:px-14 sm:pt-16" aria-live="polite">
         <h2 className="welcome-title welcome-enter text-4xl font-black leading-[1.02] sm:text-7xl">{slide.title}</h2>
-        <div className={cn("welcome-copy welcome-enter mt-5 max-w-lg font-normal leading-relaxed [animation-delay:80ms]", index === 1 ? "text-lg sm:text-2xl" : "text-2xl sm:text-[28px]", last && "mr-0 max-w-[62%] text-lg sm:max-w-lg sm:text-2xl")}>{slide.text}</div>
+        <div className={cn("welcome-copy welcome-enter mt-5 max-w-2xl font-normal leading-relaxed [animation-delay:80ms]", "text-xl sm:text-2xl", last && "max-w-[70%] sm:max-w-lg")}>{slide.text}</div>
         {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter mt-8 h-16 w-full max-w-sm rounded-2xl text-xl font-black [animation-delay:150ms]">יאללה, נכנסים ללוח! 🚀</Button>}
       </div>
       <div className="relative z-10 flex flex-col items-center gap-3 pb-5">
