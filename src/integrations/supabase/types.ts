@@ -8284,6 +8284,7 @@ export type Database = {
         Args: { _number: string; _uid: string }
         Returns: undefined
       }
+      complete_signup_profile: { Args: { _full_name: string }; Returns: Json }
       compute_closing_split: {
         Args: { _submission_id: string }
         Returns: undefined

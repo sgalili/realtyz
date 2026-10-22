@@ -400,6 +400,13 @@
       "when": 1792556177614,
       "tag": "0056_complete_affiliate_official_license_enforcement",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1792673139472,
+      "tag": "0057_signup_partner_identity_and_name",
+      "breakpoints": true
     }
   ]
 }
