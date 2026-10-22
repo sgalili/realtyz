@@ -241,22 +241,10 @@ function Reveal({ children, delay = 0, className }: { children: React.ReactNode;
   );
 }
 
-export default function Landing() {
-  const { masterBrand } = useWhiteLabel();
-  const platformName = masterBrand?.agency_name || 'TORAFF';
-
-
+/** Landing sections (hero → FAQ) shared by the landing page and the broker post-signup welcome. */
+export function LandingContent() {
   return (
-    <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
-      {/* ───────── Nav ───────── */}
-      <header className="relative z-30 bg-background/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-center px-4">
-          <Link to="/" aria-label={platformName} className="mt-5">
-            <PlatformBrand className="h-[3.12rem]" />
-          </Link>
-        </div>
-      </header>
-
+    <>
       {/* ───────── Hero ───────── */}
       <section className="relative overflow-hidden">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
@@ -469,6 +457,26 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+    </>
+  );
+}
+
+export default function Landing() {
+  const { masterBrand } = useWhiteLabel();
+  const platformName = masterBrand?.agency_name || 'TORAFF';
+  return (
+    <div dir="rtl" className="realtyz-landing min-h-screen bg-background text-foreground antialiased">
+      {/* ───────── Nav ───────── */}
+      <header className="relative z-30 bg-background/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-center px-4">
+          <Link to="/" aria-label={platformName} className="mt-5">
+            <PlatformBrand className="h-[3.12rem]" />
+          </Link>
+        </div>
+      </header>
+
+      <LandingContent />
 
       <footer className="border-t border-border/60 py-5 text-center text-sm text-muted-foreground">
         <p>{platformName} - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
