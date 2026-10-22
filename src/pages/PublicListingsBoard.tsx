@@ -85,6 +85,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>([]);
+  const [visibleCount, setVisibleCount] = useState(24);
   // Listings the signed-in poster owns (marked with the "שלי" badge on the card image).
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
@@ -283,6 +284,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     return listing ? <div onClick={event => event.stopPropagation()}><PartnerListingActions listing={listing} referralId={referrals.data?.find(row => row.listing_id === card.id)?.id} /></div> : null;
   };
   const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, filtered);
+  useEffect(() => { setVisibleCount(24); }, [query, deal, propFilter, leadFilter, grid]);
   // Signed-out visitors never see the commissions column at all.
   const visibleColumns = useMemo(() => (user ? columns.visible : columns.visible.filter((id) => id !== 'commissions')), [columns.visible, user]);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
@@ -318,7 +320,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
-            {filtered.map((card) => {
+            {filtered.slice(0, visibleCount).map((card) => {
               const title = cleanTitle(card);
               const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
               return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -377,7 +379,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                   </tr>
                 </thead>
                 <tbody>
-                  {columns.sorted.map((card) => {
+                  {columns.sorted.slice(0, visibleCount).map((card) => {
                     const title = cleanTitle(card);
                     const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
                     const open = expandedId === card.id;
@@ -431,6 +433,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </BoardColumnDragArea>
           )
         )}
+        {!loading && filtered.length > visibleCount && <div className="flex justify-center pt-5"><Button variant="outline" onClick={() => setVisibleCount(count => count + 24)}>נכסים נוספים</Button></div>}
       </main>
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
