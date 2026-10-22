@@ -18,6 +18,7 @@ import { MagicMandateSelector } from '@/components/dashboard/MagicMandateSelecto
 import { RotatingHeadline } from '@/components/RotatingHeadline';
 
 import NotificationCenter from '@/components/NotificationCenter';
+import HomeActivityPill from '@/components/public/HomeActivityPill';
 import WalletLockGate from '@/components/billing/WalletLockGate';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { RitaAvatar } from '@/components/RitaAvatar';
@@ -485,6 +486,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
               <NotificationCenter />
+              <HomeActivityPill />
             </div>
 
             {/* Absolute screen center (fixed, so the sidebar width does not shift it). */}

@@ -21,7 +21,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function Terms() {
   const { masterBrand } = useWhiteLabel();
-  const platformName = masterBrand?.agency_name || 'TORAF';
+  const platformName = masterBrand?.agency_name || 'TORAFF';
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       <div className="mx-auto w-full max-w-3xl px-4 py-14">

@@ -38,7 +38,7 @@ export function SidebarRitaChat() {
   };
 
   return (
-    <div dir="rtl" className="mx-2 mb-2 overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+    <div dir="rtl" className="mx-2 mb-2 overflow-hidden">
       <div className="flex items-center gap-2 px-3 pt-2.5">
         <RitaAvatar className="h-7 w-7" />
         <span className="flex-1 text-sm font-semibold text-foreground">ריטה</span>

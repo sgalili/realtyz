@@ -29,5 +29,5 @@ export function useMasterBranding() {
       void supabase.removeChannel(channel);
     };
   }, [client]);
-  return { ...query, name: query.data?.agency_name || 'TORAF', logo: query.data?.landscape_logo_url || query.data?.logo_url || null };
+  return { ...query, name: query.data?.agency_name || 'TORAFF', logo: query.data?.landscape_logo_url || query.data?.logo_url || null };
 }

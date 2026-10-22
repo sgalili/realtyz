@@ -1,8 +1,9 @@
 import { lazy, Suspense, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChartNoAxesCombined } from 'lucide-react';
+import { ChartNoAxesCombined } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMyReferrals, useMySubmissions } from '@/hooks/useAffiliate';
@@ -11,9 +12,11 @@ import { hasHomeActivity } from '@/lib/homeActivity';
 import { fmtILS } from '@/lib/formatCurrency';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
+import { cn } from '@/lib/utils';
 
 const AffiliateNetwork = lazy(() => import('@/pages/AffiliateNetwork'));
 
+/** Header icon (next to the notification bell) that opens the personal activity drawer. */
 export default function HomeActivityPill() {
   const { user } = useAuth();
   const owner = useActiveWorkspaceOwnerId();
@@ -21,10 +24,6 @@ export default function HomeActivityPill() {
   const { isAffiliateOnly } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const partnerView = isAffiliateOnly || isPartnerMode;
-  const showActivity = (tab: string) => {
-    if (partnerView) { setActivity(tab); return; }
-    navigate(tab === 'leads' ? '/lead-crm' : tab === 'earnings' ? '/wallet' : '/posts');
-  };
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
   const referrals = useMyReferrals();
@@ -50,16 +49,29 @@ export default function HomeActivityPill() {
     earnings: submissions.data.reduce((sum, row) => sum + Number(row.earned_amount ?? 0), 0),
   };
   if (!hasHomeActivity(metrics)) return null;
-  return <section className="space-y-3" aria-label="הפעילות שלי">
-    <Button variant="outline" size="sm" className="h-8 gap-2 rounded-full text-xs" aria-expanded={open} onClick={() => { setOpen(!open); setActivity(null); }}>
-      <ChartNoAxesCombined className="h-3.5 w-3.5" />הפעילות שלי<ChevronDown className="h-3.5 w-3.5" />
+  const go = (path: string) => { setOpen(false); navigate(path); };
+  const pick = (tab: string) => {
+    if (tab === 'properties') return go('/my-ads');
+    if (!partnerView) return go(tab === 'leads' ? '/lead-crm' : '/wallet');
+    setActivity(tab === 'leads' ? 'mine' : tab);
+  };
+  const tabs = [
+    { id: 'properties', label: <>{metrics.properties} נכסים שלי</> },
+    { id: 'leads', label: <>{metrics.leads} לידים בשיווק</> },
+    { id: 'earnings', label: <><bdi dir="ltr">{fmtILS(metrics.earnings)}</bdi> רווחים</> },
+  ];
+  return <>
+    <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="הפעילות שלי" title="הפעילות שלי" onClick={() => { setOpen(true); setActivity(null); }}>
+      <ChartNoAxesCombined className="h-5 w-5" />
     </Button>
-    {open && <div className="flex flex-wrap gap-1 border-b pb-3">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/my-ads')}>{metrics.properties} נכסים שלי</Button>
-      <Button variant="ghost" size="sm" onClick={() => showActivity('leads')}>{metrics.leads} לידים</Button>
-      <Button variant="ghost" size="sm" onClick={() => showActivity('mine')}>{metrics.marketing} בשיווק</Button>
-      <Button variant="ghost" size="sm" onClick={() => showActivity('earnings')}><bdi dir="ltr">{fmtILS(metrics.earnings)}</bdi> רווחים</Button>
-    </div>}
-    {open && activity && <Suspense fallback={<p className="text-sm text-muted-foreground">טוען פעילות…</p>}><AffiliateNetwork key={activity} activityOnly initialTab={activity} /></Suspense>}
-  </section>;
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetContent side="right" dir="rtl" className="w-full overflow-y-auto sm:max-w-xl">
+        <SheetHeader><SheetTitle className="text-right">הפעילות שלי</SheetTitle></SheetHeader>
+        <div role="tablist" className="mt-4 flex flex-wrap gap-1 border-b pb-3">
+          {tabs.map(t => <Button key={t.id} role="tab" aria-selected={activity === (t.id === 'leads' ? 'mine' : t.id)} variant="ghost" size="sm" className={cn(activity === (t.id === 'leads' ? 'mine' : t.id) && 'bg-muted')} onClick={() => pick(t.id)}>{t.label}</Button>)}
+        </div>
+        {activity && <Suspense fallback={<p className="mt-4 text-sm text-muted-foreground">טוען פעילות…</p>}><AffiliateNetwork key={activity} activityOnly initialTab={activity} /></Suspense>}
+      </SheetContent>
+    </Sheet>
+  </>;
 }

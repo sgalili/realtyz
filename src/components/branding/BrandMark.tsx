@@ -30,7 +30,7 @@ export function BrandMark({ className = '', to = '/', fallbackLabel }: BrandMark
   const logoUrl = identity.logo;
   const agencyName = identity.name || null;
   const hideRealtyz = !!settings?.hide_kalpiz_branding;
-  const isDefaultBrand = !identity.isTenant && agencyName === (masterBrand?.agency_name || 'TORAF');
+  const isDefaultBrand = !identity.isTenant && agencyName === (masterBrand?.agency_name || 'TORAFF');
 
   // While branding is still resolving we render nothing rather than the TORAFF
   // fallback, which used to flicker in before the workspace logo arrived.
