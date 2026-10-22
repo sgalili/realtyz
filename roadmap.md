@@ -1,3 +1,7 @@
+# Campaign distribution pricing
+- [ ] Reuse current SMS, IVR and Official WhatsApp screens with shared colored service icons and configured credit-only unit prices.
+- [ ] Convert campaign review/summary totals to precise credits and verify without launching live distribution.
+
 # Welcome, cloud sharing, tables and account deletion
 - [x] Unified home/partner browsing and legacy redirect; compact nonzero personal activity, published site-only/network labels and original publisher snapshots.
 - [x] 20 focused tests and signed-in desktop/mobile browsing, search and legacy redirect passed; server-gated pricing deployed. All-role live sharing and closing-price sessions remain unverified; no posts or leads submitted.
