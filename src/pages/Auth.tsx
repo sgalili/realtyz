@@ -85,7 +85,7 @@ const Auth = () => {
   };
 
   const [email, setEmail] = useState('');
-  const [signup, setSignup] = useState(false);
+  const [signup, setSignup] = useState(true);
   const [signupType, setSignupType] = useState<SignupRole | ''>('');
   const [fullName, setFullName] = useState('');
   const [brokerLicense, setBrokerLicense] = useState('');
