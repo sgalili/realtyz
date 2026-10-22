@@ -12,8 +12,8 @@ export const DEVELOPER_ONBOARDING_PATH = '/developer-dashboard?onboarding=1';
 export const SIGNUP_ROLE_LABELS: Record<SignupRole, string> = {
   broker: 'מתווך/סוכנות',
   partner: 'תכנית שותפים',
-  property_owner: 'משכיר/שוכר פרטי',
-  property_seeker: 'קונה/מוכר פרטי',
+  property_owner: 'משכיר/שוכר',
+  property_seeker: 'קונה/מוכר',
   developer: 'יזם',
   contractor: 'קבלן',
 };
