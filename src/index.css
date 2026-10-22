@@ -1667,6 +1667,8 @@
 .welcome-accent-sky { color: hsl(var(--social-telegram)); }
 .welcome-icon { color: hsl(var(--brand-gold)); opacity: .18; will-change: transform; }
 .welcome-enter { animation: welcome-enter .52s cubic-bezier(.22,1,.36,1) both; }
+.welcome-arrow, .welcome-arrow:hover { color: hsl(var(--brand-gold)); }
+.welcome-icon svg, .welcome-icon svg * { stroke-width: 2px !important; vector-effect: non-scaling-stroke; }
 .welcome-control { color: hsl(var(--primary-foreground)); background: hsl(var(--primary-foreground) / .13); }
 .welcome-control:hover { color: hsl(var(--primary-foreground)); background: hsl(var(--primary-foreground) / .24); }
 .welcome-cta { color: hsl(var(--warning-foreground)); background: hsl(var(--brand-gold)); box-shadow: 0 14px 34px hsl(var(--brand-gold) / .35); }

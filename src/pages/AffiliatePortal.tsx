@@ -3,6 +3,7 @@
 // Deliberately narrow: no CRM, no office settings, no broker tools. An affiliate
 // browses broker-approved properties, sees exactly what they earn per closing,
 // and generates a personal tracking link to market with.
+import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
 import { useEffect, useMemo, useState } from 'react';
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
@@ -196,8 +197,15 @@ function RemoveFromMarketingButton({ referralId }: { referralId: string }) {
   );
 }
 
-export function PartnerListingActions({ listing, referralId }: { listing: MarketplaceListing; referralId?: string | null }) {
+export function PartnerListingActions({ listing, referralId, boardRow = false }: { listing: MarketplaceListing; referralId?: string | null; boardRow?: boolean }) {
   const result = marketplaceResult(listing);
+  if (boardRow) return (
+    <div className="flex items-center gap-1">
+      <PropertyShareMenu results={[result]} iconOnly variant="ghost" hidePublish hideOpenPage />
+      <BoardPublishButton result={result} />
+      <BoardOpenPageButton result={result} />
+    </div>
+  );
   return (
     <div className="flex items-center gap-1.5">
       {/* Icon-only action: the title carries the meaning, no text label. */}
