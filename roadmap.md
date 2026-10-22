@@ -1,3 +1,7 @@
+# Final platform polish
+- [x] Refine three intro slides with cyan second slide, outline art, mirrored Rita and compact controls; phone and desktop checked. Small-screen description scrolls independently without image overlap.
+- [x] Replace activity side drawer with a wide below-header dropdown and red trigger; authenticated properties (814 ads), lead view and empty earnings checked without runtime errors. Clean sidebar and compressed first-frame assets; no visible Realtys references found.
+
 # Campaign distribution pricing
 - [x] Hide retained social toolbars on posts/composer; add feed-derived network counters, alias normalization, toggle filtering, single-network hiding and last-active protection.
 - [x] Mount the existing SMS/Official WhatsApp composer and IVR dialog with shared colored service icons and configured credit-only units; approved Meta templates remain mandatory.

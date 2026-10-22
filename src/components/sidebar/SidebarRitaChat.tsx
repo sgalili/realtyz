@@ -55,7 +55,7 @@ export function SidebarRitaChat() {
         ))}
         {loading && <p className="animate-pulse text-muted-foreground">ריטה חושבת…</p>}
       </div>
-      <form className="m-2 mt-0 flex items-end gap-1 rounded-full bg-muted px-3 py-1.5" onSubmit={(e) => { e.preventDefault(); send(); }}>
+      <form className="m-2 mt-0 flex items-end gap-1 px-3 py-1.5" onSubmit={(e) => { e.preventDefault(); send(); }}>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="שאלו את ריטה" aria-label="הודעה לריטה"
           className="min-w-0 flex-1 bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground" />
         <Button type="submit" size="icon" disabled={!text.trim() || loading} className="h-7 w-7 shrink-0 rounded-full" aria-label="שליחה">
