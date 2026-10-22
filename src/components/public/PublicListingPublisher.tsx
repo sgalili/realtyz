@@ -945,6 +945,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         <div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div>
       </DialogContent></Dialog>
     </Dialog>
+    </>
   );
 }
 

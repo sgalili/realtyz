@@ -29,6 +29,7 @@ export function PropertyShareMenu({
   open,
   onOpenChange,
   hideTrigger = false,
+  hideOpenPage = false,
 }: {
   results: UnifiedResult[];
   iconOnly?: boolean;
@@ -44,6 +45,8 @@ export function PropertyShareMenu({
   onOpenChange?: (v: boolean) => void;
   /** Hides the built-in trigger button (use with controlled open). */
   hideTrigger?: boolean;
+  /** Hides the "פתח דף" item (used where a standalone open-page button exists). */
+  hideOpenPage?: boolean;
 }) {
   const navigate = useNavigate();
   const { isPartnerMode } = useAppMode();
@@ -149,7 +152,7 @@ export function PropertyShareMenu({
         <DropdownMenuItem onSelect={() => run('copy')} className="gap-2 text-sm">
           <Copy className="h-4 w-4" /> העתק קישור
         </DropdownMenuItem>
-        {count === 1 && (
+        {count === 1 && !hideOpenPage && (
           <DropdownMenuItem onSelect={() => void openPage()} className="gap-2 text-sm">
             <ExternalLink className="h-4 w-4" /> פתח דף
           </DropdownMenuItem>
