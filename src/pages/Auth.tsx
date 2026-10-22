@@ -387,19 +387,46 @@ const Auth = () => {
                   <GoogleLogo />
                   כניסה עם גוגל
                 </Button>
+              ) : signup ? (
+                <Input
+                  id={isPhoneFlow ? 'auth-phone' : 'auth-email'}
+                  className="auth-unified-field"
+                  aria-label={isPhoneFlow ? 'מספר טלפון' : 'אימייל'}
+                  placeholder={isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}
+                  type={isPhoneFlow ? 'tel' : 'email'}
+                  inputMode={isPhoneFlow ? 'tel' : 'email'}
+                  value={isPhoneFlow ? formattedPhone : email}
+                  onChange={(e) => (isPhoneFlow ? handlePhoneChange(e.target.value) : setEmail(e.target.value))}
+                  required
+                  dir={isPhoneFlow && !formattedPhone || !isPhoneFlow && !email ? 'rtl' : 'ltr'}
+                />
               ) : (
+                <div className="space-y-2">
+                  <Label className="auth-method-label" htmlFor={isPhoneFlow ? 'auth-phone' : 'auth-email'}>
+                    {activeMethod === 'whatsapp' ? 'מה מספר הווטסאפ שלך?' : isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}
+                  </Label>
+                  <div
+                    className={`auth-method-field ${activeMethod === 'whatsapp' ? 'auth-method-field-whatsapp' : ''} ${activeMethod === 'sms' ? 'auth-method-field-sms' : ''} ${activeMethod === 'email' ? 'auth-method-field-email' : ''}`}
+                  >
+                    {activeMethod === 'whatsapp' ? (
+                      <WhatsAppLogo />
+                    ) : activeMethod === 'sms' ? (
+                      <MessageSquareText className="auth-sms-mark h-5 w-5" />
+                    ) : (
+                      <Mail className="h-5 w-5" />
+                    )}
                     <Input
                       id={isPhoneFlow ? 'auth-phone' : 'auth-email'}
-                      className="auth-unified-field"
-                      aria-label={isPhoneFlow ? 'מספר טלפון' : 'אימייל'}
-                      placeholder={isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}
+                      className="auth-method-input"
                       type={isPhoneFlow ? 'tel' : 'email'}
                       inputMode={isPhoneFlow ? 'tel' : 'email'}
                       value={isPhoneFlow ? formattedPhone : email}
                       onChange={(e) => (isPhoneFlow ? handlePhoneChange(e.target.value) : setEmail(e.target.value))}
                       required
-                      dir={isPhoneFlow && !formattedPhone || !isPhoneFlow && !email ? 'rtl' : 'ltr'}
+                      dir="ltr"
                     />
+                  </div>
+                </div>
               )}
               {!codeSent && signup && signupType === 'broker' && <BrokerLicenseField compact value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
               {!codeSent && !isGoogleFlow && (
