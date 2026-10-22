@@ -51,32 +51,10 @@ type SimLogEntry = {
   channel: ChannelId;
 };
 
-const WhatsAppLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 32 32" className={className} fill="currentColor" aria-hidden>
-    <path d="M16.003 3C8.82 3 3 8.82 3 16c0 2.29.6 4.52 1.74 6.49L3 29l6.69-1.71A12.94 12.94 0 0 0 16.003 29C23.18 29 29 23.18 29 16S23.18 3 16.003 3Zm0 23.6c-2.06 0-4.07-.55-5.83-1.6l-.42-.25-3.97 1.02 1.06-3.87-.27-.4A10.55 10.55 0 0 1 5.4 16c0-5.85 4.76-10.6 10.6-10.6S26.6 10.15 26.6 16 21.85 26.6 16.003 26.6Zm6.12-7.93c-.34-.17-2-1-2.31-1.11-.31-.11-.54-.17-.77.17-.23.34-.88 1.11-1.08 1.34-.2.23-.4.26-.74.09-.34-.17-1.43-.53-2.73-1.69-1.01-.9-1.69-2.01-1.89-2.35-.2-.34-.02-.52.15-.69.15-.15.34-.4.51-.6.17-.2.23-.34.34-.57.11-.23.06-.43-.03-.6-.09-.17-.77-1.86-1.06-2.55-.28-.67-.57-.58-.77-.59l-.66-.01c-.23 0-.6.09-.91.43-.31.34-1.2 1.17-1.2 2.86 0 1.69 1.23 3.32 1.4 3.55.17.23 2.42 3.69 5.86 5.18.82.35 1.46.56 1.96.72.82.26 1.57.22 2.16.13.66-.1 2-.82 2.29-1.61.28-.79.28-1.47.2-1.61-.08-.14-.31-.23-.65-.4Z" />
-  </svg>
-);
-
-const SmsLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 32 32" className={className} fill="currentColor" aria-hidden>
-    <path d="M6 5h20a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H13l-7 5v-5a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Zm4 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
-  </svg>
-);
-
-const GmailLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 256 193" className={className} aria-hidden xmlns="http://www.w3.org/2000/svg">
-    <path fill="#4285F4" d="M58.182 192.05V93.14L27.507 65.077 0 49.504v125.091c0 9.658 7.825 17.455 17.455 17.455z" />
-    <path fill="#34A853" d="M197.818 192.05h40.727c9.659 0 17.455-7.826 17.455-17.455V49.505l-31.156 17.837-27.026 25.798z" />
-    <path fill="#EA4335" d="M58.182 93.14l-4.174-38.647 4.174-36.989L128 69.868l69.818-52.364 4.669 33.452-4.669 42.184L128 145.504z" />
-    <path fill="#FBBC04" d="M197.818 17.504V93.14L256 49.504V26.231c0-21.585-24.64-33.89-41.89-20.945z" />
-    <path fill="#C5221F" d="M0 49.504l26.759 20.07L58.182 93.14V17.504L41.89 5.286C24.61-7.66 0 4.646 0 26.23z" />
-  </svg>
-);
-
-const VoiceLogo = ({ className }: { className?: string }) => (
-  <AudioLines className={className} />
-);
-
+const WhatsAppLogo = ({ className }: { className?: string }) => <CampaignServiceIcon channel="whatsapp" className={className} />;
+const SmsLogo = ({ className }: { className?: string }) => <CampaignServiceIcon channel="sms" className={className} />;
+const GmailLogo = ({ className }: { className?: string }) => <CampaignServiceIcon channel="email" className={className} />;
+const VoiceLogo = ({ className }: { className?: string }) => <CampaignServiceIcon channel="voice" className={className} />;
 // Legacy channel metadata per channel.
 // `pending=true` means provider not yet wired — UI shows "בחישוב עלויות".
 type ChannelMeta = {
@@ -86,25 +64,24 @@ type ChannelMeta = {
   color: string;
   bgTint: string;
   previewLabel: string;
-  legacyPrice: number;          // 0 for free channels
   unitLabel: string;             // e.g. "להודעה", "לפוסט"
   pending?: boolean;             // pricing not finalized
 };
 
 const CHANNELS: Array<ChannelMeta> = [
-  { id: 'whatsapp',    label: 'WhatsApp',    icon: WhatsAppLogo, color: 'text-[#25D366]',         bgTint: 'bg-[#25D366]/10 border-[#25D366]/40',                 previewLabel: 'WhatsApp',     legacyPrice: 0.10,  unitLabel: 'ישירות לוואטסאפ' },
-  { id: 'sms',         label: 'SMS',         icon: SmsLogo,      color: 'text-[#2563EB]',         bgTint: 'bg-[#2563EB]/10 border-[#2563EB]/40',                 previewLabel: 'SMS',          legacyPrice: 0.020, unitLabel: 'להודעה (70 תווים)' },
-  { id: 'voice',       label: 'AI קולי',     icon: VoiceLogo,    color: 'text-[hsl(46_78%_58%)]', bgTint: 'bg-[hsl(46_78%_58%)]/10 border-[hsl(46_78%_58%)]/40', previewLabel: 'AI קולי',      legacyPrice: 1.00,  unitLabel: 'לדקה' },
-  { id: 'ivr',         label: 'IVR',         icon: PhoneCall,    color: 'text-[hsl(262_70%_58%)]', bgTint: 'bg-[hsl(262_70%_58%)]/10 border-[hsl(262_70%_58%)]/40', previewLabel: 'IVR',         legacyPrice: 0.20,  unitLabel: 'לדקה' },
-  { id: 'email',       label: 'אימייל',      icon: GmailLogo,    color: 'text-[#EA4335]',         bgTint: 'bg-[#EA4335]/10 border-[#EA4335]/40',                 previewLabel: 'אימייל',       legacyPrice: 0,     unitLabel: 'לנמען' },
-  { id: 'linkedin',    label: 'LinkedIn',    icon: Linkedin,     color: 'text-[#0A66C2]',         bgTint: 'bg-[#0A66C2]/10 border-[#0A66C2]/40',                 previewLabel: 'LinkedIn',     legacyPrice: 0,     unitLabel: 'לפוסט' },
-  { id: 'instagram',   label: 'Instagram',   icon: Instagram,    color: 'text-[#E4405F]',         bgTint: 'bg-[#E4405F]/10 border-[#E4405F]/40',                 previewLabel: 'Instagram',    legacyPrice: 0,     unitLabel: 'לפוסט / ריל' },
-  { id: 'tiktok',      label: 'TikTok',      icon: TikTokOfficial, color: 'text-foreground',      bgTint: 'bg-[#FE2C55]/10 border-[#FE2C55]/40',                 previewLabel: 'TikTok',       legacyPrice: 0,     unitLabel: 'לסרטון' },
-  { id: 'telegram',    label: 'Telegram',    icon: TelegramIcon, color: 'text-[#229ED9]',         bgTint: 'bg-[#229ED9]/10 border-[#229ED9]/40',                 previewLabel: 'Telegram',     legacyPrice: 0,     unitLabel: 'להודעה' },
-  { id: 'messenger',   label: 'Messenger',   icon: MessageCircle, color: 'text-[#0084FF]',        bgTint: 'bg-[#0084FF]/10 border-[#0084FF]/40',                 previewLabel: 'Messenger',    legacyPrice: 0,     unitLabel: 'להודעה' },
-  { id: 'twitter',     label: 'X',           icon: Twitter,      color: 'text-foreground',        bgTint: 'bg-foreground/10 border-foreground/40',               previewLabel: 'X',            legacyPrice: 0,     unitLabel: 'לפוסט' },
-  { id: 'youtube',     label: 'YouTube',     icon: Youtube,      color: 'text-[#FF0000]',         bgTint: 'bg-[#FF0000]/10 border-[#FF0000]/40',                 previewLabel: 'YouTube',      legacyPrice: 0,     unitLabel: 'לסרטון' },
-  { id: 'facebook',    label: 'Facebook',    icon: Facebook,     color: 'text-[#1877F2]',         bgTint: 'bg-[#1877F2]/10 border-[#1877F2]/40',                 previewLabel: 'Facebook',     legacyPrice: 0,     unitLabel: 'לפוסט (Meta)' },
+  { id: 'whatsapp',    label: 'WhatsApp',    icon: WhatsAppLogo, color: 'text-[#25D366]',         bgTint: 'bg-[#25D366]/10 border-[#25D366]/40',                 previewLabel: 'WhatsApp',     unitLabel: 'ישירות לוואטסאפ' },
+  { id: 'sms',         label: 'SMS',         icon: SmsLogo,      color: 'text-[#2563EB]',         bgTint: 'bg-[#2563EB]/10 border-[#2563EB]/40',                 previewLabel: 'SMS',          unitLabel: 'להודעה (70 תווים)' },
+  { id: 'voice',       label: 'AI קולי',     icon: VoiceLogo,    color: 'text-[hsl(46_78%_58%)]', bgTint: 'bg-[hsl(46_78%_58%)]/10 border-[hsl(46_78%_58%)]/40', previewLabel: 'AI קולי',      unitLabel: 'לדקה' },
+  { id: 'ivr',         label: 'IVR',         icon: PhoneCall,    color: 'text-[hsl(262_70%_58%)]', bgTint: 'bg-[hsl(262_70%_58%)]/10 border-[hsl(262_70%_58%)]/40', previewLabel: 'IVR',         unitLabel: 'לדקה' },
+  { id: 'email',       label: 'אימייל',      icon: GmailLogo,    color: 'text-[#EA4335]',         bgTint: 'bg-[#EA4335]/10 border-[#EA4335]/40',                 previewLabel: 'אימייל',       unitLabel: 'לנמען' },
+  { id: 'linkedin',    label: 'LinkedIn',    icon: Linkedin,     color: 'text-[#0A66C2]',         bgTint: 'bg-[#0A66C2]/10 border-[#0A66C2]/40',                 previewLabel: 'LinkedIn',     unitLabel: 'לפוסט' },
+  { id: 'instagram',   label: 'Instagram',   icon: Instagram,    color: 'text-[#E4405F]',         bgTint: 'bg-[#E4405F]/10 border-[#E4405F]/40',                 previewLabel: 'Instagram',    unitLabel: 'לפוסט / ריל' },
+  { id: 'tiktok',      label: 'TikTok',      icon: TikTokOfficial, color: 'text-foreground',      bgTint: 'bg-[#FE2C55]/10 border-[#FE2C55]/40',                 previewLabel: 'TikTok',       unitLabel: 'לסרטון' },
+  { id: 'telegram',    label: 'Telegram',    icon: TelegramIcon, color: 'text-[#229ED9]',         bgTint: 'bg-[#229ED9]/10 border-[#229ED9]/40',                 previewLabel: 'Telegram',     unitLabel: 'להודעה' },
+  { id: 'messenger',   label: 'Messenger',   icon: MessageCircle, color: 'text-[#0084FF]',        bgTint: 'bg-[#0084FF]/10 border-[#0084FF]/40',                 previewLabel: 'Messenger',    unitLabel: 'להודעה' },
+  { id: 'twitter',     label: 'X',           icon: Twitter,      color: 'text-foreground',        bgTint: 'bg-foreground/10 border-foreground/40',               previewLabel: 'X',            unitLabel: 'לפוסט' },
+  { id: 'youtube',     label: 'YouTube',     icon: Youtube,      color: 'text-[#FF0000]',         bgTint: 'bg-[#FF0000]/10 border-[#FF0000]/40',                 previewLabel: 'YouTube',      unitLabel: 'לסרטון' },
+  { id: 'facebook',    label: 'Facebook',    icon: Facebook,     color: 'text-[#1877F2]',         bgTint: 'bg-[#1877F2]/10 border-[#1877F2]/40',                 previewLabel: 'Facebook',     unitLabel: 'לפוסט (Meta)' },
 ];
 
 // Maps a broadcast channel to the platform key in the social_connections table
@@ -132,7 +109,6 @@ const PAID_CHANNELS = new Set<ChannelId>(['sms', 'whatsapp', 'voice', 'email']);
 const CORE_CHANNEL_IDS: ChannelId[] = ['whatsapp', 'sms', 'voice', 'ivr', 'email', 'linkedin'];
 
 const PERSONALIZATION_TAGS = ['[שם_פרטי]', '[עיר]', '[נכס]'];
-const CREDIT_RATE = 420 / 15420;
 
 const DEMO_CITIES = ['ירושלים', 'תל אביב-יפו', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'אשדוד', 'נתניה', 'באר שבע', 'בני ברק', 'חולון', 'רמת גן', 'אשקלון', 'רחובות', 'בת ים', 'הרצליה', 'רמת השרון', 'כפר סבא', 'מודיעין', 'נצרת', 'רעננה', 'לוד'];
 const DEMO_TAGS = ['קנייה', 'מכירה', 'שכירות', 'השקעה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'וילה', '3 חדרים', '4 חדרים', '5 חדרים', 'מסחרי'];
@@ -1793,7 +1769,7 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
                       </ul>
                     )}
                     {broadcastCost.hasPending && (
-                      <p className="mt-1 text-[10px] italic text-amber-600 dark:text-amber-400">* AI קולי מוצג ב"בחישוב עלויות" עד שהספק יחובר.</p>
+                      <p className="mt-1 text-[10px] italic text-amber-600 dark:text-amber-400">* העלות תושלם לאחר טעינת המחירון ואורך ההקלטה.</p>
                     )}
                   </div>
                   <div className="flex flex-col items-center gap-1.5">
