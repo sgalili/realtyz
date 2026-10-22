@@ -1,4 +1,3 @@
-import { readPostSignupWelcome } from '@/lib/signupRole';
 import * as React from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
@@ -24,7 +23,7 @@ import { RealtyzLoader } from "@/components/RealtyzLoader";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
-import { applyPendingSignupRole } from '@/lib/signupRole';
+import { applyPendingSignupRole, readPostSignupWelcome } from '@/lib/signupRole';
 import { PostSignupWelcome } from '@/components/onboarding/PostSignupWelcome';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
