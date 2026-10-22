@@ -1,6 +1,6 @@
 # Activity drawer cleanup
-- [ ] Fit the dropdown to mobile, retain only primary tabs and compact live credits, and reuse standard property cards without statistics grids.
-- [ ] Verify authenticated tabs, real property cards and internal scrolling on phone and desktop.
+- [x] Fit the dropdown to mobile, retain only primary tabs and compact live credits, and reuse standard property cards without statistics grids.
+- [x] Authenticated phone (372×682) and desktop (1280×1800) show 24 real owned cards, exactly three tabs, no horizontal overflow and internal scroll to 400px. Leads and empty earnings checked; 16 focused tests pass, no browser errors and preview build OK. No property or favorite data changed during verification.
 
 # Final platform polish
 - [x] Refine three intro slides with cyan second slide, outline art, mirrored Rita and compact controls; phone and desktop checked. Small-screen description scrolls independently without image overlap.
