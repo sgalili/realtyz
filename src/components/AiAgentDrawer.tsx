@@ -237,10 +237,14 @@ export default function AiAgentDrawer() {
 
   // Allow opening from header button
   useEffect(() => {
-    const handler = () => setOpen(true);
+    const handler = (event: Event) => {
+      setExpanded((event as CustomEvent<{ expanded?: boolean }>).detail?.expanded === true);
+      setOpen(true);
+    };
     window.addEventListener('open-ai-drawer', handler);
     return () => window.removeEventListener('open-ai-drawer', handler);
   }, []);
+  const [expanded, setExpanded] = useState(false);
 
   const onFilePick = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -568,10 +572,31 @@ ${shareUrl}
   };
 
 
+  // Sidebar mini chat shares this exact conversation, persona and tools.
+  const sendRef = useRef<(text: string) => void>(() => {});
+  sendRef.current = (text: string) => { void sendMessage(text); };
+  useEffect(() => {
+    const onSend = (event: Event) => {
+      const text = String((event as CustomEvent<{ text?: string }>).detail?.text ?? '').trim();
+      if (text) sendRef.current(text);
+    };
+    window.addEventListener('rita:send', onSend);
+    return () => window.removeEventListener('rita:send', onSend);
+  }, []);
+  useEffect(() => {
+    const publish = () => window.dispatchEvent(new CustomEvent('rita:state', { detail: {
+      loading: isLoading,
+      messages: messages.slice(-6).map((m) => ({ role: m.role, content: String(m.content ?? '') })),
+    } }));
+    publish();
+    window.addEventListener('rita:state-request', publish);
+    return () => window.removeEventListener('rita:state-request', publish);
+  }, [messages, isLoading]);
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {/* Trigger is in AppLayout header */}
-      <SheetContent side="left" className="flex h-[100dvh] max-h-[100dvh] w-full flex-col p-0 sm:max-w-md" dir="rtl">
+      <SheetContent side="left" className={expanded ? "flex !inset-2 !h-auto !w-auto !max-w-none flex-col overflow-hidden rounded-2xl p-0 sm:!inset-8 lg:!inset-x-[15vw]" : "flex h-[100dvh] max-h-[100dvh] w-full flex-col p-0 sm:max-w-md"} dir="rtl">
         <div className="relative px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
           <RitaAvatar className="h-12 w-12 ring-2 ring-primary/20" />
           <h3 className="text-[18px] font-bold text-center">ריטה, סוכנת ה-AI של TORAFF</h3>
