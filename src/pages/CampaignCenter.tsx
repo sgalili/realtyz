@@ -1,3 +1,8 @@
+import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
+import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
+import { useCampaignPricing } from '@/hooks/useCampaignPricing';
+import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
+import { postNetwork, postNetworkCounts, togglePostNetwork } from '@/lib/postNetworkFilters';
 import { FacebookCloudConnectGate } from '@/components/social/FacebookCloudConnectGate';
 import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { isProjectTarget, projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
@@ -161,7 +166,7 @@ try {
   }
 } catch { /* storage unavailable */ }
 
-type TabValue = 'create' | 'published' | 'calendar';
+type TabValue = 'create' | 'published' | 'calendar' | 'broadcast';
 
 const TABS: { value: TabValue; label: string }[] = [
   { value: 'create',    label: 'צור קמפיין' },
@@ -376,6 +381,7 @@ const ChannelGrid = ({
   onAddFacebookPage?: () => void;
 }) => {
   const [open, setOpen] = useState(false);
+  const { data: servicePrices = [] } = useCampaignPricing();
   const selectedCount = selectedIds.size;
   const connectedCards = CHANNEL_CARDS.filter((c) => connected.has(c.id));
   return (
@@ -488,7 +494,7 @@ const ChannelGrid = ({
                   </span>
                 ) : (
                   <span className={cn('text-[12px] font-bold', lit ? 'text-foreground' : 'text-muted-foreground/60')} dir="ltr">
-                    <bdi dir="ltr">₪{c.price}</bdi>
+                    {(() => { const price = campaignServicePrice(c.id, servicePrices); return price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'; })()}
                   </span>
                 )}
 
@@ -4188,6 +4194,7 @@ const GlobalSocialFeed = ({
   onToggleSelectMode,
   selectedFeedIds = [],
   filteredRows = [],
+  disabledNetworks = [], onToggleNetwork,
   bulkDeletingFeed = false,
   onToggleSelectAll,
   onDeleteSelected,
@@ -4201,6 +4208,8 @@ const GlobalSocialFeed = ({
   onToggleSelectMode?: () => void;
   selectedFeedIds?: string[];
   filteredRows?: CampaignRow[];
+  disabledNetworks?: string[];
+  onToggleNetwork?: (network: string) => void;
   bulkDeletingFeed?: boolean;
   onToggleSelectAll?: (on: boolean) => void;
   onDeleteSelected?: () => void;
@@ -4289,19 +4298,18 @@ const GlobalSocialFeed = ({
       ) : (
         <div aria-hidden className="min-w-0" />
       )}
-      <div className="flex w-full min-w-0 flex-nowrap items-center justify-start gap-4 overflow-x-auto px-1 pb-1 sm:justify-center">
-        <button
-          type="button"
-          onClick={() => onChannelChange('all')}
-          className={cn(
-            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity min-w-0',
-            activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
-          )}
-        >
-          <span className={cn('text-xs sm:text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>
-</span>
-        </button>
-        {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
+      <div className="flex min-w-0 items-center justify-center gap-3 overflow-x-auto" aria-label="סינון רשתות">
+        {Object.keys(postNetworkCounts(rows)).length > 1 && Object.entries(postNetworkCounts(rows)).map(([network, count]) => {
+          const inactive = disabledNetworks.includes(network);
+          const meta = FEED_PLATFORMS.find((p) => p.id === network);
+          return <Button key={network} variant="ghost" size="sm" aria-label={meta?.label ?? network} aria-pressed={!inactive}
+            title={`${meta?.label ?? network} · ${count} פוסטים${inactive ? ' · לא פעיל' : ''}`}
+            onClick={() => onToggleNetwork?.(network)}
+            className={cn('h-8 shrink-0 gap-1.5 px-1', inactive && 'grayscale opacity-40')}>
+            <CampaignServiceIcon channel={network} className="h-[18px] w-[18px]" />
+            <span className="text-xs tabular-nums text-foreground">{count}</span>
+          </Button>;
+        })}
       </div>
       {(feedSelectMode && selectedCount > 0) ? (
         <div className="flex justify-self-end">
@@ -4851,6 +4859,8 @@ const PublishedFeed = ({
 
 
   const [activeChannel, setActiveChannel] = useState<string>('all');
+  const [disabledNetworks, setDisabledNetworks] = useState<string[]>([]);
+  useEffect(() => { setDisabledNetworks([]); setSelectedFeedIds([]); }, [workspaceOwnerId]);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() =>
     readFbBindingFlag(workspaceOwnerId) ? new Set(['facebook']) : new Set(),
   );
@@ -6052,7 +6062,7 @@ const PublishedFeed = ({
 
 
 
-  const filteredRows = useMemo(() => {
+  const networkRows = useMemo(() => {
     const base = rows ?? [];
     // Group posts live in the browser-extension queue (localStorage), not only
     // in the DB. Synthesize a card per queued post so it shows up immediately
@@ -6115,9 +6125,7 @@ const PublishedFeed = ({
       .map((r: any) => (PUBLISHED_ALIASES.has(String(r.status || '').toLowerCase()) ? { ...r, status: 'sent' } : r))
       .filter((r: any) => !deletedIds.has(String(r.id)))
       .filter((r: any) => r._optimistic || !UNSENT.has(String(r.status || '').toLowerCase()));
-    const channelFiltered = activeChannel === 'all'
-      ? merged
-      : merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
+    const channelFiltered = merged;
 
     return collapseCampaignCards(channelFiltered).map((row) => {
       if (row._seriesSlots?.length) return row;
@@ -6133,7 +6141,8 @@ const PublishedFeed = ({
         group_ids: [job.groupUrl || ''].filter(Boolean),
       })) };
     });
-  }, [rows, activeChannel, optimisticRows, extensionQueue, deletedIds]);
+  }, [rows, optimisticRows, extensionQueue, deletedIds]);
+  const filteredRows = useMemo(() => networkRows.filter((row) => !disabledNetworks.includes(postNetwork(row.channel))), [networkRows, disabledNetworks]);
 
   // Blocking loader ONLY on a true cold start: no cached rows in memory AND
   // the initial background load is still in-flight. As soon as we have any
@@ -6228,7 +6237,12 @@ const PublishedFeed = ({
       ) : null}
 
       <GlobalSocialFeed
-        rows={rows ?? []}
+        rows={networkRows}
+        disabledNetworks={disabledNetworks}
+        onToggleNetwork={(network) => {
+          setDisabledNetworks((previous) => togglePostNetwork(previous, network, Object.keys(postNetworkCounts(networkRows))));
+          setSelectedFeedIds([]);
+        }}
         activeChannel={activeChannel}
         onChannelChange={setActiveChannel}
         connectedChannels={connectedChannels}
@@ -8323,7 +8337,7 @@ const CampaignCenter = () => {
   // Default landing view = sent campaigns feed. The composer panel is now
   // opened on demand via the "+" button in the page hero (see PageHero).
   const initial = (searchParams.get('tab') as string) ?? 'published';
-  const active: TabValue = initial === 'calendar' ? 'calendar' : initial === 'create' ? 'create' : 'published';
+  const active: TabValue = initial === 'broadcast' ? 'broadcast' : initial === 'calendar' ? 'calendar' : initial === 'create' ? 'create' : 'published';
 
   /**
    * CLEAN SLATE: opening the composer for a brand-new post starts from
@@ -8653,9 +8667,11 @@ const CampaignCenter = () => {
         </TabsList>
 
 
+        <TabsContent value="broadcast" className="mt-6"><SmsBlastSimulator /></TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
           <FacebookCloudConnectGate />
           
+          <div hidden aria-hidden="true">
           <ChannelGrid
             selectedIds={pickedChannelIds}
             onPick={(c) => {
@@ -8692,6 +8708,7 @@ const CampaignCenter = () => {
             socialProfiles={socialAccountProfiles}
             onAddFacebookPage={() => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!); }}
           />
+          </div>
           {pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
             const propertiesParam = searchParams.get('properties') || '';
             let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
