@@ -7,6 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { PUBLIC_CARD_COLUMNS, toPublicCard } from "../_shared/publicMask.ts";
+import { isFeedEligible } from '../_shared/publicListingVisibility.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
     let query = admin
       .from("listings")
       .select(PUBLIC_CARD_COLUMNS)
-      .eq("affiliate_enabled", true)
+      .or("is_published.eq.true,affiliate_enabled.eq.true")
       .neq("status", "discarded")
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
       const { data: reached } = await admin.rpc("listing_daily_cap_reached", { _listing_id: r.id });
       if (reached === true) capped.add(r.id);
     }));
-    return json({ properties: rows.filter((r) => !capped.has(r.id)).map((row) => toPublicCard(row)) });
+    return json({ properties: rows.filter((r) => isFeedEligible(r) && !capped.has(r.id)).map((row) => ({ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true })) });
   } catch (error) {
     console.error("[public-listings-board]", error);
     return json({ error: "board lookup failed" }, 500);

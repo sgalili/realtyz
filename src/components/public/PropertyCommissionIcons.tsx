@@ -11,8 +11,8 @@ export default function PropertyCommissionIcons({ listingId, raw }: { listingId:
   const { level4Unlocked } = useAffiliateLicense();
   const marketplace = useAffiliateMarketplace();
   const { data: property } = useQuery({
-    queryKey: ['public-commission-pricing', listingId],
-    enabled: !!user && !raw && !marketplace.data?.some((row) => row.listing_id === listingId),
+    queryKey: ['public-commission-pricing', listingId, user?.id, level4Unlocked],
+    enabled: !!user && (!raw || (level4Unlocked && raw.affiliate_tier4_amount == null)) && !marketplace.data?.some((row) => row.listing_id === listingId),
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(listingId)}`, { method: 'GET' });
       if (error) throw error;
@@ -23,7 +23,7 @@ export default function PropertyCommissionIcons({ listingId, raw }: { listingId:
   // brokers (verified license or broker roles, server-gated by
   // partner_can_view_closing) may see this column at all.
   if (!user) return null;
-  const source = raw ?? property;
+  const source = property ?? raw;
   const listing = marketplace.data?.find((row) => row.listing_id === listingId);
   const tiers = listing ? listingTiers(listing) : {
     tier1: Number(source?.affiliate_tier1_amount ?? 0),
