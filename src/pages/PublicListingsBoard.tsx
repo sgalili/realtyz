@@ -44,6 +44,7 @@ export type PublicCard = {
   price: number | null; description: string | null; photos: string[];
   contact_options: LeadContactOptions | null;
   affiliate_enabled?: boolean;
+  attribution?: { broker_name?: string | null; office_name?: string | null; agency_logo_url?: string | null; broker_license_number?: string | null; publisher_kind?: string | null };
 };
 
 type GateIntent = 'favorite' | 'details';
