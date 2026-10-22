@@ -436,7 +436,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         )}
 
       </SidebarContent>
-      {user && !collapsed && <SidebarFooter className="shrink-0 border-0 bg-background p-0 shadow-none"><SidebarRitaChat /></SidebarFooter>}
+      {user && !collapsed && <SidebarFooter className="shrink-0 border-t border-border bg-background p-0 shadow-none"><SidebarRitaChat /></SidebarFooter>}
     </Sidebar>
   );
 }
