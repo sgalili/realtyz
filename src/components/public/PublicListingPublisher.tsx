@@ -631,17 +631,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     <>
           {step === 0 && !importSlide && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <p className="text-center text-base font-bold">למכירה או להשכרה?</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
-                    <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
-                  ))}
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
+                  <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
+                ))}
               </div>
               {fields.dealType && (
                 <div className="space-y-2">
-                  <p className="text-center text-base font-bold">מי מפרסם?</p>
+                  <p className="text-center text-sm font-semibold text-muted-foreground">מי מפרסם?</p>
                   <div className="grid grid-cols-3 gap-2">
                     <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
                     <Button type="button" variant="outline" className="h-auto px-2 py-4 text-base font-bold" onClick={() => { if (!user) { setPendingSignupRole('developer'); navigate('/auth'); return; } void supabase.rpc('register_as_developer' as any, { _display_name: null }).then(async ({ error }) => { if (error) { toast.error(error.message); return; } await refetchRoles(); navigate('/developer-dashboard?onboarding=1'); }); }}>יזם</Button>
@@ -649,14 +646,30 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 </div>
               )}
-            </div>
-          )}
-          {step === 0 && importSlide && (
-            <div className="space-y-4">
-              <div className="space-y-2"><Label htmlFor="yad2-import-url">הדביקו כאן קישור למודעה ביד 2 (לא חובה)</Label><div className="flex gap-2"><Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="placeholder:text-muted-foreground/60" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} /></div></div>
-              {isBroker && <MyPropertiesPicker />}
-              {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
-              <Button type="button" variant="outline" className="w-full" onClick={() => { setPublishError(''); setImportSlide(false); setStep(1); setReviewMode(true); setExpandedStep(''); }}>המשך ללא ייבוא <ArrowLeft className="h-4 w-4" /></Button>
+              {fields.dealType && (
+                <div className="space-y-2 pt-1">
+                  <Button type="button" variant={importOption === 'yad2' ? 'secondary' : 'outline'} className="w-full justify-between" aria-expanded={importOption === 'yad2'} onClick={() => setImportOption((current) => (current === 'yad2' ? null : 'yad2'))}>
+                    ייבוא מודעה מיד 2
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', importOption === 'yad2' && 'rotate-180')} />
+                  </Button>
+                  {importOption === 'yad2' && (
+                    <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="placeholder:text-muted-foreground/60" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} />
+                  )}
+                  {isBroker && (
+                    <>
+                      <Button type="button" variant={importOption === 'mine' ? 'secondary' : 'outline'} className="w-full justify-between" aria-expanded={importOption === 'mine'} onClick={() => setImportOption((current) => (current === 'mine' ? null : 'mine'))}>
+                        הנכסים שלי
+                        <ChevronDown className={cn('h-4 w-4 transition-transform', importOption === 'mine' && 'rotate-180')} />
+                      </Button>
+                      {importOption === 'mine' && <MyPropertiesPicker />}
+                    </>
+                  )}
+                  {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
+                  <button type="button" className="mx-auto block pt-1 text-sm font-semibold text-primary underline underline-offset-4" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setStep(1); setReviewMode(true); setExpandedStep(''); }}>
+                    המשך ללא ייבוא
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
