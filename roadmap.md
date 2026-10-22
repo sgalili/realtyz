@@ -182,5 +182,5 @@
 - [x] Removed the "חזרה לדף הבית" text link from תנאי שימוש and מדיניות פרטיות; a fixed circular X in the top-right corner now returns the user to the exact previous screen (verified in mobile browser: landing -> terms -> X lands on /landing, terms -> privacy -> X lands back on /terms) and falls back to the home page only when the document was opened directly. Two focused tests pass, typecheck and preview build are OK.
 
 # Create-ad source and legal return
-- [ ] Add source-back control, exact ready-property count, preserve modal/accordion during legal viewing, remove top notice and shorten consent.
-- [ ] Verify legal close/source return and ready count without publishing any property.
+- [x] Add source-back control, exact ready-property count, preserve modal/accordion during legal viewing, remove top notice and shorten consent. Brokerage terms reuse the corresponding section of standard Terms.
+- [x] Authenticated phone (372×682) and desktop (1280×1800) verified: legal close retains expanded property-type accordion and chosen apartment; source-back opens import options; ready-property counter and list both contain 447 workspace properties. 13 focused tests and preview build pass; no property published.
