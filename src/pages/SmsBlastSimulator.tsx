@@ -169,7 +169,7 @@ function personalize(message: string) {
     .replace(/\[נכס\]/g, 'דירת 4 חדרים, רוטשילד');
 }
 
-export default function SmsBlastSimulator() {
+export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => void } = {}) {
   const { user } = useAuth();
   const { data: servicePrices = [] } = useCampaignPricing();
   const { limitsEnabled } = useWorkspaceFeatures();
@@ -463,6 +463,7 @@ export default function SmsBlastSimulator() {
   const [loyaltyOptions, setLoyaltyOptions] = useState<string[]>([]);
   const [recipientSource, setRecipientSource] = useState<string | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<ChannelId[]>([]);
+  useEffect(() => { const channel = new URLSearchParams(location.search).get('channel'); if (channel === 'sms' || channel === 'whatsapp') setSelectedChannels([channel]); }, [location.search]);
   const [showMoreChannels, setShowMoreChannels] = useState(false);
   // Per-channel AI Auto-Reply settings (enabled + tone). Default tone tuned per platform.
   const DEFAULT_AI_TONES: Partial<Record<ChannelId, string>> = {
@@ -803,7 +804,7 @@ export default function SmsBlastSimulator() {
     }
     // Trial restriction: block real broadcasts when trial expired
     if (trial.isTrialExpired) {
-      toast.error('תקופת הניסיון הסתיימה. יש לשדרג כדי להמשיך להפיץ קמפיינים', {
+      toast.error('ההפצה אינה זמינה כרגע בחשבון זה', {
         duration: 8000,
         action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/wallet') },
       });
@@ -1066,7 +1067,7 @@ export default function SmsBlastSimulator() {
       toast.error('שגיאה בשיגור: ' + (err?.message ?? 'שגיאה לא ידועה'));
       setPhase('compose');
     }
-  }, [blastName, messageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired]);
+  }, [blastName, messageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired, waTemplate, connectedChannels.whatsapp]);
 
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
@@ -1111,10 +1112,11 @@ export default function SmsBlastSimulator() {
                     //   (2) In lead-context mode, the lead has no destination coord (no email/phone/handle).
                     const missingForLead = leadMissingChannel(channel.id);
                     const disabledForLead = !!contextLeadId && missingForLead;
-                    const disabledForIntegration = !isConnected && !isPending;
+                    const disabledForIntegration = !isConnected && !isPending && !(channel.id === 'ivr' && onIvrOpen);
                     const isHardDisabled = disabledForLead || disabledForIntegration;
                     const priceText = configuredPrice ? formatCampaignCredits(configuredPrice.credits) : 'המחירון אינו זמין';
                     const handleCardClick = () => {
+                      if (channel.id === 'ivr' && onIvrOpen && !disabledForLead) { onIvrOpen(); return; }
                       if (disabledForLead) {
                         toast.info('לליד זה אין כתובת/מספר מתאים לערוץ זה.');
                         return;
@@ -1136,14 +1138,15 @@ export default function SmsBlastSimulator() {
                         ? 'הערוץ אינו מחובר בהגדרות המשרד'
                         : undefined;
                     return (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={channel.id}
                         type="button"
                         onClick={handleCardClick}
                         aria-pressed={checked}
                         aria-disabled={isHardDisabled}
                         title={disabledTitle}
-                        className={`relative flex flex-col items-center justify-start gap-1.5 rounded-xl border-2 p-2.5 sm:p-3 text-center transition-all min-h-[8.75rem] ${
+                        className={`relative flex flex-col items-center justify-start gap-1.5 rounded-xl border-2 p-2.5 sm:p-3 text-center transition-all h-auto min-h-[8.75rem] whitespace-normal ${
                           isHardDisabled
                             ? 'opacity-40 pointer-events-none border-dashed border-border/60 bg-muted/30'
                             : checked
@@ -1273,7 +1276,7 @@ export default function SmsBlastSimulator() {
                                             }`}
                                           >
                                             {t}
-                                          </button>
+                                          </Button>
                                         ))}
                                       </div>
                                       <p className="text-[10px] text-muted-foreground leading-tight">
@@ -1797,7 +1800,7 @@ export default function SmsBlastSimulator() {
                     {(() => {
                       const hasConnectedSelected = selectedChannels.some((c) => connectedChannels[c]);
                       const trialBlocked = trial.isTrialExpired;
-                      const disabled = broadcastCost.hasPending || !blastName.trim() || !messageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
+                      const disabled = (selectedChannels.includes('whatsapp') && !waTemplate) || broadcastCost.hasPending || !blastName.trim() || !messageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
                       return (
                         <>
                           <Button size="lg" className="h-auto whitespace-normal text-center bg-primary text-primary-foreground hover:bg-primary-glow" onClick={() => setConfirmOpen(true)} disabled={disabled}>
@@ -1806,7 +1809,7 @@ export default function SmsBlastSimulator() {
                           </Button>
                           {trialBlocked && (
                             <p className="text-[11px] text-destructive">
-                              תקופת הניסיון הסתיימה. יש לשדרג כדי להמשיך להפיץ קמפיינים
+                              ההפצה אינה זמינה כרגע בחשבון זה
                             </p>
                           )}
                           {!trialBlocked && selectedChannels.length > 0 && !hasConnectedSelected && (
@@ -1831,6 +1834,7 @@ export default function SmsBlastSimulator() {
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent dir="rtl">
+          <div className="space-y-2">{broadcastCost.rows.map((row) => <div key={row.channel} className="flex items-center justify-between gap-2 text-xs"><span className="inline-flex items-center gap-2"><CampaignServiceIcon channel={row.channel} />{row.label}</span><span>{formatCampaignCredits(row.subtotal)}</span></div>)}</div>
           <AlertDialogHeader>
             <AlertDialogTitle>אישור שיגור חי</AlertDialogTitle>
             <AlertDialogDescription>

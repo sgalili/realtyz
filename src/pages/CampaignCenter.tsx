@@ -7499,6 +7499,7 @@ const DraftCollapsibleCard = ({
 /* ───────────── Page ───────────── */
 
 const CampaignCenter = () => {
+  const { data: distributionPrices = [] } = useCampaignPricing();
   const [searchParams, setSearchParams] = useSearchParams();
   // Live status per collapsed draft card (keyed by composer instanceId).
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
@@ -8657,6 +8658,15 @@ const CampaignCenter = () => {
       )}
 
 
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {['sms', 'ivr', 'whatsapp'].map((channel) => {
+          const price = campaignServicePrice(channel, distributionPrices);
+          return <Button key={channel} variant="ghost" className="h-auto gap-2 px-2 py-1" onClick={() => {
+            if (channel === 'ivr') { setIvrOpen(true); return; }
+            const next = new URLSearchParams(searchParams); next.set('tab', 'broadcast'); next.set('channel', channel); setSearchParams(next);
+          }}><CampaignServiceIcon channel={channel} /><span className="text-xs">{channel === 'whatsapp' ? 'WhatsApp הרשמי' : channel.toUpperCase()}<span className="block text-[10px] font-normal text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span></span></Button>;
+        })}
+      </div>
       <Tabs value={active} onValueChange={handleChange} className="w-full">
         {/* Sub-tabs intentionally hidden — primary view is the published feed,
             and the "+" button in the page hero toggles the composer panel. */}
@@ -8667,7 +8677,7 @@ const CampaignCenter = () => {
         </TabsList>
 
 
-        <TabsContent value="broadcast" className="mt-6"><SmsBlastSimulator /></TabsContent>
+        <TabsContent value="broadcast" className="mt-6"><SmsBlastSimulator onIvrOpen={() => setIvrOpen(true)} /></TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
           <FacebookCloudConnectGate />
           
