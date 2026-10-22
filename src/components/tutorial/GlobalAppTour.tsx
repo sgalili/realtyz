@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { RitaAvatar } from '@/components/RitaAvatar';
-import realtyzLogo from '@/assets/realtyz-logo.png';
+import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { APP_TOUR_EVENT, buildWalkthrough, useWalkthrough, walkthroughStore } from '@/lib/appWalkthrough';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
 import { shouldShowWelcome } from '@/lib/welcomePreference';

@@ -16,7 +16,7 @@ import { ArrowRight, Mail, MessageSquareText } from 'lucide-react';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { cn } from '@/lib/utils';
 import { RealtyzWave } from '@/components/RealtyzWave';
-import realtyzLogo from '@/assets/realtyz-logo.png';
+import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
 import { SIGNUP_ROLE_LABELS, setPendingSignupRole, setPendingSignupName, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';

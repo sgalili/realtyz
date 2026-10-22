@@ -1,5 +1,5 @@
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
-import torafLogo from '@/assets/realtyz-logo.png';
+import torafLogo from '@/assets/realtyz-logo.webp';
 
 /** Bundled logo paints on the first frame; the configured master logo replaces it when known. Never shows a text placeholder. */
 export function PlatformBrand({ className = '' }: { className?: string }) {

@@ -8,7 +8,7 @@ import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { useAuth } from '@/hooks/useAuth';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import { SIGNUP_ROLE_LABELS, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
-import realtyzLogo from '@/assets/realtyz-logo.png';
+import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 
