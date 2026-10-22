@@ -172,3 +172,8 @@
 - [x] Registration page: X top-right returns home; header compressed on short screens so all fields plus submit fit with zero scrolling (dynOverflow 0, submit visible).
 - [x] Activity drawer: multi-select toggle swapped next to the active-shares counter; select checkbox borders solid black (rgb(0,0,0) verified).
 - [x] Welcome modal: both buttons in one bottom row (verified same row, no dialog scroll), subtitle reduced to 19px; legacy "רילטיז" brand strings replaced with TORAFF.
+
+# Create-ad modal, header close and broker welcome
+- [x] Redesigned the create-ad modal step 0 to be ultra-minimal: למכירה/להשכרה main buttons, expandable "ייבוא מודעה מיד 2" URL input and "הנכסים שלי" picker, borderless "המשך ללא ייבוא" link to the review steps. Verified in mobile browser: expand/collapse works, link opens review.
+- [x] Modal header now shows only the clean X close icon (reset/back icons removed); closing returns to the exact prior screen (verified same URL after close). Landing page refactored to shared LandingContent; /landing still renders.
+- [x] Broker signups get the brokers/agencies landing page (LandingContent) inside the first post-signup welcome window with a pinned profile CTA; typecheck and build pass. Not browser-verified: requires a fresh מתווך registration.
