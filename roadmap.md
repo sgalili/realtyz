@@ -119,3 +119,7 @@
 # Auth phone field style and field typography
 - [x] Reverted the התחברות phone field to its earlier label-plus-bordered-pill design with the channel icon, left the הרשמה phone field unchanged, and made the user-type dropdown placeholder match the full-name and phone placeholders; all three render 18px on phone and desktop (dropdown was 14px, inputs 16px).
 - [x] Verified identical card/logo geometry across tab switches at 411×802 and 1280×900, send-code button appears after a valid number, 17 focused tests pass and preview build is OK.
+
+# Auth header swap, tagline wording and login placeholder
+- [x] Moved the rotating sentences above the TORAFF logo (the logo now sits directly above the form), replaced "הכנסות מסביב לשעון" with "הכנסה פאסיבית", and moved "מה מספר הטלפון שלך?" inside the login field as a placeholder at 18px to match the full-name field; no label remains above that field.
+- [x] Verified at 411x802: ticker above logo, identical card geometry on both tabs (top 259, height 440), no page scroll, footer 11px from the bottom, and all field texts render 18px. 17 focused tests pass and the preview build is OK.
