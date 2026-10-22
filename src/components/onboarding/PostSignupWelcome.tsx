@@ -12,6 +12,7 @@ import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import { completePartnerIntro } from '@/lib/partnerIntroPreference';
 import { readPostSignupWelcome, clearPostSignupWelcome, type SignupRole } from '@/lib/signupRole';
+import { LandingContent } from '@/pages/Landing';
 
 const BENEFITS: Record<SignupRole, { title: string; items: [string, string][] }> = {
   property_seeker: { title: 'ברוכים הבאים ל-TORAFF!', items: [['🏠', 'כל הנכסים במקום אחד'], ['📣', 'פרסום נכס בחינם'], ['🤖', 'ריטה עונה בשבילכם 24/7'], ['🤝', 'פרופיל מלא = יותר אמון']] },
@@ -61,6 +62,27 @@ export function PostSignupWelcome() {
     close();
     navigate(personal ? '/profile?tab=personal' : '/profile?tab=workspace');
   };
+  // Brokers get the dedicated brokers & agencies landing page inside their very
+  // first welcome window, so they immediately see how the tool fits daily work.
+  if (role === 'broker') {
+    return (
+      <Dialog open onOpenChange={(o) => { if (!o) close(); }}>
+        <DialogContent dir="rtl" className="grid h-[92dvh] w-[calc(100%-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
+          <DialogHeader className="border-b px-5 py-4 text-right">
+            <DialogTitle className="text-xl font-extrabold leading-tight">ברוכים הבאים! הנה הכלים שילוו אתכם בכל יום עבודה</DialogTitle>
+            <DialogDescription className="text-sm">סיירו בדף המקצועי למתווכים וסוכנויות — ואז השלימו את הפרופיל כדי להתחיל.</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 overflow-y-auto overscroll-contain">
+            <LandingContent />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t bg-background p-4">
+            <Button size="lg" className="flex-1 text-lg" onClick={() => void complete()}>השלמת פרופיל ✨</Button>
+            <Button size="lg" variant="ghost" onClick={close}>אחר כך</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !isAcceptingTerms) close(); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto text-right">
