@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { PageCloseButton } from '@/components/ui/page-close-button';
 
 /** מדיניות פרטיות ציבורית (RTL) — משקפת את יכולות המערכת ואת עיבוד הנתונים. */
 const UPDATED = '27 באוגוסט 2026';

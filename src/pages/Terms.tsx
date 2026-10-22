@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
+import { PageCloseButton } from '@/components/ui/page-close-button';
 import { PACKAGES } from '@/lib/pricing';
 import { BROKERAGE_COMMISSION_TITLE } from '@/components/public/BrokerageCommissionDisclosure';
 
