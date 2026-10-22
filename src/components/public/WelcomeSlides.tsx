@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { BrandLogo } from '@/components/social/BrandLogo';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { WelcomeOutlineLogo } from '@/components/public/WelcomeOutlineLogo';
 import ritaPointing from '@/assets/rita-pointing.webp';
-import { CoinsCurrency, NetworkHomes, ShareShekels } from '@/components/public/welcomeIcons';
+import { CoinsCurrency, NetworkHomes } from '@/components/public/welcomeIcons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dismissWelcome, welcomeDismissed } from '@/lib/welcomePreference';
@@ -13,17 +13,17 @@ const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span 
 const SLIDES = [
   { icon: NetworkHomes, theme: 1, title: <>מחברים בין <Hi tone="red">מתווכים</Hi>, יזמים ובעלי נכסים</>, text: <>האקוסיסטם הראשון בעולם ה<Hi tone="red">נדל"ן</Hi> שמחבר את כולם לרשת <Hi tone="red">שותפים</Hi> חכמה אחת שעובדת בשבילכם אוטומטית.</> },
   { icon: CoinsCurrency, theme: 2, title: <>כאן כולם <Hi tone="gold">מרוויחים</Hi></>, text: <div className="space-y-4">
-    <p><strong className="welcome-strong">משתפים נכסים. יוצרים קמפיינים אוטומטיים</strong> ומרוויחים עמלות גבוהות באוטומציה מלאה.</p>
-    <p><strong className="welcome-strong">מוכרים / משכירים / מתווכים?</strong><br />קובעים מראש את עמלת הסגירה ומחיר הלידים לוהטים בשקלים 🔥</p>
-    <p><strong className="welcome-strong">קונים / שוכרים?</strong><br />עמלת תיווך קבועה של 1% על מכירה ו-10% על שכירות חודשית.</p>
+    <p>משתפים נכסים. יוצרים קמפיינים אוטומטיים ומרוויחים עמלות גבוהות באוטומציה מלאה.</p>
+    <p>מוכרים / משכירים / מתווכים?<br />אתם קובעים מראש את עמלת הסגירה ומחיר הלידים שאתם מוכנים לשלם.</p>
+    <p>קונים / שוכרים?<br />עמלת תיווך קבועה של 1% על מכירה ו-10% מגובה השכירות החודשית.</p>
   </div> },
   { icon: null, theme: 3, title: <>ריטה, סוכנת ה-AI האישית שלכם</>, text: <>מייצגת אתכם נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות. במילים פשוטות: ריטה מייצרת לכם הכנסה פאסיבית בזמן שאתם ישנים 😍</> },
 ] as const;
 
 const FLOATING = [
-  { platform: 'whatsapp', pos: 'right-[8%] top-[14%]' }, { platform: 'facebook', pos: 'left-[10%] top-[10%]' },
-  { platform: 'instagram', pos: 'right-[22%] bottom-[30%]' }, { platform: 'youtube', pos: 'left-[38%] top-[6%]' },
-  { platform: 'calendar', pos: 'right-[4%] bottom-[48%]' }, { platform: 'gmail', pos: 'left-[44%] bottom-[24%]' },
+  { platform: 'whatsapp', pos: 'right-[5%] bottom-[22%]' }, { platform: 'facebook', pos: 'left-[4%] bottom-[15%]' },
+  { platform: 'instagram', pos: 'right-[25%] bottom-[14%]' }, { platform: 'youtube', pos: 'left-[32%] bottom-[32%]' },
+  { platform: 'calendar', pos: 'right-[5%] bottom-[38%]' }, { platform: 'gmail', pos: 'left-[4%] bottom-[42%]' },
 ];
 
 export function hasSeenWelcomeSlides() {
@@ -81,22 +81,24 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       aria-roledescription="carousel"
       aria-label="היכרות עם TORAFF"
       data-theme={slide.theme}
-      className={cn('welcome-slide relative mx-3 mt-2 flex h-[calc(100dvh-4.75rem)] touch-none select-none flex-col overflow-hidden rounded-3xl transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
+      className={cn('welcome-slide relative mx-3 mt-2 flex h-[calc(100dvh-4.75rem)] select-none flex-col overflow-hidden rounded-3xl transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
       onTouchStart={e => { const t = e.touches[0]; touch.current = t ? { x: t.clientX, y: t.clientY } : null; }}
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
-      <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon && <Icon className="h-full w-full" strokeWidth={2} />}</div>
+      <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon && <Icon className="h-full w-full" strokeWidth={4} />}</div>
       {!Icon && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
-        {FLOATING.map((f, i) => <span key={f.platform} className={cn('welcome-float absolute flex h-12 w-12 items-center justify-center opacity-50', f.pos)} style={{ animationDelay: `${i * -0.9}s` }}>{f.platform === 'calendar' ? <CalendarDays className="h-7 w-7 text-deal-blue" strokeWidth={2} /> : <BrandLogo platform={f.platform} className="h-7 w-7" />}</span>)}
-        <img src={ritaPointing} alt="" decoding="async" className="welcome-enter absolute bottom-0 left-0 h-[58%] w-auto object-contain sm:h-[70%]" />
+        {FLOATING.map((f, i) => <span key={f.platform} className={cn('welcome-float welcome-outline absolute h-14 w-14', f.pos)} style={{ animationDelay: `${i * -0.9}s` }}><WelcomeOutlineLogo platform={f.platform} /></span>)}
+        <img src={ritaPointing} alt="" width={768} height={1376} decoding="async" className="welcome-rita absolute w-auto object-contain" />
       </div>}
-      <Button type="button" variant="ghost" size="sm" onClick={finish} className="welcome-control absolute right-3 top-3 z-20 gap-1">דלג <X className="h-4 w-4" /></Button>
-      <div key={index} className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col justify-start px-6 pb-4 pt-14 text-right sm:px-14 sm:pt-16" aria-live="polite">
-        <h2 className="welcome-title welcome-enter text-4xl font-black leading-[1.02] sm:text-7xl">{slide.title}</h2>
-        <div className={cn("welcome-copy welcome-enter mt-5 max-w-2xl font-normal leading-relaxed [animation-delay:80ms]", "text-xl sm:text-2xl", last && "max-w-[70%] sm:max-w-lg")}>{slide.text}</div>
-        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter mt-8 h-16 w-full max-w-sm rounded-2xl text-xl font-black [animation-delay:150ms]">יאללה, נכנסים ללוח! 🚀</Button>}
+      <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-8 w-8"><X className="h-5 w-5" /></Button>
+      <div key={index} className="welcome-content relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pb-4 pt-12 text-right sm:px-14 sm:pt-16" aria-live="polite">
+        <div className="welcome-text min-h-0 overflow-y-auto overscroll-contain">
+          <h2 className="welcome-title welcome-enter text-[38px] font-black leading-[1.08] sm:text-[74px]">{slide.title}</h2>
+          <div className="welcome-copy welcome-enter mt-5 max-w-2xl text-[22px] font-normal leading-[1.35] [animation-delay:80ms] sm:text-[26px]">{slide.text}</div>
+        </div>
+        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter h-auto min-h-10 whitespace-normal rounded-lg px-3 py-2 text-[22px] font-medium leading-tight [animation-delay:150ms]">יאללה, נכנסים ללוח! 🚀</Button>}
       </div>
-      <div className="relative z-10 flex flex-col items-center gap-3 pb-5">
+      <div className="welcome-footer relative z-10 flex shrink-0 flex-col items-center gap-2 pb-4">
         <div className="flex items-center gap-1">
           <Button type="button" variant="ghost" size="icon" aria-label="הקודם" onClick={() => go(index - 1)} className={cn('welcome-arrow h-10 w-10 bg-transparent hover:bg-transparent', index === 0 && 'invisible')}><ChevronRight className="h-8 w-8" /></Button>
           {SLIDES.map((_, i) => <Button key={i} type="button" variant="ghost" size="icon" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className="h-8 w-8 hover:bg-transparent"><span className={cn('welcome-dot h-2.5 rounded-full transition-all duration-300', i === index ? 'w-8' : 'w-2.5 opacity-45')} /></Button>)}
