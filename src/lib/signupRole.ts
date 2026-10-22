@@ -93,12 +93,12 @@ export async function applyPendingSignupRole(): Promise<string | null> {
   if (error || !(data as { ok?: boolean } | null)?.ok) return null;
   markPostSignupWelcome(role);
   clearPendingSignupRole();
-  if (role === 'partner') return '/affiliate';
+  if (role === 'partner') return '/';
   if (role === 'developer' || role === 'contractor') return DEVELOPER_ONBOARDING_PATH;
   if (role === 'property_seeker') return '/public-listings';
   if (role === 'property_owner') {
     try { if (window.localStorage.getItem(PUBLIC_LISTING_RESUME_KEY) === '1') return '/public-listings'; } catch { /* storage disabled */ }
     return '/owner/properties';
   }
-  return '/dashboard';
+  return '/';
 }

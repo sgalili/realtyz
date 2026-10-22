@@ -187,9 +187,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
         void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       }
       setRoleApplied(true);
-      if (path === '/affiliate' && window.location.pathname !== '/affiliate') {
-        window.location.assign('/affiliate');
-      } else if (path?.startsWith('/developer-dashboard') && window.location.pathname !== '/developer-dashboard') {
+      if (path?.startsWith('/developer-dashboard') && window.location.pathname !== '/developer-dashboard') {
         window.location.assign(path);
       }
     });
