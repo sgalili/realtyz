@@ -9,6 +9,8 @@ import { useMyReferrals, useMySubmissions } from '@/hooks/useAffiliate';
 import { supabase } from '@/integrations/supabase/client';
 import { hasHomeActivity } from '@/lib/homeActivity';
 import { fmtILS } from '@/lib/formatCurrency';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAppMode } from '@/hooks/useAppMode';
 
 const AffiliateNetwork = lazy(() => import('@/pages/AffiliateNetwork'));
 
@@ -16,6 +18,13 @@ export default function HomeActivityPill() {
   const { user } = useAuth();
   const owner = useActiveWorkspaceOwnerId();
   const navigate = useNavigate();
+  const { isAffiliateOnly } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  const partnerView = isAffiliateOnly || isPartnerMode;
+  const showActivity = (tab: string) => {
+    if (partnerView) { setActivity(tab); return; }
+    navigate(tab === 'leads' ? '/lead-crm' : tab === 'earnings' ? '/wallet' : '/posts');
+  };
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
   const referrals = useMyReferrals();
@@ -47,9 +56,9 @@ export default function HomeActivityPill() {
     </Button>
     {open && <div className="flex flex-wrap gap-1 border-b pb-3">
       <Button variant="ghost" size="sm" onClick={() => navigate('/my-ads')}>{metrics.properties} נכסים שלי</Button>
-      <Button variant="ghost" size="sm" onClick={() => setActivity('leads')}>{metrics.leads} לידים</Button>
-      <Button variant="ghost" size="sm" onClick={() => setActivity('mine')}>{metrics.marketing} בשיווק</Button>
-      <Button variant="ghost" size="sm" onClick={() => setActivity('earnings')}><bdi dir="ltr">{fmtILS(metrics.earnings)}</bdi> רווחים</Button>
+      <Button variant="ghost" size="sm" onClick={() => showActivity('leads')}>{metrics.leads} לידים</Button>
+      <Button variant="ghost" size="sm" onClick={() => showActivity('mine')}>{metrics.marketing} בשיווק</Button>
+      <Button variant="ghost" size="sm" onClick={() => showActivity('earnings')}><bdi dir="ltr">{fmtILS(metrics.earnings)}</bdi> רווחים</Button>
     </div>}
     {open && activity && <Suspense fallback={<p className="text-sm text-muted-foreground">טוען פעילות…</p>}><AffiliateNetwork key={activity} activityOnly initialTab={activity} /></Suspense>}
   </section>;
