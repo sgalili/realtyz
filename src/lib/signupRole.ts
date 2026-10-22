@@ -44,6 +44,21 @@ export function clearPendingSignupRole() {
   }
 }
 
+const WELCOME_KEY = 'toraff-post-signup-welcome';
+/** Display-only flag: shows the one-time welcome/trust prompt after signup. */
+export function markPostSignupWelcome(role: SignupRole) {
+  try { window.localStorage.setItem(WELCOME_KEY, role); } catch { /* storage disabled */ }
+}
+export function readPostSignupWelcome(): SignupRole | null {
+  try {
+    const v = window.localStorage.getItem(WELCOME_KEY);
+    return v && v in SIGNUP_ROLE_LABELS ? (v as SignupRole) : null;
+  } catch { return null; }
+}
+export function clearPostSignupWelcome() {
+  try { window.localStorage.removeItem(WELCOME_KEY); } catch { /* storage disabled */ }
+}
+
 /**
  * Applies the role picked at registration to the freshly signed-in account.
  * The server validates primary identity and existing roles atomically.
@@ -54,6 +69,7 @@ export async function applyPendingSignupRole(): Promise<string | null> {
   if (!role) return null;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
+  markPostSignupWelcome(role);
   const { data: savedRoles, error: rolesError } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
   if (rolesError) return null;
   if (savedRoles?.some(r => !['user', 'affiliate'].includes(r.role))) {
