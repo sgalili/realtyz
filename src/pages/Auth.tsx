@@ -346,8 +346,8 @@ const Auth = () => {
           <CardContent className="auth-card-content p-6">
             {!codeSent && <>
               <div className="grid shrink-0 grid-cols-2 gap-1" role="group" aria-label="כניסה או הרשמה">
-                <Button type="button" className="text-lg" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
                 <Button type="button" className="text-lg" variant={signup ? 'default' : 'ghost'} onClick={() => setSignup(true)}>הרשמה</Button>
+                <Button type="button" className="text-lg" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
               </div>
             </>}
             <div className="auth-dynamic-content">
