@@ -1013,7 +1013,7 @@ export default function AffiliatePortal() {
               onToggle={() => { setMultiSelectMode(v => !v); setSelectedIds(new Set()); }}
             />
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <TabsList className="[&>button]:text-[calc(0.875rem+3px)]">
+            <TabsList className="[&>button]:!text-[17px]">
               <TabsTrigger value="marketplace">{marketplace.length + projectRecords.length} נכסים</TabsTrigger>
               <TabsTrigger value="leads">{submissions.length} לידים</TabsTrigger>
               <TabsTrigger value="mine">{referralCampaigns.filter((row) => row.listing).length} בשיווק</TabsTrigger>
