@@ -1,3 +1,8 @@
+# Signup profile inheritance
+- [ ] Preserve signup type and full name after OTP; skip redundant selection for pure affiliates.
+- [ ] Hide synthetic emails and affiliate broker fields; keep personal/company completion appropriate to type.
+- [ ] Verify signup and profile persistence; check requested account removal safely.
+
 # Auth screen refinements
 - [x] Fixed header/tabs positions, contiguous uniform fields and viewport-fixed footer; verified identical tab/header/card geometry at 411×802, 360×640 and 1280×1800, shared 40px field heights and footer 10px from bottom during form scrolling. All 11 signup tests and preview build pass; no OTP sent or account data changed.
 - [x] Merge company dropdown option, add full-name input, stabilize tabs and apply requested typography, logo spacing, ticker and footer changes; no account/profile persistence changes.
