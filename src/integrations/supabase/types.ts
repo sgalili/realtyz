@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_otps: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       action_pricing: {
         Row: {
           action_key: string
@@ -2300,6 +2324,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      deleted_accounts_archive: {
+        Row: {
+          deleted_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          profile: Json | null
+          reason: string
+          roles: string[] | null
+          user_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          profile?: Json | null
+          reason?: string
+          roles?: string[] | null
+          user_id: string
+        }
+        Update: {
+          deleted_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          profile?: Json | null
+          reason?: string
+          roles?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
       }
       deleted_social_posts: {
         Row: {

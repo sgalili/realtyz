@@ -23,7 +23,7 @@ import { RealtyzLoader } from "@/components/RealtyzLoader";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
-import { applyPendingSignupRole } from '@/lib/signupRole';
+import { applyPendingSignupRole, readPostSignupWelcome } from '@/lib/signupRole';
 import { PostSignupWelcome } from '@/components/onboarding/PostSignupWelcome';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
@@ -266,7 +266,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
 
   if ((isPartnerMode || isAffiliateOnly) && isAffiliate && !['/', '/wallet', '/profile', '/public-listings', '/referral'].some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
     if (partnerConsent.isLoading) return <PageLoader />;
-    if (partnerConsent.data !== true) return <AppLayout><PartnerOnboarding onComplete={() => void partnerConsent.refetch()} /></AppLayout>;
+    if (partnerConsent.data !== true && !readPostSignupWelcome()) return <AppLayout><PartnerOnboarding onComplete={() => void partnerConsent.refetch()} /></AppLayout>;
   }
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
