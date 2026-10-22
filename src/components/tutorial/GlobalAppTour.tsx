@@ -141,22 +141,26 @@ export function GlobalAppTour() {
   if (!session || session.index !== 0) return null;
   if (showWelcome) return <div className="fixed inset-x-0 bottom-0 top-16 z-[60] overflow-hidden overscroll-none bg-background"><WelcomeSlides onDone={() => setShowWelcome(false)} /></div>;
   return <Dialog open onOpenChange={(open) => { if (!open) close(); }}>
-    <DialogContent dir="rtl" className="max-h-[90dvh] max-w-xl overflow-y-auto p-6 sm:p-8">
-      <img src={realtyzLogo} alt="TORAFF" className="mx-auto h-14 w-auto object-contain" />
-      <DialogTitle className="text-center text-3xl font-extrabold">ברוכים הבאים לרילטיז</DialogTitle>
-      <DialogDescription className="text-center text-xl leading-relaxed text-foreground">
-        נכסים, אנשים והזדמנויות נפגשים במקום אחד.
-      </DialogDescription>
-      <p className="text-lg leading-relaxed">מתווכים מורשים מקדמים עסקאות; יזמים מציגים פרויקטים; קונים ומוכרים פרטיים מוצאים הזדמנויות; ושותפים משתפים נכסים ועוקבים אחרי תגמולים. לכל תפקיד הדרך שלו להתקדם ולהרוויח.</p>
-      <div className="flex items-start gap-4 border-y border-border py-4">
-        <RitaAvatar className="h-16 w-16" />
-        <div className="min-w-0 space-y-1">
-          <h2 className="text-2xl font-extrabold">הכירו את ריטה</h2>
-          <p className="text-lg leading-relaxed"><strong>סוכנת ה-AI שלכם</strong> מושכת פניות, מנהלת תוכן ועוזרת להפוך הזדמנויות להכנסה. האוטומציות שהפעלתם עובדות על טייס אוטומטי <strong>24/7, גם בזמן שאתם ישנים.</strong></p>
+    <DialogContent dir="rtl" className="flex max-h-[90dvh] max-w-xl flex-col gap-4 p-6 sm:p-8">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+        <img src={realtyzLogo} alt="TORAFF" className="mx-auto h-14 w-auto object-contain" />
+        <DialogTitle className="text-center text-3xl font-extrabold">ברוכים הבאים ל-TORAFF</DialogTitle>
+        <DialogDescription className="text-center text-[19px] leading-relaxed text-foreground">
+          נכסים, אנשים והזדמנויות נפגשים במקום אחד.
+        </DialogDescription>
+        <p className="text-lg leading-relaxed">מתווכים מורשים מקדמים עסקאות; יזמים מציגים פרויקטים; קונים ומוכרים פרטיים מוצאים הזדמנויות; ושותפים משתפים נכסים ועוקבים אחרי תגמולים. לכל תפקיד הדרך שלו להתקדם ולהרוויח.</p>
+        <div className="flex items-start gap-4 border-y border-border py-4">
+          <RitaAvatar className="h-16 w-16" />
+          <div className="min-w-0 space-y-1">
+            <h2 className="text-2xl font-extrabold">הכירו את ריטה</h2>
+            <p className="text-lg leading-relaxed"><strong>סוכנת ה-AI שלכם</strong> מושכת פניות, מנהלת תוכן ועוזרת להפוך הזדמנויות להכנסה. האוטומציות שהפעלתם עובדות על טייס אוטומטי <strong>24/7, גם בזמן שאתם ישנים.</strong></p>
+          </div>
         </div>
       </div>
-      <Button variant="outline" size="lg" className="w-full text-lg" onClick={() => setShowWelcome(shouldShowWelcome('instructions'))}>היכרות עם TORAFF<ChevronLeft /></Button>
-      <Button size="lg" className="w-full text-lg font-bold" onClick={() => walkthroughStore.move(1)}>מתחילים את הסיור<ChevronLeft /></Button>
+      <div className="flex shrink-0 flex-row gap-2">
+        <Button variant="outline" size="lg" className="min-w-0 flex-1 text-base sm:text-lg" onClick={() => setShowWelcome(shouldShowWelcome('instructions'))}>היכרות עם TORAFF<ChevronLeft /></Button>
+        <Button size="lg" className="min-w-0 flex-1 text-base font-bold sm:text-lg" onClick={() => walkthroughStore.move(1)}>מתחילים את הסיור<ChevronLeft /></Button>
+      </div>
     </DialogContent>
   </Dialog>;
 }
