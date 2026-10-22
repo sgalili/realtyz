@@ -1,35 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 
-type Row = { id: string; property_title: string | null; address: string | null; city: string | null; asking_price: number | null; is_published: boolean | null };
+type Row = import('@/hooks/useReadyBoardProperties').ReadyBoardProperty;
 
 /** Search the active workspace's "My Properties" and bulk-publish selected ones publicly (explicit confirmation inside QuickPublicPromotion). */
 export function MyPropertiesPicker() {
   const { activeWorkspaceId } = useWorkspace();
   const [q, setQ] = useState('');
   const [opened, setOpened] = useState(false);
-  const [rows, setRows] = useState<Row[]>([]);
+  const { data: available = [] } = useReadyBoardProperties();
   const [selected, setSelected] = useState<Map<string, Row>>(new Map());
 
   useEffect(() => {
-    if (!activeWorkspaceId) return;
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      let query = supabase.from('listings').select('id,property_title,address,city,asking_price,is_published')
-        .eq('workspace_owner_id', activeWorkspaceId).neq('status', 'discarded').order('created_at', { ascending: false }).limit(8);
-      const term = q.trim().replace(/[%,()]/g, ' ');
-      if (term) query = query.or(`property_title.ilike.%${term}%,address.ilike.%${term}%,city.ilike.%${term}%`);
-      const { data } = await query;
-      if (!cancelled) setRows((data as Row[]) ?? []);
-    }, 200);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [q, activeWorkspaceId]);
+    setQ(''); setOpened(false); setSelected(new Map());
+  }, [activeWorkspaceId]);
+  const term = q.trim().toLocaleLowerCase();
+  const rows = available.filter(row => !term || [row.property_title, row.address, row.city].some(value => value?.toLocaleLowerCase().includes(term)));
 
   const toggle = (r: Row) => setSelected(prev => { const n = new Map(prev); if (n.has(r.id)) n.delete(r.id); else n.set(r.id, r); return n; });
 

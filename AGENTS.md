@@ -15,6 +15,7 @@
 - Inventory and project campaign targets are workspace-scoped; authorize AI targets server-side, never store project refs in listing UUID fields. Why: isolation.
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.
+- Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state and consistent counts without tenant drift or duplicate legal content.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
 - Peer expansions use exclusive motion groups.

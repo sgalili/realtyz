@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { BadgeCheck, Globe, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { isReadyForBoard } from '@/lib/readyForBoard';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false }: { id
   const allowed = ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin', 'affiliate'].includes(activeWorkspace?.role ?? '');
   useEffect(() => { setOpen(false); setRows([]); setAccepted(false); }, [activeWorkspaceId]);
   if (!allowed || !activeWorkspaceId || !ids.length) return null;
-  const eligible = rows.filter(row => row.status !== 'discarded' && !!row.city?.trim() && !!row.address?.trim() && Number(row.asking_price) > 0 && !(row.is_published && row.affiliate_enabled && row.status === 'live'));
+  const eligible = rows.filter(isReadyForBoard);
   const prepare = async () => {
     setBusy(true); setAccepted(false);
     try {
@@ -40,6 +41,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false }: { id
       onPublished(saved);
       void qc.invalidateQueries({ queryKey: ['my-ads-stats'] });
       void qc.invalidateQueries({ queryKey: ['owner-listings'] });
+      void qc.invalidateQueries({ queryKey: ['ready-board-properties'] });
       toast.success(`${saved.length} נכסים פורסמו בלוח הציבורי`);
       if (saved.length !== eligible.length) toast.warning('חלק מהנכסים לא פורסמו. יש לבדוק הרשאות.');
       setOpen(false);
