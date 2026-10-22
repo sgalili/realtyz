@@ -417,6 +417,7 @@ const App = () => (
               <Route path="/ref/:code" element={<Navigate to="/auth" replace />} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<RootRoute />} />
+              <Route path="/index" element={<Navigate to="/" replace />} />
               <Route path="/landing" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
               <Route path="/terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
               <Route path="/privacy-policy" element={<Suspense fallback={<PageLoader />}><PrivacyPolicy /></Suspense>} />
