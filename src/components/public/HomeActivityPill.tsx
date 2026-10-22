@@ -41,7 +41,7 @@ export default function HomeActivityPill() {
   });
   const leadCount = useQuery({
     queryKey: ['activity-lead-count', user?.id, owner], enabled: !!user?.id && !!owner && !partnerView,
-    queryFn: async () => { const { count, error } = await supabase.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_owner_id', owner!); if (error) throw error; return count ?? 0; },
+    queryFn: async () => { if (!owner) return 0; const { count, error } = await supabase.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_owner_id', owner); if (error) throw error; return count ?? 0; },
   });
   if (!user) return null;
   const n = (v: number | undefined) => v === undefined ? '' : ` (${v.toLocaleString('he-IL')})`;
@@ -51,7 +51,7 @@ export default function HomeActivityPill() {
     { id: 'earnings', label: `רווחים${n(submissions.data?.filter(r => Number(r.earned_amount ?? 0) > 0).length)}` },
   ];
   return <Popover open={open} onOpenChange={setOpen}>
-    <PopoverTrigger asChild><Button ref={triggerRef} variant="ghost" size="icon" className={cn('-ms-[5px] h-9 w-9 shadow-none hover:bg-transparent focus-visible:ring-0 data-[state=open]:bg-transparent', open && 'text-destructive hover:text-destructive')} aria-label="הפעילות שלי" title="הפעילות שלי">
+    <PopoverTrigger asChild><Button ref={triggerRef} variant="ghost" size="icon" onClick={(event) => { event.preventDefault(); setOpen(current => !current); }} className={cn('pointer-events-auto -ms-[5px] h-9 w-9 cursor-pointer shadow-none hover:bg-transparent focus-visible:ring-0 data-[state=open]:bg-transparent', open && 'text-destructive hover:text-destructive')} aria-label="הפעילות שלי" title="הפעילות שלי">
       <ChartNoAxesCombined className="h-5 w-5" />
     </Button></PopoverTrigger>
     <PopoverContent portalContainer={headerAnchor} side="bottom" align="start" className="home-activity-drawer p-0" aria-label="הפעילות שלי" dir="rtl">
