@@ -1,3 +1,6 @@
+import { ilsToCredits } from '@/lib/credits';
+import { formatCampaignCredits } from '@/lib/campaignServicePricing';
+import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { useEffect, useMemo, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -164,7 +167,7 @@ const DeliveryReports = () => {
     const successRate = totalAttempted > 0 ? Math.round((totalSent / totalAttempted) * 100) : 0;
     const totalCost = rows.reduce((s, r) => {
       if (r.status !== 'sent' && r.status !== 'delivered') return s;
-      const price = r.cost ?? CHANNEL_META[r.channel]?.price ?? 0;
+      const price = r.cost ?? 0;
       return s + Number(price);
     }, 0);
     const providers = Array.from(new Set(rows.map(r => r.source_account).filter((x): x is string => !!x)));
@@ -227,7 +230,7 @@ const DeliveryReports = () => {
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">עלות כוללת</div>
-          <div className="text-2xl font-bold mt-1">₪{summary.totalCost.toFixed(2)}</div>
+          <div className="text-2xl font-bold mt-1">{formatCampaignCredits(ilsToCredits(summary.totalCost))}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">חשבונות פעילים</div>
@@ -307,7 +310,7 @@ const DeliveryReports = () => {
                 {filtered.map((row) => {
                   const meta = CHANNEL_META[row.channel] ?? CHANNEL_META.sms;
                   const Icon = meta.icon;
-                  const price = row.cost ?? meta.price;
+                  const price = row.cost;
                   const contact = row.recipient_phone ?? row.recipient_email ?? '-';
                   const isRetrying = retryingIds.has(row.id);
                   return (
@@ -318,10 +321,10 @@ const DeliveryReports = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${meta.color}`} />
+                          <CampaignServiceIcon channel={row.channel} />
                           <div>
                             <div className="text-sm font-medium">{meta.label}</div>
-                            <div className="text-[11px] text-muted-foreground">₪{Number(price).toFixed(2)}</div>
+                            <div className="text-[11px] text-muted-foreground">{price == null ? '—' : formatCampaignCredits(ilsToCredits(Number(price)))}</div>
                           </div>
                         </div>
                       </TableCell>
