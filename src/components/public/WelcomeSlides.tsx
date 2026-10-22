@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Sparkles, Rocket, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { BrandLogo } from '@/components/social/BrandLogo';
+import ritaPointing from '@/assets/rita-pointing.png';
 import { CoinsCurrency, NetworkHomes, ShareShekels } from '@/components/public/welcomeIcons';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -9,12 +11,20 @@ type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
 
 const SLIDES = [
-  { icon: NetworkHomes, theme: 1, title: <>מהפכת ה<Hi tone="gold">אוטומציה</Hi> בנדל"ן</>, text: <>האקוסיסטם הראשון שמחבר בין מתווכים, יזמים ובעלי נכסים לרשת <Hi tone="sky">שותפים</Hi> חכמה אחת שעובדת בשבילך אוטומטית מקצה לקצה.</> },
-  { icon: CoinsCurrency, theme: 2, title: <>המוכר קובע את ה<Hi tone="gold">עמלות</Hi></>, text: <>עמלות שקופות מראש. לקונים ולשוכרים מחיר קבוע וברור.</> },
-  { icon: ShareShekels, theme: 3, title: <>כאן כולם <Hi tone="red">שותפים</Hi></>, text: <>בעלי נכסים, מתווכים ויזמים משווקים נכסים ומרוויחים <Hi tone="gold">עמלות</Hi>.</> },
-  { icon: Sparkles, theme: 1, title: <>הכירו את <Hi tone="gold">ריטה</Hi> — סוכנת ה-AI האישית שלך</>, text: <>עובדת בשבילך <Hi tone="sky">24/7</Hi>, מייצגת אותך נאמנה, יוצרת פוסטים שיווקיים לנכסים שלך, מביאה לידים חמים בוואטסאפ ובטלפון — ומייצרת לך הכנסה אוטומטית מסביב שעון, גם בזמן שאתה ישן.</> },
-  { icon: Rocket, theme: 2, title: <>רווחים <Hi tone="gold">אוטומטית</Hi></>, text: <>הפצה, לידים ועמלות עובדים בשבילכם. מתחילים עכשיו.</> },
+  { icon: NetworkHomes, theme: 1, title: <>מחברים את עולם ה<Hi tone="red">נדל"ן</Hi> לאוטומציה</>, text: <>האקוסיסטם הראשון שמחבר מתווכים, יזמים ובעלי נכסים לרשת <Hi tone="red">שותפים</Hi> חכמה אחת שעובדת בשבילכם אוטומטית.</> },
+  { icon: CoinsCurrency, theme: 2, title: <>כאן כולם <Hi tone="gold">מרוויחים</Hi></>, text: <div className="space-y-4">
+    <p><strong className="welcome-strong">מוכרים / משכירים / מתווכים?</strong><br />קובעים מראש את עמלת הסגירה ומחיר הלידים לוהטים בשקלים 🔥</p>
+    <p><strong className="welcome-strong">קונים / שוכרים?</strong><br />עמלת תיווך קבועה של 1% על מכירה ו-10% על שכירות חודשית.</p>
+    <p><strong className="welcome-strong">חברים בתוכנית השותפים?</strong><br />משתפים, יוצרים קמפיינים אוטומטיים ומרוויחים עמלות גבוהות באוטומציה מלאה.</p>
+  </div> },
+  { icon: null, theme: 3, title: <>ריטה, סוכנת ה-AI האישית שלכם</>, text: <>מייצגת אתכם נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות. במילים פשוטות: ריטה מייצרת לכם הכנסה פאסיבית בזמן שאתם ישנים 😍</> },
 ] as const;
+
+const FLOATING = [
+  { platform: 'whatsapp', pos: 'right-[8%] top-[14%]' }, { platform: 'facebook', pos: 'left-[10%] top-[10%]' },
+  { platform: 'instagram', pos: 'right-[22%] bottom-[30%]' }, { platform: 'youtube', pos: 'left-[38%] top-[6%]' },
+  { platform: 'calendar', pos: 'right-[4%] bottom-[48%]' }, { platform: 'gmail', pos: 'left-[44%] bottom-[24%]' },
+];
 
 export function hasSeenWelcomeSlides() {
   return welcomeDismissed();
@@ -75,12 +85,16 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       onTouchStart={e => { const t = e.touches[0]; touch.current = t ? { x: t.clientX, y: t.clientY } : null; }}
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
-      <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center"><Icon className="h-full w-full" strokeWidth={.85} /></div>
+      <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon && <Icon className="h-full w-full" strokeWidth={2} />}</div>
+      {!Icon && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
+        {FLOATING.map((f, i) => <span key={f.platform} className={cn('welcome-float absolute flex h-12 w-12 items-center justify-center rounded-2xl bg-card shadow-lg', f.pos)} style={{ animationDelay: `${i * -0.9}s` }}>{f.platform === 'calendar' ? <CalendarDays className="h-7 w-7 text-deal-blue" strokeWidth={2} /> : <BrandLogo platform={f.platform} className="h-7 w-7" />}</span>)}
+        <img src={ritaPointing} alt="" className="welcome-enter absolute bottom-0 left-0 h-[58%] w-auto -scale-x-100 object-contain sm:h-[70%]" />
+      </div>}
       <Button type="button" variant="ghost" size="sm" onClick={finish} className="welcome-control absolute left-3 top-3 z-20 gap-1">דלג <X className="h-4 w-4" /></Button>
       <div key={index} className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col justify-start px-14 pb-6 pt-24 text-right sm:pt-20" aria-live="polite">
-        <h2 className="welcome-title welcome-enter text-5xl font-black leading-[1.02] sm:text-7xl">{slide.title}</h2>
-        <p className="welcome-copy welcome-enter mt-5 max-w-lg text-2xl font-normal leading-relaxed sm:text-[28px] [animation-delay:80ms]">{slide.text}</p>
-        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter mt-8 h-16 w-full max-w-sm rounded-2xl text-xl font-black [animation-delay:150ms]">יאללה, נכנסים ללוח!</Button>}
+        <h2 className="welcome-title welcome-enter text-4xl font-black leading-[1.02] sm:text-7xl">{slide.title}</h2>
+        <div className={cn("welcome-copy welcome-enter mt-5 max-w-lg font-normal leading-relaxed [animation-delay:80ms]", index === 1 ? "text-lg sm:text-2xl" : "text-2xl sm:text-[28px]", last && "mr-0 max-w-[62%] text-lg sm:max-w-lg sm:text-2xl")}>{slide.text}</div>
+        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter mt-8 h-16 w-full max-w-sm rounded-2xl text-xl font-black [animation-delay:150ms]">יאללה, נכנסים ללוח! 🚀</Button>}
       </div>
       <div className="relative z-10 flex flex-col items-center gap-3 pb-5">
         <div className="flex items-center gap-1">
