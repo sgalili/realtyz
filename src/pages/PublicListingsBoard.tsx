@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send, UserRound } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
-import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, type PropertyFilterState } from '@/lib/leadTypeFilter';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides, hasSeenWelcomeSlides } from '@/components/public/WelcomeSlides';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
@@ -32,12 +32,19 @@ import { propertyInquiryRef } from '@/lib/propertyReferral';
 import PropertyReferralButton from '@/components/public/PropertyReferralButton';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 import BoardSearchControls from '@/components/public/BoardSearchControls';
+import HomeActivityPill from '@/components/public/HomeActivityPill';
+import { useAffiliateMarketplace, useMyReferrals } from '@/hooks/useAffiliate';
+import { useUserRole } from '@/hooks/useUserRole';
+import { PartnerListingActions } from '@/pages/AffiliatePortal';
+import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
   street: string; house_number?: string | null; apartment_number?: string | null; deal_type: string | null; rooms: number | null; sqm: number | null; floor: number | null; total_floors: number | null;
   price: number | null; description: string | null; photos: string[];
   contact_options: LeadContactOptions | null;
+  affiliate_enabled?: boolean;
+  attribution?: { broker_name?: string | null; office_name?: string | null; agency_logo_url?: string | null; broker_license_number?: string | null; publisher_kind?: string | null };
 };
 
 type GateIntent = 'favorite' | 'details';
@@ -72,9 +79,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const location = useLocation();
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
+  const marketplace = useAffiliateMarketplace();
+  const referrals = useMyReferrals();
+  const { isAffiliate } = useUserRole();
+  const consent = usePartnerConsent();
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>([]);
+  const [visibleCount, setVisibleCount] = useState(24);
   // Listings the signed-in poster owns (marked with the "שלי" badge on the card image).
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
@@ -93,7 +105,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       }
     })();
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, activeWorkspaceId]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [deals, setDeals] = useState({ sale: true, rent: true });
@@ -200,16 +212,20 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
 
   const load = async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (query.trim()) params.set('q', query.trim());
-    if (deal !== 'all') params.set('deal_type', deal);
-    const { data, error } = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, { method: 'GET' });
-    if (error) toast.error('לא ניתן לטעון את לוח הנכסים');
-    setCards(error ? [] : (((data as any)?.properties ?? []) as PublicCard[]));
+    const all: PublicCard[] = [];
+    for (let offset = 0; ; offset += 60) {
+      const params = new URLSearchParams({ limit: '60', offset: String(offset) });
+      const { data, error } = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, { method: 'GET' });
+      if (error) { toast.error('לא ניתן לטעון את לוח הנכסים'); break; }
+      const rows = (data?.properties ?? []) as PublicCard[];
+      all.push(...rows);
+      if (data?.has_more !== true) break;
+    }
+    setCards([...new Map(all.map(card => [card.id, card])).values()]);
     setLoading(false);
   };
 
-  useEffect(() => { void load(); }, [deal]);
+  useEffect(() => { void load(); }, []);
 
   const openGate = (card: PublicCard, intent: GateIntent) => { setGate({ card, intent }); setToken(null); setUnlocked(null); setChat([]); };
 
@@ -257,8 +273,19 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     window.addEventListener(WELCOME_REOPEN_EVENT, reopen);
     return () => window.removeEventListener(WELCOME_REOPEN_EVENT, reopen);
   }, []);
-  const filtered = useMemo(() => cards.filter((card) => matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter)), [cards, propFilter]);
+  const filtered = useMemo(() => cards.filter((card) => {
+    if (deal !== 'all' && card.deal_type !== deal) return false;
+    if (query.trim() && ![card.title, card.street, card.city, card.neighborhood].some(value => value?.toLowerCase().includes(query.trim().toLowerCase()))) return false;
+    const row = marketplace.data?.find(item => item.listing_id === card.id);
+    return matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter) && matchesLeadFilter(leadTierAmounts(row as unknown as Record<string, unknown>), leadFilter);
+  }), [cards, propFilter, query, deal, marketplace.data, leadFilter]);
+  const partnerActions = (card: PublicCard) => {
+    if (!user || !isAffiliate || !consent.data || !card.affiliate_enabled) return null;
+    const listing = marketplace.data?.find(row => row.listing_id === card.id);
+    return listing ? <div onClick={event => event.stopPropagation()}><PartnerListingActions listing={listing} referralId={referrals.data?.find(row => row.listing_id === card.id)?.id} /></div> : null;
+  };
   const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, filtered);
+  useEffect(() => { setVisibleCount(24); }, [query, deal, propFilter, leadFilter, grid]);
   // Signed-out visitors never see the commissions column at all.
   const visibleColumns = useMemo(() => (user ? columns.visible : columns.visible.filter((id) => id !== 'commissions')), [columns.visible, user]);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
@@ -290,10 +317,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       </header>
 
       <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6">
+        {user && <div className="mb-3"><HomeActivityPill key={`${user.id}:${activeWorkspaceId}`} /></div>}
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
-            {filtered.map((card) => {
+            {filtered.slice(0, visibleCount).map((card) => {
               const title = cleanTitle(card);
               const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
               return <article key={card.id} role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -307,6 +335,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                   </div>
                   {publicAdDescription(card.description, card.title) && <p className="line-clamp-3 text-xs text-muted-foreground">{publicAdDescription(card.description, card.title)}</p>}
                    <div data-card-contact-actions className="mt-auto pt-1">
+                     {partnerActions(card)}
                      <PropertyContactActions
                        listingId={card.id}
                        dealType={card.deal_type}
@@ -351,7 +380,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                   </tr>
                 </thead>
                 <tbody>
-                  {columns.sorted.map((card) => {
+                  {columns.sorted.slice(0, visibleCount).map((card) => {
                     const title = cleanTitle(card);
                     const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
                     const open = expandedId === card.id;
@@ -371,7 +400,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex h-4 w-4 items-center justify-center rounded-bl rounded-tr bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showBroker={false} dense /></div>
+                          ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showCommissions={false} dense /></div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}</span>
                           : id === 'commissions' ? <PropertyCommissionIcons listingId={card.id} />
@@ -379,7 +408,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
-                        <td className="relative pb-8 ps-2 pe-2 pt-2 align-bottom"><PropertyReferralButton listingId={card.id} />
+                        <td className="relative pb-8 ps-2 pe-2 pt-2 align-bottom">{partnerActions(card)}<PropertyReferralButton listingId={card.id} />
                           <Button type="button" variant="ghost" size="icon" className="absolute bottom-0.5 left-0.5 h-7 w-7 text-muted-foreground/70 hover:bg-transparent hover:text-foreground" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}>
                             <ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')} />
                           </Button>
@@ -405,6 +434,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </BoardColumnDragArea>
           )
         )}
+        {!loading && filtered.length > visibleCount && <div className="flex justify-center pt-5"><Button variant="outline" onClick={() => setVisibleCount(count => count + 24)}>נכסים נוספים</Button></div>}
       </main>
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>

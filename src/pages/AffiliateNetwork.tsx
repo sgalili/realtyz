@@ -145,7 +145,7 @@ function toUnifiedResult(listing: BrokerAffiliateListing): UnifiedResult {
 }
 
 
-function BrokerAffiliateNetwork() {
+function BrokerAffiliateNetwork({ activityOnly = false, initialTab = 'rewards' }: { activityOnly?: boolean; initialTab?: string }) {
   const navigate = useNavigate();
   const { data: listings = [], isLoading: listingsLoading } = useBrokerAffiliateListings();
   const { data: projects = [], isLoading: projectsLoading, isError: projectsError, refetch: reloadProjects } = useWorkspaceDeveloperProjects();
@@ -561,15 +561,15 @@ loading ? (
           no local page title block, matching top offset. */}
       <div className="-mt-[25px] w-full max-w-full min-w-0 space-y-5" dir="rtl">
         <AffiliateAutomationCards />
-        <Tabs defaultValue="rewards" onValueChange={() => { setMultiSelectMode(false); setSelectedListingIds(new Set()); }}>
+        <Tabs defaultValue={initialTab === 'leads' ? 'submissions' : activityOnly ? 'tracking' : 'rewards'} onValueChange={() => { setMultiSelectMode(false); setSelectedListingIds(new Set()); }}>
           <div className="flex items-center gap-2">
           <TabsList className="mx-auto grid flex-1 h-[44px] w-full max-w-2xl grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-            <TabsTrigger
+            {!activityOnly && <TabsTrigger
               value="rewards"
               className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
             >
               {listings.length + projectRecords.length} נכסים
-            </TabsTrigger>
+            </TabsTrigger>}
             <TabsTrigger
               value="tracking"
               className="h-9 min-w-0 rounded-lg px-2 py-2 text-[14px] font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
@@ -952,8 +952,8 @@ loading ? (
   );
 }
 
-export default function AffiliateNetwork() {
+export default function AffiliateNetwork({ activityOnly = false, initialTab }: { activityOnly?: boolean; initialTab?: string } = {}) {
   const { isAffiliateOnly } = useUserRole();
   const { isPartnerMode } = useAppMode();
-  return <><PartnerPageIntroduction />{isAffiliateOnly || isPartnerMode ? <AffiliatePortal /> : <BrokerAffiliateNetwork />}</>;
+  return <><PartnerPageIntroduction />{isAffiliateOnly || isPartnerMode ? <AffiliatePortal activityOnly={activityOnly} initialTab={initialTab} /> : <BrokerAffiliateNetwork activityOnly={activityOnly} initialTab={initialTab} />}</>;
 }

@@ -1,4 +1,6 @@
 # Welcome, cloud sharing, tables and account deletion
+- [x] Unified home/partner browsing and legacy redirect; compact nonzero personal activity, published site-only/network labels and original publisher snapshots.
+- [x] 20 focused tests and signed-in desktop/mobile browsing, search and legacy redirect passed; server-gated pricing deployed. All-role live sharing and closing-price sessions remain unverified; no posts or leads submitted.
 - [x] Unified signup welcome and profile CTA; existing consent introduction is suppressed while signup welcome is pending.
 - [x] Correct table cell structure and centered mobile tab controls; authenticated mobile/desktop board verified.
 - [x] Repair cloud connect/sync retry and workspace-change handling; deploy cloud endpoint.

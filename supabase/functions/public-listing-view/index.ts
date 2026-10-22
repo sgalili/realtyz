@@ -4,6 +4,7 @@ import { cleanPayload } from "../_shared/cleanValues.ts";
 import { maskContactText, toPublicCard } from "../_shared/publicMask.ts";
 import { verifiedSourceLicense, licenseNumber } from "../_shared/yad2Publisher.ts";
 import { publicDeveloperDetails } from '../_shared/publicDeveloperDetails.ts';
+import { publicPricing } from '../_shared/publicListingVisibility.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,7 +24,18 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!backendUrl || !serviceKey) throw new Error("missing backend configuration");
     const admin = createClient(backendUrl, serviceKey);
-    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, daily_lead_cap, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, is_published, status, affiliate_enabled, workspace_owner_id, user_id, source, source_metadata, owner_id, developer_project_id, developer_unit_key";
+    let signedIn = false;
+    let closingAllowed = false;
+    const authorization = req.headers.get('authorization');
+    if (authorization?.startsWith('Bearer ')) {
+      const { data: identity } = await admin.auth.getUser(authorization.slice(7));
+      if (identity.user) {
+        signedIn = true;
+        const { data: allowed, error: accessError } = await admin.rpc('partner_can_view_closing', { _user_id: identity.user.id });
+        closingAllowed = !accessError && allowed === true;
+      }
+    }
+    const columns = "id, slug, property_title, address, house_number, apartment_number, neighborhood, city, deal_type, rooms, sqm, floor, asking_price, description, short_description, long_description, features, attributes, additional_details, furniture_details, area_perks, available_from, elevator, parking, project_name, latitude, longitude, image_url, media_photos, price_history, daily_lead_cap, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, affiliate_tier4_amount, affiliate_tier4_type, is_published, status, affiliate_enabled, workspace_owner_id, user_id, source, source_metadata, owner_id, developer_project_id, developer_unit_key";
 
     let query = admin.from("listings").select(columns).limit(1);
     query = UUID_RE.test(identifier) ? query.eq("id", identifier) : query.eq("slug", identifier);
@@ -94,7 +106,7 @@ Deno.serve(async (req) => {
       // They are used only as data attributes, never rendered as public text.
       if (typeof row.id === "string") cleaned.id = row.id;
       if (typeof row.slug === "string") cleaned.slug = row.slug;
-      return cleaned;
+      return publicPricing(cleaned, signedIn, closingAllowed);
     };
     // Only clean, readable values leave the backend: identifiers, hashes and
     // debug keys from the ingestion pipeline are stripped here.

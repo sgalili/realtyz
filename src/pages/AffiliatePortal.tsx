@@ -196,7 +196,7 @@ function RemoveFromMarketingButton({ referralId }: { referralId: string }) {
   );
 }
 
-function PartnerListingActions({ listing, referralId }: { listing: MarketplaceListing; referralId?: string | null }) {
+export function PartnerListingActions({ listing, referralId }: { listing: MarketplaceListing; referralId?: string | null }) {
   const result = marketplaceResult(listing);
   return (
     <div className="flex items-center gap-1.5">
@@ -657,7 +657,7 @@ function AffiliateKpiCard({
   );
 }
 
-export default function AffiliatePortal() {
+export default function AffiliatePortal({ activityOnly = false, initialTab = 'marketplace' }: { activityOnly?: boolean; initialTab?: string } = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAffiliate, loading: roleLoading } = useUserRole();
@@ -673,7 +673,7 @@ export default function AffiliatePortal() {
   const [search, setSearch] = useState('');
   const [leadFilter, setLeadFilter] = useState<LeadFilterState>(EMPTY_LEAD_FILTER);
   const [inlinePropertyFilter, setInlinePropertyFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
-  const [activeTab, setActiveTab] = useState('marketplace');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [funnelDialogOpen, setFunnelDialogOpen] = useState(false);
@@ -1019,7 +1019,7 @@ export default function AffiliatePortal() {
             </div>
             <div className="min-w-0 justify-self-center max-w-full">
             <TabsList className="h-auto w-full gap-[3px] px-0.5 [&>button]:!text-[17px] [&>button]:px-1 [&>button]:py-2 sm:[&>button]:px-3">
-              <TabsTrigger value="marketplace">{marketplace.length + projectRecords.length} נכסים</TabsTrigger>
+              {!activityOnly && <TabsTrigger value="marketplace">{marketplace.length + projectRecords.length} נכסים</TabsTrigger>}
               <TabsTrigger value="leads">{submissions.length} לידים</TabsTrigger>
               <TabsTrigger value="mine">{referralCampaigns.filter((row) => row.listing).length} בשיווק</TabsTrigger>
               <TabsTrigger value="earnings">{earningRows.length} רווחים</TabsTrigger>
