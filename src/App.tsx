@@ -442,7 +442,7 @@ const App = () => (
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />
                <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
-              <Route path="/affiliate-network" element={<PartnersRoute><ProtectedRoute><AffiliateNetwork /></ProtectedRoute></PartnersRoute>} />
+              <Route path="/affiliate-network" element={<Navigate to="/" replace />} />
               <Route path="/affiliate-pricing" element={<Navigate to="/wallet" replace />} />
               <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Wallet /></Suspense></ProtectedRoute>} />
