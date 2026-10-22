@@ -1,3 +1,4 @@
+import { DeleteAccountButton } from '@/components/profile/DeleteAccountButton';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
