@@ -410,11 +410,12 @@ function PersonalTab() {
         {showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
 
         <div className="flex items-center gap-3 pt-1">
-          <Button onClick={save} disabled={showBrokerFields && isOwnProfile && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1">שמירת הפרופיל</Button>
           <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10">
             <LogOut className="h-4 w-4" />
             התנתקות
           </Button>
+          <Button onClick={save} disabled={showBrokerFields && isOwnProfile && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1">שמירת הפרופיל</Button>
+          {isOwnProfile && <DeleteAccountButton />}
         </div>
 
       </CardContent>
