@@ -9,6 +9,7 @@ import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { useQueryClient } from '@tanstack/react-query';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
+import { readPostSignupWelcome } from '@/lib/signupRole';
 import { completePartnerIntro, consumePartnerIntroCompletion, partnerIntroDismissed } from '@/lib/partnerIntroPreference';
 
 export function PartnerProgramIntro({ consentAccepted = false, onComplete, onCancel }: { consentAccepted?: boolean; onComplete: () => void; onCancel?: () => void }) {
@@ -52,6 +53,6 @@ export function PartnerPageIntroduction() {
   const { user } = useAuth();
   const consent = usePartnerConsent();
   const [closed, setClosed] = useState(() => !user || partnerIntroDismissed(user.id) || consumePartnerIntroCompletion(user.id));
-  if (!user || closed || consent.isLoading || consent.isError) return null;
+  if (!user || closed || readPostSignupWelcome() || partnerIntroDismissed(user.id) || consent.isLoading || consent.isError) return null;
   return <PartnerProgramIntro consentAccepted={consent.data === true} onComplete={() => { consumePartnerIntroCompletion(user.id); setClosed(true); }} onCancel={() => setClosed(true)} />;
 }

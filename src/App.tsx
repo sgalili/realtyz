@@ -1,3 +1,4 @@
+import { readPostSignupWelcome } from '@/lib/signupRole';
 import * as React from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
@@ -266,7 +267,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
 
   if ((isPartnerMode || isAffiliateOnly) && isAffiliate && !['/', '/wallet', '/profile', '/public-listings', '/referral'].some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`))) {
     if (partnerConsent.isLoading) return <PageLoader />;
-    if (partnerConsent.data !== true) return <AppLayout><PartnerOnboarding onComplete={() => void partnerConsent.refetch()} /></AppLayout>;
+    if (partnerConsent.data !== true && !readPostSignupWelcome()) return <AppLayout><PartnerOnboarding onComplete={() => void partnerConsent.refetch()} /></AppLayout>;
   }
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
