@@ -937,9 +937,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         </div>
       </DialogContent>
       <Dialog open={legalSection !== null} onOpenChange={value => { if (!value) setLegalSection(null); }}>
-        <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none p-4 sm:max-w-3xl" onOpenAutoFocus={event => { event.preventDefault(); if (legalSection === 'brokerage') requestAnimationFrame(() => document.querySelector('[data-publisher-legal] #brokerage-commissions')?.scrollIntoView({ block: 'start' })); }}>
-          <DialogHeader><DialogTitle>{legalSection === 'brokerage' ? 'תנאי התיווך' : 'התקנון'}</DialogTitle></DialogHeader>
-          <div data-publisher-legal><Terms embedded /></div>
+        <DialogContent dir="rtl" className="grid h-[100dvh] w-screen max-w-none grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-none p-4 sm:max-w-3xl" onOpenAutoFocus={event => { event.preventDefault(); if (legalSection === 'brokerage') requestAnimationFrame(() => document.querySelector('[data-publisher-legal] #brokerage-commissions')?.scrollIntoView({ block: 'start' })); }}>
+          <DialogHeader className="px-8"><DialogTitle>{legalSection === 'brokerage' ? 'תנאי התיווך' : 'התקנון'}</DialogTitle></DialogHeader>
+          <div data-publisher-legal className="min-h-0 overflow-y-auto"><Terms embedded /></div>
         </DialogContent>
       </Dialog>
       <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader>
