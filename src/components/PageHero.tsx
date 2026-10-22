@@ -457,7 +457,6 @@ export function PageHero() {
             else if (window.history.state?.idx > 0) navigate(-1);
             else navigate('/public-listings');
           }} aria-label="חזרה לעמוד הקודם" title="חזרה לעמוד הקודם" className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><ChevronLeft className="!h-5 !w-5" strokeWidth={2.5} /></Button>}
-          {(isPublicBoard || isMyAdsPage) && <PublicListingPublisher autoResume />}
           {isPublicBoard && !user && (
             <Button
               size="sm"
