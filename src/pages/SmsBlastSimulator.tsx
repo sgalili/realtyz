@@ -1276,7 +1276,7 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
                                             }`}
                                           >
                                             {t}
-                                          </Button>
+                                          </button>
                                         ))}
                                       </div>
                                       <p className="text-[10px] text-muted-foreground leading-tight">
@@ -1296,7 +1296,7 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
                             </div>
                           );
                         })()}
-                      </button>
+                      </Button>
                     );
                   };
 
