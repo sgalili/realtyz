@@ -3,7 +3,7 @@
 - [x] Authenticated phone (372×682) and desktop (1280×1800) show 24 real owned cards, exactly three tabs, no horizontal overflow and internal scroll to 400px. Leads and empty earnings checked; 16 focused tests pass, no browser errors and preview build OK. No property or favorite data changed during verification.
 
 # Final platform polish
-- [x] Refine three intro slides with cyan second slide, outline art, mirrored Rita and compact controls; phone and desktop checked. Small-screen description scrolls independently without image overlap.
+- [x] Refine three intro slides with cyan second slide, outline art, mirrored Rita and compact controls; final slide now uses separate text/image tracks with no scrolling or clipping, verified at 320×568, 360×640, 372×682, 390×844 and 1280×1800. Rocket removed, compact single-line CTA closes intro; three focused tests and preview build pass.
 - [x] Replace activity side drawer with a wide below-header dropdown and red trigger; authenticated properties (814 ads), lead view and empty earnings checked without runtime errors. Clean sidebar and compressed first-frame assets; no visible Realtys references found.
 
 # Campaign distribution pricing
