@@ -1744,12 +1744,13 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 @media (prefers-reduced-motion: reduce) { .closing-tone { transition: none; } }
 .welcome-slide[data-theme="3"] .welcome-content { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto; row-gap: 6px; }
 .welcome-slide[data-theme="3"] .welcome-title, .welcome-slide[data-theme="3"] .welcome-copy { position: relative; z-index: 2; }
-.welcome-slide[data-theme="3"] .welcome-rita { position: relative; z-index: 1; grid-row: 2 / 4; align-self: stretch; height: 100%; min-height: 0; object-fit: cover; object-position: center top; pointer-events: none; }
+.welcome-slide[data-theme="3"] .welcome-rita { position: relative; z-index: 1; grid-row: 2 / 4; align-self: stretch; height: 100%; min-height: 0; object-fit: cover; object-position: left top; pointer-events: none; }
 .welcome-slide[data-theme="3"] .welcome-divider { grid-column: 1 / -1; grid-row: 4; height: 2px; background: #fff; margin: -6px -18px 0; }
-.welcome-slide[data-theme="3"] .welcome-marquee { grid-column: 1 / -1; grid-row: 5; margin: 0 -18px; overflow: hidden; }
+.welcome-slide[data-theme="3"] .welcome-marquee { grid-column: 1 / -1; grid-row: 5; margin: 0 -18px 8px; overflow: hidden; background: #fff; border-block: 1px solid hsl(145 55% 30%); padding: 6px 0; }
 .welcome-slide[data-theme="3"] .welcome-marquee .landing-ticker-group { gap: 18px; padding-inline: 9px; }
-.welcome-slide[data-theme="3"] .welcome-marquee svg, .welcome-slide[data-theme="3"] .welcome-marquee img { max-height: 28px; max-width: 28px; }
+.welcome-slide[data-theme="3"] .welcome-marquee svg, .welcome-slide[data-theme="3"] .welcome-marquee img { max-height: 22px; max-width: 22px; }
 .welcome-slide[data-theme="3"] .welcome-cta { position: relative; z-index: 3; grid-row: 6 !important; grid-column: 1 / -1 !important; justify-self: center !important; }
-.welcome-sparkle svg { stroke-width: 4px; vector-effect: non-scaling-stroke; }
+.welcome-slide[data-theme="3"] .welcome-icon { opacity: .18; }
+.welcome-sparkle svg { stroke-width: 3px !important; vector-effect: non-scaling-stroke; }
 .welcome-slide[data-theme="2"] .welcome-icon { opacity: .2; }
 @media (min-width: 640px) { .welcome-slide[data-theme="3"] .welcome-rita { grid-row: 1 / 4; } .welcome-slide[data-theme="3"] .welcome-divider, .welcome-slide[data-theme="3"] .welcome-marquee { margin-inline: -40px; } }

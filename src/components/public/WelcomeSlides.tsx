@@ -20,8 +20,7 @@ const SLIDES = [
   { icon: null, theme: 3, title: <>היי, אני <span className="text-destructive">ריטה</span>.<br />סוכנת ה-AI האישית שלך</>, text: <>אני מייצגת אותך נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות.<br /><br />במילים פשוטות: אני מייצרת לך הכנסה פסיבית בזמן שאתה ישן 😍</> },
 ] as const;
 
-const SPARKLES = ['right-[6%] top-[30%] h-12 w-12', 'left-[5%] top-[18%] h-9 w-9', 'right-[38%] top-[8%] h-8 w-8', 'left-[30%] bottom-[34%] h-10 w-10', 'right-[4%] bottom-[30%] h-8 w-8', 'left-[8%] bottom-[46%] h-7 w-7'];
-const GeminiSparkle = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4} strokeLinejoin="round" className="h-full w-full"><path d="M12 2C12.6 7.4 16.6 11.4 22 12C16.6 12.6 12.6 16.6 12 22C11.4 16.6 7.4 12.6 2 12C7.4 11.4 11.4 7.4 12 2Z" /></svg>;
+const GeminiSparkle = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinejoin="round" className="h-full w-full"><path d="M12 2C12.6 7.4 16.6 11.4 22 12C16.6 12.6 12.6 16.6 12 22C11.4 16.6 7.4 12.6 2 12C7.4 11.4 11.4 7.4 12 2Z" /></svg>;
 
 export function hasSeenWelcomeSlides() {
   return welcomeDismissed();
@@ -82,10 +81,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       onTouchStart={e => { const t = e.touches[0]; touch.current = t ? { x: t.clientX, y: t.clientY } : null; }}
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
-      <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon && <Icon className="h-full w-full" strokeWidth={4} />}</div>
-      {!Icon && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
-        {SPARKLES.map((pos, i) => <span key={pos} className={cn('welcome-float welcome-outline welcome-sparkle absolute', pos)} style={{ animationDelay: `${i * -0.9}s` }}><GeminiSparkle /></span>)}
-      </div>}
+      <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon ? <Icon className="h-full w-full" strokeWidth={4} /> : <span className="welcome-sparkle block h-full w-full"><GeminiSparkle /></span>}</div>
       <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-8 w-8"><X className="h-5 w-5" /></Button>
       <div key={index} className="welcome-content relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pb-4 pt-12 text-right sm:px-14 sm:pt-16" aria-live="polite">
         <div className="welcome-text min-h-0 overflow-y-auto overscroll-contain">
