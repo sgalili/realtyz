@@ -414,6 +414,13 @@
       "when": 1792675699533,
       "tag": "0058_admin_purge_user_data",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1792677485978,
+      "tag": "0059_account_self_deletion",
+      "breakpoints": true
     }
   ]
 }
