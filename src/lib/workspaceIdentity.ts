@@ -1,4 +1,5 @@
 import type { Workspace } from '@/hooks/useWorkspace';
+import { isSyntheticEmail } from '@/lib/friendlyUserDisplayName';
 
 export type BrandLike = {
   agency_name?: string | null;
@@ -18,7 +19,8 @@ export type WorkspaceIdentity = {
 const DEFAULT_NAME = 'TORAF';
 
 function norm(v?: string | null) {
-  return (v ?? '').trim();
+  const value = (v ?? '').trim();
+  return isSyntheticEmail(value) ? '' : value;
 }
 
 /**
