@@ -123,7 +123,7 @@ export function RewardDialog({
 
   const tiers = [
     {
-      key: "tier1", capKey: "form",
+      key: "tier1", capKey: "form" as const,
       title: "מילוי טופס",
       hint: "השארת שם מלא + טלפון בעמוד הנכס.",
       Icon: ClipboardList,
@@ -133,7 +133,7 @@ export function RewardDialog({
       questionsKey: null as null | "chat" | "phone",
     },
     {
-      key: "tier2", capKey: "whatsapp",
+      key: "tier2", capKey: "whatsapp" as const,
       title: "סינון בווטסאפ",
       hint: "ריטה פותחת ווטסאפ ושואלת את שאלות הסינון",
       Icon: WhatsAppIcon,
@@ -143,7 +143,7 @@ export function RewardDialog({
       questionsKey: "chat" as const,
     },
     {
-      key: "tier3", capKey: "phone",
+      key: "tier3", capKey: "phone" as const,
       title: "סינון בשיחת טלפון",
       hint: "אימות פרטי המתעניין בשיחה טלפונית (נציג או AI) ומענה לשאלות הסינון",
       Icon: Phone,
