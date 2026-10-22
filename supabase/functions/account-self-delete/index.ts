@@ -66,6 +66,8 @@ Deno.serve(async (req) => {
     if (prepared?.error) return json({ error: prepared.error }, 400);
     const { error: dErr } = await admin.auth.admin.deleteUser(user.id);
     if (dErr) throw dErr;
+    const { error: archiveError } = await admin.from("deleted_accounts_archive").update({ reason: "self_request" }).eq("user_id", user.id).eq("reason", "self_request_pending");
+    if (archiveError) console.error("account-self-delete archive finalization failed");
     await admin.from("account_deletion_otps").delete().eq("user_id", user.id);
     return json({ ok: true });
   } catch (e) {
