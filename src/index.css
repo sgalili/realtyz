@@ -1663,6 +1663,9 @@
 
 .closing-fee { --closing-current: var(--closing-low); }
 
+header > [data-radix-popper-content-wrapper] { position: absolute !important; top: 100% !important; left: 0 !important; width: 100% !important; transform: none !important; }
+.home-activity-drawer { width: 100%; border-radius: 0 0 8px 8px; }
+
 .welcome-slide { color: hsl(var(--foreground)); font-family: 'Heebo', 'Assistant', sans-serif; background: linear-gradient(135deg, hsl(var(--brand-gold-soft)), hsl(var(--brand-gold)) 55%, hsl(var(--warning))); }
 .welcome-slide[data-theme="2"] { color: hsl(var(--welcome-ink)); background: var(--welcome-cyan-gradient); }
 .welcome-slide[data-theme="2"] .welcome-title { color: hsl(var(--primary-foreground)); }
