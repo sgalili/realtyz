@@ -322,7 +322,7 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="auth-fixed-header w-full shrink-0 text-center">
-          <div className="auth-header-ticker mx-auto mb-[24px] mt-[55px]" aria-live="polite">
+          <div className="auth-header-ticker mx-auto mb-[44px] mt-[35px]" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
               <span
                 key={line.key}
