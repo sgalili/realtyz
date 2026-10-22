@@ -177,3 +177,6 @@
 - [x] Redesigned the create-ad modal step 0 to be ultra-minimal: למכירה/להשכרה main buttons, expandable "ייבוא מודעה מיד 2" URL input and "הנכסים שלי" picker, borderless "המשך ללא ייבוא" link to the review steps. Verified in mobile browser: expand/collapse works, link opens review.
 - [x] Modal header now shows only the clean X close icon (reset/back icons removed); closing returns to the exact prior screen (verified same URL after close). Landing page refactored to shared LandingContent; /landing still renders.
 - [x] Broker signups get the brokers/agencies landing page (LandingContent) inside the first post-signup welcome window with a pinned profile CTA; typecheck and build pass. Not browser-verified: requires a fresh מתווך registration.
+
+# Legal pages close button
+- [x] Removed the "חזרה לדף הבית" text link from תנאי שימוש and מדיניות פרטיות; a fixed circular X in the top-right corner now returns the user to the exact previous screen (verified in mobile browser: landing -> terms -> X lands on /landing, terms -> privacy -> X lands back on /terms) and falls back to the home page only when the document was opened directly. Two focused tests pass, typecheck and preview build are OK.
