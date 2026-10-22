@@ -22,16 +22,17 @@ export default function PropertyCommissionIcons({ listingId, raw }: { listingId:
   // Closing commissions are a licensed-brokerage activity: only registered
   // brokers (verified license or broker roles, server-gated by
   // partner_can_view_closing) may see this column at all.
-  if (!user || !level4Unlocked) return null;
+  if (!user) return null;
   const source = raw ?? property;
   const listing = marketplace.data?.find((row) => row.listing_id === listingId);
   const tiers = listing ? listingTiers(listing) : {
     tier1: Number(source?.affiliate_tier1_amount ?? 0),
     tier2: Number(source?.affiliate_tier2_amount ?? 0),
     tier3: Number(source?.affiliate_tier3_amount ?? 0),
-    tier4: 0,
-    tier4Type: 'fixed' as const,
+    tier4: level4Unlocked ? Number(source?.affiliate_tier4_amount ?? 0) : 0,
+    tier4Type: (source?.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed') as 'percent' | 'fixed',
   };
-  if (Number(tiers.tier4) <= 0) return null;
-  return <div className="space-y-1"><LeadPricingDialog readOnly closingOnly listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }} /><p title={CLOSING_SPLIT_EXPLANATION} className="text-[10px] font-normal leading-relaxed text-muted-foreground">* נטו למתווך: 80% · TORAFF: 20%</p></div>;
+  const showClosing = level4Unlocked && Number(tiers.tier4) > 0;
+  if (!showClosing && Number(tiers.tier1) + Number(tiers.tier2) + Number(tiers.tier3) <= 0) return null;
+  return <div className="space-y-1"><LeadPricingDialog readOnly listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }} />{showClosing && <p title={CLOSING_SPLIT_EXPLANATION} className="text-[10px] font-normal leading-relaxed text-muted-foreground">* נטו למתווך: 80% · TORAFF: 20%</p>}</div>;
 }
