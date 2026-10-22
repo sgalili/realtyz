@@ -1,3 +1,7 @@
+import { useCampaignPricing } from '@/hooks/useCampaignPricing';
+import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
+import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -64,6 +68,9 @@ const fmtTs = (iso: string) => {
 };
 
 export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+  const { data: prices = [] } = useCampaignPricing(open);
+  const price = campaignServicePrice('ivr', prices);
+  const [review, setReview] = useState<{ audioUrl: string | null; payload?: Record<string, unknown>; seconds: number | null } | null>(null);
   const [source, setSource] = useState<SourceType>('tts');
   const [leads, setLeads] = useState<IvrLead[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
@@ -422,7 +429,26 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     setHistory(next); saveHistory(next);
   };
 
-  const dispatchAudio = async (audioUrl: string | null, fallbackPayload?: Record<string, unknown>) => {
+  const dispatchAudio = async (audioUrl: string | null, fallbackPayload?: Record<string, unknown>, confirmed = false) => {
+    if (!price) { toast.error('המחירון אינו זמין כרגע'); return; }
+    if (!confirmed) {
+      let seconds: number | null = null;
+      const localBlob = recordedBlob ?? uploadFile;
+      const localUrl = !audioUrl && localBlob ? URL.createObjectURL(localBlob) : null;
+      const url = audioUrl ?? localUrl;
+      if (url) {
+        seconds = await new Promise<number | null>((resolve) => {
+          const audio = new Audio();
+          const timer = window.setTimeout(() => { audio.src = ''; resolve(null); }, 4000);
+          audio.onloadedmetadata = () => { window.clearTimeout(timer); resolve(Number.isFinite(audio.duration) ? audio.duration : null); audio.src = ''; };
+          audio.onerror = () => { window.clearTimeout(timer); resolve(null); };
+          audio.src = url;
+        });
+      }
+      if (localUrl) URL.revokeObjectURL(localUrl);
+      setReview({ audioUrl, payload: fallbackPayload, seconds });
+      return;
+    }
     const targets = targetLeads.filter((x) => x.phone);
     if (targets.length === 0) { toast.error('בחרו רשימת יעד'); return; }
     setDispatching(true);
@@ -502,7 +528,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto p-5" dir="rtl">
         <DialogHeader className="space-y-1">
           <DialogTitle className="text-center text-[#0f1b3d] text-[17px] font-bold leading-tight">
-            מערך שידור והפצה לאומי · IVR וקול AI
+            <span className="inline-flex items-center gap-2"><CampaignServiceIcon channel="ivr" />IVR וקול AI</span>
           </DialogTitle>
           <DialogDescription className="text-center text-[12px] text-muted-foreground">
             צרו הודעה קולית והפיצו אותה לרשימת יעד
@@ -510,6 +536,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
+          <p className="text-center text-xs text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</p>
           {/* Top 3-tab toggle: TTS active first */}
           <div className="flex gap-2">
             {tabBtn('tts', 'טקסט לדיבור', Volume2)}
@@ -792,6 +819,15 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           )}
         </div>
       </DialogContent>
+      <AlertDialog open={!!review} onOpenChange={(value) => { if (!value) setReview(null); }}>
+        <AlertDialogContent dir="rtl"><AlertDialogHeader>
+          <AlertDialogTitle>אישור הפצת IVR</AlertDialogTitle>
+          <AlertDialogDescription>
+            <span className="flex items-center gap-2"><CampaignServiceIcon channel="ivr" />{audienceCount} נמענים · {price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span>
+            <span className="block mt-2">{review?.seconds != null && price ? `עלות משוערת: ${formatCampaignCredits(audienceCount * review.seconds / 60 * price.credits)}` : 'לא ניתן לחשב את האורך כרגע. החיוב בקרדיטים לפי משך השיחות בפועל.'}</span>
+          </AlertDialogDescription>
+        </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>ביטול</AlertDialogCancel><AlertDialogAction disabled={!price} onClick={() => { if (!review) return; const current = review; setReview(null); void dispatchAudio(current.audioUrl, current.payload, true); }}>אישור ושיגור</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      </AlertDialog>
       <AddVoiceDialog
         open={addVoiceOpen}
         onClose={() => setAddVoiceOpen(false)}
