@@ -180,3 +180,7 @@
 
 # Legal pages close button
 - [x] Removed the "חזרה לדף הבית" text link from תנאי שימוש and מדיניות פרטיות; a fixed circular X in the top-right corner now returns the user to the exact previous screen (verified in mobile browser: landing -> terms -> X lands on /landing, terms -> privacy -> X lands back on /terms) and falls back to the home page only when the document was opened directly. Two focused tests pass, typecheck and preview build are OK.
+
+# Create-ad source and legal return
+- [ ] Add source-back control, exact ready-property count, preserve modal/accordion during legal viewing, remove top notice and shorten consent.
+- [ ] Verify legal close/source return and ready count without publishing any property.
