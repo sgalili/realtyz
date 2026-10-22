@@ -1,3 +1,4 @@
+import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -493,29 +494,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
               aria-label={`${headerName} - דף הבית`}
               className="pointer-events-auto fixed left-1/2 top-[env(safe-area-inset-top)] z-30 flex h-16 max-w-[calc(100vw-9rem)] -translate-x-1/2 items-center gap-1.5 overflow-hidden text-right leading-none"
             >
-              {headerLogo ? <img src={headerLogo} alt={headerName} className="h-8 max-w-20 shrink-0 object-contain" /> : <PlatformBrand className="h-[41.6px]" />}
-              <span className="flex min-w-0 flex-col items-start justify-center text-right leading-none">
-                <span className="min-w-0 truncate text-sm font-bold leading-[15px] text-foreground">{headerName}</span>
-                {headerUserName ? (
-                  <span className="min-w-0 truncate text-[11px] font-semibold leading-[13px] text-muted-foreground">
-                    {headerUserName}
-                  </span>
-                ) : null}
-              </span>
+              <PlatformBrand className="h-[54px]" />
             </Link>
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => window.dispatchEvent(new Event('open-ai-drawer'))}
-                aria-label="פתח עוזר AI"
-                data-walkthrough="rita"
-              >
-                <RitaAvatar className="h-7 w-7" />
-              </Button>
+              <PublicListingPublisher autoResume label="פרסם עכשיו, פרסום חינם" triggerClassName="!h-10 max-w-[7.5rem] whitespace-normal px-2 !text-[13px] leading-tight sm:max-w-none sm:!text-[15px]" />
             </div>
           </header>
           <PageHero />

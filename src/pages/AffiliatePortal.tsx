@@ -55,6 +55,7 @@ import AffiliateLicenseCard from '@/components/affiliate/AffiliateLicenseCard';
 import AffiliateCallAttemptsCard from '@/components/affiliate/AffiliateCallAttemptsCard';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import SubmitLeadDialog from '@/components/affiliate/SubmitLeadDialog';
+import { PartnerPropertyModal, CopyListingLinkButton } from '@/components/affiliate/PartnerPropertyModal';
 import {
   REFERRAL_STATUS_LABELS,
   SETTLEMENT_LABELS,
@@ -202,6 +203,7 @@ function PartnerListingActions({ listing, referralId }: { listing: MarketplaceLi
       {/* Icon-only action: the title carries the meaning, no text label. */}
       <PropertyShareMenu results={[result]} iconOnly />
       <SubmitLeadDialog listing={listing} />
+      <CopyListingLinkButton listingId={listing.listing_id} />
     </div>
   );
 }
@@ -687,6 +689,7 @@ export default function AffiliatePortal() {
   const scrollKey = 'affiliate-portal:marketplace-scroll';
   const [automationCardsVisible, setAutomationCardsVisible] = useState(false);
   const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [detailListing, setDetailListing] = useState<MarketplaceListing | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkRemoving, setBulkRemoving] = useState(false);
   const bulkQueryClient = useQueryClient();
@@ -1015,7 +1018,7 @@ export default function AffiliatePortal() {
             />
             </div>
             <div className="min-w-0 justify-self-center max-w-full">
-            <TabsList className="h-auto w-full px-0.5 [&>button]:!text-[17px] [&>button]:px-1 [&>button]:py-2 sm:[&>button]:px-3">
+            <TabsList className="h-auto w-full gap-[3px] px-0.5 [&>button]:!text-[17px] [&>button]:px-1 [&>button]:py-2 sm:[&>button]:px-3">
               <TabsTrigger value="marketplace">{marketplace.length + projectRecords.length} נכסים</TabsTrigger>
               <TabsTrigger value="leads">{submissions.length} לידים</TabsTrigger>
               <TabsTrigger value="mine">{referralCampaigns.filter((row) => row.listing).length} בשיווק</TabsTrigger>
@@ -1073,13 +1076,7 @@ export default function AffiliatePortal() {
                   importingKey={null}
                   onSelect={(result) => {
                     const listing = filtered.find((item) => item.listing_id === result.localId);
-                    if (listing) {
-                      const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
-                      sessionStorage.setItem(scrollKey, String(surface?.scrollTop ?? window.scrollY));
-                      navigate(`/properties/${listing.listing_id}`, {
-                        state: { propertySnapshot: result, returnTo: '/affiliate-network' },
-                      });
-                    }
+                    if (listing) setDetailListing(listing);
                   }}
                   selectionMode={multiSelectMode}
                   selectedIds={selectedIds}
@@ -1218,11 +1215,8 @@ export default function AffiliatePortal() {
                 importingKey={null}
                 showPropertyNotes={false}
                 onSelect={(result) => {
-                  const surface = document.querySelector<HTMLElement>('.realtyz-main-surface');
-                  sessionStorage.setItem(scrollKey, String(surface?.scrollTop ?? window.scrollY));
-                  navigate(`/properties/${result.localId}`, {
-                    state: { propertySnapshot: result, returnTo: '/affiliate-network' },
-                  });
+                  const row = filteredReferrals.find((item) => item.listing?.listing_id === result.localId);
+                  if (row?.listing) setDetailListing(row.listing);
                 }}
                 hideDefaultActions
                 publishedLabel="התחלתי לשווק"
@@ -1310,6 +1304,7 @@ export default function AffiliatePortal() {
             )}
           </TabsContent>
         </Tabs>
+        <PartnerPropertyModal listing={detailListing} onClose={() => setDetailListing(null)} actions={detailListing ? <PartnerListingActions listing={detailListing} referralId={referrals.find((r) => r.listing_id === detailListing.listing_id)?.id ?? null} /> : null} />
 
         <Dialog open={funnelDialogOpen} onOpenChange={setFunnelDialogOpen}>
           <DialogContent dir="rtl" className="max-w-md">
