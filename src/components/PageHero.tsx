@@ -388,7 +388,7 @@ export function PageHero() {
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
   // The shared board has no blue title banner; the header carries its actions.
-  if (isPublicBoard) return null;
+  if (isPublicBoard || /^\/affiliate(-network)?(\/|$)/.test(location.pathname)) return null;
   if (
     isPostsPage &&
     (searchParams.get("lead") || searchParams.get("client") || searchParams.get("voter"))
