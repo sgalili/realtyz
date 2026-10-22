@@ -1659,7 +1659,7 @@
 
 .welcome-slide { color: hsl(var(--foreground)); font-family: 'Heebo', 'Assistant', sans-serif; background: linear-gradient(135deg, hsl(var(--brand-gold-soft)), hsl(var(--brand-gold)) 55%, hsl(var(--warning))); }
 .welcome-slide[data-theme="2"] { color: hsl(var(--primary-foreground)); background: linear-gradient(135deg, hsl(var(--brand-red-soft)), hsl(var(--brand-red)) 55%, hsl(var(--brand-deep))); }
-.welcome-slide[data-theme="3"] { color: hsl(var(--primary-foreground)); background: linear-gradient(135deg, hsl(var(--sale) / .8), hsl(var(--sale)) 55%, hsl(var(--brand-deep))); }
+.welcome-slide[data-theme="3"] { color: hsl(var(--primary-foreground)); background: linear-gradient(135deg, hsl(var(--success) / .75), hsl(var(--success)) 55%, hsl(var(--brand-deep))); }
 .welcome-strong { color: hsl(var(--foreground)); font-weight: 800; }
 .welcome-float { animation: welcome-float 6s ease-in-out infinite; }
 @keyframes welcome-float { 0%,100% { transform: translate3d(0,0,0) rotate(-6deg); } 50% { transform: translate3d(0,-14px,0) rotate(6deg); } }
