@@ -36,7 +36,7 @@ export function CommissionTierBadges({
   const showClosing = level4Unlocked && !level4Locked;
   const rows = [
     // Zero-value levels are hidden everywhere.
-    { key: 'tier1', label: 'פנייה דיגיטלית', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-warning/10 text-warning ring-warning/20', locked: false, show: tiers.tier1 > 0 },
+    { key: 'tier1', label: 'שדות בטופס דף נחיתה', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-warning/10 text-warning ring-warning/20', locked: false, show: tiers.tier1 > 0 },
     { key: 'tier2', label: 'סינון בווטסאפ', value: tierValue(tiers.tier2), icon: WhatsAppIcon, tone: 'bg-primary/10 text-primary ring-primary/20', locked: false, show: tiers.tier2 > 0 },
     { key: 'tier3', label: 'שיחת טלפון', value: tierValue(tiers.tier3), icon: Phone, tone: 'bg-accent text-accent-foreground ring-border', locked: false, show: tiers.tier3 > 0 },
     { key: 'tier4', label: 'סגירת עסקה', value: showClosing ? tierValue(tiers.tier4, tiers.tier4Type) : '', icon: Trophy, tone: 'bg-success/10 text-success ring-success/20', locked: false, show: tiers.tier4 > 0 && showClosing },
@@ -67,6 +67,28 @@ export function CommissionTierBadges({
           </div>
           {r.key === 'tier4' && <p className="mt-1 text-[10px] font-normal leading-relaxed">* נטו למתווך: 80% · TORAFF: 20%</p>}
         </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Soft-gate for signed-out visitors: shows only the lead-type icons
+ * (landing-page form, WhatsApp, phone) with no cash values, to drive signup.
+ */
+export function GuestTierIcons() {
+  const icons = [ClipboardList, WhatsAppIcon, Phone];
+  return (
+    <div
+      data-commission-icons
+      className="flex items-center gap-1.5 text-muted-foreground"
+      title="התחברו כדי לראות את התגמולים"
+      aria-label="סוגי לידים זמינים — התחברו כדי לראות את התגמולים"
+    >
+      {icons.map((Icon, i) => (
+        <span key={i} className="flex h-6 w-6 items-center justify-center rounded-md bg-muted ring-1 ring-border">
+          <Icon className="h-3 w-3" />
+        </span>
       ))}
     </div>
   );

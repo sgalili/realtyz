@@ -1120,7 +1120,7 @@ export default function AffiliatePortal({ activityOnly = false, initialTab = 'ma
             <AffiliateCallAttemptsCard />
             <div className="grid gap-2 sm:grid-cols-3">
               {[
-                { label: 'ליד דיגיטלי', count: levelProgress.level1Count, sum: levelProgress.level1Sum, locked: false },
+                { label: 'שדות בטופס דף נחיתה', count: levelProgress.level1Count, sum: levelProgress.level1Sum, locked: false },
                 { label: 'סינון בשיחת ווטסאפ', count: levelProgress.level2Count, sum: levelProgress.level2Sum, locked: false },
                 { label: 'שיחת טלפון', count: levelProgress.level3Count, sum: levelProgress.level3Sum, locked: false },
               ].map((tile) => (
