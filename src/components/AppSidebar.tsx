@@ -50,6 +50,8 @@ import { AppModeSwitcher } from '@/components/header/AppModeSwitcher';
 import { useAppMode } from '@/hooks/useAppMode';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
+import { SidebarRitaChat } from '@/components/sidebar/SidebarRitaChat';
+import { Megaphone as MyAdsIcon } from 'lucide-react';
 
 
 type NavItem = {
@@ -367,6 +369,18 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {user && (
+                <SidebarMenuItem key="my-ads">
+                  <SidebarMenuButton asChild isActive={location.pathname.startsWith('/my-ads')}>
+                    <NavLink to="/my-ads" data-walkthrough-path="/my-ads" data-walkthrough-title="המודעות שלי" onClick={handleNavClick}
+                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
+                      activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200">
+                      <MyAdsIcon className="h-4 w-4 shrink-0 text-primary" />
+                      {!collapsed && <span className="text-sm font-medium">המודעות שלי</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {navItems.map((item) => {
                 const active = isActive(item);
                 const tutorialActive =
@@ -420,6 +434,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           </SidebarGroup>
         )}
 
+        {user && !collapsed && <div className="mt-auto pt-3"><SidebarRitaChat /></div>}
       </SidebarContent>
     </Sidebar>
   );
