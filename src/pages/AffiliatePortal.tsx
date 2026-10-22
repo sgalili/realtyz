@@ -12,6 +12,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -984,12 +985,7 @@ export default function AffiliatePortal() {
         )}
 
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <SelectModeToggle
-            total={activeTab === 'marketplace' ? filtered.length : activeTab === 'mine' ? filteredReferrals.length : 0}
-            active={multiSelectMode} count={selectedIds.size}
-            onToggle={() => { setMultiSelectMode(v => !v); setSelectedIds(new Set()); }}
-          />
+        <div className="mt-4 flex flex-nowrap items-center gap-2">
           {/* Filter button at the start of the field, before the placeholder. */}
           <div className="relative flex h-10 min-w-0 flex-[1_1_12rem] items-center gap-2 rounded-md border border-input bg-background sm:max-w-lg">
             <span className="absolute start-2 top-1/2 flex -translate-y-1/2">
@@ -1005,20 +1001,26 @@ export default function AffiliatePortal() {
             </span>
             <Input placeholder={searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-10 h-8 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0" />
           </div>
-          <DealViewControls deal={dealType} onDealChange={setDealType} isGrid={viewMode === 'grid'} onViewToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
+          <DealViewControls deal={dealType} onDealChange={setDealType} hideView isGrid={viewMode === 'grid'} onViewToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
         </div>
 
 
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); setMultiSelectMode(false); setSelectedIds(new Set()); }}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-            <TabsList>
+          <div className="relative flex min-h-12 items-center justify-between gap-2">
+            <SelectModeToggle
+              total={activeTab === 'marketplace' ? filtered.length : activeTab === 'mine' ? filteredReferrals.length : 0}
+              active={multiSelectMode} count={selectedIds.size}
+              onToggle={() => { setMultiSelectMode(v => !v); setSelectedIds(new Set()); }}
+            />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <TabsList className="[&>button]:text-[calc(0.875rem+3px)]">
               <TabsTrigger value="marketplace">{marketplace.length + projectRecords.length} נכסים</TabsTrigger>
               <TabsTrigger value="leads">{submissions.length} לידים</TabsTrigger>
               <TabsTrigger value="mine">{referralCampaigns.filter((row) => row.listing).length} בשיווק</TabsTrigger>
               <TabsTrigger value="earnings">{earningRows.length} רווחים</TabsTrigger>
             </TabsList>
             </div>
+            <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
           </div>
 
 
