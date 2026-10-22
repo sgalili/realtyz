@@ -1,9 +1,11 @@
 # Welcome, cloud sharing, tables and account deletion
-- [ ] Verify unified signup welcome and profile CTA without duplicate dialogs.
-- [ ] Correct table cell structure and centered mobile tab controls; preserve authorized actions.
-- [ ] Repair cloud connect/sync retry and workspace-change handling; live Facebook requires an operational Railway worker and owner login.
-- [ ] Harden deletion OTP and archive retention; add protected archive view and verify non-destructive flow.
-- [ ] Run focused tests and mobile/desktop checks.
+- [x] Unified signup welcome and profile CTA; existing consent introduction is suppressed while signup welcome is pending.
+- [x] Correct table cell structure and centered mobile tab controls; authenticated mobile/desktop board verified.
+- [x] Repair cloud connect/sync retry and workspace-change handling; deploy cloud endpoint.
+- [x] Harden deletion OTP and archive retention; add protected archive view; six-digit/acknowledgement tests and invalid-code rejection pass.
+- [x] 33 focused tests and mobile/desktop board checks pass; preview builds successfully.
+- [ ] Live Facebook login/membership sync: requires updated Railway runner and owner Facebook login; no active cloud session.
+- [ ] Real deletion delivery and final purge: requires verified email sender setup and an owner-confirmed deletion; no account deleted in testing.
 
 # Signup profile inheritance
 - [x] Preserve initial signup type including pure affiliates through the authenticated type RPC; persist entered name before type completion without replacing existing names; keep partner consent separate.

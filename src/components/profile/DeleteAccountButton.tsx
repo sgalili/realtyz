@@ -46,7 +46,7 @@ export function DeleteAccountButton() {
           <DialogDescription>החשבון והנתונים הפעילים שלכם יימחקו לצמיתות. לא ניתן לבטל את המחיקה. רשומת זיהוי מוגנת תישמר לעיון מנהל העל בלבד. ננסה לשלוח קוד בוואטסאפ ובאימייל אמיתי המשויך לחשבון.</DialogDescription>
         </DialogHeader>
         {sent && <>
-          <p role="status" className="text-sm">{channels.includes('whatsapp') ? 'קוד נשלח בוואטסאפ.' : ''} {channels.includes('email') ? 'קוד נשלח לשליחה באימייל.' : ''} הקוד תקף ל־10 דקות.</p>
+          <p role="status" className="text-sm">{channels.includes('whatsapp') ? 'קוד נשלח בוואטסאפ.' : ''} {channels.includes('email') ? 'קוד הועבר לשליחה באימייל.' : ''} הקוד תקף ל־10 דקות.</p>
           <Input aria-label="קוד אימות למחיקת החשבון" autoComplete="one-time-code" inputMode="numeric" dir="ltr" maxLength={6} placeholder="קוד אימות" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
           <div className="flex items-start gap-2"><Checkbox id="delete-account-ack" checked={acknowledged} disabled={busy} onCheckedChange={v => setAcknowledged(v === true)} /><Label htmlFor="delete-account-ack" className="leading-relaxed">ברור לי שהמחיקה סופית ולא ניתנת לביטול.</Label></div>
           <Button variant="link" disabled={busy} onClick={() => void send()}>שליחת קוד מחדש</Button>
