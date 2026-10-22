@@ -1,3 +1,4 @@
+import { FacebookCloudConnectGate } from '@/components/social/FacebookCloudConnectGate';
 import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { isProjectTarget, projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
@@ -8608,6 +8609,7 @@ const CampaignCenter = () => {
 
   return (
     <div className="-mt-[25px] space-y-6" dir="rtl">
+      <FacebookCloudConnectGate />
       {isTargetedMode && (
         <div className="relative -mx-3 sm:-mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
              style={{ backgroundColor: 'hsl(var(--header-bg))' }} data-no-hero-wave>
