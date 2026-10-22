@@ -127,3 +127,6 @@
 # Auth text nudge and borderless central section
 - [x] Shifted the rotating sentences 20px upward (mobile and desktop top 67 -> 47) while the TORAFF logo and form kept their exact positions (mobile logo top 151, card top 259, card height 440, footer 11px from the bottom, no page scroll).
 - [x] Removed the central section's rounded box, background and border (computed background transparent, border 0px, no shadow); tabs, fields and buttons stay fully legible on the page background in phone and desktop views.
+
+# Signup menu wording
+- [x] Removed "פרטי" from the user-type options so they read קונה/מוכר and משכיר/שוכר; the same labels feed the sign-up dropdown and the role-choice step. Options verified in the browser and 16 related tests pass.
