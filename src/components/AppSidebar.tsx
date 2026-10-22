@@ -306,10 +306,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               <div onClick={(e) => e.stopPropagation()}>
                 <WorkspaceSwitcher />
               </div>
-              <div className="mt-1 text-sm font-semibold text-primary" role="status">{identity.label}{isPartnerMode ? ' · מצב שותף' : ''}</div>
 
               {/* Settings + Tutorial + broker/partner toggle share one row. */}
-              <div className="mt-2 grid w-full grid-cols-[1fr_1fr_1.5fr] items-stretch gap-1" dir="rtl" onClick={(e) => e.stopPropagation()}>
+              <div className={cn("mt-2 grid w-full items-stretch gap-1", identity.canSwitch ? "grid-cols-[1fr_1fr_1.5fr]" : "grid-cols-2")} dir="rtl" onClick={(e) => e.stopPropagation()}>
                 {/* Settings shortcut: opens /profile and closes the sidebar.
                     Hidden in Rita's marketing workspace. */}
                 {(
@@ -341,7 +340,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4 text-[hsl(var(--nav-help))]" />הדרכה
                 </Button>
 
-                <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-9 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1" />
+                {identity.canSwitch && <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-9 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1" />}
               </div>
 
             </SidebarGroupContent>
