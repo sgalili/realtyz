@@ -6,9 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { useMyReferrals, useMySubmissions } from '@/hooks/useAffiliate';
+import { useMySubmissions } from '@/hooks/useAffiliate';
 import { supabase } from '@/integrations/supabase/client';
-import { fmtCredits, ilsToCredits } from '@/lib/credits';
+import { fmtILS } from '@/lib/formatCurrency';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
 import { cn } from '@/lib/utils';
@@ -29,7 +29,6 @@ export default function HomeActivityPill() {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const headerAnchor = triggerRef.current?.closest('header') ?? undefined;
   useEffect(() => { setOpen(false); setActivity('properties'); }, [user?.id, owner]);
-  const referrals = useMyReferrals();
   const submissions = useMySubmissions();
   const personal = useQuery({
     queryKey: ['home-personal-activity', user?.id, owner],
@@ -73,9 +72,9 @@ export default function HomeActivityPill() {
             <TabsContent value="properties"><MyAds /></TabsContent>
             <TabsContent value="leads">{partnerView ? <AffiliateNetwork activityOnly initialTab="mine" /> : <LeadCRM />}</TabsContent>
             <TabsContent value="earnings">
-              <p className="py-4 text-xl font-semibold">{fmtCredits(ilsToCredits(metrics.earnings))}</p>
+              {submissions.isSuccess && <p className="py-4 text-xl font-semibold">{fmtILS(metrics.earnings)}</p>}
               {partnerView ? <AffiliateNetwork activityOnly initialTab="earnings" /> : <div className="divide-y">
-                {submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הרווחים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען רווחים…</p> : submissions.data.length ? submissions.data.map(row => <div key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.listing?.property_title || row.lead_name}</span><bdi className="shrink-0">{fmtCredits(ilsToCredits(Number(row.earned_amount ?? 0)))}</bdi></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין רווחים</p>}
+                {submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הרווחים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען רווחים…</p> : submissions.data.length ? submissions.data.map(row => <div key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.listing?.property_title || row.lead_name}</span><bdi className="shrink-0">{fmtILS(Number(row.earned_amount ?? 0))}</bdi></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין רווחים</p>}
               </div>}
             </TabsContent>
           </Suspense>
