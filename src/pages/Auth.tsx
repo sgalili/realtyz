@@ -342,7 +342,7 @@ const Auth = () => {
           />
         </div>
 
-        <Card variant="active" className="auth-login-card border border-border/60 bg-card shadow-sm" dir="rtl">
+        <Card variant="active" className="auth-login-card border-0 bg-transparent shadow-none" dir="rtl">
           <CardContent className="auth-card-content p-6">
             {!codeSent && <>
               <div className="grid shrink-0 grid-cols-2 gap-1" role="group" aria-label="כניסה או הרשמה">
