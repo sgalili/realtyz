@@ -25,6 +25,11 @@ import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { Button } from '@/components/ui/button';
 import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { formatPrice } from '@/pages/PublicListingPage';
+import StandardPropertyCard from '@/components/public/StandardPropertyCard';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
+import type { PublicCard } from '@/pages/PublicListingsBoard';
+import { publicAdTitle } from '@/lib/publicAdPresentation';
+import { toast } from 'sonner';
 
 type Row = {
   listing_id: string; relation: 'owned' | 'promoting'; title: string | null; city: string | null; address: string | null;
@@ -108,7 +113,60 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
     <AnimatedExpansion open={open} id={`stats-${r.relation}-${r.listing_id}`}><AdDetails listingId={r.listing_id} /></AnimatedExpansion>
   </article>;
 }
-export default function MyAds() {
+function ActivityProperties() {
+  const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
+  const [limit, setLimit] = useState(24);
+  const [saving, setSaving] = useState<Set<string>>(new Set());
+  const ads = useQuery({
+    queryKey: ['my-ads-stats', user?.id, activeWorkspaceId], enabled: !!user?.id && !!activeWorkspaceId,
+    refetchInterval: 30_000, refetchOnWindowFocus: true,
+    queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
+  });
+  const favorites = useQuery({
+    queryKey: ['activity-favorites', user?.id], enabled: !!user?.id,
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const ids: string[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await supabase.from('listing_favorites').select('listing_id').eq('user_id', user.id).order('listing_id').range(offset, offset + 499);
+        if (error) throw error;
+        ids.push(...(data ?? []).map(row => row.listing_id));
+        if ((data?.length ?? 0) < 500) break;
+      }
+      return ids;
+    },
+  });
+  const toggleFavorite = async (id: string) => {
+    if (!user?.id || saving.has(id) || !favorites.isSuccess) return;
+    setSaving(current => new Set(current).add(id));
+    const { error } = favorites.data.includes(id)
+      ? await supabase.from('listing_favorites').delete().eq('user_id', user.id).eq('listing_id', id)
+      : await supabase.from('listing_favorites').insert({ user_id: user.id, listing_id: id });
+    if (error) toast.error('שמירת המועדף נכשלה, נסו שוב');
+    else await favorites.refetch();
+    setSaving(current => { const next = new Set(current); next.delete(id); return next; });
+  };
+  const owned = (ads.data ?? []).filter(row => row.relation === 'owned');
+  if (ads.isLoading) return <p role="status" className="py-8 text-center text-muted-foreground">טוען נכסים…</p>;
+  if (ads.isError) return <div role="alert" className="py-8 text-center">לא ניתן לטעון את הנכסים <Button variant="link" onClick={() => void ads.refetch()}>ניסיון נוסף</Button></div>;
+  if (!owned.length) return <p className="py-8 text-center text-muted-foreground">עדיין אין נכסים שפרסמתם בלוח.</p>;
+  return <div className="space-y-4 py-3">
+    <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {owned.slice(0, limit).map(row => {
+        const card: PublicCard = { id: row.listing_id, slug: row.slug, title: row.title, city: row.city, street: row.address ?? '', neighborhood: null, deal_type: row.deal_type, price: row.asking_price, photos: row.image_url ? [row.image_url] : [], rooms: null, sqm: null, floor: null, total_floors: null, description: null, contact_options: null };
+        return <StandardPropertyCard key={row.listing_id} card={card} signedIn isMine isFav={favorites.data?.includes(row.listing_id)} onFavorite={() => void toggleFavorite(row.listing_id)} summary={<div className="space-y-2"><PublicAdHeading compact title={publicAdTitle(card)} price={formatPrice(Number(row.asking_price) || 0, row.deal_type === 'rent' ? 'rent' : row.deal_type === 'sale' ? 'sale' : null)} dealType={row.deal_type} /><ListingLifecycleStatus listingId={row.listing_id} /></div>} />;
+      })}
+    </div>
+    {owned.length > limit && <div className="text-center"><Button variant="outline" onClick={() => setLimit(value => value + 24)}>נכסים נוספים</Button></div>}
+  </div>;
+}
+
+export default function MyAds({ activityOnly = false }: { activityOnly?: boolean } = {}) {
+  return activityOnly ? <ActivityProperties /> : <MyAdsPage />;
+}
+
+function MyAdsPage() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [resumeDraft, setResumeDraft] = useState<PublicListingDraft>();
