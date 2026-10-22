@@ -6,7 +6,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   rpc: mocks.rpc,
   functions: { invoke: mocks.invoke },
 } }));
-import { applyPendingSignupRole, setPendingSignupRole } from './signupRole';
+import { applyPendingSignupRole, setPendingSignupRole, setPendingSignupName, readPendingSignupRole } from './signupRole';
 import { savePendingBrokerLicense } from './brokerLicense';
 
 describe('primary signup choices', () => {
@@ -17,7 +17,7 @@ describe('primary signup choices', () => {
     mocks.rpc.mockResolvedValue({ data: { ok: true }, error: null });
     mocks.invoke.mockResolvedValue({ data: { valid: true }, error: null });
   });
-  it.each(['broker', 'developer', 'contractor', 'property_owner', 'property_seeker'] as const)('sends explicit %s choice to the constrained server operation', async type => {
+  it.each(['broker', 'developer', 'contractor', 'property_owner', 'property_seeker', 'partner'] as const)('sends explicit %s choice to the constrained server operation', async type => {
     setPendingSignupRole(type);
     if (type === 'broker') savePendingBrokerLicense('30722789');
     await applyPendingSignupRole();
@@ -29,8 +29,31 @@ describe('primary signup choices', () => {
     expect(await applyPendingSignupRole()).toBeNull();
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
-  it('does not accept partner as a primary type or bypass terms', async () => {
+  it('inherits partner signup without broker verification or accepting terms', async () => {
     setPendingSignupRole('partner');
+    expect(await applyPendingSignupRole()).toBe('/affiliate');
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('select_signup_user_type', { _type: 'partner' });
+    expect(mocks.invoke).not.toHaveBeenCalled();
+    expect(readPendingSignupRole()).toBeNull();
+  });
+  it('persists the entered full name after verified authentication before applying type', async () => {
+    setPendingSignupRole('partner'); setPendingSignupName('שי גלילי');
+    await applyPendingSignupRole();
+    expect(mocks.rpc.mock.calls).toEqual([
+      ['complete_signup_profile', { _full_name: 'שי גלילי' }],
+      ['select_signup_user_type', { _type: 'partner' }],
+    ]);
+  });
+  it('retains signup intent when name persistence fails', async () => {
+    setPendingSignupRole('partner'); setPendingSignupName('שי גלילי');
+    mocks.rpc.mockResolvedValue({ data: null, error: new Error('save failed') });
+    expect(await applyPendingSignupRole()).toBeNull();
+    expect(readPendingSignupRole()).toBe('partner');
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('complete_signup_profile', { _full_name: 'שי גלילי' });
+  });
+  it('never writes signup data before authentication is verified', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null } });
+    setPendingSignupRole('partner'); setPendingSignupName('שי גלילי');
     expect(await applyPendingSignupRole()).toBeNull();
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
