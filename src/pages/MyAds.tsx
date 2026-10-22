@@ -143,8 +143,8 @@ function ActivityProperties() {
   const sharingPartners = owned.reduce((total, r) => total + Number(r.affiliates || 0), 0);
   return <div className="space-y-2 py-2">
     <div className="flex items-center justify-between gap-2">
-      <span className="text-xs text-muted-foreground"><Users className="ms-0 me-1 inline h-3.5 w-3.5" />{number(sharingPartners)} שיתופים פעילים של שותפים</span>
       <SelectModeToggle active={selectMode} onToggle={() => { setSelectMode(v => !v); setSelected(new Set()); }} count={selected.size} total={owned.length} onSelectAll={() => setSelected(selected.size === owned.length ? new Set() : new Set(owned.map(r => r.listing_id)))} />
+      <span className="text-xs text-muted-foreground"><Users className="ms-0 me-1 inline h-3.5 w-3.5" />{number(sharingPartners)} שיתופים פעילים של שותפים</span>
     </div>
     {selectMode && selected.size > 0 && <div className="flex items-center justify-end gap-1 border-b pb-2">
       <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="שיתוף" title="שיתוף" onClick={() => void share()}><Share2 className="h-4 w-4" /></Button>

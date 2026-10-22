@@ -110,7 +110,7 @@ export default function AffiliateSignup() {
         <section className="space-y-5">
           <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200">
             <Sparkles className="h-3.5 w-3.5" />
-            רשת השותפים של רילטיז
+            רשת השותפים של TORAFF
           </div>
           <h1 className="text-3xl font-bold leading-tight text-slate-900">
             שווקו נכסים של מתווכים אחרים והרוויחו עמלה בכל שלב

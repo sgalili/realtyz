@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { lovable } from '@/integrations/lovable';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
-import { ArrowRight, Mail, MessageSquareText } from 'lucide-react';
+import { ArrowRight, Mail, MessageSquareText, X } from 'lucide-react';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { cn } from '@/lib/utils';
 import { RealtyzWave } from '@/components/RealtyzWave';
@@ -321,6 +321,11 @@ const Auth = () => {
       {codeSent && !isGoogleFlow && (
         <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-4 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
           <ArrowRight className="h-10 w-10" />
+        </button>
+      )}
+      {!codeSent && (
+        <button type="button" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute right-4 top-4 z-20 border-0 bg-transparent p-1 text-foreground transition-opacity hover:opacity-70" onClick={() => navigate('/')}>
+          <X className="h-8 w-8" />
         </button>
       )}
 

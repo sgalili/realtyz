@@ -68,7 +68,7 @@ export const SelectBox = ({
     className={cn(
       'h-4 w-4 shrink-0 rounded border flex items-center justify-center transition',
       checked ? 'border-primary bg-primary text-primary-foreground'
-        : indeterminate ? 'border-primary bg-primary/30' : 'border-border bg-background',
+        : indeterminate ? 'border-primary bg-primary/30' : 'border-black bg-background',
       className,
     )}
   >
