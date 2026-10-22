@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
  * כפתור סגירה צף בפינה העליונה, לדפים ללא מעטף ראשי (תנאי שימוש, מדיניות פרטיות).
@@ -7,9 +7,10 @@ import { useNavigate } from 'react-router-dom';
  */
 export function PageCloseButton() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const close = () => {
-    if (window.history.length > 1) {
+    if (location.key !== 'default') {
       navigate(-1);
     } else {
       navigate('/');
