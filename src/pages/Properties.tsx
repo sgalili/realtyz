@@ -1708,7 +1708,6 @@ export function ResultTable({
               </th>
             ) : null}
             {headerCell("תמונה", "w-14")}
-            {showAffiliateColumn ? headerCell("שיתופים") : null}
             {showCommissionColumn ? headerCell("עמלות") : null}
 
             {headerCell("רחוב")}
@@ -1723,7 +1722,7 @@ export function ResultTable({
             {headerCell('מ"ר')}
             {headerCell(publishedLabel)}
             {showPublisherColumn ? headerCell("משרד מפרסם") : null}
-            {!hideDefaultActions || endActions ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th> : null}
+            {!hideDefaultActions || endActions || showAffiliateColumn ? <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th> : null}
 
 
           </tr>
@@ -1766,9 +1765,6 @@ export function ResultTable({
                     })()}
                   </div>
                 </td>
-                {showAffiliateColumn ? (
-                  <td className="px-2 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{renderAffiliate(r)}</td>
-                ) : null}
                 {showCommissionColumn ? (
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{renderCommission(r)}</td>
                 ) : null}
@@ -1835,10 +1831,13 @@ export function ResultTable({
                 </td>
                 ) : null}
 
-                {!hideDefaultActions || endActions ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
+                {!hideDefaultActions || endActions || showAffiliateColumn ? <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
+                  <div className="inline-flex items-center gap-1">
+                  {showAffiliateColumn ? renderAffiliate(r) : null}
                   {endActions?.(r)}
                   {quickPromotion?.(r)}
                   {!hideDefaultActions && <PropertyRowActions r={r} importing={importing} onCampaign={(x) => (onCampaign ? onCampaign(x) : onSelect(x))} onEdit={onEdit} onDelete={onDelete} onAffiliate={onAffiliate} hideAffiliate={showAffiliateColumn} />}
+                  </div>
                 </td> : null}
 
 
