@@ -130,3 +130,6 @@
 
 # Signup menu wording
 - [x] Removed "פרטי" from the user-type options so they read קונה/מוכר and משכיר/שוכר; the same labels feed the sign-up dropdown and the role-choice step. Options verified in the browser and 16 related tests pass.
+
+# Tab order and default tab
+- [x] Swapped the two tabs so הרשמה sits on the right and התחברות on the left, and the page now opens on the sign-up tab; switching still keeps identical card geometry (top 259, height 440, footer 11px, no scroll) and 16 related tests pass.
