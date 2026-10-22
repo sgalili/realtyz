@@ -19,7 +19,7 @@ import { RealtyzWave } from '@/components/RealtyzWave';
 import realtyzLogo from '@/assets/realtyz-logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
-import { SIGNUP_ROLE_LABELS, setPendingSignupRole, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
+import { SIGNUP_ROLE_LABELS, setPendingSignupRole, setPendingSignupName, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { savePendingBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 
@@ -137,8 +137,7 @@ const Auth = () => {
   const plainPhone = phone.replace(/\D/g, '');
   const formattedPhone = plainPhone.length > 3 ? `${plainPhone.slice(0, 3)}-${plainPhone.slice(3, 10)}` : plainPhone;
   const identifierValid = isPhoneFlow ? /^05\d-\d{7}$/.test(formattedPhone) : /\S+@\S+\.\S+/.test(email);
-  // Signing in needs only a valid identifier. Brand-new accounts pick their role
-  // (מתווך / שותף) right after the first successful sign-in.
+  // Signup keeps the explicit type and name through verified authentication.
   const brokerReady = !signup || signupType !== 'broker' || (!!brokerLicense && verifiedBrokerLicense === brokerLicense);
   const canSubmit = identifierValid && (!signup || !!signupType) && brokerReady;
 
@@ -146,7 +145,12 @@ const Auth = () => {
     if (signup && !signupType) { toast.error('יש לבחור סוג משתמש'); return false; }
     if (!brokerReady) { toast.error(INVALID_BROKER_LICENSE); return false; }
     savePendingBrokerLicense(signup && signupType === 'broker' ? brokerLicense : '');
-    if (signup && signupType) setPendingSignupRole(signupType);
+    if (signup && signupType) {
+      setPendingSignupRole(signupType);
+      setPendingSignupName(fullName);
+    } else {
+      clearPendingSignupRole();
+    }
     return true;
   };
 

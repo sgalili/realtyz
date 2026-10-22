@@ -7,7 +7,7 @@ export function accountIdentity(roles: AppRole[], primaryType?: string | null) {
   if (team) return { label: 'מתווך', home: '/', canSwitch: true };
   if (roles.includes('property_owner')) return { label: 'מפרסם', home: '/owner/properties', canSwitch: true };
   if (roles.includes('property_seeker')) return { label: 'פרטי', home: '/public-listings', canSwitch: true };
-  if (roles.includes('user')) return { label: 'פרטי', home: '/public-listings', canSwitch: true };
+  if (roles.includes('user') && !roles.includes('affiliate')) return { label: 'פרטי', home: '/public-listings', canSwitch: true };
   return { label: 'שותף', home: '/affiliate-network', canSwitch: false };
 }
 

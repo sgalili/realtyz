@@ -183,6 +183,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
         void queryClient.invalidateQueries({ queryKey: ['user-roles', user.id] });
         void queryClient.invalidateQueries({ queryKey: ['workspace-owner-roles'] });
         void queryClient.invalidateQueries({ queryKey: ['primary-user-type'] });
+        void queryClient.invalidateQueries({ queryKey: ['app-header-user-profile', user.id] });
+        void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       }
       setRoleApplied(true);
       if (path === '/affiliate' && window.location.pathname !== '/affiliate') {
@@ -206,7 +208,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
-  if (roleLoading || !rolesFetched) return <PageLoader />;
+  if (roleLoading || !rolesFetched || !roleApplied) return <PageLoader />;
 
   // Brand-new account (no role yet): pick מתווך / שותף once, then continue.
   if (roleError) return (

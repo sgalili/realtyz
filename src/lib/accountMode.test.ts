@@ -15,7 +15,6 @@ describe('universal account identity', () => {
     ['managing_broker', 'מתווך', '/'],
     ['property_owner', 'מפרסם', '/owner/properties'],
     ['property_seeker', 'פרטי', '/public-listings'],
-    ['user', 'פרטי', '/public-listings'],
   ] as const)('retains %s identity with additive partner membership', (role, label, home) => {
     const before = accountIdentity([role]);
     const after = accountIdentity([role, 'affiliate']);
@@ -26,7 +25,11 @@ describe('universal account identity', () => {
   it('never offers broker/developer identity to an affiliate-only account', () => {
     expect(accountIdentity(['affiliate'])).toEqual({ label: 'שותף', home: '/affiliate-network', canSwitch: false });
     expect(isAffiliateOnlyAccount(['affiliate'])).toBe(true);
+    expect(isAffiliateOnlyAccount(['user', 'affiliate'])).toBe(true);
     expect(accountIdentity([] as AppRole[]).canSwitch).toBe(false);
+  });
+  it('keeps an unclassified user private until a primary type is chosen', () => {
+    expect(accountIdentity(['user'])).toEqual({ label: 'פרטי', home: '/public-listings', canSwitch: true });
   });
   it('retains developer identity even with legacy broker and partner roles', () => {
     expect(accountIdentity(['agent', 'developer', 'affiliate'])).toEqual({ label: 'יזם', home: '/developer-dashboard', canSwitch: true });

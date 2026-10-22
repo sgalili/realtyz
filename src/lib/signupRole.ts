@@ -6,6 +6,10 @@ import { readPendingBrokerLicense, savePendingBrokerLicense, verifyBrokerLicense
 export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer' | 'contractor';
 
 const KEY = 'realtyz-signup-role';
+const NAME_KEY = 'toraff-signup-full-name';
+export function setPendingSignupName(name: string) {
+  try { window.localStorage.setItem(NAME_KEY, name.trim()); } catch { /* signup intent only */ }
+}
 /** Developers land straight on the Yad2 import step after verification. */
 export const DEVELOPER_ONBOARDING_PATH = '/developer-dashboard?onboarding=1';
 
@@ -39,6 +43,7 @@ export function clearPendingSignupRole() {
   savePendingBrokerLicense('');
   try {
     window.localStorage.removeItem(KEY);
+    window.localStorage.removeItem(NAME_KEY);
   } catch {
     /* storage disabled */
   }
@@ -69,16 +74,16 @@ export async function applyPendingSignupRole(): Promise<string | null> {
   if (!role) return null;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  markPostSignupWelcome(role);
   const { data: savedRoles, error: rolesError } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
   if (rolesError) return null;
   if (savedRoles?.some(r => !['user', 'affiliate'].includes(r.role))) {
     clearPendingSignupRole();
     return null;
   }
-  if (role === 'partner') {
-    clearPendingSignupRole();
-    return null;
+  const name = window.localStorage.getItem(NAME_KEY)?.trim();
+  if (name) {
+    const { data, error } = await supabase.rpc('complete_signup_profile', { _full_name: name });
+    if (error || !(data as { ok?: boolean } | null)?.ok) return null;
   }
   if (role === 'broker') {
     try { await verifyBrokerLicense(readPendingBrokerLicense(), 'verify'); }
@@ -86,7 +91,9 @@ export async function applyPendingSignupRole(): Promise<string | null> {
   }
   const { data, error } = await supabase.rpc('select_signup_user_type', { _type: role });
   if (error || !(data as { ok?: boolean } | null)?.ok) return null;
+  markPostSignupWelcome(role);
   clearPendingSignupRole();
+  if (role === 'partner') return '/affiliate';
   if (role === 'developer' || role === 'contractor') return DEVELOPER_ONBOARDING_PATH;
   if (role === 'property_seeker') return '/public-listings';
   if (role === 'property_owner') {

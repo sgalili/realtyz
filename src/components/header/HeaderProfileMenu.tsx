@@ -44,26 +44,28 @@ export function HeaderProfileMenu() {
   const { isManagingBroker, isSuperAdmin } = useUserRole();
   const { workspaces, openSelector, activeWorkspace } = useWorkspace();
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string | null>(null);
 
   const { settings: brand } = useWhiteLabel();
 
   useEffect(() => {
     if (!user?.id) {
       setProfileAvatarUrl(null);
+      setProfileName(null);
       return;
     }
     supabase
       .from('profiles')
-      .select('avatar_url')
+      .select('avatar_url, full_name')
       .eq('id', user.id)
       .maybeSingle()
-      .then(({ data }) => setProfileAvatarUrl((data as any)?.avatar_url ?? null));
+      .then(({ data }) => { setProfileAvatarUrl(data?.avatar_url ?? null); setProfileName(data?.full_name ?? null); });
   }, [user?.id]);
 
   if (!user) return null;
 
   const avatarUrl: string | null = profileAvatarUrl;
-  const displayName = friendlyUserDisplayName(user, 'ללא שם');
+  const displayName = friendlyUserDisplayName({ user_metadata: { full_name: profileName, name: friendlyUserDisplayName(user, '') } }, 'ללא שם');
   const initial = displayName.slice(0, 1);
 
   const goProfile = () => navigate('/profile');

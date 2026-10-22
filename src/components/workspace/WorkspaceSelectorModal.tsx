@@ -10,6 +10,7 @@ import { useWorkspace, type Workspace } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 
 function initials(name?: string | null) {
   if (!name) return '?';
@@ -100,12 +101,12 @@ export function WorkspaceSelectorModal() {
                 <Check className="h-4 w-4 text-primary shrink-0" />
               )}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold truncate">{selfRow.owner_full_name || user?.email || 'אני'}</div>
+                <div className="text-sm font-semibold truncate">{friendlyUserDisplayName({ user_metadata: { full_name: selfRow.owner_full_name, name: friendlyUserDisplayName(user, '') } }, 'אני')}</div>
                 <div className="text-xs text-muted-foreground">החשבון שלי · בעלים</div>
               </div>
               <Avatar className="h-10 w-10 shrink-0">
                 <AvatarImage src={selfRow.owner_avatar_url ?? undefined} />
-                <AvatarFallback>{initials(selfRow.owner_full_name || user?.email)}</AvatarFallback>
+                <AvatarFallback>{initials(friendlyUserDisplayName({ user_metadata: { full_name: selfRow.owner_full_name, name: friendlyUserDisplayName(user, '') } }, 'אני'))}</AvatarFallback>
               </Avatar>
             </button>
           )}
