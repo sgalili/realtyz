@@ -19,7 +19,7 @@ export function useReadyBoardProperties(enabled = true) {
       for (let offset = 0; ; offset += pageSize) {
         const { data, error } = await supabase.from('listings')
           .select('id,property_title,address,city,asking_price,status,is_published,affiliate_enabled')
-          .eq('workspace_owner_id', activeWorkspaceId).eq('is_demo', false)
+          .eq('workspace_owner_id', activeWorkspaceId)
           .order('created_at', { ascending: false }).order('id')
           .range(offset, offset + pageSize - 1);
         if (error) throw error;
