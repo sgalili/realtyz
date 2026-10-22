@@ -499,7 +499,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              <PublicListingPublisher autoResume label="פרסם עכשיו, פרסום חינם" triggerClassName="!h-10 max-w-[7.5rem] whitespace-normal px-2 !text-[13px] leading-tight sm:max-w-none sm:!text-[15px]" />
+              <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!h-10 whitespace-nowrap px-3 !text-[13px] sm:!text-[15px]" />
             </div>
           </header>
           <PageHero />
