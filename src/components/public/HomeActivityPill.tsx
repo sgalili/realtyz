@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMyReferrals, useMySubmissions } from '@/hooks/useAffiliate';
 import { supabase } from '@/integrations/supabase/client';
-import { hasHomeActivity } from '@/lib/homeActivity';
 import { fmtCredits, ilsToCredits } from '@/lib/credits';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
@@ -45,14 +44,12 @@ export default function HomeActivityPill() {
       return { properties: new Set((ads.data ?? []).filter(row => row.relation === 'owned').map(row => row.listing_id)).size, leads: leads.count ?? 0 };
     },
   });
-  if (!user || !personal.isSuccess || !referrals.isSuccess || !submissions.isSuccess) return null;
+  if (!user) return null;
   const metrics = {
-    ...personal.data,
-    leads: personal.data.leads + submissions.data.length,
-    marketing: new Set(referrals.data.filter(row => row.listing_id && !['cancelled', 'lost'].includes(row.status)).map(row => row.listing_id)).size,
-    earnings: submissions.data.reduce((sum, row) => sum + Number(row.earned_amount ?? 0), 0),
+    properties: personal.data?.properties ?? 0,
+    leads: (personal.data?.leads ?? 0) + (submissions.data?.length ?? 0),
+    earnings: submissions.data?.reduce((sum, row) => sum + Number(row.earned_amount ?? 0), 0) ?? 0,
   };
-  if (!hasHomeActivity(metrics)) return null;
   const tabs = [
     { id: 'properties', label: <>{metrics.properties} הנכסים שלי</> },
     { id: 'leads', label: <>{metrics.leads} לידים בשיווק</> },
@@ -78,7 +75,7 @@ export default function HomeActivityPill() {
             <TabsContent value="earnings">
               <p className="py-4 text-xl font-semibold">{fmtCredits(ilsToCredits(metrics.earnings))}</p>
               {partnerView ? <AffiliateNetwork activityOnly initialTab="earnings" /> : <div className="divide-y">
-                {submissions.data.length ? submissions.data.map(row => <div key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.listing?.property_title || row.lead_name}</span><bdi className="shrink-0">{fmtCredits(ilsToCredits(Number(row.earned_amount ?? 0)))}</bdi></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין רווחים</p>}
+                {submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הרווחים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען רווחים…</p> : submissions.data.length ? submissions.data.map(row => <div key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.listing?.property_title || row.lead_name}</span><bdi className="shrink-0">{fmtCredits(ilsToCredits(Number(row.earned_amount ?? 0)))}</bdi></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין רווחים</p>}
               </div>}
             </TabsContent>
           </Suspense>
