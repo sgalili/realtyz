@@ -5,6 +5,7 @@ import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
 import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
 import { PriceInput } from "@/components/ui/price-input";
+import { LeadPriceSlider } from './LeadPriceSlider';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
 // everything, sign up through /auth, and have the listing auto-published on return.
@@ -68,9 +69,9 @@ const STEP_TITLES = [
 ];
 
 const LEAD_TYPES = [
-  { key: 'Form', label: 'פנייה בטופס' },
-  { key: 'Whatsapp', label: 'סינון בשיחת ווטסאפ' },
-  { key: 'Phone', label: 'סינון בשיחת טלפון' },
+  { key: 'Form', tier: 'form', label: 'פנייה בטופס' },
+  { key: 'Whatsapp', tier: 'whatsapp', label: 'סינון בשיחת ווטסאפ' },
+  { key: 'Phone', tier: 'phone', label: 'סינון בשיחת טלפון' },
 ] as const;
 
 const LEAD_TYPE_VALIDITY = (
@@ -791,13 +792,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="space-y-3">
-              <p className="text-sm font-bold">{"\n"}</p>
-              <div className="grid grid-cols-[1fr_6rem_6rem] items-end gap-2 text-sm">
-                <span className="text-xs text-muted-foreground">סוג פנייה</span>
-                <span className="text-xs text-muted-foreground">עמלה (₪)</span>
-                <span className="text-xs text-muted-foreground">מקס׳ ביום</span>
-                {LEAD_TYPES.map(({ key, label }) => (
-                  <div key={key} className="contents">
+              <div className="space-y-4 text-sm">
+                {LEAD_TYPES.map(({ key, tier, label }) => (
+                  <div key={key} className="space-y-2 border-b border-border pb-4">
                     <span className="flex items-center gap-1 self-center font-medium">
                       {label}
                       <LeadTypeHelp label={label}>
@@ -809,14 +806,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                         {LEAD_TYPE_VALIDITY}
                       </LeadTypeHelp>
                     </span>
-                    <Input inputMode="decimal" aria-label={`עמלה עבור ${label}`} value={(fields as any)[`commission${key}`] || ''} onChange={(e) => set(`commission${key}` as any, decimalInput(e.target.value) as never)} />
-                    {Number((fields as any)[`commission${key}`]) > 0 ? <Input inputMode="numeric" placeholder="ללא מגבלה" aria-label={`מגבלה יומית עבור ${label}`} value={(fields as any)[`limit${key}`] || ''} onChange={(e) => set(`limit${key}` as any, e.target.value.replace(/\D/g, '') as never)} /> : <span />}
+                    <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} onChange={value => set(`commission${key}`, value)} />
+                    <div className="flex items-center justify-between gap-3"><Label htmlFor={`daily-limit-${key}`} className="text-xs text-muted-foreground">מקס׳ ביום</Label><Input id={`daily-limit-${key}`} inputMode="numeric" placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-32" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
                       const n = cleanFormFields(fields.formFields).length;
                       return (
-                        <button type="button" className="col-span-3 -mt-1 mb-1 text-start text-xs font-semibold text-primary underline underline-offset-2" onClick={() => setFormFieldsOpen(true)}>
-                          שדות הטופס (שם + טלפון{n > 0 ? ` + ${n} נוספים · +₪${n * EXTRA_QUESTION_COST} לפנייה` : ''})
-                        </button>
+                        <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setFormFieldsOpen(true)}>
+                          שדות בטופס דף נחיתה (שם + טלפון{n > 0 ? ` + ${n} נוספים · +₪${n * EXTRA_QUESTION_COST} לפנייה` : ''})
+                        </Button>
                       );
                     })()}
                     {(key === 'Whatsapp' || key === 'Phone') && (() => {
@@ -825,9 +822,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       const list = qs && qs.length ? qs : defaultQuestions(fields.dealType);
                       const extra = Math.max(list.filter(q => q.trim()).length - 3, 0);
                       return (
-                        <button type="button" className="col-span-3 -mt-1 mb-1 text-start text-xs font-semibold text-primary underline underline-offset-2" onClick={() => setQuestionsOpen(fk)}>
+                        <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setQuestionsOpen(fk)}>
                           שאלות סינון ({list.filter(q => q.trim()).length}){extra > 0 ? ` · +₪${extra * EXTRA_QUESTION_COST} לפנייה` : ''}
-                        </button>
+                        </Button>
                       );
                     })()}
                   </div>
@@ -888,9 +885,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       </DialogContent>
     </Dialog>
     <Dialog open={open && !entryPending && !isDeveloper} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
-      <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6">
-        <DialogHeader className="text-center">
-          {(reviewMode || step > 0 || importSlide) && <Button type="button" variant="ghost" size="icon" className="absolute left-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
+      <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
+        <DialogHeader className="px-10 text-center">
+          {(reviewMode || step > 0 || importSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
@@ -925,7 +922,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               {!canPublish && <span className="hidden text-xs text-muted-foreground sm:inline" title={missingPublish.join(' · ')}>חסר: {missingPublish[0]}{missingPublish.length > 1 ? ` +${missingPublish.length - 1}` : ''}</span>}
               <div className="flex max-w-sm items-start gap-2 text-xs leading-snug">
                 <Checkbox id="publication-consent" aria-label="אישור התנאים והרשאת הפרסום" checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} className="mt-0.5" />
-                <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
+                <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline decoration-2 underline-offset-4">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
               </div>
               <Button type="button" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()} className="shrink-0 bg-success text-[18px] font-bold text-success-foreground hover:bg-success/90">
                 {publishing ? <><Loader2 className="h-4 w-4 animate-spin" /> מפרסם…</> : user ? 'פרסום הנכס' : 'הרשמה ופרסום'}
