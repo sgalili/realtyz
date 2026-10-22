@@ -1498,13 +1498,18 @@ const InlineComposer = ({
     if (listings.some((l) => l.id === selectedListingId)) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      if (!workspaceOwnerId) return;
+      const { data, error } = await supabase
         .from('listings')
         .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
         .eq('id', selectedListingId)
-        .eq('workspace_owner_id', workspaceOwnerId ?? '')
+        .eq('workspace_owner_id', workspaceOwnerId)
         .maybeSingle();
-      if (!cancelled && data) setSoloListing(data as unknown as CampaignListing);
+      if (cancelled) return;
+      if (data) setSoloListing(data as unknown as CampaignListing);
+      // A saved draft can point at a property that was deleted or belongs to
+      // another workspace: drop it instead of sending it to the server.
+      else if (!error) { setSoloListing(null); setSelectedListingId(null); }
     })();
     return () => { cancelled = true; };
   }, [selectedListingId, listings, workspaceOwnerId]);
