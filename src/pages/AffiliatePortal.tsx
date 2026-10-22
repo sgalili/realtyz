@@ -1006,21 +1006,23 @@ export default function AffiliatePortal() {
 
 
         <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setSearch(''); setMultiSelectMode(false); setSelectedIds(new Set()); }}>
-          <div className="relative flex min-h-12 items-center justify-between gap-2">
+          <div className="grid min-h-12 grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-1 sm:grid-cols-[6rem_minmax(0,1fr)_6rem]">
+            <div className="relative z-10 justify-self-start">
             <SelectModeToggle
               total={activeTab === 'marketplace' ? filtered.length : activeTab === 'mine' ? filteredReferrals.length : 0}
               active={multiSelectMode} count={selectedIds.size}
               onToggle={() => { setMultiSelectMode(v => !v); setSelectedIds(new Set()); }}
             />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <TabsList className="[&>button]:!text-[17px]">
+            </div>
+            <div className="min-w-0 justify-self-center max-w-full">
+            <TabsList className="h-auto w-full px-0.5 [&>button]:!text-[17px] [&>button]:px-1 [&>button]:py-2 sm:[&>button]:px-3">
               <TabsTrigger value="marketplace">{marketplace.length + projectRecords.length} נכסים</TabsTrigger>
               <TabsTrigger value="leads">{submissions.length} לידים</TabsTrigger>
               <TabsTrigger value="mine">{referralCampaigns.filter((row) => row.listing).length} בשיווק</TabsTrigger>
               <TabsTrigger value="earnings">{earningRows.length} רווחים</TabsTrigger>
             </TabsList>
             </div>
-            <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} />
+            <div className="justify-self-end"><ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} /></div>
           </div>
 
 

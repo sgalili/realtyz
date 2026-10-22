@@ -224,18 +224,19 @@ async function fetchGroups(job) {
     if (job.user_agent) await page.setUserAgent(job.user_agent);
     await page.setCookie(...parseCookies(job.session_cookies, job.user_agent));
 
-    const url = `https://www.facebook.com/search/groups/?q=${encodeURIComponent(String(job.query || ""))}`;
+    const syncing = job.sync_memberships === true;
+    const url = syncing ? 'https://www.facebook.com/groups/joins/' : `https://www.facebook.com/search/groups/?q=${encodeURIComponent(String(job.query || ""))}`;
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await sleep(4000);
     if (page.url().includes("/login")) throw new Error("החיבור לפייסבוק פג – יש לשמור חיבור חדש בהגדרות");
 
     // Scroll to load more result cards.
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < (syncing ? 40 : 6); i++) {
       await page.evaluate(() => window.scrollBy(0, 1800));
       await sleep(1200);
     }
 
-    const groups = await page.evaluate(() => {
+    const groups = await page.evaluate((syncing) => {
       const out = [];
       const seen = new Set();
       const reserved = ["joins", "feed", "discover", "create", "search"];
@@ -263,15 +264,15 @@ async function fetchGroups(job) {
           member_count,
           posts_per_day: null,
           privacy: null,
-          is_member: false,
+          is_member: syncing,
           activity_text: null,
         });
-        if (out.length >= 60) break;
+        if (out.length >= (syncing ? 300 : 60)) break;
       }
       return out;
-    });
+    }, syncing);
 
-    if (!groups.length) throw new Error("לא נמצאו קבוצות מתאימות – נסו מילת חיפוש אחרת");
+    if (!groups.length && !syncing) throw new Error("לא נמצאו קבוצות מתאימות – נסו מילת חיפוש אחרת");
     return { status: "completed", groups };
   } finally {
     await browser.close().catch(() => {});

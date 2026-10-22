@@ -421,6 +421,20 @@
       "when": 1792677485978,
       "tag": "0059_account_self_deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792679186537,
+      "tag": "0060_secure_account_deletion_preparation",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1792679358327,
+      "tag": "0061_mark_pending_account_deletions",
+      "breakpoints": true
     }
   ]
 }

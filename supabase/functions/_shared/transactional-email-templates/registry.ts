@@ -10,7 +10,9 @@ export interface TemplateEntry {
 }
 
 import { template as loginOtp } from './login-otp.tsx'
+import { template as accountDeletionOtp } from './account-deletion-otp.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'login-otp': loginOtp,
+  'account-deletion-otp': accountDeletionOtp,
 }

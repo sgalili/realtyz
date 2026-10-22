@@ -24,6 +24,19 @@ describe('cloud group discovery', () => {
     await expect(fetchGroupsViaCloud('דירות')).rejects.toThrow('אין חיבור פייסבוק פעיל בענן');
   });
 
+  it('syncs existing memberships rather than searching an empty query', async () => {
+    mocks.invoke.mockResolvedValueOnce({ data: { job_id: 'sync-1' } })
+      .mockResolvedValueOnce({ data: { job: { status: 'completed', groups: [group] } } });
+    expect(await fetchGroupsViaCloud('', { syncMemberships: true, pollMs: 1 })).toEqual([group]);
+    expect(mocks.invoke.mock.calls[0][1].body).toEqual({ action: 'sync_groups' });
+  });
+
+  it('never starts work for a cancelled workspace request', async () => {
+    const controller = new AbortController(); controller.abort();
+    await expect(fetchGroupsViaCloud('', { syncMemberships: true, signal: controller.signal })).rejects.toThrow();
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
   it('throws the job error when the cloud scan fails', async () => {
     mocks.invoke
       .mockResolvedValueOnce({ data: { success: true, job_id: 'job-2' } })

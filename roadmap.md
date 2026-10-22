@@ -1,9 +1,18 @@
+# Welcome, cloud sharing, tables and account deletion
+- [x] Unified signup welcome and profile CTA; existing consent introduction is suppressed while signup welcome is pending.
+- [x] Correct table cell structure and centered mobile tab controls; authenticated mobile/desktop board verified.
+- [x] Repair cloud connect/sync retry and workspace-change handling; deploy cloud endpoint.
+- [x] Harden deletion OTP and archive retention; add protected archive view; six-digit/acknowledgement tests and invalid-code rejection pass.
+- [x] 33 focused tests and mobile/desktop board checks pass; preview builds successfully.
+- [ ] Live Facebook login/membership sync: requires updated Railway runner and owner Facebook login; no active cloud session.
+- [ ] Real deletion delivery and final purge: requires verified email sender setup and an owner-confirmed deletion; no account deleted in testing.
+
 # Signup profile inheritance
 - [x] Preserve initial signup type including pure affiliates through the authenticated type RPC; persist entered name before type completion without replacing existing names; keep partner consent separate.
 - [x] Hide synthetic names/emails from personal and workspace header identities and hide broker fields/verification for non-broker profiles; individual completion does not require a company.
 - [x] 29 focused tests passed; real signed-in private profile has no synthetic email or broker fields, no runtime errors; server rejects conflicting partner reassignment; preview build passes.
 - [ ] New affiliate OTP/name persistence end-to-end: needs a new signup with its owner's real name and verified code; current signed-in account already has property_seeker identity and no saved signup name.
-- [ ] Requested account deletion: account identified by normalized phone 972537759408; no existing authorized Auth-admin deletion tool/endpoint available, and direct SQL against managed auth tables is prohibited. Owner can delete through More → Users.
+- [x] Requested six-account deletion completed through the authorized Super Admin deletion function in the earlier request.
 
 # Auth screen refinements
 - [x] Fixed header/tabs positions, contiguous uniform fields and viewport-fixed footer; verified identical tab/header/card geometry at 411×802, 360×640 and 1280×1800, shared 40px field heights and footer 10px from bottom during form scrolling. All 11 signup tests and preview build pass; no OTP sent or account data changed.
