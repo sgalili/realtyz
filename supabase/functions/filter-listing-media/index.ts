@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
     const { data: { user } } = await client.auth.getUser();
     if (!user) return json({ error: "unauthorized" }, 401);
     const { data: accessible } = await client.from("listings").select("id").eq("id", listingId).maybeSingle();
-    if (!accessible) return json({ error: "not_found" }, 404);
+    // Background cleanup: an inaccessible/deleted listing is simply skipped.
+    if (!accessible) return json({ ok: false, skipped: "not_found", checked: 0, blocked: [], removed_keys: [] });
     const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
     const { data: listing, error } = await admin
       .from("listings")
