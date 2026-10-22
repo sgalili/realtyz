@@ -10,27 +10,26 @@ export async function verifiedPhoneSession(admin: any, client: any, phone: strin
       String(u.user_metadata?.phone_number ?? '').replace(/\D/g, '') === phone);
     if (target || users.length < 1000) break;
   }
-  // Existing email-first and legacy identities retain their account ID.
-  if (target?.email) {
-    const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email: target.email });
-    if (error) throw error;
-    return { token_hash: data.properties?.hashed_token };
+  // Phone-provider logins are disabled at the auth layer, so phone-only
+  // accounts get a non-deliverable internal sign-in alias (never emailed,
+  // RFC 2606 .invalid TLD) and sign in through a server-issued magic-link hash.
+  let email: string | undefined = target?.email;
+  if (!email) {
+    email = `p${phone}@phone.toraff.invalid`;
+    if (target) {
+      const { error } = await admin.auth.admin.updateUserById(target.id, { email, email_confirm: true, phone: `+${phone}`, phone_confirm: true });
+      if (error) throw error;
+    } else {
+      const { error } = await admin.auth.admin.createUser({
+        email, email_confirm: true, phone: `+${phone}`, phone_confirm: true,
+        user_metadata: { provider, phone_number: phone, internal_email_alias: true },
+      });
+      if (error) throw error;
+    }
   }
-  // A fresh server-only password obtains a session without inventing an email
-  // or invoking a second SMS provider. It is never returned or persisted by the app.
-  const password = crypto.randomUUID() + crypto.randomUUID();
-  if (target) {
-    const { error } = await admin.auth.admin.updateUserById(target.id, { password, phone: `+${phone}`, phone_confirm: true });
-    if (error) throw error;
-  } else {
-    const { error } = await admin.auth.admin.createUser({
-      phone: `+${phone}`, password, phone_confirm: true,
-      user_metadata: { provider, phone_number: phone },
-    });
-    if (error) throw error;
-  }
-  const { data, error } = await client.auth.signInWithPassword({ phone: `+${phone}`, password });
+  void client;
+  const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
   if (error) throw error;
-  if (!data.session) throw new Error('Phone session could not be created');
-  return { session: { access_token: data.session.access_token, refresh_token: data.session.refresh_token } };
+  if (!data.properties?.hashed_token) throw new Error('Phone session could not be created');
+  return { token_hash: data.properties.hashed_token };
 }
