@@ -8615,7 +8615,6 @@ const CampaignCenter = () => {
 
   return (
     <div className="-mt-[25px] space-y-6" dir="rtl">
-      <FacebookCloudConnectGate />
       {isTargetedMode && (
         <div className="relative -mx-3 sm:-mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
              style={{ backgroundColor: 'hsl(var(--header-bg))' }} data-no-hero-wave>
@@ -8655,6 +8654,7 @@ const CampaignCenter = () => {
 
 
         <TabsContent value="create" className="mt-6 space-y-4">
+          <FacebookCloudConnectGate />
           
           <ChannelGrid
             selectedIds={pickedChannelIds}
