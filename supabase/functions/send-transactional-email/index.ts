@@ -49,6 +49,9 @@ Deno.serve(async (req) => {
     )
   }
 
+  // Registered security templates may only be triggered by trusted functions.
+  const isServiceCaller = req.headers.get('Authorization') === `Bearer ${supabaseServiceKey}`
+
   // Parse request body
   let templateName: string
   let recipientEmail: string
@@ -82,6 +85,12 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )
+  }
+
+  if (templateName === 'account-deletion-otp' && !isServiceCaller) {
+    return new Response(JSON.stringify({ error: 'forbidden' }), {
+      status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   // 1. Look up template from registry (early — needed to resolve recipient)

@@ -1,9 +1,16 @@
+# Welcome, cloud sharing, tables and account deletion
+- [ ] Verify unified signup welcome and profile CTA without duplicate dialogs.
+- [ ] Correct table cell structure and centered mobile tab controls; preserve authorized actions.
+- [ ] Repair cloud connect/sync retry and workspace-change handling; live Facebook requires an operational Railway worker and owner login.
+- [ ] Harden deletion OTP and archive retention; add protected archive view and verify non-destructive flow.
+- [ ] Run focused tests and mobile/desktop checks.
+
 # Signup profile inheritance
 - [x] Preserve initial signup type including pure affiliates through the authenticated type RPC; persist entered name before type completion without replacing existing names; keep partner consent separate.
 - [x] Hide synthetic names/emails from personal and workspace header identities and hide broker fields/verification for non-broker profiles; individual completion does not require a company.
 - [x] 29 focused tests passed; real signed-in private profile has no synthetic email or broker fields, no runtime errors; server rejects conflicting partner reassignment; preview build passes.
 - [ ] New affiliate OTP/name persistence end-to-end: needs a new signup with its owner's real name and verified code; current signed-in account already has property_seeker identity and no saved signup name.
-- [ ] Requested account deletion: account identified by normalized phone 972537759408; no existing authorized Auth-admin deletion tool/endpoint available, and direct SQL against managed auth tables is prohibited. Owner can delete through More → Users.
+- [x] Requested six-account deletion completed through the authorized Super Admin deletion function in the earlier request.
 
 # Auth screen refinements
 - [x] Fixed header/tabs positions, contiguous uniform fields and viewport-fixed footer; verified identical tab/header/card geometry at 411×802, 360×640 and 1280×1800, shared 40px field heights and footer 10px from bottom during form scrolling. All 11 signup tests and preview build pass; no OTP sent or account data changed.

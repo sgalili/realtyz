@@ -28,9 +28,10 @@ const invoke = async (body: Record<string, unknown>) => {
  */
 export async function fetchGroupsViaCloud(
   query: string,
-  opts?: { pollMs?: number; timeoutMs?: number },
+  opts?: { pollMs?: number; timeoutMs?: number; syncMemberships?: boolean; signal?: AbortSignal },
 ): Promise<DiscoveredGroup[]> {
-  const started = await invoke({ action: 'fetch_groups', query });
+  opts?.signal?.throwIfAborted();
+  const started = await invoke(opts?.syncMemberships ? { action: 'sync_groups' } : { action: 'fetch_groups', query });
   const jobId = String(started?.job_id ?? '');
   if (!jobId) throw new Error('סריקת הקבוצות בענן לא הופעלה');
 
@@ -38,6 +39,7 @@ export async function fetchGroupsViaCloud(
   const deadline = Date.now() + (opts?.timeoutMs ?? 180_000);
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, pollMs));
+    opts?.signal?.throwIfAborted();
     const res = await invoke({ action: 'fetch_status', job_id: jobId });
     const job = res?.job as FetchJob | undefined;
     if (!job) continue;

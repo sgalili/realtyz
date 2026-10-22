@@ -1765,13 +1765,13 @@ export function ResultTable({
                       ) : null;
                     })()}
                   </div>
+                </td>
                 {showAffiliateColumn ? (
                   <td className="px-2 py-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>{renderAffiliate(r)}</td>
                 ) : null}
                 {showCommissionColumn ? (
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs" onClick={(e) => e.stopPropagation()}>{renderCommission(r)}</td>
                 ) : null}
-                </td>
                 <td className="px-2 py-1.5 w-64 max-w-[320px] whitespace-normal">
                   {(() => {
                     // Internal table "רחוב" column: street name + property type only.

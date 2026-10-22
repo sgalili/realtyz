@@ -9115,6 +9115,15 @@ export type Database = {
       }
       partner_can_view_closing: { Args: { _user_id: string }; Returns: boolean }
       post_media_source_key: { Args: { _url: string }; Returns: string }
+      prepare_account_self_deletion: {
+        Args: {
+          _code_hash: string
+          _email: string
+          _phone: string
+          _uid: string
+        }
+        Returns: Json
+      }
       publish_developer_project: {
         Args: { _project: string; _unit_key?: string }
         Returns: Json

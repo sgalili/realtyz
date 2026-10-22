@@ -40,6 +40,28 @@ Deno.serve(async (req) => {
     const jobId = String(body?.job_id ?? "");
     if (!jobId) return json({ error: "missing_job_id" }, 400);
     const ok = body?.status === "completed";
+    const { data: fetchJob } = await admin.from("fb_group_fetch_jobs").select("workspace_owner_id,query,status").eq("id", jobId).maybeSingle();
+    if (!fetchJob || fetchJob.status !== "processing") return json({ success: true, ignored: true });
+    if (ok && fetchJob.query === "__members__") {
+      const groups = Array.isArray(body?.groups) ? body.groups : [];
+      for (const group of groups.slice(0, 300)) {
+        const id = String(group?.group_id ?? "");
+        const name = String(group?.group_name ?? "").trim().slice(0, 200);
+        if (!/^[A-Za-z0-9._-]+$/.test(id) || !name || group?.is_member !== true) continue;
+        const groupId = `fb:${id}`;
+        const { data: existing } = await admin.from("fb_user_groups").select("id,is_blocked").eq("workspace_owner_id", fetchJob.workspace_owner_id).eq("group_id", groupId).maybeSingle();
+        if (existing?.is_blocked) continue;
+        const values = { group_name: name, group_url: `https://www.facebook.com/groups/${id}`, join_status: "joined", cloud_join_state: "joined", cloud_checked_at: new Date().toISOString() };
+        const { error } = existing
+          ? await admin.from("fb_user_groups").update(values).eq("id", existing.id).eq("workspace_owner_id", fetchJob.workspace_owner_id)
+          : await admin.from("fb_user_groups").insert({ ...values, workspace_owner_id: fetchJob.workspace_owner_id, group_id: groupId, source: "cloud", is_selected: true });
+        if (error) {
+          if (/group_limit_reached/.test(error.message)) break;
+          await admin.from("fb_group_fetch_jobs").update({ status: "failed", error: "שמירת הקבוצות נכשלה", claim_expires_at: null }).eq("id", jobId);
+          return json({ error: "sync_failed" }, 500);
+        }
+      }
+    }
     const { error: updateError } = await admin.from("fb_group_fetch_jobs").update({
       status: ok ? "completed" : "failed",
       groups: ok && Array.isArray(body?.groups) ? body.groups.slice(0, 500) : null,
@@ -242,8 +264,9 @@ Deno.serve(async (req) => {
 
   /* ── Cloud-first group discovery ─────────────────────────────────────── */
 
-  if (action === "fetch_groups") {
-    const query = String(body?.query ?? "").trim().slice(0, 120);
+  if (action === "fetch_groups" || action === "sync_groups") {
+    const syncMemberships = action === "sync_groups";
+    const query = syncMemberships ? "__members__" : String(body?.query ?? "").trim().slice(0, 120);
     if (query.length < 2) return json({ error: "invalid_query", message: "יש להזין מילת חיפוש" }, 400);
 
     const { data: session } = await admin.from("fb_cloud_sessions")
@@ -263,7 +286,7 @@ Deno.serve(async (req) => {
     catch { return json({ error: "decrypt_failed", message: "שחזור החיבור נכשל – שמרו חיבור חדש" }, 500); }
 
     const { data: job, error: insertError } = await admin.from("fb_group_fetch_jobs").insert({
-      workspace_owner_id: owner, requested_by: user.id, query, status: "pending",
+      workspace_owner_id: owner, requested_by: user.id, query, status: "processing", claimed_at: new Date().toISOString(), claim_expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
     }).select("id").single();
     if (insertError || !job) return json({ error: "enqueue_failed" }, 500);
 
@@ -272,18 +295,13 @@ Deno.serve(async (req) => {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-worker-secret": Deno.env.get("CLOUD_WORKER_SHARED_SECRET") ?? "" },
         body: JSON.stringify({
-          job_type: "group_fetch", job_id: job.id, query,
+          job_type: "group_fetch", job_id: job.id, query, sync_memberships: syncMemberships,
           session_cookies: cookies, user_agent: session.user_agent ?? null,
           report_url: `${SUPABASE_URL}/functions/v1/fb-session-vault`,
         }),
         signal: AbortSignal.timeout(20_000),
       });
       if (!res.ok) throw new Error(`worker_http_${res.status}`);
-      await admin.from("fb_group_fetch_jobs").update({
-        status: "processing",
-        claimed_at: new Date().toISOString(),
-        claim_expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
-      }).eq("id", job.id);
     } catch (e) {
       await admin.from("fb_group_fetch_jobs").update({
         status: "failed", error: `שגיאת ענן: ${String((e as Error).message)}`,

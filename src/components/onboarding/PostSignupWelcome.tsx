@@ -63,16 +63,16 @@ export function PostSignupWelcome() {
   };
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !isAcceptingTerms) close(); }}>
-      <DialogContent dir="rtl" className="max-w-md overflow-hidden text-right">
+      <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto text-right">
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/20 via-warning/10 to-transparent" />
         <DialogHeader className="relative text-center sm:text-center">
           <div className="text-5xl" aria-hidden>🎉</div>
-          <DialogTitle className="text-3xl font-extrabold leading-tight">{b.title}</DialogTitle>
+           <DialogTitle className="text-3xl font-extrabold leading-tight border-0 after:hidden">{b.title}</DialogTitle>
           <DialogDescription className="sr-only">יתרונות החשבון והשלמת הפרופיל</DialogDescription>
         </DialogHeader>
         <ul className="relative grid gap-2.5">
           {b.items.map(([emoji, text], i) => (
-            <li key={text} className={`flex items-center gap-3 rounded-xl px-4 py-3 text-lg font-semibold ${TONES[i % TONES.length]}`}>
+               <li key={text} className={`flex items-center gap-3 rounded-lg px-4 py-3 text-xl font-semibold ${TONES[i % TONES.length]}`}>
               <span className="text-2xl" aria-hidden>{emoji}</span>{text}
             </li>
           ))}
@@ -84,7 +84,8 @@ export function PostSignupWelcome() {
           </div>
         )}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <div className="flex gap-2">
+        <p className="relative text-center text-lg leading-relaxed">השלימו פרטים אישיים ופרטי משרד או חברה, כדי לבנות אמון הדדי ברשת.</p>
+        <div className="flex flex-wrap gap-2">
           <Button size="lg" className="flex-1 text-lg" disabled={(needsTerms && !agreed) || isAcceptingTerms} onClick={() => void complete()}>
             {isAcceptingTerms && <Loader2 className="h-4 w-4 animate-spin" />}השלמת פרופיל ✨
           </Button>
