@@ -8,6 +8,20 @@ import type { PublicCard } from '@/pages/PublicListingsBoard';
 import PropertyCommissionIcons from './PropertyCommissionIcons';
 import { listingDistribution } from '@/lib/homeActivity';
 
+export function PublicCardPublisher({ card }: { card: PublicCard }) {
+  const { data } = useQuery({
+    queryKey: ['public-listing-expanded', card.slug || card.id],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(card.slug || card.id)}`, { method: 'GET' });
+      if (error || !payload?.property) return null;
+      return { listing: normalizeListing(payload.property, payload.attribution), raw: payload.property as Record<string, unknown> };
+    },
+  });
+  const publisher = card.attribution;
+  return <BrokerAttribution compact brokerName={publisher?.broker_name ?? data?.listing.brokerName} officeName={publisher?.office_name ?? data?.listing.officeName} licenceNumber={publisher?.broker_license_number ?? data?.listing.brokerLicenceNumber} logoUrl={publisher?.agency_logo_url ?? data?.listing.agencyLogoUrl} publisherKind={publisher?.publisher_kind ?? data?.listing.publisherKind} dealType={card.deal_type} />;
+}
+
 export default function PublicCardSummary({ card, price, showBroker = true, showCommissions = true, dense = false }: { card: PublicCard; price?: string; showBroker?: boolean; showCommissions?: boolean; dense?: boolean }) {
   const { data } = useQuery({
     queryKey: ['public-listing-expanded', card.slug || card.id],

@@ -82,10 +82,12 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
         <p className="welcome-copy welcome-enter mt-5 max-w-lg text-2xl font-normal leading-relaxed sm:text-[28px] [animation-delay:80ms]">{slide.text}</p>
         {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter mt-8 h-16 w-full max-w-sm rounded-2xl text-xl font-black [animation-delay:150ms]">יאללה, נכנסים ללוח!</Button>}
       </div>
-      {index > 0 && <Button type="button" variant="ghost" size="icon" aria-label="הקודם" onClick={() => go(index - 1)} className="welcome-control absolute right-2 top-1/2 z-20 h-12 w-12 -translate-y-1/2 rounded-full"><ChevronRight className="h-8 w-8" /></Button>}
-      {!last && <Button type="button" variant="ghost" size="icon" aria-label="הבא" onClick={() => go(index + 1)} className="welcome-control absolute left-2 top-1/2 z-20 h-12 w-12 -translate-y-1/2 rounded-full"><ChevronLeft className="h-8 w-8" /></Button>}
       <div className="relative z-10 flex flex-col items-center gap-3 pb-5">
-        <div className="flex gap-1">{SLIDES.map((_, i) => <Button key={i} type="button" variant="ghost" size="icon" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className="h-8 w-8 hover:bg-transparent"><span className={cn('welcome-dot h-2.5 rounded-full transition-all duration-300', i === index ? 'w-8' : 'w-2.5 opacity-45')} /></Button>)}</div>
+        <div className="flex items-center gap-1">
+          <Button type="button" variant="ghost" size="icon" aria-label="הקודם" onClick={() => go(index - 1)} className={cn('welcome-arrow h-10 w-10 bg-transparent hover:bg-transparent', index === 0 && 'invisible')}><ChevronRight className="h-8 w-8" /></Button>
+          {SLIDES.map((_, i) => <Button key={i} type="button" variant="ghost" size="icon" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className="h-8 w-8 hover:bg-transparent"><span className={cn('welcome-dot h-2.5 rounded-full transition-all duration-300', i === index ? 'w-8' : 'w-2.5 opacity-45')} /></Button>)}
+          <Button type="button" variant="ghost" size="icon" aria-label="הבא" onClick={() => go(index + 1)} className={cn('welcome-arrow h-10 w-10 bg-transparent hover:bg-transparent', last && 'invisible')}><ChevronLeft className="h-8 w-8" /></Button>
+        </div>
         <Button variant="link" className="welcome-dismiss h-auto p-0 text-base" onClick={() => { dismissWelcome(); finish(); }}>אל תציגו לי יותר</Button>
       </div>
     </section>

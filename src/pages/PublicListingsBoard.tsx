@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send, UserRound } from 'lucide-react';
+import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, GripVertical, Heart, Layers, LayoutGrid, List, Ruler, Send, UserRound } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
@@ -23,7 +23,7 @@ import { OwnerListingActions } from '@/components/properties/PropertyRowActions'
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicUrl } from '@/lib/publicUrl';
-import PublicCardSummary from '@/components/public/PublicCardSummary';
+import PublicCardSummary, { PublicCardPublisher } from '@/components/public/PublicCardSummary';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import type { LeadContactOptions } from '@/lib/leadTiers';
@@ -151,7 +151,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     return () => { cancelled = true; };
   }, [user?.id]);
   const toggleFavorite = async (card: PublicCard) => {
-    if (!user?.id) { openGate(card, 'favorite'); return; }
+    if (!user?.id) { navigate('/auth', { state: { returnTo: location.pathname + location.search, tab: 'signup' } }); return; }
     const isFav = favIds.has(card.id);
     setFavIds((cur) => { const next = new Set(cur); if (isFav) next.delete(card.id); else next.add(card.id); return next; });
     const { error } = isFav
@@ -286,9 +286,33 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const partnerActions = (card: PublicCard) => {
     if (!user || !isAffiliate || !consent.data || !card.affiliate_enabled) return null;
     const listing = marketplace.data?.find(row => row.listing_id === card.id);
-    return listing ? <div onClick={event => event.stopPropagation()}><PartnerListingActions listing={listing} referralId={referrals.data?.find(row => row.listing_id === card.id)?.id} /></div> : null;
+    return listing ? <div onClick={event => event.stopPropagation()}><PartnerListingActions boardRow listing={listing} referralId={referrals.data?.find(row => row.listing_id === card.id)?.id} /></div> : null;
   };
-  const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, filtered);
+  // Custom row order chosen with the drag handle, saved per user/workspace on this device.
+  const rowOrderKey = `public-board-row-order:v1:${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`;
+  const [rowOrder, setRowOrder] = useState<string[]>([]);
+  useEffect(() => { try { const v = JSON.parse(localStorage.getItem(rowOrderKey) || '[]'); setRowOrder(Array.isArray(v) ? v.filter((x: unknown) => typeof x === 'string') : []); } catch { setRowOrder([]); } }, [rowOrderKey]);
+  const ordered = useMemo(() => {
+    if (!rowOrder.length) return filtered;
+    const rank = new Map(rowOrder.map((id, i) => [id, i]));
+    const fresh = filtered.filter(c => !rank.has(c.id));
+    return [...fresh, ...filtered.filter(c => rank.has(c.id)).sort((a, b) => (rank.get(a.id) as number) - (rank.get(b.id) as number))];
+  }, [filtered, rowOrder]);
+  const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, ordered);
+  const rowDrag = useRef<{ id: string; pointerId: number } | null>(null);
+  const finishRowDrag = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = rowDrag.current; rowDrag.current = null;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-row-id]')?.dataset.rowId;
+    if (!target || target === drag.id) return;
+    const ids = columns.sorted.map(c => c.id).filter(id => id !== drag.id);
+    const fromIndex = columns.sorted.findIndex(c => c.id === drag.id), toIndex = columns.sorted.findIndex(c => c.id === target);
+    const at = ids.indexOf(target) + (fromIndex < toIndex ? 1 : 0);
+    ids.splice(at, 0, drag.id);
+    const next = [...ids, ...rowOrder.filter(id => !ids.includes(id))];
+    setRowOrder(next);
+    try { localStorage.setItem(rowOrderKey, JSON.stringify(next)); } catch { /* storage disabled */ }
+  };
   useEffect(() => { setVisibleCount(24); }, [query, deal, propFilter, leadFilter, grid]);
   // Signed-out visitors never see the commissions column at all.
   const visibleColumns = useMemo(() => (user ? columns.visible : columns.visible.filter((id) => id !== 'commissions')), [columns.visible, user]);
@@ -362,10 +386,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
                     {visibleColumns.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
+                    <th className="px-2 pt-2 text-start font-medium">מפרסם</th>
                     <th className="w-10 px-2 pb-0 pt-2"><BoardColumnMenu controls={columns} /></th>
                   </tr>
                   <tr>
-                    <td colSpan={visibleColumns.length + 1} className="p-0">
+                    <td colSpan={visibleColumns.length + 2} className="p-0">
 <div className="sticky start-0 px-3 pb-2 pt-[7px]" style={wrapWidth ? { width: wrapWidth } : undefined}>
                         {scrollIndicator.width < 99.5 && (
                           <div
@@ -397,14 +422,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       window.setTimeout(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
                     };
                     return [
-                      <tr key={card.id} id={`row-${card.id}`} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         {visibleColumns.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap')}>
                           {id === 'photo' ? (
                           <div className="relative w-12">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex h-4 w-4 items-center justify-center rounded-bl rounded-tr bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
                           </div>
-                          ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showCommissions={false} dense /></div>
+                          ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}</span>
                           : id === 'commissions' ? <PropertyCommissionIcons listingId={card.id} networkOpen={card.affiliate_enabled === true} />
@@ -412,14 +437,18 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
-                        <td className="relative pb-8 ps-2 pe-2 pt-2 align-bottom">{partnerActions(card)}<PropertyReferralButton listingId={card.id} />
+                        <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
+                        <td className="relative pb-8 ps-2 pe-2 pt-2 align-bottom"><div className="flex items-center gap-1">{partnerActions(card)}
+                          <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); void toggleFavorite(card); }} aria-label={favIds.has(card.id) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={favIds.has(card.id)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favIds.has(card.id) && 'fill-current')} /></Button>
+                          <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; }}><GripVertical className="h-4 w-4" /></Button>
+                        </div>
                           <Button type="button" variant="ghost" size="icon" className="absolute bottom-0.5 left-0.5 h-7 w-7 text-muted-foreground/70 hover:bg-transparent hover:text-foreground" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}>
                             <ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')} />
                           </Button>
                         </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
-                        <td colSpan={visibleColumns.length + 1} className="p-0">
+                        <td colSpan={visibleColumns.length + 2} className="p-0">
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
