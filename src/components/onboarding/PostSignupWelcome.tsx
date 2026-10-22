@@ -42,27 +42,6 @@ export function PostSignupWelcome() {
     return () => window.clearTimeout(t);
   }, [user]);
   if (!user || !role) return null;
-  // Brokers get the dedicated brokers & agencies landing page inside their very
-  // first welcome window, so they immediately see how the tool fits daily work.
-  if (role === 'broker') {
-    return (
-      <Dialog open onOpenChange={(o) => { if (!o) close(); }}>
-        <DialogContent dir="rtl" className="grid h-[92dvh] w-[calc(100%-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
-          <DialogHeader className="border-b px-5 py-4 text-right">
-            <DialogTitle className="text-xl font-extrabold leading-tight">ברוכים הבאים! הנה הכלים שילוו אתכם בכל יום עבודה</DialogTitle>
-            <DialogDescription className="text-sm">סיירו בדף המקצועי למתווכים וסוכנויות — ואז השלימו את הפרופיל כדי להתחיל.</DialogDescription>
-          </DialogHeader>
-          <div className="min-h-0 overflow-y-auto overscroll-contain">
-            <LandingContent />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 border-t bg-background p-4">
-            <Button size="lg" className="flex-1 text-lg" onClick={() => void complete()}>השלמת פרופיל ✨</Button>
-            <Button size="lg" variant="ghost" onClick={close}>אחר כך</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
   const b = BENEFITS[role];
   const needsTerms = role === 'partner' && consent.data !== true;
   const personal = ['partner', 'property_owner', 'property_seeker'].includes(role);
