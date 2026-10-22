@@ -1,3 +1,7 @@
+# Final platform polish
+- [ ] Refine three intro slides, outlined logos, mirrored larger Rita and compact controls; verify phone and desktop.
+- [ ] Replace activity side drawer with a wide live-tab header dropdown; clean sidebar, audit branding and initial loading.
+
 # Campaign distribution pricing
 - [x] Hide retained social toolbars on posts/composer; add feed-derived network counters, alias normalization, toggle filtering, single-network hiding and last-active protection.
 - [x] Mount the existing SMS/Official WhatsApp composer and IVR dialog with shared colored service icons and configured credit-only units; approved Meta templates remain mandatory.
