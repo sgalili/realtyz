@@ -36,7 +36,7 @@ export function CommissionTierBadges({
   const showClosing = level4Unlocked && !level4Locked;
   const rows = [
     // Zero-value levels are hidden everywhere.
-    { key: 'tier1', label: 'פנייה דיגיטלית', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-warning/10 text-warning ring-warning/20', locked: false, show: tiers.tier1 > 0 },
+    { key: 'tier1', label: 'שדות בטופס דף נחיתה', value: tierValue(tiers.tier1), icon: ClipboardList, tone: 'bg-warning/10 text-warning ring-warning/20', locked: false, show: tiers.tier1 > 0 },
     { key: 'tier2', label: 'סינון בווטסאפ', value: tierValue(tiers.tier2), icon: WhatsAppIcon, tone: 'bg-primary/10 text-primary ring-primary/20', locked: false, show: tiers.tier2 > 0 },
     { key: 'tier3', label: 'שיחת טלפון', value: tierValue(tiers.tier3), icon: Phone, tone: 'bg-accent text-accent-foreground ring-border', locked: false, show: tiers.tier3 > 0 },
     { key: 'tier4', label: 'סגירת עסקה', value: showClosing ? tierValue(tiers.tier4, tiers.tier4Type) : '', icon: Trophy, tone: 'bg-success/10 text-success ring-success/20', locked: false, show: tiers.tier4 > 0 && showClosing },

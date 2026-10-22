@@ -173,7 +173,7 @@ export function RewardDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-muted-foreground">ליד דיגיטלי</div>
+                      <div className="text-muted-foreground">שדות בטופס דף נחיתה</div>
                       <div className="h-2 rounded-full bg-muted">
                         <div className="h-2 w-2/3 rounded-full bg-warning" />
                       </div>

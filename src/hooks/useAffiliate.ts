@@ -594,7 +594,7 @@ export type CommissionTiers = {
  * partners). Level 4 is a brokerage commission, licensed brokers only.
  */
 export const TIER_LABELS = {
-  tier1: 'רמה 1 · ליד דיגיטלי (שם וטלפון)',
+  tier1: 'רמה 1 · שדות בטופס דף נחיתה',
   tier2: 'רמה 2 · סינון בשיחת ווטסאפ',
   tier3: 'רמה 3 · שיחת טלפון מסוננת',
   tier4: 'סגירת עסקה',
