@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { WelcomeOutlineLogo } from '@/components/public/WelcomeOutlineLogo';
 import ritaPointing from '@/assets/rita-pointing.webp';
 import { CoinsCurrency, NetworkHomes } from '@/components/public/welcomeIcons';
+import { PlatformTicker } from '@/components/landing/LogoTickers';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dismissWelcome, welcomeDismissed } from '@/lib/welcomePreference';
@@ -13,18 +13,15 @@ const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span 
 const SLIDES = [
   { icon: NetworkHomes, theme: 1, title: <>מחברים בין <Hi tone="red">מתווכים</Hi>, יזמים ובעלי נכסים</>, text: <>האקוסיסטם הראשון בעולם ה<Hi tone="red">נדל"ן</Hi> שמחבר את כולם לרשת <Hi tone="red">שותפים</Hi> חכמה אחת שעובדת בשבילכם אוטומטית.</> },
   { icon: CoinsCurrency, theme: 2, title: <>כאן כולם <Hi tone="gold">מרוויחים</Hi></>, text: <div className="space-y-4">
-    <p><strong>בעלי נכס</strong><br />אתם קובעים מראש את עמלת הסגירה ומחיר הלידים שאתם מוכנים לשלם.</p>
-    <p><strong>קונים / סוחרים</strong><br />עמלת תיווך קבועה של 1% לאחר הקנייה ו-10% מגובה השכירות החודשית לאחר חתימת חוזה.</p>
-    <p><strong>חברים בתוכנית השותפים?</strong><br />משתפים נכסים. יוצרים קמפיינים אוטומטיים ומרוויחים עמלות גבוהות באוטומציה מלאה.</p>
+    <p><strong>בעלי נכס / מתווכים</strong><br />אתם קובעים מראש את עמלת הסגירה ומחיר הלידים שאתם מוכנים לשלם.</p>
+    <p><strong>קונים / שוכרים</strong><br />משלמים עמלת תיווך קבועה של 1% לאחר הקנייה ו-10% מגובה השכירות החודשית לאחר חתימת חוזה.</p>
+    <p><strong>חברים בתוכנית השותפים?</strong><br />משתפים נכסים מהמאגר, יוצרים ומפרסמים קמפיינים ברשתות הם מרוויחים עמלות גבוהות באוטומציה מלאה.</p>
   </div> },
   { icon: null, theme: 3, title: <>היי, אני <span className="text-destructive">ריטה</span>.<br />סוכנת ה-AI האישית שלך</>, text: <>אני מייצגת אותך נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות.<br /><br />במילים פשוטות: אני מייצרת לך הכנסה פסיבית בזמן שאתה ישן 😍</> },
 ] as const;
 
-const FLOATING = [
-  { platform: 'whatsapp', pos: 'right-[5%] bottom-[22%]' }, { platform: 'facebook', pos: 'left-[4%] bottom-[15%]' },
-  { platform: 'instagram', pos: 'right-[25%] bottom-[14%]' }, { platform: 'youtube', pos: 'left-[32%] bottom-[32%]' },
-  { platform: 'calendar', pos: 'right-[5%] bottom-[38%]' }, { platform: 'gmail', pos: 'left-[4%] bottom-[42%]' },
-];
+const SPARKLES = ['right-[6%] top-[30%] h-12 w-12', 'left-[5%] top-[18%] h-9 w-9', 'right-[38%] top-[8%] h-8 w-8', 'left-[30%] bottom-[34%] h-10 w-10', 'right-[4%] bottom-[30%] h-8 w-8', 'left-[8%] bottom-[46%] h-7 w-7'];
+const GeminiSparkle = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4} strokeLinejoin="round" className="h-full w-full"><path d="M12 2C12.6 7.4 16.6 11.4 22 12C16.6 12.6 12.6 16.6 12 22C11.4 16.6 7.4 12.6 2 12C7.4 11.4 11.4 7.4 12 2Z" /></svg>;
 
 export function hasSeenWelcomeSlides() {
   return welcomeDismissed();
@@ -87,7 +84,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
     >
       <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon && <Icon className="h-full w-full" strokeWidth={4} />}</div>
       {!Icon && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
-        {FLOATING.map((f, i) => <span key={f.platform} className={cn('welcome-float welcome-outline absolute h-14 w-14', f.pos)} style={{ animationDelay: `${i * -0.9}s` }}><WelcomeOutlineLogo platform={f.platform} /></span>)}
+        {SPARKLES.map((pos, i) => <span key={pos} className={cn('welcome-float welcome-outline welcome-sparkle absolute', pos)} style={{ animationDelay: `${i * -0.9}s` }}><GeminiSparkle /></span>)}
       </div>}
       <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-8 w-8"><X className="h-5 w-5" /></Button>
       <div key={index} className="welcome-content relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pb-4 pt-12 text-right sm:px-14 sm:pt-16" aria-live="polite">
@@ -96,6 +93,8 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
           <div className="welcome-copy welcome-enter mt-5 max-w-2xl text-[22px] font-normal leading-[1.35] [animation-delay:80ms] sm:text-[26px]">{slide.text}</div>
         </div>
         {last && <img src={ritaPointing} alt="ריטה" width={768} height={1376} decoding="async" className="welcome-rita w-auto object-contain" />}
+        {last && <div aria-hidden="true" className="welcome-divider" />}
+        {last && <div className="welcome-marquee"><PlatformTicker /></div>}
         {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter h-12 min-h-0 whitespace-nowrap rounded-xl px-7 py-2 text-[20px] font-extrabold leading-tight shadow-lg ring-2 ring-background/60 [animation-delay:150ms]">יאללה, נכנסים ללוח!</Button>}
       </div>
       <div className="welcome-footer relative z-10 flex shrink-0 flex-col items-center gap-2 pb-4">
