@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       const { data: reached } = await admin.rpc("listing_daily_cap_reached", { _listing_id: r.id });
       if (reached === true) capped.add(r.id);
     }));
-    return json({ properties: rows.filter((r) => isFeedEligible(r) && !capped.has(r.id)).map((row) => ({ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true })) });
+    return json({ properties: rows.filter((r) => isFeedEligible(r) && !capped.has(r.id)).map((row) => ({ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true })), has_more: rows.length === limit });
   } catch (error) {
     console.error("[public-listings-board]", error);
     return json({ error: "board lookup failed" }, 500);

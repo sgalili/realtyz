@@ -36,6 +36,7 @@ import HomeActivityPill from '@/components/public/HomeActivityPill';
 import { useAffiliateMarketplace, useMyReferrals } from '@/hooks/useAffiliate';
 import { useUserRole } from '@/hooks/useUserRole';
 import { PartnerListingActions } from '@/pages/AffiliatePortal';
+import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -80,6 +81,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const marketplace = useAffiliateMarketplace();
   const referrals = useMyReferrals();
   const { isAffiliate } = useUserRole();
+  const consent = usePartnerConsent();
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>([]);
@@ -215,7 +217,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       if (error) { toast.error('לא ניתן לטעון את לוח הנכסים'); break; }
       const rows = (data?.properties ?? []) as PublicCard[];
       all.push(...rows);
-      if (rows.length < 60) break;
+      if (data?.has_more !== true) break;
     }
     setCards([...new Map(all.map(card => [card.id, card])).values()]);
     setLoading(false);
@@ -276,7 +278,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     return matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter) && matchesLeadFilter(leadTierAmounts(row as unknown as Record<string, unknown>), leadFilter);
   }), [cards, propFilter, query, deal, marketplace.data, leadFilter]);
   const partnerActions = (card: PublicCard) => {
-    if (!user || !isAffiliate || !card.affiliate_enabled) return null;
+    if (!user || !isAffiliate || !consent.data || !card.affiliate_enabled) return null;
     const listing = marketplace.data?.find(row => row.listing_id === card.id);
     return listing ? <div onClick={event => event.stopPropagation()}><PartnerListingActions listing={listing} referralId={referrals.data?.find(row => row.listing_id === card.id)?.id} /></div> : null;
   };
