@@ -14,6 +14,9 @@ import { partnerNetReward } from '@/lib/affiliatePlans';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import type { ReactNode } from 'react';
 import { ClosingSplitNote } from './ClosingSplitNote';
+import { BrokerClosingInfo } from './BrokerClosingInfo';
+
+const FORM_TIER_LABEL = 'שדות בטופס דף נחיתה';
 
 type PricingListing = Pick<MarketplaceListing, 'listing_id' | 'broker_id' | 'property_title' | 'tier1_amount' | 'tier2_amount' | 'tier3_amount' | 'tier4_amount' | 'tier4_type'> & { tier3_type?: string };
 
@@ -26,7 +29,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   const { level4Unlocked } = useAffiliateLicense();
   const options = details.contact_options ?? {};
   const rows = closingOnly ? [] : [
-    { key: 'form' as const, label: 'ליד דיגיטלי · שם וטלפון', amount: listing.tier1_amount, questions: [] },
+    { key: 'form' as const, label: FORM_TIER_LABEL, amount: listing.tier1_amount, questions: [] },
     { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
     { key: 'phone' as const, label: 'ליד מסונן בשיחת טלפון', amount: listing.tier3_amount, questions: options.questions_phone ?? options.questions ?? [] },
   ].filter((row) => Number(row.amount) > 0);
