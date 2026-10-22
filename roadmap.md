@@ -1,4 +1,5 @@
 # Campaign distribution pricing
+- [ ] Hide retained social toolbars on posts/composer and add multi-network toggles with counters and last-active protection.
 - [ ] Reuse current SMS, IVR and Official WhatsApp screens with shared colored service icons and configured credit-only unit prices.
 - [ ] Convert campaign review/summary totals to precise credits and verify without launching live distribution.
 
