@@ -6142,6 +6142,14 @@ const PublishedFeed = ({
       })) };
     });
   }, [rows, optimisticRows, extensionQueue, deletedIds]);
+  useEffect(() => {
+    const available = Object.keys(postNetworkCounts(networkRows));
+    setDisabledNetworks((previous) => {
+      const next = previous.filter((key) => available.includes(key));
+      if (available.length && available.every((key) => next.includes(key))) return [];
+      return next.length === previous.length ? previous : next;
+    });
+  }, [networkRows]);
   const filteredRows = useMemo(() => networkRows.filter((row) => !disabledNetworks.includes(postNetwork(row.channel))), [networkRows, disabledNetworks]);
 
   // Blocking loader ONLY on a true cold start: no cached rows in memory AND
