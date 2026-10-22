@@ -1,6 +1,8 @@
 # Campaign distribution pricing
-- [ ] Reuse current SMS, IVR and Official WhatsApp screens with shared colored service icons and configured credit-only unit prices.
-- [ ] Convert campaign review/summary totals to precise credits and verify without launching live distribution.
+- [x] Hide retained social toolbars on posts/composer; add feed-derived network counters, alias normalization, toggle filtering, single-network hiding and last-active protection.
+- [x] Mount the existing SMS/Official WhatsApp composer and IVR dialog with shared colored service icons and configured credit-only units; approved Meta templates remain mandatory.
+- [x] Convert campaign prices/reviews/reports to precise credits, remove invented quota estimates and add IVR confirmation; 17 focused tests pass and authenticated three-recipient SMS estimate reads 3 credits. Composer toolbar hidden, IVR opens at 10 credits/minute, no runtime errors and preview build passes.
+- [ ] Live multi-network post filtering and campaign send/deduction round-trip: current workspace has no published posts and campaign sending is account-disabled; no live campaign launched. Three existing GroupStatusChips styling/accessibility tests fail in unchanged code.
 
 # Welcome, cloud sharing, tables and account deletion
 - [x] Unified home/partner browsing and legacy redirect; compact nonzero personal activity, published site-only/network labels and original publisher snapshots.

@@ -1,3 +1,6 @@
+import { useCampaignPricing } from '@/hooks/useCampaignPricing';
+import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
+import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mic, Square, Upload, Sparkles, Play, Pause, Trash2, AudioWaveform } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +40,9 @@ const estimateTtsDuration = (text: string) => {
 };
 
 export function VoiceComposer({ value, onChange }: Props) {
+  const { data: prices = [] } = useCampaignPricing();
+  const price = campaignServicePrice('voice', prices);
+  const priceText = price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין';
   const [tab, setTab] = useState<VoiceSource>(value?.source ?? 'tts');
   const [ttsText, setTtsText] = useState(value?.ttsText ?? '');
   const [ttsVoice, setTtsVoice] = useState(value?.ttsVoice ?? 'sarit');
@@ -139,7 +145,7 @@ export function VoiceComposer({ value, onChange }: Props) {
       <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="tts" className="text-xs gap-1">
-            <Sparkles className="h-3.5 w-3.5" /> AI טקסט לדיבור
+            <CampaignServiceIcon channel="voice" className="h-3.5 w-3.5" /> AI טקסט לדיבור
           </TabsTrigger>
           <TabsTrigger value="upload" className="text-xs gap-1">
             <Upload className="h-3.5 w-3.5" /> העלאת אודיו
@@ -151,7 +157,7 @@ export function VoiceComposer({ value, onChange }: Props) {
 
         <TabsContent value="tts" className="space-y-3 pt-3">
           <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-[11px] text-primary">
-            <span className="font-semibold">תעריף: 1.00 ₪ לדקה (+15%)</span>
+            <span className="font-semibold">{priceText}</span>
             <span className="text-muted-foreground">קול AI מבוסס טקסט · עיבוד נוירוני בענן</span>
           </div>
           <div className="space-y-2">
@@ -180,7 +186,7 @@ export function VoiceComposer({ value, onChange }: Props) {
 
         <TabsContent value="upload" className="space-y-3 pt-3">
           <div className="flex items-center justify-between rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-[11px] text-success">
-            <span className="font-semibold">תעריף מוזל: 0.20 ₪ לדקה (+15%)</span>
+            <span className="font-semibold">{priceText}</span>
             <span className="text-muted-foreground">קול אנושי / מוקלט · ללא יצירת AI</span>
           </div>
           <input
@@ -203,7 +209,7 @@ export function VoiceComposer({ value, onChange }: Props) {
 
         <TabsContent value="record" className="space-y-3 pt-3">
           <div className="flex items-center justify-between rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-[11px] text-success">
-            <span className="font-semibold">תעריף מוזל: 0.20 ₪ לדקה (+15%)</span>
+            <span className="font-semibold">{priceText}</span>
             <span className="text-muted-foreground">הקלטה ישירה · חיוב נשיאה בלבד</span>
           </div>
           <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-secondary/40 px-4 py-6">

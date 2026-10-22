@@ -1,3 +1,9 @@
+import { useCampaignPricing } from '@/hooks/useCampaignPricing';
+import { campaignServicePrice, campaignServiceEstimate, formatCampaignCredits } from '@/lib/campaignServicePricing';
+import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
+import { useCreditWallet } from '@/hooks/useSubscription';
+import { ilsToCredits } from '@/lib/credits';
+import { getOfficialWaNumber } from '@/lib/officialWa';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
@@ -45,33 +51,11 @@ type SimLogEntry = {
   channel: ChannelId;
 };
 
-const WhatsAppLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 32 32" className={className} fill="currentColor" aria-hidden>
-    <path d="M16.003 3C8.82 3 3 8.82 3 16c0 2.29.6 4.52 1.74 6.49L3 29l6.69-1.71A12.94 12.94 0 0 0 16.003 29C23.18 29 29 23.18 29 16S23.18 3 16.003 3Zm0 23.6c-2.06 0-4.07-.55-5.83-1.6l-.42-.25-3.97 1.02 1.06-3.87-.27-.4A10.55 10.55 0 0 1 5.4 16c0-5.85 4.76-10.6 10.6-10.6S26.6 10.15 26.6 16 21.85 26.6 16.003 26.6Zm6.12-7.93c-.34-.17-2-1-2.31-1.11-.31-.11-.54-.17-.77.17-.23.34-.88 1.11-1.08 1.34-.2.23-.4.26-.74.09-.34-.17-1.43-.53-2.73-1.69-1.01-.9-1.69-2.01-1.89-2.35-.2-.34-.02-.52.15-.69.15-.15.34-.4.51-.6.17-.2.23-.34.34-.57.11-.23.06-.43-.03-.6-.09-.17-.77-1.86-1.06-2.55-.28-.67-.57-.58-.77-.59l-.66-.01c-.23 0-.6.09-.91.43-.31.34-1.2 1.17-1.2 2.86 0 1.69 1.23 3.32 1.4 3.55.17.23 2.42 3.69 5.86 5.18.82.35 1.46.56 1.96.72.82.26 1.57.22 2.16.13.66-.1 2-.82 2.29-1.61.28-.79.28-1.47.2-1.61-.08-.14-.31-.23-.65-.4Z" />
-  </svg>
-);
-
-const SmsLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 32 32" className={className} fill="currentColor" aria-hidden>
-    <path d="M6 5h20a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H13l-7 5v-5a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Zm4 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
-  </svg>
-);
-
-const GmailLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 256 193" className={className} aria-hidden xmlns="http://www.w3.org/2000/svg">
-    <path fill="#4285F4" d="M58.182 192.05V93.14L27.507 65.077 0 49.504v125.091c0 9.658 7.825 17.455 17.455 17.455z" />
-    <path fill="#34A853" d="M197.818 192.05h40.727c9.659 0 17.455-7.826 17.455-17.455V49.505l-31.156 17.837-27.026 25.798z" />
-    <path fill="#EA4335" d="M58.182 93.14l-4.174-38.647 4.174-36.989L128 69.868l69.818-52.364 4.669 33.452-4.669 42.184L128 145.504z" />
-    <path fill="#FBBC04" d="M197.818 17.504V93.14L256 49.504V26.231c0-21.585-24.64-33.89-41.89-20.945z" />
-    <path fill="#C5221F" d="M0 49.504l26.759 20.07L58.182 93.14V17.504L41.89 5.286C24.61-7.66 0 4.646 0 26.23z" />
-  </svg>
-);
-
-const VoiceLogo = ({ className }: { className?: string }) => (
-  <AudioLines className={className} />
-);
-
-// Pricing model (₪) per channel.
+const WhatsAppLogo = ({ className }: { className?: string }) => <CampaignServiceIcon channel="whatsapp" className={className} />;
+const SmsLogo = ({ className }: { className?: string }) => <CampaignServiceIcon channel="sms" className={className} />;
+const GmailLogo = ({ className }: { className?: string }) => <CampaignServiceIcon channel="email" className={className} />;
+const VoiceLogo = ({ className }: { className?: string }) => <CampaignServiceIcon channel="voice" className={className} />;
+// Legacy channel metadata per channel.
 // `pending=true` means provider not yet wired — UI shows "בחישוב עלויות".
 type ChannelMeta = {
   id: ChannelId;
@@ -80,31 +64,30 @@ type ChannelMeta = {
   color: string;
   bgTint: string;
   previewLabel: string;
-  unitPriceNis: number;          // 0 for free channels
   unitLabel: string;             // e.g. "להודעה", "לפוסט"
   pending?: boolean;             // pricing not finalized
 };
 
 const CHANNELS: Array<ChannelMeta> = [
-  { id: 'whatsapp',    label: 'WhatsApp',    icon: WhatsAppLogo, color: 'text-[#25D366]',         bgTint: 'bg-[#25D366]/10 border-[#25D366]/40',                 previewLabel: 'WhatsApp',     unitPriceNis: 0.10,  unitLabel: 'ישירות לוואטסאפ' },
-  { id: 'sms',         label: 'SMS',         icon: SmsLogo,      color: 'text-[#2563EB]',         bgTint: 'bg-[#2563EB]/10 border-[#2563EB]/40',                 previewLabel: 'SMS',          unitPriceNis: 0.020, unitLabel: 'להודעה (70 תווים)' },
-  { id: 'voice',       label: 'AI קולי',     icon: VoiceLogo,    color: 'text-[hsl(46_78%_58%)]', bgTint: 'bg-[hsl(46_78%_58%)]/10 border-[hsl(46_78%_58%)]/40', previewLabel: 'AI קולי',      unitPriceNis: 1.00,  unitLabel: 'לדקה' },
-  { id: 'ivr',         label: 'IVR',         icon: PhoneCall,    color: 'text-[hsl(262_70%_58%)]', bgTint: 'bg-[hsl(262_70%_58%)]/10 border-[hsl(262_70%_58%)]/40', previewLabel: 'IVR',         unitPriceNis: 0.20,  unitLabel: 'לדקה' },
-  { id: 'email',       label: 'אימייל',      icon: GmailLogo,    color: 'text-[#EA4335]',         bgTint: 'bg-[#EA4335]/10 border-[#EA4335]/40',                 previewLabel: 'אימייל',       unitPriceNis: 0,     unitLabel: 'לנמען' },
-  { id: 'linkedin',    label: 'LinkedIn',    icon: Linkedin,     color: 'text-[#0A66C2]',         bgTint: 'bg-[#0A66C2]/10 border-[#0A66C2]/40',                 previewLabel: 'LinkedIn',     unitPriceNis: 0,     unitLabel: 'לפוסט' },
-  { id: 'instagram',   label: 'Instagram',   icon: Instagram,    color: 'text-[#E4405F]',         bgTint: 'bg-[#E4405F]/10 border-[#E4405F]/40',                 previewLabel: 'Instagram',    unitPriceNis: 0,     unitLabel: 'לפוסט / ריל' },
-  { id: 'tiktok',      label: 'TikTok',      icon: TikTokOfficial, color: 'text-foreground',      bgTint: 'bg-[#FE2C55]/10 border-[#FE2C55]/40',                 previewLabel: 'TikTok',       unitPriceNis: 0,     unitLabel: 'לסרטון' },
-  { id: 'telegram',    label: 'Telegram',    icon: TelegramIcon, color: 'text-[#229ED9]',         bgTint: 'bg-[#229ED9]/10 border-[#229ED9]/40',                 previewLabel: 'Telegram',     unitPriceNis: 0,     unitLabel: 'להודעה' },
-  { id: 'messenger',   label: 'Messenger',   icon: MessageCircle, color: 'text-[#0084FF]',        bgTint: 'bg-[#0084FF]/10 border-[#0084FF]/40',                 previewLabel: 'Messenger',    unitPriceNis: 0,     unitLabel: 'להודעה' },
-  { id: 'twitter',     label: 'X',           icon: Twitter,      color: 'text-foreground',        bgTint: 'bg-foreground/10 border-foreground/40',               previewLabel: 'X',            unitPriceNis: 0,     unitLabel: 'לפוסט' },
-  { id: 'youtube',     label: 'YouTube',     icon: Youtube,      color: 'text-[#FF0000]',         bgTint: 'bg-[#FF0000]/10 border-[#FF0000]/40',                 previewLabel: 'YouTube',      unitPriceNis: 0,     unitLabel: 'לסרטון' },
-  { id: 'facebook',    label: 'Facebook',    icon: Facebook,     color: 'text-[#1877F2]',         bgTint: 'bg-[#1877F2]/10 border-[#1877F2]/40',                 previewLabel: 'Facebook',     unitPriceNis: 0,     unitLabel: 'לפוסט (Meta)' },
+  { id: 'whatsapp',    label: 'WhatsApp',    icon: WhatsAppLogo, color: 'text-[#25D366]',         bgTint: 'bg-[#25D366]/10 border-[#25D366]/40',                 previewLabel: 'WhatsApp',     unitLabel: 'ישירות לוואטסאפ' },
+  { id: 'sms',         label: 'SMS',         icon: SmsLogo,      color: 'text-[#2563EB]',         bgTint: 'bg-[#2563EB]/10 border-[#2563EB]/40',                 previewLabel: 'SMS',          unitLabel: 'להודעה (70 תווים)' },
+  { id: 'voice',       label: 'AI קולי',     icon: VoiceLogo,    color: 'text-[hsl(46_78%_58%)]', bgTint: 'bg-[hsl(46_78%_58%)]/10 border-[hsl(46_78%_58%)]/40', previewLabel: 'AI קולי',      unitLabel: 'לדקה' },
+  { id: 'ivr',         label: 'IVR',         icon: PhoneCall,    color: 'text-[hsl(262_70%_58%)]', bgTint: 'bg-[hsl(262_70%_58%)]/10 border-[hsl(262_70%_58%)]/40', previewLabel: 'IVR',         unitLabel: 'לדקה' },
+  { id: 'email',       label: 'אימייל',      icon: GmailLogo,    color: 'text-[#EA4335]',         bgTint: 'bg-[#EA4335]/10 border-[#EA4335]/40',                 previewLabel: 'אימייל',       unitLabel: 'לנמען' },
+  { id: 'linkedin',    label: 'LinkedIn',    icon: Linkedin,     color: 'text-[#0A66C2]',         bgTint: 'bg-[#0A66C2]/10 border-[#0A66C2]/40',                 previewLabel: 'LinkedIn',     unitLabel: 'לפוסט' },
+  { id: 'instagram',   label: 'Instagram',   icon: Instagram,    color: 'text-[#E4405F]',         bgTint: 'bg-[#E4405F]/10 border-[#E4405F]/40',                 previewLabel: 'Instagram',    unitLabel: 'לפוסט / ריל' },
+  { id: 'tiktok',      label: 'TikTok',      icon: TikTokOfficial, color: 'text-foreground',      bgTint: 'bg-[#FE2C55]/10 border-[#FE2C55]/40',                 previewLabel: 'TikTok',       unitLabel: 'לסרטון' },
+  { id: 'telegram',    label: 'Telegram',    icon: TelegramIcon, color: 'text-[#229ED9]',         bgTint: 'bg-[#229ED9]/10 border-[#229ED9]/40',                 previewLabel: 'Telegram',     unitLabel: 'להודעה' },
+  { id: 'messenger',   label: 'Messenger',   icon: MessageCircle, color: 'text-[#0084FF]',        bgTint: 'bg-[#0084FF]/10 border-[#0084FF]/40',                 previewLabel: 'Messenger',    unitLabel: 'להודעה' },
+  { id: 'twitter',     label: 'X',           icon: Twitter,      color: 'text-foreground',        bgTint: 'bg-foreground/10 border-foreground/40',               previewLabel: 'X',            unitLabel: 'לפוסט' },
+  { id: 'youtube',     label: 'YouTube',     icon: Youtube,      color: 'text-[#FF0000]',         bgTint: 'bg-[#FF0000]/10 border-[#FF0000]/40',                 previewLabel: 'YouTube',      unitLabel: 'לסרטון' },
+  { id: 'facebook',    label: 'Facebook',    icon: Facebook,     color: 'text-[#1877F2]',         bgTint: 'bg-[#1877F2]/10 border-[#1877F2]/40',                 previewLabel: 'Facebook',     unitLabel: 'לפוסט (Meta)' },
 ];
 
 // Maps a broadcast channel to the platform key in the social_connections table
 // (or to a synthetic 'sms' key resolved against api_configs / 019 SMS provider).
 const CHANNEL_TO_PLATFORM: Record<ChannelId, string | null> = {
-  whatsapp:    'whatsapp_green',
+  whatsapp:    'whatsapp_wba',
   sms:         'sms',
   voice:       null,
   ivr:         null,
@@ -119,14 +102,13 @@ const CHANNEL_TO_PLATFORM: Record<ChannelId, string | null> = {
   facebook:    'facebook',
 };
 
-// Channels considered "paid" for the cost calculation. Social channels are free (₪0).
+// Channels considered "paid" for the cost calculation. Social channels are free.
 const PAID_CHANNELS = new Set<ChannelId>(['sms', 'whatsapp', 'voice', 'email']);
 
 // First 6 channels always visible. Channels 7–12 live behind "עוד ערוצים".
 const CORE_CHANNEL_IDS: ChannelId[] = ['whatsapp', 'sms', 'voice', 'ivr', 'email', 'linkedin'];
 
 const PERSONALIZATION_TAGS = ['[שם_פרטי]', '[עיר]', '[נכס]'];
-const CREDIT_RATE = 420 / 15420;
 
 const DEMO_CITIES = ['ירושלים', 'תל אביב-יפו', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'אשדוד', 'נתניה', 'באר שבע', 'בני ברק', 'חולון', 'רמת גן', 'אשקלון', 'רחובות', 'בת ים', 'הרצליה', 'רמת השרון', 'כפר סבא', 'מודיעין', 'נצרת', 'רעננה', 'לוד'];
 const DEMO_TAGS = ['קנייה', 'מכירה', 'שכירות', 'השקעה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'וילה', '3 חדרים', '4 חדרים', '5 חדרים', 'מסחרי'];
@@ -163,8 +145,9 @@ function personalize(message: string) {
     .replace(/\[נכס\]/g, 'דירת 4 חדרים, רוטשילד');
 }
 
-export default function SmsBlastSimulator() {
+export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => void } = {}) {
   const { user } = useAuth();
+  const { data: servicePrices = [] } = useCampaignPricing();
   const { limitsEnabled } = useWorkspaceFeatures();
   const blockDemoAction = useDemoGuard();
   const trial = useTrialStatus();
@@ -261,16 +244,6 @@ export default function SmsBlastSimulator() {
           manual?.access_token
         );
       };
-      const isLiveWhatsApp = (row?: { is_connected: boolean; credentials: any }) => {
-        const creds = row?.credentials ?? {};
-        const manual = creds?.manual ?? {};
-        const hasCreds = !!(manual?.instance_id && (manual?.api_token || manual?.token));
-        // Treat as live only when GreenAPI confirmed `authorized`. Fall back to
-        // is_connected flag (set by the verifier) for backwards compatibility.
-        const state = creds?.wa_state ?? manual?.wa_state;
-        const authorized = state === 'authorized' || row?.is_connected === true;
-        return hasCreds && authorized;
-      };
       const isLiveGeneric = (row?: { is_connected: boolean; credentials: any }) =>
         !!row && (!!row.is_connected || !!row.credentials?.session_token || !!row.credentials?.verified_identity || !!row.credentials?.access_token);
 
@@ -284,8 +257,8 @@ export default function SmsBlastSimulator() {
         .map((r) => r?.credentials?.verified_identity?.email ?? r?.credentials?.account_name ?? r?.display_name)
         .filter(Boolean) as string[];
 
-      const waRow = findSC('whatsapp_green');
-      const waLive = isLiveWhatsApp(waRow) || apiActive(['Green API', 'WhatsApp Business']);
+      const { data: officialProviders } = await supabase.from('wa_providers').select('id').eq('is_official', true).eq('is_active', true).limit(1);
+      const waLive = !!officialProviders?.length;
 
       setConnectedChannels({
         sms:         true,
@@ -312,9 +285,7 @@ export default function SmsBlastSimulator() {
                   ?? gmailRow?.display_name
                   ?? undefined))
           : undefined,
-        whatsapp: waLive
-          ? (waRow?.credentials?.manual?.instance_id ? `Instance ${waRow.credentials.manual.instance_id}` : undefined)
-          : undefined,
+        whatsapp: waLive ? await getOfficialWaNumber() : undefined,
         sms: undefined,
       });
     } catch (err) {
@@ -468,6 +439,7 @@ export default function SmsBlastSimulator() {
   const [loyaltyOptions, setLoyaltyOptions] = useState<string[]>([]);
   const [recipientSource, setRecipientSource] = useState<string | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<ChannelId[]>([]);
+  useEffect(() => { const channel = new URLSearchParams(location.search).get('channel'); if (channel === 'sms' || channel === 'whatsapp') setSelectedChannels([channel]); }, [location.search]);
   const [showMoreChannels, setShowMoreChannels] = useState(false);
   // Per-channel AI Auto-Reply settings (enabled + tone). Default tone tuned per platform.
   const DEFAULT_AI_TONES: Partial<Record<ChannelId, string>> = {
@@ -688,82 +660,18 @@ export default function SmsBlastSimulator() {
     toast.success(`נבחרו ${clamped.toLocaleString('he-IL')} לידים מהמערכת`);
   }, [filterCount]);
 
-  // Voice pricing — differential by source:
-  //   AI Text-to-Speech: 1.00 ₪ per minute (+ 15% platform fee).
-  //   Human / Recorded / Uploaded: 0.20 ₪ per minute (+ 15% platform fee).
-  const VOICE_RATE_AI_NIS = 1.0;
-  const VOICE_RATE_HUMAN_NIS = 0.2;
-  const voiceBaseRate = voicePayload?.source === 'tts' ? VOICE_RATE_AI_NIS : VOICE_RATE_HUMAN_NIS;
-  const voiceMinutesPerRecipient = useMemo(() => {
-    if (!voicePayload) return 0;
-    return Math.max(0.1, voicePayload.durationSec / 60);
-  }, [voicePayload]);
-
-  const estimatedCredits = useMemo(() => {
-    // SMS / WhatsApp use credit pricing; Email is priced at 0.01 NIS per send (≈ proportional in credits).
-    const smsLikeChannels = selectedChannels.filter((channel) => channel !== 'email' && channel !== 'voice').length;
-    const emailIncluded = selectedChannels.includes('email') ? 1 : 0;
-    const smsLikeCredits = totalRecipients * CREDIT_RATE * smsLikeChannels;
-    const emailCredits = totalRecipients * (0.01 / 0.02) * CREDIT_RATE * emailIncluded;
-    // Voice: NIS cost = recipients × minutes × baseRate × 1.15. Convert to credits via CREDIT_RATE / 0.02.
-    const voiceNis = selectedChannels.includes('voice')
-      ? totalRecipients * voiceMinutesPerRecipient * voiceBaseRate * 1.15
-      : 0;
-    const voiceCredits = (voiceNis / 0.02) * CREDIT_RATE;
-    return Math.round(smsLikeCredits + emailCredits + voiceCredits);
-  }, [selectedChannels, totalRecipients, voiceMinutesPerRecipient, voiceBaseRate]);
-
   const previewText = useMemo(() => personalize(messageBody), [messageBody]);
-
-  // Available credits per channel (from current plan).
-  // TODO: wire to live plan/balance once exposed.
-  const PLAN_AVAILABLE: Partial<Record<ChannelId, number | null>> = { whatsapp: 12450, sms: 8200, email: 5000, voice: 1500 };
-  // Top-up pricing in NIS per extra unit.
-  // WA: 0.12 NIS/conversation paid directly to Meta + 15% platform fee.
-  // Voice: differential rate per minute (AI vs human) + 15% platform fee.
-  const EXTRA_PRICE_NIS: Partial<Record<ChannelId, number>> = {
-    sms: 0.02,
-    email: 0.01,
-    whatsapp: 0.12 * 1.15,
-    voice: voiceBaseRate * 1.15,
-  };
-  const WA_FEE_PCT = 15;
-
-  const overage = useMemo(() => {
-    const rows = selectedChannels.map((channel) => {
-      const available = PLAN_AVAILABLE[channel] ?? null;
-      // Voice "needed units" = recipients × minutes per recipient (rounded up).
-      const needed = channel === 'voice'
-        ? Math.ceil(totalRecipients * voiceMinutesPerRecipient)
-        : totalRecipients;
-      const extra = available === null ? 0 : Math.max(0, needed - available);
-      const unitNis = EXTRA_PRICE_NIS[channel] ?? 0;
-      const costNis = Number((extra * unitNis).toFixed(2));
-      return { channel, available, needed, extra, costNis };
-    });
-    const totalNis = Number(rows.reduce((sum, r) => sum + r.costNis, 0).toFixed(2));
-    const hasOverage = rows.some((r) => r.extra > 0);
-    return { rows, totalNis, hasOverage };
-  }, [selectedChannels, totalRecipients, voiceMinutesPerRecipient]);
-
-  /**
-   * Dynamic broadcast cost (₪) — sum across selected channels:
-   * recipients × unitPrice. Voice is "pending" so its line shows but isn't
-   * totaled until pricing is finalized. Free channels add ₪0.
-   */
   const broadcastCost = useMemo(() => {
     const rows = selectedChannels.map((channel) => {
-      const meta = CHANNELS.find((c) => c.id === channel)!;
-      const units = channel === 'voice'
-        ? Math.ceil(totalRecipients * voiceMinutesPerRecipient)
-        : totalRecipients;
-      const subtotal = meta.pending ? 0 : Number((units * meta.unitPriceNis).toFixed(2));
-      return { channel, label: meta.label, unitPriceNis: meta.unitPriceNis, unitLabel: meta.unitLabel, units, subtotal, pending: !!meta.pending };
+      const meta = CHANNELS.find((item) => item.id === channel);
+      const estimate = campaignServiceEstimate(channel, servicePrices, totalRecipients, voicePayload?.durationSec ?? 0);
+      return { channel, label: meta?.label ?? channel, unitLabel: estimate.price ? `ל${estimate.price.unit}` : '',
+        units: estimate.units, subtotal: estimate.total ?? 0,
+        pending: !estimate.price || (estimate.price.unit === 'דקה' && !voicePayload?.durationSec) };
     });
-    const totalNis = Number(rows.reduce((sum, r) => sum + r.subtotal, 0).toFixed(2));
-    const hasPending = rows.some((r) => r.pending);
-    return { rows, totalNis, hasPending };
-  }, [selectedChannels, totalRecipients, voiceMinutesPerRecipient]);
+    return { rows, totalCredits: Number(rows.reduce((sum, row) => sum + row.subtotal, 0).toFixed(6)), hasPending: rows.some((row) => row.pending) };
+  }, [selectedChannels, servicePrices, totalRecipients, voicePayload?.durationSec]);
+  const estimatedCredits = broadcastCost.totalCredits;
 
   const fireConfetti = useCallback(() => {
     confetti({
@@ -822,6 +730,7 @@ export default function SmsBlastSimulator() {
       return;
     }
 
+    if (channel === 'whatsapp' && !waTemplate) { toast.error('בחרו תבנית Meta מאושרת לפני שליחה'); return; }
     toast.loading('שולח הודעת בדיקה...', { id: 'test-send' });
     try {
       const { data, error } = await supabase.functions.invoke('dispatch-campaign', {
@@ -871,7 +780,7 @@ export default function SmsBlastSimulator() {
     }
     // Trial restriction: block real broadcasts when trial expired
     if (trial.isTrialExpired) {
-      toast.error('תקופת הניסיון הסתיימה. יש לשדרג כדי להמשיך להפיץ קמפיינים', {
+      toast.error('ההפצה אינה זמינה כרגע בחשבון זה', {
         duration: 8000,
         action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/wallet') },
       });
@@ -923,6 +832,7 @@ export default function SmsBlastSimulator() {
         return;
       }
       const providerStatus = (preflightData as any)?.providers ?? {};
+      providerStatus.whatsapp = connectedChannels.whatsapp && !!waTemplate;
       // Cache Resend availability + multi-Gmail count for the Safe-Sending UI.
       setResendReady(!!(preflightData as any)?.resend_ready);
       const gmailCountFromPreflight = Number((preflightData as any)?.gmail_account_count ?? 0);
@@ -1133,7 +1043,7 @@ export default function SmsBlastSimulator() {
       toast.error('שגיאה בשיגור: ' + (err?.message ?? 'שגיאה לא ידועה'));
       setPhase('compose');
     }
-  }, [blastName, messageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired]);
+  }, [blastName, messageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired, waTemplate, connectedChannels.whatsapp]);
 
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
@@ -1170,21 +1080,19 @@ export default function SmsBlastSimulator() {
                     const Icon = channel.icon;
                     const checked = selectedChannels.includes(channel.id);
                     const isConnected = connectedChannels[channel.id];
-                    const isPending = !!channel.pending;
-                    const isFree = channel.unitPriceNis === 0;
+                    const configuredPrice = campaignServicePrice(channel.id, servicePrices);
+                    const isPending = !configuredPrice;
+                    const isFree = configuredPrice?.credits === 0;
                     // Dual gray-out conditions (hard-disable both):
                     //   (1) Provider not connected at brokerage level (e.g. WhatsApp instance not linked).
                     //   (2) In lead-context mode, the lead has no destination coord (no email/phone/handle).
                     const missingForLead = leadMissingChannel(channel.id);
                     const disabledForLead = !!contextLeadId && missingForLead;
-                    const disabledForIntegration = !isConnected && !isPending;
+                    const disabledForIntegration = !isConnected && !isPending && !(channel.id === 'ivr' && onIvrOpen);
                     const isHardDisabled = disabledForLead || disabledForIntegration;
-                    const priceText = isPending
-                      ? 'בחישוב'
-                      : isFree
-                        ? 'חינם'
-                        : `₪${channel.unitPriceNis.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    const priceText = configuredPrice ? formatCampaignCredits(configuredPrice.credits) : 'המחירון אינו זמין';
                     const handleCardClick = () => {
+                      if (channel.id === 'ivr' && onIvrOpen && !disabledForLead) { onIvrOpen(); return; }
                       if (disabledForLead) {
                         toast.info('לליד זה אין כתובת/מספר מתאים לערוץ זה.');
                         return;
@@ -1206,14 +1114,15 @@ export default function SmsBlastSimulator() {
                         ? 'הערוץ אינו מחובר בהגדרות המשרד'
                         : undefined;
                     return (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={channel.id}
                         type="button"
                         onClick={handleCardClick}
                         aria-pressed={checked}
                         aria-disabled={isHardDisabled}
                         title={disabledTitle}
-                        className={`relative flex flex-col items-center justify-start gap-1.5 rounded-xl border-2 p-2.5 sm:p-3 text-center transition-all min-h-[8.75rem] ${
+                        className={`relative flex flex-col items-center justify-start gap-1.5 rounded-xl border-2 p-2.5 sm:p-3 text-center transition-all h-auto min-h-[8.75rem] whitespace-normal ${
                           isHardDisabled
                             ? 'opacity-40 pointer-events-none border-dashed border-border/60 bg-muted/30'
                             : checked
@@ -1245,7 +1154,7 @@ export default function SmsBlastSimulator() {
                           </span>
                         )}
 
-                        <Icon className={`h-7 w-7 sm:h-8 sm:w-8 shrink-0 ${channel.color}`} />
+                        <CampaignServiceIcon channel={channel.id} className="h-7 w-7 sm:h-8 sm:w-8" />
 
                         <span className="font-semibold text-foreground text-[12.5px] sm:text-sm leading-tight truncate max-w-full">
                           {channel.label}
@@ -1262,7 +1171,7 @@ export default function SmsBlastSimulator() {
                         )}
 
                         <span
-                          className={`text-[13px] sm:text-sm font-bold tabular-nums leading-none ${
+                          className={`text-[11px] font-medium tabular-nums leading-tight ${
                             isPending
                               ? 'text-amber-600 dark:text-amber-400 italic'
                               : isFree
@@ -1274,7 +1183,7 @@ export default function SmsBlastSimulator() {
                         </span>
 
                         <span className="text-[10px] sm:text-[10.5px] text-muted-foreground leading-tight truncate max-w-full">
-                          {channel.unitLabel}
+                          {configuredPrice ? `ל${configuredPrice.unit}` : channel.unitLabel}
                         </span>
 
                         {!isConnected && !isPending && (
@@ -1363,7 +1272,7 @@ export default function SmsBlastSimulator() {
                             </div>
                           );
                         })()}
-                      </button>
+                      </Button>
                     );
                   };
 
@@ -1467,47 +1376,7 @@ export default function SmsBlastSimulator() {
                       </div>
                     )}
                   </div>
-                  {overage.hasOverage && (
-                    <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs space-y-2">
-                      <p className="font-bold text-destructive">חריגה ממכסת התוכנית - תידרש רכישת קרדיטים נוספים:</p>
-                      <ul className="space-y-1 text-foreground">
-                        {overage.rows.filter((row) => row.extra > 0).map((row) => {
-                          const labels: Partial<Record<ChannelId, string>> = { whatsapp: 'וואטסאפ', sms: 'מסרונים', email: 'אימייל', voice: 'AI קולי', ivr: 'IVR', linkedin: 'LinkedIn', instagram: 'Instagram', tiktok: 'TikTok', telegram: 'Telegram' };
-                          const unitLabel: Partial<Record<ChannelId, string>> = { whatsapp: 'יחידות', sms: 'יחידות', email: 'יחידות', voice: 'דקות', ivr: 'דקות', linkedin: 'פוסטים', instagram: 'פוסטים', tiktok: 'סרטונים', telegram: 'הודעות' };
-                          const unitPrice = EXTRA_PRICE_NIS[row.channel] ?? 0;
-                          return (
-                            <li key={row.channel} className="flex items-center justify-between gap-2">
-                              <span className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  aria-label={`הסר ${labels[row.channel]}`}
-                                  onClick={() => toggleChannel(row.channel)}
-                                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                                <span className="font-semibold">{labels[row.channel]}:</span>{' '}
-                                חריגה של {row.extra.toLocaleString()} {unitLabel[row.channel]} × {unitPrice.toFixed(row.channel === 'whatsapp' ? 3 : 2)} ₪
-                                {row.channel === 'whatsapp' && (
-                                  <span className="text-muted-foreground"> (0.12 ₪ למטא + {WA_FEE_PCT}% עמלת פלטפורמה)</span>
-                                )}
-                                {row.channel === 'voice' && (
-                                  <span className="text-muted-foreground">
-                                    {' '}({voiceBaseRate.toFixed(2)} ₪ לדקה {voicePayload?.source === 'tts' ? '· AI Text-to-Speech' : '· הקלטה / העלאה'} + {WA_FEE_PCT}% עמלת פלטפורמה)
-                                  </span>
-                                )}
-                              </span>
-                              <span className="font-bold text-destructive">₪{row.costNis.toLocaleString('he-IL', { minimumFractionDigits: 2 })}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      <div className="flex items-center justify-between border-t border-destructive/20 pt-2 font-bold">
-                        <span>סה&quot;כ תוספת תשלום:</span>
-                        <span className="text-destructive">₪{overage.totalNis.toLocaleString('he-IL', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-                  )}
+
                 </div>
               </CardContent>
             </Card>
@@ -1650,16 +1519,8 @@ export default function SmsBlastSimulator() {
                         <span className="text-sm font-bold text-primary">יצירת הודעה קולית</span>
                       </div>
                       <span className="text-xs font-semibold text-primary">
-                        תעריף נוכחי: {voiceBaseRate.toFixed(2)} ₪ לדקה (+15%)
+                        {(() => { const price = campaignServicePrice('voice', servicePrices); return price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'; })()}
                       </span>
-                    </div>
-                    <div className="grid gap-2 rounded-md border border-primary/15 bg-background/60 p-2 text-[11px] leading-relaxed text-muted-foreground sm:grid-cols-2">
-                      <div>
-                        <span className="font-bold text-foreground">AI Text-to-Speech:</span> 1.00 ₪ לדקה (כולל מנוע ההגיה והעיבוד הנוירוני).
-                      </div>
-                      <div>
-                        <span className="font-bold text-foreground">קול אנושי / מוקלט:</span> 0.20 ₪ לדקה (חיוב נשיאה בלבד, ללא יצירת AI).
-                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground">בחרו אחת מ-3 דרכים: AI טקסט לדיבור, העלאת קובץ, או הקלטה ישירה.</p>
                     <VoiceComposer value={voicePayload} onChange={setVoicePayload} />
@@ -1892,39 +1753,39 @@ export default function SmsBlastSimulator() {
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-medium text-muted-foreground">עלות משוערת לקמפיין</span>
                       <span className="text-base font-bold tabular-nums text-foreground">
-                        ₪{broadcastCost.totalNis.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
+                        {formatCampaignCredits(broadcastCost.totalCredits)}
                       </span>
                     </div>
                     {broadcastCost.rows.length > 0 && (
                       <ul className="mt-1.5 space-y-0.5 text-[10.5px] text-muted-foreground">
                         {broadcastCost.rows.map((r) => (
                           <li key={r.channel} className="flex items-center justify-between gap-2">
-                            <span>{r.label} · {r.units.toLocaleString('he-IL')} {r.unitLabel}</span>
+                            <span className="inline-flex items-center gap-1"><CampaignServiceIcon channel={r.channel} />{r.label} · {r.units.toLocaleString('he-IL')} {r.unitLabel}</span>
                             <span className="tabular-nums">
-                              {r.pending ? <span className="italic text-amber-600 dark:text-amber-400">בחישוב עלויות</span> : `₪${r.subtotal.toLocaleString('he-IL', { minimumFractionDigits: 2 })}`}
+                              {r.pending ? <span className="italic text-amber-600 dark:text-amber-400">בחישוב עלויות</span> : formatCampaignCredits(r.subtotal)}
                             </span>
                           </li>
                         ))}
                       </ul>
                     )}
                     {broadcastCost.hasPending && (
-                      <p className="mt-1 text-[10px] italic text-amber-600 dark:text-amber-400">* AI קולי מוצג ב"בחישוב עלויות" עד שהספק יחובר.</p>
+                      <p className="mt-1 text-[10px] italic text-amber-600 dark:text-amber-400">* העלות תושלם לאחר טעינת המחירון ואורך ההקלטה.</p>
                     )}
                   </div>
                   <div className="flex flex-col items-center gap-1.5">
                     {(() => {
                       const hasConnectedSelected = selectedChannels.some((c) => connectedChannels[c]);
                       const trialBlocked = trial.isTrialExpired;
-                      const disabled = !blastName.trim() || !messageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
+                      const disabled = (selectedChannels.includes('whatsapp') && !waTemplate) || broadcastCost.hasPending || !blastName.trim() || !messageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
                       return (
                         <>
-                          <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary-glow" onClick={() => setConfirmOpen(true)} disabled={disabled}>
+                          <Button size="lg" className="h-auto whitespace-normal text-center bg-primary text-primary-foreground hover:bg-primary-glow" onClick={() => setConfirmOpen(true)} disabled={disabled}>
                             <Send className="h-4 w-4 ml-1" />
-                            שליחה ל-{totalRecipients.toLocaleString('he-IL')} נמענים בעלות משוערת של ₪{broadcastCost.totalNis.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
+                            שליחה ל-{totalRecipients.toLocaleString('he-IL')} נמענים בעלות משוערת של {formatCampaignCredits(broadcastCost.totalCredits)}
                           </Button>
                           {trialBlocked && (
                             <p className="text-[11px] text-destructive">
-                              תקופת הניסיון הסתיימה. יש לשדרג כדי להמשיך להפיץ קמפיינים
+                              ההפצה אינה זמינה כרגע בחשבון זה
                             </p>
                           )}
                           {!trialBlocked && selectedChannels.length > 0 && !hasConnectedSelected && (
@@ -1949,10 +1810,11 @@ export default function SmsBlastSimulator() {
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent dir="rtl">
+          <div className="space-y-2">{broadcastCost.rows.map((row) => <div key={row.channel} className="flex items-center justify-between gap-2 text-xs"><span className="inline-flex items-center gap-2"><CampaignServiceIcon channel={row.channel} />{row.label}</span><span>{formatCampaignCredits(row.subtotal)}</span></div>)}</div>
           <AlertDialogHeader>
             <AlertDialogTitle>אישור שיגור חי</AlertDialogTitle>
             <AlertDialogDescription>
-              שליחה ל-{totalRecipients.toLocaleString('he-IL')} נמענים בעלות משוערת של ₪{broadcastCost.totalNis.toLocaleString('he-IL', { minimumFractionDigits: 2 })}.
+              שליחה ל-{totalRecipients.toLocaleString('he-IL')} נמענים בעלות משוערת של {formatCampaignCredits(broadcastCost.totalCredits)}.
               <br />
               קמפיין &quot;{blastName || 'ללא שם'}&quot; · ערוצים: {selectedChannels.map((c) => CHANNELS.find((ch) => ch.id === c)?.label).join(', ')}.
               <br />
@@ -2139,7 +2001,7 @@ export default function SmsBlastSimulator() {
                 <div className="grid w-full max-w-2xl grid-cols-2 gap-4 sm:grid-cols-4">
                   <SummaryBox icon={<Users className="h-5 w-5 text-primary" />} value={totalRecipients.toLocaleString()} label="נמענים" />
                   <SummaryBox icon={<MessageSquare className="h-5 w-5 text-primary-glow" />} value={selectedChannels.length.toString()} label="ערוצים" />
-                  <SummaryBox icon={<Coins className="h-5 w-5 text-success" />} value={estimatedCredits.toLocaleString()} label="קרדיטים" />
+                  <SummaryBox icon={<Coins className="h-5 w-5 text-success" />} value={formatCampaignCredits(estimatedCredits)} label="עלות משוערת" />
                   <SummaryBox icon={<Shield className="h-5 w-5 text-warning" />} value={isDemoMode ? 'הדגמה' : 'ייצור'} label="סטטוס" />
                 </div>
               </div>
@@ -2162,23 +2024,20 @@ export default function SmsBlastSimulator() {
 }
 
 function CreditBalanceWidget() {
-  return (
-    <Card className="h-fit xl:sticky xl:top-20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <WalletCards className="h-4 w-4 text-primary" />
-          יתרת קרדיטים
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <CreditLine icon={<WhatsAppLogo className="h-4 w-4 text-social-whatsapp" />} label="וואטסאפ" value="12,450 / 50,000" note="הודעות נותרו" pct={25} barClass="bg-social-whatsapp" />
-        <CreditLine icon={<SmsLogo className="h-4 w-4 text-social-sms" />} label="מסרונים" value="8,200 / 20,000" note="יחידות נותרו" pct={41} barClass="bg-social-sms" />
-        <CreditLine icon={<AudioLines className="h-4 w-4 text-[hsl(46_78%_58%)]" />} label="AI קולי" value="1,500 / 3,000" note="דקות נותרו · 1.00 ₪ לדקה" pct={50} barClass="bg-[hsl(46_78%_58%)]" />
-        <CreditLine icon={<GmailLogo className="h-4 w-4" />} label="אימייל" value="ללא הגבלה" note="תוכנית מקצועית" pct={100} barClass="bg-social-email" />
-        <Button className="w-full bg-primary text-primary-foreground hover:bg-primary-glow">טעינת קרדיטים</Button>
-      </CardContent>
-    </Card>
-  );
+  const { data: wallet, isLoading, isError } = useCreditWallet();
+  const { data: prices = [] } = useCampaignPricing();
+  const navigate = useNavigate();
+  return <Card className="h-fit xl:sticky xl:top-20">
+    <CardHeader><CardTitle className="flex items-center gap-2 text-base"><WalletCards className="h-4 w-4 text-primary" />יתרת קרדיטים</CardTitle></CardHeader>
+    <CardContent className="space-y-4">
+      <p className="text-lg font-bold">{isLoading ? 'טוען…' : isError ? 'היתרה אינה זמינה' : formatCampaignCredits(ilsToCredits(wallet?.balance ?? 0))}</p>
+      {['whatsapp', 'sms', 'ivr', 'email'].map((channel) => {
+        const price = campaignServicePrice(channel, prices);
+        return <div key={channel} className="flex items-center justify-between gap-2 text-xs"><CampaignServiceIcon channel={channel} /><span>{channel === 'whatsapp' ? 'WhatsApp הרשמי' : channel.toUpperCase()}</span><span>{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span></div>;
+      })}
+      <Button className="w-full" onClick={() => navigate('/wallet')}>טעינת קרדיטים</Button>
+    </CardContent>
+  </Card>;
 }
 
 function CreditLine({ icon, label, value, note, pct, barClass = 'bg-primary' }: { icon: React.ReactNode; label: string; value: string; note: string; pct: number; barClass?: string }) {
