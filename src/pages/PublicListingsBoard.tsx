@@ -407,7 +407,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showCommissions={false} dense /></div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}</span>
-                          : id === 'commissions' ? <PropertyCommissionIcons listingId={card.id} />
+                          : id === 'commissions' ? <PropertyCommissionIcons listingId={card.id} networkOpen={card.affiliate_enabled === true} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}

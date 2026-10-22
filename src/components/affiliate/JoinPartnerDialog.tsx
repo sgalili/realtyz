@@ -3,11 +3,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { setPendingSignupRole } from '@/lib/signupRole';
 
 /** Partner program pitch shown to signed-out visitors who tap affiliate or sharing actions. */
-export function JoinPartnerDialog({ open, onOpenChange, returnTo }: { open: boolean; onOpenChange: (open: boolean) => void; returnTo?: string }) {
+export function JoinPartnerDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const join = () => {
     setPendingSignupRole('partner');
-    const next = returnTo ?? window.location.pathname + window.location.search;
-    window.location.assign(`/auth?next=${encodeURIComponent(next)}`);
+    window.location.assign('/auth');
   };
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent dir="rtl" className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>

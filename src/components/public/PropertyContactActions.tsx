@@ -1,3 +1,4 @@
+import { JoinPartnerDialog } from '@/components/affiliate/JoinPartnerDialog';
 import { useState } from 'react';
 import { ChevronLeft, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
@@ -220,24 +221,7 @@ export default function PropertyContactActions({
         {!shareOnly && inquiryStarted && mode === null && <div className="w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
       </div>
       <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
-      <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
-        <DialogContent dir="rtl" className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="text-right">שתפו נכסים והרוויחו</DialogTitle></DialogHeader>
-          <div className="space-y-3 text-sm text-foreground">
-            <p>הצטרפו בחינם לרשת השותפים של TORAFF ותקבלו תגמול על כל פנייה איכותית שמגיעה דרך הקישור שלכם.</p>
-            <ol className="list-decimal space-y-1.5 ps-5">
-              <li>נרשמים בחינם בדקה אחת.</li>
-              <li>משתפים את הנכס עם קישור אישי בווטסאפ, SMS, מייל או ברשתות.</li>
-              <li>ריטה מטפלת בפניות, מסננת ומעבירה למפרסם באופן אוטומטי.</li>
-              <li>על כל פנייה שעומדת בתנאים, התגמול נכנס לחשבון שלכם.</li>
-            </ol>
-          </div>
-          <DialogFooter className="flex-row items-center justify-between sm:justify-between">
-            <Button variant="outline" onClick={() => setJoinOpen(false)}>ביטול</Button>
-            <Button onClick={() => { const next = `/affiliate-network?q=${encodeURIComponent(title)}`; window.location.assign(`/affiliates?next=${encodeURIComponent(next)}`); }}>הצטרפות ושיתוף הנכס</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <JoinPartnerDialog open={joinOpen} onOpenChange={setJoinOpen} />
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent dir="rtl" className="sm:max-w-md">
           <DialogHeader><DialogTitle className="text-right">חזרה טלפונית</DialogTitle></DialogHeader>

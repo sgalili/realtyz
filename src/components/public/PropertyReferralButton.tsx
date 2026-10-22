@@ -3,12 +3,14 @@ import { Link2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { JoinPartnerDialog } from '@/components/affiliate/JoinPartnerDialog';
 import { personalPropertyLink } from '@/lib/propertyReferral';
 
 export default function PropertyReferralButton({ listingId }: { listingId: string }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
-  if (!user) return null;
+  const [joinOpen, setJoinOpen] = useState(false);
+  if (!user) return <><Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" title="הצטרפות לתוכנית השותפים" aria-label="שיתוף והרווחה כשותף" onClick={(event) => { event.stopPropagation(); setJoinOpen(true); }} onKeyDown={(event) => event.stopPropagation()}><Link2 className="h-4 w-4" /></Button><JoinPartnerDialog open={joinOpen} onOpenChange={setJoinOpen} /></>;
   const copy = async () => {
     setBusy(true);
     try {
