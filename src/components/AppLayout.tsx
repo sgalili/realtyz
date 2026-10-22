@@ -483,7 +483,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               full name directly below it (right-aligned). Rita and the other
               icon controls stay at the far left. No profile picture here. */}
           <header className="relative flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-3 pt-[env(safe-area-inset-top)] text-foreground z-30 sm:px-4" dir="rtl">
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
               <NotificationCenter />
               <HomeActivityPill />
