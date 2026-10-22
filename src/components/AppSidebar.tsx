@@ -33,6 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
@@ -434,8 +435,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           </SidebarGroup>
         )}
 
-        {user && !collapsed && <div className="mt-auto pt-3"><SidebarRitaChat /></div>}
       </SidebarContent>
+      {user && !collapsed && <SidebarFooter className="shrink-0 p-0 pt-2"><SidebarRitaChat /></SidebarFooter>}
     </Sidebar>
   );
 }

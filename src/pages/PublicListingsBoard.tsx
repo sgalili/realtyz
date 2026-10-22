@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Bed, ChevronDown, ChevronLeft, ChevronRight, BadgeCheck, Heart, Layers, LayoutGrid, List, Ruler, Send, UserRound } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
-import { WelcomeSlides, hasSeenWelcomeSlides } from '@/components/public/WelcomeSlides';
+import { WelcomeSlides } from '@/components/public/WelcomeSlides';
+import { boardCache } from '@/lib/boardCache';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,7 +86,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const consent = usePartnerConsent();
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
-  const [cards, setCards] = useState<PublicCard[]>([]);
+  const [cards, setCards] = useState<PublicCard[]>(() => boardCache.get<PublicCard>() ?? []);
   const [visibleCount, setVisibleCount] = useState(24);
   // Listings the signed-in poster owns (marked with the "שלי" badge on the card image).
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set());
@@ -106,7 +107,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     })();
     return () => { cancelled = true; };
   }, [user?.id, activeWorkspaceId]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !boardCache.get());
   const [query, setQuery] = useState('');
   const [deals, setDeals] = useState({ sale: true, rent: true });
   const deal: 'all' | 'sale' | 'rent' = deals.sale && deals.rent ? 'all' : deals.sale ? 'sale' : 'rent';
@@ -211,7 +212,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   };
 
   const load = async () => {
-    setLoading(true);
+    const cached = boardCache.get();
+    if (cached) { setCards(cached); setLoading(false); }
+    else setLoading(true);
     const all: PublicCard[] = [];
     for (let offset = 0; ; offset += 60) {
       const params = new URLSearchParams({ limit: '60', offset: String(offset) });
@@ -221,7 +224,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       all.push(...rows);
       if (data?.has_more !== true) break;
     }
-    setCards([...new Map(all.map(card => [card.id, card])).values()]);
+    const fresh = [...new Map(all.map(card => [card.id, card])).values()];
+    if (all.length || !cached) { setCards(fresh); boardCache.set(fresh); }
     setLoading(false);
   };
 
@@ -262,7 +266,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     }
   };
 
-  const [showWelcome, setShowWelcome] = useState(() => !hasSeenWelcomeSlides());
+  const [showWelcome, setShowWelcome] = useState(() => shouldShowWelcome('home'));
   const [welcomeKey, setWelcomeKey] = useState(0);
   useEffect(() => {
     setShowWelcome(shouldShowWelcome('home'));

@@ -15,7 +15,7 @@ export default function BoardSearchControls({ query, onQueryChange, onSearch, fi
     </div>
     {query.trim() && onSearch ? <Button type="button" className="shrink-0" onClick={onSearch}>חיפוש</Button> : null}
     <div className="inline-flex shrink-0 items-center rounded-md bg-background py-1 ps-1">
-      {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => onDealToggle(value)} className={cn('gap-1.5 px-2 hover:bg-transparent hover:text-inherit focus-visible:bg-transparent', deals[value] ? 'font-semibold text-foreground hover:!text-foreground' : 'text-muted-foreground/60 hover:!text-muted-foreground/60')}><span className={cn('h-2 w-2 rounded-full', deals[value] ? value === 'sale' ? 'bg-success' : 'bg-sale' : 'bg-muted-foreground/30')} />{label}</Button>)}
+      {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={deals[value]} onClick={() => onDealToggle(value)} className={cn('px-2 hover:bg-transparent focus-visible:bg-transparent', deals[value] ? value === 'sale' ? 'font-semibold text-success hover:!text-success' : 'font-semibold text-sale hover:!text-sale' : 'text-muted-foreground hover:!text-muted-foreground')}>{label}</Button>)}
       <Button className="shrink-0" size="icon" variant="ghost" onClick={onViewToggle} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
     </div>
   </div>;
