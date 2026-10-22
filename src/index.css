@@ -585,9 +585,15 @@
 
   .auth-dynamic-content {
     min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
+    overflow: hidden;
+  }
+
+  /* Registration must fit the viewport without scrolling: compress the header
+     on short screens so every field stays visible. */
+  @media (max-height: 800px) {
+    .auth-header-ticker { margin-top: 10px; margin-bottom: 12px; min-height: 2rem; }
+    .auth-official-logo { height: 2.5rem; margin-bottom: 12px; }
+    .auth-login-card { max-height: none; }
   }
 
   .auth-unified-field {
