@@ -1823,6 +1823,11 @@ const InlineComposer = ({
       });
       if (ctrl.signal.aborted) return; // killed by the operator
       if (error) throw error;
+      if (data?.listing_unavailable) {
+        setSelectedListingId(null);
+        toast.info('הנכס שנבחר אינו זמין במרחב העבודה הנוכחי. בחר נכס אחר.');
+        return;
+      }
       const text = cleanBody(data?.content || data?.text || '').toString();
       if (text) {
         setBody(text);
@@ -1947,6 +1952,7 @@ const InlineComposer = ({
       });
       if (ctrl.signal.aborted) return;
       if (error) throw error;
+      if (data?.listing_unavailable) { setSelectedListingId(null); return; }
       let text = cleanFirstComment(String(data?.content || data?.text || ''));
       // Enforce strict 2-line layout: a single property line capped at 10
       // words, immediately followed by the canonical keyword line.

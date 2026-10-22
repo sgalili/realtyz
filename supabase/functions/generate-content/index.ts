@@ -107,7 +107,7 @@ serve(async (req) => {
       if (isProjectTarget(selectedListingId)) {
         const projectId = String(selectedListingId).split(':')[1];
         const { data: project, error } = await supabase.from('developer_projects').select('*').eq('id', projectId).eq('workspace_owner_id', workspaceOwnerId).maybeSingle();
-        if (error || !project) return jsonError('Project not found in active workspace', 404);
+        if (error || !project) return new Response(JSON.stringify({ listing_unavailable: true, content: '' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         promotedListing = projectCampaignTargets(project).find(target => target.id === selectedListingId);
       } else {
         const { data: row } = await supabase
@@ -118,7 +118,8 @@ serve(async (req) => {
           .maybeSingle();
         if (row) promotedListing = row;
       }
-      if (!promotedListing) return jsonError('Property not found in active workspace', 404);
+      // Stale selection (deleted or from another workspace): soft response so the UI can clear it.
+      if (!promotedListing) return new Response(JSON.stringify({ listing_unavailable: true, content: '' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const platformRules: Record<string, string> = {
