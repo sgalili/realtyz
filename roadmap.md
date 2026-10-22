@@ -1,4 +1,6 @@
 # Welcome, cloud sharing, tables and account deletion
+- [ ] Unify home/partner feed and navigation; show only compact nonzero personal activity.
+- [ ] Tag network/site-only ads, retain original publishers and verify role-safe browsing.
 - [x] Unified signup welcome and profile CTA; existing consent introduction is suppressed while signup welcome is pending.
 - [x] Correct table cell structure and centered mobile tab controls; authenticated mobile/desktop board verified.
 - [x] Repair cloud connect/sync retry and workspace-change handling; deploy cloud endpoint.
