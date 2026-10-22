@@ -6,6 +6,8 @@ import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/le
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
 import { PriceInput } from "@/components/ui/price-input";
 import { LeadPriceSlider } from './LeadPriceSlider';
+import { Switch } from '@/components/ui/switch';
+import { LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
 // everything, sign up through /auth, and have the listing auto-published on return.
@@ -795,7 +797,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               <div className="space-y-4 text-sm">
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
-                    <span className="flex items-center gap-1 self-center font-medium">
+                    <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-1 self-center font-medium">
                       {label}
                       <LeadTypeHelp label={label}>
                         <p>
@@ -805,7 +807,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                         </p>
                         {LEAD_TYPE_VALIDITY}
                       </LeadTypeHelp>
-                    </span>
+                    </span><Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={Number(fields[`commission${key}`]) > 0} onCheckedChange={active => set(`commission${key}`, active ? String(LEAD_PRICE_RANGES[tier].min) : '')} /></div>
+                    {Number(fields[`commission${key}`]) > 0 && <div className="space-y-2">
                     <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} onChange={value => set(`commission${key}`, value)} />
                     <div className="flex items-center justify-between gap-3"><Label htmlFor={`daily-limit-${key}`} className="text-xs text-muted-foreground">מקס׳ ביום</Label><Input id={`daily-limit-${key}`} inputMode="numeric" placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-32" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
@@ -827,10 +830,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                         </Button>
                       );
                     })()}
+                    </div>}
                   </div>
                 ))}
               </div>
-              <ClosingFeeSlider dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
+              <p className="text-[11px] text-muted-foreground">אומדן בלבד, לא מספר שותפים בפועל או התחייבות להפצה.</p>
+              <ClosingFeeSlider dualMode dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
