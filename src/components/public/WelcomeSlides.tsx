@@ -88,7 +88,6 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon && <Icon className="h-full w-full" strokeWidth={4} />}</div>
       {!Icon && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
         {FLOATING.map((f, i) => <span key={f.platform} className={cn('welcome-float welcome-outline absolute h-14 w-14', f.pos)} style={{ animationDelay: `${i * -0.9}s` }}><WelcomeOutlineLogo platform={f.platform} /></span>)}
-        <img src={ritaPointing} alt="" width={768} height={1376} decoding="async" className="welcome-rita absolute w-auto object-contain" />
       </div>}
       <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-8 w-8"><X className="h-5 w-5" /></Button>
       <div key={index} className="welcome-content relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pb-4 pt-12 text-right sm:px-14 sm:pt-16" aria-live="polite">
@@ -96,7 +95,8 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
           <h2 className="welcome-title welcome-enter text-[38px] font-black leading-[1.08] sm:text-[74px]">{slide.title}</h2>
           <div className="welcome-copy welcome-enter mt-5 max-w-2xl text-[22px] font-normal leading-[1.35] [animation-delay:80ms] sm:text-[26px]">{slide.text}</div>
         </div>
-        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter h-auto min-h-10 whitespace-normal rounded-lg px-3 py-2 text-[22px] font-medium leading-tight [animation-delay:150ms]">יאללה, נכנסים ללוח! 🚀</Button>}
+        {last && <img src={ritaPointing} alt="ריטה" width={768} height={1376} decoding="async" className="welcome-rita w-auto object-contain" />}
+        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter h-9 min-h-0 whitespace-nowrap rounded-lg px-3 py-1 text-[18px] font-medium leading-tight [animation-delay:150ms]">יאללה, נכנסים ללוח!</Button>}
       </div>
       <div className="welcome-footer relative z-10 flex shrink-0 flex-col items-center gap-2 pb-4">
         <div className="flex items-center gap-1">
