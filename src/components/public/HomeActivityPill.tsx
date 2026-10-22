@@ -28,8 +28,7 @@ export default function HomeActivityPill() {
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState('properties');
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const [headerAnchor, setHeaderAnchor] = useState<HTMLElement | null>(null);
-  useEffect(() => { setHeaderAnchor(triggerRef.current?.closest('header') ?? null); });
+  const headerAnchor = triggerRef.current?.closest('header') ?? undefined;
   useEffect(() => { setOpen(false); setActivity('properties'); }, [user?.id, owner]);
   const referrals = useMyReferrals();
   const submissions = useMySubmissions();
