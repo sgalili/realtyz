@@ -449,6 +449,13 @@
       "when": 1792871803399,
       "tag": "0063_use_locked_rates_in_partner_views_and_lead_extras",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1792871903399,
+      "tag": "0064_test_broker_license_for_barak",
+      "breakpoints": true
     }
   ]
 }
