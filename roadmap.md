@@ -1,3 +1,8 @@
+# Property reward indicators
+- [ ] Update shared reward icons, guest-safe explanations/daily limits and publisher avatar.
+- [ ] Enforce required property/closing prices and verify existing partner price locks.
+- [ ] Run focused tests and check real property reward popup.
+
 # Intro and board alignment
 - [x] Set slide-one navigation black and lift Rita/divider/logo strip 30px with a contiguous white strip.
 - [x] Align desktop header/search/site content to existing board edges and enlarge account control 30% with an account icon.
