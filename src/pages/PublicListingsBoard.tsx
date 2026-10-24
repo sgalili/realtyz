@@ -390,6 +390,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                         <td className="p-2 align-bottom"><div className="flex items-center gap-1">{partnerActions(card)}
                           <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); void toggleFavorite(card); }} aria-label={favIds.has(card.id) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={favIds.has(card.id)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favIds.has(card.id) && 'fill-current')} /></Button>
                           <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; }}><GripVertical className="h-4 w-4" /></Button>
+                        </div>
                         </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
