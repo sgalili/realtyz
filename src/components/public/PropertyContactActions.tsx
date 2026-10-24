@@ -1,6 +1,7 @@
 import { JoinPartnerDialog } from '@/components/affiliate/JoinPartnerDialog';
 import { useState } from 'react';
-import { ChevronLeft, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -154,7 +155,7 @@ export default function PropertyContactActions({
       return;
     }
     toast.success(callback ? 'תודה, נחזור אליכם טלפונית בהקדם' : 'הפרטים נשלחו בהצלחה');
-    setMode(null); setName(''); setPhone(''); setAnswers({});
+    setMode(null); setFormOpen(false); setName(''); setPhone(''); setAnswers({});
   };
 
   return (
