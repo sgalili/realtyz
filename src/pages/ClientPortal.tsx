@@ -368,9 +368,6 @@ export default function ClientPortal() {
           </Card>
         </section>
 
-        <footer className="pt-6 pb-10 text-center text-[11px] text-muted-foreground">
-          מופעל על ידי <span className="font-medium">TORAFF</span>
-        </footer>
       </main>
     </div>
   );

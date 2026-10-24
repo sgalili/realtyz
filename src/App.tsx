@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
+import { AppFooter } from "@/components/AppFooter";
 import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
@@ -392,6 +393,7 @@ const App = () => (
             <WorkspaceSelectorModal />
             <PostSignupWelcome />
             <WorkspaceScope>
+            <div className="app-route-pages">
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
               <Route path="/.lovable/oauth/consent" element={<Suspense fallback={<PageLoader />}><OAuthConsent /></Suspense>} />
@@ -494,8 +496,10 @@ const App = () => (
               <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactForm /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
+            </div>
             </WorkspaceScope>
             </Suspense>
+            <AppFooter />
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>

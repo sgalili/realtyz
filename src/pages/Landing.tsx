@@ -478,16 +478,6 @@ export default function Landing() {
 
       <LandingContent />
 
-      <footer className="border-t border-border/60 py-5 text-center text-sm text-muted-foreground">
-        <p>{platformName} - מערכת ניהול נדל"ן מבוססת AI · כל הזכויות שמורות</p>
-        <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-semibold">
-          <Link to="/terms" className="transition-colors hover:text-foreground">תנאי שימוש</Link>
-          <Link to="/privacy-policy" className="transition-colors hover:text-foreground">מדיניות פרטיות</Link>
-          <Link to="/dashboard" className="transition-colors hover:text-foreground">
-            כניסה למתווכים
-          </Link>
-        </p>
-      </footer>
 
     </div>
   );

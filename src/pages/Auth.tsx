@@ -478,18 +478,6 @@ const Auth = () => {
         </Card>
       </div>
 
-      <footer className="auth-page-footer" dir="rtl">
-        <div className="auth-footer-wave-band">
-          <div className="auth-footer-white-wave" aria-hidden="true" />
-        </div>
-        <div className="auth-footer-legal">
-          <span dir="ltr" className="auth-footer-copyright">© 2026 TORAFF. All rights reserved</span>
-          <div className="auth-footer-links">
-            <a href="/privacy-policy">מדיניות פרטיות</a>
-            <a href="/terms">תנאי שימוש</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
