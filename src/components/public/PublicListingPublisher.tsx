@@ -94,8 +94,8 @@ function LeadTypeHelp({ label, children }: { label: string; children: React.Reac
         </button>
       </DialogTrigger>
       <DialogContent dir="rtl" className="sm:max-w-md">
-        <DialogHeader><DialogTitle className="text-right">{label}</DialogTitle></DialogHeader>
-        <div className="space-y-3 text-sm leading-relaxed">{children}</div>
+        <DialogHeader><DialogTitle className="text-right text-2xl font-bold leading-snug">{label}</DialogTitle></DialogHeader>
+        <div className="space-y-4 text-lg leading-loose text-foreground">{children}</div>
       </DialogContent>
     </Dialog>
   );
@@ -834,6 +834,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
                     <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-1 self-center font-medium">
+                      {key === 'Form' ? <ClipboardList className="h-4 w-4 text-lead-form" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-4 w-4 text-lead-whatsapp" aria-hidden /> : <Phone className="h-4 w-4 text-lead-phone" aria-hidden />}
                       {label}
                       <LeadTypeHelp label={label}>
                         <p>
