@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, ChevronDown, Film, HelpCircle, ImagePlus, Loader2, X } from 'lucide-react';
+import { ClipboardList as LeadFormIcon, Phone as LeadPhoneIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -834,7 +835,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
                     <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-1 self-center font-medium">
-                      {key === 'Form' ? <ClipboardList className="h-4 w-4 text-lead-form" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-4 w-4 text-lead-whatsapp" aria-hidden /> : <Phone className="h-4 w-4 text-lead-phone" aria-hidden />}
+                      {key === 'Form' ? <LeadFormIcon className="h-4 w-4 text-lead-form" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-4 w-4 text-lead-whatsapp" aria-hidden /> : <LeadPhoneIcon className="h-4 w-4 text-lead-phone" aria-hidden />}
                       {label}
                       <LeadTypeHelp label={label}>
                         <p>
