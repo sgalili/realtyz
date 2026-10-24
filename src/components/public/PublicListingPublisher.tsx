@@ -783,8 +783,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           {step === 4 && (
             <div className="space-y-3">
               <PropertyAmenitiesFields fields={fields} onChange={patch => setFields(current => ({ ...current, ...patch }))} />
-              <div><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger aria-label="מצב הנכס *"><SelectValue placeholder="מצב הנכס *" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
-              <div><Textarea aria-label="תיאור הנכס" placeholder="תיאור הנכס" rows={3} value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
+              <div className="grid grid-cols-2 items-start gap-2">
+                <div className="space-y-2"><Select value={fields.entryDate === 'מיידית' ? 'immediate' : fields.entryDate ? 'date' : undefined} onValueChange={value => set('entryDate', value === 'immediate' ? 'מיידית' : '')}><SelectTrigger aria-label="תאריך כניסה" id="entry-mode"><SelectValue placeholder="תאריך כניסה" /></SelectTrigger><SelectContent><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{fields.entryDate !== 'מיידית' && <Input aria-label="תאריך כניסה" type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} />}</div>
+                <div><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger aria-label="מצב הנכס *"><SelectValue placeholder="מצב הנכס *" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
+              </div>
+              <div><Textarea aria-label="תיאור הנכס" placeholder="ספר/י על הנכס: מה מיוחד בו, מה שופץ לאחרונה, ולמי הוא מתאים" rows={3} className="placeholder:text-muted-foreground" value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
+
             </div>
           )}
 
