@@ -45,6 +45,7 @@ Deno.serve(async (req) => {
     const phone =
       toIntlDigits(profile?.phone) ??
       toIntlDigits((user.user_metadata as Record<string, unknown> | null)?.phone) ??
+      toIntlDigits((user.user_metadata as Record<string, unknown> | null)?.phone_number) ??
       toIntlDigits(user.phone) ??
       (await getLinkedPhone(creds).catch(() => null));
     const digits = toIntlDigits(phone);

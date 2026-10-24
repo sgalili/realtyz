@@ -4,7 +4,7 @@ export type PublicListingDraftFields = {
   publicationError?: string;
   importedListing?: Record<string, any> | null;
   /** מתווך / פרטי */
-  publisherType: 'broker' | 'private' | '';
+  publisherType: 'broker' | 'private' | 'developer' | '';
   dealType: 'sale' | 'rent' | '';
   propertyType: string;
   city: string;

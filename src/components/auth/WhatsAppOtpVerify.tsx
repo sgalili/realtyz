@@ -26,7 +26,9 @@ type Props = {
   lockPhone?: boolean;
   title?: string;
   description?: string;
-  onVerified?: (result: { phone: string; token_hash?: string }) => void;
+  onVerified?: (result: { phone: string; token_hash?: string; session?: { access_token: string; refresh_token: string } }) => void;
+  /** Also offer sending the code by SMS. */
+  allowSms?: boolean;
 };
 
 const RESEND_SECONDS = 45;
@@ -44,6 +46,7 @@ export function WhatsAppOtpVerify({
   title = 'אימות בוואטסאפ',
   description = 'נשלח קוד בן 4 ספרות מהמספר הרשמי שלנו בוואטסאפ.',
   onVerified,
+  allowSms = false,
 }: Props) {
   const [phone, setPhone] = useState(defaultPhone);
   const [code, setCode] = useState('');
@@ -59,7 +62,7 @@ export function WhatsAppOtpVerify({
     return () => clearTimeout(t);
   }, [cooldown]);
 
-  const send = async () => {
+  const send = async (via: 'whatsapp' | 'sms' = 'whatsapp') => {
     const normalized = normalize(phone);
     if (!normalized) {
       setError('מספר וואטסאפ לא תקין');
@@ -68,7 +71,7 @@ export function WhatsAppOtpVerify({
     setBusy(true);
     setError(null);
     const { data, error: fnError } = await supabase.functions.invoke('whatsapp-auth', {
-      body: { action: 'send', phone: normalized },
+      body: { action: via === 'sms' ? 'send_sms' : 'send', phone: normalized },
     });
     setBusy(false);
     if (fnError || data?.error) {
@@ -98,7 +101,7 @@ export function WhatsAppOtpVerify({
       return;
     }
     toast.success('האימות הושלם');
-    onVerified?.({ phone: normalized, token_hash: data?.token_hash });
+    onVerified?.({ phone: normalized, token_hash: data?.token_hash, session: data?.session });
   };
 
   return (
@@ -146,17 +149,20 @@ export function WhatsAppOtpVerify({
 
       <div className="flex flex-wrap gap-2">
         {!sent ? (
-          <Button size="sm" disabled={busy} onClick={send} className="gap-2">
+          <>
+          <Button size="sm" disabled={busy} onClick={() => void send('whatsapp')} className="gap-2">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
             שלח קוד בוואטסאפ
           </Button>
+          {allowSms && <Button size="sm" variant="outline" disabled={busy} onClick={() => void send('sms')}>שלח קוד ב-SMS</Button>}
+          </>
         ) : (
           <>
             <Button size="sm" disabled={busy || code.length !== 4} onClick={verify} className="gap-2">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               אמת קוד
             </Button>
-            <Button size="sm" variant="ghost" disabled={busy || cooldown > 0} onClick={send}>
+            <Button size="sm" variant="ghost" disabled={busy || cooldown > 0} onClick={() => void send(channel)}>
               {cooldown > 0 ? `שליחה חוזרת בעוד ${cooldown}` : 'שלח קוד מחדש'}
             </Button>
           </>
