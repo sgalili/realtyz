@@ -1722,7 +1722,7 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .welcome-rita { grid-column: 2; grid-row: 2 / 4; align-self: end; justify-self: start; width: calc(100% + 18px); max-width: none; height: 100%; min-height: 0; object-fit: contain; object-position: left bottom; transform: scaleX(-1); }
 .welcome-outline { opacity: .14; color: currentColor; }
 .welcome-slide[data-theme="3"] .welcome-cta { grid-column: 1 / -1; grid-row: 4; justify-self: center; max-width: 100%; }
-@media (max-height: 620px) and (max-width: 639px) {
+@media (max-height: 700px) and (max-width: 639px) {
   .welcome-slide[data-theme="3"] .welcome-content { padding: 40px 14px 6px; gap: 4px 8px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
   .welcome-slide[data-theme="3"] .welcome-title { font-size: 28px; }
   .welcome-slide[data-theme="3"] .welcome-copy { font-size: 17px; line-height: 1.25; }
@@ -1737,7 +1737,7 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
   .welcome-slide[data-theme="3"] .welcome-cta { grid-column: 1; grid-row: 4; justify-self: start; font-size: 20px; }
   .welcome-slide[data-theme="3"] .welcome-outline { max-width: 60px; }
 }
-@media (min-width: 640px) and (min-height: 800px) {
+@media (min-width: 640px) and (min-height: 900px) {
   .welcome-slide[data-theme="3"] .welcome-title { font-size: 60px; }
   .welcome-slide[data-theme="3"] .welcome-copy { font-size: 27px; line-height: 1.4; }
 }
