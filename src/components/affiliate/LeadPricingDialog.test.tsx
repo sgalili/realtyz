@@ -3,15 +3,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import LeadPricingDialog, { LeadPricingInfo } from './LeadPricingDialog';
 import type { MarketplaceListing } from '@/hooks/useAffiliate';
 
-const state = vi.hoisted(() => ({ editable: null as unknown, level4Unlocked: false }));
+const state = vi.hoisted(() => ({ editable: null as unknown, level4Unlocked: false, user: { id: 'poster' } as { id: string } | null }));
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: { editable: state.editable, details: { daily_lead_cap: 12 } }, isLoading: false, isError: false }) }));
-vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'poster' } }) }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: state.user }) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace' }));
 vi.mock('./RewardDialog', () => ({ RewardDialog: () => <div role="dialog"><label>הגדרות לידים<input aria-label="מחיר ליד" /></label></div> }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: state.level4Unlocked }) }));
 const listing = { tier1_amount: 100, tier2_amount: 150, tier3_amount: 0, tier4_amount: 10000 } as MarketplaceListing;
-afterEach(() => { cleanup(); state.level4Unlocked = false; });
+afterEach(() => { cleanup(); state.level4Unlocked = false; state.user = { id: 'poster' }; });
 describe('partner lead pricing information', () => {
+  it('shows configured guest types and exact daily limits without any reward prices', () => {
+    state.user = null;
+    state.level4Unlocked = true;
+    render(<LeadPricingInfo listing={listing} details={{ contact_options: { lead_daily_limits: { whatsapp: 4 } } }} rewardTypes={{ whatsapp: true, closing: true }} />);
+    expect(screen.getByText('4')).toBeTruthy();
+    expect(screen.getByText('סגירת עסקה')).toBeTruthy();
+    expect(screen.queryByText('₪120')).toBeNull();
+    expect(screen.queryByText('₪8,000')).toBeNull();
+    expect(screen.queryByText('שדות בטופס דף נחיתה')).toBeNull();
+  });
   it('shows 0.8% net and 0.2% platform share of a 1% closing fee for an authorized broker', () => {
     state.level4Unlocked = true;
     render(<LeadPricingInfo closingOnly listing={{ ...listing, tier4_amount: 1, tier4_type: 'percent' }} details={{}} />);
