@@ -211,3 +211,6 @@
 
 # Create-ad card 8 wording and layout
 - [x] Prefix the three lead-type rows with "פנייה דרך", rename the closing row to "עמלת תיווך עבור סגירת עסקה", move its expand arrow to the row end beside the lead switches, bold the מנגנון העמלות link, and render rent as "10,000 ₪ לחודש" with no slash and the number, sign and label bottom-aligned. Live check at 446×728 plus 24 focused tests and build OK; no ad published.
+
+# Card 8 collapsed lead prices
+- [x] Each lead-type row in Create Ad Card 8 collapses by default and shows its per-lead price in the row, or "ללא עמלה" when none is set, matching the collapsed closing-fee row. Clicking the title or the price expands the settings and enables a disabled type at its configured minimum. Live check at 446×728 (₪60 black, ₪90 green, ללא עמלה, phone ₪80 after enabling), 10 focused tests, typecheck and build OK; no ad published.
