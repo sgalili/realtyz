@@ -24,9 +24,9 @@ export function AffiliateTierPrices({ config }: { config?: AffiliateConfigRow })
     if (t2) tiers.push({ value: money(t2), label: 'שיחת WhatsApp', Icon: MessageCircle });
     if (t3) tiers.push({ value: config.affiliate_tier3_type === 'percent' ? `${t3}%` : money(t3), label: 'שיחת טלפון', Icon: Phone });
   }
-  if (tiers.length === 0) return null;
+  if (tiers.length === 0 && !(config?.affiliate_enabled && Number(config.affiliate_tier4_amount) > 0)) return null;
   return (
-    <LeadPricingDialog readOnly gross listing={{ listing_id: config?.id ?? '', broker_id: '', property_title: null, tier1_amount: Number(config?.affiliate_tier1_amount ?? 0), tier2_amount: Number(config?.affiliate_tier2_amount ?? 0), tier3_amount: Number(config?.affiliate_tier3_amount ?? 0), tier3_type: config?.affiliate_tier3_type ?? 'fixed' }}><CommissionTierBadges tiers={{ tier1: Number(config?.affiliate_tier1_amount ?? 0), tier2: Number(config?.affiliate_tier2_amount ?? 0), tier3: Number(config?.affiliate_tier3_amount ?? 0), tier4: 0, tier4Type: 'fixed' }} compact /></LeadPricingDialog>
+    <LeadPricingDialog readOnly gross listing={{ listing_id: config?.id ?? '', broker_id: '', property_title: null, tier1_amount: Number(config?.affiliate_tier1_amount ?? 0), tier2_amount: Number(config?.affiliate_tier2_amount ?? 0), tier3_amount: Number(config?.affiliate_tier3_amount ?? 0), tier3_type: config?.affiliate_tier3_type ?? 'fixed', tier4_amount: Number(config?.affiliate_tier4_amount ?? 0), tier4_type: config?.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed' }}><CommissionTierBadges tiers={{ tier1: Number(config?.affiliate_tier1_amount ?? 0), tier2: Number(config?.affiliate_tier2_amount ?? 0), tier3: Number(config?.affiliate_tier3_amount ?? 0), tier4: Number(config?.affiliate_tier4_amount ?? 0), tier4Type: config?.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed' }} compact /></LeadPricingDialog>
   );
 }
 

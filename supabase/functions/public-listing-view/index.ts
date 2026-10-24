@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     const publicProperty = (row: Record<string, any>) => {
       if (snapshot && row.id === listing.id) {
         const terms = snapshot.terms as Record<string, any> | null;
-        row = { ...row, asking_price: snapshot.asking_price,
+        row = { ...row,
           affiliate_tier1_amount: snapshot.tier1_amount, affiliate_tier2_amount: snapshot.tier2_amount,
           affiliate_tier3_amount: snapshot.tier3_amount, affiliate_tier4_amount: snapshot.tier4_amount,
           affiliate_tier4_type: snapshot.tier4_type,
