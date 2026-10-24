@@ -662,7 +662,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       case 0: return Boolean(f.publisherType);
       case 1: return Boolean(f.dealType);
       case 2: return Boolean(f.propertyType);
-      case 3: return Boolean(f.city.trim() && (f.street.trim() || f.address.trim()) && f.floor && f.totalFloors);
+      case 3: return Boolean(f.city.trim() && (f.street.trim() || f.address.trim()) && validFloorPair(f.floor, f.totalFloors));
       case 4: return Boolean(f.rooms && f.condition && f.airDirections);
       case 5: return Boolean(f.sqm || f.builtSqm);
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
