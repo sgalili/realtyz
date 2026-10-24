@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { driver, type Driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import './global-app-tour.css';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -67,6 +67,7 @@ export function GlobalAppTour() {
     if (!step) return;
     let cancelled = false;
     let footerRoot: Root | null = null;
+    let closeRoot: Root | null = null;
     let currentDriver: Driver | null = null;
     let frame = 0;
     const sidebar = step.sidebar === true;
@@ -110,6 +111,8 @@ export function GlobalAppTour() {
               {session.index === session.steps.length - 1 ? 'סיום' : 'הבא'}<ChevronLeft />
             </Button>
           </>);
+          closeRoot = createRoot(popover.closeButton);
+          closeRoot.render(<X className="h-7 w-7" strokeWidth={2} aria-hidden="true" />);
           popover.wrapper.focus({ preventScroll: true });
         },
       });
@@ -119,7 +122,7 @@ export function GlobalAppTour() {
     frame = requestAnimationFrame(highlight);
     return () => {
       cancelled = true; cancelAnimationFrame(frame);
-      footerRoot?.unmount(); currentDriver?.destroy(); activeDriver.current = null;
+      footerRoot?.unmount(); closeRoot?.unmount(); currentDriver?.destroy(); activeDriver.current = null;
     };
   }, [session, location.pathname, role.loading, navigate, setOpenMobile, setOpen]);
 

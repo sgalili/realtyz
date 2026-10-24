@@ -18,8 +18,9 @@
 .realtyz-global-tour .driver-popover-description { font-size: 20px; line-height: 1.55; margin-top: 12px; }
 .realtyz-global-tour .driver-popover-footer { margin-top: 20px; }
 .realtyz-global-tour .driver-popover-navigation-btns { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; }
-.realtyz-global-tour .driver-popover-close-btn { color: hsl(var(--muted-foreground)); left: 4px; right: auto; }
-.realtyz-global-tour .driver-popover-close-btn:hover { color: hsl(var(--foreground)); }
+/* Every tutorial slide gets a clear X in its top corner. */
+.realtyz-global-tour .driver-popover-close-btn { display: flex !important; align-items: center; justify-content: center; width: 40px; height: 40px; top: 6px; left: 6px; right: auto; border: 0; background: transparent; color: hsl(var(--muted-foreground)); cursor: pointer; }
+.realtyz-global-tour .driver-popover-close-btn:hover, .realtyz-global-tour .driver-popover-close-btn:focus-visible { color: hsl(var(--foreground)); }
 .realtyz-global-tour .driver-popover-arrow { display: none; }
 .driver-active .driver-overlay { z-index: 100000; }
 .realtyz-global-tour.driver-popover { z-index: 100002; }
