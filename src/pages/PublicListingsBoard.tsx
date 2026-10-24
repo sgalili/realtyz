@@ -297,13 +297,13 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
   return (
-    <div dir="rtl" className={embedded ? "bg-background" : "min-h-screen bg-background"}>
+    <div dir="rtl" className={cn('flex min-h-0 flex-col overflow-hidden bg-background', embedded ? 'h-full' : 'h-[100dvh]')}>
       {showWelcome && (
         <div className={cn('fixed inset-x-0 bottom-0 z-40 overflow-hidden overscroll-none bg-background', embedded ? 'top-16' : 'top-14 sm:top-16')}>
           <WelcomeSlides key={welcomeKey} onDone={() => setShowWelcome(false)} />
         </div>
       )}
-      <header className="bg-card">
+      <header className="relative z-20 shrink-0 bg-card">
         <div className="mx-auto w-full max-w-6xl px-4 pb-0 pt-2">
           {embedded ? null : (
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
@@ -321,7 +321,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         </div>
       </header>
 
-      <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-6">
+      <main aria-label="רשימת נכסים" className="mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overflow-y-auto overscroll-contain px-4 py-6">
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
