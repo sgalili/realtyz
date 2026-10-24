@@ -59,7 +59,8 @@ export default function PropertyContactActions({
   // configured conversation can collect it itself.
   const showWhatsapp = !shareOnly && settings.whatsapp === true;
   const showPhone = !shareOnly && settings.phone === true;
-  const showDigital = !shareOnly && settings.digital === true && !showWhatsapp && !showPhone;
+  const showDigital = !shareOnly && settings.digital === true && (formAsButton || (!showWhatsapp && !showPhone));
+  const [formOpen, setFormOpen] = useState(false);
   const [mode, setMode] = useState<'digital' | 'phone' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
