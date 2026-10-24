@@ -20,7 +20,7 @@ describe('primary signup choices', () => {
   it.each(['broker', 'developer', 'contractor', 'property_owner', 'property_seeker', 'partner'] as const)('sends explicit %s choice to the constrained server operation', async type => {
     setPendingSignupRole(type);
     if (type === 'broker') savePendingBrokerLicense('30722789');
-    await applyPendingSignupRole();
+    expect(await applyPendingSignupRole()).toBe('/');
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('select_signup_user_type', { _type: type });
   });
   it('never changes an established developer from a stale broker preference', async () => {

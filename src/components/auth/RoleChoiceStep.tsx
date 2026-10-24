@@ -47,7 +47,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         queryClient.invalidateQueries({ queryKey: ['primary-user-type'] }),
       ]);
       onDone?.();
-      navigate(type === 'developer' || type === 'contractor' ? '/developer-dashboard?onboarding=1' : type === 'property_owner' ? '/owner/properties' : type === 'property_seeker' ? '/public-listings' : '/', { replace: true });
+      navigate('/', { replace: true });
     } catch (error) {
       toast.error(type === 'broker' ? (error instanceof Error ? error.message : INVALID_BROKER_LICENSE) : 'לא ניתן לשמור את סוג המשתמש. נסו שוב.');
       setBusy(null);

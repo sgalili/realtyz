@@ -1788,6 +1788,18 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
   border-collapse: separate;
   border-spacing: 0;
 }
+
+/* A table owns both axes; nested horizontal wrappers must not trap vertical gestures. */
+.app-table-scroll {
+  max-height: 70dvh;
+  overflow: auto;
+  touch-action: pan-x pan-y pinch-zoom;
+  overscroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.board-head-sticky.app-table-scroll {
+  max-height: 100%;
+}
 .board-head-sticky thead {
   position: sticky;
   top: 0;

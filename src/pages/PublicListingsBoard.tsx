@@ -9,6 +9,7 @@ import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -330,7 +331,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
-            <div ref={tableWrapRef} className="board-head-sticky w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] min-h-0 flex-1 overflow-auto overscroll-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
+            <HorizontalTableScroll ref={tableWrapRef} aria-label="טבלת נכסים" className="board-head-sticky flex-1 rounded-lg border bg-card">
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
@@ -416,7 +417,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 </tbody>
               </table>
               {filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
-            </div>
+            </HorizontalTableScroll>
             </BoardColumnDragArea>
           )
         )}

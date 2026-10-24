@@ -1,6 +1,5 @@
 // Pending choices are signup intentions only; the authenticated RPC owns grants.
 import { supabase } from '@/integrations/supabase/client';
-import { PUBLIC_LISTING_RESUME_KEY } from '@/lib/publicListingDraft';
 import { readPendingBrokerLicense, savePendingBrokerLicense, verifyBrokerLicense } from '@/lib/brokerLicense';
 
 export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer' | 'contractor';
@@ -10,7 +9,7 @@ const NAME_KEY = 'toraff-signup-full-name';
 export function setPendingSignupName(name: string) {
   try { window.localStorage.setItem(NAME_KEY, name.trim()); } catch { /* signup intent only */ }
 }
-/** Developers land straight on the Yad2 import step after verification. */
+/** Explicit project onboarding shortcut, never an automatic sign-in destination. */
 export const DEVELOPER_ONBOARDING_PATH = '/developer-dashboard?onboarding=1';
 
 export const SIGNUP_ROLE_LABELS: Record<SignupRole, string> = {
@@ -93,12 +92,5 @@ export async function applyPendingSignupRole(): Promise<string | null> {
   if (error || !(data as { ok?: boolean } | null)?.ok) return null;
   markPostSignupWelcome(role);
   clearPendingSignupRole();
-  if (role === 'partner') return '/';
-  if (role === 'developer' || role === 'contractor') return DEVELOPER_ONBOARDING_PATH;
-  if (role === 'property_seeker') return '/public-listings';
-  if (role === 'property_owner') {
-    try { if (window.localStorage.getItem(PUBLIC_LISTING_RESUME_KEY) === '1') return '/public-listings'; } catch { /* storage disabled */ }
-    return '/owner/properties';
-  }
   return '/';
 }

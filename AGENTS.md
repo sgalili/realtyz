@@ -24,7 +24,8 @@
 - Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
 - Peer expansions use exclusive motion groups.
 - Inquiry tiers need server-only workspace/listing identity and satisfactory screening; first turns/callbacks never qualify. Atomic upgrades charge only unpaid differences.
-- Tables share sort/reorder/hide with visible grips and order-only reset; prefs never store listings. Native scrolling, no overlays. Why: consistency.
+- Tables share sort/reorder/hide and one bounded native two-axis scroll owner via HorizontalTableScroll; nested owners collapse and homepage keeps its own available-height bound. Prefs never store listings. Why: consistent touch, wheel and keyboard scrolling without trapped axes.
+- Every successful app sign-in and completed signup lands on the global homepage; the layout only clears old pending login flags and never chooses a dashboard. OAuth authorization consent remains a separate flow. Why: all account types browse the same public-safe feed without bypassing role completion.
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe.
 - Yad2 checks exact workspace records before daily claims; cache reads keep edits and source timestamps (no sliding freshness). Cache/scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely needs verified workspace status. Counters use completed-search snapshots.
 - Yad2 keeps original publisher snapshots, source buckets and scoped DOM evidence; never null-overwrites or classifies from related ads; license needs evidence.
