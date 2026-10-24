@@ -435,6 +435,13 @@
       "when": 1792679358327,
       "tag": "0061_mark_pending_account_deletions",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1792871744753,
+      "tag": "0062_protect_property_publication_and_locked_closing_rewards",
+      "breakpoints": true
     }
   ]
 }
