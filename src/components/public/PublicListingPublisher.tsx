@@ -462,7 +462,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const stepValid = () => {
     if (step === 2) return Boolean(fields.propertyType);
     if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()) && validFloorPair(fields.floor, fields.totalFloors));
-    if (step === 4) return Boolean(fields.rooms && fields.condition && fields.airDirections);
+    if (step === 4) return Boolean(fields.rooms);
     if (step === 5) return Boolean(fields.sqm || fields.builtSqm);
     if (step === 8) return Boolean(Number(fields.price) > 0 && fields.commissionTermsAccepted);
     return true;
@@ -658,7 +658,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       case 1: return Boolean(f.dealType);
       case 2: return Boolean(f.propertyType);
       case 3: return Boolean(f.city.trim() && (f.street.trim() || f.address.trim()) && validFloorPair(f.floor, f.totalFloors));
-      case 4: return Boolean(f.rooms && f.condition && f.airDirections);
+      case 4: return Boolean(f.rooms);
       case 5: return Boolean(f.sqm || f.builtSqm);
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
       case 7: return Boolean(f.contactName?.trim().split(/\s+/).length >= 2 && f.contactWhatsapp.replace(/\D/g, '').length >= 9);
@@ -778,8 +778,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             <div className="space-y-3">
               <PropertyAmenitiesFields fields={fields} onChange={patch => setFields(current => ({ ...current, ...patch }))} />
               <div className="grid grid-cols-2 items-start gap-2">
-                <div className="space-y-2"><Select value={fields.entryDate === 'מיידית' ? 'immediate' : fields.entryDate ? 'date' : undefined} onValueChange={value => set('entryDate', value === 'immediate' ? 'מיידית' : '')}><SelectTrigger aria-label="תאריך כניסה" id="entry-mode"><SelectValue placeholder="תאריך כניסה" /></SelectTrigger><SelectContent><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{fields.entryDate !== 'מיידית' && <Input aria-label="תאריך כניסה" type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} />}</div>
-                <div><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger aria-label="מצב הנכס *"><SelectValue placeholder="מצב הנכס *" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Select value={fields.entryMode || undefined} onValueChange={(value) => setFields((current) => value === 'immediate' ? { ...current, entryMode: 'immediate', entryDate: 'מיידית' } : { ...current, entryMode: 'date', entryDate: '' })}><SelectTrigger aria-label="תאריך כניסה" id="entry-mode"><SelectValue placeholder="תאריך כניסה" /></SelectTrigger><SelectContent><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{fields.entryMode === 'date' && <Input aria-label="תאריך כניסה" type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} />}</div>
+                <div><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger aria-label="מצב הנכס"><SelectValue placeholder="מצב הנכס" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
               </div>
               <div><Textarea aria-label="תיאור הנכס" placeholder="ספר/י על הנכס: מה מיוחד בו, מה שופץ לאחרונה, ולמי הוא מתאים" rows={3} className="placeholder:text-muted-foreground" value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
 

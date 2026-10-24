@@ -35,6 +35,8 @@ export type PublicListingDraftFields = {
   sqm: string;
   price: string;
   entryDate: string;
+  /** 'immediate' = כניסה מיידית, 'date' = תאריך שנבחר, '' = לא צוין */
+  entryMode?: 'immediate' | 'date' | '';
   description: string;
   contactName: string;
   contactWhatsapp: string;
@@ -87,6 +89,7 @@ export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
   sqm: '',
   price: '',
   entryDate: '',
+  entryMode: '',
   description: '',
   contactName: '',
   contactWhatsapp: '',
