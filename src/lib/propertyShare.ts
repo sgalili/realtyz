@@ -115,7 +115,7 @@ export function buildPropertyShareMessage(
   recipientName?: string | null,
 ): string {
   const priceStr = r.price
-    ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? '/חודש' : ''}`
+    ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? ' / לחודש' : ''}`
     : 'לפרטים';
   const meta = [r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null]
     .filter(Boolean)
@@ -139,7 +139,7 @@ function buildMultiMessage(
 ): string {
   const blocks = items.map(({ r, url }, i) => {
     const priceStr = r.price
-      ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? '/חודש' : ''}`
+      ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? ' / לחודש' : ''}`
       : 'לפרטים';
     const meta = [r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null]
       .filter(Boolean)

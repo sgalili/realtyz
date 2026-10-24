@@ -15,6 +15,7 @@ interface LiveListing {
   property_title: string;
   city: string | null;
   asking_price: number | null;
+  deal_type: string | null;
   is_featured: boolean;
   is_promoted: boolean;
   created_at: string;
@@ -40,7 +41,7 @@ export function ListingVisibilityManagerCard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, city, asking_price, is_featured, is_promoted, created_at')
+        .select('id, property_title, city, asking_price, deal_type, is_featured, is_promoted, created_at')
         .eq('user_id', user!.id)
         .eq('status', 'live')
         .order('is_promoted', { ascending: false })
@@ -95,7 +96,7 @@ export function ListingVisibilityManagerCard() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{l.property_title}</div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {[l.city, fmtPrice(l.asking_price)].filter(Boolean).join(' · ')}
+                    {[l.city, l.asking_price ? `${fmtPrice(l.asking_price)}${l.deal_type === 'rent' ? ' / לחודש' : ''}` : null].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <ListingVisibilityToggle

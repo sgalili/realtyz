@@ -36,6 +36,7 @@ type InternalListing = {
   property_title: string;
   description: string;
   asking_price: number | null;
+  deal_type: string | null;
 };
 
 type HomelyListing = {
@@ -123,7 +124,7 @@ export function ListingOutreachDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price')
+        .select('id, property_title, description, asking_price, deal_type')
         .eq('is_published', true)
         .order('updated_at', { ascending: false })
         .limit(100);
@@ -340,7 +341,7 @@ export function ListingOutreachDialog({
                       </div>
                       {l.asking_price ? (
                         <Badge variant="secondary" className="shrink-0">
-                          ₪{Number(l.asking_price).toLocaleString()}
+                          ₪{Number(l.asking_price).toLocaleString()}{l.deal_type === 'rent' ? ' / לחודש' : ''}
                         </Badge>
                       ) : null}
                     </div>

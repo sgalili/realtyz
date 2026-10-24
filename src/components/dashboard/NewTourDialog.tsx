@@ -449,7 +449,7 @@ export function NewTourDialog({ open, onOpenChange, tour = null }: { open: boole
                               {[p.address, p.city].filter(Boolean).join(', ')}
                             </span>
                             <span className="block truncate text-[14px] text-muted-foreground">
-                              {p.deal_type === 'rent' ? 'להשכרה' : p.deal_type === 'sale' ? 'למכירה' : 'סוג עסקה לא צוין'} · {p.rooms ? `${p.rooms} חדרים` : 'חדרים לא צוינו'}{p.sqm ? ` · ${p.sqm} מ״ר` : ''} · {formatPrice(p.asking_price)}
+                              {p.deal_type === 'rent' ? 'להשכרה' : p.deal_type === 'sale' ? 'למכירה' : 'סוג עסקה לא צוין'} · {p.rooms ? `${p.rooms} חדרים` : 'חדרים לא צוינו'}{p.sqm ? ` · ${p.sqm} מ״ר` : ''} · {formatPrice(p.asking_price)}{p.deal_type === 'rent' && p.asking_price ? ' / לחודש' : ''}
                             </span>
                           </span>
                         </button>

@@ -2482,7 +2482,7 @@ const InlineComposer = ({
                       <SourceBadge source={r.source} compact />
                     </div>
                     <div className="text-[11px] text-muted-foreground truncate">
-                      {[r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null, r.price ? `₪${r.price.toLocaleString('he-IL')}` : null]
+                      {[r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null, r.price ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? ' / לחודש' : ''}` : null]
                         .filter(Boolean).join(' · ')}
                       {importingExternalKey === r.key ? ' · מייבא…' : ''}
                     </div>
@@ -6876,7 +6876,7 @@ const VoiceLeadPickerDialog = ({
   const [userGender, setUserGender] = useState<Gender | null>(null);
 
   // Property promotion picker — optional focus listing for the call.
-  const [voiceListings, setVoiceListings] = useState<{ id: string; title: string; city: string | null; asking_price: number | null }[]>([]);
+  const [voiceListings, setVoiceListings] = useState<{ id: string; title: string; city: string | null; asking_price: number | null; deal_type: string | null }[]>([]);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
 
   // Manual-select state
@@ -6924,14 +6924,14 @@ const VoiceLeadPickerDialog = ({
       const [{ data: leadRows }, { data: listingRows }, { data: profile }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city, deal_type, preferences')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
-        supabase.from('listings').select('id, property_title, city, asking_price, status')
+        supabase.from('listings').select('id, property_title, city, asking_price, deal_type, status')
           .eq('status', 'live').order('created_at', { ascending: false }).limit(200),
         user ? supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null } as any),
         loadClonedVoices(),
       ]);
       setLeads(((leadRows as any[]) ?? []).map(mapVoiceLead));
       setVoiceListings(((listingRows as any[]) ?? []).map((l) => ({
-        id: l.id, title: l.property_title || 'נכס ללא כותרת', city: l.city ?? null, asking_price: l.asking_price ?? null,
+        id: l.id, title: l.property_title || 'נכס ללא כותרת', city: l.city ?? null, asking_price: l.asking_price ?? null, deal_type: l.deal_type ?? null,
       })));
       setUserGender(((profile as any)?.gender ?? null) as Gender | null);
       setLoading(false);
@@ -7209,7 +7209,7 @@ const VoiceLeadPickerDialog = ({
                         <SelectItem value="__none">ללא קידום נכס ספציפי (שיחה כללית)</SelectItem>
                         {voiceListings.map((l) => (
                           <SelectItem key={l.id} value={l.id}>
-                            {l.title}{l.city ? ` · ${l.city}` : ''}{l.asking_price ? ` · ₪${Number(l.asking_price).toLocaleString('he-IL')}` : ''}
+                            {l.title}{l.city ? ` · ${l.city}` : ''}{l.asking_price ? ` · ₪${Number(l.asking_price).toLocaleString('he-IL')}${l.deal_type === 'rent' ? ' / לחודש' : ''}` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>

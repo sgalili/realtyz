@@ -22,6 +22,7 @@ interface PendingListing {
   property_title: string;
   description: string | null;
   asking_price: number | null;
+  deal_type: string | null;
   city: string | null;
   neighborhood: string | null;
   address: string | null;
@@ -57,7 +58,7 @@ export function PendingListingsCard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, city, neighborhood, address, rooms, sqm, floor, parking, elevator, features, extracted_from_lead_id, extraction_metadata, source, source_url, is_investment_opportunity, created_at')
+        .select('id, property_title, description, asking_price, deal_type, city, neighborhood, address, rooms, sqm, floor, parking, elevator, features, extracted_from_lead_id, extraction_metadata, source, source_url, is_investment_opportunity, created_at')
         .eq('user_id', user!.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
@@ -177,7 +178,7 @@ export function PendingListingsCard() {
                         ) : l.source && l.source !== 'manual' ? (
                           <Badge variant="outline" className="text-[10px] uppercase">{l.source}</Badge>
                         ) : null}
-                        {l.asking_price ? <Badge variant="outline" className="text-[10px]">{fmtPrice(l.asking_price)}</Badge> : null}
+                        {l.asking_price ? <Badge variant="outline" className="text-[10px]">{fmtPrice(l.asking_price)}{l.deal_type === 'rent' ? ' / לחודש' : ''}</Badge> : null}
                         {l.rooms ? <Badge variant="outline" className="text-[10px]">{l.rooms} חד׳</Badge> : null}
                         {l.sqm ? <Badge variant="outline" className="text-[10px]">{l.sqm} מ"ר</Badge> : null}
                         {l.city ? <Badge variant="outline" className="text-[10px]">{l.city}{l.neighborhood ? ` · ${l.neighborhood}` : ''}</Badge> : null}
