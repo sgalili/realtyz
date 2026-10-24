@@ -1,4 +1,5 @@
 import { Table } from '@/components/ui/table';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { returnState } from "@/lib/returnNav";
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
@@ -857,7 +858,7 @@ export default function Properties() {
 
 
   return (
-    <div className="p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
+    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-hidden p-3 pt-0 sm:gap-6 sm:p-6 sm:pt-0' : 'p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
@@ -1226,6 +1227,7 @@ export default function Properties() {
       </Collapsible>
 
       {/* Results */}
+      <HorizontalTableScroll className={viewMode === 'table' ? 'listing-results-scroll board-head-sticky flex-1' : 'contents'}>
       <ErrorBoundary source="Properties.Results">
         {searching && sortedResults.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1282,6 +1284,7 @@ export default function Properties() {
           </>
         )}
       </ErrorBoundary>
+      </HorizontalTableScroll>
 
 
       <AddPropertyDialog

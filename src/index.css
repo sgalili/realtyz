@@ -958,6 +958,14 @@
   .app-route-pages:has(.public-board-page) { padding-bottom: 0; }
   .app-route-pages .realtyz-app-shell,
   .app-route-pages .public-board-page { height: calc(100dvh - var(--app-footer-space)); max-height: calc(100dvh - var(--app-footer-space)); }
+  /* A bounded page must not acquire a second document scroller from its shell. */
+  html:has(.public-board-page),
+  body:has(.public-board-page),
+  html:has(.realtyz-app-shell),
+  body:has(.realtyz-app-shell) { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  .app-route-pages:has(.public-board-page),
+  .app-route-pages:has(.realtyz-app-shell) { height: 100dvh; min-height: 0; overflow: hidden; }
+  .app-route-pages .group\/sidebar-wrapper { min-height: 0; height: calc(100dvh - var(--app-footer-space)); overflow: hidden; }
 
   .auth-footer-credit {
     margin: 0;
@@ -1815,12 +1823,17 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
   max-height: 70dvh;
   overflow: auto;
   touch-action: pan-x pan-y pinch-zoom;
-  overscroll-behavior: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 .board-head-sticky.app-table-scroll {
   max-height: 100%;
 }
+/* Only listing-table views opt their containing page into a bounded flex chain. */
+.realtyz-main-surface:has(.listing-table-page) { overflow: hidden; }
+.realtyz-main-surface > .app-content-width:has(.listing-table-page) { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+.listing-table-page > :not(.listing-results-scroll) { flex-shrink: 0; }
+.listing-results-scroll { min-height: 0; }
 .board-head-sticky thead {
   position: sticky;
   top: 0;
