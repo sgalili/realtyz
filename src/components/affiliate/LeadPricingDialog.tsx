@@ -44,7 +44,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
     </section>)}
     {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <section className="space-y-2"><div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-1.5 font-semibold">סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="font-bold text-success">{listing.tier4_type === 'percent' ? `${partnerNetReward(Number(listing.tier4_amount))}%` : `₪${partnerNetReward(Number(listing.tier4_amount)).toLocaleString('he-IL')}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></section> : rewardTypes?.closing && <section className="space-y-2"><h3 className="font-semibold">סגירת עסקה</h3><p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p></section>}
     {!user && <p className="text-muted-foreground">התחברו לצפייה במחירי התגמולים.</p>}
-    {!rows.length && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}
+    {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}
   </div>;
 }
 
