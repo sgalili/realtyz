@@ -1772,3 +1772,31 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .welcome-icon .welcome-sparkle svg, .welcome-icon .welcome-sparkle svg * { stroke-width: 3px !important; vector-effect: non-scaling-stroke; }
 .welcome-slide[data-theme="2"] .welcome-icon { opacity: .2; }
 @media (min-width: 640px) { .welcome-slide[data-theme="3"] .welcome-rita { grid-row: 1 / 4; object-fit: contain; object-position: right top; translate: 0; } .welcome-slide[data-theme="3"] .welcome-divider, .welcome-slide[data-theme="3"] .welcome-marquee { margin-inline: -40px; translate: 0; } }
+
+/* ============================================================
+   Public board table: the column-header row (labels plus the
+   horizontal scroll indicator below them) stays pinned at the top
+   of the results scroller while property rows scroll underneath.
+   The table needs separate borders for sticky <thead> to take
+   effect, so row separators move from the row to its cells.
+   ============================================================ */
+.board-head-sticky table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.board-head-sticky thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.board-head-sticky thead th,
+.board-head-sticky thead td {
+  background-color: color-mix(in srgb, hsl(var(--muted)) 40%, hsl(var(--card)));
+}
+.board-head-sticky thead tr:last-child > th,
+.board-head-sticky thead tr:last-child > td {
+  box-shadow: 0 1px 0 0 hsl(var(--border));
+}
+.board-head-sticky tbody > tr[data-row-id] > td {
+  border-top: 1px solid hsl(var(--border));
+}
