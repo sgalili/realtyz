@@ -205,3 +205,6 @@
 
 # Pinned table header
 - [x] Keep the property table's column-header row (labels plus its horizontal scroll bar) fixed while rows scroll; page header/search stay fixed too. Verified live at 446×728 and 1280×800: header pinned at scroll 0 and after scrolling, 1px row separators retained, expanded row lands fully below the header, no overlap or clipped labels; build OK and six focused tests pass.
+
+# Create-ad card 8 wording and layout
+- [x] Prefix the three lead-type rows with "פנייה דרך", rename the closing row to "עמלת תיווך עבור סגירת עסקה", move its expand arrow to the row end beside the lead switches, bold the מנגנון העמלות link, and render rent as "10,000 ₪ לחודש" with no slash and the number, sign and label bottom-aligned. Live check at 446×728 plus 24 focused tests and build OK; no ad published.
