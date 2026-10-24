@@ -958,6 +958,14 @@
   .app-route-pages:has(.public-board-page) { padding-bottom: 0; }
   .app-route-pages .realtyz-app-shell,
   .app-route-pages .public-board-page { height: calc(100dvh - var(--app-footer-space)); max-height: calc(100dvh - var(--app-footer-space)); }
+  /* A bounded page must not acquire a second document scroller from its shell. */
+  html:has(.public-board-page),
+  body:has(.public-board-page),
+  html:has(.realtyz-app-shell),
+  body:has(.realtyz-app-shell) { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  .app-route-pages:has(.public-board-page),
+  .app-route-pages:has(.realtyz-app-shell) { height: 100dvh; min-height: 0; overflow: hidden; }
+  .app-route-pages .group\/sidebar-wrapper { min-height: 0; height: calc(100dvh - var(--app-footer-space)); overflow: hidden; }
 
   .auth-footer-credit {
     margin: 0;

@@ -1,4 +1,5 @@
 # Board row actions
+- [ ] Keep listing-table pages stationary with only their bounded tables scrolling; verify homepage and management tables.
 - [x] Share the auth footer once across all public/account/admin routes, replace older landing/portal footers and reserve viewport-shell space. One-line layout verified at 320/446/1280px; legal navigation and signed-in home/profile/wallet checked. Modal overlays appropriately hide background accessibility controls.
 - [x] Add a small exit link on every tutorial slide and local two-axis wheel handling for shared tables, including RTL Shift-wheel. Seven focused tests pass; 446×728 iframe checks verify all-slide exit and up/down/left/right movement with pinned table headings. The actual Lovable editor host interception cannot be reproduced locally.
 - [x] Apply classification-aware publisher names in public board/details and retain full office names. Deployed both endpoints; guest mobile shows אודי ויטמן / אנגלו סכסון הרצליה, live feed preserves private initials; 22 focused tests and preview build pass. Developer naming tested; no live developer ad available in this feed.
