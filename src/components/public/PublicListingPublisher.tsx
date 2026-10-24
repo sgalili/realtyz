@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { PropertyAmenitiesFields } from './PropertyAmenitiesFields';
 import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propertyFormOptions';
 import { LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
+import { enableLeadPrice } from '@/lib/enableLeadPrice';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
 // everything, sign up through /auth, and have the listing auto-published on return.
@@ -833,8 +834,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
                     <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-1 self-center font-medium">
-                      {key === 'Form' ? <LeadFormIcon className="h-4 w-4 text-lead-form" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-4 w-4 text-lead-whatsapp" aria-hidden /> : <LeadPhoneIcon className="h-4 w-4 text-lead-phone" aria-hidden />}
-                      {label}
+                      <Button type="button" variant="ghost" className="h-auto justify-start gap-1 whitespace-normal p-0 text-start font-medium hover:bg-transparent" aria-expanded={Number(fields[`commission${key}`]) > 0} onClick={() => set(`commission${key}`, enableLeadPrice(fields[`commission${key}`] || '', tier))}>
+                        {key === 'Form' ? <LeadFormIcon className="h-4 w-4 shrink-0 text-lead-form" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-4 w-4 shrink-0 text-lead-whatsapp" aria-hidden /> : <LeadPhoneIcon className="h-4 w-4 shrink-0 text-lead-phone" aria-hidden />}
+                        {label}
+                      </Button>
                       <LeadTypeHelp label={label}>
                         <p>
                           {key === 'Form' && 'הפונה משאיר פרטים בטופס (שם מלא ומספר טלפון). המפרסם יכול להוסיף שדות מותאמים אישית לטופס לפי הצורך.'}
