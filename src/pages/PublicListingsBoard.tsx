@@ -302,7 +302,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     <div dir="rtl" className={cn('flex min-h-0 flex-col overflow-hidden bg-background', embedded ? 'h-full' : 'h-[100dvh]')}>
       {showWelcome && (
         <div className={cn('fixed inset-x-0 bottom-0 z-40 overflow-hidden overscroll-none bg-background', embedded ? 'top-16' : 'top-14 sm:top-16')}>
-          <WelcomeSlides key={welcomeKey} onDone={() => setShowWelcome(false)} />
+          <div className={cn('mx-auto w-full max-w-6xl px-4', embedded && 'app-content-width')}>
+            <WelcomeSlides key={welcomeKey} onDone={() => setShowWelcome(false)} />
+          </div>
         </div>
       )}
       <header className="relative z-20 shrink-0 bg-card">

@@ -77,7 +77,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       aria-roledescription="carousel"
       aria-label="היכרות עם TORAFF"
       data-theme={slide.theme}
-      className={cn('welcome-slide relative mx-3 mt-2 flex h-[calc(100dvh-4.75rem)] select-none flex-col overflow-hidden rounded-3xl transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
+      className={cn('welcome-slide relative mt-2 flex h-[calc(100dvh-4.75rem)] w-full select-none flex-col overflow-hidden rounded-3xl transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
       onTouchStart={e => { const t = e.touches[0]; touch.current = t ? { x: t.clientX, y: t.clientY } : null; }}
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
