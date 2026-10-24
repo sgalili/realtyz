@@ -595,7 +595,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       if (isBroker) { next.publisherType = 'broker'; next.contactName = fields.contactName || publisherName; next.contactWhatsapp = fields.contactWhatsapp || publisherPhone; }
       setFields(next); setFiles([]); setVideos([]);
       setStep(0);
-      setReviewMode(true); setExpandedStep(isBroker ? 'step-1' : 'step-0');
+      setReviewMode(true); setExpandedStep('step-2');
       try { await saveDraft(next, [], []); } catch { /* best effort */ }
       void saveToMyProperties({ ...src, source_url: sourceUrl }, u?.listing_id ?? null);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
