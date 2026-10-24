@@ -472,7 +472,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     const nextFields = { ...fields, [key]: value };
     setFields(nextFields);
     try { await saveDraft(nextFields); } catch { /* best effort */ }
-    if (reviewMode) return;
+    if (reviewMode) {
+      // Single-choice cards close and open the next card after a pick.
+      const current = Number(expandedStep.replace('step-', ''));
+      if (Number.isFinite(current) && current > 0) setExpandedStep(current + 1 < STEP_TITLES.length ? `step-${current + 1}` : '');
+      return;
+    }
     if (step === 0 && (key === 'publisherType' || key === 'dealType')) {
       setImportOption(null);
       // Smart skip: a signed-in user with a known role does not need to pick the role.
