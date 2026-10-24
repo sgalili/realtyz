@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { closingRewardLevel, isFeedEligible, publicPricing } from '../../supabase/functions/_shared/publicListingVisibility';
+import { boardPublisherName, publisherDisplayKind, closingRewardLevel, isFeedEligible, publicPricing } from '../../supabase/functions/_shared/publicListingVisibility';
+
+describe('publisher identity presentation', () => {
+  it('keeps full broker names for every viewer', () => {
+    expect(boardPublisherName('אודי ויטמן', 'broker')).toBe('אודי ויטמן');
+  });
+  it('keeps full developer and company names', () => {
+    expect(boardPublisherName('ישראל ישראלי', 'developer')).toBe('ישראל ישראלי');
+    expect(boardPublisherName('חברת בנייה ופיתוח בע״מ', 'company')).toBe('חברת בנייה ופיתוח בע״מ');
+  });
+  it.each(['private', 'seller', 'buyer', 'renter', 'landlord'])('abbreviates private %s names', kind => {
+    expect(boardPublisherName('ישראל ישראלי', kind)).toBe('ישראל י.');
+  });
+  it('uses authoritative professional roles when a manual publisher kind is missing', () => {
+    expect(publisherDisplayKind(null, ['agent', 'affiliate'])).toBe('broker');
+    expect(publisherDisplayKind(null, ['developer'])).toBe('developer');
+    expect(publisherDisplayKind(null, ['affiliate'])).toBe('private');
+  });
+  it('preserves an explicitly private original publisher despite the promoting workspace role', () => {
+    expect(publisherDisplayKind('private', ['agent'])).toBe('private');
+    expect(boardPublisherName('בעל הנכס', 'broker')).toBeNull();
+  });
+});
 
 describe('unified feed visibility', () => {
   it('includes published site-only properties', () => {

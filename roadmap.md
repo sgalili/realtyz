@@ -1,4 +1,5 @@
 # Board row actions
+- [ ] Apply classification-aware publisher names in public board/details, retain full office names, and verify live attribution plus focused tests.
 - [x] Route all sign-ins to global home and use a signed-in burger menu; authenticated auth entry and old pending flag verified, signup destinations tested for all six types.
 - [x] Use one bounded native two-axis scroll owner for homepage/shared/developer tables; guest/signed-in 320px, 446px and desktop wheel checks and phone touch checks pass with pinned headers. Shared lead table renders; exhaustive device/browser and every populated table checks remain unavailable.
 - [x] Enable and expand lead settings when their title is clicked, preserving selected prices; all three checked in isolated wizard draft, focused tests pass, no publication.
