@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { cloneElement, isValidElement, useEffect, type ReactElement, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fmtILS } from '@/lib/formatCurrency';
 import type { LucideIcon } from 'lucide-react';
 import {
   Heart, X, Accessibility, Armchair, Award, BadgeCheck, Banknote, Bath, Building, Building2, Bus, CalendarDays, Car, CarFront,
@@ -23,7 +24,7 @@ const dateHe = (v: unknown) => {
   const m = String(v ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
 };
-const ils = (n: number) => `₪${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+const ils = (n: number) => fmtILS(n);
 
 const AMENITIES: Array<[string, string, LucideIcon]> = [
   ['includeElevator', 'מעלית', Building],

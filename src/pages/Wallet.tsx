@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, ArrowDownLeft, CreditCard, Plus, Wallet as WalletIcon } from 'lucide-react';
 import { ACTION_META, fmtCompactCredits, fmtCredits, ilsToCredits, parseActionNote } from '@/lib/credits';
+import { fmtILS } from '@/lib/formatCurrency';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -27,8 +28,8 @@ const TYPE_LABEL: Record<string, string> = {
 };
 const TIER_LABEL: Record<number, string> = { 1: 'טופס', 2: 'וואטסאפ עם ריטה', 3: 'שיחת טלפון' };
 const DEPOSIT_TYPES = new Set(['topup', 'launch_bonus', 'referral_reward', 'manual_adjustment', 'dispute_refund']);
-export const ils = (n: number) => `₪${Math.round(n).toLocaleString('he-IL')}`;
-const money = (n: number) => `₪${n.toLocaleString('he-IL', { maximumFractionDigits: Math.abs(n) < 10 ? 2 : 0 })}`;
+export const ils = (n: number) => fmtILS(n);
+const money = (n: number) => fmtILS(n);
 const when = (d: string) => new Date(d).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export default function Wallet() {
