@@ -1,3 +1,6 @@
+# Board row actions
+- [x] Remove the chevron expand arrow from the table actions column; row click still opens details. Verified live at 446×728: no chevron, heart and drag handle remain, details expand on click, build and table tests pass.
+
 # Property reward indicators
 - [x] Add table-only signed-in net prices, guest lead icons without closing, server-authorized closing indicators and penultimate deal column; eight focused tests and preview build pass. Guest/signed-in real table order verified; first 24 listings have no active rewards, so priced live rows and licensed broker session remain unverified.
 - [x] Update shared bare configured reward icons, guest-safe explanations/daily limits and private publisher avatar.
