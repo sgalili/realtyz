@@ -879,30 +879,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 onChange={(next) => questionsOpen && set(questionsOpen, next)}
               />
               <p className="text-xs text-muted-foreground">{"\n"}</p>
-              <div className="flex items-start gap-2 text-sm">
-                <Checkbox id="commission-terms" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
-                <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button type="button" className="font-semibold text-primary underline underline-offset-2">מנגנון העמלות</button>
-                  </DialogTrigger>
-                  <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-                    <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
-                    <div className="space-y-3 text-sm leading-relaxed">
-                      <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשליד חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
-                      <ul className="list-disc space-y-1 ps-5">
-                        <li><b>שדות מטופס בעמוד נחיתה:</b> הפונה השאיר פרטים בטופס המודעה.</li>
-                        <li><b>שיחה עם ריטה בווטסאפ:</b> הפונה פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
-                        <li><b>שיחת טלפון:</b> הפונה התקשר ישירות למספר שבמודעה.</li>
-                      </ul>
-                      <p><b>מגבלה יומית:</b> מספר הפניות המרבי שתחויב עליהן ביום מכל סוג. לאחר שהגעת למגבלה, המודעה ממשיכה להופיע אך לא תחויב על פניות נוספות מאותו סוג עד היום הבא.</p>
-                      <p>כל פנייה נבדקת באמצעות 3 שאלות סינון קצרות שהמפרסם קובע מראש, וכוללת תמליל מלא של השיחה (ובשיחות טלפון גם הקלטה). פנייה נחשבת תקפה וחייבת לחיוב רק אם התשובות חיוביות ומשביעות רצון.</p>
-                      <p>עמלה גבוהה יותר מעודדת שותפים לקדם את המודעה שלך. ניתן לשנות את הסכומים והמגבלות בכל עת מתוך המודעות שלי. שדה ריק משאיר את ההגדרה הקיימת או ללא עמלה.</p>
-                      <p>החיוב מתבצע רק על פנייה אמיתית שנרשמה במערכת, ולא על צפיות או קליקים.</p>
-                    </div>
-                  </DialogContent>
-                </Dialog></span>
-              </div>
             </div>
           )}
     </>
