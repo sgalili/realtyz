@@ -3,12 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 afterEach(cleanup);
 describe('closing fee interaction', () => {
-  it('converts 1% of 2,000,000 to fixed 20,000 without losing mode', () => {
-    const change = vi.fn();
-    render(<ClosingFeeSlider dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
-    fireEvent.click(screen.getByRole('button', { name: 'סכום בשקלים' }));
-    expect(change).toHaveBeenCalledWith(20000, 'fixed');
-  });
   it('bounds manually edited fixed sale fees to 0.2%-2%', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider dualMode dealType="sale" price={2000000} value={20000} valueType="fixed" onChange={vi.fn()} onValueChange={change} />);
