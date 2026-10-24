@@ -321,7 +321,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         </div>
       </header>
 
-      <main aria-label="רשימת נכסים" className="mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overflow-y-auto overscroll-contain px-4 py-6">
+      <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain px-4 py-6', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
@@ -329,7 +329,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
-            <div ref={tableWrapRef} className="w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] overflow-x-auto overscroll-x-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
+            <div ref={tableWrapRef} className="board-head-sticky w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] min-h-0 flex-1 overflow-auto overscroll-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
@@ -368,7 +368,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       // Scroll the expanded card's top to the top of the view.
                       // A short delay lets the expansion animation start first,
                       // otherwise the smooth scroll is cancelled by the reflow.
-                      window.setTimeout(() => document.getElementById(`row-${card.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+                      // The pinned header row covers the top of the scroller, so the row
+                      // needs its own scroll margin to land fully below it.
+                      const head = tableWrapRef.current?.querySelector('thead') as HTMLElement | null;
+                      const row = document.getElementById(`row-${card.id}`);
+                      if (row) row.style.scrollMarginTop = `${(head?.offsetHeight ?? 0) + 6}px`;
+                      window.setTimeout(() => row?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
                     };
                     return [
                       <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -413,7 +418,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </BoardColumnDragArea>
           )
         )}
-        {!loading && filtered.length > visibleCount && <div className="flex justify-center pt-5"><Button variant="outline" onClick={() => setVisibleCount(count => count + 24)}>נכסים נוספים</Button></div>}
+        {!loading && filtered.length > visibleCount && <div className="flex shrink-0 justify-center pt-5"><Button variant="outline" onClick={() => setVisibleCount(count => count + 24)}>נכסים נוספים</Button></div>}
       </main>
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
