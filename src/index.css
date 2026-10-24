@@ -1138,9 +1138,9 @@
     /* Page surface — must match the PageHero wave fill so the wave melts
        seamlessly into the content area (no visible seam). */
     background: hsl(var(--background));
-    /* Prevent iOS/macOS rubber-band overscroll bounce so the sticky hero stays anchored. */
-    overscroll-behavior: none;
-    -webkit-overflow-scrolling: auto;
+    /* Let native table scrolling hand off to its containing page at the edge. */
+    overscroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Exactly 20px between the hero and page content across the whole app:

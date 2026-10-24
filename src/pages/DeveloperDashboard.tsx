@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import DeveloperYad2Import from '@/components/developers/DeveloperYad2Import';
 import DeveloperProjectWizard from '@/components/developers/DeveloperProjectWizard';
@@ -173,7 +174,7 @@ export default function DeveloperDashboard() {
               <AnimatedExpansion open={open}><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} onPost={unit => { const target = projectCampaignTargets(p).find(t => t.id.endsWith(`:unit:${encodeURIComponent(`${unit.building_id ?? ''}:${unit.source_unit_id}`)}`)); if (target) navigate(`/campaigns?tab=create&listing=${encodeURIComponent(target.id)}&fresh=1`); }} /></AnimatedExpansion>
             </div>
           </article>; })}
-        </div> : <BoardColumnDragArea controls={columns}><div className="w-full min-w-0 overflow-x-auto rounded-lg border bg-card"><table className="w-max min-w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
+        </div> : <BoardColumnDragArea controls={columns}><HorizontalTableScroll className="rounded-lg border bg-card"><table className="w-max min-w-full text-sm"><thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{columns.visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}<th className="p-2"><BoardColumnMenu controls={columns} /></th></tr></thead><tbody>
           {columns.sorted.flatMap(p => { const open = expandedId === p.id; const deal = projectDeal(p); const hierarchy = savedProjectHierarchy(p); return [<tr key={p.id} tabIndex={0} aria-expanded={open} onClick={() => setExpandedId(open ? null : p.id)} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpandedId(open ? null : p.id); } }} className="cursor-pointer border-t hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {columns.visible.map(id => <td key={id} className={cn('p-2', id === 'price' && 'whitespace-nowrap font-bold', id === 'price' && (deal === 'rent' ? 'text-sale' : 'text-success'))}>
               {id === 'photo' ? projectImages(p)[0] ? <img src={projectImages(p)[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>
@@ -183,7 +184,7 @@ export default function DeveloperDashboard() {
             </td>)}
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
           </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><AnimatedExpansion open={open}><div className="sticky right-0 max-w-[calc(100vw-2rem)] space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></div></AnimatedExpansion></td></tr>]; })}
-        </tbody></table></div></BoardColumnDragArea>}
+        </tbody></table></HorizontalTableScroll></BoardColumnDragArea>}
       </>}
       <Dialog open={mode !== null} onOpenChange={open => { if (!open) close(); }}>
         <DialogContent dir="rtl" className="max-h-[92dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-lg p-4 sm:p-6">

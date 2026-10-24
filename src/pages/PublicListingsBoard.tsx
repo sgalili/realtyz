@@ -169,7 +169,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     let norm = scrollIndicator.width >= 100 ? 0 : scrollIndicator.offset / Math.max(0.001, 100 - scrollIndicator.width);
     if (!thumb.contains(e.target as Node)) {
       const rect = track.getBoundingClientRect();
-      norm = Math.min(1, Math.max(0, (e.clientX - rect.left - thumbW / 2) / Math.max(1, trackW - thumbW)));
+      norm = Math.min(1, Math.max(0, (rect.right - e.clientX - thumbW / 2) / Math.max(1, trackW - thumbW)));
       el.scrollLeft = -norm * maxScroll;
     }
     thumbDrag.current = { pointerId: e.pointerId, startX: e.clientX, startNorm: norm };
