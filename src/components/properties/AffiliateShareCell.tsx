@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
 import { type AffiliateConfigRow } from '@/hooks/useAffiliate';
 import { publicUrl } from '@/lib/publicUrl';
+import { fmtILS } from '@/lib/formatCurrency';
 import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 
-const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+const money = (n: number) => fmtILS(Number(n));
 
 type Tier = { value: string; label: string; Icon: typeof ClipboardList };
 
