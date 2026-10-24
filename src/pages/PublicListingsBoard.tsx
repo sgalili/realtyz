@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, BadgeCheck, GripVertical, Heart, LayoutGrid, List, Send, CircleUserRound } from 'lucide-react';
+import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Send, CircleUserRound } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
@@ -387,13 +387,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                         </td>)}
                         <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
                         {visibleColumns.includes('deal') && <td data-column="deal" className="p-2"><span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span></td>}
-                        <td className="relative pb-8 ps-2 pe-2 pt-2 align-bottom"><div className="flex items-center gap-1">{partnerActions(card)}
+                        <td className="p-2 align-bottom"><div className="flex items-center gap-1">{partnerActions(card)}
                           <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); void toggleFavorite(card); }} aria-label={favIds.has(card.id) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={favIds.has(card.id)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favIds.has(card.id) && 'fill-current')} /></Button>
                           <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; }}><GripVertical className="h-4 w-4" /></Button>
                         </div>
-                          <Button type="button" variant="ghost" size="icon" className="absolute bottom-0.5 left-0.5 h-7 w-7 text-muted-foreground/70 hover:bg-transparent hover:text-foreground" aria-label={`${open ? 'קיפול' : 'פתיחת'} ${title}`} aria-expanded={open} aria-controls={`details-${card.id}`} onClick={(event) => { event.stopPropagation(); toggle(); }}>
-                            <ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', open && 'rotate-180')} />
-                          </Button>
                         </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
