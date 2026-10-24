@@ -846,7 +846,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                         </p>
                       </LeadTypeHelp>
                     </span><Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={Number(fields[`commission${key}`]) > 0} onCheckedChange={active => set(`commission${key}`, active ? String(LEAD_PRICE_RANGES[tier].min) : '')} /></div>
-                    {Number(fields[`commission${key}`]) > 0 && <div className="space-y-2">
+                    {active && expanded && <div className="space-y-2">
                     <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} onChange={value => set(`commission${key}`, value)} />
                     <div className="flex items-center justify-between gap-3"><Input id={`daily-limit-${key}`} inputMode="numeric" placeholder="מקס׳ ביום · ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-full" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
@@ -870,7 +870,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     })()}
                     </div>}
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <ClosingFeeSlider dualMode dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
