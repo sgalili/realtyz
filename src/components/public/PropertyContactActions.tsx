@@ -51,6 +51,8 @@ export default function PropertyContactActions({
   showShare?: boolean;
   shareOnly?: boolean;
   shareButtonClassName?: string;
+  /** Homepage cards: render the digital-lead form behind a "השאירו פרטים" button instead of inline. */
+  formAsButton?: boolean;
 }) {
   const settings = options ?? {};
   // Preserve priced identity capture, but avoid a redundant form when a
