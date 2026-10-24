@@ -498,8 +498,8 @@ const App = () => (
             </Routes>
             </div>
             </WorkspaceScope>
-            <AppFooter />
             </Suspense>
+            <AppFooter />
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>

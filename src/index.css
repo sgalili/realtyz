@@ -1024,6 +1024,12 @@
     color: hsl(var(--foreground) / 0.86);
   }
 
+  @media (min-width: 400px) {
+    .auth-page-footer { padding-inline: 16px; }
+    .auth-footer-legal { gap: 16px; }
+    .auth-footer-links { gap: 1.75rem; }
+  }
+
   .auth-gold-button {
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
