@@ -380,7 +380,7 @@ loading ? (
                     label: string;
                     Icon: React.ComponentType<{ className?: string }>;
                   }> = [];
-                  const money = (n: number) => `₪${Number(n).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`;
+                  const money = (n: number) => fmtILS(Number(n));
                   const options =
                     listing.contact_options && typeof listing.contact_options === "object"
                       ? listing.contact_options

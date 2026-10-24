@@ -229,7 +229,7 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
 
 export function formatPrice(value: number, dealType: PublicListing['dealType']): string {
   if (!value) return 'לפרטים';
-  const amount = `₪${value.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+  const amount = fmtILS(value);
   return amount;
 }
 

@@ -56,7 +56,7 @@ export function propertyDealLabel(p: PropertyOption): string | null {
 export function propertyPriceLabel(p: PropertyOption): string | null {
   const n = Number(p.asking_price);
   if (!p.asking_price || Number.isNaN(n)) return null;
-  return `${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })} ₪`;
+  return `${fmtILS(n).replace('₪', '')} ₪`;
 }
 
 export function propertyRoomsLabel(p: PropertyOption): string | null {

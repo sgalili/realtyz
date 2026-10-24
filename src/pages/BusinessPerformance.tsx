@@ -91,7 +91,8 @@ function formatILS(n: number): string {
   return new Intl.NumberFormat('he-IL', {
     style: 'currency',
     currency: 'ILS',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
   }).format(Number(n) || 0);
 }
 
