@@ -489,6 +489,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     if (!fields.contactName.trim() || fields.contactWhatsapp.replace(/\D/g, '').length < 9) {
       toast.error('יש למלא שם ומספר ווטסאפ'); return;
     }
+    if (fields.contactName.trim().split(/\s+/).length < 2) {
+      toast.error('יש למלא שם פרטי ושם משפחה'); return;
+    }
     if (!fields.termsAccepted) { toast.error('יש לאשר את התקנון'); return; }
     if (!fields.commissionTermsAccepted) { toast.error('יש לאשר שקראת והבנת את מנגנון העמלות'); return; }
     {
@@ -623,7 +626,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       case 4: return Boolean(f.rooms && f.condition && f.airDirections);
       case 5: return Boolean(f.price && (f.sqm || f.builtSqm));
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
-      case 7: return Boolean(f.contactName?.trim() && f.contactWhatsapp.replace(/\D/g, '').length >= 9);
+      case 7: return Boolean(f.contactName?.trim().split(/\s+/).length >= 2 && f.contactWhatsapp.replace(/\D/g, '').length >= 9);
       case 8: return Boolean(f.commissionTermsAccepted);
       default: return false;
     }

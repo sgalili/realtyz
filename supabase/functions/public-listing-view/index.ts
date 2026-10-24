@@ -4,7 +4,7 @@ import { cleanPayload } from "../_shared/cleanValues.ts";
 import { maskContactText, toPublicCard } from "../_shared/publicMask.ts";
 import { verifiedSourceLicense, licenseNumber } from "../_shared/yad2Publisher.ts";
 import { publicDeveloperDetails } from '../_shared/publicDeveloperDetails.ts';
-import { publicPricing } from '../_shared/publicListingVisibility.ts';
+import { publicPricing, boardPublisherName } from '../_shared/publicListingVisibility.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
     const property = publicProperty(listing);
     const workspace_properties = (workspaceRows ?? []).map((row) => publicProperty(row));
     const ownAttribution = {
-      broker_name: profile?.broker_byline || profile?.full_name || "שם המתווך לא צוין",
+      broker_name: boardPublisherName(profile?.full_name) ?? boardPublisherName(profile?.broker_byline),
       office_name: brand?.agency_name || workspace?.workspace_name || "שם המשרד לא צוין",
       broker_license_number: licenseNumber(profile?.broker_license_number),
       agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || workspace?.workspace_logo_url || null,
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
       const exclusive = [row.additional_details, row.attributes].some((d: any) => d?.isAssetExclusive === true);
       const broker = exclusive || !!licence || !!office || ["broker", "agency"].includes(m.publisher_kind);
       return {
-        broker_name: name ?? (broker ? "מתווך" : "בעל הנכס"),
+        broker_name: boardPublisherName(name),
         office_name: office ?? (broker ? "משרד תיווך" : m.publisher_kind === "private" ? "מפרסם פרטי" : null),
         broker_license_number: licence,
         agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url),
