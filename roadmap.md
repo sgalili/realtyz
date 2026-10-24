@@ -1,5 +1,5 @@
 # Board row actions
-- [ ] Add an always-visible small tutorial exit link and verify two-axis table scrolling inside an embedded preview.
+- [x] Add a small exit link on every tutorial slide and local two-axis wheel handling for shared tables, including RTL Shift-wheel. Seven focused tests pass; 446×728 iframe checks verify all-slide exit and up/down/left/right movement with pinned table headings. The actual Lovable editor host interception cannot be reproduced locally.
 - [x] Apply classification-aware publisher names in public board/details and retain full office names. Deployed both endpoints; guest mobile shows אודי ויטמן / אנגלו סכסון הרצליה, live feed preserves private initials; 22 focused tests and preview build pass. Developer naming tested; no live developer ad available in this feed.
 - [x] Route all sign-ins to global home and use a signed-in burger menu; authenticated auth entry and old pending flag verified, signup destinations tested for all six types.
 - [x] Use one bounded native two-axis scroll owner for homepage/shared/developer tables; guest/signed-in 320px, 446px and desktop wheel checks and phone touch checks pass with pinned headers. Shared lead table renders; exhaustive device/browser and every populated table checks remain unavailable.
