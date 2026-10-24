@@ -1,4 +1,5 @@
 # Board row actions
+- [ ] Update property wizard floor consistency, amenity menus, Card 8 price, distribution note and immediate entry; verify selections and saved drafts.
 - [x] Remove the chevron expand arrow from the table actions column; row click still opens details. Verified live at 446×728: no chevron, heart and drag handle remain, details expand on click, build and table tests pass.
 
 # Property reward indicators
