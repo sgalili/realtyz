@@ -178,7 +178,7 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     (async () => {
       const { data } = await supabase
         .from('listings')
-        .select('property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, features, source_metadata, latitude, longitude')
+        .select('property_title, description, asking_price, deal_type, city, address, neighborhood, rooms, sqm, floor, parking, elevator, features, source_metadata, latitude, longitude')
         .eq('id', property.id)
         .maybeSingle();
       if (data) hydrateFromRow({ ...property, ...data });
@@ -406,7 +406,7 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
               <div className="col-span-2 space-y-2">
                 <Label className="text-xs font-semibold">מיקום במפה</Label>
                 <WorkspacePropertiesMap
-                  properties={hasCoordinates && property ? [{ id: property.id, title: mapTitle, latitude, longitude, price: Number(price) || null }] : []}
+                  properties={hasCoordinates && property ? [{ id: property.id, title: mapTitle, latitude, longitude, price: Number(price) || null, dealType: (property as any).deal_type ?? null }] : []}
                   selectedId={property?.id ?? null}
                   onSelect={() => undefined}
                   fallbackAddress={mapAddress}

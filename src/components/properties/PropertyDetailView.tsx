@@ -218,7 +218,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           <Card className="space-y-2 p-4 sm:p-5">
             <h2 className="text-sm font-bold text-foreground">מיקום הנכס</h2>
             <WorkspacePropertiesMap
-              properties={hasCoordinates ? [{ id: property.id, title: fullAddress || headline, latitude, longitude, price: property.price }] : []}
+              properties={hasCoordinates ? [{ id: property.id, title: fullAddress || headline, latitude, longitude, price: property.price, dealType: isRent ? 'rent' : 'sale' }] : []}
               selectedId={property.id}
               onSelect={() => undefined}
               fallbackAddress={mapAddress}
