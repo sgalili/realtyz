@@ -112,7 +112,7 @@ export function GlobalAppTour() {
             </Button>
           </>);
           closeRoot = createRoot(popover.closeButton);
-          closeRoot.render(<X className="h-6 w-6" strokeWidth={2} aria-hidden="true" />);
+          closeRoot.render(<X className="h-7 w-7" strokeWidth={2} aria-hidden="true" />);
           popover.wrapper.focus({ preventScroll: true });
         },
       });
