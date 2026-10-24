@@ -978,7 +978,7 @@ export default function Properties() {
              )}
              {suggestionsOpen && q.trim().length >= 2 && !/yad2\.co\.il|https?:\/\//i.test(q) && yad2Status?.tone !== 'busy' && (
               <div id="inventory-suggestions" role="listbox" aria-label="נכסי המשרד" className="absolute inset-x-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
-                {inventorySuggestions.isFetching ? <div role="status" className="flex items-center gap-2 p-3 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />מחפש בנכסי המשרד…</div> : suggestions.length ? suggestions.map((row, index) => <Button key={row.key} id={`inventory-option-${index}`} role="option" aria-selected={suggestionIndex === index} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { setSuggestionsOpen(false); void handleSelect(row); }} className={`h-auto w-full justify-start gap-2 p-2 text-right ${suggestionIndex === index ? 'bg-accent text-accent-foreground' : ''}`}><MapPin className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1"><span className="block truncate">{row.address || row.title}</span><span className="block truncate text-xs text-muted-foreground">{[row.city, row.title].filter(Boolean).join(' · ')}</span></span>{row.price ? <span className="shrink-0 text-xs tabular-nums">{formatPrice(row.price)}</span> : null}</Button>) : <div className="p-3 text-sm text-muted-foreground">{inventorySuggestions.isError ? 'לא ניתן לטעון הצעות כרגע' : 'לא נמצאו נכסים במשרד'}</div>}
+                {inventorySuggestions.isFetching ? <div role="status" className="flex items-center gap-2 p-3 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />מחפש בנכסי המשרד…</div> : suggestions.length ? suggestions.map((row, index) => <Button key={row.key} id={`inventory-option-${index}`} role="option" aria-selected={suggestionIndex === index} variant="ghost" onMouseDown={event => event.preventDefault()} onClick={() => { setSuggestionsOpen(false); void handleSelect(row); }} className={`h-auto w-full justify-start gap-2 p-2 text-right ${suggestionIndex === index ? 'bg-accent text-accent-foreground' : ''}`}><MapPin className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1"><span className="block truncate">{row.address || row.title}</span><span className="block truncate text-xs text-muted-foreground">{[row.city, row.title].filter(Boolean).join(' · ')}</span></span>{row.price ? <span className="shrink-0 text-xs tabular-nums">{formatPrice(row.price)}{row.listing_type === 'rent' ? ' / לחודש' : ''}</span> : null}</Button>) : <div className="p-3 text-sm text-muted-foreground">{inventorySuggestions.isError ? 'לא ניתן לטעון הצעות כרגע' : 'לא נמצאו נכסים במשרד'}</div>}
               </div>
             )}
             {yad2Status && (
@@ -1536,7 +1536,7 @@ function ResultCard({
         <div className="flex items-center justify-between mt-auto pt-2 border-t gap-2 flex-wrap">
           <div className="text-lg font-bold text-success inline-flex items-center gap-1">
             {result.price
-              ? (<>{formatPrice(result.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}</>)
+              ? (<>{formatPrice(result.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground"> / לחודש</span> : null}</>)
               : (<span className="text-sm font-semibold text-amber-600">פרטים חסרים</span>)}
           </div>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -1800,7 +1800,7 @@ export function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap tabular-nums"><span data-sort-value={Number(apartmentNumberOf({ address: r.address, raw: r.raw })) || ''}>{apartmentNumberOf({ address: r.address, raw: r.raw }) || '—'}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap max-w-[10rem] truncate">{neighborhoodOf(r) || '—'}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
-                <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}><span data-sort-value={typeof r.price === 'number' ? r.price : ''}>{r.price ? formatPrice(r.price) : '—'}</span></td>
+                <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}><span data-sort-value={typeof r.price === 'number' ? r.price : ''}>{r.price ? formatPrice(r.price) : '—'}{isRent && r.price ? <span className="ms-1 text-[10px] font-normal text-muted-foreground"> / לחודש</span> : null}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap"><span data-sort-value={r.rooms ?? ''}>{r.rooms ?? '—'}</span></td>
                 <td className="px-2 py-1.5 whitespace-nowrap"><span data-sort-value={r.size_sqm ?? ''}>{r.size_sqm ?? '—'}</span></td>

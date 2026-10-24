@@ -337,7 +337,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
             <span className="text-[15px] font-semibold leading-tight text-foreground" title={fullAddress}>{fullAddress}</span>
             <span className="text-muted-foreground">{listing.rooms ? `${listing.rooms} חד׳` : '—'}</span>
             <span className="text-muted-foreground">{listing.sqm ? `${listing.sqm} מ״ר` : '—'}</span>
-            <div className="space-y-1"><span className="text-[15px] font-bold text-foreground" dir="ltr">{listing.asking_price ? fmtILS(listing.asking_price) : '—'}</span><LeadPricingDialog listing={listing} referralId={referral?.id} /></div>
+            <div className="space-y-1"><span className="text-[15px] font-bold text-foreground" dir="ltr">{listing.asking_price ? fmtILS(listing.asking_price) : '—'}</span>{listing.deal_type === 'rent' && listing.asking_price ? <span className="text-xs font-normal text-muted-foreground"> / לחודש</span> : null}<LeadPricingDialog listing={listing} referralId={referral?.id} /></div>
           </div>
           <Button
             type="button"
@@ -481,7 +481,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
 
         <div className="flex items-center justify-between gap-2">
           <div className={compact ? 'hidden' : 'text-lg font-bold text-slate-900'} dir="ltr">
-            {listing.asking_price ? <bdi>{fmtILS(listing.asking_price)}</bdi> : <span className="text-sm text-muted-foreground">מחיר לא צוין</span>}
+            {listing.asking_price ? <bdi>{fmtILS(listing.asking_price)}</bdi> : <span className="text-sm text-muted-foreground">מחיר לא צוין</span>}{listing.deal_type === 'rent' && listing.asking_price ? <span className="ms-1 text-xs font-normal text-muted-foreground"> / לחודש</span> : null}
           </div>
           <Button
             type="button"
@@ -544,7 +544,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
               <div>
                 <dt className="text-muted-foreground">מחיר</dt>
                 <dd className="font-semibold text-slate-900" dir="ltr">
-                  {listing.asking_price ? fmtILS(listing.asking_price) : '—'}
+                  {listing.asking_price ? fmtILS(listing.asking_price) : '—'}{listing.deal_type === 'rent' && listing.asking_price ? ' / לחודש' : ''}
                 </dd>
               </div>
               <div>
