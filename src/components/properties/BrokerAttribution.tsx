@@ -1,5 +1,6 @@
 import { Award, Building2, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 type BrokerAttributionProps = {
   brokerName?: string | null;
@@ -31,13 +32,13 @@ export default function BrokerAttribution({
 
   return (
     <div data-publisher-attribution className={`flex min-w-0 items-center gap-2 border-y bg-muted/30 ${compact ? 'px-2 py-2' : 'px-4 py-3'}`}>
-      <div className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
+      {isPrivate ? <Avatar className={compact ? 'h-9 w-9' : 'h-12 w-12'}><AvatarFallback><UserRound className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" /></AvatarFallback></Avatar> : <div className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
         {logoUrl && !isPrivate ? (
           <img src={logoUrl} alt={`לוגו ${office}`} loading="lazy" className="h-full w-full object-contain p-1" />
         ) : (
           isPrivate ? <UserRound className="h-6 w-6 fill-muted-foreground/20 text-muted-foreground drop-shadow-sm" strokeWidth={1.5} aria-hidden="true" /> : <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         )}
-      </div>
+      </div>}
       <div className="min-w-0 flex-1 text-right">
         <p title={broker || 'מפרסם המודעה'} className={`${compact ? 'text-xs' : 'text-sm'} truncate font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
         {(isPrivate || office || license) && <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">

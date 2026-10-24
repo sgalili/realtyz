@@ -74,6 +74,7 @@ export type PublicCard = {
   description: string | null;
   photos: string[];
   contact_options: Record<string, unknown> | null;
+  reward_types: { form: boolean; whatsapp: boolean; phone: boolean; closing: boolean };
   masked: true;
 };
 
@@ -114,6 +115,12 @@ export function toPublicCard(row: Record<string, any>): PublicCard {
     price: row.asking_price == null ? null : Number(row.asking_price),
     description: maskContactText(rawDescription).slice(0, 700) || null,
     photos: photosOf(row),
+    reward_types: {
+      form: Number(row.affiliate_tier1_amount) > 0,
+      whatsapp: Number(row.affiliate_tier2_amount) > 0,
+      phone: Number(row.affiliate_tier3_amount) > 0,
+      closing: Number(row.affiliate_tier4_amount) > 0,
+    },
     contact_options: {
       ...(row.contact_options && typeof row.contact_options === 'object' ? row.contact_options : {}),
       digital: Number(row.affiliate_tier1_amount) > 0,
@@ -125,4 +132,4 @@ export function toPublicCard(row: Record<string, any>): PublicCard {
 }
 
 export const PUBLIC_CARD_COLUMNS =
-  "id, slug, property_title, address, house_number, apartment_number, city, neighborhood, deal_type, rooms, sqm, floor, features, asking_price, description, short_description, long_description, image_url, media_photos, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, created_at, is_published, status, affiliate_enabled, daily_lead_cap";
+  "id, slug, property_title, address, house_number, apartment_number, city, neighborhood, deal_type, rooms, sqm, floor, features, asking_price, description, short_description, long_description, image_url, media_photos, contact_options, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, affiliate_tier4_amount, created_at, is_published, status, affiliate_enabled, daily_lead_cap";
