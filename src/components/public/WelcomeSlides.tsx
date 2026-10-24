@@ -82,7 +82,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
       <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon ? <Icon className="h-full w-full" strokeWidth={4} /> : <span className="welcome-sparkle block h-full w-full"><GeminiSparkle /></span>}</div>
-      <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-10 w-10 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 active:bg-transparent"><X className="!h-[30px] !w-[30px]" /></Button>
+      <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute left-2 top-2 z-20 h-10 w-10 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 active:bg-transparent"><X className="!h-[30px] !w-[30px]" /></Button>
       <div key={index} className="welcome-content relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pb-4 pt-12 text-right sm:px-14 sm:pt-16" aria-live="polite">
         <div className="welcome-text min-h-0 overflow-y-auto overscroll-contain">
           <h2 className="welcome-title welcome-enter text-[38px] font-black leading-[1.08] sm:text-[74px]">{slide.title}</h2>
