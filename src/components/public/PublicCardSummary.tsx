@@ -5,7 +5,6 @@ import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import PublicAdHeading from './PublicAdHeading';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
-import PropertyCommissionIcons from './PropertyCommissionIcons';
 import { listingDistribution } from '@/lib/homeActivity';
 import { useAuth } from '@/hooks/useAuth';
 

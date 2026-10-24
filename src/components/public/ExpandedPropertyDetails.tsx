@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { normalizeListing } from '@/pages/PublicListingPage';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
-import PropertyCommissionIcons from './PropertyCommissionIcons';
 import PropertyContactActions from './PropertyContactActions';
 import { publicUrl } from '@/lib/publicUrl';
 
