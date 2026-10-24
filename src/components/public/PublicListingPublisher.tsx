@@ -263,7 +263,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
     if (!user?.id || publishing) return;
-    if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !draftFields.price) {
+    if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || !(Number(draftFields.commissionDeal) > 0)) {
       return;
     }
     setPublishing(true);

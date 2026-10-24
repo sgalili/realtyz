@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { listingToDraft, draftPricingPayload, preserveListingFeatures } from './adRecovery';
+import { listingToDraft, draftPricingPayload, preserveListingFeatures, missingPublishFields } from './adRecovery';
+import { EMPTY_PUBLIC_LISTING_DRAFT } from './publicListingDraft';
 
 const fields = [{ id: 'storage', label: 'אחסון אופניים', type: 'yesno', required: true }];
 const row = {
@@ -8,6 +9,19 @@ const row = {
   contact_options: { lead_daily_limits: { form: 5, whatsapp: 3, phone: 2 }, questions: ['תקציב?'], questions_phone: [], form_fields: fields, custom_flag: true },
 };
 describe('saved ad recovery', () => {
+  it('requires a positive property price before publication', () => {
+    expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '0', commissionDeal: '1' }, true)).toContain('מחיר');
+    expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '2000000', commissionDeal: '1' }, true)).not.toContain('מחיר');
+  });
+  it('requires closing commission even when other lead types are priced', () => {
+    expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, commissionForm: '40', commissionDeal: '' }, true)).toContain('עמלת סגירה');
+    expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, commissionDeal: '1' }, true)).not.toContain('עמלת סגירה');
+  });
+  it('allows all optional lead prices to remain disabled with a configured closing fee', () => {
+    const draft = { ...EMPTY_PUBLIC_LISTING_DRAFT, commissionForm: '', commissionWhatsapp: '', commissionPhone: '', commissionDeal: '1' };
+    expect(missingPublishFields(draft, true)).not.toContain('עמלה לפחות לסוג פנייה אחד');
+    expect(draftPricingPayload(draft)).toMatchObject({ affiliate_tier1_amount: 0, affiliate_tier2_amount: 0, affiliate_tier3_amount: 0, affiliate_tier4_type: 'percent', affiliate_tier4_amount: 1 });
+  });
   it('preserves the saved closing fee and type', () => {
     expect(draftPricingPayload(listingToDraft(row)).features.deal_closing_commission).toEqual({ type: 'percent', value: 1.2 });
   });

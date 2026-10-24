@@ -22,12 +22,12 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen }:
   if (networkOpen === false) return null;
   const source = property ?? raw;
   const listing = marketplace.data?.find(row => row.listing_id === listingId);
-  const tiers = listing ? listingTiers(listing) : {
+  const tiers = !property && listing ? listingTiers(listing) : {
     tier1: Number(source?.affiliate_tier1_amount ?? 0), tier2: Number(source?.affiliate_tier2_amount ?? 0),
     tier3: Number(source?.affiliate_tier3_amount ?? 0), tier4: level4Unlocked ? Number(source?.affiliate_tier4_amount ?? 0) : 0,
     tier4Type: (source?.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed') as 'percent' | 'fixed',
   };
   const types: RewardTypes = source?.reward_types as RewardTypes ?? { form: tiers.tier1 > 0, whatsapp: tiers.tier2 > 0, phone: tiers.tier3 > 0, closing: tiers.tier4 > 0 };
   if (!Object.values(types).some(Boolean)) return null;
-  return <LeadPricingDialog readOnly rewardTypes={types} listing={listing ?? { listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}><RewardIcons types={types} /></LeadPricingDialog>;
+  return <LeadPricingDialog readOnly rewardTypes={types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}><RewardIcons types={types} /></LeadPricingDialog>;
 }
