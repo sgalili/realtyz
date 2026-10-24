@@ -7,7 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { PUBLIC_CARD_COLUMNS, toPublicCard } from "../_shared/publicMask.ts";
-import { isFeedEligible, meetsBoardRules, boardPublisherName } from '../_shared/publicListingVisibility.ts';
+import { isFeedEligible, meetsBoardRules, boardPublisherName, closingRewardLevel } from '../_shared/publicListingVisibility.ts';
 import { verifiedSourceLicense } from '../_shared/yad2Publisher.ts';
 
 const json = (body: unknown, status = 200) =>
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
       const base = attribution(row);
       const name = boardPublisherName(base.broker_name);
       if (!meetsBoardRules(row, name)) return [];
-      return [{ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true, attribution: { ...base, broker_name: name } }];
+      return [{ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true, closing_level: closingRewardLevel(row.features?.deal_closing_commission?.value ?? row.affiliate_tier4_amount, row.features?.deal_closing_commission?.type ?? row.affiliate_tier4_type, row.deal_type, row.asking_price), attribution: { ...base, broker_name: name } }];
     });
     return json({ properties, has_more: rows.length === limit });
   } catch (error) {

@@ -2,6 +2,19 @@ export function isFeedEligible(row: { status?: string; is_published?: boolean; a
   return row.status !== 'discarded' && (row.is_published === true || row.affiliate_enabled === true);
 }
 
+/** Coarse 0-3 closing-reward color level, matching the publisher's closing slider (no amount is revealed). */
+export function closingRewardLevel(value: unknown, type: unknown, dealType: unknown, price: unknown): number | null {
+  const amount = Number(value);
+  if (!(amount > 0)) return null;
+  const rent = dealType === 'rent';
+  const min = rent ? 10 : 0.2, max = rent ? 100 : 2;
+  const base = Number(price);
+  const percent = type === 'percent' ? amount : base > 0 ? amount / base * 100 : NaN;
+  if (!Number.isFinite(percent)) return null;
+  const progress = (Math.min(max, Math.max(min, percent)) - min) / (max - min);
+  return Math.min(3, Math.floor(progress * 4));
+}
+
 export function publicPricing(row: Record<string, unknown>, signedIn: boolean, closingAllowed: boolean): Record<string, unknown> {
   const safe = { ...row };
   const features = row.features as { deal_closing_commission?: { value?: unknown; type?: unknown } } | undefined;
@@ -17,6 +30,8 @@ export function publicPricing(row: Record<string, unknown>, signedIn: boolean, c
     phone: Number(row.affiliate_tier3_amount) > 0,
     closing: closingAmount > 0,
   };
+  const level = closingRewardLevel(closingAmount, closing?.type ?? row.affiliate_tier4_type, row.deal_type, row.asking_price);
+  if (level !== null) safe.closing_level = level;
   // Pricing nested inside feature metadata is subject to the same server gate.
   if ((!signedIn || !closingAllowed) && features && typeof features === 'object' && !Array.isArray(features)) {
     const { deal_closing_commission: _closing, ...publicFeatures } = features;
