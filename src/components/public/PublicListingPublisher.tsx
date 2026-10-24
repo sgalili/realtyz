@@ -161,6 +161,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [importSlide, setImportSlide] = useState(false);
+  const [whoSlide, setWhoSlide] = useState(false);
+  const [otpOpen, setOtpOpen] = useState(false);
+  const pendingAuthPublish = useRef<{ fields: PublicListingDraftFields; files: File[]; videos: File[] } | null>(null);
   // Which sub-option of the minimalist create-ad screen is expanded.
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
@@ -277,6 +280,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();
+       } else if (draftFields.publisherType === 'developer' && !isDeveloper) {
+        // Roles are refreshed on the next visit so the open wizard is not redirected mid-publication.
+        const { error } = await supabase.rpc('register_as_developer' as any, { _display_name: draftFields.contactName.trim() || null });
+        if (error) throw error;
        } else if (draftFields.publisherType === 'private' && !isPropertyOwner) {
         const { error } = await supabase.rpc('register_as_property_owner', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
@@ -453,9 +460,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       setImportOption(null);
       // Smart skip: a signed-in user with a known role does not need to pick the role.
       const known = isBroker ? 'broker' : user && isPropertyOwner ? 'private' : null;
-      const ready = { ...nextFields, publisherType: nextFields.publisherType || known || '' } as PublicListingDraftFields;
-      if (ready !== nextFields) setFields(ready);
-      if (ready.publisherType && ready.dealType) setImportSlide(true);
+      if (key === 'publisherType') { setWhoSlide(false); setImportSlide(true); return; }
+      if (known) { setFields({ ...nextFields, publisherType: known }); setImportSlide(true); return; }
+      setWhoSlide(true);
       return;
     }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
@@ -506,7 +513,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     if (user) publicationAudio.current = preparePublicationSound();
     try {
       await saveDraft();
-      if (!user) { setPendingSignupRole('property_owner'); navigate('/auth'); return; }
+      if (!user) { pendingAuthPublish.current = { fields, files, videos }; setOtpOpen(true); return; }
       await publish();
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'שגיאת אחסון בדפדפן';
@@ -640,20 +647,25 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   const renderStep = (step: number) => (
     <>
-          {step === 0 && !importSlide && (
+          {step === 0 && !importSlide && !whoSlide && (
+            <div className="space-y-2">
+              <p className="text-center text-[19px] font-semibold text-muted-foreground">סוג המודעה</p>
+              <div className="grid grid-cols-2 gap-2">
+                {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
+                  <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {step === 0 && !importSlide && whoSlide && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <p className="text-center text-[19px] font-semibold text-muted-foreground">מי מפרסם?</p>
                 <div className="grid grid-cols-3 gap-2">
                   <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>בעל הנכס</Button>
                   <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
-                  <Button type="button" variant="outline" className="h-auto px-2 py-4 text-base font-bold" onClick={() => { if (!user) { setPendingSignupRole('developer'); navigate('/auth'); return; } void supabase.rpc('register_as_developer' as any, { _display_name: null }).then(async ({ error }) => { if (error) { toast.error(error.message); return; } await refetchRoles(); navigate('/developer-dashboard?onboarding=1'); }); }}>יזם</Button>
+                  <Button type="button" className="h-auto px-2 py-4 text-base font-bold" variant={fields.publisherType === 'developer' ? 'default' : 'outline'} onClick={() => void pickAndAdvance('publisherType', 'developer')}>יזם</Button>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
-                  <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
-                ))}
               </div>
             </div>
           )}
@@ -893,7 +905,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     <Dialog open={open && !entryPending && !isDeveloper} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
         <DialogHeader className="px-10 text-center">
-          {(reviewMode || step > 0 || importSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
+          {(reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
