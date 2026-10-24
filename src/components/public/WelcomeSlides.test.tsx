@@ -18,9 +18,9 @@ describe("welcome slides", () => {
       expect(container.textContent).not.toMatch(/[—–]/);
     }
   });
-  it("slide 1 starts with מחברים and drops מקצה לקצה", () => {
+  it("slide 1 starts with המהפכה בעולם הנדל״ן and drops מקצה לקצה", () => {
     const { container } = render(<WelcomeSlides onDone={() => {}} />);
-    expect(container.querySelector("h2")?.textContent?.startsWith("מחברים")).toBe(true);
+    expect(container.querySelector("h2")?.textContent?.startsWith("המהפכה בעולם הנדל״ן")).toBe(true);
     expect(container.textContent).not.toContain("מקצה לקצה");
   });
 });
