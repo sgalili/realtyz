@@ -38,6 +38,7 @@ import {
   type PublicListingDraftFields,
 } from '@/lib/publicListingDraft';
 import { setPendingSignupRole } from '@/lib/signupRole';
+import { WhatsAppOtpVerify } from '@/components/auth/WhatsAppOtpVerify';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutocomplete';
@@ -204,6 +205,22 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     openedScope.current = draftScope;
   }, [draftScope]);
   const restoredScope = useRef('');
+  // First-time visitors verify their phone inside the wizard; the account is created and the ad published in one flow.
+  useEffect(() => {
+    const pending = pendingAuthPublish.current;
+    if (!user?.id || !pending) return;
+    pendingAuthPublish.current = null;
+    restoredScope.current = draftScope;
+    setFields(pending.fields); setFiles(pending.files); setVideos(pending.videos);
+    void (async () => {
+      const name = pending.fields.contactName.trim();
+      if (name) await supabase.rpc('complete_signup_profile' as any, { _full_name: name }).then(() => undefined, () => undefined);
+      void supabase.functions.invoke('sync-owner-wa-avatar').catch(() => {});
+      publicationAudio.current = preparePublicationSound();
+      await publish(pending.fields, pending.files, pending.videos);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, draftScope]);
   const saveDraft = (f = fields, images = files, clips = videos) => restoredScope.current !== draftScope ? Promise.resolve() : savePublicListingDraft({ ...f, publicationError: f.publicationError || publishError, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step, importUrl, reviewMode, importSlide, expandedStep, wizardStep: step }, images, clips, draftScope);
   // Always restore the last saved draft (all slides, media, step) for this user/workspace when the wizard opens.
   useEffect(() => {
@@ -892,6 +909,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   return (
     <>
     {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => { if (user && isAffiliateOnly) { setPublishAs(null); setAskPublishAs(true); } else setOpen(true); }} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
+    <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) pendingAuthPublish.current = null; setOtpOpen(value); }}>
+      <DialogContent dir="rtl" className="sm:max-w-sm">
+        <DialogHeader><DialogTitle className="text-right">אימות מספר הטלפון</DialogTitle></DialogHeader>
+        <WhatsAppOtpVerify allowSms defaultPhone={fields.contactWhatsapp} description="נשלח קוד בן 4 ספרות בוואטסאפ או ב-SMS. לאחר האימות החשבון ייפתח והמודעה תפורסם." onVerified={async (result) => {
+          const { error } = result.session ? await supabase.auth.setSession(result.session) : result.token_hash ? await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' }) : { error: new Error('missing session') };
+          if (error) { pendingAuthPublish.current = null; toast.error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); return; }
+          setOtpOpen(false);
+        }} />
+      </DialogContent>
+    </Dialog>
     <Dialog open={askPublishAs} onOpenChange={setAskPublishAs}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
         <DialogHeader><DialogTitle className="text-right">בתור מי אתה מפרסם את הנכס?</DialogTitle></DialogHeader>
