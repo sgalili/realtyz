@@ -828,7 +828,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="space-y-3">
-              <div className="space-y-2"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-16 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /></div>
+              <div className="space-y-2"><div className="relative"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-2xl font-bold text-muted-foreground sm:text-3xl">₪</span><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-16 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl', fields.dealType === 'rent' ? 'pl-12 pr-28 text-sale' : 'pl-12 pr-6 text-success')} onChange={e => set('price', e.target.value)} />{fields.dealType === 'rent' && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-base font-normal text-muted-foreground">/ לחודש</span>}</div></div>
               <div className="space-y-4 text-sm">
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
@@ -996,7 +996,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           <p className="text-xs font-semibold text-muted-foreground">{fields.dealType === 'rent' ? 'להשכרה' : 'למכירה'} · {fields.propertyType}</p>
           <p className="break-words text-lg font-bold">{[addressLine, fields.city].filter(Boolean).join(', ')}</p>
           {fields.neighborhood && <p className="text-sm text-muted-foreground">{fields.neighborhood}</p>}
-          <p className="text-2xl font-bold text-primary">₪{Number(fields.price || 0).toLocaleString('he-IL')}</p>
+          <p className="text-2xl font-bold text-primary">₪{Number(fields.price || 0).toLocaleString('he-IL')}{fields.dealType === 'rent' ? ' / לחודש' : ''}</p>
           <dl className="grid grid-cols-3 gap-2 border-y border-border py-3 text-center text-sm">
             {fields.rooms && <div><dt className="text-xs text-muted-foreground">חדרים</dt><dd className="mt-1 font-semibold">{fields.rooms}</dd></div>}
             {fields.floor && <div><dt className="text-xs text-muted-foreground">קומה</dt><dd className="mt-1 font-semibold">{fields.floor}{fields.totalFloors ? ` מתוך ${fields.totalFloors}` : ''}</dd></div>}
