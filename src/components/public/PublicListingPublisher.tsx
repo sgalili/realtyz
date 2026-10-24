@@ -74,9 +74,9 @@ const STEP_TITLES = [
 ];
 
 const LEAD_TYPES = [
-  { key: 'Form', tier: 'form', label: 'שדות מטופס בעמוד נחיתה' },
-  { key: 'Whatsapp', tier: 'whatsapp', label: 'סינון בשיחת ווטסאפ' },
-  { key: 'Phone', tier: 'phone', label: 'סינון בשיחת טלפון' },
+  { key: 'Form', tier: 'form', label: 'פנייה דרך שדות מטופס בעמוד נחיתה' },
+  { key: 'Whatsapp', tier: 'whatsapp', label: 'פנייה דרך סינון בשיחת ווטסאפ' },
+  { key: 'Phone', tier: 'phone', label: 'פנייה דרך סינון בשיחת טלפון' },
 ] as const;
 
 
@@ -828,7 +828,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="space-y-3">
-              <div className="space-y-2">{fields.dealType === 'rent' ? <div dir="ltr" className="mx-auto flex h-16 w-fit max-w-full items-center justify-center gap-1 rounded-md border border-input bg-background px-3 shadow-xs"><span aria-hidden="true" className="pointer-events-none whitespace-nowrap text-base font-normal text-muted-foreground">/ לחודש</span><span aria-hidden="true" className="pointer-events-none text-2xl font-bold text-muted-foreground sm:text-3xl">₪</span><PriceInput id="wizard-price" aria-label="שכירות חודשית *" value={fields.price} placeholder="שכירות חודשית *" className={cn('h-full w-auto border-0 bg-transparent px-0 text-center text-3xl font-bold text-sale shadow-none ring-0 placeholder:text-lg focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-4xl [field-sizing:content]')} onChange={e => set('price', e.target.value)} /></div> : <div className="relative"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-2xl font-bold text-muted-foreground sm:text-3xl">₪</span><PriceInput id="wizard-price" aria-label="מחיר מכירה *" value={fields.price} placeholder="מחיר מכירה *" className={cn('h-16 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl pl-12 pr-6 text-success')} onChange={e => set('price', e.target.value)} /></div>}</div>
+              <div className="space-y-2">{fields.dealType === 'rent' ? <div dir="ltr" className="mx-auto flex h-16 w-fit max-w-full items-end justify-center gap-1 rounded-md border border-input bg-background px-3 pb-2 shadow-xs"><span aria-hidden="true" className="pointer-events-none whitespace-nowrap pb-3.5 text-base font-normal leading-none text-muted-foreground">לחודש</span><span aria-hidden="true" className="pointer-events-none pb-3.5 text-2xl font-bold leading-none text-muted-foreground sm:text-3xl">₪</span><PriceInput id="wizard-price" aria-label="שכירות חודשית *" value={fields.price} placeholder="שכירות חודשית *" className={cn('h-auto w-auto border-0 bg-transparent px-0 text-center text-3xl font-bold leading-none text-sale shadow-none ring-0 placeholder:text-lg focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-4xl [field-sizing:content]')} onChange={e => set('price', e.target.value)} /></div> : <div className="relative"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-2xl font-bold text-muted-foreground sm:text-3xl">₪</span><PriceInput id="wizard-price" aria-label="מחיר מכירה *" value={fields.price} placeholder="מחיר מכירה *" className={cn('h-16 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl pl-12 pr-6 text-success')} onChange={e => set('price', e.target.value)} /></div>}</div>
               <div className="space-y-4 text-sm">
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
@@ -943,7 +943,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <button type="button" className="font-semibold text-primary underline underline-offset-2">מנגנון העמלות</button>
+                    <button type="button" className="font-bold text-primary underline underline-offset-2">מנגנון העמלות</button>
                   </DialogTrigger>
                   <DialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
                     <DialogHeader><DialogTitle className="text-right">איך עובד מנגנון העמלות</DialogTitle></DialogHeader>
