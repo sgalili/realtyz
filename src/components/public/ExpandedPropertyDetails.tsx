@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { normalizeListing } from '@/pages/PublicListingPage';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
-import PropertyCommissionIcons from './PropertyCommissionIcons';
 import PropertyContactActions from './PropertyContactActions';
 import { publicUrl } from '@/lib/publicUrl';
 
@@ -192,7 +191,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
             </Button>
           </div>
         )}
-        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} trailing={listing.id ? <PropertyCommissionIcons listingId={listing.id} raw={raw} /> : null} />
+        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} />
         {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">

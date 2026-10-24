@@ -63,6 +63,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        'lead-form': 'hsl(var(--lead-form))',
+        'lead-whatsapp': 'hsl(var(--lead-whatsapp))',
+        'lead-phone': 'hsl(var(--lead-phone))',
+        'lead-closing': 'hsl(var(--lead-closing))',
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",

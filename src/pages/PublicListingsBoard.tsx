@@ -384,7 +384,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex h-4 w-4 items-center justify-center rounded-bl rounded-tr bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
                           </div>
                           ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></div>
-                          : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}</span>
+                          : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}{card.deal_type === 'rent' && card.price ? <span className="text-xs font-normal">/לחודש</span> : null}</span>
                           : id === 'commissions' ? <PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types }} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
