@@ -11,13 +11,13 @@ type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
 
 const SLIDES = [
-  { icon: NetworkHomes, theme: 1, title: <>המהפכה בעולם הנדל״ן<br />מתחילה כאן!</>, text: <>מערכת TORAFF מבוססת AI - מחברת אוטומטית בין מתווכים, בעלי נכסים ורשת שותפים ענקית שמוכרים ומשכירים את הנכסים שלכם על טייס אוטמטי 24/7 וכולם מרוויחים.&nbsp;<br /><br />יותר חשיפה, יותר לידים, יותר עסקאות סגורות באפס מאמץ. זה מטורף!<br /></> },
+  { icon: NetworkHomes, theme: 1, title: <>המהפכה בעולם הנדל״ן<br /><span className="text-destructive">מתחילה כאן!</span></>, text: <>מערכת <strong className="font-bold text-destructive">TORAFF</strong> מבוססת AI - מחברת אוטומטית בין מתווכים, בעלי נכסים ורשת שותפים ענקית שמוכרים ומשכירים את הנכסים שלכם על טייס אוטמטי 24/7 וכולם מרוויחים.&nbsp;<br /><br />יותר חשיפה, יותר לידים, יותר עסקאות סגורות באפס מאמץ. <strong className="font-bold text-destructive">זה מטורף!</strong><br /></> },
   { icon: CoinsCurrency, theme: 2, title: <>כאן כולם <Hi tone="gold">מרוויחים</Hi></>, text: <div className="space-y-4">
     <p><strong>בעלי נכס / מתווכים</strong><br />אתם קובעים מראש את עמלת הסגירה ומחיר הלידים שאתם מוכנים לשלם.</p>
     <p><strong>קונים / שוכרים</strong><br />משלמים עמלת תיווך קבועה של 1% לאחר הקנייה או 10% מגובה השכירות החודשית לאחר חתימת חוזה.</p>
     <p><strong>חברים בתוכנית השותפים</strong><br />משתפים נכסים מהמאגר, יוצרים ומפרסמים קמפיינים ברשתות ומרוויחים עמלות באוטומציה מלאה.</p>
   </div> },
-  { icon: null, theme: 3, title: <>היי, אני <span className="text-destructive">ריטה</span>.<br />סוכנת ה-AI האישית שלך</>, text: <>אני מייצגת אותך נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות.<br /><br />במילים פשוטות: אני מייצרת לך הכנסה פסיבית בזמן שאתה ישן 😍</> },
+  { icon: null, theme: 3, title: <>היי, אני <span className="text-destructive">ריטה</span>.<br />סוכנת ה-AI האישית שלכם</>, text: <>אני מייצגת אתכם נאמנה 24/7 בכל הערוצים. מאתרת נכסים, יוצרת ומפרסמת פוסטים, עונה לתגובות ומייצרת לידים חמים בוואטסאפ, בטלפון ובכל הרשתות.<br /><br />במילים פשוטות: אני מייצרת לכם הכנסה פסיבית בזמן שאתם ישנים 😍</> },
 ] as const;
 
 const GeminiSparkle = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinejoin="round" className="h-full w-full"><path d="M12 2C12.6 7.4 16.6 11.4 22 12C16.6 12.6 12.6 16.6 12 22C11.4 16.6 7.4 12.6 2 12C7.4 11.4 11.4 7.4 12 2Z" /></svg>;
@@ -82,7 +82,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
       <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon ? <Icon className="h-full w-full" strokeWidth={4} /> : <span className="welcome-sparkle block h-full w-full"><GeminiSparkle /></span>}</div>
-      <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-8 w-8"><X className="h-5 w-5" /></Button>
+      <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-10 w-10 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 active:bg-transparent"><X className="!h-[30px] !w-[30px]" /></Button>
       <div key={index} className="welcome-content relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pb-4 pt-12 text-right sm:px-14 sm:pt-16" aria-live="polite">
         <div className="welcome-text min-h-0 overflow-y-auto overscroll-contain">
           <h2 className="welcome-title welcome-enter text-[38px] font-black leading-[1.08] sm:text-[74px]">{slide.title}</h2>
@@ -97,7 +97,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
         <div className="flex items-center gap-1">
           <Button type="button" variant="ghost" size="icon" aria-label="הקודם" onClick={() => go(index - 1)} className={cn('welcome-arrow h-10 w-10 bg-transparent hover:bg-transparent', index === 0 && 'invisible')}><ChevronRight className="h-8 w-8" /></Button>
           {SLIDES.map((_, i) => <Button key={i} type="button" variant="ghost" size="icon" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className="h-8 w-8 hover:bg-transparent"><span className={cn('welcome-dot h-2.5 rounded-full transition-all duration-300', i === index ? 'w-8' : 'w-2.5 opacity-45')} /></Button>)}
-          <Button type="button" variant="ghost" size="icon" aria-label="הבא" onClick={() => go(index + 1)} className={cn('welcome-arrow h-10 w-10 bg-transparent hover:bg-transparent', last && 'invisible')}><ChevronLeft className="h-8 w-8" /></Button>
+          <Button type="button" variant="ghost" size="icon" aria-label="הבא" onClick={() => (last ? finish() : go(index + 1))} className="welcome-arrow h-10 w-10 bg-transparent hover:bg-transparent"><ChevronLeft className="h-8 w-8" /></Button>
         </div>
         <Button variant="link" className="welcome-dismiss h-auto p-0 text-base" onClick={() => { dismissWelcome(); finish(); }}>אל תציגו לי יותר</Button>
       </div>
