@@ -4,11 +4,14 @@ export const fmtILS = (
   value: number | null | undefined,
   opts: { fractionDigits?: number; fallback?: string } = {},
 ): string => {
-  const { fractionDigits = 0, fallback = '—' } = opts;
+  const { fractionDigits, fallback = '—' } = opts;
   if (value === null || value === undefined || Number.isNaN(value)) return fallback;
+  // Money keeps its cents: ₪5,345.08 — never rounded down to ₪5,345.
+  const min = fractionDigits ?? (Number.isInteger(value) ? 0 : 2);
+  const max = fractionDigits ?? 2;
   return `₪${value.toLocaleString('he-IL', {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: min,
+    maximumFractionDigits: max,
   })}`;
 };
 

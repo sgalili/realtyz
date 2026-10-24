@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { fmtILS } from '@/lib/formatCurrency';
 import { attributeCards } from '@/components/public/propertyAttributes';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -229,7 +230,7 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
 
 export function formatPrice(value: number, dealType: PublicListing['dealType']): string {
   if (!value) return 'לפרטים';
-  const amount = `₪${value.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+  const amount = fmtILS(value);
   return amount;
 }
 

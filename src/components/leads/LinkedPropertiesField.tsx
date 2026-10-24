@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fmtILS } from '@/lib/formatCurrency';
 import { Building2, Check, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +57,7 @@ export function propertyDealLabel(p: PropertyOption): string | null {
 export function propertyPriceLabel(p: PropertyOption): string | null {
   const n = Number(p.asking_price);
   if (!p.asking_price || Number.isNaN(n)) return null;
-  return `${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })} ₪`;
+  return `${fmtILS(n).replace('₪', '')} ₪`;
 }
 
 export function propertyRoomsLabel(p: PropertyOption): string | null {

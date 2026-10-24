@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { clampClosingPercent, closingFeeAmount, closingFeeRange } from '@/lib/closingFee';
 import { ClosingSplitNote } from './ClosingSplitNote';
+import { fmtILS } from '@/lib/formatCurrency';
 
 export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange }: {
   dealType: string | null | undefined;
@@ -26,7 +27,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const minimum = displayAmount && dualMode ? range.price * range.min / 100 : range.min;
   const maximum = displayAmount && dualMode ? range.price * range.max / 100 : range.max;
   const exactAmount = range.price * percent / 100;
-  const money = (n: number) => `₪${n.toLocaleString('he-IL', { maximumFractionDigits: 2 })}`;
+  const money = (n: number) => fmtILS(n);
   const changePercent = (next: number) => {
     if (dualMode && onValueChange) onValueChange(displayAmount ? range.price * next / 100 : next, valueType);
     else onChange(next);

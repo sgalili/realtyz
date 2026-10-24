@@ -10,6 +10,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { type BrokerAffiliateListing, type MarketplaceListing } from '@/hooks/useAffiliate';
 import { FORM_FIELD_TYPE_LABELS, type LeadFormField } from '@/lib/leadTiers';
+import { fmtILS } from '@/lib/formatCurrency';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import type { ReactNode } from 'react';
@@ -37,12 +38,12 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   ].filter((row) => rewardTypes ? rewardTypes[row.key] === true : Number(row.amount) > 0);
   return <div className="space-y-4 text-sm">
     {rows.map((row) => <section key={row.label} className="space-y-2 border-b pb-3">
-      <div className="flex justify-between gap-3"><h3 className="font-semibold">{row.label}</h3>{user && <bdi dir="ltr" className="font-bold text-success">{row.label === 'ליד מסונן בשיחת טלפון' && listing.tier3_type === 'percent' ? `${gross ? row.amount : partnerNetReward(row.amount)}%` : `₪${(gross ? row.amount : partnerNetReward(row.amount)).toLocaleString('he-IL')}`}</bdi>}</div>
+      <div className="flex justify-between gap-3"><h3 className="font-semibold">{row.label}</h3>{user && <bdi dir="ltr" className="font-bold text-success">{row.label === 'ליד מסונן בשיחת טלפון' && listing.tier3_type === 'percent' ? `${gross ? row.amount : partnerNetReward(row.amount)}%` : `${fmtILS(gross ? row.amount : partnerNetReward(row.amount))}`}</bdi>}</div>
       <div className="flex justify-between gap-3"><span className="text-muted-foreground">מקס׳ ב־24 שעות</span><strong>{options.lead_daily_limits?.[row.key] ?? 'ללא מגבלה'}</strong></div>
       {row.key === 'form' && options.form_fields?.map((field) => <p key={field.id}>{field.label} · {FORM_FIELD_TYPE_LABELS[field.type]} · {field.required ? 'חובה' : 'רשות'}{field.options?.length ? ` · ${field.options.join(', ')}` : ''}</p>)}
       {row.questions.length ? <><h4 className="text-muted-foreground">שאלות הסינון של המפרסם</h4><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></> : row.key !== 'form' ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
     </section>)}
-    {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <section className="space-y-2"><div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-1.5 font-semibold">סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="font-bold text-success">{listing.tier4_type === 'percent' ? `${partnerNetReward(Number(listing.tier4_amount))}%` : `₪${partnerNetReward(Number(listing.tier4_amount)).toLocaleString('he-IL')}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></section> : rewardTypes?.closing && <section className="space-y-2"><h3 className="font-semibold">סגירת עסקה</h3><p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p></section>}
+    {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <section className="space-y-2"><div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-1.5 font-semibold">סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="font-bold text-success">{listing.tier4_type === 'percent' ? `${partnerNetReward(Number(listing.tier4_amount))}%` : `${fmtILS(partnerNetReward(Number(listing.tier4_amount)))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></section> : rewardTypes?.closing && <section className="space-y-2"><h3 className="font-semibold">סגירת עסקה</h3><p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p></section>}
     {!user && <p className="text-muted-foreground">התחברו לצפייה במחירי התגמולים.</p>}
     {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}
   </div>;

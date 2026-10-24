@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { fmtILS } from '@/lib/formatCurrency';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 export type WorkspaceMapProperty = {
@@ -38,7 +39,7 @@ function validPoint(property: WorkspaceMapProperty): PointProperty | null {
 function formatPrice(value?: number | null): string | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
-  return `₪${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+  return fmtILS(n);
 }
 
 function escapeHtml(value: string): string {

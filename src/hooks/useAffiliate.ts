@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { publicUrl } from '@/lib/publicUrl';
+import { fmtILS } from '@/lib/formatCurrency';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 
 export type RewardType = 'fixed' | 'percent';
@@ -115,7 +116,7 @@ export function formatReward(type: RewardType, amount: number | null | undefined
   const value = Number(amount ?? 0);
   if (!value) return 'טרם נקבע';
   if (type === 'percent') return `${partnerNetReward(value)}% לשותף`;
-  return `₪${partnerNetReward(value).toLocaleString('he-IL', { maximumFractionDigits: 0 })} לשותף`;
+  return `${fmtILS(partnerNetReward(value))} לשותף`;
 }
 
 /** Resolves the ILS payout for a percent-based reward against a deal value. */
