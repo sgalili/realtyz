@@ -1,4 +1,5 @@
 # Property reward indicators
+- [x] Add table-only signed-in net prices, guest lead icons without closing, server-authorized closing indicators and penultimate deal column; eight focused tests pass.
 - [x] Update shared bare configured reward icons, guest-safe explanations/daily limits and private publisher avatar.
 - [x] Require positive property/closing prices at public publication; freeze submission/closing rewards and partner reads against workspace-matched snapshots.
 - [x] 33 focused tests and four read-only deployed lock checks pass; real property popup checked signed-out at 446×728 and signed-in at 1280×1800. Guest sees form/trophy/cap 10 without prices; signed-in unlicensed viewer sees ₪64 with closing price hidden. No property published and no payout executed; historical original values cannot be reconstructed beyond existing snapshots.
