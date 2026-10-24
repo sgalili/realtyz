@@ -606,6 +606,7 @@ type CampaignListing = {
   sqm: number | null;
   floor: number | null;
   asking_price: number | null;
+  deal_type: string | null;
   features: unknown;
   source_metadata: Record<string, unknown> | null;
   media_photos: unknown;
@@ -675,9 +676,9 @@ const dedupeListings = (rows: CampaignListing[]) => {
 };
 
 const listingOptionLabel = (listing: CampaignListing) => {
-  if (isProjectTarget(listing.id)) return [listing.property_title, listing.city, listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null].filter(Boolean).join(' · ');
+  if (isProjectTarget(listing.id)) return [listing.property_title, listing.city, listing.asking_price ? `₪${Number(listing.asking_price).toLocaleString('he-IL')}${listing.deal_type === 'rent' ? ' / לחודש' : ''}` : null].filter(Boolean).join(' · ');
   const location = [stripAddressNumbers(listing.address) || listing.property_title || 'נכס', listing.city].filter(Boolean).join(', ');
-  const price = listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null;
+  const price = listing.asking_price ? `₪${Number(listing.asking_price).toLocaleString('he-IL')}${listing.deal_type === 'rent' ? ' / לחודש' : ''}` : null;
   return price ? `${location} — ${price}` : location;
 };
 
@@ -1469,7 +1470,7 @@ const InlineComposer = ({
         for (let from = 0; ; from += pageSize) {
           const { data, error } = await supabase
             .from('listings')
-            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
+            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, deal_type, features, source_metadata, media_photos, status, is_published, created_at')
             .eq('workspace_owner_id', workspaceOwnerId)
             .order('created_at', { ascending: false })
             .range(from, from + pageSize - 1);
@@ -1508,7 +1509,7 @@ const InlineComposer = ({
       if (!workspaceOwnerId) return;
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
+        .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, deal_type, features, source_metadata, media_photos, status, is_published, created_at')
         .eq('id', selectedListingId)
         .eq('workspace_owner_id', workspaceOwnerId)
         .maybeSingle();
