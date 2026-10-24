@@ -67,6 +67,7 @@ export function GlobalAppTour() {
     if (!step) return;
     let cancelled = false;
     let footerRoot: Root | null = null;
+    let closeRoot: Root | null = null;
     let currentDriver: Driver | null = null;
     let frame = 0;
     const sidebar = step.sidebar === true;
