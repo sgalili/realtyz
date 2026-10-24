@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import ritaPointing from '@/assets/rita-pointing.webp';
+import ritaAvatar from '@/assets/rita-avatar.jpg';
 import { CoinsCurrency, NetworkHomes } from '@/components/public/welcomeIcons';
 import { PlatformTicker } from '@/components/landing/LogoTickers';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
 
 const SLIDES = [
-  { icon: NetworkHomes, theme: 1, title: <>מחברים בין <Hi tone="red">מתווכים</Hi>, יזמים ובעלי נכסים</>, text: <>האקוסיסטם הראשון בעולם ה<Hi tone="red">נדל"ן</Hi> שמחבר את כולם לרשת <Hi tone="red">שותפים</Hi> חכמה אחת שעובדת בשבילכם אוטומטית.</> },
+  { icon: NetworkHomes, theme: 1, title: <>המהפכה בעולם ה<Hi tone="red">נדל"ן</Hi> מתחילה כאן 🚀</>, text: <>די לרוץ לבד. TORAFF מחברת עבורכם אוטומטית מתווכים, בעלי נכסים ורשת <Hi tone="red">שותפים</Hi> ענקית שמוכרים ומשכירים את הנכסים שלכם בשבילו 24/7.<br /><br />בקיצור: יותר חשיפה, יותר לידים, יותר עסקאות סגורות באפס מאמץ.</> },
   { icon: CoinsCurrency, theme: 2, title: <>כאן כולם <Hi tone="gold">מרוויחים</Hi></>, text: <div className="space-y-4">
     <p><strong>בעלי נכס / מתווכים</strong><br />אתם קובעים מראש את עמלת הסגירה ומחיר הלידים שאתם מוכנים לשלם.</p>
     <p><strong>קונים / שוכרים</strong><br />משלמים עמלת תיווך קבועה של 1% לאחר הקנייה או 10% מגובה השכירות החודשית לאחר חתימת חוזה.</p>
@@ -82,9 +83,10 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
     >
       <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon ? <Icon className="h-full w-full" strokeWidth={4} /> : <span className="welcome-sparkle block h-full w-full"><GeminiSparkle /></span>}</div>
-      <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-8 w-8"><X className="h-5 w-5" /></Button>
-      <div key={index} className="welcome-content relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pb-4 pt-12 text-right sm:px-14 sm:pt-16" aria-live="polite">
+      <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute right-2 top-2 z-20 h-16 w-16"><X className="h-10 w-10" /></Button>
+      <div key={index} className="welcome-content relative z-10 mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 pb-4 pt-16 text-right sm:px-14 sm:pt-20" aria-live="polite">
         <div className="welcome-text min-h-0 overflow-y-auto overscroll-contain">
+          {index === 0 && <div className="welcome-enter mb-4 flex items-center gap-3"><img src={ritaAvatar} alt="ריטה" width={64} height={64} decoding="async" className="h-16 w-16 shrink-0 rounded-full object-cover object-top shadow-lg ring-2 ring-background" /><span className="text-[17px] font-bold leading-tight">היי, אני ריטה 👋<br /><span className="font-normal">נעים להכיר, אני כאן בשבילכם</span></span></div>}
           <h2 className="welcome-title welcome-enter text-[38px] font-black leading-[1.08] sm:text-[74px]">{slide.title}</h2>
           <div className="welcome-copy welcome-enter mt-5 max-w-2xl text-[22px] font-normal leading-[1.35] [animation-delay:80ms] sm:text-[26px]">{slide.text}</div>
         </div>
