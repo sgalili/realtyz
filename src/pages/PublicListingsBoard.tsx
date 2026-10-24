@@ -299,7 +299,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
   return (
-    <div dir="rtl" className={cn('flex min-h-0 flex-col overflow-hidden bg-background', embedded ? 'h-full' : 'h-[100dvh]')}>
+    <div dir="rtl" className={cn('flex min-h-0 flex-col overflow-hidden bg-background', embedded ? 'h-full' : 'public-board-page h-[100dvh]')}>
       {showWelcome && (
         <div className={cn('fixed inset-x-0 bottom-0 z-40 overflow-hidden overscroll-none bg-background', embedded ? 'top-16' : 'top-14 sm:top-16')}>
           <div className={cn('mx-auto w-full max-w-6xl px-4', embedded && 'app-content-width')}>

@@ -27,6 +27,7 @@
    ============================================================ */
 @layer base {
   :root {
+    --app-footer-space: 38px;
     /* Surfaces — clean white canvas + soft grey neutrals */
     --background: 0 0% 100%;
     --foreground: 213 73% 12%; /* navy ink for legibility on white */
@@ -944,9 +945,19 @@
     right: 0;
     bottom: 10px;
     z-index: 30;
-    padding-inline: 16px;
+    padding-inline: 8px;
     background: hsl(var(--background));
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+
+  .app-route-pages { min-height: 100dvh; padding-bottom: var(--app-footer-space); }
+  .app-route-pages:has(.auth-gradient-shell),
+  .app-route-pages:has(.realtyz-app-shell),
+  .app-route-pages:has(.public-board-page) { padding-bottom: 0; }
+  .app-route-pages .realtyz-app-shell,
+  .app-route-pages .public-board-page { height: calc(100dvh - var(--app-footer-space)); max-height: calc(100dvh - var(--app-footer-space)); }
 
   .auth-footer-credit {
     margin: 0;
@@ -975,8 +986,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 4px 16px;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: 100%;
+    min-width: max-content;
     background: transparent;
   }
 
@@ -988,6 +1001,7 @@
     font-size: 0.68rem;
     font-weight: 400;
     color: hsl(var(--muted-foreground));
+    flex-shrink: 0;
   }
 
   .auth-footer-links {
@@ -995,7 +1009,8 @@
     z-index: 10;
     display: flex;
     align-items: center;
-    gap: 1.75rem;
+    gap: 8px;
+    flex-shrink: 0;
   }
 
   .auth-footer-links a {

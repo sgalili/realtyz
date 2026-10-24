@@ -1,4 +1,5 @@
 # Board row actions
+- [ ] Share the auth footer across all public/account/admin pages, preserve one-line layout and verify legal navigation and table space.
 - [x] Add a small exit link on every tutorial slide and local two-axis wheel handling for shared tables, including RTL Shift-wheel. Seven focused tests pass; 446×728 iframe checks verify all-slide exit and up/down/left/right movement with pinned table headings. The actual Lovable editor host interception cannot be reproduced locally.
 - [x] Apply classification-aware publisher names in public board/details and retain full office names. Deployed both endpoints; guest mobile shows אודי ויטמן / אנגלו סכסון הרצליה, live feed preserves private initials; 22 focused tests and preview build pass. Developer naming tested; no live developer ad available in this feed.
 - [x] Route all sign-ins to global home and use a signed-in burger menu; authenticated auth entry and old pending flag verified, signup destinations tested for all six types.
