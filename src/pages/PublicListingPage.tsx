@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { fmtILS } from '@/lib/formatCurrency';
 import { attributeCards } from '@/components/public/propertyAttributes';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
