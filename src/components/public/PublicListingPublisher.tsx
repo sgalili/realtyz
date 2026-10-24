@@ -764,7 +764,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               </div>}
               <div className="grid grid-cols-2 gap-2">
                 <div><Label htmlFor="wizard-floor">קומה<span className="text-destructive"> *</span></Label><Select value={fields.floor} onValueChange={(value) => set('floor', value)}><SelectTrigger id="wizard-floor"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label htmlFor="wizard-total-floors">מתוך<span className="text-destructive"> *</span></Label><Select value={fields.totalFloors} onValueChange={(value) => set('totalFloors', value)}><SelectTrigger id="wizard-total-floors"><SelectValue placeholder="מתוך" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} קומות</SelectItem>)}</SelectContent></Select></div>
+                <div><Label htmlFor="wizard-total-floors">כמה קומות יש בבניין? <span className="text-destructive">*</span></Label><Select value={fields.totalFloors} onValueChange={(value) => set('totalFloors', value)}><SelectTrigger id="wizard-total-floors"><SelectValue placeholder="מתוך" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} קומות</SelectItem>)}</SelectContent></Select></div>
               </div>
             </div>
           )}
