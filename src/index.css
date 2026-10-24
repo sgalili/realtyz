@@ -1823,12 +1823,17 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
   max-height: 70dvh;
   overflow: auto;
   touch-action: pan-x pan-y pinch-zoom;
-  overscroll-behavior: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 .board-head-sticky.app-table-scroll {
   max-height: 100%;
 }
+/* Only listing-table views opt their containing page into a bounded flex chain. */
+.realtyz-main-surface:has(.listing-table-page) { overflow: hidden; }
+.realtyz-main-surface > .app-content-width:has(.listing-table-page) { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+.listing-table-page > :not(.listing-results-scroll) { flex-shrink: 0; }
+.listing-results-scroll { min-height: 0; }
 .board-head-sticky thead {
   position: sticky;
   top: 0;
