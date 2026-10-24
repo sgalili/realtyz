@@ -1764,4 +1764,4 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .welcome-slide[data-theme="3"] .welcome-icon { opacity: .18; }
 .welcome-icon .welcome-sparkle svg, .welcome-icon .welcome-sparkle svg * { stroke-width: 3px !important; vector-effect: non-scaling-stroke; }
 .welcome-slide[data-theme="2"] .welcome-icon { opacity: .2; }
-@media (min-width: 640px) { .welcome-slide[data-theme="3"] .welcome-rita { grid-row: 1 / 4; } .welcome-slide[data-theme="3"] .welcome-divider, .welcome-slide[data-theme="3"] .welcome-marquee { margin-inline: -40px; } }
+@media (min-width: 640px) { .welcome-slide[data-theme="3"] .welcome-rita { grid-row: 1 / 4; object-fit: contain; object-position: right top; } .welcome-slide[data-theme="3"] .welcome-divider, .welcome-slide[data-theme="3"] .welcome-marquee { margin-inline: -40px; } }

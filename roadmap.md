@@ -1,7 +1,7 @@
 # Intro and board alignment
-- [ ] Set slide-one navigation black and lift Rita/divider/logo strip 30px with a contiguous white strip.
-- [ ] Align desktop header/search/site content to existing board edges and enlarge account control 30% with an account icon.
-- [ ] Verify intro geometry and desktop/mobile board alignment without changing any data.
+- [x] Set slide-one navigation black and lift Rita/divider/logo strip 30px with a contiguous white strip.
+- [x] Align desktop header/search/site content to existing board edges and enlarge account control 30% with an account icon.
+- [x] Verify live guest/signed-in board-edge alignment and mobile intro: black arrows/indicators, zero divider-strip gap, 10px strip padding, no scrolling and working account menu. Four focused tests pass; no data changed.
 
 # Activity drawer cleanup
 - [x] Fit the dropdown to mobile, retain only primary tabs and compact live credits, and reuse standard property cards without statistics grids.
