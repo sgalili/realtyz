@@ -1,3 +1,8 @@
+# Intro and board alignment
+- [ ] Set slide-one navigation black and lift Rita/divider/logo strip 30px with a contiguous white strip.
+- [ ] Align desktop header/search/site content to existing board edges and enlarge account control 30% with an account icon.
+- [ ] Verify intro geometry and desktop/mobile board alignment without changing any data.
+
 # Activity drawer cleanup
 - [x] Fit the dropdown to mobile, retain only primary tabs and compact live credits, and reuse standard property cards without statistics grids.
 - [x] Authenticated phone (372×682) and desktop (1280×1800) show 24 real owned cards, exactly three tabs, no horizontal overflow and internal scroll to 400px. Leads and empty earnings checked; 16 focused tests pass, no browser errors and preview build OK. No property or favorite data changed during verification.
