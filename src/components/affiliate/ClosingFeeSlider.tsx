@@ -38,9 +38,6 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   };
   return <section className="closing-fee space-y-4 border-t pt-4" data-level={level}>
     <div className="flex items-center gap-2 text-sm font-semibold"><Trophy className="h-4 w-4 closing-tone" />סגירת עסקה *</div>
-    {dualMode && <div className="flex justify-center gap-1" role="group" aria-label="אופן חישוב עמלת הסגירה">
-      {(['percent', 'fixed'] as const).map(mode => <Button key={mode} type="button" size="sm" variant={valueType === mode ? 'secondary' : 'ghost'} aria-pressed={valueType === mode} disabled={mode === 'fixed' && range.price <= 0} onClick={() => { setEditing(false); onValueChange?.(mode === 'fixed' ? exactAmount : percent, mode); }}>{mode === 'percent' ? 'אחוזים' : 'סכום בשקלים'}</Button>)}
-    </div>}
     <div className="text-center">
       <div className="flex h-14 items-center justify-center" dir="ltr">
         {editing ? <Input autoFocus aria-label="עריכת עמלת סגירה" inputMode="decimal" dir="ltr" className="h-12 w-44 text-center text-3xl font-bold" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') setEditing(false); }} /> :
