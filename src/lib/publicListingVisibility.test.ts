@@ -26,4 +26,14 @@ describe('unified feed visibility', () => {
   it('exposes only configured positive types to guests, including the trophy without its price', () => {
     expect(publicPricing({ affiliate_tier1_amount: 0, affiliate_tier2_amount: 50, affiliate_tier3_amount: null, affiliate_tier4_amount: 2500 }, false, false)).toEqual({ reward_types: { form: false, whatsapp: true, phone: false, closing: true } });
   });
+  it('redacts legacy nested closing pricing from guests and unlicensed users', () => {
+    const legacy = { affiliate_tier4_amount: 0, features: { property_type: 'דירה', deal_closing_commission: { type: 'fixed', value: 50000 } } };
+    for (const signedIn of [false, true]) {
+      const result = publicPricing(legacy, signedIn, false);
+      expect(result.features).toEqual({ property_type: 'דירה' });
+      expect(result.affiliate_tier4_amount).toBeUndefined();
+      expect(result.reward_types).toMatchObject({ closing: true });
+    }
+    expect(publicPricing(legacy, true, true).affiliate_tier4_amount).toBe(50000);
+  });
 });

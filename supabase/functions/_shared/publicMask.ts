@@ -119,7 +119,7 @@ export function toPublicCard(row: Record<string, any>): PublicCard {
       form: Number(row.affiliate_tier1_amount) > 0,
       whatsapp: Number(row.affiliate_tier2_amount) > 0,
       phone: Number(row.affiliate_tier3_amount) > 0,
-      closing: Number(row.affiliate_tier4_amount) > 0,
+      closing: Number(row.features?.deal_closing_commission?.value ?? row.affiliate_tier4_amount) > 0,
     },
     contact_options: {
       ...(row.contact_options && typeof row.contact_options === 'object' ? row.contact_options : {}),

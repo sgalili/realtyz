@@ -26,7 +26,7 @@ export function AffiliateTierPrices({ config }: { config?: AffiliateConfigRow })
   }
   if (tiers.length === 0) return null;
   return (
-    <LeadPricingDialog readOnly gross listing={{ listing_id: config?.id ?? '', broker_id: '', property_title: null, tier1_amount: Number(config?.affiliate_tier1_amount ?? 0), tier2_amount: Number(config?.affiliate_tier2_amount ?? 0), tier3_amount: Number(config?.affiliate_tier3_amount ?? 0), tier3_type: config?.affiliate_tier3_type ?? 'fixed' }}><CommissionTierBadges tiers={{ tier1: Number(config?.affiliate_tier1_amount ?? 0), tier2: Number(config?.affiliate_tier2_amount ?? 0), tier3: Number(config?.affiliate_tier3_amount ?? 0), tier3Type: config?.affiliate_tier3_type ?? 'fixed', tier4: 0, tier4Type: 'fixed' }} compact /></LeadPricingDialog>
+    <LeadPricingDialog readOnly gross listing={{ listing_id: config?.id ?? '', broker_id: '', property_title: null, tier1_amount: Number(config?.affiliate_tier1_amount ?? 0), tier2_amount: Number(config?.affiliate_tier2_amount ?? 0), tier3_amount: Number(config?.affiliate_tier3_amount ?? 0), tier3_type: config?.affiliate_tier3_type ?? 'fixed' }}><CommissionTierBadges tiers={{ tier1: Number(config?.affiliate_tier1_amount ?? 0), tier2: Number(config?.affiliate_tier2_amount ?? 0), tier3: Number(config?.affiliate_tier3_amount ?? 0), tier4: 0, tier4Type: 'fixed' }} compact /></LeadPricingDialog>
   );
 }
 
