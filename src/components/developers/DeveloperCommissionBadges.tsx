@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
@@ -10,7 +9,6 @@ import type { DeveloperProject } from '@/lib/developerProjectForm';
 import type { ProjectUnit } from '../../../supabase/functions/_shared/projectHierarchy';
 export default function DeveloperCommissionBadges({ project, unit }: { project: DeveloperProject; unit?: ProjectUnit }) {
   const [open, setOpen] = useState(false); const { level4Unlocked } = useAffiliateLicense();
-  const { user } = useAuth();
   const fees = effectiveUnitFees(commissionConfig(project.commission_config), unit);
   if (!fees) return <span className="text-xs text-muted-foreground">עמלות טרם הוגדרו</span>;
   const tiers = { tier1: Number(fees.form), tier2: Number(fees.whatsapp), tier3: Number(fees.phone), tier4: Number(fees.closing.value), tier4Type: fees.closing.type };
