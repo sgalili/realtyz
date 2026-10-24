@@ -1,4 +1,7 @@
 # Board row actions
+- [x] Route all sign-ins to global home and use a signed-in burger menu; authenticated auth entry and old pending flag verified, signup destinations tested for all six types.
+- [x] Use one bounded native two-axis scroll owner for homepage/shared/developer tables; guest/signed-in 320px, 446px and desktop wheel checks and phone touch checks pass with pinned headers. Shared lead table renders; exhaustive device/browser and every populated table checks remain unavailable.
+- [x] Enable and expand lead settings when their title is clicked, preserving selected prices; all three checked in isolated wizard draft, focused tests pass, no publication.
 - [x] Move wizard field labels into placeholders and align air directions after view; phone browser verifies stationary visible title/back/X and submit while the body scrolls. 20 tests and preview build pass; no publication.
 - [x] Update wizard floor consistency, amenity menus, Card 8 price, distribution note and immediate entry. 20 tests and build pass; phone flow verifies ground sync, higher-floor blocking, multi-balconies, parking, immediate entry and saved price/draft. No ad published.
 - [x] Remove the chevron expand arrow from the table actions column; row click still opens details. Verified live at 446×728: no chevron, heart and drag handle remain, details expand on click, build and table tests pass.

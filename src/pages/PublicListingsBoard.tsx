@@ -9,6 +9,7 @@ import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -168,7 +169,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     let norm = scrollIndicator.width >= 100 ? 0 : scrollIndicator.offset / Math.max(0.001, 100 - scrollIndicator.width);
     if (!thumb.contains(e.target as Node)) {
       const rect = track.getBoundingClientRect();
-      norm = Math.min(1, Math.max(0, (e.clientX - rect.left - thumbW / 2) / Math.max(1, trackW - thumbW)));
+      norm = Math.min(1, Math.max(0, (rect.right - e.clientX - thumbW / 2) / Math.max(1, trackW - thumbW)));
       el.scrollLeft = -norm * maxScroll;
     }
     thumbDrag.current = { pointerId: e.pointerId, startX: e.clientX, startNorm: norm };
@@ -330,7 +331,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
-            <div ref={tableWrapRef} className="board-head-sticky w-full min-w-0 max-w-[min(100%,calc(100vw-2rem))] min-h-0 flex-1 overflow-auto overscroll-contain rounded-lg border bg-card [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
+            <HorizontalTableScroll ref={tableWrapRef} aria-label="טבלת נכסים" className="board-head-sticky flex-1 rounded-lg border bg-card">
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
@@ -416,7 +417,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 </tbody>
               </table>
               {filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
-            </div>
+            </HorizontalTableScroll>
             </BoardColumnDragArea>
           )
         )}

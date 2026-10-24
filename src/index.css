@@ -1138,9 +1138,9 @@
     /* Page surface — must match the PageHero wave fill so the wave melts
        seamlessly into the content area (no visible seam). */
     background: hsl(var(--background));
-    /* Prevent iOS/macOS rubber-band overscroll bounce so the sticky hero stays anchored. */
-    overscroll-behavior: none;
-    -webkit-overflow-scrolling: auto;
+    /* Let native table scrolling hand off to its containing page at the edge. */
+    overscroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Exactly 20px between the hero and page content across the whole app:
@@ -1787,6 +1787,18 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .board-head-sticky table {
   border-collapse: separate;
   border-spacing: 0;
+}
+
+/* A table owns both axes; nested horizontal wrappers must not trap vertical gestures. */
+.app-table-scroll {
+  max-height: 70dvh;
+  overflow: auto;
+  touch-action: pan-x pan-y pinch-zoom;
+  overscroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.board-head-sticky.app-table-scroll {
+  max-height: 100%;
 }
 .board-head-sticky thead {
   position: sticky;

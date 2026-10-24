@@ -187,9 +187,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
         void queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       }
       setRoleApplied(true);
-      if (path?.startsWith('/developer-dashboard') && window.location.pathname !== '/developer-dashboard') {
-        window.location.assign(path);
-      }
     });
     return () => { alive = false; };
   }, [user, roleApplied, queryClient]);
@@ -363,7 +360,6 @@ function PartnerOnlyRoute({ children }: { children: React.ReactNode }) {
 
 function AuthRoute() {
   const { user, loading } = useAuth();
-  const location = useLocation();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <RealtyzLoader size="lg" />
@@ -373,12 +369,6 @@ function AuthRoute() {
     let next: string | null = null;
     try { next = window.localStorage.getItem('realtyz-pending-oauth-consent'); } catch { /* */ }
     if (next && next.startsWith('/.lovable/oauth/consent')) return <Navigate to={next} replace />;
-    // Return the visitor to the public page they signed in from (e.g. the
-    // listings board) instead of always landing on "/".
-    const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
-    if (returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')) {
-      return <Navigate to={returnTo} replace />;
-    }
     return <Navigate to="/" replace />;
   }
   return <Auth />;

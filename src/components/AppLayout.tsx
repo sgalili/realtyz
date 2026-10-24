@@ -6,7 +6,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { shouldShowWelcome, WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
-import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, CircleUserRound } from 'lucide-react';
+import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -88,7 +88,7 @@ function HeaderProfileLink() {
       data-walkthrough="menu"
       className="h-[46.8px] w-[46.8px] shrink-0 cursor-pointer rounded-md text-foreground/80 hover:bg-muted hover:text-foreground"
     >
-      <CircleUserRound className="!h-[26px] !w-[26px]" strokeWidth={1} aria-hidden="true" />
+      <Menu className="!h-[26px] !w-[26px]" strokeWidth={1} aria-hidden="true" />
     </Button>
   );
 }
@@ -360,8 +360,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user || localStorage.getItem(DEMO_EXIT_PENDING_KEY) !== 'true') return;
     localStorage.removeItem(DEMO_EXIT_PENDING_KEY);
-    navigate('/dashboard', { replace: true });
-  }, [navigate, user]);
+  }, [user]);
 
   const connectWhatsApp = async () => {
     if (!user?.id) return;
