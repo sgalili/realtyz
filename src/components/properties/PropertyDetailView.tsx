@@ -137,7 +137,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           <div className="flex items-baseline gap-3 flex-wrap order-1">
             <span className="text-5xl font-extrabold text-success tabular-nums">
               {formatPrice(property.price)}
-              {isRent && <span className="text-xl font-normal text-muted-foreground"> /חודש</span>}
+              {isRent && <span className="text-xl font-normal text-muted-foreground"> / לחודש</span>}
             </span>
             {pricePerMeter ? (
               <span className="text-lg text-muted-foreground font-normal">
@@ -218,7 +218,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           <Card className="space-y-2 p-4 sm:p-5">
             <h2 className="text-sm font-bold text-foreground">מיקום הנכס</h2>
             <WorkspacePropertiesMap
-              properties={hasCoordinates ? [{ id: property.id, title: fullAddress || headline, latitude, longitude, price: property.price }] : []}
+              properties={hasCoordinates ? [{ id: property.id, title: fullAddress || headline, latitude, longitude, price: property.price, dealType: isRent ? 'rent' : 'sale' }] : []}
               selectedId={property.id}
               onSelect={() => undefined}
               fallbackAddress={mapAddress}

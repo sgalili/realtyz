@@ -23,6 +23,7 @@ interface Listing {
   property_title: string | null;
   description: string | null;
   asking_price: number | null;
+  deal_type: string | null;
   city: string | null;
   neighborhood: string | null;
   address: string | null;
@@ -288,7 +289,7 @@ export default function ClientPortal() {
                     </div>
                     {l.asking_price && (
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        {formatPrice(l.asking_price)}
+                        {formatPrice(l.asking_price)}{l.deal_type === 'rent' ? ' / לחודש' : ''}
                       </Badge>
                     )}
                   </div>

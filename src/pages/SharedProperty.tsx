@@ -157,7 +157,7 @@ export default function SharedProperty() {
   const isRent = String(p.deal_type ?? p.transaction_type ?? '').toLowerCase() === 'rent'
     || (price > 0 && price < 50_000);
   const priceStr = price
-    ? `₪${price.toLocaleString('he-IL')}${isRent ? ' /חודש' : ''}`
+    ? `₪${price.toLocaleString('he-IL')}${isRent ? ' / לחודש' : ''}`
     : 'לפרטים';
   const pricePerMeter = price && Number(p.sqm) > 0 && !isRent
     ? Math.round(price / Number(p.sqm)).toLocaleString('he-IL')

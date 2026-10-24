@@ -92,7 +92,7 @@ export default function OwnerProperties() {
                     {[listing.city, listing.neighborhood, listing.address].filter(Boolean).join(' · ')}
                   </p>
                   <p className="text-sm font-semibold text-foreground">
-                    {listing.asking_price ? `₪${Number(listing.asking_price).toLocaleString('he-IL')}` : 'מחיר לא צוין'}
+                    {listing.asking_price ? `₪${Number(listing.asking_price).toLocaleString('he-IL')}${listing.deal_type === 'rent' ? ' / לחודש' : ''}` : 'מחיר לא צוין'}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {[listing.rooms ? `${listing.rooms} חדרים` : null, listing.sqm ? `${listing.sqm} מ״ר` : null, `${photos.length} תמונות`]

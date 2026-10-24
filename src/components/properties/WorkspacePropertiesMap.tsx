@@ -11,6 +11,7 @@ export type WorkspaceMapProperty = {
   latitude?: number | null;
   longitude?: number | null;
   price?: number | null;
+  dealType?: string | null;
 };
 
 type Props = {
@@ -171,9 +172,10 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
         const marker = new mapboxgl.Marker({ element, anchor: 'center' })
           .setLngLat([property.longitude, property.latitude]);
         const price = formatPrice(property.price);
+        const priceLabel = price ? `${price}${property.dealType === 'rent' ? ' / לחודש' : ''}` : null;
         if (property.title || price) {
           marker.setPopup(new mapboxgl.Popup({ offset: 18 }).setHTML(
-            `<div dir="rtl"><strong>${escapeHtml(property.title)}</strong>${price ? `<br>${escapeHtml(price)}` : ''}</div>`,
+            `<div dir="rtl"><strong>${escapeHtml(property.title)}</strong>${priceLabel ? `<br>${escapeHtml(priceLabel)}` : ''}</div>`,
           ));
         }
         marker.addTo(map);

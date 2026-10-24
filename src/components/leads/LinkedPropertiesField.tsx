@@ -57,7 +57,7 @@ export function propertyDealLabel(p: PropertyOption): string | null {
 export function propertyPriceLabel(p: PropertyOption): string | null {
   const n = Number(p.asking_price);
   if (!p.asking_price || Number.isNaN(n)) return null;
-  return `${fmtILS(n).replace('₪', '')} ₪`;
+  return `${fmtILS(n)}${p.deal_type === 'rent' ? ' / לחודש' : ''}`;
 }
 
 export function propertyRoomsLabel(p: PropertyOption): string | null {

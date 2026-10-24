@@ -1432,7 +1432,7 @@ export default function PropertyDetail() {
               <>
                 <span className="text-[32px] leading-none font-normal text-success tabular-nums">
                   {formatPrice(property.price)}
-                  {isRent && <span className="text-lg font-normal text-muted-foreground"> /חודש</span>}
+                  {isRent && <span className="text-lg font-normal text-muted-foreground"> / לחודש</span>}
                 </span>
                 {pricePerMeter ? <span className="text-base font-normal text-muted-foreground">({pricePerMeter} ₪ למ"ר)</span> : null}
               </>
@@ -1840,6 +1840,7 @@ export default function PropertyDetail() {
                     title: fullPropertyAddress({ address: property.address, city: property.city, neighborhood, house_number: (data?.row as any)?.house_number, apartment_number: (data?.row as any)?.apartment_number }),
                     latitude: Number(data?.rich?.latitude),
                     longitude: Number(data?.rich?.longitude),
+                    dealType: isRent ? 'rent' : 'sale',
                   }]
                   : []
               }

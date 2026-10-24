@@ -606,6 +606,7 @@ type CampaignListing = {
   sqm: number | null;
   floor: number | null;
   asking_price: number | null;
+  deal_type: string | null;
   features: unknown;
   source_metadata: Record<string, unknown> | null;
   media_photos: unknown;
@@ -675,9 +676,9 @@ const dedupeListings = (rows: CampaignListing[]) => {
 };
 
 const listingOptionLabel = (listing: CampaignListing) => {
-  if (isProjectTarget(listing.id)) return [listing.property_title, listing.city, listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null].filter(Boolean).join(' · ');
+  if (isProjectTarget(listing.id)) return [listing.property_title, listing.city, listing.asking_price ? `₪${Number(listing.asking_price).toLocaleString('he-IL')}${listing.deal_type === 'rent' ? ' / לחודש' : ''}` : null].filter(Boolean).join(' · ');
   const location = [stripAddressNumbers(listing.address) || listing.property_title || 'נכס', listing.city].filter(Boolean).join(', ');
-  const price = listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null;
+  const price = listing.asking_price ? `₪${Number(listing.asking_price).toLocaleString('he-IL')}${listing.deal_type === 'rent' ? ' / לחודש' : ''}` : null;
   return price ? `${location} — ${price}` : location;
 };
 
@@ -1469,7 +1470,7 @@ const InlineComposer = ({
         for (let from = 0; ; from += pageSize) {
           const { data, error } = await supabase
             .from('listings')
-            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
+            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, deal_type, features, source_metadata, media_photos, status, is_published, created_at')
             .eq('workspace_owner_id', workspaceOwnerId)
             .order('created_at', { ascending: false })
             .range(from, from + pageSize - 1);
@@ -1508,7 +1509,7 @@ const InlineComposer = ({
       if (!workspaceOwnerId) return;
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
+        .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, deal_type, features, source_metadata, media_photos, status, is_published, created_at')
         .eq('id', selectedListingId)
         .eq('workspace_owner_id', workspaceOwnerId)
         .maybeSingle();
@@ -2481,7 +2482,7 @@ const InlineComposer = ({
                       <SourceBadge source={r.source} compact />
                     </div>
                     <div className="text-[11px] text-muted-foreground truncate">
-                      {[r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null, r.price ? `₪${r.price.toLocaleString('he-IL')}` : null]
+                      {[r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null, r.price ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? ' / לחודש' : ''}` : null]
                         .filter(Boolean).join(' · ')}
                       {importingExternalKey === r.key ? ' · מייבא…' : ''}
                     </div>
@@ -6875,7 +6876,7 @@ const VoiceLeadPickerDialog = ({
   const [userGender, setUserGender] = useState<Gender | null>(null);
 
   // Property promotion picker — optional focus listing for the call.
-  const [voiceListings, setVoiceListings] = useState<{ id: string; title: string; city: string | null; asking_price: number | null }[]>([]);
+  const [voiceListings, setVoiceListings] = useState<{ id: string; title: string; city: string | null; asking_price: number | null; deal_type: string | null }[]>([]);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
 
   // Manual-select state
@@ -6923,14 +6924,14 @@ const VoiceLeadPickerDialog = ({
       const [{ data: leadRows }, { data: listingRows }, { data: profile }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city, deal_type, preferences')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
-        supabase.from('listings').select('id, property_title, city, asking_price, status')
+        supabase.from('listings').select('id, property_title, city, asking_price, deal_type, status')
           .eq('status', 'live').order('created_at', { ascending: false }).limit(200),
         user ? supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null } as any),
         loadClonedVoices(),
       ]);
       setLeads(((leadRows as any[]) ?? []).map(mapVoiceLead));
       setVoiceListings(((listingRows as any[]) ?? []).map((l) => ({
-        id: l.id, title: l.property_title || 'נכס ללא כותרת', city: l.city ?? null, asking_price: l.asking_price ?? null,
+        id: l.id, title: l.property_title || 'נכס ללא כותרת', city: l.city ?? null, asking_price: l.asking_price ?? null, deal_type: l.deal_type ?? null,
       })));
       setUserGender(((profile as any)?.gender ?? null) as Gender | null);
       setLoading(false);
@@ -7208,7 +7209,7 @@ const VoiceLeadPickerDialog = ({
                         <SelectItem value="__none">ללא קידום נכס ספציפי (שיחה כללית)</SelectItem>
                         {voiceListings.map((l) => (
                           <SelectItem key={l.id} value={l.id}>
-                            {l.title}{l.city ? ` · ${l.city}` : ''}{l.asking_price ? ` · ₪${Number(l.asking_price).toLocaleString('he-IL')}` : ''}
+                            {l.title}{l.city ? ` · ${l.city}` : ''}{l.asking_price ? ` · ₪${Number(l.asking_price).toLocaleString('he-IL')}${l.deal_type === 'rent' ? ' / לחודש' : ''}` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>

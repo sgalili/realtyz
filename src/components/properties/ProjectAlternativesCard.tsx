@@ -34,7 +34,7 @@ export function ProjectAlternativesCard({
     queryFn: async () => {
       let q = supabase
         .from('listings')
-        .select('id, property_title, asking_price, rooms, sqm, floor, address, city, neighborhood, status, slug')
+        .select('id, property_title, asking_price, deal_type, rooms, sqm, floor, address, city, neighborhood, status, slug')
         .eq('project_name', projectName!)
         .eq('is_published', true)
         .order('asking_price', { ascending: true })
@@ -102,7 +102,7 @@ export function ProjectAlternativesCard({
                 )}
               </div>
               <p className="text-lg font-bold text-success mt-1 tabular-nums">
-                {formatPrice(row.asking_price as number | null)}
+                {formatPrice(row.asking_price as number | null)}{(row as any).deal_type === 'rent' ? ' / לחודש' : ''}
               </p>
             </Link>
           ))}
