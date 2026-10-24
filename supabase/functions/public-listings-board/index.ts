@@ -7,7 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { PUBLIC_CARD_COLUMNS, toPublicCard } from "../_shared/publicMask.ts";
-import { isFeedEligible } from '../_shared/publicListingVisibility.ts';
+import { isFeedEligible, meetsBoardRules, boardPublisherName } from '../_shared/publicListingVisibility.ts';
 import { verifiedSourceLicense } from '../_shared/yad2Publisher.ts';
 
 const json = (body: unknown, status = 200) =>
@@ -44,6 +44,8 @@ Deno.serve(async (req) => {
       .select(`${PUBLIC_CARD_COLUMNS},source,source_metadata,workspace_owner_id,user_id,owner_id`)
       .or("is_published.eq.true,affiliate_enabled.eq.true")
       .neq("status", "discarded")
+      .gt("asking_price", 0)
+      .or("affiliate_tier1_amount.gt.0,affiliate_tier2_amount.gt.0,affiliate_tier3_amount.gt.0,affiliate_tier4_amount.gt.0,features->deal_closing_commission->>value.gt.0")
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -101,7 +103,13 @@ Deno.serve(async (req) => {
       const { data: reached } = await admin.rpc("listing_daily_cap_reached", { _listing_id: r.id });
       if (reached === true) capped.add(r.id);
     }));
-    return json({ properties: rows.filter((r) => isFeedEligible(r) && !capped.has(r.id)).map((row) => ({ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true, attribution: attribution(row) })), has_more: rows.length === limit });
+    const properties = rows.filter((r) => isFeedEligible(r) && !capped.has(r.id)).flatMap((row) => {
+      const base = attribution(row);
+      const name = boardPublisherName(base.broker_name);
+      if (!meetsBoardRules(row, name)) return [];
+      return [{ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true, attribution: { ...base, broker_name: name } }];
+    });
+    return json({ properties, has_more: rows.length === limit });
   } catch (error) {
     console.error("[public-listings-board]", error);
     return json({ error: "board lookup failed" }, 500);
