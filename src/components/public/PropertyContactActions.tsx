@@ -39,6 +39,7 @@ export default function PropertyContactActions({
   showShare = true,
   shareOnly = false,
   shareButtonClassName,
+  formAsButton = false,
 }: {
   listingId: string;
   title: string;
