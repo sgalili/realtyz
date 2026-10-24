@@ -21,7 +21,7 @@ export function AffiliateTierPrices({ config }: { config?: AffiliateConfigRow })
     const t1 = Number(config.affiliate_tier1_amount ?? 0);
     const t2 = Number(config.affiliate_tier2_amount ?? 0);
     const t3 = Number(config.affiliate_tier3_amount ?? 0);
-    if (t1) tiers.push({ value: money(t1), label: 'שדות בטופס דף נחיתה', Icon: ClipboardList });
+    if (t1) tiers.push({ value: money(t1), label: 'שדות מטופס בעמוד נחיתה', Icon: ClipboardList });
     if (t2) tiers.push({ value: money(t2), label: 'שיחת WhatsApp', Icon: MessageCircle });
     if (t3) tiers.push({ value: config.affiliate_tier3_type === 'percent' ? `${t3}%` : money(t3), label: 'שיחת טלפון', Icon: Phone });
   }

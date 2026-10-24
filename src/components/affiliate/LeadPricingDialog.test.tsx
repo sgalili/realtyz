@@ -20,7 +20,7 @@ describe('partner lead pricing information', () => {
     expect(screen.getByText('סגירת עסקה')).toBeTruthy();
     expect(screen.queryByText('₪120')).toBeNull();
     expect(screen.queryByText('₪8,000')).toBeNull();
-    expect(screen.queryByText('שדות בטופס דף נחיתה')).toBeNull();
+    expect(screen.queryByText('שדות מטופס בעמוד נחיתה')).toBeNull();
   });
   it('shows 0.8% net and 0.2% platform share of a 1% closing fee for an authorized broker', () => {
     state.level4Unlocked = true;

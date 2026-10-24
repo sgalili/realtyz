@@ -1,3 +1,4 @@
+import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import Terms from '@/pages/Terms';
 import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, ChevronDown, Film, HelpCircle, ImagePlus, Loader2, X } from 'lucide-react';
+import { ClipboardList as LeadFormIcon, Phone as LeadPhoneIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -72,7 +74,7 @@ const STEP_TITLES = [
 ];
 
 const LEAD_TYPES = [
-  { key: 'Form', tier: 'form', label: 'פנייה בטופס' },
+  { key: 'Form', tier: 'form', label: 'שדות מטופס בעמוד נחיתה' },
   { key: 'Whatsapp', tier: 'whatsapp', label: 'סינון בשיחת ווטסאפ' },
   { key: 'Phone', tier: 'phone', label: 'סינון בשיחת טלפון' },
 ] as const;
@@ -94,8 +96,8 @@ function LeadTypeHelp({ label, children }: { label: string; children: React.Reac
         </button>
       </DialogTrigger>
       <DialogContent dir="rtl" className="sm:max-w-md">
-        <DialogHeader><DialogTitle className="text-right">{label}</DialogTitle></DialogHeader>
-        <div className="space-y-3 text-sm leading-relaxed">{children}</div>
+        <DialogHeader><DialogTitle className="text-right text-2xl font-bold leading-snug">{label}</DialogTitle></DialogHeader>
+        <div className="space-y-4 text-lg leading-loose text-foreground">{children}</div>
       </DialogContent>
     </Dialog>
   );
@@ -834,12 +836,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
                     <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-1 self-center font-medium">
+                      {key === 'Form' ? <LeadFormIcon className="h-4 w-4 text-lead-form" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-4 w-4 text-lead-whatsapp" aria-hidden /> : <LeadPhoneIcon className="h-4 w-4 text-lead-phone" aria-hidden />}
                       {label}
                       <LeadTypeHelp label={label}>
                         <p>
-                          {key === 'Form' && 'הפונה ממלא את טופס המודעה ועונה על 3 שאלות הסינון שהגדרת; התשובות נשמרות יחד עם פרטי הפנייה.'}
+                          {key === 'Form' && 'הפרטים הבסיסיים בטופס הם שם מלא ומספר טלפון. אפשר להוסיף שדות מותאמים אישית לפי הצורך.'}
                           {key === 'Whatsapp' && 'הפונה פותח שיחת ווטסאפ וריטה שואלת את 3 שאלות הסינון שהגדרת; התמליל המלא של השיחה נשמר לצפייה.'}
-                          {key === 'Phone' && 'הפונה מתקשר למספר שבמודעה; השיחה מוקלטת ומתומללת, וכוללת את 3 שאלות הסינון שהגדרת.'}
+                          {key === 'Phone' && 'הפונה לא מתקשר אלינו. הוא משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
                         </p>
                         {LEAD_TYPE_VALIDITY}
                       </LeadTypeHelp>
@@ -851,7 +854,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       const n = cleanFormFields(fields.formFields).length;
                       return (
                         <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setFormFieldsOpen(true)}>
-                          שדות בטופס דף נחיתה (שם + טלפון{n > 0 ? ` + ${n} נוספים · +₪${n * EXTRA_QUESTION_COST} לפנייה` : ''})
+                          שדות מטופס בעמוד נחיתה (שם + טלפון{n > 0 ? ` + ${n} נוספים · +₪${n * EXTRA_QUESTION_COST} לפנייה` : ''})
                         </Button>
                       );
                     })()}
@@ -892,7 +895,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     <div className="space-y-3 text-sm leading-relaxed">
                       <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשליד חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
                       <ul className="list-disc space-y-1 ps-5">
-                        <li><b>פנייה בטופס:</b> הפונה השאיר פרטים בטופס המודעה.</li>
+                        <li><b>שדות מטופס בעמוד נחיתה:</b> הפונה השאיר פרטים בטופס המודעה.</li>
                         <li><b>שיחה עם ריטה בווטסאפ:</b> הפונה פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
                         <li><b>שיחת טלפון:</b> הפונה התקשר ישירות למספר שבמודעה.</li>
                       </ul>

@@ -17,7 +17,7 @@ import { ClosingSplitNote } from './ClosingSplitNote';
 import { BrokerClosingInfo } from './BrokerClosingInfo';
 import type { RewardTypes } from './CommissionTierBadges';
 
-const FORM_TIER_LABEL = 'שדות בטופס דף נחיתה';
+const FORM_TIER_LABEL = 'שדות מטופס בעמוד נחיתה';
 
 type PricingListing = Pick<MarketplaceListing, 'listing_id' | 'broker_id' | 'property_title' | 'tier1_amount' | 'tier2_amount' | 'tier3_amount' | 'tier4_amount' | 'tier4_type'> & { tier3_type?: string };
 
