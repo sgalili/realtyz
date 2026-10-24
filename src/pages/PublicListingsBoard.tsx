@@ -414,11 +414,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                   })}
                 </tbody>
               </table>
+              {filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
             </div>
             </BoardColumnDragArea>
           )
         )}
-        {!loading && filtered.length > visibleCount && <AutoLoadSentinel onReach={() => setVisibleCount(count => count + 10)} />}
+        {!loading && grid && filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
       </main>
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
