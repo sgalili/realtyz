@@ -40,9 +40,10 @@ export default function BrokerAttribution({
         )}
       </div>}
       <div className="min-w-0 flex-1 text-right">
-        <p title={broker || 'מפרסם המודעה'} className={`${compact ? 'text-xs' : 'text-sm'} truncate font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
-        {(isPrivate || office || license) && <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          {isPrivate ? <span>{dealType === 'rent' ? 'משכיר פרטי' : dealType === 'sale' ? 'מוכר פרטי' : 'מפרסם פרטי'}</span> : office && <span title={office} className="min-w-0 truncate">{office}</span>}
+        <p title={broker || 'מפרסם המודעה'} className={`${compact ? 'text-xs' : 'text-sm'} whitespace-normal break-words font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
+        {(isPrivate || office || license) && <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          {isPrivate && <span>{dealType === 'rent' ? 'משכיר פרטי' : dealType === 'sale' ? 'מוכר פרטי' : 'מפרסם פרטי'}</span>}
+          {office && office !== 'מפרסם פרטי' && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
           {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {license}</span>}
         </div>}
       </div>

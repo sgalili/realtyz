@@ -7,7 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { PUBLIC_CARD_COLUMNS, toPublicCard } from "../_shared/publicMask.ts";
-import { isFeedEligible, meetsBoardRules, boardPublisherName, closingRewardLevel } from '../_shared/publicListingVisibility.ts';
+import { isFeedEligible, meetsBoardRules, boardPublisherName, publisherDisplayKind, closingRewardLevel } from '../_shared/publicListingVisibility.ts';
 import { verifiedSourceLicense } from '../_shared/yad2Publisher.ts';
 
 const json = (body: unknown, status = 200) =>
@@ -74,10 +74,11 @@ Deno.serve(async (req) => {
     const rows = (data ?? []) as any[];
     const ownerIds = [...new Set(rows.map(row => row.workspace_owner_id ?? row.user_id).filter(Boolean))];
     const sourceOwners = [...new Set(rows.map(row => row.owner_id).filter(Boolean))];
-    const [profiles, brands, owners] = await Promise.all([
+    const [profiles, brands, owners, roles] = await Promise.all([
       ownerIds.length ? admin.from('profiles').select('id,full_name,broker_byline').in('id', ownerIds) : Promise.resolve({ data: [] }),
       ownerIds.length ? admin.from('white_label_settings').select('user_id,agency_name,logo_url,landscape_logo_url').in('user_id', ownerIds) : Promise.resolve({ data: [] }),
       sourceOwners.length ? admin.from('crm_profiles').select('id,full_name').in('id', sourceOwners) : Promise.resolve({ data: [] }),
+      ownerIds.length ? admin.from('user_roles').select('user_id,role').in('user_id', ownerIds) : Promise.resolve({ data: [] }),
     ]);
     const attribution = (row: any) => {
       const profile = profiles.data?.find(item => item.id === (row.workspace_owner_id ?? row.user_id));
@@ -93,10 +94,11 @@ Deno.serve(async (req) => {
           office_name: office,
           agency_logo_url: text(metadata.office_logo_url) ?? text(metadata.agency_logo_url),
           broker_license_number: license,
-          publisher_kind: broker ? 'broker' : 'private',
+          publisher_kind: publisherDisplayKind(metadata.publisher_kind ?? (broker ? 'broker' : 'private')),
         };
       }
-      return { broker_name: profile?.broker_byline || profile?.full_name || 'מפרסם המודעה', office_name: brand?.agency_name ?? null, agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || null, publisher_kind: row.source_metadata?.publisher_kind ?? null };
+      const kind = publisherDisplayKind(row.features?.publisher_type ?? metadata.publisher_kind, (roles.data ?? []).filter(item => item.user_id === (row.workspace_owner_id ?? row.user_id)).map(item => item.role));
+      return { broker_name: profile?.full_name || profile?.broker_byline || row.features?.contact_name || null, office_name: brand?.agency_name ?? null, agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || null, publisher_kind: kind };
     };
     const capped = new Set<string>();
     await Promise.all(rows.filter((r) => r.contact_options?.lead_daily_limits || r.daily_lead_cap).map(async (r) => {
@@ -105,7 +107,7 @@ Deno.serve(async (req) => {
     }));
     const properties = rows.filter((r) => isFeedEligible(r) && !capped.has(r.id)).flatMap((row) => {
       const base = attribution(row);
-      const name = boardPublisherName(base.broker_name);
+      const name = boardPublisherName(base.broker_name, base.publisher_kind);
       if (!meetsBoardRules(row, name)) return [];
       return [{ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true, closing_level: closingRewardLevel(row.features?.deal_closing_commission?.value ?? row.affiliate_tier4_amount, row.features?.deal_closing_commission?.type ?? row.affiliate_tier4_type, row.deal_type, row.asking_price), attribution: { ...base, broker_name: name } }];
     });

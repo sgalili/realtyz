@@ -50,13 +50,24 @@ export function publicPricing(row: Record<string, unknown>, signedIn: boolean, c
 }
 const GENERIC_NAMES = new Set(['מתווך', 'בעל הנכס', 'מפרסם המודעה', 'בעלים', 'פרטי', 'test', 'demo', 'בדיקה', 'דמו']);
 
-/** Formats a publisher name as "[first name] [last initial]." or null when it is missing or generic. */
-export function boardPublisherName(raw: unknown): string | null {
+/** Public display classification, never an authorization or role grant. Unknown identities stay private. */
+export function publisherDisplayKind(kind: unknown, roles: string[] = []): 'broker' | 'developer' | 'private' {
+  if (['broker', 'agency', 'מתווך'].includes(String(kind))) return 'broker';
+  if (['developer', 'company', 'יזם'].includes(String(kind))) return 'developer';
+  if (['private', 'owner', 'property_owner', 'property_seeker', 'seller', 'buyer', 'renter', 'landlord', 'בעל הנכס'].includes(String(kind))) return 'private';
+  if (roles.some(role => ['managing_broker', 'lead_agent', 'agent'].includes(role))) return 'broker';
+  if (roles.includes('developer')) return 'developer';
+  return 'private';
+}
+
+/** Full professional names; only private people are abbreviated. */
+export function boardPublisherName(raw: unknown, kind: unknown = 'private'): string | null {
   if (typeof raw !== 'string') return null;
   const parts = raw.replace(/[^\p{L}\s'"״׳-]/gu, ' ').split(/[\s-]+/).map(p => p.trim()).filter(p => p.length > 0);
   if (!parts.length || GENERIC_NAMES.has(raw.trim().toLowerCase()) || GENERIC_NAMES.has(parts[0].toLowerCase())) return null;
   const first = parts[0];
   if (first.length < 2) return null;
+  if (publisherDisplayKind(kind) !== 'private') return raw.trim().replace(/\s+/g, ' ');
   return parts[1] ? `${first} ${parts[1][0]}.` : null;
 }
 

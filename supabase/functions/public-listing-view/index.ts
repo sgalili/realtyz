@@ -4,7 +4,7 @@ import { cleanPayload } from "../_shared/cleanValues.ts";
 import { maskContactText, toPublicCard } from "../_shared/publicMask.ts";
 import { verifiedSourceLicense, licenseNumber } from "../_shared/yad2Publisher.ts";
 import { publicDeveloperDetails } from '../_shared/publicDeveloperDetails.ts';
-import { publicPricing, boardPublisherName } from '../_shared/publicListingVisibility.ts';
+import { publicPricing, boardPublisherName, publisherDisplayKind } from '../_shared/publicListingVisibility.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -73,10 +73,11 @@ Deno.serve(async (req) => {
         if (!units || units.length < 200) break;
       }
     }
-    const [{ data: profile }, { data: brand }, { data: workspace }] = await Promise.all([
+    const [{ data: profile }, { data: brand }, { data: workspace }, { data: ownerRoles }] = await Promise.all([
       admin.from("profiles").select("full_name, broker_byline, broker_license_number").eq("id", ownerId).maybeSingle(),
       admin.from("white_label_settings").select("agency_name, logo_url, landscape_logo_url").eq("user_id", ownerId).maybeSingle(),
       admin.from("workspace_memberships").select("workspace_name, workspace_logo_url").eq("workspace_owner_id", ownerId).order("created_at", { ascending: true }).limit(1).maybeSingle(),
+      admin.from("user_roles").select("role").eq("user_id", ownerId),
     ]);
 
     const { data: workspaceRows } = await admin
@@ -129,7 +130,7 @@ Deno.serve(async (req) => {
     const property = publicProperty(listing);
     const workspace_properties = (workspaceRows ?? []).map((row) => publicProperty(row));
     const ownAttribution = {
-      broker_name: boardPublisherName(profile?.full_name) ?? boardPublisherName(profile?.broker_byline),
+      broker_name: profile?.full_name || profile?.broker_byline || null,
       office_name: brand?.agency_name || workspace?.workspace_name || "שם המשרד לא צוין",
       broker_license_number: licenseNumber(profile?.broker_license_number),
       agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || workspace?.workspace_logo_url || null,
@@ -143,7 +144,10 @@ Deno.serve(async (req) => {
       : { data: [] as any[] };
     const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o.full_name]));
     const attributionFor = (row: Record<string, any>) => {
-      if (!row.source || row.source === "manual") return ownAttribution;
+      if (!row.source || row.source === "manual") {
+        const kind = publisherDisplayKind(row.features?.publisher_type ?? row.source_metadata?.publisher_kind, (ownerRoles ?? []).map(item => item.role));
+        return { ...ownAttribution, publisher_kind: kind, broker_name: boardPublisherName(ownAttribution.broker_name ?? row.features?.contact_name, kind) };
+      }
       const m = (row.source_metadata ?? {}) as Record<string, any>;
       const txt = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
       const name = txt(m.broker_name) ?? txt(m.contact_name) ?? txt(m.owner_name) ?? txt(ownerMap.get(row.owner_id));
@@ -153,7 +157,8 @@ Deno.serve(async (req) => {
       const exclusive = [row.additional_details, row.attributes].some((d: any) => d?.isAssetExclusive === true);
       const broker = exclusive || !!licence || !!office || ["broker", "agency"].includes(m.publisher_kind);
       return {
-        broker_name: boardPublisherName(name),
+        publisher_kind: publisherDisplayKind(m.publisher_kind ?? (broker ? "broker" : "private")),
+        broker_name: boardPublisherName(name, publisherDisplayKind(m.publisher_kind ?? (broker ? "broker" : "private"))),
         office_name: office ?? (broker ? "משרד תיווך" : m.publisher_kind === "private" ? "מפרסם פרטי" : null),
         broker_license_number: licence,
         agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url),
