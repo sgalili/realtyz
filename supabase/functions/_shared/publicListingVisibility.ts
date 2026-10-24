@@ -33,3 +33,22 @@ export function publicPricing(row: Record<string, unknown>, signedIn: boolean, c
   }
   return safe;
 }
+const GENERIC_NAMES = new Set(['מתווך', 'בעל הנכס', 'מפרסם המודעה', 'בעלים', 'פרטי', 'test', 'demo', 'בדיקה', 'דמו']);
+
+/** Formats a publisher name as "[first name] [last initial]." or null when it is missing or generic. */
+export function boardPublisherName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const parts = raw.replace(/[^\p{L}\s'"״׳-]/gu, ' ').split(/[\s-]+/).map(p => p.trim()).filter(p => p.length > 0);
+  if (!parts.length || GENERIC_NAMES.has(raw.trim().toLowerCase()) || GENERIC_NAMES.has(parts[0].toLowerCase())) return null;
+  const first = parts[0];
+  if (first.length < 2) return null;
+  return parts[1] ? `${first} ${parts[1][0]}.` : null;
+}
+
+/** Strict homepage rule: published price, at least one configured reward, real formatted publisher name. */
+export function meetsBoardRules(row: Record<string, any>, publisherName: string | null): boolean {
+  if (!(Number(row.asking_price) > 0)) return false;
+  const closing = Number(row.features?.deal_closing_commission?.value ?? 0);
+  const rewards = [row.affiliate_tier1_amount, row.affiliate_tier2_amount, row.affiliate_tier3_amount, row.affiliate_tier4_amount].some(v => Number(v) > 0) || closing > 0;
+  return rewards && !!publisherName;
+}
