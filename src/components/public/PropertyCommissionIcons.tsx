@@ -28,8 +28,8 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     tier3: Number(source?.affiliate_tier3_amount ?? 0), tier4: level4Unlocked ? Number(source?.affiliate_tier4_amount ?? 0) : 0,
     tier4Type: (source?.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed') as 'percent' | 'fixed',
   };
-  const types: RewardTypes = source?.reward_types as RewardTypes ?? { form: tiers.tier1 > 0, whatsapp: tiers.tier2 > 0, phone: tiers.tier3 > 0, closing: tiers.tier4 > 0 };
+  const types: RewardTypes = { ...(source?.reward_types as RewardTypes ?? { form: tiers.tier1 > 0, whatsapp: tiers.tier2 > 0, phone: tiers.tier3 > 0 }), closing: true };
   const display = table ? tableRoyalties(types, tiers, !!user, level4Unlocked) : { types, prices: undefined };
   if (!Object.values(display.types).some(Boolean)) return null;
-  return <LeadPricingDialog readOnly rewardTypes={display.types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}><RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} /></LeadPricingDialog>;
+  return <LeadPricingDialog readOnly rewardTypes={display.types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}><RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} /></LeadPricingDialog>;
 }

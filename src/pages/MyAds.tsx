@@ -104,7 +104,7 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
       </Link>
       <div className="min-w-0 flex-1 space-y-1">
         <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block whitespace-normal [overflow-wrap:anywhere] font-semibold text-foreground" title={title}>{title}</Link>
-        <p className="font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}</p>
+        <p className="font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}{r.deal_type === 'rent' && Number(r.asking_price) ? <span className="text-xs font-normal">/לחודש</span> : null}</p>
         {owned && <ListingLifecycleStatus listingId={r.listing_id} />}
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {([{ icon: Eye, value: r.views, label: 'צפיות' }, { icon: MousePointerClick, value: r.clicks, label: 'קליקים' }, { icon: Users, value: r.affiliates, label: 'שותפים מקדמים' }]).map(({ icon: Icon, value, label }) => <Button key={label} variant="ghost" size="sm" className="h-auto gap-1.5 px-0 py-1 text-muted-foreground" aria-expanded={open} aria-controls={`stats-${r.relation}-${r.listing_id}`} onClick={() => setOpen(v => !v)}><Icon className="h-4 w-4" /><b className="text-foreground">{number(value)}</b>{label}</Button>)}
@@ -159,7 +159,7 @@ function ActivityProperties() {
           <Link to={`/p/${r.slug || r.listing_id}`} className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>{r.image_url ? <img src={r.image_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}</Link>
           <div className="min-w-0 flex-1">
             <Link to={`/p/${r.slug || r.listing_id}`} className="block truncate text-sm font-semibold" title={title}>{title}</Link>
-            <p className="text-sm font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}</p>
+            <p className="text-sm font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}{r.deal_type === 'rent' && Number(r.asking_price) ? <span className="text-xs font-normal">/לחודש</span> : null}</p>
             <div className="flex flex-wrap gap-x-3 text-[11px] text-muted-foreground"><span className="font-semibold text-foreground"><Users className="me-0.5 inline h-3 w-3" />{number(r.affiliates)} שותפים משתפים</span><span><Eye className="me-0.5 inline h-3 w-3" />{number(r.views)}</span><span><MousePointerClick className="me-0.5 inline h-3 w-3" />{number(r.clicks)}</span></div>
           </div>
         </li>;

@@ -101,6 +101,10 @@
 
     /* SUCCESS / WARNING */
     --success: 134 61% 41%;
+    --lead-form: 0 0% 0%;
+    --lead-whatsapp: 142 70% 40%;
+    --lead-phone: 217 91% 55%;
+    --lead-closing: 43 90% 48%;
     --closing-low: 0 72% 48%;
     --closing-medium: 26 92% 45%;
     --closing-high: 45 95% 40%;

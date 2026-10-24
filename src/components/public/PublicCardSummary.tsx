@@ -39,6 +39,6 @@ export default function PublicCardSummary({ card, price, showBroker = true, show
   return <div className="space-y-2">
     <PublicAdHeading compact dense={dense} title={data?.listing.title || publicAdTitle(card)} price={price} dealType={card.deal_type} />
     {!dense && <span className={listingDistribution(card.affiliate_enabled === true) === 'network' ? 'inline-flex text-[11px] font-semibold text-success' : 'inline-flex text-[11px] text-muted-foreground'}>{card.affiliate_enabled ? 'פתוח לרשת השותפים' : 'פרסום באתר בלבד'}</span>}
-    {showBroker && <BrokerAttribution compact brokerName={publisher?.broker_name ?? data?.listing.brokerName} officeName={publisher?.office_name ?? data?.listing.officeName} licenceNumber={publisher?.broker_license_number ?? data?.listing.brokerLicenceNumber} logoUrl={publisher?.agency_logo_url ?? data?.listing.agencyLogoUrl} publisherKind={publisher?.publisher_kind ?? data?.listing.publisherKind} dealType={card.deal_type} trailing={showCommissions ? <PropertyCommissionIcons listingId={card.id} raw={data?.raw ?? { reward_types: card.reward_types }} /> : undefined} />}
+    {showBroker && <BrokerAttribution compact brokerName={publisher?.broker_name ?? data?.listing.brokerName} officeName={publisher?.office_name ?? data?.listing.officeName} licenceNumber={publisher?.broker_license_number ?? data?.listing.brokerLicenceNumber} logoUrl={publisher?.agency_logo_url ?? data?.listing.agencyLogoUrl} publisherKind={publisher?.publisher_kind ?? data?.listing.publisherKind} dealType={card.deal_type} />}
   </div>;
 }
