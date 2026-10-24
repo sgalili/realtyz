@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CircleHelp, Trophy, Users, Zap } from 'lucide-react';
+import { ChevronDown, CircleHelp, Trophy, Users, Zap } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const progress = (percent - range.min) / (range.max - range.min);
   const level = Math.min(3, Math.floor(progress * 4));
   const [editing, setEditing] = useState(false);
+  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const amount = closingFeeAmount(percent, range.price);
   const displayAmount = dualMode ? valueType === 'fixed' : range.rent && range.price > 0;
@@ -29,6 +30,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const maximum = displayAmount && dualMode ? range.price * range.max / 100 : range.max;
   const exactAmount = range.price * percent / 100;
   const money = (n: number) => fmtILS(n);
+  const selectedLabel = displayAmount ? money(dualMode ? exactAmount : amount) : `${Number(percent.toFixed(2))}%`;
   const changePercent = (next: number) => {
     if (dualMode && onValueChange) onValueChange(displayAmount ? range.price * next / 100 : next, valueType);
     else onChange(next);
@@ -39,8 +41,8 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     setEditing(false);
   };
   return <section className="closing-fee space-y-4 pt-4" data-level={level}>
-    <div className="flex items-center gap-2 text-sm font-semibold"><Trophy className="h-4 w-4 closing-tone" />סגירת עסקה *<Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 p-0" aria-label="הסבר עמלת סגירת עסקה"><CircleHelp className="h-4 w-4 text-muted-foreground" /></Button></PopoverTrigger><PopoverContent dir="rtl" align="end" className="w-80"><div className="space-y-2"><p className="text-sm font-semibold">כך מתחלקת עמלת הסגירה</p><ClosingSplitNote gross={displayAmount ? (dualMode ? exactAmount : amount) : percent} valueType={displayAmount ? 'fixed' : 'percent'} registration /><p className="text-xs leading-relaxed text-muted-foreground">התגמול משולם רק לאחר סגירת העסקה בפועל, ורק למתווכים/שותפים בעלי רישיון תיווך מאומת. אין התחייבות לסגירה.</p></div></PopoverContent></Popover></div>
-    <div className="text-center">
+    <div className="flex items-center gap-2 text-sm font-semibold"><Button type="button" variant="ghost" className="h-9 gap-2 px-0 font-semibold" aria-expanded={open} aria-controls={open ? 'closing-fee-body' : undefined} onClick={() => setOpen((next) => !next)}><Trophy className="h-4 w-4 closing-tone" />סגירת עסקה *<ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} /></Button><Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 p-0" aria-label="הסבר עמלת סגירת עסקה"><CircleHelp className="h-4 w-4 text-muted-foreground" /></Button></PopoverTrigger><PopoverContent dir="rtl" align="end" className="w-80"><div className="space-y-2"><p className="text-sm font-semibold">כך מתחלקת עמלת הסגירה</p><ClosingSplitNote gross={displayAmount ? (dualMode ? exactAmount : amount) : percent} valueType={displayAmount ? 'fixed' : 'percent'} registration /><p className="text-xs leading-relaxed text-muted-foreground">התגמול משולם רק לאחר סגירת העסקה בפועל, ורק למתווכים/שותפים בעלי רישיון תיווך מאומת. אין התחייבות לסגירה.</p></div></PopoverContent></Popover>{!open && <Button type="button" variant="ghost" className="ms-auto h-9 px-2 text-lg font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); setOpen(true); }}>{selectedLabel}</Button>}</div>
+    {open && <div id="closing-fee-body" className="space-y-4"><div className="text-center">
       <div className="flex h-14 items-center justify-center" dir="ltr">
         {editing ? <Input autoFocus aria-label="עריכת עמלת סגירה" inputMode="decimal" dir="ltr" className="h-12 w-44 text-center text-3xl font-bold" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') setEditing(false); }} /> :
           <Button type="button" variant="ghost" className="h-14 px-3 text-4xl font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); }}>{displayAmount ? money(dualMode ? exactAmount : amount) : `${Number(percent.toFixed(2))}%`}</Button>}
@@ -56,5 +58,6 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
       <p className="text-sm font-semibold" aria-live="polite">פוטנציאל שיתוף: כ־{1 + Math.round(progress * 99)} שותפים</p>
       <p className="text-[11px] leading-relaxed text-muted-foreground">*ההפצה תלויה בשותפים ובקבוצות הזמינות; אין התחייבות לכמות פרסומים או לסגירה.</p>
     </div>
+    </div>}
   </section>;
 }
