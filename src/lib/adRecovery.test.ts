@@ -15,6 +15,16 @@ describe('saved ad recovery', () => {
   it('recovers immediate entry without converting it to a date', () => {
     expect(listingToDraft({ features: { entry_date: 'מיידית' } }).entryDate).toBe('מיידית');
   });
+  it('keeps the entry-date mode separate from the chosen date', () => {
+    expect(listingToDraft({ features: { entry_date: 'מיידית' } }).entryMode).toBe('immediate');
+    expect(listingToDraft({ features: { entry_date: '2026-08-01' } }).entryMode).toBe('date');
+    expect(listingToDraft({ features: {} }).entryMode).toBe('');
+  });
+  it('does not require property condition or air direction for publication', () => {
+    const draft = { ...EMPTY_PUBLIC_LISTING_DRAFT, price: '2000000', commissionDeal: '1' };
+    expect(missingPublishFields(draft, true)).not.toContain('מצב הנכס');
+    expect(missingPublishFields(draft, true)).not.toContain('כיווני אוויר');
+  });
   it('requires a positive property price before publication', () => {
     expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '0', commissionDeal: '1' }, true)).toContain('מחיר');
     expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '2000000', commissionDeal: '1' }, true)).not.toContain('מחיר');
