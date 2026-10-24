@@ -799,7 +799,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               <div><Input aria-label="מ״ר בנוי" placeholder="מ״ר בנוי" inputMode="decimal" value={fields.builtSqm} onChange={(e) => set('builtSqm', decimalInput(e.target.value))} /></div>
               <div><Input aria-label="מ״ר גינה" placeholder="מ״ר גינה" inputMode="numeric" value={fields.gardenSqm} onChange={(e) => set('gardenSqm', e.target.value.replace(/\D/g, ''))} /></div>
               <div><Input aria-label="גודל במ״ר סך הכל *" placeholder="גודל במ״ר סך הכל *" inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
-              <div className="space-y-2"><Select value={fields.entryDate === 'מיידית' ? 'immediate' : fields.entryDate ? 'date' : undefined} onValueChange={value => set('entryDate', value === 'immediate' ? 'מיידית' : '')}><SelectTrigger aria-label="תאריך כניסה" id="entry-mode"><SelectValue placeholder="תאריך כניסה" /></SelectTrigger><SelectContent><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{fields.entryDate !== 'מיידית' && <Input aria-label="תאריך כניסה" type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} />}</div>
             </div>
           )}
 
