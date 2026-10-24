@@ -11,7 +11,7 @@ type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
 
 const SLIDES = [
-  { icon: NetworkHomes, theme: 1, title: <>מהפכה בעולם הנדל״ן<br />מתחילה כאן!</>, text: <>האקוסיסטם הראשון בעולם ה<Hi tone="red">נדל"ן</Hi> שמחבר את כולם לרשת <Hi tone="red">שותפים</Hi> חכמה אחת שעובדת בשבילכם אוטומטית.</> },
+  { icon: NetworkHomes, theme: 1, title: <>המהפכה בעולם הנדל״ן<br />מתחילה כאן!</>, text: <>מערכת TORAFF מבוססת AI - מחברת אוטומטית בין מתווכים, בעלי נכסים ורשת שותפים ענקית שמוכרים ומשכירים את הנכסים שלכם על טייס אוטמטי 24/7 וכולם מרוויחים.&nbsp;<br /><br />יותר חשיפה, יותר לידים, יותר עסקאות סגורות באפס מאמץ. זה מטורף!<br /></> },
   { icon: CoinsCurrency, theme: 2, title: <>כאן כולם <Hi tone="gold">מרוויחים</Hi></>, text: <div className="space-y-4">
     <p><strong>בעלי נכס / מתווכים</strong><br />אתם קובעים מראש את עמלת הסגירה ומחיר הלידים שאתם מוכנים לשלם.</p>
     <p><strong>קונים / שוכרים</strong><br />משלמים עמלת תיווך קבועה של 1% לאחר הקנייה או 10% מגובה השכירות החודשית לאחר חתימת חוזה.</p>
