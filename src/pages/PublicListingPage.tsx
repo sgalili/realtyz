@@ -405,7 +405,7 @@ function PublicListingContent() {
   const mapProperties = (payload?.properties ?? []).flatMap((property, index) => {
     if (property.latitude === null || property.longitude === null) return [];
     const id = property.id ?? property.slug ?? `public-property-${index}`;
-    return [{ id, title: property.title, latitude: property.latitude, longitude: property.longitude, price: property.price }];
+    return [{ id, title: property.title, latitude: property.latitude, longitude: property.longitude, price: property.price, dealType: (property as any).deal_type ?? null }];
   });
   const selectedMapId = data.id ?? data.slug ?? mapProperties[0]?.id ?? null;
 
