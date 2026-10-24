@@ -9,7 +9,7 @@ import type { PublicCard } from '@/pages/PublicListingsBoard';
 
 export const BOARD_COLUMNS = [
   { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' },
-  { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'עמלות' }, { id: 'deal', label: 'עסקה' },
+  { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תמלוגים' }, { id: 'deal', label: 'עסקה' },
   { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
 ] as const;
 export type BoardColumnId = typeof BOARD_COLUMNS[number]['id'];

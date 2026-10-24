@@ -11,12 +11,12 @@ const rewardIcons = [
   { key: 'closing', label: 'סגירת עסקה', Icon: Trophy, tone: 'text-success' },
 ] as const;
 
-export function RewardIcons({ types }: { types: RewardTypes }) {
+export function RewardIcons({ types, prices, closingPercent = false, label = 'תגמולים' }: { types: RewardTypes; prices?: Partial<Record<keyof RewardTypes, number>>; closingPercent?: boolean; label?: string | null }) {
   const rows = rewardIcons.filter(row => types[row.key] === true);
   if (!rows.length) return null;
   return <span className="inline-flex flex-col gap-1 text-start" data-commission-icons>
-    <span className="text-[10px] font-medium text-muted-foreground">תגמולים</span>
-    <span className="flex items-center gap-2">{rows.map(({ key, label, Icon, tone }) => <Icon key={key} aria-label={label} className={`h-4 w-4 ${tone}`} />)}</span>
+    {label && <span className="text-[10px] font-medium text-muted-foreground">{label}</span>}
+    <span className={prices ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'flex items-center gap-2'}>{rows.map(({ key, label: title, Icon, tone }) => <span key={key} title={title} className="inline-flex items-center gap-1 whitespace-nowrap"><Icon aria-label={title} className={`h-4 w-4 shrink-0 ${tone}`} />{prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : `₪${prices[key]?.toLocaleString('he-IL')}`}</bdi>}</span>)}</span>
   </span>;
 }
 
