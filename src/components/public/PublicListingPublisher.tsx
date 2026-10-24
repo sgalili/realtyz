@@ -7,6 +7,8 @@ import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
 import { PriceInput } from "@/components/ui/price-input";
 import { LeadPriceSlider } from './LeadPriceSlider';
 import { Switch } from '@/components/ui/switch';
+import { PropertyAmenitiesFields } from './PropertyAmenitiesFields';
+import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propertyFormOptions';
 import { LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
@@ -53,9 +55,8 @@ const importedVideoUrls = (src: any): string[] => Array.from(new Set([...(Array.
 const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
 const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
 const AIR_DIRECTIONS = ['1', '2', '3', '4'];
-const ROOM_OPTIONS = ['1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5', '5.5', '6+'];
 const FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
-const TOTAL_FLOOR_OPTIONS = [...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
+const TOTAL_FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
@@ -269,6 +270,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
+  useEffect(() => {
+    if (fields.floor && fields.totalFloors && !validFloorPair(fields.floor, fields.totalFloors)) {
+      setFields(current => updateFloorSelection(current, 'totalFloors', current.totalFloors));
+    }
+  }, [fields.floor, fields.totalFloors]);
 
   const addressLine = useMemo(
     () => [fields.street, fields.houseNumber].filter(Boolean).join(' ') || fields.address,
@@ -354,6 +360,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
            media_videos: Array.from(new Set([...(Array.isArray(source?.features?.media_videos) ? source.features.media_videos : []), ...importedVideoUrls(source), ...clips])),
           total_floors: draftFields.totalFloors || null,
           elevator: draftFields.elevator,
+          elevator_count: draftFields.elevatorCount ?? (draftFields.elevator ? '1' : '0'),
+          parking_count: draftFields.parkingCount ?? (draftFields.parking ? '1' : '0'),
+          balcony_types: draftFields.balconyTypes ?? (draftFields.balcony ? ['מרפסת שמש'] : []),
+          view_type: draftFields.viewType ?? (draftFields.openView ? 'נוף פתוח' : 'ללא נוף'),
           parking: draftFields.parking,
           balcony: draftFields.balcony,
           condition: draftFields.condition || null,
@@ -456,10 +466,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   const stepValid = () => {
     if (step === 2) return Boolean(fields.propertyType);
-    if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()) && fields.floor && fields.totalFloors);
+    if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()) && validFloorPair(fields.floor, fields.totalFloors));
     if (step === 4) return Boolean(fields.rooms && fields.condition && fields.airDirections);
-    if (step === 5) return Boolean(fields.price && (fields.sqm || fields.builtSqm));
-    if (step === 8) return Boolean(fields.commissionTermsAccepted);
+    if (step === 5) return Boolean(fields.sqm || fields.builtSqm);
+    if (step === 8) return Boolean(Number(fields.price) > 0 && fields.commissionTermsAccepted);
     return true;
   };
   const goNext = async () => {
@@ -654,10 +664,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       case 2: return Boolean(f.propertyType);
       case 3: return Boolean(f.city.trim() && (f.street.trim() || f.address.trim()) && f.floor && f.totalFloors);
       case 4: return Boolean(f.rooms && f.condition && f.airDirections);
-      case 5: return Boolean(f.price && (f.sqm || f.builtSqm));
+      case 5: return Boolean(f.sqm || f.builtSqm);
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
       case 7: return Boolean(f.contactName?.trim().split(/\s+/).length >= 2 && f.contactWhatsapp.replace(/\D/g, '').length >= 9);
-      case 8: return Boolean(f.commissionTermsAccepted);
+      case 8: return Boolean(Number(f.price) > 0 && f.commissionTermsAccepted);
       default: return false;
     }
   };
@@ -763,23 +773,15 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 {fields.area && <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
               </div>}
               <div className="grid grid-cols-2 gap-2">
-                <div><Label htmlFor="wizard-floor">קומה<span className="text-destructive"> *</span></Label><Select value={fields.floor} onValueChange={(value) => set('floor', value)}><SelectTrigger id="wizard-floor"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label htmlFor="wizard-total-floors">כמה קומות יש בבניין? <span className="text-destructive">*</span></Label><Select value={fields.totalFloors} onValueChange={(value) => set('totalFloors', value)}><SelectTrigger id="wizard-total-floors"><SelectValue placeholder="מתוך" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} קומות</SelectItem>)}</SelectContent></Select></div>
+                <div><Label htmlFor="wizard-floor">קומה<span className="text-destructive"> *</span></Label><Select value={fields.floor} onValueChange={value => setFields(current => updateFloorSelection(current, 'floor', value))}><SelectTrigger id="wizard-floor"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option} disabled={Boolean(fields.totalFloors && floorNumber(option) > floorNumber(fields.totalFloors))}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label htmlFor="wizard-total-floors">כמה קומות יש בבניין? <span className="text-destructive">*</span></Label><Select value={fields.totalFloors} onValueChange={value => setFields(current => updateFloorSelection(current, 'totalFloors', value))}><SelectTrigger id="wizard-total-floors"><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `${option} קומות`}</SelectItem>)}</SelectContent></Select></div>
               </div>
             </div>
           )}
 
           {step === 4 && (
             <div className="space-y-3">
-              <div><Label htmlFor="wizard-rooms"></Label><Select value={fields.rooms} onValueChange={(value) => set('rooms', value)}><SelectTrigger id="wizard-rooms"><SelectValue placeholder="חדרים" /></SelectTrigger><SelectContent>{ROOM_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option} חדרים</SelectItem>)}</SelectContent></Select></div>
-              <div className="flex flex-wrap gap-4">
-                {([['elevator', 'מעלית'], ['parking', 'חניה'], ['balcony', 'מרפסת'], ['openView', 'נוף פתוח']] as const).map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 text-sm font-semibold">
-                    <Checkbox checked={Boolean(fields[key])} onCheckedChange={(checked) => set(key, Boolean(checked))} />
-                    {label}
-                  </label>
-                ))}
-              </div>
+              <PropertyAmenitiesFields fields={fields} onChange={patch => setFields(current => ({ ...current, ...patch }))} />
               <div className="grid grid-cols-2 gap-3"><div><Label>מצב הנכס<span className="text-destructive"> *</span></Label><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div><div><Label>כיווני אוויר<span className="text-destructive"> *</span></Label><Select value={fields.airDirections} onValueChange={(value) => set('airDirections', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{AIR_DIRECTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div></div>
               <div><Label>תיאור הנכס</Label><Textarea rows={3} value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
             </div>
@@ -792,8 +794,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               <div><Label>מ״ר בנוי</Label><Input inputMode="decimal" value={fields.builtSqm} onChange={(e) => set('builtSqm', decimalInput(e.target.value))} /></div>
               <div><Label>מ״ר גינה</Label><Input inputMode="numeric" value={fields.gardenSqm} onChange={(e) => set('gardenSqm', e.target.value.replace(/\D/g, ''))} /></div>
               <div><Label>גודל במ״ר סך הכל<span className="text-destructive"> *</span></Label><Input inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
-              <div><Label>{fields.dealType === 'rent' ? 'שכירות חודשית' : 'מחיר מכירה'}<span className="text-destructive"> *</span></Label><PriceInput value={fields.price} onChange={(e) => set('price', e.target.value)} /></div>
-              <div><Label>תאריך כניסה</Label><Input type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} /></div>
+              <div className="space-y-2"><Label htmlFor="entry-mode">תאריך כניסה</Label><Select value={fields.entryDate === 'מיידית' ? 'immediate' : 'date'} onValueChange={value => set('entryDate', value === 'immediate' ? 'מיידית' : '')}><SelectTrigger id="entry-mode"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{fields.entryDate !== 'מיידית' && <Input aria-label="תאריך כניסה" type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} />}</div>
             </div>
           )}
 
@@ -829,6 +830,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="space-y-3">
+              <div className="space-y-2"><Label htmlFor="wizard-price">{fields.dealType === 'rent' ? 'שכירות חודשית' : 'מחיר מכירה'}<span className="text-destructive"> *</span></Label><PriceInput id="wizard-price" value={fields.price} placeholder="0" className={cn('h-16 text-center text-3xl font-bold sm:text-4xl', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /></div>
               <div className="space-y-4 text-sm">
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
@@ -869,7 +871,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-muted-foreground">אומדן בלבד, לא מספר שותפים בפועל או התחייבות להפצה.</p>
               <ClosingFeeSlider dualMode dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog

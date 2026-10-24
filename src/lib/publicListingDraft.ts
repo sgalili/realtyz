@@ -19,6 +19,10 @@ export type PublicListingDraftFields = {
   floor: string;
   totalFloors: string;
   elevator: boolean;
+  elevatorCount?: string;
+  parkingCount?: string;
+  balconyTypes?: string[];
+  viewType?: string;
   parking: boolean;
   balcony: boolean;
   condition: string;
