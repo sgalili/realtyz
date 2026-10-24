@@ -418,7 +418,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             </BoardColumnDragArea>
           )
         )}
-        {!loading && filtered.length > visibleCount && <div className="flex shrink-0 justify-center pt-5"><Button variant="outline" onClick={() => setVisibleCount(count => count + 24)}>נכסים נוספים</Button></div>}
+        {!loading && filtered.length > visibleCount && <AutoLoadSentinel onReach={() => setVisibleCount(count => count + 10)} />}
       </main>
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
@@ -439,4 +439,18 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       </Dialog>
     </div>
   );
+}
+
+function AutoLoadSentinel({ onReach }: { onReach: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const cb = useRef(onReach);
+  cb.current = onReach;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) cb.current(); }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return <div ref={ref} aria-hidden className="h-px shrink-0" />;
 }
