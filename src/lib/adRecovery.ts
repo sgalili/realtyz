@@ -38,8 +38,6 @@ export function missingPublishFields(f: PublicListingDraftFields, hasMedia: bool
     !(f.street.trim() || f.address.trim()) && 'כתובת',
     !validFloorPair(f.floor, f.totalFloors) && 'קומה',
     !f.rooms && 'חדרים',
-    !f.condition && 'מצב הנכס',
-    !f.airDirections && 'כיווני אוויר',
     !(Number(f.price) > 0) && 'מחיר',
     !(Number(f.sqm) > 0 || Number(f.builtSqm) > 0) && 'שטח',
     !hasMedia && 'תמונה או סרטון',
@@ -61,7 +59,7 @@ export function listingToDraft(row: Record<string, any>): PublicListingDraftFiel
   const closing = f.deal_closing_commission;
   return { ...EMPTY_PUBLIC_LISTING_DRAFT,
     elevatorCount: f.elevator_count, parkingCount: f.parking_count, balconyTypes: f.balcony_types, viewType: f.view_type,
-    balcony: Boolean(f.balcony), openView: Boolean(f.open_view), entryDate: str(f.entry_date),
+    balcony: Boolean(f.balcony), openView: Boolean(f.open_view), entryDate: str(f.entry_date), entryMode: str(f.entry_date) === 'מיידית' ? 'immediate' : str(f.entry_date) ? 'date' : '',
     commissionForm: str(row.affiliate_tier1_amount), commissionWhatsapp: str(row.affiliate_tier2_amount), commissionPhone: str(row.affiliate_tier3_amount),
     commissionDeal: str(closing?.value ?? row.affiliate_tier4_amount), commissionDealType: closing?.type ?? row.affiliate_tier4_type ?? 'percent',
     limitForm: str(limits.form), limitWhatsapp: str(limits.whatsapp), limitPhone: str(limits.phone),
