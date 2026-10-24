@@ -449,12 +449,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     setFields(nextFields);
     try { await saveDraft(nextFields); } catch { /* best effort */ }
     if (reviewMode) return;
-    if (key === 'publisherType') { setImportOption(null); return; }
-    if (key === 'dealType' && step === 0) {
-      // Smart skip: a signed-in user with a known role skips the role question.
+    if (step === 0 && (key === 'publisherType' || key === 'dealType')) {
       setImportOption(null);
-      if (isBroker) setFields({ ...nextFields, publisherType: 'broker' });
-      else if (user && isPropertyOwner) setFields({ ...nextFields, publisherType: 'private' });
+      // Smart skip: a signed-in user with a known role does not need to pick the role.
+      const known = isBroker ? 'broker' : user && isPropertyOwner ? 'private' : null;
+      const ready = { ...nextFields, publisherType: nextFields.publisherType || known || '' } as PublicListingDraftFields;
+      if (ready !== nextFields) setFields(ready);
+      if (ready.publisherType && ready.dealType) setImportSlide(true);
       return;
     }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
@@ -594,7 +595,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       if (isBroker) { next.publisherType = 'broker'; next.contactName = fields.contactName || publisherName; next.contactWhatsapp = fields.contactWhatsapp || publisherPhone; }
       setFields(next); setFiles([]); setVideos([]);
       setStep(0);
-      setReviewMode(true); setExpandedStep(isBroker ? 'step-1' : 'step-0');
+      setReviewMode(true); setExpandedStep('step-2');
       try { await saveDraft(next, [], []); } catch { /* best effort */ }
       void saveToMyProperties({ ...src, source_url: sourceUrl }, u?.listing_id ?? null);
     } catch (e) { setPublishError(e instanceof Error ? e.message : 'לא ניתן לייבא את המודעה'); }
@@ -641,29 +642,27 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     <>
           {step === 0 && !importSlide && (
             <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-center text-[19px] font-semibold text-muted-foreground">מי מפרסם?</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>בעל הנכס</Button>
+                  <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
+                  <Button type="button" variant="outline" className="h-auto px-2 py-4 text-base font-bold" onClick={() => { if (!user) { setPendingSignupRole('developer'); navigate('/auth'); return; } void supabase.rpc('register_as_developer' as any, { _display_name: null }).then(async ({ error }) => { if (error) { toast.error(error.message); return; } await refetchRoles(); navigate('/developer-dashboard?onboarding=1'); }); }}>יזם</Button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
                   <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
                 ))}
               </div>
-              {fields.dealType && (
-                <div className="space-y-2">
-                  <p className="text-center text-sm font-semibold text-muted-foreground">מי מפרסם?</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
-                    <Button type="button" variant="outline" className="h-auto px-2 py-4 text-base font-bold" onClick={() => { if (!user) { setPendingSignupRole('developer'); navigate('/auth'); return; } void supabase.rpc('register_as_developer' as any, { _display_name: null }).then(async ({ error }) => { if (error) { toast.error(error.message); return; } await refetchRoles(); navigate('/developer-dashboard?onboarding=1'); }); }}>יזם</Button>
-                    <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>בעל הנכס</Button>
-                  </div>
-                </div>
-              )}
-              {fields.dealType && (
-                <div className="space-y-2 pt-1">
-                  <Button type="button" variant={importOption === 'yad2' ? 'secondary' : 'outline'} className="w-full justify-between" aria-expanded={importOption === 'yad2'} onClick={() => setImportOption((current) => (current === 'yad2' ? null : 'yad2'))}>
-                    ייבוא מודעה מיד 2
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', importOption === 'yad2' && 'rotate-180')} />
-                  </Button>
-                  {importOption === 'yad2' && (
-                    <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="placeholder:text-muted-foreground/60" value={importUrl} onChange={e => setImportUrl(e.target.value)} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} />
+            </div>
+          )}
+          {step === 0 && importSlide && (
+            <div className="space-y-4">
+              <div className="space-y-2 pt-1">
+                  <p className="text-center text-[19px] font-semibold text-muted-foreground">ייבוא מודעה מיד 2</p>
+                  {(
+                    <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="placeholder:text-muted-foreground/60" value={importUrl} onChange={e => { setImportOption('yad2'); setImportUrl(e.target.value); }} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); setImportOption('yad2'); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} />
                   )}
                   {isBroker && (
                     <>
@@ -676,11 +675,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     </>
                   )}
                   {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
-                  <button type="button" className="mx-auto block pt-1 text-sm font-semibold text-primary underline underline-offset-4" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setStep(1); setReviewMode(true); setExpandedStep(''); }}>
+                  <button type="button" className="mx-auto block pt-1 text-sm font-semibold text-primary underline underline-offset-4" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setStep(1); setReviewMode(true); setExpandedStep('step-2'); }}>
                     המשך ללא ייבוא
                   </button>
                 </div>
-              )}
             </div>
           )}
 
