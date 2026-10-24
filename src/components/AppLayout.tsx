@@ -88,7 +88,7 @@ function HeaderProfileLink() {
       data-walkthrough="menu"
       className="h-[46.8px] w-[46.8px] shrink-0 cursor-pointer rounded-md text-foreground/80 hover:bg-muted hover:text-foreground"
     >
-      <CircleUserRound className="!h-[26px] !w-[26px]" aria-hidden="true" />
+      <CircleUserRound className="!h-[26px] !w-[26px]" strokeWidth={1} aria-hidden="true" />
     </Button>
   );
 }
