@@ -319,12 +319,12 @@ const Auth = () => {
       className="auth-gradient-shell relative flex flex-col overflow-hidden bg-background px-4"
     >
       {codeSent && !isGoogleFlow && (
-        <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-4 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
+        <button type="button" aria-label="חזרה להתחברות" className="absolute left-4 top-4 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
           <ArrowRight className="h-10 w-10" />
         </button>
       )}
       {!codeSent && (
-        <button type="button" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute right-4 top-4 z-20 border-0 bg-transparent p-1 text-foreground transition-opacity hover:opacity-70" onClick={() => navigate('/')}>
+        <button type="button" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute left-4 top-4 z-20 border-0 bg-transparent p-1 text-foreground transition-opacity hover:opacity-70" onClick={() => navigate('/')}>
           <X className="h-8 w-8" />
         </button>
       )}
