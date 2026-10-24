@@ -1,3 +1,4 @@
+import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import Terms from '@/pages/Terms';
 import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
