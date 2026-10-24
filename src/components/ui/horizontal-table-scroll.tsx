@@ -30,8 +30,45 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
         element.scrollLeft = next.left;
         element.scrollTop = next.top;
       };
+      // Touch gestures lock to the first dominant axis; the other axis is held in place.
+      let gesture: { x: number; y: number; left: number; top: number; axis: 'x' | 'y' | null } | null = null;
+      const start = (event: TouchEvent) => {
+        if (event.touches.length !== 1) { gesture = null; return; }
+        const t = event.touches[0];
+        gesture = { x: t.clientX, y: t.clientY, left: element.scrollLeft, top: element.scrollTop, axis: null };
+      };
+      const move = (event: TouchEvent) => {
+        if (!gesture || gesture.axis || event.touches.length !== 1) return;
+        const t = event.touches[0];
+        const dx = Math.abs(t.clientX - gesture.x), dy = Math.abs(t.clientY - gesture.y);
+        if (dx + dy < 6) return;
+        gesture.axis = dx > dy ? 'x' : 'y';
+        element.style.overflowX = gesture.axis === 'y' ? 'hidden' : '';
+        element.style.overflowY = gesture.axis === 'x' ? 'hidden' : '';
+      };
+      const scroll = () => {
+        if (!gesture?.axis) return;
+        if (gesture.axis === 'y' && element.scrollLeft !== gesture.left) element.scrollLeft = gesture.left;
+        if (gesture.axis === 'x' && element.scrollTop !== gesture.top) element.scrollTop = gesture.top;
+      };
+      const end = () => {
+        // Keep the lock through momentum, then release.
+        window.setTimeout(() => { gesture = null; element.style.overflowX = ''; element.style.overflowY = ''; }, 600);
+      };
       element.addEventListener('wheel', wheel, { passive: false });
-      return () => element.removeEventListener('wheel', wheel);
+      element.addEventListener('touchstart', start, { passive: true });
+      element.addEventListener('touchmove', move, { passive: true });
+      element.addEventListener('touchend', end, { passive: true });
+      element.addEventListener('touchcancel', end, { passive: true });
+      element.addEventListener('scroll', scroll, { passive: true });
+      return () => {
+        element.removeEventListener('wheel', wheel);
+        element.removeEventListener('touchstart', start);
+        element.removeEventListener('touchmove', move);
+        element.removeEventListener('touchend', end);
+        element.removeEventListener('touchcancel', end);
+        element.removeEventListener('scroll', scroll);
+      };
     }, [alreadyOwned]);
     if (alreadyOwned) return <>{children}</>;
     return <TableScrollOwner.Provider value={true}>

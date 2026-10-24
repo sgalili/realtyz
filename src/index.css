@@ -1850,3 +1850,10 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .board-head-sticky tbody > tr[data-row-id] > td {
   border-top: 1px solid hsl(var(--border));
 }
+
+/* While the header activity drawer is open, blur the board listings behind it. */
+html.activity-drawer-open main[aria-label="רשימת נכסים"] {
+  filter: blur(4px);
+  pointer-events: none;
+  transition: filter 150ms ease;
+}

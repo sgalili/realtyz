@@ -197,8 +197,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     const all: PublicCard[] = [];
     for (let offset = 0; ; offset += 60) {
       const params = new URLSearchParams({ limit: '60', offset: String(offset) });
-      const { data, error } = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, { method: 'GET' });
-      if (error) { toast.error('לא ניתן לטעון את לוח הנכסים'); break; }
+      let result = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, { method: 'GET' });
+      if (result.error) { await new Promise(r => setTimeout(r, 800)); result = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, { method: 'GET' }); }
+      const { data, error } = result;
+      // Background refresh failures keep the listings already shown, silently.
+      if (error) { if (!cached && !all.length) toast.error('לא ניתן לטעון את לוח הנכסים'); break; }
       const rows = (data?.properties ?? []) as PublicCard[];
       all.push(...rows);
       if (data?.has_more !== true) break;

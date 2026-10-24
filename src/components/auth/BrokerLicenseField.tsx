@@ -26,7 +26,7 @@ export function BrokerLicenseField({ value, onChange, onVerified, compact = fals
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [value, onVerified]);
   return <div className="space-y-2">
-    <Label className={compact ? 'sr-only' : undefined} htmlFor="signup-broker-license">מספר רישיון תיווך *</Label>
+    <Label className={compact ? 'sr-only' : 'font-semibold'} htmlFor="signup-broker-license">מספר רישיון תיווך ממשלתי *</Label>
     <Input className={compact ? 'auth-unified-field' : undefined} id="signup-broker-license" value={value} onChange={e => onChange(brokerLicenseDigits(e.target.value))} required aria-required="true" aria-invalid={status === 'error'} aria-describedby="signup-broker-license-status" inputMode="numeric" pattern="[1-9][0-9]{0,9}" maxLength={10} autoComplete="off" dir="ltr" />
     <div id="signup-broker-license-status" aria-live="polite" className="text-sm">
       {status === 'checking' && <span className="text-muted-foreground">בודקים בפנקס המתווכים המורשים…</span>}

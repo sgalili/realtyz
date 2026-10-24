@@ -32,6 +32,12 @@ Deno.serve(async req => {
     userId = data.user.id;
   }
   try {
+    // Server-only test licenses are bound to one account.
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (url && serviceKey) {
+      const { data: testLicense } = await createClient(url, serviceKey).from('test_broker_licenses').select('user_id').eq('license_number', licenseNumber).maybeSingle();
+      if (testLicense && (action !== 'verify' || testLicense.user_id === userId)) return reply({ valid: true, source: 'test', updatedAt: new Date().toISOString() });
+    }
     const metadataUrl = new URL('https://data.gov.il/api/3/action/package_show');
     metadataUrl.searchParams.set('id', BROKER_REGISTRY_DATASET);
     const searchUrl = new URL('https://data.gov.il/api/3/action/datastore_search');
