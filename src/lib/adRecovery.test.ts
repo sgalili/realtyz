@@ -9,6 +9,12 @@ const row = {
   contact_options: { lead_daily_limits: { form: 5, whatsapp: 3, phone: 2 }, questions: ['תקציב?'], questions_phone: [], form_fields: fields, custom_flag: true },
 };
 describe('saved ad recovery', () => {
+  it('recovers selected amenity counts and types', () => {
+    expect(listingToDraft({ features: { elevator_count: '3+', parking_count: '2', balcony_types: ['מרפסת שמש', 'מרפסת שירות'], view_type: 'נוף לים' } })).toMatchObject({ elevatorCount: '3+', parkingCount: '2', balconyTypes: ['מרפסת שמש', 'מרפסת שירות'], viewType: 'נוף לים' });
+  });
+  it('recovers immediate entry without converting it to a date', () => {
+    expect(listingToDraft({ features: { entry_date: 'מיידית' } }).entryDate).toBe('מיידית');
+  });
   it('requires a positive property price before publication', () => {
     expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '0', commissionDeal: '1' }, true)).toContain('מחיר');
     expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '2000000', commissionDeal: '1' }, true)).not.toContain('מחיר');

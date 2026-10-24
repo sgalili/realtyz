@@ -1,5 +1,6 @@
 import { EMPTY_PUBLIC_LISTING_DRAFT, type PublicListingDraftFields } from './publicListingDraft';
 import { activeLeadLimits } from './closingFee';
+import { validFloorPair } from './propertyFormOptions';
 import { cleanFormFields, defaultQuestions, deriveContactOptions } from './leadTiers';
 
 export function preserveListingFeatures(saved: unknown, labels: string[]) {
@@ -35,7 +36,7 @@ export function missingPublishFields(f: PublicListingDraftFields, hasMedia: bool
     !f.propertyType && 'סוג נכס',
     !f.city.trim() && 'עיר',
     !(f.street.trim() || f.address.trim()) && 'כתובת',
-    !(f.floor && f.totalFloors) && 'קומה',
+    !validFloorPair(f.floor, f.totalFloors) && 'קומה',
     !f.rooms && 'חדרים',
     !f.condition && 'מצב הנכס',
     !f.airDirections && 'כיווני אוויר',
@@ -59,6 +60,8 @@ export function listingToDraft(row: Record<string, any>): PublicListingDraftFiel
   const limits = options.lead_daily_limits ?? f.lead_daily_limits ?? {};
   const closing = f.deal_closing_commission;
   return { ...EMPTY_PUBLIC_LISTING_DRAFT,
+    elevatorCount: f.elevator_count, parkingCount: f.parking_count, balconyTypes: f.balcony_types, viewType: f.view_type,
+    balcony: Boolean(f.balcony), openView: Boolean(f.open_view), entryDate: str(f.entry_date),
     commissionForm: str(row.affiliate_tier1_amount), commissionWhatsapp: str(row.affiliate_tier2_amount), commissionPhone: str(row.affiliate_tier3_amount),
     commissionDeal: str(closing?.value ?? row.affiliate_tier4_amount), commissionDealType: closing?.type ?? row.affiliate_tier4_type ?? 'percent',
     limitForm: str(limits.form), limitWhatsapp: str(limits.whatsapp), limitPhone: str(limits.phone),
