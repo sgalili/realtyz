@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       const { data: ls } = await admin
         .from("listings")
         .select(
-          "id, property_title, description, asking_price, city, neighborhood, address, rooms, sqm, floor, parking, elevator, slug, features",
+          "id, property_title, description, asking_price, deal_type, city, neighborhood, address, rooms, sqm, floor, parking, elevator, slug, features",
         )
         .in("id", sharedListingIds);
       listings = ls ?? [];
