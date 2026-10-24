@@ -2011,7 +2011,8 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
                           {accountIsEmpty ? (
                             <>
                               <p className="text-base font-semibold text-foreground mb-1">לא קיבלת לידים עדיין</p>
-                              <p className="text-sm text-muted-foreground mb-3 max-w-xs">מפרסמים מודעה, מגדירים מחיר ללידים, ושותפים ומחפשי נכסים שולחים אליך פניות ישירות לכאן.</p>
+                              <p className="text-sm text-muted-foreground mb-3 max-w-xs">מפרסמים מודעה, מגדירים מחיר ללידים, ושותפים ומחפשי נכסים
+ שולחים אליך פניות ישירות לכאן.</p>
                               <div className="flex flex-wrap justify-center gap-2">
                                 <Button size="sm" onClick={() => navigate('/my-ads')}>פרסום מודעה וקבלת לידים</Button>
                                 <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
