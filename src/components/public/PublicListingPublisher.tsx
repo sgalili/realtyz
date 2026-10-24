@@ -839,7 +839,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                         <p>
                           {key === 'Form' && 'הפונה משאיר פרטים בטופס (שם מלא ומספר טלפון). המפרסם יכול להוסיף שדות מותאמים אישית לטופס לפי הצורך.'}
                           {key === 'Whatsapp' && 'הפונה פותח שיחת ווטסאפ וריטה שואלת את 3 שאלות הסינון שהמפרסם הגדיר; התמליל המלא של השיחה נשמר לצפייה.'}
-                          {key === 'Phone' && 'הפונה משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
+                          {key === 'Phone' && 'הפונה משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI (ריטה) מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
                         </p>
                       </LeadTypeHelp>
                     </span><Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={Number(fields[`commission${key}`]) > 0} onCheckedChange={active => set(`commission${key}`, active ? String(LEAD_PRICE_RANGES[tier].min) : '')} /></div>
