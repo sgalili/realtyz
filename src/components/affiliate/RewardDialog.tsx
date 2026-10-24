@@ -124,7 +124,7 @@ export function RewardDialog({
   const tiers = [
     {
       key: "tier1", capKey: "form" as const,
-      title: "מילוי טופס",
+      title: "שדות מטופס בעמוד נחיתה",
       hint: "השארת שם מלא + טלפון בעמוד הנכס.",
       Icon: ClipboardList,
       value: tier1,
@@ -181,7 +181,7 @@ export function RewardDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-muted-foreground">שדות בטופס דף נחיתה</div>
+                      <div className="text-muted-foreground">שדות מטופס בעמוד נחיתה</div>
                       <div className="h-2 rounded-full bg-muted">
                         <div className="h-2 w-2/3 rounded-full bg-warning" />
                       </div>
@@ -242,7 +242,7 @@ export function RewardDialog({
                         <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">שאלות הסינון</span><Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => setEditingQuestions(tier.questionsKey)}><ListChecks className="h-3.5 w-3.5" />עריכה</Button></div>
                         {(tier.questionsKey === "phone" ? questionsPhone : questions).length ? <ol className="list-inside list-decimal space-y-0.5 text-xs">{(tier.questionsKey === "phone" ? questionsPhone : questions).map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol> : <p className="text-xs text-muted-foreground">לא הוגדרו שאלות</p>}
                       </div> : <div className="space-y-1 rounded-md bg-muted/40 p-2">
-                        <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">שדות בטופס דף נחיתה</span><Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => setFormFieldsOpen(true)}><Plus className="h-3.5 w-3.5" />הוספת שדה</Button></div>
+                        <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">שדות מטופס בעמוד נחיתה</span><Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => setFormFieldsOpen(true)}><Plus className="h-3.5 w-3.5" />הוספת שדה</Button></div>
                         <ol className="list-inside list-decimal space-y-0.5 text-xs"><li>שם מלא · חובה</li><li>טלפון · חובה</li>{formFields.filter(f => f.label.trim()).map(f => <li key={f.id}>{f.label} · {f.required ? "חובה" : "רשות"}</li>)}</ol>
                       </div>}
                     </>}

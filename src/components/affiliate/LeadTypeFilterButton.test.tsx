@@ -50,7 +50,7 @@ describe('role-based advanced filter fields', () => {
     setRole('partner');
     renderFilter();
     expect(screen.getByText('סוג הליד')).toBeInTheDocument();
-    expect(screen.getByText('שדות בטופס דף נחיתה')).toBeInTheDocument();
+    expect(screen.getByText('שדות מטופס בעמוד נחיתה')).toBeInTheDocument();
     expect(screen.getByText('סינון בווטסאפ')).toBeInTheDocument();
     expect(screen.getByText('שיחת טלפון')).toBeInTheDocument();
     expect(screen.queryByText('סגירת עסקה')).not.toBeInTheDocument();

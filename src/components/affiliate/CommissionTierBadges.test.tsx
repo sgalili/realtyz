@@ -21,7 +21,7 @@ describe('commission visibility', () => {
     expect(screen.queryByLabelText(/סגירת עסקה/)).toBeNull();
     expect(screen.queryByText(/720/)).toBeNull();
     expect(screen.queryByLabelText(/שיחת טלפון/)).toBeNull();
-    expect(screen.getByLabelText(/שדות בטופס דף נחיתה/)).toBeTruthy();
+    expect(screen.getByLabelText(/שדות מטופס בעמוד נחיתה/)).toBeTruthy();
     expect(screen.getByLabelText(/סינון בווטסאפ/)).toBeTruthy();
   });
   it('shows closing only with verified server access', () => {

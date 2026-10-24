@@ -6,7 +6,7 @@
 export type LeadTypeKey = 'tier1' | 'tier2' | 'tier3' | 'tier4';
 
 export const LEAD_TYPE_LABELS: Record<LeadTypeKey, string> = {
-  tier1: 'שדות בטופס דף נחיתה',
+  tier1: 'שדות מטופס בעמוד נחיתה',
   tier2: 'סינון בווטסאפ',
   tier3: 'שיחת טלפון',
   tier4: 'סגירת עסקה',

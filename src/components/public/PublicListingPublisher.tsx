@@ -72,7 +72,7 @@ const STEP_TITLES = [
 ];
 
 const LEAD_TYPES = [
-  { key: 'Form', tier: 'form', label: 'פנייה בטופס' },
+  { key: 'Form', tier: 'form', label: 'שדות מטופס בעמוד נחיתה' },
   { key: 'Whatsapp', tier: 'whatsapp', label: 'סינון בשיחת ווטסאפ' },
   { key: 'Phone', tier: 'phone', label: 'סינון בשיחת טלפון' },
 ] as const;
@@ -851,7 +851,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       const n = cleanFormFields(fields.formFields).length;
                       return (
                         <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setFormFieldsOpen(true)}>
-                          שדות בטופס דף נחיתה (שם + טלפון{n > 0 ? ` + ${n} נוספים · +₪${n * EXTRA_QUESTION_COST} לפנייה` : ''})
+                          שדות מטופס בעמוד נחיתה (שם + טלפון{n > 0 ? ` + ${n} נוספים · +₪${n * EXTRA_QUESTION_COST} לפנייה` : ''})
                         </Button>
                       );
                     })()}
@@ -892,7 +892,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     <div className="space-y-3 text-sm leading-relaxed">
                       <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשליד חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
                       <ul className="list-disc space-y-1 ps-5">
-                        <li><b>פנייה בטופס:</b> הפונה השאיר פרטים בטופס המודעה.</li>
+                        <li><b>שדות מטופס בעמוד נחיתה:</b> הפונה השאיר פרטים בטופס המודעה.</li>
                         <li><b>שיחה עם ריטה בווטסאפ:</b> הפונה פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
                         <li><b>שיחת טלפון:</b> הפונה התקשר ישירות למספר שבמודעה.</li>
                       </ul>

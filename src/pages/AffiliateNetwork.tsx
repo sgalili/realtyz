@@ -395,7 +395,7 @@ loading ? (
                   const t3 = t3Type === 'percent' ? Number(listing.affiliate_tier3_amount ?? 0) : leadCost(Number(listing.affiliate_tier3_amount ?? 0), phoneQuestions);
                   const t4 = Number(listing.affiliate_tier4_amount ?? 0);
                   const t4Type = (listing.affiliate_tier4_type ?? "fixed") as RewardType;
-                  if (t1) tierTexts.push({ value: money(t1), label: "שדות בטופס דף נחיתה", Icon: ClipboardList });
+                  if (t1) tierTexts.push({ value: money(t1), label: "שדות מטופס בעמוד נחיתה", Icon: ClipboardList });
                   if (Number(listing.affiliate_tier2_amount ?? 0))
                     tierTexts.push({ value: money(t2), label: "סינון ב-WhatsApp", Icon: WhatsAppIcon });
                   if (Number(listing.affiliate_tier3_amount ?? 0))
