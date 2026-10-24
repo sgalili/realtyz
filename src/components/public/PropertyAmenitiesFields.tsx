@@ -6,7 +6,7 @@ import type { PublicListingDraftFields } from '@/lib/publicListingDraft';
 import { toggleBalconyType } from '@/lib/propertyFormOptions';
 
 const BALCONIES = ['מרפסת שמש', 'מרפסת שירות', 'מרפסת מקורה', 'מרפסת סוכה', 'מרפסת גג'];
-const AIR_DIRECTIONS = ['צפון', 'דרום', 'מזרח', 'מערב', 'צפון-מזרח', 'צפון-מערב', 'דרום-מזרח', 'דרום-מערב', 'כל הכיוונים'];
+const AIR_DIRECTIONS = ['1', '2', '3', '4'];
 const VIEWS = ['ללא נוף', 'נוף פתוח', 'נוף לים', 'נוף לעיר', 'נוף לפארק', 'נוף להרים', 'נוף ירוק'];
 export function PropertyAmenitiesFields({ fields, onChange }: { fields: PublicListingDraftFields; onChange: (patch: Partial<PublicListingDraftFields>) => void }) {
   const balconies = fields.balconyTypes ?? (fields.balcony ? ['מרפסת שמש'] : []);
