@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { driver, type Driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import './global-app-tour.css';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useSidebar } from '@/components/ui/sidebar';
