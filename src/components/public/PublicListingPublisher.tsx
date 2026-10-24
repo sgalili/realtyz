@@ -79,13 +79,7 @@ const LEAD_TYPES = [
   { key: 'Phone', tier: 'phone', label: 'סינון בשיחת טלפון' },
 ] as const;
 
-const LEAD_TYPE_VALIDITY = (
-  <ul className="list-disc space-y-1 ps-5">
-    <li>{'\n'}</li>
-    <li>{'\n'}</li>
-    <li>{'\n'}</li>
-  </ul>
-);
+
 
 function LeadTypeHelp({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -847,7 +841,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                           {key === 'Whatsapp' && 'הפונה פותח שיחת ווטסאפ וריטה שואלת את 3 שאלות הסינון שהגדרת; התמליל המלא של השיחה נשמר לצפייה.'}
                           {key === 'Phone' && 'הפונה משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
                         </p>
-                        {LEAD_TYPE_VALIDITY}
                       </LeadTypeHelp>
                     </span><Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={Number(fields[`commission${key}`]) > 0} onCheckedChange={active => set(`commission${key}`, active ? String(LEAD_PRICE_RANGES[tier].min) : '')} /></div>
                     {Number(fields[`commission${key}`]) > 0 && <div className="space-y-2">
