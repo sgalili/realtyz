@@ -200,3 +200,6 @@
 - [x] Refine consent underlines, swap header icons, add editable bounded lead-price sliders and always-visible daily limits in Card 8. Authenticated 372×682 and 1280×1800 checks confirm manual save, keyboard slider changes, all three unlimited fields and working form/questions editors; 16 focused tests and preview build pass, no publication or charge.
 - [x] Add source-back control, exact ready-property count, preserve modal/accordion during legal viewing, remove top notice and shorten consent. Brokerage terms reuse the corresponding section of standard Terms.
 - [x] Authenticated phone (372×682) and desktop (1280×1800) verified: legal close retains expanded property-type accordion and chosen apartment; source-back opens import options; ready-property counter and list both contain 447 workspace properties. 13 focused tests and preview build pass; no property published.
+
+# Pinned table header
+- [x] Keep the property table's column-header row (labels plus its horizontal scroll bar) fixed while rows scroll; page header/search stay fixed too. Verified live at 446×728 and 1280×800: header pinned at scroll 0 and after scrolling, 1px row separators retained, expanded row lands fully below the header, no overlap or clipped labels; build OK and six focused tests pass.
