@@ -36,7 +36,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     if (draft.trim() && Number.isFinite(parsed)) changePercent(clampClosingPercent(displayAmount && range.price > 0 ? parsed / range.price * 100 : parsed, dealType));
     setEditing(false);
   };
-  return <section className="closing-fee space-y-4 border-t pt-4" data-level={level}>
+  return <section className="closing-fee space-y-4 pt-4" data-level={level}>
     <div className="flex items-center gap-2 text-sm font-semibold"><Trophy className="h-4 w-4 closing-tone" />סגירת עסקה *</div>
     <div className="text-center">
       <div className="flex h-14 items-center justify-center" dir="ltr">
