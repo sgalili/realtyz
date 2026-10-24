@@ -6,7 +6,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { shouldShowWelcome, WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
-import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
+import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, CircleUserRound } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -72,8 +72,10 @@ function HeaderProfileLink() {
   const { setOpen, setOpenMobile, isMobile } = useSidebar();
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={() => {
         if (isMobile) {
           setOpenMobile(true);
@@ -81,12 +83,13 @@ function HeaderProfileLink() {
           setOpen(true);
         }
       }}
-      aria-label="פתח תפריט צדדי"
+      aria-label="החשבון שלי ותפריט"
+      title="החשבון שלי ותפריט"
       data-walkthrough="menu"
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-foreground/80 transition hover:bg-muted hover:text-foreground"
+      className="h-[46.8px] w-[46.8px] shrink-0 cursor-pointer rounded-md text-foreground/80 hover:bg-muted hover:text-foreground"
     >
-      <Menu className="h-5 w-5" aria-hidden="true" />
-    </button>
+      <CircleUserRound className="!h-[26px] !w-[26px]" aria-hidden="true" />
+    </Button>
   );
 }
 
@@ -483,6 +486,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               full name directly below it (right-aligned). Rita and the other
               icon controls stay at the far left. No profile picture here. */}
           <header className="relative flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-3 pt-[env(safe-area-inset-top)] text-foreground z-30 sm:px-4" dir="rtl">
+            <div className="app-header-content flex w-full items-center justify-between gap-2">
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
               <NotificationCenter />
@@ -503,10 +507,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <HeaderCrisisAlert />
               <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!h-10 whitespace-nowrap px-3 !text-[13px] sm:!text-[15px]" />
             </div>
+            </div>
           </header>
           <PageHero />
           <main className={`realtyz-main-surface flex-1 overscroll-contain overflow-x-hidden px-3 sm:px-6 ${location.pathname.startsWith('/properties') ? 'pt-0' : 'pt-[20px]'} ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
-            <div key={`${user?.id}:${activeWorkspaceId}`} className={`w-full lg:mx-auto lg:w-[60vw] lg:max-w-[60vw] ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
+            <div key={`${user?.id}:${activeWorkspaceId}`} className={`app-content-width w-full ${location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
               <FacebookConnectionBanner />
               {user && (workspaceLoading || !activeWorkspaceId) ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : children}
               <DemoSidebarPeek />

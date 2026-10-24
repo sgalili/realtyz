@@ -9,7 +9,7 @@ export default function BoardSearchControls({ query, onQueryChange, onSearch, fi
   deals: { sale: boolean; rent: boolean }; onDealToggle: (deal: 'sale' | 'rent') => void; grid: boolean; onViewToggle: () => void;
 }) {
   return <div className="mx-auto flex w-full max-w-6xl flex-nowrap items-center gap-1 sm:gap-2">
-    <div className="relative min-w-0 flex-[1_1_12rem] sm:max-w-md">
+    <div className="relative min-w-0 flex-[1_1_12rem]">
       <Input value={query} onChange={event => onQueryChange(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') onSearch?.(); }} placeholder="חיפוש חופשי" className="ps-9" />
       <span className="absolute start-1 top-1/2 flex -translate-y-1/2">{filter}</span>
     </div>

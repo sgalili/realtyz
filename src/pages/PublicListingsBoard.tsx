@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, BadgeCheck, GripVertical, Heart, LayoutGrid, List, Send, UserRound } from 'lucide-react';
+import { ChevronDown, BadgeCheck, GripVertical, Heart, LayoutGrid, List, Send, CircleUserRound } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
@@ -303,12 +303,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         </div>
       )}
       <header className="bg-card">
-        <div className="w-full px-4 pb-0 pt-2">
+        <div className="mx-auto w-full max-w-6xl px-4 pb-0 pt-2">
           {embedded ? null : (
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-9 w-9 border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><UserRound className="h-5 w-5" /></Button>}
+                {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-[46.8px] w-[46.8px] cursor-pointer border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><CircleUserRound className="!h-[26px] !w-[26px]" /></Button>}
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">

@@ -406,7 +406,7 @@ export function PageHero() {
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
           stays perfectly centered regardless of side controls' widths. */}
       <div
-        className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6"
+        className="app-header-content relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-0"
         style={{ minHeight: "65px", paddingTop: "10px", paddingBottom: "10px" }}
       >
         {/* Visual right (RTL flex start): Burger / nav toggle + AI response + optional history */}
