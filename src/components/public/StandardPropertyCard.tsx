@@ -60,6 +60,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
                        premsg={ritaPropertyPremsg(card)}
                        options={card.contact_options}
                        compact
+                       formAsButton
                         shareUrl={publicUrl(propertyPath)}
                         showShare={false}
                      />
