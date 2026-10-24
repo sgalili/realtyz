@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isFeedEligible, publicPricing } from '../../supabase/functions/_shared/publicListingVisibility';
+import { closingRewardLevel, isFeedEligible, publicPricing } from '../../supabase/functions/_shared/publicListingVisibility';
 
 describe('unified feed visibility', () => {
   it('includes published site-only properties', () => {
@@ -35,5 +35,12 @@ describe('unified feed visibility', () => {
       expect(result.reward_types).toMatchObject({ closing: true });
     }
     expect(publicPricing(legacy, true, true).affiliate_tier4_amount).toBe(50000);
+  });
+  it('derives the closing trophy color level from the configured rate', () => {
+    expect(closingRewardLevel(0.2, 'percent', 'sale', 1_000_000)).toBe(0);
+    expect(closingRewardLevel(2, 'percent', 'sale', 1_000_000)).toBe(3);
+    expect(closingRewardLevel(20_000, 'fixed', 'sale', 1_000_000)).toBe(3);
+    expect(closingRewardLevel(1000, 'fixed', 'sale', null)).toBeNull();
+    expect(publicPricing({ affiliate_tier4_amount: 1.5, affiliate_tier4_type: 'percent', deal_type: 'sale' }, false, false).closing_level).toBe(2);
   });
 });
