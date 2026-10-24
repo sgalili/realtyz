@@ -1,4 +1,7 @@
 # Board row actions
+- [ ] Route all sign-ins to global home and use a signed-in burger menu.
+- [ ] Restore native two-axis scrolling in homepage and shared app tables; check phone and desktop.
+- [ ] Enable and expand lead settings when their title is clicked; run focused tests.
 - [x] Move wizard field labels into placeholders and align air directions after view; phone browser verifies stationary visible title/back/X and submit while the body scrolls. 20 tests and preview build pass; no publication.
 - [x] Update wizard floor consistency, amenity menus, Card 8 price, distribution note and immediate entry. 20 tests and build pass; phone flow verifies ground sync, higher-floor blocking, multi-balconies, parking, immediate entry and saved price/draft. No ad published.
 - [x] Remove the chevron expand arrow from the table actions column; row click still opens details. Verified live at 446×728: no chevron, heart and drag handle remain, details expand on click, build and table tests pass.
