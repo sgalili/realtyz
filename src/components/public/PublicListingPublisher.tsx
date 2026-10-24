@@ -54,7 +54,6 @@ const importedVideoUrls = (src: any): string[] => Array.from(new Set([...(Array.
 
 const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
 const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
-const AIR_DIRECTIONS = ['1', '2', '3', '4'];
 const FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
 const TOTAL_FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
@@ -764,17 +763,17 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 })); }}
               />
               {addressResolved && <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)] gap-2">
-                <div className="min-w-0"><Label htmlFor="wizard-city">עיר<span className="text-destructive"> *</span></Label><Input id="wizard-city" className="min-w-0 px-2 text-base" value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
-                <div className="min-w-0"><Label htmlFor="wizard-street">רחוב<span className="text-destructive"> *</span></Label><Input id="wizard-street" className="min-w-0 px-2 text-base" value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
-                <div className="min-w-0"><Label htmlFor="wizard-house">מספר בית</Label><Input id="wizard-house" className="min-w-0 px-2 text-base" inputMode="text" value={fields.houseNumber} onChange={(e) => set('houseNumber', e.target.value)} /></div>
+                <div className="min-w-0"><Input aria-label="עיר *" placeholder="עיר *" id="wizard-city" className="min-w-0 px-2 text-base" value={fields.city} onChange={(e) => set('city', e.target.value)} /></div>
+                <div className="min-w-0"><Input aria-label="רחוב *" placeholder="רחוב *" id="wizard-street" className="min-w-0 px-2 text-base" value={fields.street} onChange={(e) => set('street', e.target.value)} /></div>
+                <div className="min-w-0"><Input aria-label="מספר בית" placeholder="מספר בית" id="wizard-house" className="min-w-0 px-2 text-base" inputMode="text" value={fields.houseNumber} onChange={(e) => set('houseNumber', e.target.value)} /></div>
               </div>}
               {addressResolved && <div className="grid grid-cols-2 gap-3">
-                {fields.neighborhood && <div><Label>שכונה</Label><Input value={fields.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} /></div>}
-                {fields.area && <div><Label>אזור</Label><Input value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
+                {fields.neighborhood && <div><Input aria-label="שכונה" placeholder="שכונה" value={fields.neighborhood} onChange={(e) => set('neighborhood', e.target.value)} /></div>}
+                {fields.area && <div><Input aria-label="אזור" placeholder="אזור" value={fields.area} onChange={(e) => set('area', e.target.value)} /></div>}
               </div>}
               <div className="grid grid-cols-2 gap-2">
-                <div><Label htmlFor="wizard-floor">קומה<span className="text-destructive"> *</span></Label><Select value={fields.floor} onValueChange={value => setFields(current => updateFloorSelection(current, 'floor', value))}><SelectTrigger id="wizard-floor"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option} disabled={Boolean(fields.totalFloors && floorNumber(option) > floorNumber(fields.totalFloors))}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label htmlFor="wizard-total-floors">כמה קומות יש בבניין? <span className="text-destructive">*</span></Label><Select value={fields.totalFloors} onValueChange={value => setFields(current => updateFloorSelection(current, 'totalFloors', value))}><SelectTrigger id="wizard-total-floors"><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `${option} קומות`}</SelectItem>)}</SelectContent></Select></div>
+                <div><Select value={fields.floor} onValueChange={value => setFields(current => updateFloorSelection(current, 'floor', value))}><SelectTrigger aria-label="קומה *" id="wizard-floor"><SelectValue placeholder="קומה *" /></SelectTrigger><SelectContent>{FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option} disabled={Boolean(fields.totalFloors && floorNumber(option) > floorNumber(fields.totalFloors))}>{option === 'קרקע' ? option : `קומה ${option}`}</SelectItem>)}</SelectContent></Select></div>
+                <div><Select value={fields.totalFloors} onValueChange={value => setFields(current => updateFloorSelection(current, 'totalFloors', value))}><SelectTrigger aria-label="כמה קומות יש בבניין? *" id="wizard-total-floors"><SelectValue placeholder="כמה קומות יש בבניין? *" /></SelectTrigger><SelectContent>{TOTAL_FLOOR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option === 'קרקע' ? option : `${option} קומות`}</SelectItem>)}</SelectContent></Select></div>
               </div>
             </div>
           )}
@@ -782,19 +781,19 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           {step === 4 && (
             <div className="space-y-3">
               <PropertyAmenitiesFields fields={fields} onChange={patch => setFields(current => ({ ...current, ...patch }))} />
-              <div className="grid grid-cols-2 gap-3"><div><Label>מצב הנכס<span className="text-destructive"> *</span></Label><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div><div><Label>כיווני אוויר<span className="text-destructive"> *</span></Label><Select value={fields.airDirections} onValueChange={(value) => set('airDirections', value)}><SelectTrigger><SelectValue placeholder="בחירה" /></SelectTrigger><SelectContent>{AIR_DIRECTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div></div>
-              <div><Label>תיאור הנכס</Label><Textarea rows={3} value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
+              <div><Select value={fields.condition} onValueChange={(value) => set('condition', value)}><SelectTrigger aria-label="מצב הנכס *"><SelectValue placeholder="מצב הנכס *" /></SelectTrigger><SelectContent>{CONDITIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
+              <div><Textarea aria-label="תיאור הנכס" placeholder="תיאור הנכס" rows={3} value={fields.description} onChange={(e) => set('description', e.target.value)} /></div>
             </div>
           )}
 
           {step === 5 && (
             <div className="grid gap-3 sm:grid-cols-2">
-              <div><Label>ארנונה לחודשיים</Label><Input inputMode="numeric" value={fields.arnona} onChange={(e) => set('arnona', e.target.value.replace(/\D/g, ''))} /></div>
-              <div><Label>ועד בית</Label><Input inputMode="numeric" value={fields.vaadBayit} onChange={(e) => set('vaadBayit', e.target.value.replace(/\D/g, ''))} /></div>
-              <div><Label>מ״ר בנוי</Label><Input inputMode="decimal" value={fields.builtSqm} onChange={(e) => set('builtSqm', decimalInput(e.target.value))} /></div>
-              <div><Label>מ״ר גינה</Label><Input inputMode="numeric" value={fields.gardenSqm} onChange={(e) => set('gardenSqm', e.target.value.replace(/\D/g, ''))} /></div>
-              <div><Label>גודל במ״ר סך הכל<span className="text-destructive"> *</span></Label><Input inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
-              <div className="space-y-2"><Label htmlFor="entry-mode">תאריך כניסה</Label><Select value={fields.entryDate === 'מיידית' ? 'immediate' : 'date'} onValueChange={value => set('entryDate', value === 'immediate' ? 'מיידית' : '')}><SelectTrigger id="entry-mode"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{fields.entryDate !== 'מיידית' && <Input aria-label="תאריך כניסה" type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} />}</div>
+              <div><Input aria-label="ארנונה לחודשיים" placeholder="ארנונה לחודשיים" inputMode="numeric" value={fields.arnona} onChange={(e) => set('arnona', e.target.value.replace(/\D/g, ''))} /></div>
+              <div><Input aria-label="ועד בית" placeholder="ועד בית" inputMode="numeric" value={fields.vaadBayit} onChange={(e) => set('vaadBayit', e.target.value.replace(/\D/g, ''))} /></div>
+              <div><Input aria-label="מ״ר בנוי" placeholder="מ״ר בנוי" inputMode="decimal" value={fields.builtSqm} onChange={(e) => set('builtSqm', decimalInput(e.target.value))} /></div>
+              <div><Input aria-label="מ״ר גינה" placeholder="מ״ר גינה" inputMode="numeric" value={fields.gardenSqm} onChange={(e) => set('gardenSqm', e.target.value.replace(/\D/g, ''))} /></div>
+              <div><Input aria-label="גודל במ״ר סך הכל *" placeholder="גודל במ״ר סך הכל *" inputMode="decimal" value={fields.sqm} onChange={(e) => set('sqm', decimalInput(e.target.value))} /></div>
+              <div className="space-y-2"><Select value={fields.entryDate === 'מיידית' ? 'immediate' : fields.entryDate ? 'date' : undefined} onValueChange={value => set('entryDate', value === 'immediate' ? 'מיידית' : '')}><SelectTrigger aria-label="תאריך כניסה" id="entry-mode"><SelectValue placeholder="תאריך כניסה" /></SelectTrigger><SelectContent><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{fields.entryDate !== 'מיידית' && <Input aria-label="תאריך כניסה" type="date" value={fields.entryDate} onChange={(e) => set('entryDate', e.target.value)} />}</div>
             </div>
           )}
 
@@ -818,9 +817,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           {step === 7 && (
             <div className="space-y-3">
               {fields.publisherType === 'broker' && !isBroker && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
-               <div><Label htmlFor="publisher-name">השם שלך<span className="text-destructive"> *</span></Label><Input id="publisher-name" placeholder={publisherName} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
-                <div><Label htmlFor="publisher-whatsapp">מספר ווטסאפ<span className="text-destructive"> *</span></Label><Input id="publisher-whatsapp" inputMode="tel" dir="ltr" placeholder="050-1234567" className="text-right" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
-                <div><Label htmlFor="publisher-email">אימייל</Label><Input id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
+               <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
+                <div><Input aria-label="מספר ווטסאפ *" placeholder="מספר ווטסאפ *" id="publisher-whatsapp" inputMode="tel" dir="ltr" className="text-right" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
+                <div><Input aria-label="אימייל" placeholder="אימייל" id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
               <label className="flex items-start gap-2 text-sm">
                 <Checkbox checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', Boolean(checked))} />
                  אני רוצה לקבל פניות ועדכונים שיווקיים
@@ -830,7 +829,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="space-y-3">
-              <div className="space-y-2"><Label htmlFor="wizard-price">{fields.dealType === 'rent' ? 'שכירות חודשית' : 'מחיר מכירה'}<span className="text-destructive"> *</span></Label><PriceInput id="wizard-price" value={fields.price} placeholder="0" className={cn('h-16 text-center text-3xl font-bold sm:text-4xl', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /></div>
+              <div className="space-y-2"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-16 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /></div>
               <div className="space-y-4 text-sm">
                 {LEAD_TYPES.map(({ key, tier, label }) => (
                   <div key={key} className="space-y-2 border-b border-border pb-4">
@@ -847,7 +846,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     </span><Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={Number(fields[`commission${key}`]) > 0} onCheckedChange={active => set(`commission${key}`, active ? String(LEAD_PRICE_RANGES[tier].min) : '')} /></div>
                     {Number(fields[`commission${key}`]) > 0 && <div className="space-y-2">
                     <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} onChange={value => set(`commission${key}`, value)} />
-                    <div className="flex items-center justify-between gap-3"><Label htmlFor={`daily-limit-${key}`} className="text-xs text-muted-foreground">מקס׳ ביום</Label><Input id={`daily-limit-${key}`} inputMode="numeric" placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-32" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
+                    <div className="flex items-center justify-between gap-3"><Input id={`daily-limit-${key}`} inputMode="numeric" placeholder="מקס׳ ביום · ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-full" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
                       const n = cleanFormFields(fields.formFields).length;
                       return (
@@ -936,15 +935,15 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       </DialogContent>
     </Dialog>
     <Dialog open={open && !entryPending && !isDeveloper} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
-      <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] overflow-y-auto rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
-        <DialogHeader className="px-10 text-center">
+      <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
+        <DialogHeader className="shrink-0 px-10 pb-4 text-center">
           {(reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div data-publisher-scroll className="min-h-0 space-y-4 overflow-y-auto overscroll-contain">
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
@@ -964,7 +963,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           ) : renderStep(step)}
         </div>
 
-        <div className="flex items-center justify-between gap-2 pt-2">
+        <div data-publisher-footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-background pt-3 pb-[env(safe-area-inset-bottom)]">
             {!reviewMode && step > 0 ? <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(0, current - 1))}>
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
