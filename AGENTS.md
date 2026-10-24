@@ -1,5 +1,5 @@
 # Architecture rules
-- Wizard amenities persist detailed features with legacy flags and scoped drafts; floor validation shares one helper. Why: preserve readers and prevent invalid floors.
+- Wizard uses a fixed header/footer with only its body scrolling; amenities persist detailed features with legacy flags and scoped drafts; floor validation shares one helper. Why: visible actions and valid drafts.
 - Header activity uses an anchored viewport-bounded dropdown with three primary tabs and compact credits; owned items render as a selectable list from the authorized My Ads RPC (batch share/campaign/delete), with content remounted on user/workspace changes. Intro outline art stays local and image sizing reserves space. Why: consistent cards, uncluttered mobile scrolling and no parallel tenant marketplace.
 - The final intro slide uses separate grid tracks for text, Rita and its CTA, with height-aware compact spacing and typography. Why: keep all content within the viewport without internal scrolling or overlap.
 - Desktop shell controls use the board's shared content width and account for its inner gutters; guest board header and search share the board container. Why: keep account, publication, page controls and property content on the same edges without resizing the current board.
