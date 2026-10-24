@@ -160,7 +160,13 @@ export default function PropertyContactActions({
   return (
     <>
       <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={shareOnly ? 'inline-flex shrink-0' : compact ? 'flex w-full flex-wrap items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur'}>
-        {showDigital && (
+        {showDigital && formAsButton && (
+          <Button variant="outline" className="min-w-[8rem] flex-1 text-base" aria-expanded={formOpen} onClick={() => { setFormOpen((open) => !open); setInquiryStarted(true); }}>
+            השאירו פרטים
+            <ChevronDown className={cn('h-4 w-4 transition-transform', formOpen && 'rotate-180')} />
+          </Button>
+        )}
+        {showDigital && (!formAsButton || formOpen) && (
           <form className="flex w-full flex-wrap items-end gap-2" onFocusCapture={() => setInquiryStarted(true)} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`phone-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`phone-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, "").replace(/^972/, "0").slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>
