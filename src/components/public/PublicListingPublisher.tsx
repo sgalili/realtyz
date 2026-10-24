@@ -208,7 +208,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   // First-time visitors verify their phone inside the wizard; the account is created and the ad published in one flow.
   useEffect(() => {
     const pending = pendingAuthPublish.current;
-    if (!user?.id || !pending) return;
+    if (!user?.id || !pending || draftScope === 'visitor') return;
     pendingAuthPublish.current = null;
     restoredScope.current = draftScope;
     setFields(pending.fields); setFiles(pending.files); setVideos(pending.videos);
