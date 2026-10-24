@@ -43,6 +43,7 @@ export type PublicCard = {
   price: number | null; description: string | null; photos: string[];
   contact_options: LeadContactOptions | null;
   affiliate_enabled?: boolean;
+  reward_types?: { form: boolean; whatsapp: boolean; phone: boolean; closing: boolean };
   attribution?: { broker_name?: string | null; office_name?: string | null; agency_logo_url?: string | null; broker_license_number?: string | null; publisher_kind?: string | null };
 };
 
@@ -290,8 +291,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     try { localStorage.setItem(rowOrderKey, JSON.stringify(next)); } catch { /* storage disabled */ }
   };
   useEffect(() => { setVisibleCount(24); }, [query, deal, propFilter, leadFilter, grid]);
-  // Signed-out visitors never see the commissions column at all.
-  const visibleColumns = useMemo(() => (user ? columns.visible : columns.visible.filter((id) => id !== 'commissions')), [columns.visible, user]);
+  // Guest reward indicators disclose configured types, never prices.
+  const visibleColumns = columns.visible;
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
   const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
@@ -379,7 +380,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></div>
                           : id === 'deal' ? <span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span>
                           : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}</span>
-                          : id === 'commissions' ? <PropertyCommissionIcons listingId={card.id} networkOpen={card.affiliate_enabled === true} />
+                          : id === 'commissions' ? <PropertyCommissionIcons listingId={card.id} raw={{ reward_types: card.reward_types }} networkOpen={card.affiliate_enabled === true} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}

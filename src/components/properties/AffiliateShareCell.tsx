@@ -4,6 +4,8 @@ import { AffiliateCommissionButton } from '@/components/properties/AffiliateComm
 import { type AffiliateConfigRow } from '@/hooks/useAffiliate';
 import { publicUrl } from '@/lib/publicUrl';
 import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
+import CommissionTierBadges from '@/components/affiliate/CommissionTierBadges';
+import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 
 const money = (n: number) => `₪${Number(n).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
 
@@ -23,16 +25,9 @@ export function AffiliateTierPrices({ config }: { config?: AffiliateConfigRow })
     if (t2) tiers.push({ value: money(t2), label: 'שיחת WhatsApp', Icon: MessageCircle });
     if (t3) tiers.push({ value: config.affiliate_tier3_type === 'percent' ? `${t3}%` : money(t3), label: 'שיחת טלפון', Icon: Phone });
   }
-  if (tiers.length === 0) return null;
+  if (!config?.affiliate_enabled) return null;
   return (
-    <LeadPricingDialog readOnly gross listing={{ listing_id: config?.id ?? '', broker_id: '', property_title: null, tier1_amount: Number(config?.affiliate_tier1_amount ?? 0), tier2_amount: Number(config?.affiliate_tier2_amount ?? 0), tier3_amount: Number(config?.affiliate_tier3_amount ?? 0), tier3_type: config?.affiliate_tier3_type ?? 'fixed' }}><div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground">
-      {tiers.map(({ value, label, Icon }) => (
-        <div key={label} className="flex items-center justify-start gap-1" title={label}>
-          <Icon className="h-3 w-3" />
-          <bdi dir="ltr">{value}</bdi>
-        </div>
-      ))}
-    </div></LeadPricingDialog>
+    <PropertyCommissionIcons listingId={config.id} networkOpen />
   );
 }
 

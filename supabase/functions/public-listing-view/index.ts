@@ -25,12 +25,14 @@ Deno.serve(async (req) => {
     if (!backendUrl || !serviceKey) throw new Error("missing backend configuration");
     const admin = createClient(backendUrl, serviceKey);
     let signedIn = false;
+    let viewerId: string | null = null;
     let closingAllowed = false;
     const authorization = req.headers.get('authorization');
     if (authorization?.startsWith('Bearer ')) {
       const { data: identity } = await admin.auth.getUser(authorization.slice(7));
       if (identity.user) {
         signedIn = true;
+        viewerId = identity.user.id;
         const { data: allowed, error: accessError } = await admin.rpc('partner_can_view_closing', { _user_id: identity.user.id });
         closingAllowed = !accessError && allowed === true;
       }
@@ -52,6 +54,11 @@ Deno.serve(async (req) => {
     }
 
     const ownerId = listing.workspace_owner_id ?? listing.user_id;
+    // Only this authenticated partner's commitment may override current offers.
+    const { data: snapshot } = viewerId
+      ? await admin.from('listing_reward_snapshots').select('tier1_amount,tier2_amount,tier3_amount,tier4_amount,tier4_type,asking_price,terms')
+        .eq('listing_id', listing.id).eq('affiliate_id', viewerId).eq('workspace_owner_id', ownerId).maybeSingle()
+      : { data: null };
     // Hierarchy is built solely from explicitly published listing snapshots,
     // never from private company/project rows or unpublished units.
     const projectRows: Record<string, any>[] = [];
@@ -83,6 +90,15 @@ Deno.serve(async (req) => {
       .limit(100);
 
     const publicProperty = (row: Record<string, any>) => {
+      if (snapshot && row.id === listing.id) {
+        const terms = snapshot.terms as Record<string, any> | null;
+        row = { ...row,
+          affiliate_tier1_amount: snapshot.tier1_amount, affiliate_tier2_amount: snapshot.tier2_amount,
+          affiliate_tier3_amount: snapshot.tier3_amount, affiliate_tier4_amount: snapshot.tier4_amount,
+          affiliate_tier4_type: snapshot.tier4_type,
+          features: { ...row.features, deal_closing_commission: terms?.deal_closing_commission ?? { type: snapshot.tier4_type, value: snapshot.tier4_amount } },
+        };
+      }
       const {
         workspace_owner_id: _workspaceOwnerId,
         user_id: _userId,

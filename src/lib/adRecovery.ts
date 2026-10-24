@@ -17,6 +17,7 @@ export function draftPricingPayload(draft: PublicListingDraftFields, savedOption
   const options = { ...savedOptions, ...deriveContactOptions({ tier1, tier2, tier3, questions, questionsPhone }), lead_daily_limits: limits, form_fields: cleanFormFields(draft.formFields ?? savedOptions.form_fields) };
   return {
     affiliate_tier1_amount: tier1, affiliate_tier2_amount: tier2, affiliate_tier3_amount: tier3,
+    affiliate_tier4_type: draft.commissionDealType ?? 'percent', affiliate_tier4_amount: number(draft.commissionDeal),
     daily_lead_cap: null, contact_options: options,
     features: { deal_closing_commission: { type: draft.commissionDealType ?? 'percent', value: number(draft.commissionDeal) }, lead_daily_limits: limits, screening_questions: { whatsapp: options.questions, phone: options.questions_phone } },
   };

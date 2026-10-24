@@ -1,3 +1,8 @@
+# Property reward indicators
+- [x] Update shared bare configured reward icons, guest-safe explanations/daily limits and private publisher avatar.
+- [x] Require positive property/closing prices at public publication; freeze submission/closing rewards and partner reads against workspace-matched snapshots.
+- [x] 33 focused tests and four read-only deployed lock checks pass; real property popup checked signed-out at 446×728 and signed-in at 1280×1800. Guest sees form/trophy/cap 10 without prices; signed-in unlicensed viewer sees ₪64 with closing price hidden. No property published and no payout executed; historical original values cannot be reconstructed beyond existing snapshots.
+
 # Intro and board alignment
 - [x] Set slide-one navigation black and lift Rita/divider/logo strip 30px with a contiguous white strip.
 - [x] Align desktop header/search/site content to existing board edges and enlarge account control 30% with an account icon.
