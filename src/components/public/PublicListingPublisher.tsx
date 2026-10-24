@@ -918,7 +918,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           </DialogTitle>
         </DialogHeader>
 
-        <div data-publisher-scroll className="min-h-0 space-y-4 overflow-y-auto overscroll-contain">
+        <div data-publisher-scroll className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pb-2">
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
