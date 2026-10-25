@@ -48,3 +48,7 @@
 5. [ ] Email page: floating bottom bar fixed only at bottom; remove email preview box; placeholders "שם הקמפיין"/"תוכן ההודעה"; remove attachments row; remove outer container around list buttons; rename to "בחירה מהמערכת"
 6. [ ] Apply same cleanups to WhatsApp + SMS setup windows
 7. [ ] Typecheck, tests, browser verify
+
+## Icon-only reward indicators where no price shows
+- [x] Compact indicators (table תמלוגים column, cards) show only the grayed icon for zero fees and restricted closing; ללא עמלה / למתווכים בלבד stay inside the pricing window.
+- [x] 35 focused tests pass; guest and signed-in table cells and the guest pricing window verified in the browser; build OK.
