@@ -27,6 +27,13 @@ export async function generateSocialDraft(body: Record<string, unknown>, signal?
       });
       if (!approved) throw new DOMException('Generation cancelled', 'AbortError');
       result = await invoke(true);
+    } else if (details?.error) {
+      const messages: Record<string, string> = {
+        generation_in_progress: 'יצירת נוסח קודם עדיין בתהליך. נסו שוב בעוד רגע.',
+        insufficient_credits: 'אין מספיק קרדיטים ליצירת הפוסט.',
+        failed_request: 'היצירה הקודמת לא הושלמה. נסו שוב.',
+      };
+      throw new Error(messages[details.error] ?? details.error);
     }
   }
   return result;
