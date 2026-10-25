@@ -8381,6 +8381,7 @@ const CampaignCenter = () => {
     if (freshCompose) resetComposerForNewPost();
     next.set('tab', value);
     next.delete('sub');
+    if (value === 'create') next.delete('channel');
     setSearchParams(next, { replace: true });
   };
 
@@ -8414,7 +8415,13 @@ const CampaignCenter = () => {
   // so the composer mounts immediately and auto-generates the post.
   const channelParam = searchParams.get('channel');
   useEffect(() => {
-    if (!channelParam) return;
+    if (!channelParam) {
+      setWizardChannel(null);
+      setPickedChannel(null);
+      setPickedChannelIds(selectedCampaignChannels(null));
+      setFbReady(false);
+      return;
+    }
     // Deep links replace the selection instead of retaining another platform.
     if (!DISTRIBUTION_CHANNELS.some((c) => c.id === channelParam)) return;
     const card = CHANNEL_CARDS.find((c) => c.id === channelParam);

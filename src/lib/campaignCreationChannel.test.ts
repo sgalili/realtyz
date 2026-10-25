@@ -13,4 +13,10 @@ describe('single-channel campaign creation', () => {
   it('does not default to Facebook before channel selection', () => {
     expect([...selectedCampaignChannels(null)]).toEqual([]);
   });
+  it('clears a previously visited Instagram channel on entry to the picker', () => {
+    let selected = selectedCampaignChannels('instagram');
+    selected = selectedCampaignChannels(null);
+    expect(selected.size).toBe(0);
+    expect(selected.has('instagram')).toBe(false);
+  });
 });
