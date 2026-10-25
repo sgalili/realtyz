@@ -229,6 +229,12 @@ export default function CommandCenter() {
   );
 
   const completeTask = async (task: CommandTask) => {
+    if (task.source === 'meeting' && task.actionType === 'call') {
+      const { error } = await supabase.from('meetings').update({ status: 'completed' }).eq('id', task.id).eq('workspace_owner_id', ownerId ?? '');
+      if (error) { toast.error('לא הצלחנו לעדכן את השיחה'); return; }
+      await qc.invalidateQueries({ queryKey: ['command-center-tasks'] });
+      return;
+    }
     if (task.source !== 'task') {
       toast.info('פגישות מתעדכנות מלוח הפגישות');
       return;

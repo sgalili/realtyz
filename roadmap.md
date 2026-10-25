@@ -1,6 +1,7 @@
 # Campaign card actions
 # Call calendar
-- [ ] Add calendar view to calls, future scheduling and automatic official WhatsApp reminders; verify saved call readback and no duplicate sends.
+- [x] Calls default to calendar with list toggle; authorized future-call RPC and scheduler reminder preparation reuse meetings/tour tick. Three tests pass; authenticated 446px save/reload/readback/delete succeeds without sending. Preview build OK.
+- [ ] Enable live call reminder delivery: requires purpose-specific approved official WhatsApp template `call_reminder` (3 body variables: scheduler name/date/time), absent in current template cache. Scheduled calls report missing-template status; no reminder was sent.
 
 - [x] Add shared top-left menus to published/scheduled/draft cards and remove Continue buttons; 10 focused tests pass. Authenticated 446px real card verifies menu and explicit repost editor without sending/deleting. Published edit opens native Facebook; live sync/share needs an available native post link, absent on the queued card checked.
 
