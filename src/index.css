@@ -945,8 +945,8 @@
     right: 0;
     bottom: 10px;
     z-index: 30;
-    padding-inline: 8px;
-    background: transparent;
+    padding-inline: 4px;
+    background: hsl(var(--card));
     border: 0;
     white-space: nowrap;
     overflow-x: auto;
