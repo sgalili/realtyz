@@ -1,3 +1,4 @@
+import { canRestorePropertyDraft, propertyCampaignSelection } from '@/lib/campaignPropertyContext';
 import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 import { selectedCampaignChannels } from '@/lib/campaignCreationChannel';
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
@@ -884,7 +885,11 @@ const InlineComposer = ({
   // another one. Persisted to localStorage so dialog closes, route changes,
   // and hard refreshes never lose unfinished work.
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const usesGroupTopics = useIsRitaWorkspace();
+  const isRitaWorkspace = useIsRitaWorkspace();
+  const requestedListingId = presetListingId || (typeof window !== 'undefined'
+    ? propertyCampaignSelection(new URLSearchParams(window.location.search))[0] : null) || null;
+  const usesGroupTopics = isRitaWorkspace && !requestedListingId;
+  const selectedContextRef = useRef({ listingId: null as string | null, workspace: workspaceOwnerId });
   const wsScope = workspaceOwnerId ?? 'anon';
   const draftKey = `rz-composer-draft:v3:${wsScope}:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
@@ -892,7 +897,7 @@ const InlineComposer = ({
     if (typeof window === 'undefined') return null;
     try {
       const direct = JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null');
-      if (direct && String(direct.body || '').trim()) return direct;
+      if (direct && String(direct.body || '').trim() && canRestorePropertyDraft(requestedListingId, direct)) return direct;
       // Rescue only inside the SAME workspace scope: a draft written in another
       // office must never be restored here.
       if (presetListingId) {
@@ -906,7 +911,7 @@ const InlineComposer = ({
           } catch { /* skip */ }
         }
       }
-      return direct;
+      return canRestorePropertyDraft(requestedListingId, direct) ? direct : null;
     } catch { return null; }
   };
   // Strip any auto-generated WhatsApp CTA line the AI (or a stale draft) may
@@ -1212,6 +1217,7 @@ const InlineComposer = ({
   const [listingsLoading, setListingsLoading] = useState(false);
   const [listingsError, setListingsError] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(usesGroupTopics ? null : (initial.selectedListingId ?? null));
+  selectedContextRef.current = { listingId: selectedListingId, workspace: workspaceOwnerId };
   const [selectedGroupTopicId, setSelectedGroupTopicId] = useState(() => groupPostTopic(initial.selectedGroupTopicId).id);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
   const [bodyManuallyEdited, setBodyManuallyEdited] = useState(false);
@@ -1343,7 +1349,7 @@ const InlineComposer = ({
       String(saved.body || '').trim().length > 0 ||
       (Array.isArray(saved.attachments) && saved.attachments.length > 0) ||
       String(saved.firstComment || '').trim().length > 0;
-    const deepLinked = !editorMode && !!deepLinkListingId && (forceFreshDeepLink || !savedHasWork);
+    const deepLinked = !editorMode && !!deepLinkListingId && (forceFreshDeepLink || !savedHasWork || !canRestorePropertyDraft(deepLinkListingId, saved));
     setBody(deepLinked ? '' : editorMode ? saved.body || '' : cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
     setSelectedListingId(usesGroupTopics ? null : (deepLinked ? deepLinkListingId : (saved.selectedListingId ?? deepLinkListingId ?? null)));
@@ -1389,7 +1395,7 @@ const InlineComposer = ({
     (async () => {
       const cloud = await fetchComposerDraftCloud(channel.id, instanceId ?? 'single', wsScope);
       if (cancelled) return;
-      if (cloud) {
+      if (cloud && canRestorePropertyDraft(deepLinkListingId, cloud)) {
         if (String(cloud.body || '').trim()) setBody(cleanBody(cloud.body));
         if (cloud.customInstructions) setCustomInstructions(cloud.customInstructions);
         if (cloud.selectedListingId && !usesGroupTopics) setSelectedListingId(cloud.selectedListingId);
@@ -1522,7 +1528,18 @@ const InlineComposer = ({
       if (data) setSoloListing(data as unknown as CampaignListing);
       // A saved draft can point at a property that was deleted or belongs to
       // another workspace: drop it instead of sending it to the server.
-      else if (!error) { setSoloListing(null); setSelectedListingId(null); }
+      else if (!error) {
+        // Public-board targets may belong to another office. Read only the
+        // existing redacted public projection; never widen the tenant query.
+        const { data: publicData, error: publicError } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(selectedListingId)}`);
+        if (cancelled) return;
+        if (!publicError && publicData?.property?.id === selectedListingId) {
+          setSoloListing(publicData.property as CampaignListing);
+        } else {
+          setSoloListing(null);
+          toast.error('הנכס שנבחר אינו זמין. לא נוצר פוסט לנכס אחר.');
+        }
+      }
     })();
     return () => { cancelled = true; };
   }, [selectedListingId, listings, workspaceOwnerId]);
@@ -1735,7 +1752,7 @@ const InlineComposer = ({
         body: { purpose: 'image', prompt, brand: brandName, language: 'he' },
         signal: ctrl.signal,
       });
-      if (ctrl.signal.aborted) return; // killed by the operator
+      if (ctrl.signal.aborted || selectedContextRef.current.listingId !== context.listingId || selectedContextRef.current.workspace !== context.workspace) return; // discard stale property responses
       if (error) throw error;
       const url = data?.url || data?.image_url;
       if (url) {
@@ -1811,6 +1828,7 @@ const InlineComposer = ({
     // Registered so the emergency stop can abort this request mid-flight.
     const ctrl = registerGeneration();
     setGenerating(true);
+    const context = { listingId: selectedListingId, workspace: workspaceOwnerId };
     try {
       const topic = usesGroupTopics ? groupPostTopic(selectedGroupTopicId).label : body.trim()
         || customInstructions.trim()
@@ -1892,6 +1910,8 @@ const InlineComposer = ({
     if (isGenerationStopped()) return;
     const ctrl = registerGeneration();
     setFirstCommentGenerating(true);
+    const context = { listingId: selectedListingId, workspace: workspaceOwnerId };
+    const contextChanged = () => selectedContextRef.current.listingId !== context.listingId || selectedContextRef.current.workspace !== context.workspace;
     try {
       const listing = selectedListing;
       // No property attached: this is a platform (SaaS) sales post, so the
@@ -1915,7 +1935,7 @@ const InlineComposer = ({
           },
           signal: ctrl.signal,
         });
-        if (ctrl.signal.aborted) return;
+        if (ctrl.signal.aborted || contextChanged()) return;
         if (error) throw error;
         const raw = cleanFirstComment(String((data as any)?.content || (data as any)?.text || ''));
         const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2);
@@ -1959,7 +1979,7 @@ const InlineComposer = ({
         },
         signal: ctrl.signal,
       });
-      if (ctrl.signal.aborted) return;
+      if (ctrl.signal.aborted || contextChanged()) return;
       if (error) throw error;
       if (data?.listing_unavailable) { setSelectedListingId(null); return; }
       let text = cleanFirstComment(String(data?.content || data?.text || ''));
@@ -1991,11 +2011,11 @@ const InlineComposer = ({
   useEffect(() => {
     if (editorMode || !hydrated) return;
     const id = selectedListingId;
-    if (!id || (isProjectTarget(id) && !listings.some(l => l.id === id))) return;
+    if (!id || !(listings.some(l => l.id === id) || soloListing?.id === id)) return;
     if (listingAutoGenRef.current === id) return;
-    listingAutoGenRef.current = id;
     const cached = readListingCache(id);
     if (cached && cached.body.trim()) {
+      listingAutoGenRef.current = id;
       if (!body.trim()) {
         setBody(cached.body);
         setOriginalAiBody(cached.body);
@@ -2008,12 +2028,13 @@ const InlineComposer = ({
     const t = setTimeout(() => {
       if (isGenerationStopped()) return;
       if (body.trim() || generating) return;
+      listingAutoGenRef.current = id;
       autoGenTriggeredRef.current = true;
       handleGenerate().catch(() => {});
     }, 120);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedListingId, hydrated, listings]);
+  }, [selectedListingId, hydrated, listings, soloListing]);
 
   // Keep the per-property cache fresh (debounced) so the next visit is instant.
   useEffect(() => {
@@ -2185,14 +2206,13 @@ const InlineComposer = ({
     // Require a resolved listing so the property snapshot lands in the AI
     // payload. `selectedListingId` is hydrated from the URL in the mount
     // effect above — wait for it before firing.
-    if (listingForGen && !selectedListingId) return;
-    autoGenTriggeredRef.current = true;
+    if (listingForGen && (!selectedListingId || !(listings.some(l => l.id === selectedListingId) || soloListing?.id === selectedListingId))) return;
     // Defer slightly so the variant-hint customInstructions effect (mount)
     // is committed before the AI call snapshots `customInstructions`.
-    const t = setTimeout(() => { handleGenerate().catch(() => {}); }, 80);
+    const t = setTimeout(() => { if (autoGenTriggeredRef.current) return; autoGenTriggeredRef.current = true; handleGenerate().catch(() => {}); }, 80);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presetListingId, presetScheduleIso, selectedListingId, listingsLoading, hydrated]);
+  }, [presetListingId, presetScheduleIso, selectedListingId, listingsLoading, hydrated, listings, soloListing]);
 
   // Safety net: if the listing snapshot never resolved (listing missing from the
   // loaded page, slow fetch, ...) the effect above can stay parked and the draft
@@ -2208,12 +2228,13 @@ const InlineComposer = ({
       if (autoGenTriggeredRef.current) return;
       if (isGenerationStopped()) return;
       if (body.trim().length > 0 || generating) return;
+      if (requestedListingId && !(listings.some(l => l.id === selectedListingId) || soloListing?.id === selectedListingId)) return;
       autoGenTriggeredRef.current = true;
       handleGenerate().catch(() => {});
     }, 2200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, presetListingId, presetScheduleIso]);
+  }, [hydrated, presetListingId, presetScheduleIso, selectedListingId, listings, soloListing]);
 
 
   // True when this composer was launched from the scheduling calendar
@@ -8719,17 +8740,17 @@ const CampaignCenter = () => {
           />
           </div>
           {(wizardChannel === 'facebook' || wizardChannel === 'instagram') && fbReady && pickedChannel?.id === wizardChannel && pickedChannelIds.has(wizardChannel) && (() => {
-            const propertiesParam = searchParams.get('properties') || '';
-            let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
+            let propertyIds = propertyCampaignSelection(searchParams);
+            const explicitPropertyAction = propertyIds.length > 0 && !searchParams.get('schedule');
             let assignments: ComposerAssignment[] = [];
             try {
               const raw = sessionStorage.getItem('rz-schedule-assignments');
-              if (raw) assignments = JSON.parse(raw) || [];
+              if (raw && !explicitPropertyAction) assignments = JSON.parse(raw) || [];
             } catch {}
             // Nothing in the URL / session? Restore the last unpublished draft
             // session (properties, slots, variants) so all open drafts come
             // back exactly as they were left.
-            if (propertyIds.length <= 1 && assignments.length === 0) {
+            if (!explicitPropertyAction && propertyIds.length <= 1 && assignments.length === 0) {
               const saved = restoredSession ?? readComposerSessionLocal(pickedChannel.id);
               if (saved && (saved.assignments.length > 1 || saved.propertyIds.length > 1)) {
                 propertyIds = saved.propertyIds;
@@ -8741,7 +8762,8 @@ const CampaignCenter = () => {
             if (propertyIds.length <= 1 && assignments.length <= 1) {
                 return (
                   <InlineComposer
-                    key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
+                    key={`composer-${workspaceOwnerId}-${pickedChannel?.id ?? 'none'}-${propertyIds[0] ?? 'general'}-${composerResetTick}`}
+                    presetListingId={propertyIds[0]}
                     channel={pickedChannel}
                     brandName={brandName}
                     socialProfiles={socialAccountProfiles}

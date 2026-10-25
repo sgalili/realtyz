@@ -1,3 +1,4 @@
+import { publicCampaignProperty } from '../_shared/publicCampaignProperty.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { IVR_SCRIPT_RULES, cleanIvrScript } from '../_shared/ivrScript.ts';
 import { completedPostText, evidencedPropertyDetails, POST_GENERATION_OPTIONS } from '../_shared/postGeneration.ts';
@@ -105,6 +106,7 @@ serve(async (req) => {
 
     // Fetch a specific promoted listing when supplied by the UI.
     let promotedListing: any = null;
+    let publicPromotion = false;
     if (selectedListingId && userId) {
       if (isProjectTarget(selectedListingId)) {
         const projectId = String(selectedListingId).split(':')[1];
@@ -119,6 +121,16 @@ serve(async (req) => {
           .eq('workspace_owner_id', workspaceOwnerId)
           .maybeSingle();
         if (row) promotedListing = row;
+        else if (/^[0-9a-f-]{36}$/i.test(String(selectedListingId))) {
+          const response = await fetch(`${supabaseUrl}/functions/v1/public-listing-view?id=${encodeURIComponent(selectedListingId)}`, {
+            headers: { Authorization: authHeader, apikey: supabaseAnonKey },
+          });
+          const payload = await response.json().catch(() => null);
+          if (response.ok && payload?.property) {
+            promotedListing = publicCampaignProperty(payload.property, selectedListingId);
+            publicPromotion = !!promotedListing;
+          }
+        }
       }
       // Stale selection (deleted or from another workspace): soft response so the UI can clear it.
       if (!promotedListing) return new Response(JSON.stringify({ listing_unavailable: true, content: '' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -652,7 +664,7 @@ ${EMOJI_BULLET_LAW}
         byline: branding.byline,
         name: branding.name,
         phone: branding.phone,
-        withLicense: !isSaas && !isProjectTarget(selectedListingId) && !!promotedListing && !skipLicenseFooter,
+        withLicense: !publicPromotion && !isSaas && !isProjectTarget(selectedListingId) && !!promotedListing && !skipLicenseFooter,
       });
     } catch (_e) { /* never block on enforcement failure */ }
 
