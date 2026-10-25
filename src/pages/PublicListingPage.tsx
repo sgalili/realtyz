@@ -405,7 +405,7 @@ function PublicListingContent() {
   const mapProperties = (payload?.properties ?? []).flatMap((property, index) => {
     if (property.latitude === null || property.longitude === null) return [];
     const id = property.id ?? property.slug ?? `public-property-${index}`;
-    return [{ id, title: property.title, latitude: property.latitude, longitude: property.longitude, price: property.price, dealType: (property as any).deal_type ?? null }];
+    return [{ id, title: property.location || property.title, latitude: property.latitude, longitude: property.longitude, price: property.price, dealType: property.dealType, rooms: property.rooms, imageUrl: property.photos[0] }];
   });
   const selectedMapId = data.id ?? data.slug ?? mapProperties[0]?.id ?? null;
 
@@ -510,13 +510,12 @@ function PublicListingContent() {
 
             {(data.latitude !== null && data.longitude !== null) || data.addressForMap ? (
               <div className="space-y-2 border-t pt-4">
-                <WorkspacePropertiesMap properties={mapProperties} selectedId={selectedMapId} onSelect={setSelectedId} fallbackAddress={data.addressForMap} />
-                {mapProperties.length > 1 && <p className="text-xs text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס</p>}
+                <WorkspacePropertiesMap properties={mapProperties} selectedId={selectedMapId} onSelect={setSelectedId} fallbackAddress={data.addressForMap} addressLabel={data.location} />
               </div>
             ) : null}
 
             {/* Share lives inside the contact row below, next to WhatsApp / call / form. */}
-            {data.id && <PropertyContactActions listingId={data.id} title={data.title} dealType={data.dealType} premsg={data.premsg} options={data.contactOptions} showShare={false} />}
+            {data.id && <PropertyContactActions listingId={data.id} title={data.title} dealType={data.dealType} premsg={data.premsg} options={data.contactOptions} compact formAsButton singleRow shareUrl={shareUrl} />}
           </CardContent>
         </Card>
       </div>
