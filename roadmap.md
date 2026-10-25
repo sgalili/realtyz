@@ -1,5 +1,9 @@
 # Roadmap
 
+## Selected-workspace closing display
+- [ ] Allow Super Admin display to follow the authorized selected owner's official broker eligibility, without changing payout eligibility.
+- [ ] Refresh entitlement and redacted listing data on every workspace switch; test licensed/unlicensed transitions.
+
 ## Licensed-only closing display
 - [x] Replaced role-only/Super Admin/test-license closing entitlement with current official registry evidence and server-verified licensing; shared displays fail closed.
 - [x] Gray closing icon and broker-only popup reuse saved course/exam links; 39 focused tests pass, guest and signed-in board popup checked, signed-in server denial confirmed and current build OK.
