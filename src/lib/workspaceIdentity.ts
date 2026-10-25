@@ -1,5 +1,6 @@
 import type { Workspace } from '@/hooks/useWorkspace';
 import { isSyntheticEmail } from '@/lib/friendlyUserDisplayName';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 export type BrandLike = {
   agency_name?: string | null;

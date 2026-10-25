@@ -57,8 +57,8 @@ describe('workspace account card identity', () => {
   it('falls back to a real email and never prints a synthetic login alias', () => {
     const noPhone = { ...person, owner_phone: null } as Workspace;
     expect(resolveWorkspaceCardIdentity(noPhone, null, null).subtitle).toBe('');
-    const realMail = { ...noPhone, owner_email: 'shay@example.org' } as Workspace;
-    expect(resolveWorkspaceCardIdentity(realMail, null, null).subtitle).toBe('shay@example.org');
+    const realMail = { ...noPhone, owner_email: 'shay@toraff.co.il' } as Workspace;
+    expect(resolveWorkspaceCardIdentity(realMail, null, null).subtitle).toBe('shay@toraff.co.il');
   });
 
   it('never shows an undefined mobile as a dash', () => {
