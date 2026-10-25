@@ -565,7 +565,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto p-5" dir="rtl">
+      <DialogContent className="w-full max-w-lg h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-y-auto p-5" dir="rtl">
         <DialogHeader className="space-y-1">
           <DialogTitle className="text-center text-[#0f1b3d] text-[17px] font-bold leading-tight">
             <span className="inline-flex items-center gap-2"><CampaignServiceIcon channel="ivr" />IVR וקול AI</span>
@@ -588,7 +588,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
             <div className="space-y-3">
               <div className="relative space-y-1.5">
                 <Select value={agentVoiceId} onValueChange={value => { setAgentVoiceId(value); const voice = allAgents.find(item => item.voice_id === value); if (voice) void playVoicePreview(voice); }} dir="rtl">
-                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold pl-16">
+                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold pl-16 [&>svg]:absolute [&>svg]:left-2 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2">
                     <SelectValue placeholder="בחירת נציג/ת AI להקלטה">{agentVoiceId ? agentLabel : undefined}</SelectValue>
                   </SelectTrigger>
                   <SelectContent dir="rtl">
@@ -619,7 +619,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     </button>
                   </SelectContent>
                 </Select>
-                {agentVoiceId && <Button type="button" variant="ghost" size="icon" aria-label="השמע את הקול הנבחר" title="השמע את הקול הנבחר" className="absolute left-7 top-1 h-9 w-9" onClick={() => { const voice = allAgents.find(item => item.voice_id === agentVoiceId); if (voice) void playVoicePreview(voice); }}>
+                {agentVoiceId && <Button type="button" variant="ghost" size="icon" aria-label="השמע את הקול הנבחר" title="השמע את הקול הנבחר" className="absolute left-8 top-1 h-9 w-9" onClick={() => { const voice = allAgents.find(item => item.voice_id === agentVoiceId); if (voice) void playVoicePreview(voice); }}>
                   {loadingPreviewId === agentVoiceId ? <Loader2 className="h-4 w-4 animate-spin" /> : previewingVoiceId === agentVoiceId ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </Button>}
               </div>
