@@ -16,6 +16,10 @@ export type Workspace = {
   owner_full_name: string | null;
   owner_email: string | null;
   owner_avatar_url: string | null;
+  /** Owner mobile — only returned to the owner themselves or a super admin. */
+  owner_phone?: string | null;
+  /** True when the workspace carries real office/company/agency branding. */
+  is_office?: boolean;
   is_self: boolean;
 };
 

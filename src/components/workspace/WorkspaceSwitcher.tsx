@@ -6,13 +6,12 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useUserRole } from '@/hooks/useUserRole';
-import { resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
+import { resolveWorkspaceCardIdentity, resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useSidebar } from '@/components/ui/sidebar';
-import { isSyntheticEmail } from '@/lib/friendlyUserDisplayName';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -53,7 +52,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     const q = query.trim().toLowerCase();
     if (!q) return workspaces;
     return workspaces.filter((w) =>
-      [w.workspace_name, w.owner_full_name, w.owner_email].some((v) => (v ?? '').toLowerCase().includes(q)),
+      [w.workspace_name, w.owner_full_name, w.owner_email, w.owner_phone].some((v) => (v ?? '').toLowerCase().includes(q)),
     );
   }, [workspaces, query]);
 
@@ -82,10 +81,9 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     navigate('/profile');
   };
 
-  // The line under the workspace name is the ACTIVE workspace owner's name.
-  const ownerLabel = (activeWorkspace?.owner_full_name ?? '').trim()
-    || (isSyntheticEmail(activeWorkspace?.owner_email) ? '' : (activeWorkspace?.owner_email ?? '').trim())
-    || (activeWorkspace?.workspace_name ?? '').trim();
+  // The card leads with the office/company name, or with the owner's full name
+  // when the workspace belongs to a single person — then their mobile below.
+  const card = resolveWorkspaceCardIdentity(activeWorkspace, settings, masterBrand);
 
   // Square workspace logo, shown on the side opposite the name + owner line.
   // Only office logos are inherited; profile photos remain independent.
@@ -93,8 +91,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
 
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
-      <div className="truncate text-sm font-bold text-slate-900">{identity.name}</div>
-      <div className="truncate text-[11px] text-slate-500">{ownerLabel || '\u00a0'}</div>
+      <div className="truncate text-sm font-bold text-slate-900">{card.title}</div>
+      <div className="truncate text-[11px] text-slate-500">{card.subtitle || '\u00a0'}</div>
     </div>
   );
 
@@ -108,7 +106,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
           referrerPolicy="no-referrer"
         />
       ) : (
-        /^\d$/.test(workspaceInitial(identity.name)) ? <Building2 className="h-4 w-4 text-primary" /> : <span className="text-xs font-bold text-primary">{workspaceInitial(identity.name)}</span>
+        /^\d$/.test(workspaceInitial(card.title)) ? <Building2 className="h-4 w-4 text-primary" /> : <span className="text-xs font-bold text-primary">{workspaceInitial(card.title)}</span>
       )}
     </span>
   );
@@ -168,8 +166,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                 <p className="px-2 py-3 text-xs text-muted-foreground">לא נמצאו חשבונות</p>
               )}
               {visibleWorkspaces.map((w) => {
-                const workspaceIdentity = resolveWorkspaceIdentity(w, undefined, masterBrand);
-                const label = workspaceIdentity.name;
+                const workspaceCard = resolveWorkspaceCardIdentity(w, undefined, masterBrand);
+                const label = workspaceCard.title;
                 const active = w.workspace_owner_id === activeWorkspaceId;
                 return (
                   <button
@@ -182,15 +180,15 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     )}
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
-                      {workspaceIdentity.logo
-                        ? <img src={workspaceIdentity.logo} alt={label} className="h-full w-full object-contain p-0.5" />
+                      {workspaceCard.logo
+                        ? <img src={workspaceCard.logo} alt={label} className="h-full w-full object-contain p-0.5" />
                         : <Building2 className="h-3.5 w-3.5 text-primary" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">
                       <span className="block truncate">{label}</span>
-                      {isSuperAdmin && w.owner_email && !isSyntheticEmail(w.owner_email) && (
-                        <span dir="ltr" className="block truncate text-[10px] font-normal text-muted-foreground">
-                          {w.owner_email}
+                      {isSuperAdmin && workspaceCard.subtitle && (
+                        <span dir="auto" className="block truncate text-[10px] font-normal text-muted-foreground">
+                          {workspaceCard.subtitle}
                         </span>
                       )}
                     </span>

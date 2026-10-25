@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
+import { resolveWorkspaceCardIdentity } from '@/lib/workspaceIdentity';
 
 function initials(name?: string | null) {
   if (!name) return '?';
@@ -114,6 +115,9 @@ export function WorkspaceSelectorModal() {
           {/* Other workspaces */}
           {otherRows.map((w) => {
             const active = activeWorkspaceId === w.workspace_owner_id;
+            // A person's workspace is titled with their full name, not the
+            // phone-number fallback the raw workspace row carries.
+            const card = resolveWorkspaceCardIdentity(w, undefined, null);
             return (
               <button
                 key={w.workspace_owner_id}
@@ -129,7 +133,7 @@ export function WorkspaceSelectorModal() {
                   {active && <Check className="h-4 w-4 text-primary" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate">{w.workspace_name}</div>
+                  <div className="text-sm font-semibold truncate">{card.title}</div>
                   <div className="text-xs text-muted-foreground truncate">{roleLabel(w.role, w.is_self)}</div>
                 </div>
                 <Avatar className="h-10 w-10 shrink-0 border bg-background">
