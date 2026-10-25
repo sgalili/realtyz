@@ -1,4 +1,8 @@
 # Campaign card actions
+# Messaging report and notification settings
+- [ ] Deliver source-backed comprehensive messaging/reminder report with live schedules and delivery limitations.
+- [ ] Add notification-header gear and per-event channel preferences with authorized persistence and dispatch enforcement.
+- [ ] Match lead-price colors to their lead-type icons; verify settings save/reload and focused rules.
 # Homepage royalties editing
 - [x] Remove table attribution license/background/borders; shared Card 8 pricing-only editor opens for authorized owned workspace listings. Filled 1,114 missing published positive-price closing rates with requested random 10–100%; preserved positive rates and snapshots. No eligible positive-price blanks remain; 171 zero-price published records stay excluded, without invented property prices. Current account lacks licensed broker role, so pricing is correctly hidden; licensed-account E2E remains unavailable without that user's approved session.
 # IVR property script
