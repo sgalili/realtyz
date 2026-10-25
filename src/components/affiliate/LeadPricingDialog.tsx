@@ -96,12 +96,13 @@ export default function LeadPricingDialog({ listing, referralId, children, readO
       {children ?? <CommissionTierBadges tiers={{ tier1: listing.tier1_amount, tier2: listing.tier2_amount, tier3: listing.tier3_amount, tier4: Number(listing.tier4_amount ?? 0), tier4Type: listing.tier4_type ?? 'fixed' }} compact={compact} closingOnly={closingOnly} />}
     </Button>
     {query.data?.editable && open ? <RewardDialog listing={query.data.editable} open={open} onOpenChange={setOpen} /> : <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent dir="rtl" className={`max-h-[85vh] overflow-y-auto ${user ? 'sm:max-w-xl' : 'mx-auto max-w-2xl bg-gradient-to-b from-primary/10 via-background to-background'}`}>
-        <DialogHeader><DialogTitle className={user ? undefined : 'text-xl font-extrabold'}>תמחור לידים · {listing.property_title || 'נכס'}</DialogTitle><DialogDescription>{user ? 'סוגי הלידים והתגמולים לשותף' : 'הצטרפו כשותפים ותרוויחו על כל ליד'}</DialogDescription></DialogHeader>
+      <DialogContent dir="rtl" data-fullscreen={user ? undefined : ""} className={`overflow-y-auto overscroll-contain ${user ? 'max-h-[85vh] ' : ''}${user ? 'sm:max-w-xl' : 'inset-0 left-0 top-0 h-[100dvh] max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-none bg-gradient-to-b from-primary/10 via-background to-background sm:max-w-none !w-full'}`}>
+        <div className={user ? 'contents' : 'mx-auto flex w-full max-w-2xl flex-col gap-4 py-6'}><DialogHeader><DialogTitle className={user ? undefined : 'text-xl font-extrabold'}>תמחור לידים · {listing.property_title || 'נכס'}</DialogTitle><DialogDescription>{user ? 'סוגי הלידים והתגמולים לשותף' : 'הצטרפו כשותפים ותרוויחו על כל ליד'}</DialogDescription></DialogHeader>
         {query.isLoading ? <p role="status">טוען פרטי תמחור…</p> : query.isError ? <div role="alert" className="space-y-2"><p>לא ניתן לטעון את פרטי התמחור כרגע.</p><Button variant="outline" onClick={() => void query.refetch()}>ניסיון נוסף</Button></div> : query.data ? <>
           <LeadPricingInfo listing={listing} details={query.data.details} gross={gross} closingOnly={closingOnly} rewardTypes={rewardTypes} />
           {user && referralId && <section className="border-t pt-4"><LeftoverDiscountButton referralId={referralId} inline /></section>}
         </> : null}
+        </div>
       </DialogContent>
     </Dialog>}
   </>;
