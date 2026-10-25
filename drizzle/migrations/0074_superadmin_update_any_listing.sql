@@ -1,0 +1,1 @@
+CREATE POLICY superadmin_update_any_listing ON public.listings FOR UPDATE TO authenticated USING (public.has_role(auth.uid(), 'super_admin'::app_role)) WITH CHECK (public.has_role(auth.uid(), 'super_admin'::app_role));
