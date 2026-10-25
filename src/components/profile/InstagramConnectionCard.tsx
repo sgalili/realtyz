@@ -15,8 +15,7 @@ import { callMetaPageConnect } from '@/lib/facebookPageConnect';
 /**
  * InstagramConnectionCard — standalone Instagram connection card.
  *
- * Instagram Business accounts authenticate THROUGH the linked Facebook Page
- * (Meta has no separate Instagram OAuth for publishing), so this card manages
+ * This integration authenticates through the linked Facebook Page and manages
  * its own status badge and actions while the underlying token lives on the
  * Facebook Page binding. "מחובר" requires BOTH a verified live Page token AND
  * a linked Instagram professional account — anything else shows "לא מחובר".
@@ -72,7 +71,7 @@ export function InstagramConnectionCard({ pageConnected = false }: { pageConnect
           .select('id, credentials, is_connected').single();
       if (error) throw error;
       qc.setQueryData(directKey, saved);
-      toast.success(username ? `אינסטגרם @${username} חובר` : 'החיבור הישיר נותק');
+      toast.success(username ? `קישור לפרופיל @${username} נשמר` : 'קישור הפרופיל הוסר');
       if (!username) setHandleInput('');
       qc.invalidateQueries({ queryKey: directKey });
     } catch (e: any) { toast.error(e?.message ?? 'שמירה נכשלה'); }
@@ -147,7 +146,7 @@ export function InstagramConnectionCard({ pageConnected = false }: { pageConnect
             <Button
               onClick={() => void checkConnection()}
               disabled={checking || isPending}
-              className="w-full gap-2 bg-[#E4405F] text-white hover:bg-[#E4405F]/90"
+              className="instagram-connect-button w-full gap-2"
             >
               {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
               {checking ? 'בודק חיבור…' : 'חבר אינסטגרם'}
@@ -196,7 +195,7 @@ export function InstagramConnectionCard({ pageConnected = false }: { pageConnect
             <div className="flex gap-2">
               <Input dir="ltr" value={handleInput} onChange={(e) => setHandleInput(e.target.value)} placeholder="@username או קישור לפרופיל" className="h-9 text-[14px]" />
               <Button size="sm" className="h-9" disabled={savingDirect || !handleInput.trim()} onClick={() => void saveDirect()}>
-                {savingDirect ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'חבר'}
+                {savingDirect ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'שמור קישור'}
               </Button>
             </div>
           )}
