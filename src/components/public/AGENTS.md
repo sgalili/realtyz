@@ -1,0 +1,3 @@
+# Public listing publisher
+- Publisher pricing completion derives from live draft prices independently of legal consent; publication validation keeps its consent requirements. Collapsed Card 8 summarizes the current draft. Why: immediate truthful pricing status without weakening publication.
+- Publisher lead-price controls reuse shared bounds/colors and potential estimates; disabled fees hide settings without clearing limits/questions. Closing dual-mode callbacks persist both value and unit without changing legacy editors. Why: avoid unintended charges or fee conversions.
