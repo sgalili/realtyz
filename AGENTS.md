@@ -19,7 +19,7 @@
 - Future calls use workspace-authorized meetings RPCs and the existing tour-reminder tick, with atomic per-call claims and purpose-specific approved official WhatsApp templates; never create a second permanent timer. Why: tenant-safe scheduling without duplicate sends or unauthorized free-text reminders.
 - Public grid/details use safe publishers with server-gated PropertyCommissionIcons inside BrokerAttribution; image actions share favorites. Fee notices stay contextual. Why: owner identity and pricing privacy.
 - Property headings fit one address/price row; maps use photo markers, safe DOM popups and details-only selection with scroll-to-top. Why: avoid overlap and premature navigation.
-- Inventory and project campaign targets are workspace-scoped; authorize AI targets server-side, never store project refs in listing UUID fields. Why: isolation.
+- Campaign targets use authorized rows or public-view facts, override unrelated drafts and discard stale responses; project refs stay out of UUID fields. Why: exact, isolated actions.
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup; preserves keys and resolved addresses; ignores stale searches.
 - Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state and consistent counts without tenant drift or duplicate legal content.

@@ -14,6 +14,17 @@ describe('Facebook cloud connection', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.owner = 'workspace-a'; mocks.state.mockResolvedValue({ active: false }); });
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
+  it('connect later stays ready when the earlier connection check finishes', async () => {
+    let resolveState: (state: { active: boolean }) => void = () => {};
+    mocks.state.mockImplementationOnce(() => new Promise(resolve => { resolveState = resolve; }));
+    const onStatusChange = vi.fn();
+    render(<FacebookCloudConnectGate alwaysVisible onStatusChange={onStatusChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'אתחבר יותר מאוחר' }));
+    await act(async () => { resolveState({ active: false }); });
+    expect(onStatusChange.mock.calls).toEqual([[true]]);
+    expect(mocks.sync).not.toHaveBeenCalled();
+  });
+
   it('imports confirmed memberships using the cloud job, not a keyword search', async () => {
     mocks.state.mockResolvedValue({ active: true });
     mocks.sync.mockResolvedValue([{ group_id: '123' }]);
