@@ -6266,7 +6266,6 @@ const PublishedFeed = ({
         selectedFeedIds={selectedFeedIds}
         filteredRows={filteredRows || []}
         bulkDeletingFeed={bulkDeletingFeed}
-        onToggleSelectMode={() => { setFeedSelectMode((v) => !v); setSelectedFeedIds([]); }}
         onToggleSelectAll={(on) => {
           setFeedSelectMode(true);
           setSelectedFeedIds(on ? (filteredRows || []).map((x) => x.id) : []);
