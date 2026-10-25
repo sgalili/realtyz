@@ -248,7 +248,7 @@ export function GroupDiscoveryDialog({
                 </Button>
               </form>
             ) : (
-              <FacebookCloudConnectGate key={workspaceOwnerId} alwaysVisible onSynced={() => { void getCloudSessionState().then(setCloud); onJoined?.(); }} onDiscover={() => document.querySelector<HTMLInputElement>('input[aria-label="מילות חיפוש"]')?.focus()} />
+              <FacebookCloudConnectGate key={workspaceOwnerId} alwaysVisible onSynced={() => { void getCloudSessionState().then(setCloud); onJoined?.(); }} onDiscover={() => document.querySelector<HTMLInputElement>('input[aria-label="שם הקבוצה"]')?.focus()} />
             )}
 
             {cloudScanning && (
