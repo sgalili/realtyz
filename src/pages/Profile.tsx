@@ -410,7 +410,7 @@ function PersonalTab() {
         {showBrokerFields && isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
         {showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
 
-        <div className="flex items-center gap-3 pt-1">
+        <div className="sticky bottom-0 z-20 -mx-6 -mb-6 flex items-center gap-3 rounded-b-xl border-t border-border bg-card px-6 pb-4 pt-3">
           {user && <DeleteAccountButton />}
           <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10">
             <LogOut className="h-4 w-4" />
