@@ -64,7 +64,7 @@ function AdDetails({ listingId }: { listingId: string }) {
   const events = history.data?.pages.flatMap(p => p.items) ?? [];
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['my-ad-details', user?.id, activeWorkspaceId, listingId],
-    refetchInterval: 30_000, refetchOnWindowFocus: true,
+    refetchInterval: 120_000, refetchOnWindowFocus: false, staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_my_ad_details', { _listing_id: listingId });
       if (error) throw error;
@@ -160,7 +160,7 @@ function ActivityProperties() {
   useEffect(() => { setSelectMode(false); setSelected(new Set()); }, [user?.id, activeWorkspaceId]);
   const ads = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId], enabled: !!user?.id && !!activeWorkspaceId,
-    refetchInterval: 30_000, refetchOnWindowFocus: true,
+    refetchInterval: 120_000, refetchOnWindowFocus: false, staleTime: 60_000,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
   });
   const owned = (ads.data ?? []).filter(row => row.relation === 'owned');
@@ -239,7 +239,7 @@ function MyAdsPage() {
   });
   const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId], enabled: !!user?.id && !!activeWorkspaceId,
-    refetchInterval: 30_000, refetchOnWindowFocus: true,
+    refetchInterval: 120_000, refetchOnWindowFocus: false, staleTime: 60_000,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
   });
   const navigate = useNavigate();

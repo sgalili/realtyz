@@ -15,7 +15,7 @@ export function useSidebarCounts() {
   return useQuery({
     queryKey: ['sidebar-counts', workspaceOwnerId ?? 'anon'],
     enabled: !!user && !!workspaceOwnerId,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const safeCount = async (
@@ -42,6 +42,7 @@ export function useSidebarCounts() {
           const { data, error } = await (supabase as any)
             .from('campaign_logs')
             .select('campaign_name, channel, created_at')
+            .eq('workspace_owner_id', workspaceOwnerId)
             .eq('is_archived', false)
             .order('created_at', { ascending: false })
             .limit(1000);
