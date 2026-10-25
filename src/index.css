@@ -1714,7 +1714,7 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .home-activity-drawer [data-activity-scroll] { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
 @media (min-width: 1024px) {
   :root { --app-content-width: min(60vw, 72rem); }
-  [data-site-dialog] { width: var(--app-content-width) !important; }
+  [data-site-dialog]:not([data-fullscreen]) { width: var(--app-content-width) !important; }
   .app-content-width { width: var(--app-content-width); max-width: 100%; margin-inline: auto; }
   .app-header-content { width: calc(var(--app-content-width) - 2rem); max-width: 100%; margin-inline: auto; }
 }
