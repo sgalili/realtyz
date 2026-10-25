@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { boardPublisherName, publisherDisplayKind, closingRewardLevel, isFeedEligible, publicPricing } from '../../supabase/functions/_shared/publicListingVisibility';
+import { boardPublisherName, publisherDisplayKind, closingRewardLevel, isFeedEligible, publicPricing, privatePublisherAvatar } from '../../supabase/functions/_shared/publicListingVisibility';
+
+describe('private publisher demo avatars', () => {
+  it('keeps one stable photo per person regardless of the record id', () => {
+    expect(privatePublisherAvatar('record-a', 'איתמר צמח')).toBe(privatePublisherAvatar('record-b', 'איתמר צמח'));
+  });
+  it('never shows the same photo for two different demo publishers', () => {
+    const photos = ['נועם ירושלמי', 'אורנה קרמונה', 'איתמר צמח'].map(name => privatePublisherAvatar('id-' + name, name));
+    expect(new Set(photos).size).toBe(3);
+  });
+});
 
 describe('publisher identity presentation', () => {
   it('keeps full broker names for every viewer', () => {
