@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { LeadPriceSlider } from './LeadPriceSlider';
 import type { LeadPriceKey } from '@/lib/leadPriceRanges';
 
@@ -9,6 +9,14 @@ function Harness({ tier }: { tier: LeadPriceKey }) {
   return <><LeadPriceSlider tier={tier} label="פנייה" value={value} onChange={setValue} /><output data-testid="saved">{value}</output></>;
 }
 describe('publisher lead prices', () => {
+  it('allows an enabled Super Admin editor to enter 500 beyond the form slider cap', () => {
+    const change = vi.fn();
+    render(<LeadPriceSlider tier="form" label="פנייה" value="100" unrestricted onChange={change} />);
+    fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלה עבור פנייה' }));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '500' } });
+    fireEvent.submit(screen.getByRole('spinbutton').closest('form') as HTMLFormElement);
+    expect(change).toHaveBeenCalledWith('500');
+  });
   it.each([['form', 40, 150], ['whatsapp', 50, 200], ['phone', 80, 250]] as const)('%s enables at minimum and saves manual bounded prices', (tier, min, max) => {
     render(<Harness tier={tier} />);
     fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלה עבור פנייה' }));

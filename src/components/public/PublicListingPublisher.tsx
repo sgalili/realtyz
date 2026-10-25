@@ -558,7 +558,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] }),
         ]),
       });
-      if (!outcome.committed) {
+      if (outcome.committed === false) {
         const error = outcome.error as { message?: string } | null;
         toast.error('לא ניתן לשמור את התמלוגים', { description: error?.message });
       }
@@ -912,7 +912,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       const n = cleanFormFields(fields.formFields).length;
                       return (
                         <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setFormFieldsOpen(true)}>
-                          שדות מטופס בעמוד נחיתה (שם + טלפון{n > 0 ? ` + ${n} נוספים` : ''})<ChevronLeft className="ms-1 inline h-4 w-4" aria-hidden />
+                          שדות מטופס בעמוד נחיתה (שם + טלפון{n > 0 ? ` + ${cleanFormFields(fields.formFields).map(field => field.label).join(', ')}` : ''})<ChevronLeft className="ms-1 inline h-4 w-4" aria-hidden />
                         </Button>
                       );
                     })()}

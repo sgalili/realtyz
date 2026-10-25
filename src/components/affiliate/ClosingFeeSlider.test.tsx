@@ -3,6 +3,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 afterEach(cleanup);
 describe('closing fee interaction', () => {
+  it('allows a Super Admin editor to set a 5% sale fee beyond the standard range', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider unrestricted dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
+    fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }));
+    const input = screen.getByRole('textbox', { name: 'עריכת עמלת סגירה' });
+    fireEvent.change(input, { target: { value: '5' } });
+    fireEvent.blur(input);
+    expect(change).toHaveBeenCalledWith(5, 'percent');
+  });
+  it('allows a Super Admin editor to explicitly disable the closing fee with zero', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider unrestricted dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
+    fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }));
+    const input = screen.getByRole('textbox', { name: 'עריכת עמלת סגירה' });
+    fireEvent.change(input, { target: { value: '0' } });
+    fireEvent.blur(input);
+    expect(change).toHaveBeenCalledWith(0, 'percent');
+  });
   it('starts expanded and collapsing preserves the configured fee', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider dealType="sale" price={2000000} value={1} onChange={change} />);
