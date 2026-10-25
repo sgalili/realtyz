@@ -6287,7 +6287,19 @@ const PublishedFeed = ({
       {subTab !== 'published' ? altContent : filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
           <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
-          <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
+          <Button
+            size="lg"
+            className="mt-5 h-auto whitespace-normal rounded-xl px-8 py-3 text-base font-semibold"
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.set('tab', 'create');
+              next.delete('channel');
+              next.delete('sub');
+              setSearchParams(next, { replace: true });
+            }}
+          >
+            <Plus className="me-2 h-5 w-5" /> צרו את הפוסט הראשון שלכם
+          </Button>
         </div>
       ) : (filteredRows || []).map(function renderFeedCard(r: any, _index?: number, inGroupOverlay: unknown = false): any {
 
@@ -8396,11 +8408,11 @@ const CampaignCenter = () => {
     setFbReady(false);
     const next = new URLSearchParams(searchParams);
     next.set('channel', channel);
-    next.set('tab', channel === 'facebook' ? 'create' : 'broadcast');
-    if (channel === 'facebook') {
-      const facebook = CHANNEL_CARDS.find((card) => card.id === 'facebook');
-      if (facebook) setPickedChannel(facebook);
-      setPickedChannelIds(new Set(['facebook']));
+    next.set('tab', channel === 'facebook' || channel === 'instagram' ? 'create' : 'broadcast');
+    if (channel === 'facebook' || channel === 'instagram') {
+      const card = CHANNEL_CARDS.find((c) => c.id === channel);
+      if (card) setPickedChannel(card);
+      setPickedChannelIds(new Set([channel]));
     }
     if (channel === 'ivr') setIvrOpen(true);
     setSearchParams(next, { replace: true });
@@ -8689,7 +8701,7 @@ const CampaignCenter = () => {
           {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
-          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
+          {(wizardChannel === 'facebook' || wizardChannel === 'instagram') && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
           
           <div hidden aria-hidden="true">
           <ChannelGrid
@@ -8729,7 +8741,7 @@ const CampaignCenter = () => {
             onAddFacebookPage={() => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!); }}
           />
           </div>
-          {wizardChannel === 'facebook' && fbReady && pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
+          {(wizardChannel === 'facebook' || wizardChannel === 'instagram') && fbReady && pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
             const propertiesParam = searchParams.get('properties') || '';
             let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
             let assignments: ComposerAssignment[] = [];
