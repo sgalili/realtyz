@@ -1,3 +1,10 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { useUserRole } from '@/hooks/useUserRole';
+import PublicListingPublisher from './PublicListingPublisher';
+import { listingToDraft } from '@/lib/adRecovery';
+import type { PublicListingDraft } from '@/lib/publicListingDraft';
 import { useAuth } from '@/hooks/useAuth';
 import { useAffiliateMarketplace, listingTiers } from '@/hooks/useAffiliate';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
@@ -11,6 +18,19 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const marketplace = useAffiliateMarketplace();
+  const { activeWorkspaceId } = useWorkspace();
+  const { isAgent } = useUserRole();
+  const [draft, setDraft] = useState<PublicListingDraft>();
+  const owned = useQuery({
+    queryKey: ['owned-royalties', listingId, user?.id, activeWorkspaceId],
+    enabled: table && !!user && !!activeWorkspaceId,
+    queryFn: async () => {
+      if (!user || !activeWorkspaceId) return null;
+      const { data, error } = await supabase.from('listings').select('*').eq('id', listingId).eq('workspace_owner_id', activeWorkspaceId).maybeSingle();
+      if (error || !data || !(data.user_id === user.id || data.owner_id === user.id || isAgent)) return null;
+      return data;
+    },
+  });
   const { data: property } = useQuery({
     queryKey: ['public-commission-pricing', listingId, user?.id, level4Unlocked],
     enabled: networkOpen !== false,
@@ -36,5 +56,7 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const types: RewardTypes = { ...(source?.reward_types as RewardTypes ?? { form: tiers.tier1 > 0, whatsapp: tiers.tier2 > 0, phone: tiers.tier3 > 0 }), closing: !!user && level4Unlocked && tiers.tier4 > 0 };
   const display = tableRoyalties(types, tiers, !!user, level4Unlocked);
   if (!Object.values(display.types).some(Boolean)) return null;
+  const icons = <RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={typeof source?.closing_level === 'number' ? source.closing_level : null} />;
+  if (table && owned.data) return <><Button variant="ghost" className="h-auto bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תמלוגים" onClick={event => { event.stopPropagation(); if (owned.data) setDraft({ ...listingToDraft(owned.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{icons}</Button>{draft && <PublicListingPublisher pricingOnly resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
   return <LeadPricingDialog readOnly rewardTypes={display.types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}><RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={typeof source?.closing_level === 'number' ? source.closing_level : null} /></LeadPricingDialog>;
 }
