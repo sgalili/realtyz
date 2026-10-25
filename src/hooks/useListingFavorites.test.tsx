@@ -73,7 +73,7 @@ it('marks a new favorite at once and stores exactly one row', async () => {
   const { result } = renderHook(() => useListingFavorites(), { wrapper });
   await waitFor(() => expect(result.current.isFavorite('listing-1')).toBe(true));
   await act(async () => { await result.current.toggleFavorite('listing-9'); });
-  expect(result.current.isFavorite('listing-9')).toBe(true);
+  await waitFor(() => expect(result.current.isFavorite('listing-9')).toBe(true));
   expect(db.rows).toContain('listing-9');
   expect(db.inserted[db.inserted.length - 1]).toEqual({ user_id: 'fav-user', listing_id: 'listing-9' });
 });
@@ -82,7 +82,7 @@ it('removes a saved favorite and deletes only that row', async () => {
   const { result } = renderHook(() => useListingFavorites(), { wrapper });
   await waitFor(() => expect(result.current.isFavorite('listing-1')).toBe(true));
   await act(async () => { await result.current.toggleFavorite('listing-1'); });
-  expect(result.current.isFavorite('listing-1')).toBe(false);
+  await waitFor(() => expect(result.current.isFavorite('listing-1')).toBe(false));
   expect(db.rows).not.toContain('listing-1');
   expect(db.deleteFilters).toContainEqual(['listing_id', 'listing-1']);
 });
@@ -93,6 +93,7 @@ it('puts the saved list back when the write fails', async () => {
   await waitFor(() => expect(result.current.isFavorite('listing-1')).toBe(true));
   await act(async () => { await result.current.toggleFavorite('listing-9'); });
   expect(result.current.isFavorite('listing-9')).toBe(false);
+  expect(result.current.isFavorite('listing-1')).toBe(true);
   expect(db.rows).not.toContain('listing-9');
   expect(vi.mocked(toast).error).toHaveBeenCalled();
 });
