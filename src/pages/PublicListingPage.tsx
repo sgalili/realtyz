@@ -423,10 +423,9 @@ function PublicListingContent() {
           <div className="px-4 py-3">
             <PublicAdHeading title={data.title} price={formatPrice(data.price, data.dealType)} dealType={data.dealType} />
           </div>
-          <BrokerAttribution brokerName={data.brokerName} officeName={data.officeName} licenceNumber={data.brokerLicenceNumber} logoUrl={data.agencyLogoUrl} publisherKind={data.publisherKind} dealType={data.dealType} />
           <div data-property-image-toolbar className="flex min-h-10 flex-wrap items-center gap-1 px-3">
             {data.photos.length > 1 && <><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="תמונה קודמת" onClick={() => setSlide((slide + data.photos.length - 1) % data.photos.length)}><ChevronRight className="h-4 w-4" /></Button><span className="text-xs tabular-nums">{slide + 1}/{data.photos.length}</span><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="תמונה הבאה" onClick={() => setSlide((slide + 1) % data.photos.length)}><ChevronLeft className="h-4 w-4" /></Button></>}
-            <div className="ms-auto flex items-center gap-1">              <Button variant="ghost" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button>{data.id && <PropertyContactActions listingId={data.id} title={data.title} compact shareOnly shareButtonClassName="h-9 w-9 border-0 bg-transparent shadow-none" />}</div>
+            <div className="ms-auto flex items-center gap-1"><Button variant="ghost" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button></div>
           </div>
           <div className="relative mt-3 aspect-[16/10] w-full bg-muted">
             {cover ? (

@@ -6,6 +6,7 @@ import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { postNetwork, postNetworkCounts, togglePostNetwork } from '@/lib/postNetworkFilters';
 import { FacebookCloudConnectGate } from '@/components/social/FacebookCloudConnectGate';
+import { InstagramConnectGate } from '@/components/social/InstagramConnectGate';
 import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { isProjectTarget, projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
@@ -8694,7 +8695,8 @@ const CampaignCenter = () => {
           {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'instagram' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
-          {(wizardChannel === 'facebook' || wizardChannel === 'instagram') && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
+          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
+          {wizardChannel === 'instagram' && <InstagramConnectGate onStatusChange={setFbReady} />}
           
           <div hidden aria-hidden="true">
           <ChannelGrid
