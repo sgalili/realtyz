@@ -7,6 +7,12 @@ export const LEAD_PRICE_RANGES = {
 export type LeadPriceKey = keyof typeof LEAD_PRICE_RANGES;
 /** Daily-limit slider position meaning "ללא הגבלה". */
 export const DAILY_UNLIMITED = 51;
+/** Color level 0-3 of a lead price inside its range; drives the shared closing-tone gradient. */
+export function leadPriceLevel(key: LeadPriceKey, value: number) {
+  const { min, max } = LEAD_PRICE_RANGES[key];
+  const p = (Math.min(max, Math.max(min, Number(value) || min)) - min) / (max - min);
+  return Math.min(3, Math.floor(p * 4));
+}
 export function clampLeadPrice(key: LeadPriceKey, value: number) {
   const { min, max } = LEAD_PRICE_RANGES[key];
   return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));

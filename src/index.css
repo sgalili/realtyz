@@ -1857,3 +1857,9 @@ html.activity-drawer-open main[aria-label="רשימת נכסים"] {
   pointer-events: none;
   transition: filter 150ms ease;
 }
+
+/* Royalties editor: body text +3px (titles and the main price keep their size). */
+.pricing-editor .text-\[11px\] { font-size: 14px; }
+.pricing-editor .text-xs { font-size: 15px; }
+.pricing-editor .text-sm, .pricing-editor.text-sm, .pricing-editor .space-y-4.text-sm { font-size: 17px; }
+.pricing-editor .text-base { font-size: 19px; }

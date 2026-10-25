@@ -3,16 +3,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 afterEach(cleanup);
 describe('closing fee interaction', () => {
-  it('bounds manually edited fixed sale fees to 0.2%-2%', () => {
+  it('sale fees are always saved as a percentage bounded to 0.2%-2%', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider dualMode dealType="sale" price={2000000} value={20000} valueType="fixed" onChange={vi.fn()} onValueChange={change} />);
     fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }));
     const input = screen.getByRole('textbox', { name: 'עריכת עמלת סגירה' });
-    fireEvent.change(input, { target: { value: '50000' } });
+    fireEvent.change(input, { target: { value: '5' } });
     fireEvent.blur(input);
-    expect(change).toHaveBeenCalledWith(40000, 'fixed');
-    expect(screen.getByRole('slider').getAttribute('aria-valuemin')).toBe('4000');
-    expect(screen.getByRole('slider').getAttribute('aria-valuemax')).toBe('40000');
+    expect(change).toHaveBeenCalledWith(2, 'percent');
+    expect(screen.getByRole('slider').getAttribute('aria-valuemin')).toBe('0.2');
+    expect(screen.getByRole('slider').getAttribute('aria-valuemax')).toBe('2');
+  });
+  it('rent fees are always saved in ILS, never percent', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider dualMode dealType="rent" price={6000} value={50} valueType="percent" onChange={vi.fn()} onValueChange={change} />);
+    fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }));
+    const input = screen.getByRole('textbox', { name: 'עריכת עמלת סגירה' });
+    fireEvent.change(input, { target: { value: '3000' } });
+    fireEvent.blur(input);
+    expect(change).toHaveBeenCalledWith(3000, 'fixed');
   });
   it('clamps editable sale percentages to 2%', () => {
     const change = vi.fn();
