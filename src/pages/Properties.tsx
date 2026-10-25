@@ -26,7 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
-  SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
+  ArrowRight, Loader2, Search as SearchIcon, Filter,
    ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon, ChevronDown,
    RefreshCw, Handshake, Pencil, Trash2,
 } from 'lucide-react';
@@ -908,7 +908,7 @@ export default function Properties() {
                   title="סינון מתקדם"
                   className={`inline-flex shrink-0 items-center justify-center h-7 w-7 rounded-md transition-colors ${filtersOpen || filterChips.length ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                 >
-                  <SlidersHorizontal className="h-4 w-4" />
+                  <Filter className="h-4 w-4" />
                 </Button>
               </CollapsibleTrigger>
 

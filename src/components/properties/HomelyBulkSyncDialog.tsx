@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2, CheckCircle2, Building2, Users, Search } from 'lucide-react';
+import { RefreshCw, MapPin, Phone, Mail, Home, Filter, Loader2, CheckCircle2, Building2, Users, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
@@ -300,7 +300,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
                 onClick={() => setFiltersOpen(v => !v)}
                 aria-label="סינון"
               >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <Filter className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">סינון</span>
               </Button>
               <Button
