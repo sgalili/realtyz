@@ -1,23 +1,35 @@
--- Server-only allowlist of test broker licenses (no client grants, no policies).
 CREATE TABLE IF NOT EXISTS public.test_broker_licenses (
   license_number text PRIMARY KEY CHECK (license_number ~ '^[1-9][0-9]{0,9}$'),
-  user_id uuid NOT NULL,
+  user_id uuid NOT NULL UNIQUE,
   note text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE public.test_broker_licenses ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.test_broker_licenses FROM anon, authenticated;
 GRANT ALL ON public.test_broker_licenses TO service_role;
+ALTER TABLE public.test_broker_licenses ENABLE ROW LEVEL SECURITY;
 
-CREATE OR REPLACE FUNCTION public.official_license_exists(_number text)
+INSERT INTO public.test_broker_licenses(license_number, user_id, note)
+SELECT '123456789', p.id, 'mock approved broker license for testing account'
+FROM public.profiles p WHERE p.id = '7202f59b-7597-45b0-8c69-c7447b72c125'
+ON CONFLICT DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.has_verified_broker_license(_uid uuid)
  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
-AS $function$ SELECT COALESCE(_number ~ '^[1-9][0-9]{0,9}$',false) AND (
-  EXISTS(SELECT 1 FROM public.test_broker_licenses WHERE license_number=_number)
-  OR EXISTS(SELECT 1 FROM public.official_brokers_registry WHERE license_number=_number AND source_url='https://data.gov.il/dataset/d361f6a6-898c-4e4d-8a80-abc4e8643bf6' AND source_updated_at > now()-interval '7 days' AND source_updated_at <= now()+interval '1 minute' AND extract(year from source_updated_at)=extract(year from now()))) $function$;
+AS $f$ SELECT EXISTS(SELECT 1 FROM public.test_broker_licenses t WHERE t.user_id=_uid)
+  OR EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=_uid AND public.official_license_exists(p.broker_license_number)) $f$;
 
-INSERT INTO public.test_broker_licenses(license_number,user_id,note)
-VALUES ('123456789','7202f59b-7597-45b0-8c69-c7447b72c125','mock license for testing account ברק ישראלי')
-ON CONFLICT (license_number) DO NOTHING;
-UPDATE public.profiles SET broker_license_number='123456789' WHERE id='7202f59b-7597-45b0-8c69-c7447b72c125';
-INSERT INTO public.user_roles(user_id, role) VALUES ('7202f59b-7597-45b0-8c69-c7447b72c125','agent') ON CONFLICT DO NOTHING;
-DELETE FROM public.broker_role_suspensions WHERE user_id='7202f59b-7597-45b0-8c69-c7447b72c125';
+CREATE OR REPLACE FUNCTION public.partner_can_view_closing(_user_id uuid)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $f$
+  SELECT _user_id IS NOT NULL
+    AND NOT public.has_role(_user_id, 'developer')
+    AND NOT public.has_role(_user_id, 'property_owner')
+    AND NOT public.has_role(_user_id, 'property_seeker')
+    AND (
+      EXISTS(SELECT 1 FROM public.test_broker_licenses t WHERE t.user_id=_user_id)
+      OR public.affiliate_tier3_eligible(_user_id)
+      OR public.has_role(_user_id, 'managing_broker')
+      OR public.has_role(_user_id, 'lead_agent')
+      OR public.has_role(_user_id, 'agent')
+    );
+$f$;

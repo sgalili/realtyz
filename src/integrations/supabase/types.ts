@@ -7245,6 +7245,27 @@ export type Database = {
         }
         Relationships: []
       }
+      test_broker_licenses: {
+        Row: {
+          created_at: string
+          license_number: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          license_number: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          license_number?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       test_logs: {
         Row: {
           blast_name: string
