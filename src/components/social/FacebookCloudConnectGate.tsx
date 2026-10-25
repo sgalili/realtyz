@@ -52,7 +52,10 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
       setPhase('idle'); setOpen(false);
     } catch (e) {
       if (generation.current !== run || abort.signal.aborted) return;
-      setErrorMessage((e as Error).message || 'סנכרון הקבוצות נכשל'); setPhase('idle');
+      // Connection succeeded; group import can retry later, so continue to the wizard.
+      toast.warning((e as Error).message || 'ייבוא הקבוצות יושלם מאוחר יותר');
+      onStatusChange?.(true);
+      setPhase('idle'); setOpen(false);
     }
   };
 
@@ -76,9 +79,11 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
         if (Date.now() > deadline) { stop(); setPhase('idle'); setErrorMessage('החיבור לא הושלם בזמן. נסו שוב.'); return; }
         if (checking) return;
         checking = true;
-        void getCloudSessionState().then(s => {
-          if (generation.current === run && s.active) void finish(run);
-        }).finally(() => { checking = false; });
+        void supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_check' } })
+          .catch(() => null)
+          .then(() => getCloudSessionState())
+          .then(s => { if (generation.current === run && s.active) void finish(run); })
+          .finally(() => { checking = false; });
       }, 5000);
     } catch (e) {
       win.close();
