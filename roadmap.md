@@ -1,6 +1,6 @@
 # Campaign channel-first wizard
-- [ ] Start new campaign/post creation with five channel cards and configured credit prices, then show only the selected existing composer with back navigation; remove crowded channel switches.
-- [ ] Verify channel selection and dedicated forms in the authenticated preview without sending a campaign.
+- [x] Start new campaign/post creation with five channel cards and configured credit prices, then show only the selected existing composer with back navigation; remove crowded channel switches, multi-channel wallet list and history from dedicated setup.
+- [x] Authenticated desktop/446px checks verify five cards, SMS/WhatsApp/email-only settings, IVR dialog, Facebook composer and back navigation; 13 focused tests and preview build pass. No campaign sent; live delivery is unavailable in the current account.
 
 # Facebook cloud connection cleanup
 - [x] Replace connection prompts with shared cloud login, confirmed-group import and discovery guidance; remove manual cookie entry and delegate old connection controls to the cloud flow.
