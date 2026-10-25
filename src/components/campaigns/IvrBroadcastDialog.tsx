@@ -196,8 +196,17 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   };
   useEffect(() => {
     if (!open || !workspaceId) return;
-    for (const voice of PRESET_VOICES) for (let sample = 0; sample < demoTexts.length; sample++) void getDemo(voice.voice_id, sample).catch(() => {});
+    let cancelled = false;
+    void (async () => {
+      for (const voice of PRESET_VOICES) {
+        for (let sample = 0; sample < demoTexts.length; sample++) {
+          if (cancelled) return;
+          try { await getDemo(voice.voice_id, sample); } catch { /* Retry only on an explicit demo click. */ }
+        }
+      }
+    })();
     return () => {
+      cancelled = true;
       previewRequestRef.current++;
       previewAudioRef.current?.pause();
       setPreviewingVoiceId(null); setLoadingPreviewId(null);
