@@ -1,4 +1,7 @@
 # Campaign card actions
+# Call calendar
+- [ ] Add calendar view to calls, future scheduling and automatic official WhatsApp reminders; verify saved call readback and no duplicate sends.
+
 - [x] Add shared top-left menus to published/scheduled/draft cards and remove Continue buttons; 10 focused tests pass. Authenticated 446px real card verifies menu and explicit repost editor without sending/deleting. Published edit opens native Facebook; live sync/share needs an available native post link, absent on the queued card checked.
 
 # Campaign channel-first wizard
