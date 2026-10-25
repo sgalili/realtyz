@@ -79,7 +79,7 @@ describe('commission visibility', () => {
   it('keeps the restricted closing trophy in its price color with a gray hint', () => {
     const { container } = render(<RewardIcons types={{ closing: true }} closingLevel={2} label={null} />);
     const trophy = screen.getByLabelText('סגירת עסקה');
-    expect(trophy.getAttribute('style')).toContain('--closing-high');
+    expect(trophy.className).toContain('closing-level-2');
     expect(screen.getByText('למתווכים').className).toContain('lead-no-fee');
     expect(container.querySelector('span[title="סגירת עסקה"].text-muted-foreground')).toBeNull();
     cleanup();
