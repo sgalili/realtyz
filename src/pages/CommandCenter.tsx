@@ -218,7 +218,7 @@ export default function CommandCenter() {
       setNewTourOpen(true);
       return;
     }
-    const quickTab = section === 'notes' ? 'note' : section === 'calls' ? 'interaction' : 'reminder';
+    const quickTab = section === 'notes' ? 'note' : 'reminder';
     window.dispatchEvent(new CustomEvent('open-quick-actions', { detail: { tab: quickTab } }));
   };
 
