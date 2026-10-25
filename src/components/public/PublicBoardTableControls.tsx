@@ -12,7 +12,7 @@ import type { PublicCard } from '@/pages/PublicListingsBoard';
 
 export const BOARD_COLUMNS = [
   { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' },
-  { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תמלוגים' }, { id: 'deal', label: 'עסקה' },
+  { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תמלוגים' },
   { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
 ] as const;
 export type BoardColumnId = typeof BOARD_COLUMNS[number]['id'];
@@ -20,10 +20,11 @@ type Preferences = { order: BoardColumnId[]; hidden: BoardColumnId[]; sort: { id
 const defaults = (): Preferences => ({ order: BOARD_COLUMNS.map(c => c.id), hidden: [], sort: null });
 const validId = (id: unknown): id is BoardColumnId => BOARD_COLUMNS.some(c => c.id === id);
 export function upgradeBoardColumnOrder(order: BoardColumnId[]): BoardColumnId[] {
-  if (order.includes('commissions')) return order;
+  // The retired 'deal' column is dropped from saved preferences; 'commissions' is inserted after 'price'.
   const next: BoardColumnId[] = order.filter(id => id !== 'deal');
+  if (next.includes('commissions')) return next;
   const priceIndex = next.indexOf('price');
-  next.splice(priceIndex < 0 ? next.length : priceIndex + 1, 0, 'commissions', 'deal');
+  next.splice(priceIndex < 0 ? next.length : priceIndex + 1, 0, 'commissions');
   return next;
 }
 function read(key: string): Preferences {
@@ -40,7 +41,6 @@ function sortValue(card: PublicCard, id: BoardColumnId): string | number | null 
   switch (id) {
     case 'photo': return card.photos?.length || 0;
     case 'address': return [card.street, card.neighborhood, card.city].filter(Boolean).join(', ') || null;
-    case 'deal': return card.deal_type === 'rent' ? 'להשכרה' : 'למכירה';
     case 'commissions': return null;
     default: return card[id];
   }
