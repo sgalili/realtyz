@@ -13,6 +13,7 @@ import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { buildDescriptionBlocks } from '@/lib/descriptionBlocks';
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -121,31 +122,8 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
   return (
     <div className="space-y-6" dir="rtl">
       <header className="space-y-2">
-        <div className="mb-4 flex items-start gap-2">
-          <div
-            role="heading"
-            aria-level={1}
-            className="text-3xl font-bold text-right text-slate-900 block flex-1 leading-snug"
-          >
-            {headline}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 order-2" />
-
-          <div className="flex items-baseline gap-3 flex-wrap order-1">
-            <span className="text-5xl font-extrabold text-success tabular-nums">
-              {formatPrice(property.price)}
-              {isRent && <span className="text-xl font-normal text-muted-foreground"> / לחודש</span>}
-            </span>
-            {pricePerMeter ? (
-              <span className="text-lg text-muted-foreground font-normal">
-                ({pricePerMeter} ₪ למ"ר)
-              </span>
-            ) : null}
-          </div>
-        </div>
+        <PublicAdHeading title={headline} price={formatPrice(property.price)} dealType={isRent ? 'rent' : 'sale'} />
+        {pricePerMeter && <p className="text-sm text-muted-foreground">({pricePerMeter} ₪ למ״ר)</p>}
       </header>
 
       <div className="space-y-3">
@@ -218,10 +196,11 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           <Card className="space-y-2 p-4 sm:p-5">
             <h2 className="text-sm font-bold text-foreground">מיקום הנכס</h2>
             <WorkspacePropertiesMap
-              properties={hasCoordinates ? [{ id: property.id, title: fullAddress || headline, latitude, longitude, price: property.price, dealType: isRent ? 'rent' : 'sale' }] : []}
+              properties={hasCoordinates ? [{ id: property.id, title: fullAddress || headline, latitude, longitude, price: property.price, dealType: isRent ? 'rent' : 'sale', rooms: property.rooms, imageUrl: photos[0] }] : []}
               selectedId={property.id}
               onSelect={() => undefined}
               fallbackAddress={mapAddress}
+              addressLabel={fullAddress}
             />
           </Card>
         ) : null}

@@ -31,6 +31,7 @@ import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternat
 import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { addressMapQuery, fullPropertyAddress } from '@/lib/fullAddress';
 import { PropertyYad2SectionsCard, type Yad2Sections } from '@/components/properties/PropertyYad2SectionsCard';
 
@@ -1411,34 +1412,9 @@ export default function PropertyDetail() {
 
       {/* Headline · neighborhood · price */}
       <header className="space-y-2">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <div
-            role="heading"
-            aria-level={1}
-            className="text-[24px] font-bold text-right text-slate-900 leading-snug"
-          >
-            {dynamicHeadline}
-          </div>
-          {(neighborhood || property.city) && (
-            <div className="text-lg font-medium text-slate-600">{[neighborhood, property.city].filter(Boolean).join(', ')}</div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <div className="flex min-w-0 flex-wrap items-baseline gap-3">
-            {editMode && form ? (
-              <PriceInput value={form.price} onChange={(e) => setField('price', e.target.value)} className="max-w-xs" />
-            ) : property.price > 0 ? (
-              <>
-                <span className="text-[32px] leading-none font-normal text-success tabular-nums">
-                  {formatPrice(property.price)}
-                  {isRent && <span className="text-lg font-normal text-muted-foreground"> / לחודש</span>}
-                </span>
-                {pricePerMeter ? <span className="text-base font-normal text-muted-foreground">({pricePerMeter} ₪ למ"ר)</span> : null}
-              </>
-            ) : <span className="text-2xl font-semibold text-amber-600">פרטים חסרים · Draft</span>}
-          </div>
-        </div>
+        <PublicAdHeading title={dynamicHeadline} price={!editMode ? property.price > 0 ? formatPrice(property.price) : 'פרטים חסרים' : undefined} dealType={isRent ? 'rent' : 'sale'} />
+        {editMode && form && <PriceInput value={form.price} onChange={(e) => setField('price', e.target.value)} className="max-w-xs" />}
+        {pricePerMeter && <p className="text-sm text-muted-foreground">({pricePerMeter} ₪ למ״ר)</p>}
 
 
         {(originalDate || sourceUpdatedDate) && (
@@ -1841,6 +1817,9 @@ export default function PropertyDetail() {
                     latitude: Number(data?.rich?.latitude),
                     longitude: Number(data?.rich?.longitude),
                     dealType: isRent ? 'rent' : 'sale',
+                    price: property.price,
+                    rooms: property.rooms,
+                    imageUrl: photos[0],
                   }]
                   : []
               }

@@ -27,6 +27,8 @@ import {
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
+import { publicUrl } from '@/lib/publicUrl';
 
 type SharedPayload = {
   workspace_name: string | null;
@@ -193,7 +195,7 @@ export default function SharedProperty() {
     const latitude = Number(item?.latitude);
     const longitude = Number(item?.longitude);
     if (!item?.id || !Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude === 0 || longitude === 0) return [];
-    return [{ id: String(item.id ?? `shared-property-${index}`), title: fullPropertyAddress(item) || String(item.property_title ?? item.title ?? 'נכס'), latitude, longitude, price: Number(item.asking_price) || null }];
+    return [{ id: String(item.id ?? `shared-property-${index}`), title: fullPropertyAddress(item) || String(item.property_title ?? item.title ?? 'נכס'), latitude, longitude, price: Number(item.asking_price ?? item.price) || null, dealType: item.deal_type, rooms: Number(item.rooms) || null, imageUrl: item.media_photos?.[0] ?? item.photos?.[0] ?? item.image_url }];
   });
   const selectedMapId = p?.id ? String(p.id) : mapProperties[0]?.id ?? null;
 
@@ -213,7 +215,7 @@ export default function SharedProperty() {
               />
             ) : null}
             <h1 className="text-center text-[18px] font-bold text-slate-900">
-              {data?.agency_name || data?.workspace_name || 'TORAFF'}
+              TORAFF
             </h1>
           </div>
         </div>
@@ -224,15 +226,8 @@ export default function SharedProperty() {
           <div className="flex flex-wrap items-center gap-2">
             {p.project_name ? <Badge variant="outline">{p.project_name}</Badge> : null}
           </div>
-          <h2 className="text-[26px] font-bold leading-snug text-slate-900">
-            {displayTitle}
-          </h2>
-          <div className="flex flex-wrap items-baseline gap-3">
-            <span className="text-[34px] font-extrabold tabular-nums text-emerald-600">{priceStr}</span>
-            {pricePerMeter ? (
-              <span className="text-[15px] text-muted-foreground">({pricePerMeter} ₪ למ״ר)</span>
-            ) : null}
-          </div>
+          <PublicAdHeading title={displayTitle} price={priceStr} dealType={isRent ? 'rent' : 'sale'} />
+          {pricePerMeter && <p className="text-sm text-muted-foreground">({pricePerMeter} ₪ למ״ר)</p>}
         </section>
 
         {photos.length > 0 ? (
@@ -391,12 +386,11 @@ export default function SharedProperty() {
 
         {(Number.isFinite(Number(p.latitude)) && Number.isFinite(Number(p.longitude)) && Number(p.latitude) !== 0 && Number(p.longitude) !== 0) || mapQuery ? (
           <section className="space-y-2">
-            <WorkspacePropertiesMap properties={mapProperties} selectedId={selectedMapId} onSelect={setSelectedPropertyId} fallbackAddress={mapQuery} />
-            {mapProperties.length > 1 ? <p className="text-[13px] text-muted-foreground">לחצו על סמן כדי להציג את פרטי הנכס</p> : null}
+            <WorkspacePropertiesMap properties={mapProperties} selectedId={selectedMapId} onSelect={setSelectedPropertyId} fallbackAddress={mapQuery} addressLabel={locationLine} />
           </section>
         ) : null}
 
-        {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} dealType={p.deal_type ?? p.listing_type} premsg={ritaPropertyPremsg(p)} options={p.contact_options} shareUrl={typeof window !== 'undefined' ? window.location.href : null} /> : null}
+        {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} dealType={p.deal_type ?? p.listing_type} premsg={ritaPropertyPremsg(p)} options={p.contact_options} compact formAsButton singleRow shareUrl={publicUrl(`/p/${encodeURIComponent(p.slug || p.id)}`)} /> : null}
       </main>
 
       <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>

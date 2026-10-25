@@ -274,7 +274,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
       {mapQuery && (
         <section>
           <h3 className="mb-1 text-xs font-bold text-muted-foreground">מיקום</h3>
-          {listing.addressForMap && <p className="mb-2 text-sm font-medium text-foreground">{listing.addressForMap}</p>}
+          {listing.location && <p className="mb-2 text-sm font-medium text-foreground">{listing.location}</p>}
           <div className="relative overflow-hidden rounded-xl border">
             <iframe title="מפת הנכס" src={embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-56 w-full border-0" />
             <div className="absolute left-2 top-2 flex flex-col gap-1">

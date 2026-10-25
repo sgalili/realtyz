@@ -1,4 +1,5 @@
 import { Table } from '@/components/ui/table';
+import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { returnState } from "@/lib/returnNav";
@@ -1397,9 +1398,7 @@ function ResultCard({
       ) : null}
       {/* Dedicated full-width title row — always the first element of the card. */}
       <div className="w-full px-4 pt-3 pb-2 border-b">
-        <h3 className="w-full whitespace-normal [overflow-wrap:anywhere] font-semibold text-base leading-tight" title={result.title}>
-          {result.title}
-        </h3>
+        <PublicAdHeading compact title={result.title || result.address || 'נכס'} price={result.price ? formatPrice(result.price) : 'פרטים חסרים'} dealType={isRent ? 'rent' : 'sale'} />
       </div>
       <div className="aspect-[16/10] bg-muted relative overflow-hidden">
 
@@ -1537,11 +1536,7 @@ function ResultCard({
         </div>
 
         <div className="flex items-center justify-between mt-auto pt-2 border-t gap-2 flex-wrap">
-          <div className="text-lg font-bold text-success inline-flex items-center gap-1">
-            {result.price
-              ? (<>{formatPrice(result.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground"> / לחודש</span> : null}</>)
-              : (<span className="text-sm font-semibold text-amber-600">פרטים חסרים</span>)}
-          </div>
+
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             {onDelete && !selectionMode ? (
               <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete} title="מחיקת נכס" aria-label="מחיקת נכס">

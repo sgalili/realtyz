@@ -12,6 +12,8 @@ export type WorkspaceMapProperty = {
   longitude?: number | null;
   price?: number | null;
   dealType?: string | null;
+  imageUrl?: string | null;
+  rooms?: number | null;
 };
 
 type Props = {
@@ -20,6 +22,7 @@ type Props = {
   onSelect: (id: string) => void;
   /** Full geocodable address from the saved property row. */
   fallbackAddress?: string | null;
+  addressLabel?: string | null;
 };
 
 type PointProperty = WorkspaceMapProperty & {
@@ -43,16 +46,6 @@ function formatPrice(value?: number | null): string | null {
   return fmtILS(n);
 }
 
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>'"]/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    "'": '&#39;',
-    '"': '&quot;',
-  }[char] ?? char));
-}
-
 function getToken(): string {
   return String(import.meta.env['VITE_LOVABLE_CONNECTOR_MAPBOX_PUBLIC_TOKEN'] ?? '').trim();
 }
@@ -67,20 +60,30 @@ function makeMarkerElement(property: PointProperty, selected: boolean) {
   wrapper.type = 'button';
   wrapper.dir = 'rtl';
   wrapper.className = selected
-    ? 'group flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/25 transition-transform hover:scale-105'
-    : 'group flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-card text-primary shadow-md ring-1 ring-border transition-transform hover:scale-105';
+    ? 'flex h-12 w-14 items-center justify-center overflow-hidden rounded-md border-2 border-primary bg-card text-primary shadow-lg'
+    : 'flex h-12 w-14 items-center justify-center overflow-hidden rounded-md border-2 border-background bg-card text-primary shadow-md';
   wrapper.setAttribute('aria-label', property.title || 'נכס במפה');
-
+  if (property.imageUrl && /^https?:\/\//i.test(property.imageUrl)) {
+    const image = document.createElement('img');
+    image.src = property.imageUrl;
+    image.alt = '';
+    image.className = 'h-full w-full object-cover';
+    image.addEventListener('error', () => { image.remove(); wrapper.textContent = '⌂'; }, { once: true });
+    wrapper.appendChild(image);
+    return wrapper;
+  }
   const icon = document.createElement('span');
   icon.className = 'h-3 w-3 rounded-full bg-current';
   wrapper.appendChild(icon);
   return wrapper;
 }
 
-export default function WorkspacePropertiesMap({ properties, selectedId, onSelect, fallbackAddress }: Props) {
+export default function WorkspacePropertiesMap({ properties, selectedId, onSelect, fallbackAddress, addressLabel }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markersRef = useRef<MapboxMarker[]>([]);
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -93,23 +96,23 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
   const navTargetEncoded = encodeURIComponent(navTarget);
 
   const navigationButtons = navTarget ? (
-    <div className="flex flex-wrap gap-2">
-      <Button asChild variant="outline" size="sm">
+    <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
+      <Button asChild variant="outline" size="sm" className="h-7 bg-card px-2 text-xs shadow-sm">
         <a
           href={selected ? `https://waze.com/ul?ll=${selected.latitude},${selected.longitude}&navigate=yes` : `https://waze.com/ul?q=${navTargetEncoded}&navigate=yes`}
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Navigation className="h-4 w-4" /> Waze
+          <Navigation className="h-3.5 w-3.5 text-primary" /> ניווט בוויז
         </a>
       </Button>
-      <Button asChild variant="outline" size="sm">
+      <Button asChild variant="outline" size="sm" className="h-7 bg-card px-2 text-xs shadow-sm">
         <a
           href={`https://www.google.com/maps/dir/?api=1&destination=${navTargetEncoded}`}
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Navigation className="h-4 w-4" /> Google Maps
+          <MapPin className="h-3.5 w-3.5 text-success" /> גוגל מפות
         </a>
       </Button>
     </div>
@@ -138,7 +141,7 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
             attributionControl: false,
             cooperativeGestures: true,
           });
-          mapRef.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
+          mapRef.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
           mapRef.current.once('load', () => setReady(true));
           mapRef.current.on('error', (event: { error?: Error }) => {
             console.warn('Mapbox render error:', event.error);
@@ -168,15 +171,39 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
       const mapboxgl = (await import('mapbox-gl')).default;
       const nextMarkers = displayPoints.map((property) => {
         const element = makeMarkerElement(property, property.id === selected.id);
-        element.addEventListener('click', () => onSelect(property.id));
         const marker = new mapboxgl.Marker({ element, anchor: 'center' })
           .setLngLat([property.longitude, property.latitude]);
         const price = formatPrice(property.price);
         const priceLabel = price ? `${price}${property.dealType === 'rent' ? ' / לחודש' : ''}` : null;
         if (property.title || price) {
-          marker.setPopup(new mapboxgl.Popup({ offset: 18 }).setHTML(
-            `<div dir="rtl"><strong>${escapeHtml(property.title)}</strong>${priceLabel ? `<br>${escapeHtml(priceLabel)}` : ''}</div>`,
-          ));
+          const content = document.createElement('div');
+          content.dir = 'rtl';
+          content.className = 'space-y-2 text-sm text-foreground';
+          const heading = document.createElement('strong');
+          heading.textContent = property.title;
+          content.appendChild(heading);
+          for (const label of [property.rooms ? `${property.rooms} חדרים` : null, priceLabel]) {
+            if (!label) continue;
+            const line = document.createElement('p');
+            line.textContent = label;
+            content.appendChild(line);
+          }
+          const link = document.createElement('a');
+          link.href = '#';
+          link.textContent = 'לצפייה בנכס';
+          link.className = 'inline-flex font-semibold text-primary underline';
+          link.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            marker.getPopup()?.remove();
+            onSelectRef.current(property.id);
+            requestAnimationFrame(() => {
+              document.querySelectorAll('.realtyz-main-surface, [data-scroll-restoration], main').forEach((surface) => surface.scrollTo({ top: 0, behavior: 'instant' }));
+              window.scrollTo({ top: 0, behavior: 'instant' });
+            });
+          });
+          content.appendChild(link);
+          marker.setPopup(new mapboxgl.Popup({ offset: 28, maxWidth: '260px' }).setDOMContent(content));
         }
         marker.addTo(map);
         return marker;
@@ -201,7 +228,7 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
     };
-  }, [displayPoints, selected?.id, selected?.latitude, selected?.longitude, onSelect, ready]);
+  }, [displayPoints, selected?.id, selected?.latitude, selected?.longitude, ready]);
 
   useEffect(() => () => {
     markersRef.current.forEach((marker) => marker.remove());
@@ -209,37 +236,27 @@ export default function WorkspacePropertiesMap({ properties, selectedId, onSelec
     mapRef.current = null;
   }, []);
 
-  if (!token) {
+  if (!token || failed || !selected) {
     return (
       <div className="space-y-2">
-        <div className="flex min-h-24 items-center gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
-          <MapPin className="h-5 w-5 shrink-0 text-primary" />
-          <span>{address || 'מיקום הנכס יוצג לאחר חיבור Mapbox'}</span>
-        </div>
-        {navigationButtons}
-      </div>
-    );
-  }
-
-  if (failed || !selected) {
-    return (
-      <div className="space-y-2">
-        <div className="flex min-h-24 items-center gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
+        {(addressLabel || address) && <p className="text-sm font-medium text-foreground">{addressLabel || address}</p>}
+        <div className="relative flex min-h-40 items-end gap-2 rounded-lg border bg-muted/30 p-4 text-sm font-medium text-foreground">
           <MapPin className="h-5 w-5 shrink-0 text-primary" />
           <span>{address || 'מיקום הנכס עדיין אינו זמין במפה'}</span>
+          {navigationButtons}
         </div>
-        {navigationButtons}
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
+      {(addressLabel || address) && <p className="text-sm font-medium text-foreground">{addressLabel || address}</p>}
       <div className="relative h-72 w-full overflow-hidden rounded-lg border bg-muted/20">
         {!ready ? <Skeleton className="absolute inset-0 z-10 h-full w-full rounded-none" /> : null}
         <div ref={containerRef} className="h-full w-full" aria-label="מפת נכסי המשרד" />
+        {navigationButtons}
       </div>
-      {navigationButtons}
     </div>
   );
 }
