@@ -5689,10 +5689,12 @@ export type Database = {
         Row: {
           created_at: string
           delivery_channel: string
+          event_channels: Json
           id: string
           notify_critical_question: boolean
           notify_meeting_booked: boolean
           notify_new_high_priority: boolean
+          panel_preferences: Json
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           updated_at: string
@@ -5701,10 +5703,12 @@ export type Database = {
         Insert: {
           created_at?: string
           delivery_channel?: string
+          event_channels?: Json
           id?: string
           notify_critical_question?: boolean
           notify_meeting_booked?: boolean
           notify_new_high_priority?: boolean
+          panel_preferences?: Json
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           updated_at?: string
@@ -5713,10 +5717,12 @@ export type Database = {
         Update: {
           created_at?: string
           delivery_channel?: string
+          event_channels?: Json
           id?: string
           notify_critical_question?: boolean
           notify_meeting_booked?: boolean
           notify_new_high_priority?: boolean
+          panel_preferences?: Json
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           updated_at?: string

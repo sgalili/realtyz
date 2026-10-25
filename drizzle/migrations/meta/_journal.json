@@ -484,6 +484,13 @@
       "when": 1792890089110,
       "tag": "0068_ivr_voice_workspace_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1792892599485,
+      "tag": "0069_notification_event_delivery_preferences",
+      "breakpoints": true
     }
   ]
 }
