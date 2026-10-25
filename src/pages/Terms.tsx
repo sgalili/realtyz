@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { LegalPageLayout, LegalSection } from '@/components/public/LegalPageLayout';
+import UnlicensedPartnerCommissionNote from '@/components/public/UnlicensedPartnerCommissionNote';
 
 export default function Terms({ embedded = false }: { embedded?: boolean }) {
   const { masterBrand } = useWhiteLabel();
@@ -26,6 +27,7 @@ export default function Terms({ embedded = false }: { embedded?: boolean }) {
       <p>שירותי תיווך ניתנים באמצעות מתווך בעל רישיון ישראלי תקף ובכפוף לחוק המתווכים במקרקעין. עמלת הקונה בשירותי TORAFF היא 1% ממחיר הסגירה הסופי; עמלת השוכר היא 10% משכר דירה של חודש אחד בלבד, בתשלום חד־פעמי. מוכרים ומשכירים כפופים להסכם התיווך הספציפי שנחתם עמם.</p>
       <p>חבות בדמי תיווך מחייבת את התנאים הקבועים בדין ובהזמנת השירות בכתב. צפייה, פרסום או פנייה אינם כשלעצמם הסכם תיווך. מתווך זכאי שהביא את הפנייה מקבל 80% מעמלת הסגירה המזכה ו־TORAFF מקבלת 20%; ללא מתווך זכאי, הפלטפורמה מקבלת 100% באמצעות שירות תיווך מורשה.</p>
       <p>שותף ללא רישיון זכאי לתגמולי שיווק דיגיטלי בלבד, ולא לדמי תיווך או לגישה לנתוני סגירה מוגנים. פירוט לכל הצדדים מופיע ב<Link to="/commission-mechanism" className="text-primary underline underline-offset-4">מנגנון העמלות</Link>.</p>
+      <UnlicensedPartnerCommissionNote />
     </LegalSection>
     <LegalSection title="6. ריטה, בינה מלאכותית ואוטומציות">
       <p>ריטה וכלי הבינה המלאכותית מסייעים בכתיבה, סינון, תמלול והתאמות. יש לבדוק תוצרים לפני פרסום או שימוש; הם אינם ייעוץ משפטי, שמאי, פיננסי או הבטחה לסגירת עסקה.</p>

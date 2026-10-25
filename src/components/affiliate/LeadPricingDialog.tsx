@@ -22,6 +22,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ClipboardList, Phone, Trophy, Lock, Sparkles, ChevronDown } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { ClosingSplitNote } from './ClosingSplitNote';
+import UnlicensedPartnerCommissionNote from '@/components/public/UnlicensedPartnerCommissionNote';
 import { BrokerClosingInfo, ClosingLicenseInfo } from './BrokerClosingInfo';
 import type { RewardTypes } from './CommissionTierBadges';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -78,7 +79,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
         </Card>)}
       </div>
       <Card className="space-y-3 rounded-2xl p-4"><div className="flex items-center gap-3 text-muted-foreground"><Trophy aria-label="סגירת עסקה" className={`h-8 w-8 shrink-0 ${closingColorClass ?? 'text-lead-closing'}`} /><h3 className="flex-1 text-lg font-bold text-foreground">סגירת עסקה</h3><span className="lead-no-fee text-base">למתווכים</span></div><ClosingLicenseInfo /></Card>
-      <Button type="button" size="lg" onClick={join} className="h-14 w-full gap-2 rounded-2xl text-lg font-bold shadow-lg"><Sparkles className="h-5 w-5" />הצטרפו לצפייה במחירי הלידים</Button>
+      <Button type="button" size="lg" onClick={join} className="h-14 w-full gap-2 rounded-2xl text-lg font-bold shadow-lg"><Sparkles className="h-5 w-5" />הצטרפו לצפייה במחירי הלידים</Button><UnlicensedPartnerCommissionNote />
     </div>;
   }
   return <div className="space-y-4 text-base leading-relaxed">
@@ -89,7 +90,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
       {row.questions.length ? <Collapsible><CollapsibleTrigger asChild><Button type="button" variant="ghost" className="group h-auto w-full justify-between gap-2 whitespace-normal px-0 py-2 text-start text-base text-muted-foreground"><span>שאלות הסינון של המפרסם</span><ChevronDown className="h-5 w-5 shrink-0 transition-transform motion-reduce:transition-none group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CollapsibleContent><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></CollapsibleContent></Collapsible> : row.key !== 'form' ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
     </Card>)}
     {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <Card className="space-y-2 rounded-2xl p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="ms-auto shrink-0 text-2xl font-bold text-lead-closing">{listing.tier4_type === 'percent' ? <>{`${closingNetPercent}%`}{closingNetShekels > 0 ? <span className="ms-1 text-base font-extrabold">({fmtILS(closingNetShekels)})</span> : null}</> : `${fmtILS(Math.round(partnerNetReward(Number(listing.tier4_amount))))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></Card> : !level4Unlocked ? <Card className="space-y-3 rounded-2xl p-4"><div className="flex items-center gap-3 text-muted-foreground"><Trophy aria-label="סגירת עסקה" className={`h-8 w-8 shrink-0 ${closingColorClass ?? 'text-lead-closing'}`} /><h3 className="flex-1 text-lg font-bold text-foreground">סגירת עסקה</h3><span className="lead-no-fee text-base">למתווכים</span></div><ClosingLicenseInfo /></Card> : (showAll || rewardTypes?.closing || closingOnly) && <Card className="space-y-2 rounded-2xl p-4"><h3 className="flex items-center gap-3 text-lg font-bold"><Trophy className={`h-8 w-8 shrink-0 ${closingZero ? 'lead-no-fee' : 'text-lead-closing'}`} />סגירת עסקה{closingZero && <span className="lead-no-fee text-base">ללא עמלה</span>}</h3>{!closingZero && <p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p>}</Card>}
-    {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}
+    {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}<UnlicensedPartnerCommissionNote />
   </div>;
 }
 

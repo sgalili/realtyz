@@ -2,14 +2,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { verifiedPhoneSession } from '../../supabase/functions/_shared/phoneSession';
 
 describe('verified phone identity', () => {
-  it('creates a phone-only user without email and returns only session tokens', async () => {
+  it('creates a phone-only user on an internal alias and returns only a magic-link hash', async () => {
     const createUser = vi.fn().mockResolvedValue({ error: null });
-    const signInWithPassword = vi.fn().mockResolvedValue({ data: { session: { access_token: 'test-access', refresh_token: 'test-refresh' } }, error: null });
-    const admin = { auth: { admin: { listUsers: vi.fn().mockResolvedValue({ data: { users: [] } }), createUser } } };
-    const result = await verifiedPhoneSession(admin, { auth: { signInWithPassword } }, '972500000000', 'whatsapp_wba');
-    expect(createUser.mock.calls[0][0]).not.toHaveProperty('email');
-    expect(createUser.mock.calls[0][0].phone_confirm).toBe(true);
-    expect(result).toEqual({ session: { access_token: 'test-access', refresh_token: 'test-refresh' } });
+    const generateLink = vi.fn().mockResolvedValue({ data: { properties: { hashed_token: 'test-hash' } }, error: null });
+    const admin = { auth: { admin: { listUsers: vi.fn().mockResolvedValue({ data: { users: [] } }), createUser, generateLink } } };
+    const result = await verifiedPhoneSession(admin, {}, '972500000000', 'whatsapp_wba');
+    const created = createUser.mock.calls[0][0];
+    expect(created.email).toBe('p972500000000@phone.toraff.invalid');
+    expect(created.email_confirm).toBe(true);
+    expect(created.phone_confirm).toBe(true);
+    expect(created).not.toHaveProperty('password');
+    expect(generateLink).toHaveBeenCalledWith({ type: 'magiclink', email: 'p972500000000@phone.toraff.invalid' });
+    expect(result).toEqual({ token_hash: 'test-hash' });
     expect(JSON.stringify(result)).not.toContain('password');
   });
   it('reuses legacy email identity and never creates a duplicate account', async () => {

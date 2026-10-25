@@ -34,6 +34,14 @@ describe('partner lead pricing information', () => {
     render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ closing: true }} />);
     expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('text-lead-closing');
   });
+  it('notes that a licensed TORAFF broker handles the closing commission', () => {
+    state.user = null;
+    render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ closing: true }} />);
+    expect(screen.getByText(/מתווך מורשה מטעם פלטפורמת TORAFF/)).toBeTruthy();
+    cleanup();
+    render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ closing: true }} />);
+    expect(screen.getByText(/מתווך מורשה מטעם פלטפורמת TORAFF/)).toBeTruthy();
+  });
   it('opens all lead details and inline licensing from the closing icon without a second popup', () => {
     state.editable = null;
     render(<LeadPricingDialog listing={listing} />);
