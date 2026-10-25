@@ -208,7 +208,7 @@ export function RewardDialog({
                 {tiers.map((tier) => (
                   <div key={tier.key} className="space-y-1.5 rounded-md border border-border p-2.5">
                     <div className="flex items-center gap-2">
-                      <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? "text-primary" : "text-muted-foreground"}`} />
+                      <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? (tier.capKey === "form" ? "text-lead-form" : tier.capKey === "whatsapp" ? "text-lead-whatsapp" : "text-lead-phone") : "text-muted-foreground"}`} />
                       <div className="text-[12px] font-semibold text-foreground">{tier.title}</div>
                       {tier.questionsKey ? (
                         <Button
@@ -229,7 +229,7 @@ export function RewardDialog({
                       <Switch aria-label={`הפעלת ${tier.title}`} checked={num(tier.value) > 0} onCheckedChange={(on) => tier.setValue(on ? String(LEAD_PRICE_RANGES[tier.capKey].min) : "")} />
                     </div>
                     {num(tier.value) > 0 && <>
-                      <div className="text-center"><bdi dir="ltr" className="text-2xl font-bold text-primary">₪{num(tier.value).toLocaleString("he-IL")}</bdi></div>
+                      <div className="text-center"><bdi dir="ltr" className={`text-2xl font-bold ${tier.capKey === "form" ? "text-lead-form" : tier.capKey === "whatsapp" ? "text-lead-whatsapp" : "text-lead-phone"}`}>₪{num(tier.value).toLocaleString("he-IL")}</bdi></div>
                       <div dir="ltr" className="space-y-1 px-2">
                         <Slider dir="ltr" aria-label={`עמלה עבור ${tier.title}`} min={LEAD_PRICE_RANGES[tier.capKey].min} max={LEAD_PRICE_RANGES[tier.capKey].max} step={5} value={[clampLeadPrice(tier.capKey, num(tier.value))]} onValueChange={(v) => v[0] !== undefined && tier.setValue(String(v[0]))} className="closing-slider h-6" />
                         <div className="flex justify-between text-xs tabular-nums text-muted-foreground"><span>₪{LEAD_PRICE_RANGES[tier.capKey].min}</span><span>₪{LEAD_PRICE_RANGES[tier.capKey].max}</span></div>

@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
       lead = (leadRow as { full_name?: string } | null)?.full_name || lead;
 
       if (leadRow?.workspace_owner_id && leadRow.workspace_owner_id !== userId) {
-        const { data: member } = await admin.from('workspace_memberships').select('user_id').eq('workspace_owner_id', leadRow.workspace_owner_id).eq('user_id', userId).eq('status', 'active').maybeSingle();
+        const { data: member } = await admin.from('workspace_memberships').select('user_id').eq('workspace_owner_id', leadRow.workspace_owner_id).eq('user_id', userId).maybeSingle();
         if (!member) return json({ error: 'Lead not accessible to recipient' }, 403);
       }
       const workspaceOwnerId = (leadRow as { workspace_owner_id?: string } | null)?.workspace_owner_id;
