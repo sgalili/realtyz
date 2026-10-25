@@ -77,9 +77,8 @@ export function useCommandCenterTasks() {
           .limit(300),
         (supabase as any)
           .from('meetings')
-          .select('id, title, description, starts_at, status, lead_id, lead_name, lead_phone')
+          .select('id, title, description, starts_at, status, lead_id, lead_name, lead_phone, metadata')
           .eq('workspace_owner_id', ownerId)
-          .gte('starts_at', new Date(Date.now() - 12 * 3600_000).toISOString())
           .order('starts_at', { ascending: true })
           .limit(100),
         (supabase as any)
@@ -202,7 +201,7 @@ export function useCommandCenterTasks() {
           listingMeta: null,
           listingDealType: null,
           listingThumb: null,
-          actionType: 'meeting',
+          actionType: mt.metadata?.action_type === 'call' ? 'call' : 'meeting',
           leadAvatar: lead?.profile_picture_url ?? null,
         });
       }

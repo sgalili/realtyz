@@ -9,6 +9,8 @@ import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { validateFutureCall } from '@/lib/callSchedule';
 
 import CallSummaryDialog from '@/components/tasks/CallSummaryDialog';
 import { invalidateLiveData } from '@/lib/liveSync';
@@ -97,7 +99,7 @@ function isCallSummary(task: CommandTask): boolean {
 
 function sectionOf(task: CommandTask): SectionTab {
   if (task.source === 'note') return task.actionType === 'interaction' ? 'calls' : 'notes';
-  if (task.source === 'meeting') return 'tasks';
+  if (task.source === 'meeting') return task.actionType === 'call' ? 'calls' : 'tasks';
   if (task.actionType === 'call') return 'calls';
   return 'tasks';
 }
@@ -123,7 +125,7 @@ const ADD_LABEL: Record<SectionTab, string> = {
   leads: 'ליד חדש',
   demos: 'הדגמה חדשה',
   notes: 'הערה חדשה',
-  calls: 'סיכום שיחה',
+  calls: 'שיחה חדשה',
 };
 
 
@@ -163,6 +165,9 @@ export default function CommandCenter() {
   const visibleTabs = isRitaWorkspace ? RITA_TABS : DEFAULT_TABS;
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const ownerId = useActiveWorkspaceOwnerId();
+  const [newCallOpen, setNewCallOpen] = useState(false);
+  const [callView, setCallView] = useState<ScheduleView>('calendar');
   const { data: tasks = [], isLoading } = useCommandCenterTasks();
   // Incoming leads and scheduled demos now live inside this page.
   const leadsCount = useIncomingLeadsCount();
@@ -200,6 +205,7 @@ export default function CommandCenter() {
 
   /** Opens the quick-action drawer on the right form for the active tab. */
   const addNew = (section: SectionTab) => {
+    if (section === 'calls') { setNewCallOpen(true); return; }
     if (section === 'demos') {
       setNewDemoOpen(true);
       return;
@@ -363,6 +369,29 @@ export default function CommandCenter() {
     <div dir="rtl" className="p-4 md:p-6">
       <NewTourDialog open={newTourOpen} onOpenChange={setNewTourOpen} />
       <NewDemoDialog open={newDemoOpen} onOpenChange={setNewDemoOpen} />
+      <TaskFormDialog
+        key={ownerId ?? 'none'}
+        open={newCallOpen}
+        onOpenChange={setNewCallOpen}
+        title="תזמון שיחה חדשה"
+        submitLabel="שמירת שיחה"
+        footerNote="תזכורת WhatsApp אליך כשעה לפני השיחה. שליחה מחוץ לחלון השירות דורשת תבנית מאושרת."
+        onSubmit={async (values) => {
+          const validation = validateFutureCall(values.when, values.lead?.id ?? null);
+          if (validation) throw new Error(validation);
+          if (!ownerId) throw new Error('לא נבחר משרד');
+          const { error } = await supabase.rpc('schedule_workspace_call' as never, {
+            _owner: ownerId, _lead: values.lead?.id, _starts_at: new Date(values.when).toISOString(), _notes: values.text,
+          } as never);
+          if (error) throw error;
+          setTaskMonth(new Date(new Date(values.when).getFullYear(), new Date(values.when).getMonth(), 1));
+          const d = new Date(values.when);
+          setTaskDay(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`);
+          setCallView('calendar');
+          await qc.invalidateQueries({ queryKey: ['command-center-tasks'] });
+          toast.success('השיחה נשמרה');
+        }}
+      />
 
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">משימות</h1>
@@ -391,8 +420,8 @@ export default function CommandCenter() {
               ))}
             </TabsList>
           </Tabs>
-          {(tab === 'tasks' || tab === 'tours') && (
-            <ScheduleViewToggle view={taskView} onViewChange={setTaskView} monthCursor={taskMonth} onMonthChange={setTaskMonth} />
+          {(tab === 'tasks' || tab === 'tours' || tab === 'calls') && (
+            <ScheduleViewToggle view={tab === 'calls' ? callView : taskView} onViewChange={tab === 'calls' ? setCallView : setTaskView} monthCursor={taskMonth} onMonthChange={setTaskMonth} />
           )}
           </div>
           <Button size="sm" className="h-10 gap-1 bg-success text-lg font-bold text-success-foreground hover:bg-success/90 md:mt-[50px]" onClick={() => addNew(tab)}>
@@ -415,7 +444,7 @@ export default function CommandCenter() {
           </div>
         ) : (
           <div className="space-y-3">
-            {taskView === 'calendar' ? (
+            {(tab === 'calls' ? callView : taskView) === 'calendar' ? (
               <ScheduleMonthGrid
                 items={visible.map((t) => ({
                   id: `${t.source}-${t.id}`,
@@ -427,7 +456,7 @@ export default function CommandCenter() {
                 onMonthChange={setTaskMonth}
                 openDay={taskDay}
                 onOpenDay={setTaskDay}
-                emptyLabel="אין משימות ביום שנבחר"
+                emptyLabel={tab === 'calls' ? 'אין שיחות ביום שנבחר' : 'אין משימות ביום שנבחר'}
                 renderItem={(item) => (
                   <ul className="space-y-2" key={item.id}>{renderTaskCard(item.task)}</ul>
                 )}
