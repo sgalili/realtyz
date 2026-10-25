@@ -1,5 +1,9 @@
 # Roadmap
 
+## Licensed-only closing display
+- [x] Replaced role-only/Super Admin/test-license closing entitlement with current official registry evidence and server-verified licensing; shared displays fail closed.
+- [x] Gray closing icon and broker-only popup reuse saved course/exam links; 39 focused tests pass, guest and signed-in board popup checked, signed-in server denial confirmed and current build OK.
+
 ## Pricing editor corrections
 - [x] Fix zero form-fee saves and Super Admin cross-workspace pricing edits without widening other permissions; reload authorized data before reopening.
 - [x] Align pencil/red dot opposite close; remove read-only footer; collapse questions and show configured form fields.

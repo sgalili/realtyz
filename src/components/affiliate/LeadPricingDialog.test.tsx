@@ -18,7 +18,8 @@ describe('partner lead pricing information', () => {
     state.roles = [role];
     if (role === 'guest') state.user = null;
     render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ form: true, whatsapp: true, phone: false, closing: false }} />);
-    expect(screen.getAllByText('ללא עמלה')).toHaveLength(2);
+    expect(screen.getAllByText('ללא עמלה')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'סגירת עסקה · למתווכים בלבד' })).toBeTruthy();
     expect(screen.getByText('ליד מסונן בשיחת טלפון')).toBeTruthy();
     expect(screen.getByText('סגירת עסקה')).toBeTruthy();
     expect(screen.queryByText('₪8,000')).toBeNull();
@@ -86,7 +87,7 @@ describe('partner lead pricing information', () => {
     expect(screen.queryByText('מה התקציב שלך?')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'שאלות הסינון של המפרסם' }));
     expect(screen.getByText('מה התקציב שלך?')).toBeTruthy();
-    expect(screen.queryByText(/סגירת עסקה/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'סגירת עסקה · למתווכים בלבד' })).toBeTruthy();
     expect(screen.queryByText('ליד מסונן בשיחת טלפון')).toBeNull();
   });
   it('shows unlimited cap and custom form field requirements and choices', () => {

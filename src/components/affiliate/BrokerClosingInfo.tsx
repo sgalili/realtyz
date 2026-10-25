@@ -1,7 +1,9 @@
 // Informational tooltip beside closing-commission sections. Closing fees
 // (0.2%–2% of the deal, set by the advertiser) are a licensed-brokerage
 // activity; this links interested users to the official licensing registry.
-import { HelpCircle } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { HelpCircle, Trophy } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /** Online course for the Israeli real-estate broker exam (easytest.co.il). */
@@ -31,6 +33,23 @@ export function BrokerTestLinks({ className = '' }: { className?: string }) {
       הרשמה למבחן המתווכים הקרוב (gov.il)
     </a>
   </div>;
+}
+
+/** The nested trigger stops activation of the surrounding listing-pricing control. */
+export function RestrictedClosingReward({ children, className = '' }: { children?: ReactNode; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <span role="button" tabIndex={0} aria-label="סגירת עסקה · למתווכים בלבד" title="סגירת עסקה" className={`inline-flex cursor-pointer items-center gap-1 text-muted-foreground ${className}`} onClick={event => { event.stopPropagation(); setOpen(true); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); setOpen(true); } }}>
+      {children ?? <><Trophy aria-label="סגירת עסקה" className="h-3.5 w-3.5 shrink-0" /><span className="text-xs">למתווכים בלבד</span></>}
+    </span>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent dir="rtl" onClick={event => event.stopPropagation()} className="w-[calc(100%-2rem)] max-w-md">
+        <DialogHeader><DialogTitle>סגירת עסקה · למתווכים בלבד</DialogTitle><DialogDescription className="pt-2 text-base leading-relaxed">תיווך בעסקאות מקרקעין וקבלת דמי תיווך מחייבים רישיון תיווך ישראלי בתוקף. לכן מחיר ליד סגירת עסקה מוצג רק למתווכים שרישיונם אומת במערכת; הרשמה או סוג חשבון לבדם אינם מספיקים.</DialogDescription></DialogHeader>
+        <p className="text-sm text-muted-foreground">רוצים לקבל רישיון? אפשר ללמוד בקורס המקוון ולהירשם למבחן המתווכים הקרוב.</p>
+        <BrokerTestLinks />
+      </DialogContent>
+    </Dialog>
+  </>;
 }
 
 export function BrokerClosingInfo() {

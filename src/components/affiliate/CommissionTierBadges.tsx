@@ -7,6 +7,7 @@ import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import type { CommissionTiers } from '@/hooks/useAffiliate';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { RestrictedClosingReward } from './BrokerClosingInfo';
 
 export type RewardTypes = { form?: boolean; whatsapp?: boolean; phone?: boolean; closing?: boolean };
 const rewardIcons = [
@@ -17,11 +18,14 @@ const rewardIcons = [
 ] as const;
 
 export function RewardIcons({ levels, types, prices, zeroTypes, closingPercent = false, label = 'תגמולים', grid = false, closingLevel }: { levels?: Partial<Record<'form' | 'whatsapp' | 'phone', number | null>>; closingLevel?: number | null; grid?: boolean; types: RewardTypes; zeroTypes?: RewardTypes; prices?: Partial<Record<keyof RewardTypes, number>>; closingPercent?: boolean; label?: string | null }) {
+  const { user } = useAuth();
+  const { level4Unlocked } = useAffiliateLicense();
   const rows = rewardIcons.filter(row => types[row.key] === true);
   if (!rows.length) return null;
   return <span className="inline-flex flex-col gap-1 text-start" data-commission-icons>
     {label && <span className="text-[10px] font-medium text-muted-foreground">{label}</span>}
     <span className={prices || grid ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'flex items-center gap-2'}>{rows.map(({ key, label: title, Icon, tone }) => {
+      if (key === 'closing' && (!user || !level4Unlocked)) return <RestrictedClosingReward key={key} className="whitespace-nowrap" />;
       // Icon and price share one level color: closing uses its server level, lead types their price level.
       const level = key === 'closing' ? closingLevel : prices?.[key] != null ? leadPriceLevel(key as 'form', Number(prices[key])) : levels?.[key as 'form'] ?? null;
       const zero = zeroTypes ? zeroTypes[key] === true : prices?.[key] === 0;
@@ -35,7 +39,7 @@ export function CommissionTierBadges({ tiers, compact: _compact = false, level4L
   const { user } = useAuth();
   const { isSuperAdmin, roles } = useUserRole();
   const showAll = !user || isSuperAdmin || roles.some(role => ['managing_broker', 'lead_agent', 'agent'].includes(role));
-  return <RewardIcons zeroTypes={{ form: tiers.tier1 === 0, whatsapp: tiers.tier2 === 0, phone: tiers.tier3 === 0, closing: level4Unlocked && tiers.tier4 === 0 }} types={{ form: !closingOnly && (showAll || tiers.tier1 > 0), whatsapp: !closingOnly && (showAll || tiers.tier2 > 0), phone: !closingOnly && (showAll || tiers.tier3 > 0), closing: !level4Locked && (showAll || (level4Unlocked && tiers.tier4 > 0)) }} />;
+  return <RewardIcons zeroTypes={{ form: tiers.tier1 === 0, whatsapp: tiers.tier2 === 0, phone: tiers.tier3 === 0, closing: level4Unlocked && tiers.tier4 === 0 }} types={{ form: !closingOnly && (showAll || tiers.tier1 > 0), whatsapp: !closingOnly && (showAll || tiers.tier2 > 0), phone: !closingOnly && (showAll || tiers.tier3 > 0), closing: !level4Locked }} />;
 }
 
 export function GuestTierIcons({ types = {} }: { types?: RewardTypes }) {

@@ -49,7 +49,7 @@ export function useAffiliateLicense() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const closingAccess = useQuery({
-    queryKey: ['partner-closing-access', user?.id],
+    queryKey: ['partner-closing-access', user?.id, 'official-license-only'],
     enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('partner_can_view_closing', { _user_id: user?.id ?? '' });
@@ -120,7 +120,7 @@ export function useAffiliateLicense() {
     license,
     isLoading: query.isLoading,
     /** True only for a verified broker license — the gate for level 4 rewards. */
-    level4Unlocked: closingAccess.data === true,
+    level4Unlocked: !!user && !closingAccess.isError && closingAccess.data === true,
     submit: submit.mutateAsync,
     isSubmitting: submit.isPending,
     acceptTerms: acceptTerms.mutateAsync,
