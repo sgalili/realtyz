@@ -9,6 +9,15 @@ const row = {
   contact_options: { lead_daily_limits: { form: 5, whatsapp: 3, phone: 2 }, questions: ['תקציב?'], questions_phone: [], form_fields: fields, custom_flag: true },
 };
 describe('saved ad recovery', () => {
+  it('disabling only the form fee saves zero while retaining fields, questions and other fees', () => {
+    const draft = { ...listingToDraft(row), commissionForm: '' };
+    const saved = draftPricingPayload(draft, row.contact_options);
+    expect(saved.affiliate_tier1_amount).toBe(0);
+    expect(saved.affiliate_tier2_amount).toBe(200);
+    expect(saved.contact_options.digital).toBe(false);
+    expect(saved.contact_options.form_fields[0].label).toBe('אחסון אופניים');
+    expect(saved.contact_options.questions).toEqual(['תקציב?']);
+  });
   it('recovers selected amenity counts and types', () => {
     expect(listingToDraft({ features: { elevator_count: '3+', parking_count: '2', balcony_types: ['מרפסת שמש', 'מרפסת שירות'], view_type: 'נוף לים' } })).toMatchObject({ elevatorCount: '3+', parkingCount: '2', balconyTypes: ['מרפסת שמש', 'מרפסת שירות'], viewType: 'נוף לים' });
   });

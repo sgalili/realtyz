@@ -83,6 +83,8 @@ describe('partner lead pricing information', () => {
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getByText('₪80')).toBeTruthy();
     expect(screen.getByText('₪120')).toBeTruthy();
+    expect(screen.queryByText('מה התקציב שלך?')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'שאלות הסינון של המפרסם' }));
     expect(screen.getByText('מה התקציב שלך?')).toBeTruthy();
     expect(screen.queryByText(/סגירת עסקה/)).toBeNull();
     expect(screen.queryByText('ליד מסונן בשיחת טלפון')).toBeNull();

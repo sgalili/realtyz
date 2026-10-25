@@ -1,7 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
-import { commitPricingEdit } from './pricingSave';
+import { commitPricingEdit, pricingEditWorkspace } from './pricingSave';
 
 describe('rewards editor save', () => {
+  it('targets the listing workspace for a cross-workspace Super Admin edit', () => {
+    expect(pricingEditWorkspace({ workspace_owner_id: 'ad-workspace', user_id: 'poster' }, 'admin', 'admin-workspace', true)).toBe('ad-workspace');
+  });
+  it('rejects an unrelated workspace edit by a non-admin', () => {
+    expect(pricingEditWorkspace({ workspace_owner_id: 'ad-workspace', user_id: 'poster' }, 'visitor', 'visitor-workspace', false)).toBeNull();
+  });
+  it('allows the owner and active workspace member to target the saved ad workspace', () => {
+    expect(pricingEditWorkspace({ workspace_owner_id: 'ad-workspace', user_id: 'poster' }, 'poster', 'other', false)).toBe('ad-workspace');
+    expect(pricingEditWorkspace({ workspace_owner_id: 'ad-workspace' }, 'member', 'ad-workspace', false)).toBe('ad-workspace');
+  });
   it('closes the editor after a committed write even when the cache refresh fails', async () => {
     const order: string[] = [];
     const outcome = await commitPricingEdit({

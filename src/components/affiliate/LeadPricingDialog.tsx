@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import CommissionTierBadges from './CommissionTierBadges';
 import LeftoverDiscountButton from './LeftoverDiscountButton';
@@ -10,14 +11,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { type BrokerAffiliateListing, type MarketplaceListing } from '@/hooks/useAffiliate';
-import { FORM_FIELD_TYPE_LABELS, type LeadFormField } from '@/lib/leadTiers';
+import { cleanFormFields, FORM_FIELD_TYPE_LABELS, type LeadFormField } from '@/lib/leadTiers';
 import { fmtILS } from '@/lib/formatCurrency';
 import { closingFeeAmount } from '@/lib/closingFee';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import type { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ClipboardList, Phone, Trophy, Lock, Sparkles } from 'lucide-react';
+import { ClipboardList, Phone, Trophy, Lock, Sparkles, ChevronDown } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { ClosingSplitNote } from './ClosingSplitNote';
 import { BrokerClosingInfo } from './BrokerClosingInfo';
@@ -80,8 +81,8 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
     {rows.map((row) => <Card key={row.label} className="space-y-2 rounded-2xl p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex min-w-0 items-center gap-3 text-lg font-bold leading-snug">{row.key === 'form' ? <ClipboardList className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-form'}`} /> : row.key === 'whatsapp' ? <WhatsAppIcon className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-whatsapp'}`} /> : <Phone className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-phone'}`} />}{row.label}</h3>{knownZero(row.key, row.amount) ? <span className="lead-no-fee ms-auto text-base font-bold">ללא עמלה</span> : user && <bdi dir="ltr" className={`ms-auto shrink-0 text-2xl font-bold ${row.key === 'form' ? 'text-lead-form' : row.key === 'whatsapp' ? 'text-lead-whatsapp' : 'text-lead-phone'}`}>{row.label === 'ליד מסונן בשיחת טלפון' && listing.tier3_type === 'percent' ? `${gross ? row.amount : partnerNetReward(row.amount)}%` : `${fmtILS(gross ? row.amount : partnerNetReward(row.amount))}`}</bdi>}</div>
       <div className="flex flex-wrap items-center gap-2"><span className="text-muted-foreground">מקס׳ ב־24 שעות</span><strong>{options.lead_daily_limits?.[row.key] ?? 'ללא מגבלה'}</strong></div>
-      {row.key === 'form' && options.form_fields?.map((field) => <p key={field.id}>{field.label} · {FORM_FIELD_TYPE_LABELS[field.type]} · {field.required ? 'חובה' : 'רשות'}{field.options?.length ? ` · ${field.options.join(', ')}` : ''}</p>)}
-      {row.questions.length ? <><h4 className="text-muted-foreground">שאלות הסינון של המפרסם</h4><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></> : row.key !== 'form' ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
+      {row.key === 'form' && <div className="space-y-1"><p>שם מלא · חובה</p><p>מספר טלפון · חובה</p>{cleanFormFields(options.form_fields).map((field) => <p key={field.id}>{field.label} · {FORM_FIELD_TYPE_LABELS[field.type]} · {field.required ? 'חובה' : 'רשות'}{field.options?.length ? ` · ${field.options.join(', ')}` : ''}</p>)}</div>}
+      {row.questions.length ? <Collapsible><CollapsibleTrigger asChild><Button type="button" variant="ghost" className="group h-auto w-full justify-between gap-2 whitespace-normal px-0 py-2 text-start text-base text-muted-foreground"><span>שאלות הסינון של המפרסם</span><ChevronDown className="h-5 w-5 shrink-0 transition-transform motion-reduce:transition-none group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CollapsibleContent><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></CollapsibleContent></Collapsible> : row.key !== 'form' ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
     </Card>)}
     {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <Card className="space-y-2 rounded-2xl p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="ms-auto shrink-0 text-2xl font-bold text-lead-closing">{listing.tier4_type === 'percent' ? <>{`${closingNetPercent}%`}{closingNetShekels > 0 ? <span className="ms-1 text-base font-extrabold">({fmtILS(closingNetShekels)})</span> : null}</> : `${fmtILS(Math.round(partnerNetReward(Number(listing.tier4_amount))))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></Card> : (showAll || rewardTypes?.closing) && <Card className="space-y-2 rounded-2xl p-4"><h3 className="flex items-center gap-3 text-lg font-bold"><Trophy className={`h-8 w-8 shrink-0 ${closingZero ? 'lead-no-fee' : 'text-lead-closing'}`} />סגירת עסקה{closingZero && <span className="lead-no-fee text-base">ללא עמלה</span>}</h3>{!closingZero && <p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p>}</Card>}
     {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}

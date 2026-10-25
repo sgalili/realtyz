@@ -7,6 +7,13 @@
  */
 export type PricingEditOutcome<T> = { committed: true; saved: T } | { committed: false; error: unknown };
 
+/** Use the ad's saved workspace for authorized admin/owner edits, never a client-selected unrelated workspace. RLS remains authoritative. */
+export function pricingEditWorkspace(row: { workspace_owner_id?: unknown; user_id?: unknown; owner_id?: unknown }, userId: string, activeWorkspaceId: string | null, isSuperAdmin: boolean): string | null {
+  const workspaceId = typeof row.workspace_owner_id === 'string' ? row.workspace_owner_id : null;
+  if (!workspaceId) return null;
+  return isSuperAdmin || row.user_id === userId || row.owner_id === userId || workspaceId === activeWorkspaceId ? workspaceId : null;
+}
+
 export async function commitPricingEdit<T>(steps: {
   /** Performs the database write. Resolves with the saved row, or throws/ rejects when it failed. */
   commit: () => Promise<T>;
