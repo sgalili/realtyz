@@ -24,9 +24,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const APP_URL = Deno.env.get("APP_PUBLIC_URL") || "https://realtyz.co.il";
 
 type EventType = "new_high_priority" | "meeting_booked" | "critical_question";
@@ -132,9 +132,10 @@ Deno.serve(async (req) => {
         .maybeSingle();
       lead = (leadRow as { full_name?: string } | null)?.full_name || lead;
 
-      if (leadRow?.workspace_owner_id && leadRow.workspace_owner_id !== userId) {
-        const { data: member } = await admin.from('workspace_memberships').select('user_id').eq('workspace_owner_id', leadRow.workspace_owner_id).eq('user_id', userId).maybeSingle();
-        if (!member) return json({ error: 'Lead not accessible to recipient' }, 403);
+      if (!leadRow?.workspace_owner_id) return json({ error: 'Lead not accessible to recipient' }, 403);
+      if (leadRow.workspace_owner_id !== userId) {
+        const { data: member, error: membershipError } = await admin.rpc('is_workspace_member', { _owner: leadRow.workspace_owner_id, _user: userId });
+        if (membershipError || member !== true) return json({ error: 'Lead not accessible to recipient' }, 403);
       }
       const workspaceOwnerId = (leadRow as { workspace_owner_id?: string } | null)?.workspace_owner_id;
       if (workspaceOwnerId) {
