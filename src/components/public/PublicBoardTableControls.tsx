@@ -96,11 +96,15 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
       <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-auto min-h-7 gap-1 !whitespace-normal px-0 py-0.5 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
         <span className="whitespace-normal text-start leading-tight">{label}</span>{sorted && (controls.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
       </Button>
-      {id === 'commissions' && !user && <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" aria-label="מה אומרים הצבעים?"><HelpCircle className="h-3.5 w-3.5" /></Button></PopoverTrigger><PopoverContent align="start" className="w-64 space-y-2 text-right text-sm font-normal leading-relaxed">
+      {id === 'commissions' && <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" aria-label="מה אומרים הצבעים?"><HelpCircle className="h-3.5 w-3.5" /></Button></PopoverTrigger><PopoverContent align="start" className="w-64 space-y-2 text-right text-sm font-normal leading-relaxed">
         <p className="font-bold">מה אומרים הצבעים?</p>
         <p>כל אייקון הוא דרך להרוויח מהנכס. ככל שהצבע חם יותר, התגמול שהמפרסם מציע גבוה יותר.</p>
-        <p>הצטרפו כשותפים וראו את הסכומים המדויקים. מתווכים עם רישיון רואים גם את עמלת סגירת העסקה.</p>
-        <Button asChild size="sm" className="w-full"><Link to="/auth">הצטרפות חינם</Link></Button>
+        <div className="space-y-1">
+          <span className="block h-[5px] w-full -scale-x-100 rounded-full [background:var(--closing-track)]" aria-hidden />
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground"><span>קר</span><span>חם</span></div>
+        </div>
+        {!user && <><p>הצטרפו כשותפים וראו את הסכומים המדויקים. מתווכים עם רישיון רואים גם את עמלת סגירת העסקה.</p>
+        <Button asChild size="sm" className="w-full"><Link to="/auth">הצטרפות חינם</Link></Button></>}
       </PopoverContent></Popover>}
       <Button variant="ghost" size="icon" {...attributes} {...listeners} aria-label={`הזזת עמודת ${label}`} title={`הזזת עמודת ${label}`} className="h-7 w-5 touch-none text-muted-foreground"><GripVertical className="h-3 w-3" /></Button>
     </div>

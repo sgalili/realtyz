@@ -15,6 +15,27 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { tableRoyalties } from '@/lib/tableRoyalties';
 
+export type CommissionEditScope = 'edit' | 'admin-only' | 'none';
+
+/**
+ * Who may act on a listing's commission settings:
+ * - 'edit': the advertiser or a member of the ad's workspace edits directly.
+ * - 'admin-only': a Super Admin who does not own the ad sees it read-only first
+ *   and may unlock editing with the pencil (red dot) in the dialog header.
+ * - 'none': unauthorized readers get nothing.
+ */
+export function commissionEditScope(
+  row: { user_id?: unknown; owner_id?: unknown; workspace_owner_id?: unknown },
+  userId: string,
+  activeWorkspaceId: string | null,
+  isSuperAdmin: boolean,
+): CommissionEditScope {
+  const own = row.user_id === userId || row.owner_id === userId || row.workspace_owner_id === userId;
+  if (own) return 'edit';
+  if (isSuperAdmin) return 'admin-only';
+  return row.workspace_owner_id === activeWorkspaceId ? 'edit' : 'none';
+}
+
 export default function PropertyCommissionIcons({ listingId, raw, networkOpen, table = false }: { listingId: string; raw?: Record<string, unknown>; networkOpen?: boolean; table?: boolean }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
@@ -29,11 +50,9 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
       if (!user || !activeWorkspaceId) return null;
       const { data, error } = await supabase.from('listings').select('*').eq('id', listingId).maybeSingle();
       if (error || !data) return null;
-      // Editable only for the advertiser, members of the ad's workspace, or Super Admin.
-      const own = data.user_id === user.id || data.owner_id === user.id || data.workspace_owner_id === user.id;
-      const sameWorkspace = data.workspace_owner_id === activeWorkspaceId;
-      if (!(own || sameWorkspace || isSuperAdmin)) return null;
-      return { ...data, __adminOnly: !own && !sameWorkspace };
+      const scope = commissionEditScope(data, user.id, activeWorkspaceId, isSuperAdmin);
+      if (scope === 'none') return null;
+      return { ...data, __adminOnly: scope === 'admin-only' };
     },
   });
   const { data: property } = useQuery({
