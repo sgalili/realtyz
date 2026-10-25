@@ -45,6 +45,13 @@ describe('unified feed visibility', () => {
   it('returns closing pricing only for server-authorized users', () => {
     expect(publicPricing(pricing, true, true)).toEqual({ ...pricing, reward_types });
   });
+  it.each(['sale', 'rent'])('retains requested 10–100 percent closing bounds for %s only when authorized', deal_type => {
+    for (const rate of [10, 100]) {
+      const row = { deal_type, asking_price: 10000, affiliate_tier4_amount: rate, affiliate_tier4_type: 'percent' };
+      expect(publicPricing(row, true, true).affiliate_tier4_amount).toBe(rate);
+      expect(publicPricing(row, true, false).affiliate_tier4_amount).toBeUndefined();
+    }
+  });
   it('exposes only configured positive types to guests, including the trophy without its price', () => {
     expect(publicPricing({ affiliate_tier1_amount: 0, affiliate_tier2_amount: 50, affiliate_tier3_amount: null, affiliate_tier4_amount: 2500 }, false, false)).toEqual({ reward_types: { form: false, whatsapp: true, phone: false, closing: true } });
   });

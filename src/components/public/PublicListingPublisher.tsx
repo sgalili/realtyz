@@ -526,7 +526,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         const pricing = draftPricingPayload(fields, imported?.contact_options ?? fields.importedListing?.contact_options ?? {});
         const { error } = await supabase.from('listings').update({
           ...pricing, asking_price: Number(fields.price),
-          features: { ...(fields.importedListing?.features ?? {}), ...pricing.features },
+          features: { ...(fields.importedListing?.features && !Array.isArray(fields.importedListing.features) ? fields.importedListing.features : { amenity_labels: fields.importedListing?.features ?? [] }), ...pricing.features },
         }).eq('id', fields.listingId).eq('workspace_owner_id', activeWorkspaceId).select('id').single();
         if (error) throw error;
         await queryClient.invalidateQueries({ queryKey: ['public-commission-pricing'] });
@@ -945,7 +945,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
         <DialogHeader className="shrink-0 px-10 pb-4 text-center">
-          {(reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
+          {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {pricingOnly ? 'מחיר והגדרת תמלוגים' : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
