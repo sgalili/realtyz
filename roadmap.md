@@ -1,7 +1,7 @@
 # Campaign card actions
 # Reward colors and dialog bounds
-- [ ] Always show guest closing trophy without amounts; reverse all price-level colors to green minimum/red maximum.
-- [ ] Bound large desktop dialogs to site edges, remove publication price autofocus, add independent lead collapse arrows and default-open closing settings; verify tests and preview.
+- [x] Always show guest closing trophy without amounts; shared colors run green/yellow/orange/red. Guest visibility regression test passes; live table reload did not finish, so its trophy rendering remains unverified.
+- [x] Bound desktop dialogs to shared site width, prevent publication autofocus, add lead collapse arrows and default-open closing settings. Fifteen tests pass; real desktop wizard confirms 768px width, unselected property price, enabled fee retained after collapse and red 2% maximum. No publication or stored-property change; latest preview build OK.
 # Messaging report and notification settings
 - [x] Deliver comprehensive Hebrew messaging report with live UTC schedules, approved-template counts and explicit delivery limitations.
 - [x] Add header gear, per-event channels and in-app category filters; authenticated save/reload and server override rejection verified. Official WA/019/app-email adapters deployed, escalation duplicate removed. Email delivery awaits sender setup; call reminders await approved template.
