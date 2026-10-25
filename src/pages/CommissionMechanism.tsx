@@ -1,4 +1,5 @@
 import { LegalPageLayout, LegalSection } from '@/components/public/LegalPageLayout';
+import UnlicensedPartnerCommissionNote from '@/components/public/UnlicensedPartnerCommissionNote';
 
 export default function CommissionMechanism() {
   return <LegalPageLayout title="מנגנון העמלות">
@@ -19,6 +20,7 @@ export default function CommissionMechanism() {
       <p>שותף מפיץ יכול לקבל תגמולי שיווק דיגיטלי עבור פניות מזכות בהתאם למחיר ולתנאים שנשמרו עבור המודעה. השארת שם וטלפון בלבד אינה פנייה מסוננת: נדרשת השלמת הסינון הרלוונטי ואימות לפי כללי המערכת.</p>
       <p>כאשר מתווך מורשה וזכאי הביא את הפנייה, חלקו הוא 80% מעמלת הסגירה המזכה ו־20% נותרים ל־TORAFF. לדוגמה, מעמלה מזכה של ₪1,000, חלק המתווך הוא ₪800 וחלק הפלטפורמה ₪200, בכפוף להסכם ולמסים החלים.</p>
       <p>ללא מתווך זכאי, לרבות פנייה ישירה מהלוח, 100% מעמלת הסגירה נותרים לפלטפורמה, ושירותי התיווך ניתנים באמצעות מתווך מורשה. שותף ללא רישיון אינו זכאי לדמי תיווך ואינו מקבל גישה לנתוני סגירה מוגנים.</p>
+      <UnlicensedPartnerCommissionNote />
     </LegalSection>
     <LegalSection title="אימות, חיוב ויישוב מחלוקות">
       <p>המערכת בודקת שיוך פנייה, הסכמות, סינון וחשד לכפילויות או שימוש לרעה. שדרוג פנייה בין מסלולים מחויב רק בהפרש שטרם שולם, כאשר מתקיימים תנאי הזכאות. בקשת חזרה טלפונית או תחילת שיחה אינן כשלעצמן פנייה מסוננת.</p>
