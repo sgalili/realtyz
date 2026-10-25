@@ -8,6 +8,7 @@ import { z } from 'npm:zod@3';
 import { encode as b64encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { decode as b64decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { IVR_MODEL_ID, IVR_DEFAULT_VOICES, canUseIvrVoice } from '../_shared/ivrVoices.ts';
+import { ivrScriptStyle, shouldLearnIvrScript } from '../_shared/ivrScriptStyle.ts';
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
     if (workspaceError || !workspaceId) return json({ error: 'workspace_unavailable' }, 403);
 
     const parsedBody = z.object({
-      source: z.enum(['recording', 'tts', 'upload']), generate_only: z.boolean().optional(), include_whatsapp: z.boolean().optional(),
+      source: z.enum(['recording', 'tts', 'upload']), generate_only: z.boolean().optional(), include_whatsapp: z.boolean().optional(), preview_only: z.boolean().optional(),
       text: z.string().max(5000).optional(), voice_id: z.string().regex(/^[A-Za-z0-9_-]{10,64}$/).optional(),
       audio_url: z.string().url().optional(), audio_b64: z.string().max(22000000).optional(),
       ext: z.enum(['mp3', 'wav', 'm4a', 'webm', 'ogg']).optional(),
@@ -108,16 +109,25 @@ Deno.serve(async (req) => {
     const body = parsedBody.data;
     const source = body.source as "recording" | "tts" | "upload";
     const generateOnly = body.generate_only === true;
+    if (body.preview_only && (!generateOnly || source !== 'tts' || (body.text?.length ?? 0) > 200)) return json({ error: 'invalid_preview' }, 400);
     const includeWhatsapp = body.include_whatsapp === true;
     const leads = (body.leads ?? []) as Array<{ id?: string; phone: string }>;
     if (!generateOnly && !leads.length) return json({ error: "no_leads" }, 400);
 
     // 1. Resolve audio URL (upload bytes, or generate via TTS)
     let audioUrl: string | null = body.audio_url ?? null;
+    let audioPath: string | null = null;
+    let finalScript = '';
     if (audioUrl) {
       const parsed = new URL(audioUrl);
       const prefix = `/storage/v1/object/sign/ivr-audio/${workspaceId}/`;
       if (parsed.origin !== new URL(url).origin || !parsed.pathname.startsWith(prefix)) return json({ error: 'audio_not_in_workspace' }, 403);
+      audioPath = decodeURIComponent(parsed.pathname.slice('/storage/v1/object/sign/ivr-audio/'.length));
+      const { data: scriptFile } = await admin.storage.from('ivr-audio').download(`${audioPath}.json`);
+      if (scriptFile) {
+        const metadata = JSON.parse(await scriptFile.text());
+        if (metadata.workspace_owner_id === workspaceId && metadata.created_by === user.id) finalScript = String(metadata.text ?? '');
+      }
     }
     if (!audioUrl) {
       let bytes: Uint8Array | null = null;
@@ -131,6 +141,8 @@ Deno.serve(async (req) => {
         const elevenKey = await resolveElevenLabsKey(admin, workspaceId);
         if (!elevenKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
         bytes = await generateTts(text, voiceId, elevenKey);
+        if (body.preview_only) return new Response(bytes, { headers: { ...corsHeaders, 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, no-store' } });
+        finalScript = text;
       } else if (body.audio_b64) {
         bytes = b64decode(body.audio_b64);
         ext = (body.ext as string) || (source === "recording" ? "webm" : "mp3");
@@ -138,6 +150,7 @@ Deno.serve(async (req) => {
         return json({ error: "missing_audio" }, 400);
       }
       const path = `${workspaceId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      audioPath = path;
       const contentType = ext === "mp3" ? "audio/mpeg" : ext === "wav" ? "audio/wav" : ext === "m4a" ? "audio/mp4" : "audio/webm";
       const bucket = "ivr-audio";
       let upErr = (await admin.storage.from(bucket).upload(path, bytes, { contentType, upsert: false })).error;
@@ -147,6 +160,10 @@ Deno.serve(async (req) => {
         upErr = (await admin.storage.from(bucket).upload(path, bytes, { contentType, upsert: false })).error;
       }
       if (upErr) return json({ error: "upload_failed", detail: upErr.message }, 500);
+      if (finalScript) {
+        const { error: metadataError } = await admin.storage.from(bucket).upload(`${path}.json`, new Blob([JSON.stringify({ text: finalScript, created_by: user.id, workspace_owner_id: workspaceId })], { type: 'application/json' }));
+        if (metadataError) console.error('[ivr-broadcast] script metadata save failed:', metadataError.message);
+      }
       // Use signed URL (long expiry) — bucket is private but Twilio <Play> and <audio> need a fetchable URL
       const SEVEN_DAYS = 60 * 60 * 24 * 7;
       const { data: signed, error: signErr } = await admin.storage.from(bucket).createSignedUrl(path, SEVEN_DAYS);
@@ -211,7 +228,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok, failed, whatsapp_ok: whatsappOk, whatsapp_failed: whatsappFailed, total: leads.length, audio_url: audioUrl, failures: failures.slice(0, 5) });
+    let styleLearned = false;
+    if (shouldLearnIvrScript(ok, finalScript) && audioPath) {
+      const { data: previous } = await admin.from('system_intelligence_kb').select('id').eq('workspace_owner_id', workspaceId).eq('created_by', user.id).contains('metadata', { context: 'ivr_sent_style', audio_path: audioPath }).limit(1);
+      if (previous?.length) styleLearned = true;
+      else {
+        const { error: learningError } = await admin.from('system_intelligence_kb').insert({
+          workspace_owner_id: workspaceId, created_by: user.id, actor_role: 'system', source: 'approval', signal: 'positive',
+          rule_text: ivrScriptStyle(finalScript), raw_input: finalScript, weight: 1, is_active: true,
+          metadata: { context: 'ivr_sent_style', audio_path: audioPath },
+        });
+        styleLearned = !learningError;
+        if (learningError) console.error('[ivr-broadcast] style learning failed:', learningError.message);
+      }
+    }
+    return json({ ok, failed, whatsapp_ok: whatsappOk, whatsapp_failed: whatsappFailed, total: leads.length, audio_url: audioUrl, style_learned: styleLearned, failures: failures.slice(0, 5) });
   } catch (e: any) {
     console.error("[ivr-broadcast] fatal", e);
     return json({ error: e?.message ?? "internal_error" }, 500);
