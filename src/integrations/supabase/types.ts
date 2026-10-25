@@ -9000,11 +9000,13 @@ export type Database = {
         Args: never
         Returns: {
           account_type: string
+          is_office: boolean
           is_self: boolean
           last_accessed_at: string
           owner_avatar_url: string
           owner_email: string
           owner_full_name: string
+          owner_phone: string
           role: string
           user_id: string
           workspace_logo_url: string
