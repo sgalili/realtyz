@@ -181,6 +181,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [publishStage, setPublishStage] = useState('');
   const [publishError, setPublishError] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [marketingInfoOpen, setMarketingInfoOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<Record<string, any> | null>(null);
@@ -585,7 +586,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       const caps = [n(fields.limitForm), n(fields.limitWhatsapp), n(fields.limitPhone)];
       if (caps.some((c) => c != null && (!Number.isInteger(c) || c < 1 || c > 50))) { toast.error('מגבלה יומית חייבת להיות מספר שלם בין 1 ל-50'); return; }
     }
-    if (!confirming) { setConfirming(true); return; }
+    if (!confirming) {
+      if (!fields.marketingAccepted) { setMarketingInfoOpen(true); return; }
+      setConfirming(true); return;
+    }
     if (user) publicationAudio.current = preparePublicationSound();
     try {
       await saveDraft();
@@ -868,10 +872,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
                 <div><Input aria-label="מספר ווטסאפ *" placeholder="מספר ווטסאפ *" id="publisher-whatsapp" inputMode="tel" dir="ltr" className="text-right" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
                 <div><Input aria-label="אימייל" placeholder="אימייל" id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
-              <label className="flex items-start gap-2 text-sm">
-                <Checkbox checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', Boolean(checked))} />
-                 אני רוצה לקבל פניות ועדכונים שיווקיים
-              </label>
             </div>
           )}
 
@@ -983,10 +983,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       </DialogContent>
     </Dialog>
     <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
-      <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
+      <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 text-center">
           {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תמלוגים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
-          {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
+          {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {pricingOnly ? <span>מחיר והגדרת תמלוגים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
@@ -1002,7 +1002,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   <AccordionTrigger className="gap-3 px-4 text-start hover:no-underline">
                     <span className="flex min-w-0 flex-1 items-center gap-3">
                       <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i} מתוך 8`}>{i}</span>
-                      <span className="min-w-0 flex-1">{title}</span>
+                      <span className={cn("min-w-0 flex-1", expandedStep === `step-${i}` && "font-bold")}>{title}</span>
                       <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : <>חסרים פרטים<span className="text-destructive"> *</span></>}</span>
                     </span>
                   </AccordionTrigger>
@@ -1013,8 +1013,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           ) : renderStep(step)}
           {!pricingOnly && (reviewMode || isLast) && (
             <>
+              <label htmlFor="publisher-marketing-consent" className="flex items-start gap-2 text-sm">
+                <Checkbox id="publisher-marketing-consent" className="rounded-sm" checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', checked === true)} />
+                אני מסכים/ה לקבל פניות ועדכונים שיווקיים
+              </label>
               <div className="flex items-start gap-2 text-sm">
-                <Checkbox id="commission-terms" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
+                <Checkbox id="commission-terms" className="rounded-sm" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', checked === true)} />
                 <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
                 <Dialog>
                   <DialogTrigger asChild>
@@ -1038,7 +1042,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 </Dialog></span>
               </div>
             <div className="flex items-start gap-2 text-xs leading-snug">
-              <Checkbox id="publication-consent" aria-label="אישור התנאים והרשאת הפרסום" checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', Boolean(checked))} className="mt-0.5" />
+              <Checkbox id="publication-consent" aria-label="אישור התנאים והרשאת הפרסום" checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', checked === true)} className="mt-0.5 rounded-sm" />
               <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline decoration-2 underline-offset-4">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
             </div>
             </>
@@ -1068,6 +1072,20 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           <div data-publisher-legal className="min-h-0 overflow-y-auto"><Terms embedded /></div>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={marketingInfoOpen} onOpenChange={setMarketingInfoOpen}>
+        <AlertDialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>פניות ועדכונים על הפעילות שלך</AlertDialogTitle>
+            <AlertDialogDescription className="text-right text-base leading-relaxed">
+              TORAFF מבוססת על הפניות, שיתופי פעולה ופעילות של שותפים. כדי להפיק את המיטב מהפרסום, חשוב לקבל התראות על פניות חדשות ועל הפעילות סביב הנכס שלך. ההסכמה מאפשרת גם קבלת עדכונים שיווקיים. אפשר להמשיך ללא הסכמה ולשנות את הבחירה בהמשך.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <Button type="button" variant="outline" className="h-auto whitespace-normal" onClick={() => { setMarketingInfoOpen(false); setConfirming(true); }}>המשך ללא הסכמה</Button>
+            <Button type="button" className="h-auto whitespace-normal" onClick={() => { set('marketingAccepted', true); setMarketingInfoOpen(false); setConfirming(true); }}>אני מסכים/ה, המשך</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader>
         <div className="space-y-3">
           {primaryPhoto && <img src={primaryPhoto} alt="תמונת הנכס הראשית" className="aspect-video w-full rounded-md object-cover" />}

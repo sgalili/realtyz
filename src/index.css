@@ -1100,6 +1100,15 @@
     box-shadow: inset 18px 0 34px hsl(var(--primary) / 0.06), 0 28px 90px -42px hsl(var(--brand-deep) / 0.55);
   }
 
+  .auth-submit-button:disabled,
+  .auth-gold-button:disabled,
+  .auth-provider-google:disabled {
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground)) !important;
+    opacity: 1;
+    box-shadow: none;
+  }
+
   .premium-auth-modal::before,
   .listing-landing-card::before {
     content: '';

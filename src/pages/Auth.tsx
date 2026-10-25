@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { SIGNUP_ROLE_LABELS, setPendingSignupRole, setPendingSignupName, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { savePendingBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
+import { authFormReady, validFullName } from '@/lib/authFormValidation';
 
 
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
@@ -139,10 +140,12 @@ const Auth = () => {
   const identifierValid = isPhoneFlow ? /^05\d-\d{7}$/.test(formattedPhone) : /\S+@\S+\.\S+/.test(email);
   // Signup keeps the explicit type and name through verified authentication.
   const brokerReady = !signup || signupType !== 'broker' || (!!brokerLicense && verifiedBrokerLicense === brokerLicense);
-  const canSubmit = identifierValid && (!signup || !!signupType) && brokerReady;
+  const signupReady = !signup || (!!signupType && validFullName(fullName));
+  const canSubmit = authFormReady({ signup, signupType, fullName, brokerReady, identifier: isPhoneFlow ? phone : email, phone: isPhoneFlow });
 
   const prepareSignup = () => {
     if (signup && !signupType) { toast.error('יש לבחור סוג משתמש'); return false; }
+    if (signup && !validFullName(fullName)) return false;
     if (!brokerReady) { toast.error(INVALID_BROKER_LICENSE); return false; }
     savePendingBrokerLicense(signup && signupType === 'broker' ? brokerLicense : '');
     if (signup && signupType) {
@@ -172,6 +175,7 @@ const Auth = () => {
 
   const handleSendCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!canSubmit || loading) return;
     if (!prepareSignup()) return;
     if (isGoogleFlow) return;
     setLoading(true);
@@ -367,7 +371,7 @@ const Auth = () => {
                   <SelectTrigger className="auth-unified-field" id="signup-type" aria-required="true" aria-label="סוג משתמש"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
                   <SelectContent>{(['property_seeker', 'property_owner', 'developer', 'broker', 'partner'] as const).map(type => <SelectItem className="text-lg" key={type} value={type}>{type === 'developer' ? 'יזם / קבלן' : SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
                 </Select>
-                <Input className="auth-unified-field" id="signup-full-name" name="name" autoComplete="name" aria-label="שם מלא" placeholder="מה השם המלא שלך?" value={fullName} onChange={event => setFullName(event.target.value)} />
+                <Input className="auth-unified-field" id="signup-full-name" name="name" autoComplete="name" required maxLength={200} aria-label="שם מלא" placeholder="מה השם המלא שלך?" value={fullName} onChange={event => setFullName(event.target.value)} />
                 </>}
               {codeSent && !isGoogleFlow ? (
                 <div className="space-y-4 text-center animate-fade-in">
@@ -379,9 +383,9 @@ const Auth = () => {
                       ))}
                     </InputOTPGroup>
                   </InputOTP>
-                  {activeMethod === 'sms' && <Button type="button" className="auth-gold-button w-full" onClick={() => handleVerifyCode()} disabled={loading || otp.length !== OTP_LENGTH}>
+                  <Button type="button" className="auth-gold-button w-full" onClick={() => handleVerifyCode()} disabled={loading || otp.length !== OTP_LENGTH || otpAttempts >= 3}>
                     {loading ? 'מאמת...' : 'כניסה למערכת'}
-                  </Button>}
+                  </Button>
                   {resendSeconds > 0 ? (
                     <p className="text-sm font-bold text-muted-foreground">שלחו לי שוב בעוד {resendSeconds}</p>
                   ) : (
@@ -391,7 +395,7 @@ const Auth = () => {
                   )}
                 </div>
               ) : isGoogleFlow ? (
-                <Button type="button" className="auth-provider-button auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || (signup && !signupType)}>
+                <Button type="button" className="auth-provider-button auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || !signupReady}>
                   <GoogleLogo />
                   כניסה עם גוגל
                 </Button>
@@ -435,7 +439,7 @@ const Auth = () => {
               )}
               {!codeSent && signup && signupType === 'broker' && <BrokerLicenseField compact value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
               {!codeSent && !isGoogleFlow && (
-                <Button type="submit" className={cn(`auth-submit-button auth-submit-${activeMethod} w-full`, !canSubmit && 'invisible')} tabIndex={canSubmit ? 0 : -1} disabled={loading || !canSubmit}>
+                <Button type="submit" className={`auth-submit-button auth-submit-${activeMethod} w-full`} disabled={loading || !canSubmit}>
                   {loading ? 'שולח...' : activeMethod === 'whatsapp' ? 'שלחו לי קוד בווטסאפ' : activeMethod === 'sms' ? 'שלחו לי קוד ב SMS' : 'שלחו לי קוד באימייל'}
                 </Button>
               )}
@@ -447,7 +451,7 @@ const Auth = () => {
             </div>
 
             {!codeSent && <div className="auth-method-tabs" role="tablist" aria-label="אפשרויות כניסה">
-              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || (signup && !signupType)} aria-pressed={activeMethod === 'google'}>
+              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || !signupReady} aria-pressed={activeMethod === 'google'}>
                 <GoogleLogo />
                 גוגל
               </Button>
