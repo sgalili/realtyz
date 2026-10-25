@@ -15,7 +15,15 @@ describe('commission visibility', () => {
     access.roles = [role];
     const { container } = render(<CommissionTierBadges tiers={tiers} />);
     expect([...container.querySelectorAll('[data-commission-icons] span[title]')].map(row => row.getAttribute('title'))).toEqual(['שדות מטופס בעמוד נחיתה', 'סינון בווטסאפ', 'שיחת טלפון', 'סגירת עסקה']);
-    expect(screen.queryByText('ללא עמלה')).toBeNull();
+    if (role === 'guest') {
+      // Signed-out visitors keep the grayed icons without any text labels.
+      expect(screen.queryByText('ללא עמלה')).toBeNull();
+      expect(screen.queryByText('למתווכים בלבד')).toBeNull();
+    } else {
+      // Signed-in users see the labels next to the grayed icons.
+      expect(screen.getByText('ללא עמלה')).toBeTruthy();
+      expect(screen.getByText('למתווכים בלבד')).toBeTruthy();
+    }
     expect(container.querySelector('span[title="שיחת טלפון"].lead-no-fee')).toBeTruthy();
     expect(screen.queryByText(/900/)).toBeNull();
   });
