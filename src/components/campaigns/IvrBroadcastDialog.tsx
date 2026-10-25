@@ -151,6 +151,9 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const allAgents = useMemo(() => {
     const seen = new Set<string>();
     const out: { id: string; label: string; voice_id: string; preview_url?: string | null }[] = [];
+    const rita = PRESET_VOICES[0];
+    seen.add(rita.voice_id);
+    out.push({ id: rita.id, label: rita.label, voice_id: rita.voice_id });
     for (const v of clonedVoices) {
       if (!v.voice_id || seen.has(v.voice_id)) continue;
       seen.add(v.voice_id);
@@ -811,7 +814,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     <div className="flex-1 min-w-0 text-right space-y-1">
                       <div className="text-[12.5px] leading-snug text-foreground whitespace-pre-wrap">{h.text}</div>
                       <div className="text-[10.5px] text-muted-foreground font-mono" dir="ltr">
-                        {h.agentName} · {fmtTs(h.createdAt)} · {formatIvrDuration(h.durationSeconds)}
+                        {h.voiceId === PRESET_VOICES[0].voice_id || /^זינה\b|^זינה(?:\s|$)|^zina(?:\s|$)/i.test(h.agentName) ? 'ריטה' : h.agentName} · {fmtTs(h.createdAt)} · {formatIvrDuration(h.durationSeconds)}
                       </div>
                       {audience && audienceCount > 0 && (
                         <button type="button" onClick={() => dispatchFromHistory(h)}
