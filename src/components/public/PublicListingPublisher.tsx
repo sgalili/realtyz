@@ -944,7 +944,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const adminTier2 = Number(adminRow.affiliate_tier2_amount ?? 0);
   const adminTier3 = Number(adminRow.affiliate_tier3_amount ?? 0);
   const adminTier4 = Number(adminRow.affiliate_tier4_amount ?? 0) > 0 ? Number(adminRow.affiliate_tier4_amount) : Number(adminDcc?.value ?? 0);
-  const adminTier4Type = Number(adminRow.affiliate_tier4_amount ?? 0) > 0 ? String(adminRow.affiliate_tier4_type ?? 'fixed') : String(adminDcc?.type ?? 'fixed');
+  const adminTier4Type: 'percent' | 'fixed' = (Number(adminRow.affiliate_tier4_amount ?? 0) > 0 ? String(adminRow.affiliate_tier4_type ?? 'fixed') : String(adminDcc?.type ?? 'fixed')) === 'percent' ? 'percent' : 'fixed';
   const adminTypes: RewardTypes = (adminRow.reward_types as RewardTypes | undefined) ?? { form: adminTier1 > 0, whatsapp: adminTier2 > 0, phone: adminTier3 > 0, closing: adminTier4 > 0 };
 
   return (
