@@ -28,8 +28,9 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     queryFn: async () => {
       if (!user || !activeWorkspaceId) return null;
       const { data, error } = await supabase.from('listings').select('*').eq('id', listingId).eq('workspace_owner_id', activeWorkspaceId).maybeSingle();
-      if (error || !data || !(data.user_id === user.id || data.owner_id === user.id || isSuperAdmin)) return null;
-      return data;
+      const own = data && (data.user_id === user.id || data.owner_id === user.id || data.workspace_owner_id === user.id);
+      if (error || !data || !(own || isSuperAdmin)) return null;
+      return { ...data, __adminOnly: !own };
     },
   });
   const { data: property } = useQuery({
