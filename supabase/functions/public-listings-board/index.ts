@@ -7,7 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { PUBLIC_CARD_COLUMNS, toPublicCard } from "../_shared/publicMask.ts";
-import { isFeedEligible, meetsBoardRules, boardPublisherName, publisherDisplayKind, closingRewardLevel } from '../_shared/publicListingVisibility.ts';
+import { isFeedEligible, meetsBoardRules, boardPublisherName, publisherDisplayKind, closingRewardLevel, privatePublisherAvatar } from '../_shared/publicListingVisibility.ts';
 import { verifiedSourceLicense } from '../_shared/yad2Publisher.ts';
 
 const json = (body: unknown, status = 200) =>
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
         return {
           broker_name: text(metadata.broker_name) ?? text(metadata.contact_name) ?? text(metadata.owner_name) ?? text(owners.data?.find(item => item.id === row.owner_id)?.full_name),
           office_name: office,
-          agency_logo_url: text(metadata.office_logo_url) ?? text(metadata.agency_logo_url),
+          agency_logo_url: text(metadata.office_logo_url) ?? text(metadata.agency_logo_url) ?? text(metadata.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id)),
           broker_license_number: license,
           publisher_kind: publisherDisplayKind(metadata.publisher_kind ?? (broker ? 'broker' : 'private')),
         };

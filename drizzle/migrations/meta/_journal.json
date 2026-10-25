@@ -498,6 +498,13 @@
       "when": 1792893654077,
       "tag": "0070_broker_roles_always_view_closing",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1792896351977,
+      "tag": "0071_super_admin_views_closing",
+      "breakpoints": true
     }
   ]
 }
