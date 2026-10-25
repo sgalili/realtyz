@@ -895,7 +895,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     {active && expanded && <div className="space-y-2">
                     <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
-                    <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-[18px] md:text-[18px] placeholder:text-xs md:placeholder:text-xs" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
+                    <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-[18px] md:text-[18px] placeholder:text-[14px] md:placeholder:text-[14px]" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
                       const n = cleanFormFields(fields.formFields).length;
                       return (
