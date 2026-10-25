@@ -11,6 +11,7 @@ import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { toast } from 'sonner';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export type TaskLeadLite = {
   profile_picture_url?: string | null;
@@ -51,6 +52,7 @@ export default function TaskFormDialog({
   submitLabel,
   initial,
   onSubmit,
+  footerNote,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -58,7 +60,9 @@ export default function TaskFormDialog({
   submitLabel: string;
   initial?: Partial<TaskFormValues>;
   onSubmit: (values: TaskFormValues) => Promise<void>;
+  footerNote?: string;
 }) {
+  const ownerId = useActiveWorkspaceOwnerId();
   const [lead, setLead] = useState<TaskLeadLite | null>(null);
   const [leadQuery, setLeadQuery] = useState('');
   const [leadResults, setLeadResults] = useState<TaskLeadLite[]>([]);
@@ -85,7 +89,7 @@ export default function TaskFormDialog({
   }, [open, initial?.lead?.id, initial?.when, initial?.priority, initial?.text]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !ownerId) return;
     const q = leadQuery.trim();
     if (q.length < 2) { setLeadResults([]); return; }
     let cancelled = false;
@@ -97,6 +101,7 @@ export default function TaskFormDialog({
       const { data } = await (supabase as any)
         .from('leads')
         .select('id, full_name, phone_number, city, profile_picture_url')
+        .eq('workspace_owner_id', ownerId)
         .or(filters.join(','))
         .limit(8);
       if (cancelled) return;
@@ -104,7 +109,7 @@ export default function TaskFormDialog({
       setSearching(false);
     }, 250);
     return () => { cancelled = true; clearTimeout(t); setSearching(false); };
-  }, [leadQuery, open]);
+  }, [leadQuery, open, ownerId]);
 
   const loadCalendarSlots = async () => {
     setCalendarLoading(true);
@@ -274,6 +279,7 @@ export default function TaskFormDialog({
             <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="resize-none" />
           </div>
 
+          {footerNote && <p className="text-sm text-muted-foreground">{footerNote}</p>}
           <Button className="w-full font-bold" onClick={submit} disabled={saving}>
             {saving ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <BellRing className="me-2 h-4 w-4" />}
             {submitLabel}
