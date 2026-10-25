@@ -5,11 +5,11 @@ import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 
 export const DISTRIBUTION_CHANNELS = [
+  { id: 'facebook', label: 'Facebook' },
   { id: 'whatsapp', label: 'WhatsApp הרשמי' },
   { id: 'sms', label: 'SMS' },
   { id: 'ivr', label: 'IVR' },
   { id: 'email', label: 'אימייל' },
-  { id: 'facebook', label: 'Facebook' },
 ] as const;
 export type DistributionChannel = typeof DISTRIBUTION_CHANNELS[number]['id'];
 

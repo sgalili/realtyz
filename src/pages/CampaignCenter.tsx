@@ -1,5 +1,5 @@
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
-import { CampaignChannelPicker, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
+import { CampaignChannelPicker, DISTRIBUTION_CHANNELS, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
@@ -2342,7 +2342,7 @@ const InlineComposer = ({
             </>
           ) : (
             <>
-          <Label className="font-semibold text-foreground" style={{ fontSize: 'calc(0.75rem + 3px)' }}>קדם נכס ספציפי מהמאגר</Label>
+          <Label className="font-semibold text-foreground" style={{ fontSize: 'calc(0.75rem + 3px)' }}>קידום נכס מהמאגר</Label>
           <Popover open={listingPickerOpen} onOpenChange={setListingPickerOpen}>
             <PopoverTrigger asChild>
               <button type="button"
@@ -7513,6 +7513,9 @@ const DraftCollapsibleCard = ({
 
 const CampaignCenter = () => {
   const [wizardChannel, setWizardChannel] = useState<DistributionChannel | null>(null);
+  // Facebook two-step flow: the publishing composer mounts only after the
+  // connection screen is completed (or explicitly skipped).
+  const [fbReady, setFbReady] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   // Live status per collapsed draft card (keyed by composer instanceId).
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
@@ -8390,6 +8393,7 @@ const CampaignCenter = () => {
 
   const selectWizardChannel = (channel: DistributionChannel) => {
     setWizardChannel(channel);
+    setFbReady(false);
     const next = new URLSearchParams(searchParams);
     next.set('channel', channel);
     next.set('tab', channel === 'facebook' ? 'create' : 'broadcast');
@@ -8418,12 +8422,22 @@ const CampaignCenter = () => {
   const channelParam = searchParams.get('channel');
   useEffect(() => {
     if (!channelParam) return;
+    // Only the distribution channels drive the wizard; legacy cards (instagram,
+    // x, youtube…) keep their previous behavior of preselecting the card only.
+    if (!DISTRIBUTION_CHANNELS.some((c) => c.id === channelParam)) return;
     const card = CHANNEL_CARDS.find((c) => c.id === channelParam);
-    if (!card) return;
-    setPickedChannel((prev) => prev ?? card);
-    setPickedChannelIds((prev) => (prev.has(card.id) ? prev : new Set([...prev, card.id])));
+    if (card) {
+      setPickedChannel((prev) => prev ?? card);
+      setPickedChannelIds((prev) => (prev.has(card.id) ? prev : new Set([...prev, card.id])));
+    }
+    // Deep links also select the wizard channel so the connection/composer step
+    // mounts directly instead of stopping at the channel picker.
+    setWizardChannel(channelParam as DistributionChannel);
+    setFbReady(false);
+    // workspaceOwnerId is included so a deep link survives the workspace
+    // resolution effect above, which resets the wizard channel on changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelParam]);
+  }, [channelParam, workspaceOwnerId]);
 
 
   const leadId = searchParams.get('lead') ?? searchParams.get('client') ?? searchParams.get('voter');
@@ -8675,7 +8689,7 @@ const CampaignCenter = () => {
           {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
-          {wizardChannel === 'facebook' && <FacebookCloudConnectGate />}
+          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
           
           <div hidden aria-hidden="true">
           <ChannelGrid
@@ -8715,7 +8729,7 @@ const CampaignCenter = () => {
             onAddFacebookPage={() => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!); }}
           />
           </div>
-          {wizardChannel === 'facebook' && pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
+          {wizardChannel === 'facebook' && fbReady && pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
             const propertiesParam = searchParams.get('properties') || '';
             let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
             let assignments: ComposerAssignment[] = [];
