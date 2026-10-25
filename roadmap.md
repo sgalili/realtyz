@@ -247,3 +247,6 @@
 
 # Card 8 collapsed lead prices
 - [x] Each lead-type row in Create Ad Card 8 collapses by default and shows its per-lead price in the row, or "ללא עמלה" when none is set, matching the collapsed closing-fee row. Clicking the title or the price expands the settings and enables a disabled type at its configured minimum. Live check at 446×728 (₪60 black, ₪90 green, ללא עמלה, phone ₪80 after enabling), 10 focused tests, typecheck and build OK; no ad published.
+
+# Rewards editor close after save
+- [x] Dismiss the "מחיר והגדרת תמלוגים" dialog once the write commits; cache refreshes run afterwards and cannot keep a saved editor open. Shared commitPricingEdit helper, three focused tests pass; authenticated 1280px board edit verifies PATCH 200 then dialog closed (~2.7s).
