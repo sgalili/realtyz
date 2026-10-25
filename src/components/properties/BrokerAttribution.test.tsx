@@ -20,4 +20,13 @@ describe('Public publisher strip', () => {
     rerender(<BrokerAttribution brokerName="מפרסם" />);
     expect(screen.queryByText('משכיר פרטי')).not.toBeInTheDocument();
   });
+  it('renders the exclusivity label under the office name inside the same text column', () => {
+    const { container } = render(<BrokerAttribution brokerName="עדן ויטמן" officeName="אנגלו סכסון הרצליה" exclusive />);
+    const office = screen.getByText('אנגלו סכסון הרצליה');
+    const exclusive = screen.getByText('בבלעדיות');
+    const column = office.closest('.min-w-0.flex-1');
+    expect(column).not.toBeNull();
+    expect(column).toContainElement(exclusive);
+    expect(column!.compareDocumentPosition(exclusive) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
