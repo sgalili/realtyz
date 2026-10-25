@@ -1,5 +1,5 @@
 # Campaign card actions
-- [ ] Add top-left post menus for refresh, edit, native view, explicit repost, sharing and deletion; remove Continue buttons and verify without publishing/deleting.
+- [x] Add shared top-left menus to published/scheduled/draft cards and remove Continue buttons; 10 focused tests pass. Authenticated 446px real card verifies menu and explicit repost editor without sending/deleting. Published edit opens native Facebook; live sync/share needs an available native post link, absent on the queued card checked.
 
 # Campaign channel-first wizard
 - [x] Start new campaign/post creation with five channel cards and configured credit prices, then show only the selected existing composer with back navigation; remove crowded channel switches, multi-channel wallet list and history from dedicated setup.
