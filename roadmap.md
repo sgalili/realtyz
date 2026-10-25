@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Pricing editor corrections
-- [ ] Fix zero form-fee saves and Super Admin cross-workspace pricing edits without widening other permissions.
-- [ ] Align pencil/red dot opposite close; remove read-only footer; collapse questions and show configured form fields.
-- [ ] Run focused tests and verify signed-in save/reopen flow.
+- [x] Fix zero form-fee saves and Super Admin cross-workspace pricing edits without widening other permissions; reload authorized data before reopening.
+- [x] Align pencil/red dot opposite close; remove read-only footer; collapse questions and show configured form fields.
+- [x] 54 focused tests pass; signed-in Super Admin disabled form fee, saved/reopened and verified zero, then restored original 100. Mobile screenshots and current build checked.
 
 ## Consistent zero-fee lead indicators
 - [x] Show four ordered types for guests, Super Admins and brokers across shared indicators and pricing details.
