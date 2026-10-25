@@ -52,7 +52,10 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
       setPhase('idle'); setOpen(false);
     } catch (e) {
       if (generation.current !== run || abort.signal.aborted) return;
-      setErrorMessage((e as Error).message || 'סנכרון הקבוצות נכשל'); setPhase('idle');
+      // Connection succeeded; group import can retry later, so continue to the wizard.
+      toast.warning((e as Error).message || 'ייבוא הקבוצות יושלם מאוחר יותר');
+      onStatusChange?.(true);
+      setPhase('idle'); setOpen(false);
     }
   };
 

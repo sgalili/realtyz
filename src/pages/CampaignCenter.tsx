@@ -4991,7 +4991,8 @@ const PublishedFeed = ({
       setSupportChannel(FEED_PLATFORMS.find((p) => p.id === id)?.label ?? id);
       return;
     }
-    if (id !== 'facebook' && id !== 'instagram') {
+    // Facebook connects only through the cloud browser, never Meta OAuth.
+    if (id !== 'instagram') {
       window.location.href = '/profile?tab=connections';
       return;
     }
