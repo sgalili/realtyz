@@ -1,5 +1,6 @@
 # Lead pricing card redesign
-- [ ] Restyle guest, read-only and publisher pricing views as distinct colored-icon cards with compact details and bounded scrolling; verify tests and live layouts.
+- [x] Restyle guest, read-only and publisher pricing views as distinct colored-icon cards with compact details and max-w-2xl bounded scrolling; 15 pricing/slider tests pass and preview build OK.
+- [ ] Live pricing layout verification blocked: guest and restored signed-in homepage remain at loading listings, with no pricing trigger available; no pricing data fabricated.
 
 # Property landing and map layout
 - [x] Remove sharing-user name from landing header; reuse configured card contact/share controls at bottom.

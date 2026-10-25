@@ -1710,6 +1710,10 @@
 .closing-fee { --closing-current: var(--closing-low); }
 
 .pricing-editor { font-size: 16px; line-height: 1.5; }
+.pricing-editor .closing-fee { border-inline-start: 3px solid hsl(var(--closing-current)); }
+.pricing-editor #wizard-price { min-width: 0; max-width: 100%; }
+.pricing-editor > div:first-child { grid-template-columns: minmax(0,1fr) minmax(0,2fr) minmax(0,1fr); }
+.pricing-editor > div:first-child > span { white-space: normal; }
 .pricing-editor .text-xs { font-size: 14px; }
 .pricing-editor .pricing-closing-card > div:first-child { flex-wrap: wrap; }
 .pricing-editor .pricing-closing-card > div:first-child > button:first-child { height: auto; min-width: 0; flex: 1 1 14rem; white-space: normal; text-align: start; font-size: 16px; line-height: 1.4; }
