@@ -110,10 +110,9 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
           {([{ icon: Eye, value: r.views, label: 'צפיות' }, { icon: MousePointerClick, value: r.clicks, label: 'קליקים' }, { icon: Users, value: r.affiliates, label: 'שותפים' }]).map(({ icon: Icon, value, label }) => <span key={label} title={label} className="inline-flex items-center gap-1"><Icon className="h-3.5 w-3.5" aria-label={label} /><span className="tabular-nums text-foreground">{number(value)}</span></span>)}
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} aria-label="פירוט" />
         </button>
-        {owned && <div className="mt-1"><ListingLifecycleStatus listingId={r.listing_id} /></div>}
       </div>
     </div>
-    <AnimatedExpansion open={open} id={`stats-${r.relation}-${r.listing_id}`}><AdDetails listingId={r.listing_id} /></AnimatedExpansion>
+    <AnimatedExpansion open={open} id={`stats-${r.relation}-${r.listing_id}`}>{owned && <div className="pt-3"><ListingLifecycleStatus listingId={r.listing_id} /></div>}<AdDetails listingId={r.listing_id} /></AnimatedExpansion>
   </article>;
 }
 function ActivityProperties() {
