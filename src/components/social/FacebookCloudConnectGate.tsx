@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Cloud, Loader2, Search, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getCloudSessionState } from '@/lib/cloudSession';
@@ -12,7 +14,8 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
  * waits for the session, then fetches groups in the cloud and returns to the
  * post editor. No browser extension is involved.
  */
-export function FacebookCloudConnectGate() {
+export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDiscover }: { alwaysVisible?: boolean; onSynced?: () => void; onDiscover?: () => void }) {
+  const navigate = useNavigate();
   const owner = useActiveWorkspaceOwnerId();
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'waiting' | 'syncing'>('idle');
@@ -44,6 +47,7 @@ export function FacebookCloudConnectGate() {
       const groups = await fetchGroupsViaCloud('', { syncMemberships: true, signal: abort.signal });
       if (generation.current !== run) return;
       toast.success(`פייסבוק מחובר · ${groups.length} קבוצות נסרקו`);
+      onSynced?.();
       setPhase('idle'); setOpen(false);
     } catch (e) {
       if (generation.current !== run || abort.signal.aborted) return;
@@ -82,19 +86,21 @@ export function FacebookCloudConnectGate() {
     }
   };
 
-  if (!open) return null;
-  return <div dir="rtl" className="space-y-1">
-    <button
-      type="button"
-      disabled={phase !== 'idle'}
-      onClick={() => void connect()}
-      className="flex h-14 w-full items-center justify-center gap-3 rounded-md bg-[#1877F2] text-lg font-semibold text-white transition-colors hover:bg-[#166FE5] disabled:opacity-70"
-    >
-      {phase !== 'idle' ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden="true"><path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07" /></svg>
-      )}
-      חיבור לפייסבוק
-    </button>
+  if (!open && !alwaysVisible) return null;
+  return <section dir="rtl" className="space-y-4 text-right" aria-label="חיבור מהיר לפייסבוק">
+    <div className="space-y-2">
+      <h3 className="flex items-center gap-2 text-lg font-semibold"><Cloud className="h-5 w-5 text-primary" />חיבור מהיר לפייסבוק</h3>
+      <p className="text-sm leading-relaxed text-muted-foreground">מתחברים לפייסבוק, מסנכרנים את הקבוצות שלכם בענן ומפרסמים לקבוצות שבחרתם — עם מעקב אחר הפרסום והביצועים במקום אחד.</p>
+    </div>
+    <Button type="button" disabled={phase !== 'idle' || !owner} onClick={() => void connect()} className="h-12 w-full gap-2 text-base font-semibold">
+      {phase !== 'idle' ? <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" /> : <Cloud className="h-5 w-5" />}
+      {phase === 'waiting' ? 'ממתינים להשלמת החיבור…' : phase === 'syncing' ? 'מייבאים את הקבוצות…' : connected ? 'ייבוא הקבוצות שלי' : 'חיבור באמצעות פייסבוק'}
+    </Button>
+    <p role="status" className="text-sm leading-relaxed text-muted-foreground">
+      {phase === 'waiting' ? 'השלימו את הכניסה לפייסבוק בחלון שנפתח. הקבוצות יסונכרנו לאחר אישור החיבור.' : phase === 'syncing' ? 'הסנכרון מתבצע בענן. רק קבוצות עם חברות מאושרת זמינות לפרסום.' : connected ? 'החיבור לפייסבוק שמור. אפשר לייבא את הקבוצות שלכם או למצוא קבוצות נוספות בחיפוש.' : 'לאחר הכניסה נייבא את הקבוצות שלכם. רוצים להרחיב את החשיפה? חפשו והוסיפו קבוצות רלוונטיות בחיפוש המובנה.'}
+    </p>
+    {connected && <p className="flex items-center gap-1 text-sm text-success"><ShieldCheck className="h-4 w-4" />החיבור שמור ומוצפן בענן</p>}
+    <Button type="button" variant="outline" className="w-full gap-2" disabled={phase !== 'idle'} onClick={() => onDiscover ? onDiscover() : navigate('/api-settings#facebook')}><Search className="h-4 w-4" />חיפוש והוספת קבוצות</Button>
     {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
-  </div>;
+  </section>;
 }
