@@ -133,7 +133,7 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
       <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
         {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}
       </Link>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 pe-9">
         <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block truncate text-sm font-semibold text-foreground" title={title}>{title}</Link>
         <p className="text-sm font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}{r.deal_type === 'rent' && Number(r.asking_price) ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</p>
         <div className="mt-1 flex items-center justify-between gap-2">
