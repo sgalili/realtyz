@@ -1,5 +1,8 @@
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
-import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
+import { campaignServicePrice, campaignServiceEstimate, formatCampaignCredits } from '@/lib/campaignServicePricing';
+import { IVR_DEFAULT_VOICES } from '../../../supabase/functions/_shared/ivrVoices';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { useAuth } from '@/hooks/useAuth';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -24,8 +27,7 @@ type ListingOpt = {
   features: any;
 };
 
-const UDI_VOICE = { id: 'udi', label: 'אודי ויטמן', voice_id: '4eohDAy1kTS18Cnf0HiN' };
-const PRESET_VOICES: { id: string; label: string; voice_id: string }[] = [UDI_VOICE];
+const PRESET_VOICES = IVR_DEFAULT_VOICES;
 
 type SourceType = 'tts' | 'recording' | 'upload';
 type AudienceMode = 'all' | 'manual' | 'csv' | 'paste';
@@ -68,14 +70,21 @@ const fmtTs = (iso: string) => {
 };
 
 export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+  const workspaceId = useActiveWorkspaceOwnerId();
+  const { user } = useAuth();
+  const historyKey = `${HISTORY_KEY}:${user?.id}:${workspaceId}`;
+  const loadScopedHistory = (): HistoryItem[] => { try { return JSON.parse(localStorage.getItem(historyKey) || '[]'); } catch { return []; } };
+  const saveScopedHistory = (items: HistoryItem[]) => { try { localStorage.setItem(historyKey, JSON.stringify(items.slice(0, 50))); } catch { /* ignore */ } };
   const { data: prices = [] } = useCampaignPricing(open);
   const price = campaignServicePrice('ivr', prices);
+  const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
+  const [audioSeconds, setAudioSeconds] = useState<number | null>(null);
   const [review, setReview] = useState<{ audioUrl: string | null; payload?: Record<string, unknown>; seconds: number | null } | null>(null);
   const [source, setSource] = useState<SourceType>('tts');
   const [leads, setLeads] = useState<IvrLead[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
-  const [agentVoiceId, setAgentVoiceId] = useState<string>(UDI_VOICE.voice_id);
+  const [agentVoiceId, setAgentVoiceId] = useState<string>(PRESET_VOICES[0].voice_id);
   const [addVoiceOpen, setAddVoiceOpen] = useState(false);
   const [listings, setListings] = useState<ListingOpt[]>([]);
   const [listingId, setListingId] = useState<string>("none");
@@ -113,25 +122,28 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const audioElRef = useRef<HTMLAudioElement | null>(null);
 
   const [dispatching, setDispatching] = useState(false);
-  const hasLoadedRef = useRef(false);
-
   useEffect(() => {
-    if (!open) return;
-    setHistory(loadHistory());
-    if (hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
+    if (!open || !workspaceId) return;
+    let cancelled = false;
+    setHistory(loadScopedHistory());
+    setClonedVoices([]); setLeads([]); setListings([]); setListingId('none');
+    setAgentVoiceId(PRESET_VOICES[0].voice_id); setTtsText(''); setAudioSeconds(null);
+    setSelectedLeadIds(new Set()); setAudience(''); setIncludeWhatsapp(false); setReview(null);
     (async () => {
       setLoadingLeads(true);
       const [{ data: leadRows }, { data: voiceRows }, { data: listingRows }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city')
+          .eq('workspace_owner_id', workspaceId)
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
-        supabase.from('cloned_voices').select('id, name, voice_id, preview_url').order('created_at', { ascending: false }),
+        supabase.from('cloned_voices').select('id, name, voice_id, preview_url').eq('workspace_owner_id', workspaceId).order('created_at', { ascending: false }),
         supabase.from('listings')
           .select('id, property_title, address, city, neighborhood, rooms, sqm, asking_price, features')
+          .eq('workspace_owner_id', workspaceId)
           .in('status', ['live', 'pending'])
           .order('created_at', { ascending: false })
           .limit(200),
       ]);
+      if (cancelled) return;
       setLeads(((leadRows as any[]) ?? []).map((r) => ({
         id: r.id, full_name: r.full_name, phone: r.phone_number, city: r.city,
       })));
@@ -139,7 +151,8 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       setListings((listingRows ?? []) as ListingOpt[]);
       setLoadingLeads(false);
     })();
-  }, [open]);
+    return () => { cancelled = true; };
+  }, [open, workspaceId, user?.id]);
 
   const allAgents = useMemo(() => {
     const seen = new Set<string>();
@@ -280,7 +293,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       if (l.rooms) facts.push(`${l.rooms} חדרים`);
       if (l.sqm) facts.push(`${l.sqm} מ"ר`);
       if (l.asking_price) facts.push(`מחיר ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
-      const topic = `כתוב הודעת מכירה קולית חד-צדדית קצרה למי שמתעניין בנכס הזה בלבד, 2-4 משפטים עד כ-35 שניות בהקראה. עובדות: ${facts.join(', ')}. ללא אימוג׳ים, עיצוב פוסט, חתימה, טלפון, רישיון או מלל מיותר. סיים בהזמנה קצרה לתיאום ביקור, ללא שאלות או הוראות ללחיצה על מקש.`;
+      const topic = `כתוב הודעת מכירה קולית חד-צדדית קצרה למי שמתעניין בנכס הזה בלבד, 2-4 משפטים עד כ-35 שניות בהקראה. עובדות: ${facts.join(', ')}. ללא אימוג׳ים, עיצוב פוסט, חתימה, טלפון, רישיון או מלל מיותר. סיים בהזמנה קצרה לתיאום ביקור, ללא שאלות או הוראות ללחיצה על מקש. וריאציה חדשה ${crypto.randomUUID()}: שנה את הפתיחה והניסוח אך לא את העובדות. אין לחזור על התסריט הקודם: ${lastAutoScriptRef.current.slice(0, 700)}`;
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: { topic, platform: 'ivr', selectedListingId: l.id, listingFocusOnly: true },
       });
@@ -365,7 +378,9 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
         createdAt: new Date().toISOString(),
       };
       const next = [item, ...history];
-      setHistory(next); saveHistory(next);
+      setHistory(next); saveScopedHistory(next);
+      const audio = new Audio(audioUrl);
+      audio.onloadedmetadata = () => { if (Number.isFinite(audio.duration)) setAudioSeconds(audio.duration); audio.src = ''; };
       toast.success('האודיו נוצר');
     } catch (e: any) {
       toast.error(`הפקת האודיו נכשלה: ${e?.message ?? 'שגיאה'}`);
@@ -395,6 +410,12 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     return [];
   }, [audience, leads, selectedLeadIds, csvPhones, parsedPasteNumbers]);
 
+  const estimatedSeconds = audioSeconds ?? (source === 'tts' ? ttsText.trim().split(/\s+/).filter(Boolean).length / 2.5 : source === 'recording' ? recElapsed : 0);
+  const ivrTotal = campaignServiceEstimate('ivr', prices, targetLeads.length, estimatedSeconds).total;
+  const waTotal = includeWhatsapp ? campaignServiceEstimate('whatsapp', prices, targetLeads.length).total : 0;
+  const totalCredits = ivrTotal != null && waTotal != null ? ivrTotal + waTotal : null;
+  const totalLabel = totalCredits != null ? formatCampaignCredits(totalCredits) : 'המחירון אינו זמין';
+
   const playHistory = (item: HistoryItem) => {
     if (playingId === item.id && audioElRef.current) {
       audioElRef.current.pause();
@@ -412,7 +433,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   };
   const deleteHistory = (id: string) => {
     const next = history.filter((h) => h.id !== id);
-    setHistory(next); saveHistory(next);
+    setHistory(next); saveScopedHistory(next);
   };
 
   const dispatchAudio = async (audioUrl: string | null, fallbackPayload?: Record<string, unknown>, confirmed = false) => {
@@ -442,6 +463,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       const payload: Record<string, unknown> = audioUrl
         ? { source: 'tts', audio_url: audioUrl, leads: targets }
         : { ...(fallbackPayload || {}), leads: targets };
+      payload.include_whatsapp = includeWhatsapp;
       toast.loading(`משגר ל-${targets.length} יעדים…`, { id: 'ivr-dispatch' });
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', { body: payload });
       toast.dismiss('ivr-dispatch');
@@ -469,7 +491,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       if (last && last.text === ttsText.trim()) return dispatchAudio(last.audioUrl);
       if (!ttsText.trim()) { toast.error('צרו אודיו תחילה'); return; }
       await generateTtsAudio();
-      const newest = loadHistory()[0];
+      const newest = loadScopedHistory()[0];
       if (newest) await dispatchAudio(newest.audioUrl);
     } else if (source === 'recording' && recordedBlob) {
       await dispatchAudio(null, {
@@ -535,12 +557,12 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
               <div className="space-y-1.5">
                 <label className="text-[13px] font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI להקלטה</label>
                 <Select value={agentVoiceId} onValueChange={setAgentVoiceId} dir="rtl">
-                  <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
+                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
                     <SelectValue placeholder="נציג AI">{agentLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent dir="rtl">
                     {allAgents.map((a) => (
-                      <SelectItem key={a.voice_id} value={a.voice_id} className="pe-8">
+                      <SelectItem key={a.voice_id} value={a.voice_id} className="pe-8 text-[17px]">
                         <div className="flex items-center justify-between gap-2 w-full">
                           <span className="truncate">{a.label}</span>
                           <button
@@ -571,7 +593,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
               <div className="space-y-1.5">
                 <label className="text-[13px] font-semibold text-[#0f1b3d] text-right block">בחירת נכס לקמפיין</label>
                 <Select value={listingId} onValueChange={setListingId} dir="rtl">
-                  <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
+                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
                     <SelectValue placeholder="קדם נכס ספציפי מהמאגר" />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
@@ -588,9 +610,9 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                         />
                       </div>
                     </div>
-                    <SelectItem value="none">ללא נכס · הודעה כללית</SelectItem>
+                    <SelectItem value="none" className="text-[17px]">ללא נכס · הודעה כללית</SelectItem>
                     {filteredListings.map((l) => (
-                      <SelectItem key={l.id} value={l.id} className="pe-2">
+                      <SelectItem key={l.id} value={l.id} className="pe-2 text-[17px]">
                         <span className="truncate block max-w-[22rem]">{listingLabel(l)}</span>
                       </SelectItem>
                     ))}
@@ -626,15 +648,16 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                   disabled={autoScripting}
                 />
                 {selectedListing && (
-                  <button
+                  <Button variant="outline" size="icon"
                     type="button"
                     onClick={regenerateScript}
                     disabled={autoScripting}
                     title="ייצר מחדש"
-                    className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#0f1b3d]/20 bg-background hover:bg-muted disabled:opacity-50"
+                    aria-label="ייצר תסריט חדש"
+                    className="absolute top-2 left-2 h-8 w-8"
                   >
                     <RefreshCw className={cn('h-4 w-4 text-[#0f1b3d]', autoScripting && 'animate-spin')} />
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -651,14 +674,14 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                 </Button>
               )}
 
-              <div className="flex justify-start">
+              <div className="flex justify-end">
                 <Button
                   onClick={generateTtsAudio}
                   disabled={generatingTts || !ttsText.trim()}
                   className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 px-6 rounded-xl font-semibold"
                 >
                   <Volume2 className="ml-2 h-4 w-4" />
-                  {generatingTts ? 'יוצר…' : 'צור אודיו'}
+                  {generatingTts ? 'יוצר…' : 'צור הודעה מוקלטת'}
                 </Button>
               </div>
             </div>
@@ -698,14 +721,14 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           {/* Audience selector */}
           <div className="space-y-2">
             <Select value={audience} onValueChange={(v) => setAudience(v as AudienceMode)} dir="rtl">
-              <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background">
+              <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background">
                 <SelectValue placeholder="למי מחייגים?" />
               </SelectTrigger>
               <SelectContent dir="rtl">
-                <SelectItem value="all">כל הרשימה ({loadingLeads ? '…' : leads.length})</SelectItem>
-                <SelectItem value="manual">בחירה מהרשימה</SelectItem>
-                <SelectItem value="csv">העלאת רשימה (CSV / Excel)</SelectItem>
-                <SelectItem value="paste">הדבקת טקסט</SelectItem>
+                <SelectItem value="all" className="text-[17px]">כל הרשימה ({loadingLeads ? '…' : leads.length})</SelectItem>
+                <SelectItem value="manual" className="text-[17px]">בחירה מהרשימה</SelectItem>
+                <SelectItem value="csv" className="text-[17px]">העלאת רשימה (CSV / Excel)</SelectItem>
+                <SelectItem value="paste" className="text-[17px]">הדבקת טקסט</SelectItem>
               </SelectContent>
             </Select>
 
@@ -761,10 +784,15 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           </div>
 
           {/* Dispatch button */}
-          <Button onClick={dispatchCurrent} disabled={dispatching || audienceCount === 0}
-            className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-12 rounded-xl text-base font-semibold">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={includeWhatsapp} onCheckedChange={value => setIncludeWhatsapp(value === true)} />
+            שליחת ההקלטה גם בוואטסאפ הרשמי
+          </label>
+          {includeWhatsapp && <p className="text-xs text-muted-foreground">קובץ אודיו נשלח רק לנמענים עם חלון שיחה פתוח בוואטסאפ ב־24 השעות האחרונות.</p>}
+          <Button onClick={dispatchCurrent} disabled={dispatching || audienceCount === 0 || totalCredits == null}
+            className="w-full min-h-12 h-auto py-3 whitespace-normal rounded-xl text-sm font-semibold">
             <PhoneForwarded className="ml-2 h-5 w-5" />
-            {dispatching ? 'משגר…' : 'שגר חיוג קולי'}
+            {dispatching ? 'משגר…' : 'שגר חיוג קולי'} · {totalLabel}{estimatedSeconds > 0 && audioSeconds == null ? ' (משוער)' : ''}
           </Button>
 
           {/* History feed */}
