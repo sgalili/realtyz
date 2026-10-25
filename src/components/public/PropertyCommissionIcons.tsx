@@ -40,13 +40,13 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const marketplace = useAffiliateMarketplace();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const { isSuperAdmin, roles } = useUserRole();
   const showAll = !user || isSuperAdmin || roles.some(role => ['managing_broker', 'lead_agent', 'agent'].includes(role));
   const [draft, setDraft] = useState<PublicListingDraft>();
   const owned = useQuery({
     queryKey: ['owned-royalties', listingId, user?.id, activeWorkspaceId, isSuperAdmin],
-    enabled: table && !!user && !!activeWorkspaceId,
+    enabled: table && !!user && !!activeWorkspaceId && !workspaceLoading,
     queryFn: async () => {
       if (!user || !activeWorkspaceId) return null;
       const { data, error } = await supabase.from('listings').select('*').eq('id', listingId).maybeSingle();
@@ -57,8 +57,8 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     },
   });
   const { data: property } = useQuery({
-    queryKey: ['public-commission-pricing', listingId, user?.id, level4Unlocked],
-    enabled: networkOpen !== false,
+    queryKey: ['public-commission-pricing', listingId, user?.id, activeWorkspaceId, level4Unlocked],
+    enabled: networkOpen !== false && (!user || !workspaceLoading),
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(listingId)}`, { method: 'GET' });
       if (error) throw error;

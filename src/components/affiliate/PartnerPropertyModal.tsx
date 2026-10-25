@@ -9,6 +9,9 @@ import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
 import { normalizeListing } from '@/pages/PublicListingPage';
 import { publicUrl } from '@/lib/publicUrl';
 import type { MarketplaceListing } from '@/hooks/useAffiliate';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export function CopyListingLinkButton({ listingId }: { listingId: string }) {
   return (
@@ -26,14 +29,15 @@ export function CopyListingLinkButton({ listingId }: { listingId: string }) {
 /** Full property details for the partner board, with a sticky action bar. */
 export function PartnerPropertyModal({ listing, onClose, actions }: { listing: MarketplaceListing | null; onClose: () => void; actions?: ReactNode }) {
   const id = listing?.listing_id ?? '';
+  const { user } = useAuth();
+  const { activeWorkspaceId, loading } = useWorkspace();
   const { data } = useQuery({
-    queryKey: ['public-listing-expanded', id],
-    enabled: !!listing,
+    queryKey: ['public-listing-expanded', id, user?.id, activeWorkspaceId],
+    enabled: !!listing && (!user || !loading),
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-listing-view?id=${encodeURIComponent(id)}`, { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } });
-      if (!res.ok) return null;
-      const payload = await res.json();
+      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(id)}`, { method: 'GET' });
+      if (error) return null;
       if (!payload?.property) return null;
       return { listing: normalizeListing(payload.property, payload.attribution), raw: payload.property as Record<string, unknown> };
     },

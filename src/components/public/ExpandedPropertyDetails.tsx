@@ -17,6 +17,7 @@ import PropertyCommissionIcons from './PropertyCommissionIcons';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 type Raw = Record<string, unknown>;
 type Spec = { icon: LucideIcon; label: string; value: string };
@@ -70,17 +71,17 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
 
 export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, gallery }: { idOrSlug: string; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; gallery?: ReactNode }) {
   const { user } = useAuth();
+  const { activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const navigate = useNavigate();
   const favorites = useListingFavorites();
   useEffect(() => { void (supabase as any).rpc('track_listing_view', { _id_or_slug: idOrSlug }); }, [idOrSlug]);
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['public-listing-expanded', idOrSlug],
+    queryKey: ['public-listing-expanded', idOrSlug, user?.id, activeWorkspaceId],
+    enabled: !user || !workspaceLoading,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-listing-view?id=${encodeURIComponent(idOrSlug)}`;
-      const res = await fetch(endpoint, { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } });
-      if (!res.ok) return null;
-      const payload = await res.json();
+      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(idOrSlug)}`, { method: 'GET' });
+      if (error) return null;
       if (!payload?.property) return null;
       return { listing: normalizeListing(payload.property, payload.attribution), raw: payload.property as Raw };
     },

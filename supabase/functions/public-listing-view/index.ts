@@ -33,7 +33,12 @@ Deno.serve(async (req) => {
       if (identity.user) {
         signedIn = true;
         viewerId = identity.user.id;
-        const { data: allowed, error: accessError } = await admin.rpc('partner_can_view_closing', { _user_id: identity.user.id });
+        // Forward the verified session so the database resolves and authorizes
+        // the selected workspace itself; service-role calls have no auth.uid().
+        const viewer = createClient(backendUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? serviceKey, {
+          global: { headers: { Authorization: authorization } },
+        });
+        const { data: allowed, error: accessError } = await viewer.rpc('can_view_closing_prices');
         closingAllowed = !accessError && allowed === true;
       }
     }
