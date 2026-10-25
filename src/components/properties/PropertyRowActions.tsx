@@ -99,6 +99,8 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
 
   const { isSuperAdmin } = useUserRole();
   useEffect(() => {
+    setRow(null);
+    setRaw(null);
     if (!user?.id || (!activeWorkspaceId && !isSuperAdmin)) { setRow(null); return; }
     let alive = true;
     let q = supabase.from('listings').select('*').eq('id', listingId);
@@ -130,7 +132,7 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4" /> שתף נכס
           </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${row.localId}&listing=${row.localId}`, { state: returnState() })}>
+          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${row.localId}&listing=${row.localId}&fresh=1`, { state: returnState() })}>
             <Megaphone className="h-4 w-4" /> צור קמפיין לנכס
           </DropdownMenuItem>
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setRewardOpen(true)}>

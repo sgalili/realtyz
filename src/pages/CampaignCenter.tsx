@@ -1747,6 +1747,7 @@ const InlineComposer = ({
     if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
     const ctrl = registerGeneration();
     setGeneratingImage(true);
+    const context = { listingId: selectedListingId, workspace: workspaceOwnerId };
     try {
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: { purpose: 'image', prompt, brand: brandName, language: 'he' },
@@ -1848,7 +1849,7 @@ const InlineComposer = ({
           selectedListingId: usesGroupTopics ? undefined : (selectedListingId || undefined),
           listingFocusOnly: !usesGroupTopics && !!selectedListingId,
       }, ctrl.signal);
-      if (ctrl.signal.aborted) return; // killed by the operator
+      if (ctrl.signal.aborted || selectedContextRef.current.listingId !== context.listingId || selectedContextRef.current.workspace !== context.workspace) return;
       if (error) throw error;
       if (data?.listing_unavailable) {
         setSelectedListingId(null);
