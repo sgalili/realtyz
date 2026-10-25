@@ -6,6 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { encode as b64encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { decode as b64decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { IVR_MODEL_ID, IVR_DEFAULT_VOICES, canUseIvrVoice } from '../_shared/ivrVoices.ts';
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -53,12 +54,7 @@ async function resolveElevenLabsKey(
 }
 
 async function generateTts(text: string, voiceId: string, apiKey: string): Promise<Uint8Array> {
-  // HARD LOCK: ElevenLabs verified production multilingual model for ALL IVR
-  // audio (including cloned voices like Udi Vitman). `eleven_multilingual_v3`
-  // does NOT exist on the ElevenLabs API and returns 400 model_not_found, so
-  // we pin to the stable `eleven_multilingual_v2` model. Never downgrade to
-  // v1 or browser TTS.
-  const MODEL_ID = "eleven_multilingual_v2";
+  const MODEL_ID = IVR_MODEL_ID;
   const r = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
     {
@@ -68,7 +64,7 @@ async function generateTts(text: string, voiceId: string, apiKey: string): Promi
         text,
         model_id: MODEL_ID,
         voice_settings: {
-          stability: 0.45,
+          stability: 0.5,
           similarity_boost: 0.9,
           style: 0.35,
           use_speaker_boost: true,
@@ -97,23 +93,33 @@ Deno.serve(async (req) => {
 
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "unauthenticated" }, 401);
+    const { data: workspaceId, error: workspaceError } = await userClient.rpc('current_workspace_owner');
+    if (workspaceError || !workspaceId) return json({ error: 'workspace_unavailable' }, 403);
 
     const body = await req.json();
     const source = body.source as "recording" | "tts" | "upload";
     const generateOnly = body.generate_only === true;
+    const includeWhatsapp = body.include_whatsapp === true;
     const leads = (body.leads ?? []) as Array<{ id?: string; phone: string }>;
     if (!generateOnly && !leads.length) return json({ error: "no_leads" }, 400);
 
     // 1. Resolve audio URL (upload bytes, or generate via TTS)
     let audioUrl: string | null = body.audio_url ?? null;
+    if (audioUrl) {
+      const parsed = new URL(audioUrl);
+      const prefix = `/storage/v1/object/sign/ivr-audio/${workspaceId}/`;
+      if (parsed.origin !== new URL(url).origin || !parsed.pathname.startsWith(prefix)) return json({ error: 'audio_not_in_workspace' }, 403);
+    }
     if (!audioUrl) {
       let bytes: Uint8Array | null = null;
       let ext = "mp3";
       if (source === "tts") {
         const text = String(body.text ?? "").trim();
-        const voiceId = String(body.voice_id ?? "EXAVITQu4vr4xnSDxMaL");
+        const voiceId = String(body.voice_id ?? IVR_DEFAULT_VOICES[0].voice_id);
         if (!text) return json({ error: "missing_text" }, 400);
-        const elevenKey = await resolveElevenLabsKey(admin, user.id);
+        const { data: voices } = await admin.from('cloned_voices').select('voice_id, workspace_owner_id').eq('workspace_owner_id', workspaceId);
+        if (!canUseIvrVoice(voiceId, workspaceId, voices ?? [])) return json({ error: 'voice_not_in_workspace' }, 403);
+        const elevenKey = await resolveElevenLabsKey(admin, workspaceId);
         if (!elevenKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
         bytes = await generateTts(text, voiceId, elevenKey);
       } else if (body.audio_b64) {
@@ -122,7 +128,7 @@ Deno.serve(async (req) => {
       } else {
         return json({ error: "missing_audio" }, 400);
       }
-      const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      const path = `${workspaceId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const contentType = ext === "mp3" ? "audio/mpeg" : ext === "wav" ? "audio/wav" : ext === "m4a" ? "audio/mp4" : "audio/webm";
       const bucket = "ivr-audio";
       let upErr = (await admin.storage.from(bucket).upload(path, bytes, { contentType, upsert: false })).error;
@@ -150,7 +156,7 @@ Deno.serve(async (req) => {
     const { data: rows } = await admin
       .from("user_api_keys")
       .select("service_name, api_key")
-      .eq("user_id", user.id);
+      .eq("user_id", workspaceId);
     const twRow = (rows ?? []).find((r: any) => r.service_name === "Twilio");
     const [twSid, twToken, twNumber] = String(twRow?.api_key ?? "").split(":");
     if (!twSid || !twToken || !twNumber) {
@@ -161,10 +167,15 @@ Deno.serve(async (req) => {
     const twiml = `<Response><Play>${audioUrl}</Play></Response>`;
     const auth = "Basic " + b64encode(`${twSid}:${twToken}`);
     let ok = 0, failed = 0;
+    let whatsappOk = 0, whatsappFailed = 0;
     const failures: Array<{ phone: string; reason: string }> = [];
     for (const l of leads) {
       const to = normE164(l.phone);
       if (!to) { failed++; continue; }
+      if (l.id) {
+        const { data: lead } = await userClient.from('leads').select('id, phone_number').eq('id', l.id).eq('workspace_owner_id', workspaceId).maybeSingle();
+        if (!lead || normE164(lead.phone_number) !== to) { failed++; continue; }
+      }
       try {
         const params = new URLSearchParams({ To: to, From: twNumber, Twiml: twiml });
         const r = await fetch(
@@ -182,9 +193,16 @@ Deno.serve(async (req) => {
         failed++;
         failures.push({ phone: to, reason: String(e?.message ?? e) });
       }
+      if (includeWhatsapp) {
+        if (!l.id) { whatsappFailed++; continue; }
+        const { data: inbound } = await admin.from('messages').select('id').eq('lead_id', l.id).eq('direction', 'inbound').eq('channel', 'whatsapp').gte('created_at', new Date(Date.now() - 86400000).toISOString()).limit(1);
+        if (!inbound?.length) { whatsappFailed++; continue; }
+        const { data: sent, error: sendError } = await userClient.functions.invoke('send-whatsapp', { body: { lead_id: l.id, tenant_id: workspaceId, force_official: true, audio_url: audioUrl } });
+        if (!sendError && sent?.success) whatsappOk++; else whatsappFailed++;
+      }
     }
 
-    return json({ ok, failed, total: leads.length, audio_url: audioUrl, failures: failures.slice(0, 5) });
+    return json({ ok, failed, whatsapp_ok: whatsappOk, whatsapp_failed: whatsappFailed, total: leads.length, audio_url: audioUrl, failures: failures.slice(0, 5) });
   } catch (e: any) {
     console.error("[ivr-broadcast] fatal", e);
     return json({ error: e?.message ?? "internal_error" }, 500);
