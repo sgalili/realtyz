@@ -1,3 +1,4 @@
+import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
 import { CampaignChannelPicker, DISTRIBUTION_CHANNELS, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
@@ -1820,16 +1821,13 @@ const InlineComposer = ({
         customInstructions.trim(),
         rotateNote,
       ].filter(Boolean).join('\n\n');
-      const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: {
+      const { data, error } = await generateSocialDraft({
           topic,
           platform: channel.id,
           customInstructions: mergedInstructions || undefined,
           selectedListingId: usesGroupTopics ? undefined : (selectedListingId || undefined),
           listingFocusOnly: !usesGroupTopics && !!selectedListingId,
-        },
-        signal: ctrl.signal,
-      });
+      }, ctrl.signal);
       if (ctrl.signal.aborted) return; // killed by the operator
       if (error) throw error;
       if (data?.listing_unavailable) {

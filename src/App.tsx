@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
+import { SocialDraftChargeDialog } from '@/components/campaigns/SocialDraftChargeDialog';
 import { AppFooter } from "@/components/AppFooter";
 import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
@@ -502,6 +503,7 @@ const App = () => (
             </WorkspaceScope>
             </Suspense>
             <AppFooter />
+            <SocialDraftChargeDialog />
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>
