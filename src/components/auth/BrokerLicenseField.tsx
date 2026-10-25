@@ -35,5 +35,6 @@ export function BrokerLicenseField({ value, onChange, onVerified, compact = fals
       {status === 'error' && <span role="alert" className="text-destructive">{message}</span>}
     </div>
     <ClosingSplitNote registration />
+    <BrokerTestLinks />
   </div>;
 }
