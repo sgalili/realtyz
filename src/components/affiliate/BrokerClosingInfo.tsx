@@ -1,7 +1,7 @@
 // Informational tooltip beside closing-commission sections. Closing fees
 // (0.2%–2% of the deal, set by the advertiser) are a licensed-brokerage
 // activity; this links interested users to the official licensing registry.
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { HelpCircle, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
