@@ -1,0 +1,74 @@
+CREATE TABLE public.social_draft_batches (
+ workspace_owner_id uuid NOT NULL, platform text NOT NULL CHECK (platform IN ('facebook','instagram')), target_key text NOT NULL,
+ drafts_used integer NOT NULL DEFAULT 0 CHECK (drafts_used >= 0), pending_request uuid, pending_until timestamptz,
+ PRIMARY KEY (workspace_owner_id,platform,target_key)
+);
+GRANT SELECT ON public.social_draft_batches TO authenticated;
+GRANT ALL ON public.social_draft_batches TO service_role;
+ALTER TABLE public.social_draft_batches ENABLE ROW LEVEL SECURITY;
+CREATE POLICY social_batches_read ON public.social_draft_batches FOR SELECT TO authenticated USING (public.can_access_workspace_owner(workspace_owner_id));
+CREATE TABLE public.social_draft_requests (
+ id uuid PRIMARY KEY, workspace_owner_id uuid NOT NULL, user_id uuid NOT NULL, platform text NOT NULL, target_key text NOT NULL,
+ status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed','failed')), content text, created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT ON public.social_draft_requests TO authenticated;
+GRANT ALL ON public.social_draft_requests TO service_role;
+ALTER TABLE public.social_draft_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY social_requests_read ON public.social_draft_requests FOR SELECT TO authenticated USING (user_id=auth.uid() AND public.can_access_workspace_owner(workspace_owner_id));
+CREATE OR REPLACE FUNCTION public.begin_social_draft(_request uuid,_platform text,_target text,_confirm boolean DEFAULT false) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE w uuid; b public.social_draft_batches; r public.social_draft_requests; balance numeric; price numeric;
+BEGIN
+ w:=public.current_workspace_owner();
+ IF auth.uid() IS NULL OR NOT public.can_access_workspace_owner(w) THEN RAISE EXCEPTION 'not allowed'; END IF;
+ IF _platform NOT IN ('facebook','instagram') OR length(_target)>200 OR length(_target)=0 THEN RAISE EXCEPTION 'invalid draft target'; END IF;
+ INSERT INTO public.social_draft_batches(workspace_owner_id,platform,target_key) VALUES(w,_platform,_target) ON CONFLICT DO NOTHING;
+ SELECT * INTO b FROM public.social_draft_batches WHERE workspace_owner_id=w AND platform=_platform AND target_key=_target FOR UPDATE;
+ SELECT * INTO r FROM public.social_draft_requests WHERE id=_request;
+ IF FOUND THEN
+  IF r.user_id<>auth.uid() OR r.workspace_owner_id<>w OR r.platform<>_platform OR r.target_key<>_target THEN RAISE EXCEPTION 'request mismatch'; END IF;
+  IF r.status='completed' THEN RETURN jsonb_build_object('content',r.content,'cached',true); END IF;
+  IF r.status='failed' THEN RETURN jsonb_build_object('error','failed_request'); END IF;
+ END IF;
+ IF b.pending_request IS NOT NULL AND b.pending_until>now() THEN RETURN jsonb_build_object('error','generation_in_progress'); END IF;
+ IF b.drafts_used>0 AND b.drafts_used%3=0 AND NOT _confirm THEN RETURN jsonb_build_object('confirmation_required',true,'credits',2); END IF;
+ SELECT price_agorot/100.0 INTO price FROM public.action_pricing WHERE action_key='social_post';
+ IF price IS NULL OR price<>0.08 THEN RAISE EXCEPTION 'social pricing unavailable'; END IF;
+ IF b.drafts_used%3=0 THEN
+  SELECT balance_ils INTO balance FROM public.credit_wallets WHERE user_id=w;
+  IF coalesce(balance,0)<price THEN RETURN jsonb_build_object('error','insufficient_credits'); END IF;
+ END IF;
+ INSERT INTO public.social_draft_requests(id,workspace_owner_id,user_id,platform,target_key) VALUES(_request,w,auth.uid(),_platform,_target) ON CONFLICT DO NOTHING;
+ UPDATE public.social_draft_batches SET pending_request=_request,pending_until=now()+interval '2 minutes' WHERE workspace_owner_id=w AND platform=_platform AND target_key=_target;
+ RETURN jsonb_build_object('reserved',true,'request_id',_request);
+END $$;
+REVOKE ALL ON FUNCTION public.begin_social_draft(uuid,text,text,boolean) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.begin_social_draft(uuid,text,text,boolean) TO authenticated;
+CREATE OR REPLACE FUNCTION public.finish_social_draft(_request uuid,_content text DEFAULT NULL) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE r public.social_draft_requests; b public.social_draft_batches; balance numeric; price numeric;
+BEGIN
+ IF auth.role()<>'service_role' THEN RAISE EXCEPTION 'service only'; END IF;
+ SELECT * INTO r FROM public.social_draft_requests WHERE id=_request;
+ IF NOT FOUND THEN RAISE EXCEPTION 'unknown request'; END IF;
+ SELECT * INTO b FROM public.social_draft_batches WHERE workspace_owner_id=r.workspace_owner_id AND platform=r.platform AND target_key=r.target_key FOR UPDATE;
+ SELECT * INTO r FROM public.social_draft_requests WHERE id=_request FOR UPDATE;
+ IF r.status='completed' THEN RETURN jsonb_build_object('content',r.content,'cached',true); END IF;
+ IF b.pending_request IS DISTINCT FROM _request THEN RAISE EXCEPTION 'reservation expired'; END IF;
+ IF _content IS NULL OR length(trim(_content))=0 THEN
+  UPDATE public.social_draft_requests SET status='failed' WHERE id=_request;
+  UPDATE public.social_draft_batches SET pending_request=NULL,pending_until=NULL WHERE workspace_owner_id=r.workspace_owner_id AND platform=r.platform AND target_key=r.target_key;
+  RETURN jsonb_build_object('failed',true);
+ END IF;
+ IF b.drafts_used%3=0 THEN
+  SELECT price_agorot/100.0 INTO price FROM public.action_pricing WHERE action_key='social_post';
+  SELECT balance_ils INTO balance FROM public.credit_wallets WHERE user_id=r.workspace_owner_id FOR UPDATE;
+  IF price IS NULL OR price<>0.08 OR coalesce(balance,0)<price THEN RAISE EXCEPTION 'insufficient credits'; END IF;
+  PERFORM public.charge_action(r.workspace_owner_id,'social_post',1,_request);
+ END IF;
+ UPDATE public.social_draft_requests SET status='completed',content=_content WHERE id=_request;
+ UPDATE public.social_draft_batches SET drafts_used=drafts_used+1,pending_request=NULL,pending_until=NULL WHERE workspace_owner_id=r.workspace_owner_id AND platform=r.platform AND target_key=r.target_key;
+ RETURN jsonb_build_object('content',_content,'credits_charged',CASE WHEN b.drafts_used%3=0 THEN 2 ELSE 0 END);
+END $$;
+REVOKE ALL ON FUNCTION public.finish_social_draft(uuid,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.finish_social_draft(uuid,text) TO service_role;
