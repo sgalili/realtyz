@@ -7,7 +7,7 @@ import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServi
 export const DISTRIBUTION_CHANNELS = [
   { id: 'facebook', label: 'Facebook' },
   { id: 'instagram', label: 'Instagram' },
-  { id: 'whatsapp', label: 'WhatsApp הרשמי' },
+  { id: 'whatsapp', label: 'WhatsApp' },
   { id: 'sms', label: 'SMS' },
   { id: 'ivr', label: 'IVR' },
   { id: 'email', label: 'אימייל' },
