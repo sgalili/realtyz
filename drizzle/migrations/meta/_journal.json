@@ -561,6 +561,13 @@
       "when": 1792914286107,
       "tag": "0079_licensed_only_closing_access",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1792914614783,
+      "tag": "0080_workspace_closing_price_display",
+      "breakpoints": true
     }
   ]
 }
