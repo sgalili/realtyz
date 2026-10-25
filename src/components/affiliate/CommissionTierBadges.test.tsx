@@ -22,7 +22,7 @@ describe('commission visibility', () => {
     } else {
       // Signed-in users see the labels next to the grayed icons.
       expect(screen.getByText('ללא עמלה')).toBeTruthy();
-      expect(screen.getByText('למתווכים בלבד')).toBeTruthy();
+      expect(screen.getByText('למתווכים')).toBeTruthy();
     }
     expect(container.querySelector('span[title="שיחת טלפון"].lead-no-fee')).toBeTruthy();
     expect(screen.queryByText(/900/)).toBeNull();

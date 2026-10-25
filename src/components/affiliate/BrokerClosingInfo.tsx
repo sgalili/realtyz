@@ -1,7 +1,7 @@
 // Informational tooltip beside closing-commission sections. Closing fees
 // (0.2%–2% of the deal, set by the advertiser) are a licensed-brokerage
 // activity; this links interested users to the official licensing registry.
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { HelpCircle, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -36,11 +36,11 @@ export function BrokerTestLinks({ className = '' }: { className?: string }) {
 }
 
 /** The nested trigger stops activation of the surrounding listing-pricing control. */
-export function RestrictedClosingReward({ children, className = '', showLabel = true }: { children?: ReactNode; className?: string; showLabel?: boolean }) {
+export function RestrictedClosingReward({ children, className = '', showLabel = true, label = 'למתווכים בלבד', iconStyle }: { children?: ReactNode; className?: string; showLabel?: boolean; label?: string; iconStyle?: CSSProperties }) {
   const [open, setOpen] = useState(false);
   return <>
     <span role="button" tabIndex={0} aria-label="סגירת עסקה · למתווכים בלבד" title="סגירת עסקה" className={`inline-flex cursor-pointer items-center gap-1 text-muted-foreground ${className}`} onClick={event => { event.stopPropagation(); setOpen(true); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); setOpen(true); } }}>
-      {children ?? <><Trophy aria-label="סגירת עסקה" className="h-3.5 w-3.5 shrink-0" />{showLabel && <span className="text-xs">למתווכים בלבד</span>}</>}
+      {children ?? <><Trophy aria-label="סגירת עסקה" className="h-3.5 w-3.5 shrink-0" style={iconStyle} />{showLabel && <span className="text-xs text-foreground">{label}</span>}</>}
     </span>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent dir="rtl" onClick={event => event.stopPropagation()} className="w-[calc(100%-2rem)] max-w-md">
