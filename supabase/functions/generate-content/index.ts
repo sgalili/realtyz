@@ -716,7 +716,10 @@ ${EMOJI_BULLET_LAW}
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } finally {
-    if (reservedDraft) await adminClient().rpc('finish_social_draft', { _request: reservedDraft, _content: null }).catch(() => {});
+    if (reservedDraft) {
+      try { await adminClient().rpc('finish_social_draft', { _request: reservedDraft, _content: null }); }
+      catch { /* preserve the original error response */ }
+    }
   }
 });
 
