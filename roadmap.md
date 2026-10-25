@@ -1,5 +1,6 @@
 # Campaign card actions
 # IVR property script
+- [ ] Add optional official WhatsApp audio copy, total-credit submit estimates, Israeli v3-only default voices, workspace-only custom voices, regeneration and dropdown/button refinements; verify without real sends.
 - [x] Dedicated IVR generation bypasses social templates/emojis/signatures; TTS receives only reviewed text. Deployed and authenticated 446px real נווה מגן selection produces four concise spoken sentences with exact property facts and no emojis/licence. Seven tests and preview build pass; no audio generated or calls dispatched.
 # Call calendar
 - [x] Calls default to calendar with list toggle; authorized future-call RPC and scheduler reminder preparation reuse meetings/tour tick. Three tests pass; authenticated 446px save/reload/readback/delete succeeds without sending. Preview build OK.
