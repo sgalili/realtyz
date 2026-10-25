@@ -1,4 +1,6 @@
 # Campaign card actions
+# IVR property script
+- [x] Dedicated IVR generation bypasses social templates/emojis/signatures; TTS receives only reviewed text. Deployed and authenticated 446px real נווה מגן selection produces four concise spoken sentences with exact property facts and no emojis/licence. Seven tests and preview build pass; no audio generated or calls dispatched.
 # Call calendar
 - [x] Calls default to calendar with list toggle; authorized future-call RPC and scheduler reminder preparation reuse meetings/tour tick. Three tests pass; authenticated 446px save/reload/readback/delete succeeds without sending. Preview build OK.
 - [ ] Enable live call reminder delivery: requires purpose-specific approved official WhatsApp template `call_reminder` (3 body variables: scheduler name/date/time), absent in current template cache. Scheduled calls report missing-template status; no reminder was sent.

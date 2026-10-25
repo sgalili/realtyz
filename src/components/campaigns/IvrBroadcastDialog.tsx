@@ -256,20 +256,6 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     const parts = [l.property_title, l.address || l.neighborhood, l.city].filter(Boolean);
     return parts.join(' · ') || 'נכס ללא כותרת';
   };
-  const buildTtsPrompt = (raw: string): string => {
-    if (!selectedListing) return raw;
-    const l = selectedListing;
-    const ctx: string[] = [];
-    if (l.property_title) ctx.push(l.property_title);
-    if (l.address) ctx.push(`כתובת: ${l.address}`);
-    if (l.neighborhood) ctx.push(`שכונה: ${l.neighborhood}`);
-    if (l.city) ctx.push(`עיר: ${l.city}`);
-    if (l.rooms) ctx.push(`${l.rooms} חדרים`);
-    if (l.sqm) ctx.push(`${l.sqm} מ"ר`);
-    if (l.asking_price) ctx.push(`מחיר מבוקש: ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
-    const header = `הקשר הנכס לקמפיין: ${ctx.join(', ')}.`;
-    return `${header}\n\n${raw}`;
-  };
 
   // Filtered listings for dropdown free-search
   const filteredListings = useMemo(() => {
@@ -294,7 +280,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       if (l.rooms) facts.push(`${l.rooms} חדרים`);
       if (l.sqm) facts.push(`${l.sqm} מ"ר`);
       if (l.asking_price) facts.push(`מחיר ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
-      const topic = `כתוב סקריפט IVR קצר, ברור וקולח בעברית (2-4 משפטים, עד 35 שניות בהקראה) לקידום הנכס. עובדות: ${facts.join(', ')}. סיים בקריאה לפעולה להשאיר עניין בלחיצה אחת. ללא אימוג'ים, ללא מקפים כפולים, ללא placeholders.`;
+      const topic = `כתוב הודעת מכירה קולית חד-צדדית קצרה למי שמתעניין בנכס הזה בלבד, 2-4 משפטים עד כ-35 שניות בהקראה. עובדות: ${facts.join(', ')}. ללא אימוג׳ים, עיצוב פוסט, חתימה, טלפון, רישיון או מלל מיותר. סיים בהזמנה קצרה לתיאום ביקור, ללא שאלות או הוראות ללחיצה על מקש.`;
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: { topic, platform: 'ivr', selectedListingId: l.id, listingFocusOnly: true },
       });
@@ -362,7 +348,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (!ttsText.trim()) { toast.error('הקלידו טקסט'); return; }
     setGeneratingTts(true);
     try {
-      const finalText = buildTtsPrompt(ttsText.trim());
+      const finalText = ttsText.trim();
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
         body: { source: 'tts', text: finalText, voice_id: agentVoiceId, generate_only: true },
       });

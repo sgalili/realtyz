@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { IVR_SCRIPT_RULES, cleanIvrScript } from '../_shared/ivrScript.ts';
 import { completedPostText, evidencedPropertyDetails, POST_GENERATION_OPTIONS } from '../_shared/postGeneration.ts';
 import { isProjectTarget, projectCampaignTargets } from '../_shared/projectCampaignTargets.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -52,6 +53,7 @@ serve(async (req) => {
   try {
     const { topic, platform, customInstructions, selectedListingId, listingFocusOnly, skipLicenseFooter, purpose } = await req.json();
     const isFirstComment = purpose === 'first_comment';
+    const isIvrScript = String(platform).toLowerCase() === 'ivr';
     if (!topic || !platform) {
       return new Response(JSON.stringify({ error: "topic and platform are required" }), {
         status: 400,
@@ -402,7 +404,11 @@ LAYOUT LAW (mandatory):
 ${EMOJI_BULLET_LAW}
 `;
 
-    const userPrompt = isFirstComment ? [
+    const userPrompt = isIvrScript ? [
+      promotedBlock,
+      `בקשת התסריט: ${topic}`,
+      IVR_SCRIPT_RULES,
+    ].filter(Boolean).join('\n\n') : isFirstComment ? [
       promotedBlock,
       customBlock,
       `כתוב את התגובה הראשונה בלבד לפי הוראות שתי השורות. אין להחיל עליה תבנית פוסט, אמוג'ים, חתימה או רישיון. אין להמציא פרטים או לכלול מספר בית.`,
@@ -453,16 +459,16 @@ ${EMOJI_BULLET_LAW}
               // Live web-research and uploaded-document intelligence tied to
               // this post's promoted listing location (city / neighborhood /
               // address / title) — overrides generic guidance with real data.
-              await (await import("../_shared/research-intel.ts")).fetchResearchIntelBlock(userId, [
+              isIvrScript ? '' : await (await import("../_shared/research-intel.ts")).fetchResearchIntelBlock(userId, [
                 promotedListing?.city,
                 promotedListing?.neighborhood,
                 promotedListing?.address,
                 promotedListing?.property_title,
               ]),
-              isFirstComment ? `אתה כותב תגובה ראשונה קצרה בעברית בשם ${brokerName}. פלט התגובה בלבד, ללא ניתוח או הסברים. הוראות פורמט התגובה מהמשתמש מחייבות. עובדות רק מהנכס שנבחר. תבניות פוסט והוראות שיחה עם לידים אינן חלות על תגובה ראשונה.` : systemPrompt,
+              isIvrScript ? IVR_SCRIPT_RULES : isFirstComment ? `אתה כותב תגובה ראשונה קצרה בעברית בשם ${brokerName}. פלט התגובה בלבד, ללא ניתוח או הסברים. הוראות פורמט התגובה מהמשתמש מחייבות. עובדות רק מהנכס שנבחר. תבניות פוסט והוראות שיחה עם לידים אינן חלות על תגובה ראשונה.` : systemPrompt,
               // Rich professional property-post template + strict single-emoji law.
-              promotedListing && !isFirstComment ? RICH_TEMPLATE_CONTRACT : "",
-              isFirstComment ? '' : await fetchLearnedOverridesBlock(admin as any, workspaceOwnerId),
+              promotedListing && !isFirstComment && !isIvrScript ? RICH_TEMPLATE_CONTRACT : "",
+              isFirstComment || isIvrScript ? '' : await fetchLearnedOverridesBlock(admin as any, workspaceOwnerId),
             ]
               .filter(Boolean)
               .join("\n\n"),
@@ -499,6 +505,12 @@ ${EMOJI_BULLET_LAW}
     let content: string;
     try { content = completedPostText(data); }
     catch (error) { return jsonError(error instanceof Error ? error.message : 'לא התקבל תוכן תקין.', 422); }
+    // Spoken scripts must never pass through social emoji/signature enforcement.
+    if (isIvrScript) {
+      content = cleanIvrScript(content);
+      if (!content) return jsonError('לא התקבל תסריט קולי תקין.', 422);
+      return new Response(JSON.stringify({ content, requires_human_review: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     if (isFirstComment) return new Response(JSON.stringify({ content, requires_human_review: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     // Persona post-processing: strip bullets/markdown/dashes, collapse blank lines.
