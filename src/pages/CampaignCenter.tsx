@@ -1,4 +1,5 @@
 import { generateSocialDraft } from '@/lib/socialDraftGeneration';
+import { selectedCampaignChannels } from '@/lib/campaignCreationChannel';
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
 import { CampaignChannelPicker, DISTRIBUTION_CHANNELS, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
@@ -8055,21 +8056,7 @@ const CampaignCenter = () => {
     try { localStorage.setItem(connectionStorageKey('rz-connected-channel-names', user.id, workspaceOwnerId), JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
   }, [channelAccountNames, user?.id, workspaceOwnerId]);
 
-  // Default-select Facebook when nothing is picked yet. Facebook publishes via
-  // the native Page token resolved server-side, so we never gate the default
-  // selection on the async connection probe.
-  const defaultChannelApplied = useRef(false);
-  useEffect(() => {
-    // Runs once: after that the user's own toggles are respected, so
-    // deselecting every channel stays deselected.
-    if (defaultChannelApplied.current || pickedChannel) return;
-    defaultChannelApplied.current = true;
-    const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
-    if (fb) {
-      setPickedChannel(fb);
-      setPickedChannelIds((prev) => (prev.has('facebook') ? prev : new Set(prev).add('facebook')));
-    }
-  }, [pickedChannel]);
+  // Only an explicit channel selection may mount a composer.
 
 
 
@@ -8406,7 +8393,7 @@ const CampaignCenter = () => {
     if (channel === 'facebook' || channel === 'instagram') {
       const card = CHANNEL_CARDS.find((c) => c.id === channel);
       if (card) setPickedChannel(card);
-      setPickedChannelIds(new Set([channel]));
+      setPickedChannelIds(selectedCampaignChannels(channel));
     }
     if (channel === 'ivr') setIvrOpen(true);
     setSearchParams(next, { replace: true });
@@ -8428,13 +8415,12 @@ const CampaignCenter = () => {
   const channelParam = searchParams.get('channel');
   useEffect(() => {
     if (!channelParam) return;
-    // Only the distribution channels drive the wizard; legacy cards (instagram,
-    // x, youtube…) keep their previous behavior of preselecting the card only.
+    // Deep links replace the selection instead of retaining another platform.
     if (!DISTRIBUTION_CHANNELS.some((c) => c.id === channelParam)) return;
     const card = CHANNEL_CARDS.find((c) => c.id === channelParam);
     if (card) {
-      setPickedChannel((prev) => prev ?? card);
-      setPickedChannelIds((prev) => (prev.has(card.id) ? prev : new Set([...prev, card.id])));
+      setPickedChannel(card);
+      setPickedChannelIds(selectedCampaignChannels(card.id));
     }
     // Deep links also select the wizard channel so the connection/composer step
     // mounts directly instead of stopping at the channel picker.
@@ -8710,22 +8696,8 @@ const CampaignCenter = () => {
                 setVoiceDialChannel(c);
                 return;
               }
-              // Toggle multi-select; clicking an already-selected channel deselects it.
-              setPickedChannelIds((prev) => {
-                const next = new Set(prev);
-                if (next.has(c.id)) {
-                  next.delete(c.id);
-                  if (pickedChannel?.id === c.id) {
-                    const remainingId = [...next][next.size - 1];
-                    const remaining = remainingId ? CHANNEL_CARDS.find((x) => x.id === remainingId) ?? null : null;
-                    setPickedChannel(remaining);
-                  }
-                } else {
-                  next.add(c.id);
-                  setPickedChannel(c);
-                }
-                return next;
-              });
+              setPickedChannel(c);
+              setPickedChannelIds(selectedCampaignChannels(c.id));
             }}
 
             onConnect={handleConnectChannel}
@@ -8733,10 +8705,13 @@ const CampaignCenter = () => {
             connected={connectedChannels}
             accountNames={channelAccountNames}
             socialProfiles={socialAccountProfiles}
-            onAddFacebookPage={() => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!); }}
+            onAddFacebookPage={() => {
+              const facebook = CHANNEL_CARDS.find((c) => c.id === 'facebook');
+              if (facebook) void handleConnectChannel(facebook);
+            }}
           />
           </div>
-          {(wizardChannel === 'facebook' || wizardChannel === 'instagram') && fbReady && pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
+          {(wizardChannel === 'facebook' || wizardChannel === 'instagram') && fbReady && pickedChannel?.id === wizardChannel && pickedChannelIds.has(wizardChannel) && (() => {
             const propertiesParam = searchParams.get('properties') || '';
             let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
             let assignments: ComposerAssignment[] = [];
@@ -8754,18 +8729,9 @@ const CampaignCenter = () => {
                 assignments = saved.assignments;
               }
             }
-            // Single composer when no multi-property fan-out. When more than
-            // one platform is picked, every platform's form is stacked
-            // vertically, each with its own logo header.
+            // Multiple property drafts may share this screen, but only for
+            // the single channel explicitly selected in the picker.
             if (propertyIds.length <= 1 && assignments.length <= 1) {
-              const stacked = CHANNEL_CARDS.filter(
-                (c) => pickedChannelIds.has(c.id) && c.id !== 'ivr' && c.id !== 'ai-call',
-              );
-              const ordered = [
-                pickedChannel,
-                ...stacked.filter((c) => c.id !== pickedChannel.id),
-              ];
-              if (ordered.length <= 1) {
                 return (
                   <InlineComposer
                     key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
@@ -8776,23 +8742,6 @@ const CampaignCenter = () => {
                     onOpenScheduleCalendar={() => handleChange('calendar')}
                   />
                 );
-              }
-              return (
-                <div className="space-y-4">
-                  {ordered.map((c) => (
-                    <StackedComposerSection
-                      key={`stacked-${c.id}-${composerResetTick}`}
-                      composerKey={`composer-${c.id}-${composerResetTick}`}
-                      channel={c}
-                      primary={c.id === pickedChannel.id}
-                      brandName={brandName}
-                      socialProfiles={socialAccountProfiles}
-                      onConfirm={(p) => setConfirmPayload(p)}
-                      onOpenScheduleCalendar={() => handleChange('calendar')}
-                    />
-                  ))}
-                </div>
-              );
             }
 
             // One composer block per scheduled assignment — each tied to its
