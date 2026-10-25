@@ -1,6 +1,7 @@
 export const IVR_MODEL_ID = 'eleven_v3';
 // Public Hebrew Voice Library entries verified with the provider, never private clones.
 export const IVR_DEFAULT_VOICES = [
+  { id: 'rita', label: 'ריטה', voice_id: 'Tbj9UQjXon5RB9MPEyc2', gender: 'female' },
   { id: 'itamar', label: 'איתמר', voice_id: 'l7Q9rbdCC6j3J5dNlOOg', gender: 'male' },
   { id: 'nimrod', label: 'נמרוד', voice_id: 'ZiofZHcEBTn5sRySe5h8', gender: 'male' },
 ] as const;
