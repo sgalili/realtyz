@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       }
       if (storageFailed) { results.push({ user_id: m.id, phone: m.phone, status: "storage_failed" }); continue; }
       const { data: rows, error: pErr } = await admin.rpc("admin_purge_user_data", { _uid: m.id });
-      if (pErr) { console.error('admin purge failed', pErr.message); results.push({ user_id: m.id, phone: m.phone, status: "purge_failed" }); continue; }
+      if (pErr) { console.error('admin purge failed', pErr.message); return json({ error: 'purge_failed', detail: pErr.message }, 500); }
       const { error: dErr } = await admin.auth.admin.deleteUser(m.id);
       results.push({ user_id: m.id, phone: m.phone, status: dErr ? "delete_failed" : "deleted", rows: rows as number });
     }
