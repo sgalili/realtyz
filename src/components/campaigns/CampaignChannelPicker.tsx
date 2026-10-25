@@ -27,10 +27,10 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
       <div className="flex items-center gap-3">
         {channel && <Button type="button" variant="ghost" size="icon" onClick={onBack} aria-label="חזרה לבחירת ערוץ"><ArrowRight /></Button>}
         <div className="min-w-0 flex-1">
-          <h2 className="flex flex-wrap items-center gap-2 text-xl font-bold text-foreground">
-            {channel && <CampaignServiceIcon channel={channel.id} className="h-6 w-6" />}
-            {channel ? `הגדרת קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}
-            {channel && <span className="basis-full text-sm font-normal text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span>}
+          <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
+            {channel && <CampaignServiceIcon channel={channel.id} className="h-6 w-6 shrink-0" />}
+            <span className="min-w-0">{channel ? `הגדרת קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}</span>
+            {channel && <span className="ms-auto shrink-0 text-sm font-normal text-muted-foreground">{price ? <><span className="text-base font-bold text-foreground">{formatCampaignCredits(price.credits).match(/^[\d.,]+/)?.[0]}</span>{formatCampaignCredits(price.credits).replace(/^[\d.,]+/, '')} ל{price.unit}</> : 'המחירון אינו זמין'}</span>}
           </h2>
         </div>
       </div>

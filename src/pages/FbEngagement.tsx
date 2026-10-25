@@ -347,7 +347,7 @@ export default function FbEngagement() {
       {historical.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">אימון סימולציה: מה מוח ה-AI היה עונה בשיחה הזו</h2>
-          <p className="text-sm text-muted-foreground">קלפי אימון בלבד. לא מבוצעת כתיבה חזרה ל-Facebook.</p>
+          <p className="text-sm text-muted-foreground">כרטיסי אימון בלבד. לא מבוצעת כתיבה חזרה ל-Facebook.</p>
           {historical.map((c) => (
             <HistoricalSimCard
               key={c.id}

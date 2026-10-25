@@ -344,7 +344,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   <HelpCircle className="h-4 w-4 text-[hsl(var(--nav-help))]" />הדרכה
                 </Button>
 
-                {identity.canSwitch && <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-9 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1" />}
+                {identity.canSwitch && <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-[31px] [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1" />}
               </div>
 
             </SidebarGroupContent>
