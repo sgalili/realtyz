@@ -92,6 +92,9 @@ Deno.serve(async (req) => {
 
     const publicProperty = (row: Record<string, any>) => {
       if (snapshot && row.id === listing.id) {
+        // A lock-in taken before a closing fee existed carries no rate; show the ad's current closing fee then.
+        const lockedClosing = Number(snapshot.tier4_amount) > 0;
+        if (!lockedClosing) snapshot = { ...snapshot, tier4_amount: row.affiliate_tier4_amount, tier4_type: row.affiliate_tier4_type, terms: { ...(snapshot.terms ?? {}), deal_closing_commission: row.features?.deal_closing_commission ?? null } };
         const terms = snapshot.terms as Record<string, any> | null;
         row = { ...row,
           affiliate_tier1_amount: snapshot.tier1_amount, affiliate_tier2_amount: snapshot.tier2_amount,
