@@ -554,6 +554,13 @@
       "when": 1792912726675,
       "tag": "0078_notification_weekly_quiet_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1792914286107,
+      "tag": "0079_licensed_only_closing_access",
+      "breakpoints": true
     }
   ]
 }

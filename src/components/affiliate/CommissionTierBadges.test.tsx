@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import CommissionTierBadges, { RewardIcons } from './CommissionTierBadges';
 
@@ -31,13 +31,22 @@ describe('commission visibility', () => {
     rerender(<CommissionTierBadges tiers={{ ...tiers, tier3: 30 }} />);
     expect(container.querySelectorAll('[data-commission-icons] span[title]')).toHaveLength(4);
   });
-  it('hides closing amount, icon and label for unlicensed users', () => {
+  it('keeps closing locked for unlicensed users', () => {
     render(<CommissionTierBadges tiers={tiers} />);
-    expect(screen.queryByTitle(/סגירת עסקה/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'סגירת עסקה · למתווכים בלבד' })).toBeTruthy();
     expect(screen.queryByText(/720/)).toBeNull();
     expect(screen.queryByTitle(/שיחת טלפון/)).toBeNull();
     expect(screen.getByTitle(/שדות מטופס בעמוד נחיתה/)).toBeTruthy();
     expect(screen.getByTitle(/סינון בווטסאפ/)).toBeTruthy();
+  });
+  it.each(['guest', 'super_admin', 'developer', 'property_owner', 'property_seeker', 'affiliate', 'agent'])('redacts closing prices even if supplied to the indicator for %s', role => {
+    access.guest = role === 'guest'; access.roles = [role]; access.admin = role === 'super_admin';
+    render(<RewardIcons types={{ closing: true }} prices={{ closing: 10000 }} zeroTypes={{ closing: true }} />);
+    expect(screen.queryByText('₪10,000')).toBeNull();
+    expect(screen.queryByText('ללא עמלה')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'סגירת עסקה · למתווכים בלבד' }));
+    expect(screen.getByRole('link', { name: /קורס הכנה/ }).getAttribute('href')).toContain('easytest.co.il');
+    expect(screen.getByRole('link', { name: /הרשמה למבחן/ }).getAttribute('href')).toBe('https://www.gov.il/he/service/registration_for_examination_in_real_estate_law');
   });
   it('shows closing only with verified server access', () => {
     access.allowed = true;
@@ -50,6 +59,7 @@ describe('commission visibility', () => {
     expect(screen.queryByLabelText(/סגירת עסקה/)).toBeNull();
   });
   it('closing prices always render as whole amounts without decimals', () => {
+    access.allowed = true;
     render(<RewardIcons types={{ closing: true }} prices={{ closing: 720.6 }} closingLevel={1} label={null} />);
     expect(screen.getByText('₪721')).toBeTruthy();
     expect(screen.queryByText(/720\.6/)).toBeNull();

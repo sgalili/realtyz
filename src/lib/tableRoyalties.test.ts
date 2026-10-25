@@ -8,7 +8,7 @@ describe('table royalty visibility', () => {
   });
   it('signed-in non-brokers see net lead prices but no closing price', () => {
     const result = tableRoyalties(types, amounts, true, false);
-    expect(result.types.closing).toBe(false);
+    expect(result.types.closing).toBe(true);
     expect(result.prices).toEqual({ form: 80, whatsapp: 0, phone: 160, closing: undefined });
   });
   it('authorized brokers also see net closing commission', () => {
