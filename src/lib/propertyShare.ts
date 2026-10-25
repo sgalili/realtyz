@@ -18,6 +18,29 @@ export type ShareRecipient = {
   email?: string | null;
 };
 
+/** Pre-approved Meta template selection for a WhatsApp share. */
+export type ShareWaTemplate = {
+  name: string;
+  language: string;
+  body_params: string[];
+};
+
+/**
+ * Fills per-recipient tokens inside a template variable value. Supports the
+ * same tags the template picker hints at: [שם_פרטי] / [שם] / [נכס] / [קישור] / [הודעה].
+ */
+export function personalizeShareParam(
+  param: string,
+  ctx: { name?: string | null; property?: string | null; link?: string | null; message?: string | null },
+): string {
+  return String(param ?? '')
+    .replace(/\[שם_פרטי\]/g, String(ctx.name ?? '').trim())
+    .replace(/\[שם\]/g, String(ctx.name ?? '').trim())
+    .replace(/\[נכס\]/g, String(ctx.property ?? ''))
+    .replace(/\[קישור\]/g, String(ctx.link ?? ''))
+    .replace(/\[הודעה\]/g, String(ctx.message ?? ''));
+}
+
 /** Ensures every selected property has a durable listing id for the campaign composer. */
 export async function prepareCampaignListingIds(results: UnifiedResult[]): Promise<string[]> {
   const ids: string[] = [];
