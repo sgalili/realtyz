@@ -11,7 +11,7 @@ import { BrokerTestLinks } from './BrokerClosingInfo';
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
 
-export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className }: {
+export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange }: {
   className?: string;
   dealType: string | null | undefined;
   price: number;
@@ -20,6 +20,8 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   onChange: (percent: number) => void;
   dualMode?: boolean;
   onValueChange?: (value: number, mode: 'fixed' | 'percent') => void;
+  open?: boolean;
+  onOpenChange?: (next: boolean) => void;
 }) {
   const range = closingFeeRange(dealType, price);
   // Rentals are always priced in ₪, sales always in % (0.2%-2%).
@@ -28,7 +30,12 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const progress = (percent - range.min) / (range.max - range.min);
   const level = Math.min(3, Math.floor(progress * 4));
   const [editing, setEditing] = useState(false);
-  const [open, setOpen] = useState(true);
+  const [internalOpen, setInternalOpen] = useState(true);
+  const open = openProp ?? internalOpen;
+  const setOpen = (next: boolean | ((prev: boolean) => boolean)) => {
+    const resolved = typeof next === 'function' ? next(open) : next;
+    if (onOpenChange) onOpenChange(resolved); else setInternalOpen(resolved);
+  };
   const [draft, setDraft] = useState('');
   const amount = closingFeeAmount(percent, range.price);
   const displayAmount = dualMode ? outType === 'fixed' : range.rent && range.price > 0;
