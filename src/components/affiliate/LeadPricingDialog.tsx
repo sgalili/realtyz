@@ -22,6 +22,7 @@ import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { ClosingSplitNote } from './ClosingSplitNote';
 import { BrokerClosingInfo } from './BrokerClosingInfo';
 import type { RewardTypes } from './CommissionTierBadges';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const FORM_TIER_LABEL = 'שדות מטופס בעמוד נחיתה';
 
@@ -37,6 +38,10 @@ type PricingDetails = {
 export function LeadPricingInfo({ listing, details, gross = false, closingOnly = false, rewardTypes }: { listing: PricingListing; details: PricingDetails; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
+  const { isSuperAdmin, roles } = useUserRole();
+  const showAll = !user || isSuperAdmin || roles.some(role => ['managing_broker', 'lead_agent', 'agent'].includes(role));
+  const knownZero = (key: keyof RewardTypes, amount: number) => rewardTypes?.[key] === false || (!rewardTypes && key !== 'closing' && amount === 0);
+  const closingZero = rewardTypes?.closing === false || (!rewardTypes && level4Unlocked && Number(listing.tier4_amount) === 0);
   const options = details.contact_options ?? {};
   // A percentage closing fee is always a share of the property price, so the
   // partner's net share is also shown in shekels next to the percent.
@@ -47,7 +52,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
     { key: 'form' as const, label: FORM_TIER_LABEL, amount: listing.tier1_amount, questions: [] },
     { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
     { key: 'phone' as const, label: 'ליד מסונן בשיחת טלפון', amount: listing.tier3_amount, questions: options.questions_phone ?? options.questions ?? [] },
-  ].filter((row) => rewardTypes ? rewardTypes[row.key] === true : Number(row.amount) > 0);
+  ].filter((row) => showAll || (rewardTypes ? rewardTypes[row.key] === true : Number(row.amount) > 0));
   const navigate = useNavigate();
   const location = useLocation();
   if (!user) {
@@ -55,15 +60,15 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
     // Placeholder figures only: real amounts are never sent to guests.
     const guestRows = [
       ...rows.map((row) => ({ ...row, Icon: row.key === 'form' ? ClipboardList : row.key === 'whatsapp' ? WhatsAppIcon : Phone, tone: row.key === 'form' ? 'text-lead-form' : row.key === 'whatsapp' ? 'text-lead-whatsapp' : 'text-lead-phone', fake: row.key === 'form' ? '₪85' : row.key === 'whatsapp' ? '₪240' : '₪380', limit: options.lead_daily_limits?.[row.key] })),
-      ...(rewardTypes?.closing || closingOnly ? [{ key: 'closing' as const, label: 'סגירת עסקה', Icon: Trophy, tone: 'text-lead-closing', fake: '₪4,500', limit: undefined, questions: [] as string[] }] : []),
+      ...(showAll || rewardTypes?.closing || closingOnly ? [{ key: 'closing' as const, label: 'סגירת עסקה', Icon: Trophy, tone: 'text-lead-closing', fake: '₪4,500', limit: undefined, questions: [] as string[] }] : []),
     ];
     return <div className="space-y-4 text-base">
       <div className="space-y-4">
         {guestRows.map((row) => <Card key={row.key} className="rounded-2xl p-4">
           <Button type="button" variant="ghost" onClick={join} className="h-auto w-full justify-start gap-3 whitespace-normal p-0 text-start hover:bg-transparent">
-            <row.Icon className={`h-8 w-8 shrink-0 ${row.tone}`} />
+            <row.Icon className={`h-8 w-8 shrink-0 ${(row.key === 'closing' ? closingZero : knownZero(row.key, row.amount)) ? 'lead-no-fee' : row.tone}`} />
             <span className="min-w-0 flex-1 text-lg font-bold leading-snug">{row.label}</span>
-            <span className="flex shrink-0 items-center gap-1"><bdi dir="ltr" aria-hidden className={`select-none text-2xl font-extrabold opacity-60 blur-sm ${row.tone}`}>{row.fake}</bdi><Lock className="h-4 w-4 text-muted-foreground" /></span>
+            {(row.key === 'closing' ? closingZero : knownZero(row.key, row.amount)) ? <span className="lead-no-fee shrink-0 text-base">ללא עמלה</span> : <span className="flex shrink-0 items-center gap-1"><bdi dir="ltr" aria-hidden className={`select-none text-2xl font-extrabold opacity-60 blur-sm ${row.tone}`}>{row.fake}</bdi><Lock className="h-4 w-4 text-muted-foreground" /></span>}
           </Button>
           {row.key !== 'closing' && <p className="mt-2 text-base text-muted-foreground">מקס׳ ב־24 שעות: <strong className="text-foreground">{row.limit ?? 'ללא מגבלה'}</strong></p>}
         </Card>)}
@@ -73,12 +78,12 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   }
   return <div className="space-y-4 text-base leading-relaxed">
     {rows.map((row) => <Card key={row.label} className="space-y-2 rounded-2xl p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex min-w-0 items-center gap-3 text-lg font-bold leading-snug">{row.key === 'form' ? <ClipboardList className="h-8 w-8 shrink-0 text-lead-form" /> : row.key === 'whatsapp' ? <WhatsAppIcon className="h-8 w-8 shrink-0 text-lead-whatsapp" /> : <Phone className="h-8 w-8 shrink-0 text-lead-phone" />}{row.label}</h3>{user && <bdi dir="ltr" className={`ms-auto shrink-0 text-2xl font-bold ${row.key === 'form' ? 'text-lead-form' : row.key === 'whatsapp' ? 'text-lead-whatsapp' : 'text-lead-phone'}`}>{row.label === 'ליד מסונן בשיחת טלפון' && listing.tier3_type === 'percent' ? `${gross ? row.amount : partnerNetReward(row.amount)}%` : `${fmtILS(gross ? row.amount : partnerNetReward(row.amount))}`}</bdi>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex min-w-0 items-center gap-3 text-lg font-bold leading-snug">{row.key === 'form' ? <ClipboardList className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-form'}`} /> : row.key === 'whatsapp' ? <WhatsAppIcon className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-whatsapp'}`} /> : <Phone className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-phone'}`} />}{row.label}</h3>{knownZero(row.key, row.amount) ? <span className="lead-no-fee ms-auto text-base font-bold">ללא עמלה</span> : user && <bdi dir="ltr" className={`ms-auto shrink-0 text-2xl font-bold ${row.key === 'form' ? 'text-lead-form' : row.key === 'whatsapp' ? 'text-lead-whatsapp' : 'text-lead-phone'}`}>{row.label === 'ליד מסונן בשיחת טלפון' && listing.tier3_type === 'percent' ? `${gross ? row.amount : partnerNetReward(row.amount)}%` : `${fmtILS(gross ? row.amount : partnerNetReward(row.amount))}`}</bdi>}</div>
       <div className="flex flex-wrap items-center gap-2"><span className="text-muted-foreground">מקס׳ ב־24 שעות</span><strong>{options.lead_daily_limits?.[row.key] ?? 'ללא מגבלה'}</strong></div>
       {row.key === 'form' && options.form_fields?.map((field) => <p key={field.id}>{field.label} · {FORM_FIELD_TYPE_LABELS[field.type]} · {field.required ? 'חובה' : 'רשות'}{field.options?.length ? ` · ${field.options.join(', ')}` : ''}</p>)}
       {row.questions.length ? <><h4 className="text-muted-foreground">שאלות הסינון של המפרסם</h4><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></> : row.key !== 'form' ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
     </Card>)}
-    {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <Card className="space-y-2 rounded-2xl p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="ms-auto shrink-0 text-2xl font-bold text-lead-closing">{listing.tier4_type === 'percent' ? <>{`${closingNetPercent}%`}{closingNetShekels > 0 ? <span className="ms-1 text-base font-extrabold">({fmtILS(closingNetShekels)})</span> : null}</> : `${fmtILS(Math.round(partnerNetReward(Number(listing.tier4_amount))))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></Card> : rewardTypes?.closing && <Card className="space-y-2 rounded-2xl p-4"><h3 className="flex items-center gap-3 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה</h3><p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p></Card>}
+    {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <Card className="space-y-2 rounded-2xl p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="ms-auto shrink-0 text-2xl font-bold text-lead-closing">{listing.tier4_type === 'percent' ? <>{`${closingNetPercent}%`}{closingNetShekels > 0 ? <span className="ms-1 text-base font-extrabold">({fmtILS(closingNetShekels)})</span> : null}</> : `${fmtILS(Math.round(partnerNetReward(Number(listing.tier4_amount))))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></Card> : (showAll || rewardTypes?.closing) && <Card className="space-y-2 rounded-2xl p-4"><h3 className="flex items-center gap-3 text-lg font-bold"><Trophy className={`h-8 w-8 shrink-0 ${closingZero ? 'lead-no-fee' : 'text-lead-closing'}`} />סגירת עסקה{closingZero && <span className="lead-no-fee text-base">ללא עמלה</span>}</h3>{!closingZero && <p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p>}</Card>}
     {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}
   </div>;
 }
