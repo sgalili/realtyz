@@ -78,3 +78,11 @@ export function meetsBoardRules(row: Record<string, any>, publisherName: string 
   const rewards = [row.affiliate_tier1_amount, row.affiliate_tier2_amount, row.affiliate_tier3_amount, row.affiliate_tier4_amount].some(v => Number(v) > 0) || closing > 0;
   return rewards && !!publisherName;
 }
+
+/** Stable demo profile photo for private publishers that have no uploaded image. */
+export function privatePublisherAvatar(seed: unknown): string {
+  const s = String(seed ?? '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return `https://toraff.co.il/publisher-avatars/${(h % 4) + 1}.jpg`;
+}
