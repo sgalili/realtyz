@@ -1,3 +1,7 @@
+# Facebook cloud connection cleanup
+- [ ] Replace connection prompts with shared cloud login, confirmed-group import and discovery guidance.
+- [ ] Remove user-facing installation/extension wording across Facebook screens and tutorials; verify authenticated connection UI and focused tests.
+
 # Board row actions
 - [x] Lock outer public/app document scrolling, correct sidebar/footer height bounds and bound inventory/project table views. Three wheel tests pass; guest 446px/1280px and signed-in homepage verify both scroll axes and window scroll 0. Populated inventory/project tables unavailable in current account; their end-to-end checks remain unverified.
 - [x] Share the auth footer once across all public/account/admin routes, replace older landing/portal footers and reserve viewport-shell space. One-line layout verified at 320/446/1280px; legal navigation and signed-in home/profile/wallet checked. Modal overlays appropriately hide background accessibility controls.
