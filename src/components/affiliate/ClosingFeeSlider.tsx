@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { clampClosingPercent, closingFeeAmount, closingFeeRange } from '@/lib/closingFee';
 import { ClosingSplitNote } from './ClosingSplitNote';
+import { BrokerTestLinks } from './BrokerClosingInfo';
 import { fmtILS } from '@/lib/formatCurrency';
 
 export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange }: {
