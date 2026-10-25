@@ -1,5 +1,10 @@
 # Roadmap
 
+## Auth and property consent forms
+- [ ] Keep auth submission visible and disabled until valid; silently validate two-word full names with two letters per word.
+- [ ] Align publisher header corners, bold expanded titles and move marketing consent above legal checkboxes.
+- [ ] Explain notifications on opt-out submission without forcing consent; test validation and verify forms.
+
 ## Workspace card identity
 - [x] Show the owner's full name as the workspace title for individuals (office/company names kept for branded workspaces) with the mobile below, in the sidebar card, workspace list and login picker.
 - [x] Server-owned is_office/owner_phone flags in get_my_workspaces (phone only for the owner or Super Admin); 6 identity tests pass, signed-in drawer verified, build OK.
