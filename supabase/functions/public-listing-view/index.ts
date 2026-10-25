@@ -4,7 +4,7 @@ import { cleanPayload } from "../_shared/cleanValues.ts";
 import { maskContactText, toPublicCard } from "../_shared/publicMask.ts";
 import { verifiedSourceLicense, licenseNumber } from "../_shared/yad2Publisher.ts";
 import { publicDeveloperDetails } from '../_shared/publicDeveloperDetails.ts';
-import { publicPricing, boardPublisherName, publisherDisplayKind } from '../_shared/publicListingVisibility.ts';
+import { publicPricing, boardPublisherName, publisherDisplayKind, privatePublisherAvatar } from '../_shared/publicListingVisibility.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
         broker_name: boardPublisherName(name, publisherDisplayKind(m.publisher_kind ?? (broker ? "broker" : "private"))),
         office_name: office ?? (broker ? "משרד תיווך" : m.publisher_kind === "private" ? "מפרסם פרטי" : null),
         broker_license_number: licence,
-        agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url) ?? txt(m.avatar_url),
+        agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url) ?? txt(m.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id)),
       };
     };
     for (const row of [listing, ...(workspaceRows ?? [])]) (row as any).__attr = attributionFor(row as any);
