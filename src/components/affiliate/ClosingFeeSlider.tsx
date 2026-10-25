@@ -18,6 +18,8 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   onValueChange?: (value: number, mode: 'fixed' | 'percent') => void;
 }) {
   const range = closingFeeRange(dealType, price);
+  // Rentals are always priced in ₪, sales always in % (0.2%-2%).
+  const outType: 'fixed' | 'percent' = dualMode ? (range.rent ? 'fixed' : 'percent') : valueType;
   const percent = clampClosingPercent(valueType === 'fixed' && price > 0 ? value / price * 100 : valueType === 'percent' ? value : range.min, dealType);
   const progress = (percent - range.min) / (range.max - range.min);
   const level = Math.min(3, Math.floor(progress * 4));
@@ -25,14 +27,14 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const amount = closingFeeAmount(percent, range.price);
-  const displayAmount = dualMode ? valueType === 'fixed' : range.rent && range.price > 0;
+  const displayAmount = dualMode ? outType === 'fixed' : range.rent && range.price > 0;
   const minimum = displayAmount && dualMode ? range.price * range.min / 100 : range.min;
   const maximum = displayAmount && dualMode ? range.price * range.max / 100 : range.max;
   const exactAmount = range.price * percent / 100;
   const money = (n: number) => fmtILS(n);
   const selectedLabel = displayAmount ? money(dualMode ? exactAmount : amount) : `${Number(percent.toFixed(2))}%`;
   const changePercent = (next: number) => {
-    if (dualMode && onValueChange) onValueChange(displayAmount ? range.price * next / 100 : next, valueType);
+    if (dualMode && onValueChange) onValueChange(displayAmount ? Math.round(range.price * next / 100) : next, outType);
     else onChange(next);
   };
   const commit = () => {
@@ -41,11 +43,11 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     setEditing(false);
   };
   return <section className="closing-fee space-y-4 pt-4" data-level={level}>
-    <div className="flex items-center gap-2 text-sm font-semibold"><Button type="button" variant="ghost" className="h-9 gap-2 px-0 font-semibold" aria-expanded={open} aria-controls={open ? 'closing-fee-body' : undefined} onClick={() => setOpen((next) => !next)}><Trophy className="h-4 w-4 closing-tone" />עמלת תיווך עבור סגירת עסקה *</Button><Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 p-0" aria-label="הסבר עמלת סגירת עסקה"><CircleHelp className="h-4 w-4 text-muted-foreground" /></Button></PopoverTrigger><PopoverContent dir="rtl" align="end" className="w-80"><div className="space-y-2"><p className="text-sm font-semibold">כך מתחלקת עמלת הסגירה</p><ClosingSplitNote gross={displayAmount ? (dualMode ? exactAmount : amount) : percent} valueType={displayAmount ? 'fixed' : 'percent'} registration /><p className="text-xs leading-relaxed text-muted-foreground">התגמול משולם רק לאחר סגירת העסקה בפועל, ורק למתווכים/שותפים בעלי רישיון תיווך מאומת. אין התחייבות לסגירה.</p></div></PopoverContent></Popover>{!open && <Button type="button" variant="ghost" className="ms-auto h-9 px-2 text-lg font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); setOpen(true); }}>{selectedLabel}</Button>}<Button type="button" variant="ghost" size="icon" className={`h-8 w-8 shrink-0 p-0 text-muted-foreground ${open ? 'ms-auto' : ''}`} aria-label={open ? 'כווץ את עמלת התיווך' : 'הרחב את עמלת התיווך'} aria-expanded={open} aria-controls={open ? 'closing-fee-body' : undefined} onClick={() => setOpen((next) => !next)}><ChevronDown className={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} /></Button></div>
+    <div className="flex items-center gap-2 text-sm font-semibold"><Button type="button" variant="ghost" className="h-9 gap-2 px-0 font-semibold" aria-expanded={open} aria-controls={open ? 'closing-fee-body' : undefined} onClick={() => setOpen((next) => !next)}><Trophy className="h-4 w-4 closing-tone" />עמלת תיווך עבור סגירת עסקה *</Button><Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 p-0" aria-label="הסבר עמלת סגירת עסקה"><CircleHelp className="h-4 w-4 text-muted-foreground" /></Button></PopoverTrigger><PopoverContent dir="rtl" align="end" className="w-80"><div className="space-y-2"><p className="text-sm font-semibold">כך מתחלקת עמלת הסגירה</p><ClosingSplitNote gross={displayAmount ? (dualMode ? exactAmount : amount) : percent} valueType={displayAmount ? 'fixed' : 'percent'} registration /><p className="text-xs leading-relaxed text-muted-foreground">התגמול משולם רק לאחר סגירת העסקה בפועל, ורק למתווכים/שותפים בעלי רישיון תיווך מאומת. אין התחייבות לסגירה.</p></div></PopoverContent></Popover><span className="ms-auto flex items-center gap-10">{!open && <Button type="button" variant="ghost" className="h-9 px-2 text-lg font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); setOpen(true); }}>{selectedLabel}</Button>}<Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={open ? 'כווץ את עמלת התיווך' : 'הרחב את עמלת התיווך'} aria-expanded={open} aria-controls={open ? 'closing-fee-body' : undefined} onClick={() => setOpen((next) => !next)}><ChevronDown className={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} /></Button></span></div>
     {open && <div id="closing-fee-body" className="space-y-4"><div className="text-center">
       <div className="flex h-14 items-center justify-center" dir="ltr">
         {editing ? <Input autoFocus aria-label="עריכת עמלת סגירה" inputMode="decimal" dir="ltr" className="h-12 w-44 text-center text-3xl font-bold" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') setEditing(false); }} /> :
-          <Button type="button" variant="ghost" className="h-14 px-3 text-4xl font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); }}>{displayAmount ? money(dualMode ? exactAmount : amount) : `${Number(percent.toFixed(2))}%`}</Button>}
+          <Button type="button" variant="ghost" className="h-14 px-3 text-[42px] font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); }}>{displayAmount ? money(dualMode ? exactAmount : amount) : `${Number(percent.toFixed(2))}%`}</Button>}
       </div>
       <p className="text-xs text-muted-foreground">{dualMode ? (range.price > 0 ? (displayAmount ? (range.rent ? '' : `${Number(percent.toFixed(2))}%`) : money(exactAmount)) : 'מחיר הנכס טרם הוזן') : range.rent ? '' : `ממחיר המכירה${range.price > 0 ? ` · ₪${amount.toLocaleString('he-IL')}` : ''}`}</p>
     </div>

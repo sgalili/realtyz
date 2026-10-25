@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -19,7 +20,7 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const { level4Unlocked } = useAffiliateLicense();
   const marketplace = useAffiliateMarketplace();
   const { activeWorkspaceId } = useWorkspace();
-  const { isAgent } = useUserRole();
+  const { isSuperAdmin } = useUserRole();
   const [draft, setDraft] = useState<PublicListingDraft>();
   const owned = useQuery({
     queryKey: ['owned-royalties', listingId, user?.id, activeWorkspaceId],
@@ -27,7 +28,7 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     queryFn: async () => {
       if (!user || !activeWorkspaceId) return null;
       const { data, error } = await supabase.from('listings').select('*').eq('id', listingId).eq('workspace_owner_id', activeWorkspaceId).maybeSingle();
-      if (error || !data || !(data.user_id === user.id || data.owner_id === user.id || isAgent)) return null;
+      if (error || !data || !(data.user_id === user.id || data.owner_id === user.id || isSuperAdmin)) return null;
       return data;
     },
   });
@@ -57,6 +58,6 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const display = tableRoyalties(types, tiers, !!user, level4Unlocked);
   if (!Object.values(display.types).some(Boolean) && !owned.data) return null;
   const icons = <RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={typeof source?.closing_level === 'number' ? source.closing_level : null} />;
-  if (table && owned.data) return <><Button variant="ghost" className="min-h-8 min-w-8 bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תמלוגים" onClick={event => { event.stopPropagation(); if (owned.data) setDraft({ ...listingToDraft(owned.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{Object.values(display.types).some(Boolean) ? icons : <span className="text-xs text-muted-foreground">ללא תמלוגים</span>}</Button>{draft && <PublicListingPublisher pricingOnly resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
+  if (table && owned.data) return <><Button variant="ghost" className="min-h-8 min-w-8 bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תמלוגים" onClick={event => { event.stopPropagation(); if (owned.data) setDraft({ ...listingToDraft(owned.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{Object.values(display.types).some(Boolean) ? icons : (level4Unlocked ? <Trophy className="h-3.5 w-3.5 text-lead-closing" aria-label="סגירת עסקה" /> : <span className="text-xs text-muted-foreground">ללא תמלוגים</span>)}</Button>{draft && <PublicListingPublisher pricingOnly resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
   return <LeadPricingDialog readOnly rewardTypes={display.types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}><RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={typeof source?.closing_level === 'number' ? source.closing_level : null} /></LeadPricingDialog>;
 }

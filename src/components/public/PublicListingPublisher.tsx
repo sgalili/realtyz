@@ -14,6 +14,8 @@ import { LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
 import { enableLeadPrice } from '@/lib/enableLeadPrice';
 import { commitPricingEdit } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
+import { leadPriceLevel } from '@/lib/leadPriceRanges';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
 // everything, sign up through /auth, and have the listing auto-published on return.
@@ -21,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, ChevronDown, Film, HelpCircle, ImagePlus, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Loader2, X } from 'lucide-react';
 import { ClipboardList as LeadFormIcon, Phone as LeadPhoneIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -267,6 +269,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [questionsOpen, setQuestionsOpen] = useState<'questionsWhatsapp' | 'questionsPhone' | null>(null);
   const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const [openLeads, setOpenLeads] = useState<Record<string, boolean>>({});
+  const [priceConfirm, setPriceConfirm] = useState(false);
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
   useEffect(() => {
@@ -856,14 +859,15 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           )}
 
           {step === 8 && (
-            <div className="space-y-3">
+            <div className="pricing-editor space-y-3">
               <div className="space-y-2">{fields.dealType === 'rent' ? <div dir="ltr" className="mx-auto flex h-16 w-fit max-w-full items-end justify-center gap-1 rounded-md border border-input bg-background px-3 pb-2 shadow-xs"><span aria-hidden="true" className="pointer-events-none whitespace-nowrap pb-3.5 text-base font-normal leading-none text-muted-foreground">לחודש</span><span aria-hidden="true" className="pointer-events-none pb-3.5 text-2xl font-bold leading-none text-muted-foreground sm:text-3xl">₪</span><PriceInput id="wizard-price" aria-label="שכירות חודשית *" value={fields.price} placeholder="שכירות חודשית *" className={cn('h-auto w-auto border-0 bg-transparent px-0 text-center text-3xl font-bold leading-none text-sale shadow-none ring-0 placeholder:text-lg focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-4xl [field-sizing:content]')} onChange={e => set('price', e.target.value)} /></div> : <div className="relative"><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-2xl font-bold text-muted-foreground sm:text-3xl">₪</span><PriceInput id="wizard-price" aria-label="מחיר מכירה *" value={fields.price} placeholder="מחיר מכירה *" className={cn('h-16 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl pl-12 pr-6 text-success')} onChange={e => set('price', e.target.value)} /></div>}</div>
               <div className="space-y-4 text-sm">
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
                   const active = price > 0;
                   const expanded = openLeads[key] ?? false;
-                  const tone = key === 'Form' ? 'text-lead-form' : key === 'Whatsapp' ? 'text-lead-whatsapp' : 'text-lead-phone';
+                  const qList = key === 'Form' ? [] : ((((fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] as string[] | undefined)?.length ? (fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] : defaultQuestions(fields.dealType)) as string[]);
+                  const extraCost = (key === 'Form' ? cleanFormFields(fields.formFields).length : Math.max(qList.filter(q => q.trim()).length - 3, 0)) * EXTRA_QUESTION_COST;
                   const toggle = () => {
                     if (!active) set(`commission${key}`, enableLeadPrice(fields[`commission${key}`] || '', tier));
                     setOpenLeads((next) => ({ ...next, [key]: !expanded }));
@@ -882,15 +886,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                           {key === 'Phone' && 'הפונה משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI (ריטה) מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
                         </p>
                       </LeadTypeHelp>
-                    </span>{!expanded && <Button type="button" variant="ghost" className={cn('h-9 px-2', active ? `text-lg font-bold ${tone}` : 'text-sm font-semibold text-muted-foreground')} aria-label={active ? `עריכת עמלה עבור ${label}` : `הגדרת עמלה עבור ${label}`} onClick={toggle}><span dir={active ? 'ltr' : 'rtl'}>{leadPriceLabel(price)}</span></Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={active} onCheckedChange={(next) => { set(`commission${key}`, next ? String(LEAD_PRICE_RANGES[tier].min) : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /></div>
+                    </span><span className="closing-fee ms-auto flex items-center gap-10" data-level={leadPriceLevel(tier, price)}>{!expanded && active && <Button type="button" variant="ghost" className="h-9 px-2 text-lg font-bold closing-tone" aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={active} onCheckedChange={(next) => { set(`commission${key}`, next ? String(LEAD_PRICE_RANGES[tier].min) : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /></span></div>
                     {active && expanded && <div className="space-y-2">
                     <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} onChange={value => set(`commission${key}`, value)} />
-                    <div className="flex items-center justify-between gap-3"><Input id={`daily-limit-${key}`} inputMode="numeric" placeholder="מקס׳ ביום · ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-full" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
+                    {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
+                    <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-xs" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
                       const n = cleanFormFields(fields.formFields).length;
                       return (
                         <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setFormFieldsOpen(true)}>
-                          שדות מטופס בעמוד נחיתה (שם + טלפון{n > 0 ? ` + ${n} נוספים · +₪${n * EXTRA_QUESTION_COST} לפנייה` : ''})
+                          שדות מטופס בעמוד נחיתה (שם + טלפון{n > 0 ? ` + ${n} נוספים` : ''})<ChevronLeft className="ms-1 inline h-4 w-4" aria-hidden />
                         </Button>
                       );
                     })()}
@@ -901,7 +906,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       const extra = Math.max(list.filter(q => q.trim()).length - 3, 0);
                       return (
                         <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setQuestionsOpen(fk)}>
-                          שאלות סינון ({list.filter(q => q.trim()).length}){extra > 0 ? ` · +₪${extra * EXTRA_QUESTION_COST} לפנייה` : ''}
+                          שאלות סינון ({list.filter(q => q.trim()).length})<ChevronLeft className="ms-1 inline h-4 w-4" aria-hidden />
                         </Button>
                       );
                     })()}
@@ -957,6 +962,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           <DialogTitle>
             {pricingOnly ? 'מחיר והגדרת תמלוגים' : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
+          {pricingOnly && <p className="text-sm text-muted-foreground">{fields.title || [addressLine, fields.city].filter(Boolean).join(', ')}</p>}
         </DialogHeader>
 
         <div data-publisher-scroll className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pb-2">
@@ -1015,7 +1021,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             {!pricingOnly && !reviewMode && step > 0 ? <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(0, current - 1))}>
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
-          {pricingOnly ? <><Button variant="outline" onClick={() => { setOpen(false); onRecovered?.(); }}>ביטול</Button><Button disabled={publishing || !(Number(fields.price) > 0) || !(Number(fields.commissionDeal) > 0)} onClick={() => void submit()}>שמירה</Button></> : reviewMode || isLast ? (
+          {pricingOnly ? <><Button disabled={publishing || !(Number(fields.price) > 0) || !(Number(fields.commissionDeal) > 0)} onClick={() => { if (Number(fields.price) !== Number(fields.importedListing?.asking_price ?? fields.price)) setPriceConfirm(true); else void submit(); }}>שמירה</Button><Button variant="outline" className="ms-auto" onClick={() => { setOpen(false); onRecovered?.(); }}>ביטול</Button>
+            <AlertDialog open={priceConfirm} onOpenChange={setPriceConfirm}><AlertDialogContent dir="rtl"><AlertDialogHeader><AlertDialogTitle className="text-right">לשנות את {fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר המכירה'}?</AlertDialogTitle><AlertDialogDescription className="space-y-2 text-right"><span className="block">שותפים שכבר בחרו לשווק את הנכס נשארים עם התמלוגים הנעולים שקיבלו בעת הבחירה, ללא שינוי.</span><span className="block">המחיר החדש והתמלוגים המעודכנים יחולו רק על שותפים שיצטרפו מעכשיו ועל פניות חדשות.</span><span className="block">{fields.dealType === 'rent' ? 'עמלת הסגירה מוצגת בש״ח ותחושב מחדש לפי השכירות החדשה.' : 'עמלת הסגירה באחוזים תחושב מחדש לפי מחיר המכירה החדש.'}</span></AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="gap-2"><AlertDialogAction onClick={() => void submit()}>אישור ושמירה</AlertDialogAction><AlertDialogCancel>ביטול</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog></> : reviewMode || isLast ? (
             <div className="flex w-full flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-center">
               {!canPublish && <span className="hidden text-xs text-muted-foreground sm:inline" title={missingPublish.join(' · ')}>חסר: {missingPublish[0]}{missingPublish.length > 1 ? ` +${missingPublish.length - 1}` : ''}</span>}
               <Button type="button" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()} className="shrink-0 bg-success text-[18px] font-bold text-success-foreground hover:bg-success/90">

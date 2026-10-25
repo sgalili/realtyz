@@ -1,5 +1,7 @@
 import { ClipboardList, Phone, Trophy } from 'lucide-react';
 import { fmtILS } from '@/lib/formatCurrency';
+import { leadPriceLevel } from '@/lib/leadPriceRanges';
+const LEVELS = ['low', 'medium', 'high', 'max'];
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import type { CommissionTiers } from '@/hooks/useAffiliate';
@@ -17,7 +19,7 @@ export function RewardIcons({ types, prices, closingPercent = false, label = 'ת
   if (!rows.length) return null;
   return <span className="inline-flex flex-col gap-1 text-start" data-commission-icons>
     {label && <span className="text-[10px] font-medium text-muted-foreground">{label}</span>}
-    <span className={prices || grid ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'flex items-center gap-2'}>{rows.map(({ key, label: title, Icon, tone }) => <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${tone}`} style={key === 'closing' && closingLevel != null ? { color: `hsl(var(--closing-${['low', 'medium', 'high', 'max'][closingLevel] ?? 'low'}))` } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(prices[key])}</bdi>}</span>)}</span>
+    <span className={prices || grid ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'flex items-center gap-2'}>{rows.map(({ key, label: title, Icon, tone }) => <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${tone}`} style={key === 'closing' && closingLevel != null ? { color: `hsl(var(--closing-${['low', 'medium', 'high', 'max'][closingLevel] ?? 'low'}))` } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{prices?.[key] != null && <bdi dir="ltr" style={key !== 'closing' ? { color: `hsl(var(--closing-${LEVELS[leadPriceLevel(key, Number(prices[key]))]}))` } : undefined}>{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(prices[key])}</bdi>}</span>)}</span>
   </span>;
 }
 
