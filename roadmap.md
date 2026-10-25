@@ -1,5 +1,9 @@
 # Roadmap
 
+## Super Admin user deletion
+- [ ] Permanently delete the uniquely identified Barak Israely account and verify active records and login removal.
+- [ ] Add confirmed multi-select deletion to API-settings users, preserving server-side Super Admin and self-account protections; test and verify the list.
+
 ## Selected-property actions
 - [x] Preserve the clicked property's identity through Facebook connect-later, draft restoration and generation of the post/first comment; late connection checks cannot undo skip.
 - [x] Check shared action target paths; 22 regression tests pass and signed-in generation verified on two public properties with matching selector, photos, post and first comment. No post published.
