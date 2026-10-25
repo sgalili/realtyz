@@ -1,5 +1,11 @@
 # Roadmap
 
+## Workspace card identity
+- [x] Show the owner's full name as the workspace title for individuals (office/company names kept for branded workspaces) with the mobile below, in the sidebar card, workspace list and login picker.
+- [x] Server-owned is_office/owner_phone flags in get_my_workspaces (phone only for the owner or Super Admin); 6 identity tests pass, signed-in drawer verified, build OK.
+
+
+
 ## Selected-workspace closing display
 - [x] Allow Super Admin display to follow the authorized selected owner's official broker eligibility, without changing payout eligibility.
 - [x] Refresh entitlement and authenticated redacted property data on workspace switches; 42 focused tests pass. Signed-in Super Admin switched through UI to Udi's workspace (server true, closing prices visible) and back to unlicensed workspace (server false, all broker-only labels restored); build OK.
