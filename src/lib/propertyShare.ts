@@ -18,6 +18,29 @@ export type ShareRecipient = {
   email?: string | null;
 };
 
+/** Pre-approved Meta template selection for a WhatsApp share. */
+export type ShareWaTemplate = {
+  name: string;
+  language: string;
+  body_params: string[];
+};
+
+/**
+ * Fills per-recipient tokens inside a template variable value. Supports the
+ * same tags the template picker hints at: [שם_פרטי] / [שם] / [נכס] / [קישור] / [הודעה].
+ */
+export function personalizeShareParam(
+  param: string,
+  ctx: { name?: string | null; property?: string | null; link?: string | null; message?: string | null },
+): string {
+  return String(param ?? '')
+    .replace(/\[שם_פרטי\]/g, String(ctx.name ?? '').trim())
+    .replace(/\[שם\]/g, String(ctx.name ?? '').trim())
+    .replace(/\[נכס\]/g, String(ctx.property ?? ''))
+    .replace(/\[קישור\]/g, String(ctx.link ?? ''))
+    .replace(/\[הודעה\]/g, String(ctx.message ?? ''));
+}
+
 /** Ensures every selected property has a durable listing id for the campaign composer. */
 export async function prepareCampaignListingIds(results: UnifiedResult[]): Promise<string[]> {
   const ids: string[] = [];
@@ -162,6 +185,7 @@ export async function shareProperties(
   results: UnifiedResult[],
   mode: ShareMode,
   recipient: ShareRecipient | null = null,
+  waTemplate: ShareWaTemplate | null = null,
 ): Promise<void> {
   if (results.length === 0) throw new Error('לא נבחרו נכסים לשיתוף');
   const phone = normalizeIlPhone(recipient?.phone);
@@ -180,10 +204,26 @@ export async function shareProperties(
   if (mode === 'whatsapp') {
     // With an explicit recipient we dispatch through our official Meta WBA
     // gateway (HARD RULE: outbound sender identity is always the official
-    // number). Without a recipient we open the NATIVE WhatsApp app on its
-    // contact-picker with the text pre-filled, so the broker picks the contact.
+    // number). A pre-approved Meta template is used whenever one was chosen,
+    // so business-initiated sends never fail the 24h-window rule. Without a
+    // recipient we open the NATIVE WhatsApp app on its contact-picker with the
+    // text pre-filled, so the broker picks the contact.
     if (phone) {
-      const res = await sendViaOfficialWaba({ phone_number: phone, message: text });
+      let template: { name: string; language: string; components: unknown[] } | null = null;
+      if (waTemplate?.name) {
+        const ctx = {
+          name: recipientName,
+          property: minted.length === 1 ? resultLabel(minted[0].r) : `${minted.length} נכסים`,
+          link: minted.length === 1 ? minted[0].url : '',
+          message: text,
+        };
+        const params = waTemplate.body_params.map((v) => personalizeShareParam(v, ctx));
+        const components = params.length > 0
+          ? [{ type: 'body', parameters: params.map((p) => ({ type: 'text', text: p.trim() || '-' })) }]
+          : [];
+        template = { name: waTemplate.name, language: waTemplate.language, components };
+      }
+      const res = await sendViaOfficialWaba({ phone_number: phone, message: text, template });
       if (!res.ok) throw new Error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה');
       await recordAffiliateDeliveries(minted, mode, text, recipient, res);
       return;
