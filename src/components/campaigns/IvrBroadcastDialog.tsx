@@ -84,6 +84,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const [addVoiceOpen, setAddVoiceOpen] = useState(false);
   const [listings, setListings] = useState<ListingOpt[]>([]);
   const [listingId, setListingId] = useState<string>('');
+  const [ownerName, setOwnerName] = useState<string>('');
 
   // Audience
   const [audience, setAudience] = useState<AudienceMode | ''>('');
@@ -125,7 +126,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     setSelectedLeadIds(new Set()); setAudience(''); setIncludeWhatsapp(false); setReview(null);
     (async () => {
       setLoadingLeads(true);
-      const [{ data: leadRows }, { data: voiceRows }, { data: listingRows }] = await Promise.all([
+      const [{ data: leadRows }, { data: voiceRows }, { data: listingRows }, { data: ownerRow }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city')
           .eq('workspace_owner_id', workspaceId)
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
@@ -136,8 +137,10 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           .in('status', ['live', 'pending'])
           .order('created_at', { ascending: false })
           .limit(200),
+        supabase.from('profiles').select('full_name').eq('id', workspaceId).maybeSingle(),
       ]);
       if (cancelled) return;
+      setOwnerName(String((ownerRow as any)?.full_name ?? '').trim());
       setLeads(((leadRows as any[]) ?? []).map((r) => ({
         id: r.id, full_name: r.full_name, phone: r.phone_number, city: r.city,
       })));
@@ -171,6 +174,16 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     () => allAgents.find((a) => a.voice_id === agentVoiceId)?.label ?? 'נציג AI',
     [allAgents, agentVoiceId],
   );
+
+  // Every message must open with the agent introducing herself/himself as the
+  // digital assistant of the ad owner, using the chosen voice's first name.
+  const introLine = useMemo(() => {
+    const voice = allAgents.find((a) => a.voice_id === agentVoiceId);
+    const name = voice?.label || PRESET_VOICES[0].label;
+    const feminine = (voice?.voice_id ?? PRESET_VOICES[0].voice_id) === PRESET_VOICES[0].voice_id;
+    const owner = ownerName || 'המשרד';
+    return `שלום, אני ${name}, ${feminine ? 'העוזרת הדיגיטלית' : 'העוזר הדיגיטלי'} של ${owner}.`;
+  }, [allAgents, agentVoiceId, ownerName]);
 
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
@@ -356,7 +369,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (!agentVoiceId) { toast.error('בחרו נציג/ת AI להקלטה'); return; }
     setGeneratingTts(true);
     try {
-      const finalText = ttsText.trim();
+      const finalText = `${introLine} ${ttsText.trim()}`;
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
         body: { source: 'tts', text: finalText, voice_id: agentVoiceId, generate_only: true },
       });
@@ -534,7 +547,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       type="button"
       onClick={() => setSource(id)}
       className={cn(
-        'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold transition-colors border',
+        'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-[17px] font-semibold transition-colors border',
         source === id
           ? 'bg-[#0f1b3d] text-white border-[#0f1b3d] shadow-sm'
           : 'bg-background text-[#0f1b3d] border-[#0f1b3d]/15 hover:bg-muted/40',
@@ -552,7 +565,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto p-5" dir="rtl">
+      <DialogContent className="w-full max-w-lg h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-y-auto p-5" dir="rtl">
         <DialogHeader className="space-y-1">
           <DialogTitle className="text-center text-[#0f1b3d] text-[17px] font-bold leading-tight">
             <span className="inline-flex items-center gap-2"><CampaignServiceIcon channel="ivr" />IVR וקול AI</span>
@@ -575,7 +588,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
             <div className="space-y-3">
               <div className="relative space-y-1.5">
                 <Select value={agentVoiceId} onValueChange={value => { setAgentVoiceId(value); const voice = allAgents.find(item => item.voice_id === value); if (voice) void playVoicePreview(voice); }} dir="rtl">
-                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold pl-16">
+                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold pl-16 [&>svg]:absolute [&>svg]:left-2 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2">
                     <SelectValue placeholder="בחירת נציג/ת AI להקלטה">{agentVoiceId ? agentLabel : undefined}</SelectValue>
                   </SelectTrigger>
                   <SelectContent dir="rtl">
@@ -606,7 +619,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     </button>
                   </SelectContent>
                 </Select>
-                {agentVoiceId && <Button type="button" variant="ghost" size="icon" aria-label="השמע את הקול הנבחר" title="השמע את הקול הנבחר" className="absolute left-7 top-1 h-9 w-9" onClick={() => { const voice = allAgents.find(item => item.voice_id === agentVoiceId); if (voice) void playVoicePreview(voice); }}>
+                {agentVoiceId && <Button type="button" variant="ghost" size="icon" aria-label="השמע את הקול הנבחר" title="השמע את הקול הנבחר" className="absolute left-8 top-1 h-9 w-9" onClick={() => { const voice = allAgents.find(item => item.voice_id === agentVoiceId); if (voice) void playVoicePreview(voice); }}>
                   {loadingPreviewId === agentVoiceId ? <Loader2 className="h-4 w-4 animate-spin" /> : previewingVoiceId === agentVoiceId ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </Button>}
               </div>
@@ -671,23 +684,37 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                   </Button>
               </div>
 
-              {!ttsText.trim() && <Button type="button" variant="link" onClick={regenerateScript} disabled={autoScripting} className="h-auto p-0">יצירת תסריט באמצעות AI</Button>}
-
               <div className="flex justify-end">
                 <Button
                   onClick={generateTtsAudio}
                   disabled={generatingTts || !ttsText.trim() || !agentVoiceId}
-                  className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 px-6 rounded-xl font-semibold"
+                  className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 px-6 rounded-xl font-semibold text-[17px]"
                 >
                   <Volume2 className="ml-2 h-4 w-4" />
                   {generatingTts ? 'יוצר…' : 'צור הודעה מוקלטת'}
                 </Button>
               </div>
+
+              {history.length > 0 && (
+                <div className="rounded-xl border border-[#0f1b3d]/20 bg-muted/30 p-3 flex items-center gap-3">
+                  <button type="button" onClick={() => playHistory(history[0])}
+                    className="shrink-0 h-9 w-9 rounded-lg border border-[#0f1b3d]/20 flex items-center justify-center hover:bg-muted/50">
+                    {playingId === history[0].id ? <Pause className="h-4 w-4 text-[#0f1b3d]" /> : <Play className="h-4 w-4 text-[#0f1b3d]" />}
+                  </button>
+                  <div className="flex-1 min-w-0 text-right">
+                    <div className="text-[11px] font-semibold text-[#0f1b3d]">ההקלטה האחרונה</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{history[0].text}</div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {source === 'recording' && (
             <div className="rounded-xl border border-[#0f1b3d]/15 bg-muted/30 p-5 text-center space-y-3">
+              <p className="rounded-lg bg-background border border-[#0f1b3d]/10 px-3 py-2 text-[12.5px] text-[#0f1b3d] text-center leading-snug">
+                התחילו את ההקלטה בהצגה: <span className="font-semibold">{introLine}</span>
+              </p>
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <span className={cn('h-2 w-2 rounded-full', recording ? 'bg-red-500 animate-pulse' : 'bg-muted-foreground/40')} />
                 {recording ? 'מקליט…' : recordedBlob ? 'הקלטה מוכנה' : 'מוכן להקלטה'}
@@ -785,15 +812,15 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           </div>
 
           {/* Dispatch button */}
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <label className="flex items-center gap-2 text-[17px] cursor-pointer">
             <Checkbox checked={includeWhatsapp} onCheckedChange={value => setIncludeWhatsapp(value === true)} />
             שליחת ההקלטה גם בוואטסאפ הרשמי
           </label>
           {includeWhatsapp && <p className="text-xs text-muted-foreground">קובץ אודיו נשלח רק לנמענים עם חלון שיחה פתוח בוואטסאפ ב־24 השעות האחרונות.</p>}
           <Button onClick={dispatchCurrent} disabled={dispatching || audienceCount === 0 || !price || (source === 'tts' ? !ttsText.trim() || !agentVoiceId : audioSeconds == null)}
-            className="w-full min-h-12 h-auto py-3 whitespace-normal rounded-xl text-sm font-semibold">
+            className="w-full min-h-12 h-auto py-3 whitespace-normal rounded-xl text-[17px] font-semibold">
             <PhoneForwarded className="ml-2 h-5 w-5" />
-            {dispatching ? 'משגר…' : 'שגר חיוג קולי'} · {totalLabel}{totalCredits != null ? ' · מקסימום משוער' : ''}
+            {dispatching ? 'משגר…' : 'שגר חיוג קולי'}
           </Button>
 
           {/* History feed */}
