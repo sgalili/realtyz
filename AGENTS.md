@@ -1,5 +1,5 @@
 # Architecture rules
-- IVR uses spoken-only generation, scoped audio/history/clones and server voice authorization; optional official WA audio requires an authorized lead and open session. Why: no narrated context or tenant leaks.
+- IVR uses scoped voices/history and spoken-only generation; server authorizes voices and official WA sessions. Measured audio duration, rounded up to seconds, drives configured-unit estimates. Why: prevent leaks and stale prices.
 - Render the canonical auth legal footer once outside the route tree; reserve its space in viewport-bound public/app shells and keep its content on one non-wrapping line. Why: consistent public and administrative pages without covering scrollable results.
 - Wizard uses a fixed header/footer with only its body scrolling; amenities persist detailed features with legacy flags and scoped drafts; floor validation shares one helper. Why: visible actions and valid drafts.
 - Header activity uses an anchored viewport-bounded dropdown with three primary tabs and compact credits; owned items render as a selectable list from the authorized My Ads RPC (batch share/campaign/delete), with content remounted on user/workspace changes. Intro outline art stays local and image sizing reserves space. Why: consistent cards, uncluttered mobile scrolling and no parallel tenant marketplace.
