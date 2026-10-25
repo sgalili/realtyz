@@ -413,7 +413,7 @@ export function PageHero() {
         <div className="flex items-center gap-1">
           {location.pathname.startsWith('/wallet') && <UsagePriceListButton />}
           {(location.pathname === '/affiliate' || location.pathname.startsWith('/affiliate-network')) && <AffiliateProgramHelp />}
-          {isMyAdsPage && (
+          {false && isMyAdsPage && (
             <Button
               size="icon"
               variant="ghost"

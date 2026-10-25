@@ -95,21 +95,22 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
   const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = useExclusiveExpansion(`my-ads:${activeWorkspaceId}`, `${r.relation}:${r.listing_id}`);
   const title = [r.address, r.city].filter(Boolean).join(', ') || r.title || 'נכס';
-  return <article className="min-w-0 overflow-hidden rounded-lg border bg-card" data-my-ad={r.listing_id}>
-    <div data-property-image-toolbar className="flex min-h-10 items-center justify-end gap-1 px-3">{owned && <span title="המודעה שלי" className="inline-flex text-primary"><BadgeCheck className="h-3.5 w-3.5" /></span>}<PropertyReferralButton listingId={r.listing_id} /></div>
-    <div className="flex min-w-0 gap-3 p-3">
-      <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
-        {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-7 w-7 text-muted-foreground" />}
-
+  return <article className="min-w-0 py-3" data-my-ad={r.listing_id}>
+    <div className="flex min-w-0 gap-3">
+      <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
+        {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}
       </Link>
-      <div className="min-w-0 flex-1 space-y-1">
-        <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block whitespace-normal [overflow-wrap:anywhere] font-semibold text-foreground" title={title}>{title}</Link>
-        <p className="font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}{r.deal_type === 'rent' && Number(r.asking_price) ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</p>
-        {owned && <ListingLifecycleStatus listingId={r.listing_id} />}
-        <div className="flex flex-wrap gap-x-3 gap-y-1">
-          {([{ icon: Eye, value: r.views, label: 'צפיות' }, { icon: MousePointerClick, value: r.clicks, label: 'קליקים' }, { icon: Users, value: r.affiliates, label: 'שותפים מקדמים' }]).map(({ icon: Icon, value, label }) => <Button key={label} variant="ghost" size="sm" className="h-auto gap-1.5 px-0 py-1 text-muted-foreground" aria-expanded={open} aria-controls={`stats-${r.relation}-${r.listing_id}`} onClick={() => setOpen(v => !v)}><Icon className="h-4 w-4" /><b className="text-foreground">{number(value)}</b>{label}</Button>)}
-          <Button variant="ghost" size="sm" className="h-auto gap-1 px-0 py-1" onClick={() => setOpen(v => !v)} aria-expanded={open}><Banknote className="h-4 w-4" />פירוט<ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} /></Button>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-start gap-1">
+          <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground" title={title}>{title}</Link>
+          <PropertyReferralButton listingId={r.listing_id} />
         </div>
+        <p className="text-sm font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}{r.deal_type === 'rent' && Number(r.asking_price) ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</p>
+        <button type="button" className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground" aria-expanded={open} aria-controls={`stats-${r.relation}-${r.listing_id}`} onClick={() => setOpen(v => !v)}>
+          {([{ icon: Eye, value: r.views, label: 'צפיות' }, { icon: MousePointerClick, value: r.clicks, label: 'קליקים' }, { icon: Users, value: r.affiliates, label: 'שותפים' }]).map(({ icon: Icon, value, label }) => <span key={label} title={label} className="inline-flex items-center gap-1"><Icon className="h-3.5 w-3.5" aria-label={label} /><span className="tabular-nums text-foreground">{number(value)}</span></span>)}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} aria-label="פירוט" />
+        </button>
+        {owned && <div className="mt-1"><ListingLifecycleStatus listingId={r.listing_id} /></div>}
       </div>
     </div>
     <AnimatedExpansion open={open} id={`stats-${r.relation}-${r.listing_id}`}><AdDetails listingId={r.listing_id} /></AnimatedExpansion>
@@ -295,7 +296,7 @@ function MyAdsPage() {
     {tFilter?.key === 'disputed' && <LeadDisputesPanel />}
     {tFilter && !listingFilter ? null : isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות שפרסמת או נכסים שאתה מקדם.</p> : (['owned', 'promoting'] as const).map(relation => {
       const rows = visible.filter(r => r.relation === relation);
-      return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2><div className="space-y-3">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
+      return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2><div className="divide-y divide-border/60">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
     })}
       </TabsContent>
     </Tabs>
