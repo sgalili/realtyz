@@ -13,7 +13,7 @@ export function LegalSection({ title, children, id }: { title: string; children:
 export function LegalPageLayout({ title, children, embedded = false }: { title: string; children: ReactNode; embedded?: boolean }) {
   return <div dir="rtl" className="bg-background text-foreground">
     {!embedded && <PageCloseButton />}
-    <main className={`mx-auto w-full max-w-3xl px-5 ${embedded ? 'py-4' : 'pb-16 pt-8'}`}>
+    <main data-no-hero-wave className={`mx-auto w-full max-w-3xl px-5 ${embedded ? 'py-4' : 'pb-16 pt-8'}`}>
       <div className="flex justify-center"><PlatformBrand className="h-[67.6px] sm:h-[84.5px]" /></div>
       <h1 className="mt-6 text-3xl font-extrabold sm:text-4xl">{title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">עדכון אחרון: 25 באוקטובר 2026</p>
