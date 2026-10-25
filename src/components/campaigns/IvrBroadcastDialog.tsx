@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded, Plus, RefreshCw, Search, Sparkles } from 'lucide-react';
+import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded, Plus, RefreshCw, Search, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -97,8 +97,6 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const [ttsText, setTtsText] = useState('');
   const [generatingTts, setGeneratingTts] = useState(false);
   const [autoScripting, setAutoScripting] = useState(false);
-  const [scriptEdited, setScriptEdited] = useState(false);
-  const [savingFinal, setSavingFinal] = useState(false);
   const lastAutoScriptRef = useRef<string>('');
   const [listingSearch, setListingSearch] = useState('');
 
@@ -156,7 +154,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     for (const v of clonedVoices) {
       if (!v.voice_id || seen.has(v.voice_id)) continue;
       seen.add(v.voice_id);
-      out.push({ id: `cv:${v.id}`, label: v.name, voice_id: v.voice_id, preview_url: v.preview_url ?? null });
+      out.push({ id: `cv:${v.id}`, label: v.name.trim().split(/[\s·]+/)[0], voice_id: v.voice_id, preview_url: v.preview_url ?? null });
     }
     for (const p of PRESET_VOICES) {
       if (seen.has(p.voice_id)) continue;
@@ -174,33 +172,57 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
 
-  const playVoicePreview = async (voice: { voice_id: string; label: string; preview_url?: string | null }) => {
+  const previewRequestRef = useRef(0);
+  const [loadingPreviewId, setLoadingPreviewId] = useState<string | null>(null);
+  const demoCache = useRef(new Map<string, Promise<string>>());
+  const demoTexts = ['שלום, שמחתי לשמוע על ההתעניינות שלכם. מוזמנים לקבל פרטים נוספים ולתאם ביקור.', 'היי, נעים להכיר. אשמח לספר לכם בקצרה על הנכס ולהזמין אתכם לביקור.'];
+  const getDemo = (voiceId: string, sample: number) => {
+    const key = `${workspaceId}:${voiceId}:${sample}`;
+    const cached = demoCache.current.get(key);
+    if (cached) return cached;
+    const request = (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('נדרשת התחברות');
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ivr-broadcast`, {
+        method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'tts', text: demoTexts[sample], voice_id: voiceId, generate_only: true, preview_only: true }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return URL.createObjectURL(await response.blob());
+    })();
+    demoCache.current.set(key, request);
+    void request.catch(() => demoCache.current.delete(key));
+    return request;
+  };
+  useEffect(() => {
+    if (!open || !workspaceId) return;
+    for (const voice of PRESET_VOICES) for (let sample = 0; sample < demoTexts.length; sample++) void getDemo(voice.voice_id, sample).catch(() => {});
+    return () => {
+      previewRequestRef.current++;
+      previewAudioRef.current?.pause();
+      setPreviewingVoiceId(null); setLoadingPreviewId(null);
+      for (const pending of demoCache.current.values()) void pending.then(url => URL.revokeObjectURL(url)).catch(() => {});
+      demoCache.current.clear();
+    };
+  }, [open, workspaceId]);
+  const playVoicePreview = async (voice: { voice_id: string; label: string }) => {
+    const request = ++previewRequestRef.current;
+    previewAudioRef.current?.pause();
+    if (previewingVoiceId === voice.voice_id) { setPreviewingVoiceId(null); return; }
+    setPreviewingVoiceId(null); setLoadingPreviewId(voice.voice_id);
     try {
-      if (previewAudioRef.current) {
-        previewAudioRef.current.pause();
-        previewAudioRef.current = null;
-        if (previewingVoiceId === voice.voice_id) { setPreviewingVoiceId(null); return; }
-      }
+      const url = await getDemo(voice.voice_id, Math.floor(Math.random() * demoTexts.length));
+      if (request !== previewRequestRef.current) return;
+      const audio = new Audio(url);
+      audio.setAttribute('data-allow-sound', 'true');
+      previewAudioRef.current = audio;
+      audio.onended = () => { if (previewAudioRef.current === audio) setPreviewingVoiceId(null); };
+      await audio.play();
       setPreviewingVoiceId(voice.voice_id);
-      let url = voice.preview_url || null;
-      if (!url) {
-        const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
-          body: { source: 'tts', text: 'שלום, זה קול לדוגמה.', voice_id: voice.voice_id, generate_only: true },
-        });
-        if (error || (data as any)?.error) throw new Error((data as any)?.error ?? error?.message ?? 'preview_failed');
-        url = (data as any)?.audio_url ?? null;
-      }
-      if (!url) throw new Error('no_url');
-      const a = new Audio(url);
-      a.setAttribute('data-allow-sound', 'true');
-      a.muted = false;
-      a.volume = 1;
-      previewAudioRef.current = a;
-      a.onended = () => { if (previewAudioRef.current === a) { previewAudioRef.current = null; setPreviewingVoiceId(null); } };
-      await a.play();
-    } catch (e: any) {
-      setPreviewingVoiceId(null);
-      toast.error(`תצוגה מקדימה נכשלה: ${e?.message ?? 'שגיאה'}`);
+    } catch (error: any) {
+      if (request === previewRequestRef.current) toast.error(`הדגמת הקול נכשלה: ${error?.message ?? 'שגיאה'}`);
+    } finally {
+      if (request === previewRequestRef.current) setLoadingPreviewId(null);
     }
   };
 
@@ -278,27 +300,26 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   }, [listings, listingSearch]);
 
   // Auto-generate a punchy promo script when a property is selected
-  const autoGenerateScriptForListing = async (l: ListingOpt) => {
+  const autoGenerateScriptForListing = async (l: ListingOpt | null) => {
     setAutoScripting(true);
     try {
       const facts: string[] = [];
-      if (l.property_title) facts.push(l.property_title);
-      if (l.address) facts.push(`כתובת ${l.address}`);
-      if (l.neighborhood) facts.push(`שכונת ${l.neighborhood}`);
-      if (l.city) facts.push(l.city);
-      if (l.rooms) facts.push(`${l.rooms} חדרים`);
-      if (l.sqm) facts.push(`${l.sqm} מ"ר`);
-      if (l.asking_price) facts.push(`מחיר ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
-      const topic = `כתוב הודעת מכירה קולית חד-צדדית קצרה למי שמתעניין בנכס הזה בלבד, 2-4 משפטים עד כ-35 שניות בהקראה. עובדות: ${facts.join(', ')}. ללא אימוג׳ים, עיצוב פוסט, חתימה, טלפון, רישיון או מלל מיותר. סיים בהזמנה קצרה לתיאום ביקור, ללא שאלות או הוראות ללחיצה על מקש. וריאציה חדשה ${crypto.randomUUID()}: שנה את הפתיחה והניסוח אך לא את העובדות. אין לחזור על התסריט הקודם: ${lastAutoScriptRef.current.slice(0, 700)}`;
+      if (l?.property_title) facts.push(l.property_title);
+      if (l?.address) facts.push(`כתובת ${l.address}`);
+      if (l?.neighborhood) facts.push(`שכונת ${l.neighborhood}`);
+      if (l?.city) facts.push(l.city);
+      if (l?.rooms) facts.push(`${l.rooms} חדרים`);
+      if (l?.sqm) facts.push(`${l.sqm} מ"ר`);
+      if (l?.asking_price) facts.push(`מחיר ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
+      const topic = `כתוב הודעת מכירה קולית חד-צדדית קצרה למי שמתעניין בנכס הזה בלבד, 2-4 משפטים עד כ-35 שניות בהקראה. עובדות: ${l ? facts.join(', ') : 'הודעה כללית בלבד ללא פרטי נכס מומצאים. כוונת המשתמש: ' + ttsText.trim().slice(0, 1500)}. ללא אימוג׳ים, עיצוב פוסט, חתימה, טלפון, רישיון או מלל מיותר. סיים בהזמנה קצרה לתיאום ביקור, ללא שאלות או הוראות ללחיצה על מקש. וריאציה חדשה ${crypto.randomUUID()}: שנה את הפתיחה והניסוח אך לא את העובדות. אין לחזור על התסריט הקודם: ${lastAutoScriptRef.current.slice(0, 700)}`;
       const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: { topic, platform: 'ivr', selectedListingId: l.id, listingFocusOnly: true },
+        body: { topic, platform: 'ivr', selectedListingId: l?.id, listingFocusOnly: !!l },
       });
       if (error) throw new Error(error.message);
       const text = String((data as any)?.content ?? (data as any)?.text ?? '').trim();
       if (!text) throw new Error('empty');
       setTtsText(text);
       lastAutoScriptRef.current = text;
-      setScriptEdited(false);
     } catch (e: any) {
       toast.error(`יצירת סקריפט נכשלה: ${e?.message ?? 'שגיאה'}`);
     } finally {
@@ -308,8 +329,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
 
   // Re-generate variation
   const regenerateScript = () => {
-    if (selectedListing) autoGenerateScriptForListing(selectedListing);
-    else toast.message('בחרו נכס כדי לייצר סקריפט');
+    void autoGenerateScriptForListing(selectedListing);
   };
 
   // When listing changes, auto-generate
@@ -317,40 +337,6 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (selectedListing) autoGenerateScriptForListing(selectedListing);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId]);
-
-  // Save final edited version to learning KB
-  const saveFinalVersion = async () => {
-    const text = ttsText.trim();
-    if (!text) return;
-    setSavingFinal(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('not authenticated');
-      const { error } = await supabase.from('system_intelligence_kb').insert({
-        workspace_owner_id: workspaceId,
-        created_by: user.id,
-        actor_role: 'owner',
-        source: 'ivr_final_version',
-        rule_text: text,
-        raw_input: lastAutoScriptRef.current,
-        signal: 'ivr_script_style',
-        weight: 1.0,
-        is_active: true,
-        metadata: {
-          context: 'ivr_promo_script',
-          listing_id: selectedListing?.id ?? null,
-          listing_city: selectedListing?.city ?? null,
-        },
-      });
-      if (error) throw error;
-      toast.success('נשמר כגרסה סופית — הפלטפורמה תלמד את הסגנון');
-      setScriptEdited(false);
-    } catch (e: any) {
-      toast.error(`שמירה נכשלה: ${e?.message ?? 'שגיאה'}`);
-    } finally {
-      setSavingFinal(false);
-    }
-  };
 
   // Generate TTS audio (calls ivr-broadcast in generate-only mode for an audio_url)
   const generateTtsAudio = async () => {
@@ -575,25 +561,25 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
 
           {source === 'tts' && (
             <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Select value={agentVoiceId} onValueChange={setAgentVoiceId} dir="rtl">
-                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
-                    <SelectValue placeholder="בחירת נציג/ת AI להקלטה" />
+              <div className="relative space-y-1.5">
+                <Select value={agentVoiceId} onValueChange={value => { setAgentVoiceId(value); const voice = allAgents.find(item => item.voice_id === value); if (voice) void playVoicePreview(voice); }} dir="rtl">
+                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold pl-16">
+                    <SelectValue placeholder="בחירת נציג/ת AI להקלטה">{agentVoiceId ? agentLabel : undefined}</SelectValue>
                   </SelectTrigger>
                   <SelectContent dir="rtl">
                     {allAgents.map((a) => (
                       <SelectItem key={a.voice_id} value={a.voice_id} className="pe-8 text-[17px]">
                         <div className="flex items-center justify-between gap-2 w-full">
                           <span className="truncate">{a.label}</span>
-                          <button
+                          <Button variant="ghost" size="icon"
                             type="button"
-                            aria-label="השמע דוגמה"
+                            aria-label={`השמע דוגמה · ${a.label}`}
                             onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); playVoicePreview(a); }}
                             className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted text-[#0f1b3d]"
                           >
-                            {previewingVoiceId === a.voice_id ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                          </button>
+                            {loadingPreviewId === a.voice_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : previewingVoiceId === a.voice_id ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                          </Button>
                         </div>
                       </SelectItem>
                     ))}
@@ -608,6 +594,9 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     </button>
                   </SelectContent>
                 </Select>
+                {agentVoiceId && <Button type="button" variant="ghost" size="icon" aria-label="השמע את הקול הנבחר" title="השמע את הקול הנבחר" className="absolute left-7 top-1 h-9 w-9" onClick={() => { const voice = allAgents.find(item => item.voice_id === agentVoiceId); if (voice) void playVoicePreview(voice); }}>
+                  {loadingPreviewId === agentVoiceId ? <Loader2 className="h-4 w-4 animate-spin" /> : previewingVoiceId === agentVoiceId ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </Button>}
               </div>
 
               <div className="space-y-1.5">
@@ -652,22 +641,13 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                   value={ttsText}
                   onChange={(e) => {
                     setTtsText(e.target.value);
-                    if (e.target.value.trim() && e.target.value.trim() !== lastAutoScriptRef.current.trim()) {
-                      setScriptEdited(true);
-                    }
+
                   }}
-                  placeholder={
-                    autoScripting
-                      ? 'מייצר סקריפט מותאם לנכס…'
-                      : selectedListing
-                        ? 'הסקריפט נוצר אוטומטית — ערכו, או רעננו לקבלת גרסה חדשה'
-                        : 'הקלידו את ההודעה שתישמע ביעד...'
-                  }
+                  placeholder={autoScripting ? 'מייצר תסריט להודעה מוקלטת…' : 'כתבו כאן הודעה קצרה להקראה, או צרו תסריט באמצעות AI.'}
                   className="text-right min-h-[140px] border-[#0f1b3d]/20 rounded-xl bg-background pl-12"
                   disabled={autoScripting}
                 />
-                {selectedListing && (
-                  <Button variant="outline" size="icon"
+                <Button variant="outline" size="icon"
                     type="button"
                     onClick={regenerateScript}
                     disabled={autoScripting}
@@ -675,23 +655,11 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     aria-label="ייצר תסריט חדש"
                     className="absolute top-2 left-2 h-8 w-8"
                   >
-                    <RefreshCw className={cn('h-4 w-4 text-[#0f1b3d]', autoScripting && 'animate-spin')} />
+                    <RefreshCw className={cn('h-4 w-4 text-foreground', autoScripting && 'animate-spin')} />
                   </Button>
-                )}
               </div>
 
-              {scriptEdited && (
-                <Button
-                  type="button"
-                  onClick={saveFinalVersion}
-                  disabled={savingFinal}
-                  variant="outline"
-                  className="w-full h-10 rounded-xl border-emerald-500/40 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold"
-                >
-                  <Sparkles className="ml-2 h-4 w-4" />
-                  {savingFinal ? 'שומר…' : 'גרסה סופית — למד את הסגנון שלי'}
-                </Button>
-              )}
+              {!ttsText.trim() && <Button type="button" variant="link" onClick={regenerateScript} disabled={autoScripting} className="h-auto p-0">יצירת תסריט באמצעות AI</Button>}
 
               <div className="flex justify-end">
                 <Button
@@ -743,7 +711,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           <div className="space-y-2">
             <Select value={audience} onValueChange={(v) => setAudience(v as AudienceMode)} dir="rtl">
               <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background">
-                <SelectValue placeholder="למי מחייגים?" />
+                <SelectValue placeholder={<span className="font-bold">למי מחייגים?</span>} />
               </SelectTrigger>
               <SelectContent dir="rtl">
                 <SelectItem value="all" className="text-[17px]">כל הרשימה ({loadingLeads ? '…' : leads.length})</SelectItem>
