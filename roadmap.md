@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Selected-property actions
-- [ ] Preserve the clicked property's identity through Facebook connect-later, draft restoration and generation of the post/first comment.
-- [ ] Check property sharing and sibling actions use the same selected property; run regression tests and the signed-in flow.
+- [x] Preserve the clicked property's identity through Facebook connect-later, draft restoration and generation of the post/first comment; late connection checks cannot undo skip.
+- [x] Check shared action target paths; 22 regression tests pass and signed-in generation verified on two public properties with matching selector, photos, post and first comment. No post published.
 
 ## Profile action bar visibility
 - [x] Keep the sign-out / save-profile row pinned at the bottom of the profile screen on phone-sized viewports, resting above the legal footer; other tabs keep their normal bottom gap. Browser-verified at 446x728 and 1280x900, build OK.
