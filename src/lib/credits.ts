@@ -16,6 +16,7 @@ export const fmtCompactCredits = (c: number, maximumFractionDigits = 1) => {
 };
 
 export const ACTION_META: Record<string, { icon: LucideIcon; tone: string }> = {
+  social_post: { icon: Sparkles, tone: 'bg-warning/15 text-warning' },
   whatsapp_marketing: { icon: MessageCircle, tone: 'bg-success/15 text-success' },
   sms: { icon: MessageSquare, tone: 'bg-primary/15 text-primary' },
   email: { icon: Mail, tone: 'bg-accent text-accent-foreground' },
