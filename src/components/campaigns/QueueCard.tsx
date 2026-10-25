@@ -64,6 +64,7 @@ export function QueueCard({
   dateLabel,
   countdownIso,
   actions,
+  menu,
   details,
 }: {
   title: string;
@@ -78,6 +79,7 @@ export function QueueCard({
   dateLabel?: string | null;
   countdownIso?: string | null;
   actions?: ReactNode;
+  menu?: ReactNode;
   /** Extra content revealed when the card is expanded. */
   details?: ReactNode;
 }) {
@@ -105,6 +107,7 @@ export function QueueCard({
             )}
           </div>
           <h3 className="flex-1 text-right font-semibold text-foreground line-clamp-2">{title}</h3>
+          {menu}
         </div>
 
         {/* Target groups — always visible (collapsed pill), expands to names */}

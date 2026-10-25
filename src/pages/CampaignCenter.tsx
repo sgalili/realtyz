@@ -74,7 +74,8 @@ import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { DeletePostDialog } from '@/components/campaigns/DeletePostDialog';
 import { GroupStatusChips, groupResultMap } from '@/components/campaigns/GroupStatusChips';
 import { QueueCard } from '@/components/campaigns/QueueCard';
-import { ContinuePostingButton } from '@/components/campaigns/ContinuePostingButton';
+import { usePreparePostRepost } from '@/components/campaigns/ContinuePostingButton';
+import { PostActionsMenu } from '@/components/campaigns/PostActionsMenu';
 import { ResumePostingButton } from '@/components/campaigns/ResumePostingButton';
 import { REPOST_EDITOR_EVENT, repostEditorDraft, type RepostEditorRequest } from '@/lib/repostEditor';
 import { applyContinuedQueueJobs, POSTS_REMOVED_EVENT } from '@/lib/extensionGroupBridge';
@@ -4607,6 +4608,8 @@ const PublishedFeed = ({
 
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
+  const { prepare: prepareRepost, busy: preparingRepost } = usePreparePostRepost();
+  const [pendingCardRefresh, setPendingCardRefresh] = useState<string | null>(null);
   const [editRepostRow, setEditRepostRow] = useState<CampaignRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CampaignRow | null>(null);
   // Multi-select deletion of published posts.
@@ -4833,6 +4836,12 @@ const PublishedFeed = ({
       toast.dismiss(`refresh-${campaignId}`);
     }, 45_000);
   };
+
+  useEffect(() => {
+    if (!pendingCardRefresh) return;
+    bumpRefresh(pendingCardRefresh);
+    setPendingCardRefresh(null);
+  }, [pendingCardRefresh]);
 
   const handleRefreshComplete = (campaignId: string, result: { ok: boolean; count: number; error?: string }) => {
     setRefreshingIds((prev) => { const n = { ...prev }; delete n[campaignId]; return n; });
@@ -6464,6 +6473,22 @@ const PublishedFeed = ({
                 >
                   {(bodyText.trim().split('\n')[0] || safeUtf8(displayedCopy.title))}
                 </h3>
+                <PostActionsMenu
+                  postUrl={postUrl}
+                  refreshing={!!refreshingIds[r.id]}
+                  refreshDisabled={getCooldownSeconds(r.id) > 0}
+                  reposting={preparingRepost}
+                  onRefresh={!r._parentCampaignId && String(r.channel).toLowerCase() === 'facebook' && r.provider_message_id ? () => {
+                    setExpanded({ [r.id]: true });
+                    setPendingCardRefresh(r.id);
+                  } : undefined}
+                  onEdit={postUrl ? () => window.open(postUrl, '_blank', 'noopener,noreferrer') : undefined}
+                  onRepost={!r._parentCampaignId ? () => {
+                    if (hasGroupTargets) void prepareRepost(r);
+                    else setEditRepostRow(r);
+                  } : undefined}
+                  onDelete={!r._parentCampaignId ? () => deleteCampaign(r) : undefined}
+                />
               </div>
 
 
@@ -6520,7 +6545,6 @@ const PublishedFeed = ({
                     />
                   </div>
                 )}
-                {hasGroupTargets && inGroupOverlay !== true && <ContinuePostingButton post={r} />}
                 {hasGroupTargets && inGroupOverlay !== true && <ResumePostingButton campaignLogId={r.id} fallbackProgress={fallbackProgress} />}
                 <div className="ms-auto flex shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2"
                   title={r.metrics_updated_at ? `עודכן: ${new Date(r.metrics_updated_at).toLocaleString('he-IL')}` : undefined}>
@@ -6652,31 +6676,6 @@ const PublishedFeed = ({
                 <div className={cn('mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap', alignClass)} dir={dirAttr}>
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
-                <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" title="פתח פוסט" aria-label="פתח פוסט"
-                            disabled={!postUrl}
-                            onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'width=1200,height=800,noopener,noreferrer'); }}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                    {/* Comment refresh lives at the trailing edge of the
-                        "תגובות לקמפיין / תגובות המשך" row below. */}
-
-                    {/* Attachment indicator removed from published cards. */}
-                  </div>
-                  {!r._parentCampaignId && <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" title="ערוך ופרסם מחדש" aria-label="ערוך ופרסם מחדש"
-                            onClick={(e) => { e.stopPropagation(); setEditRepostRow(r); }}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" title="מחק פוסט" aria-label="מחק פוסט"
-                            onClick={(e) => { e.stopPropagation(); console.log('DELETE CLICKED:', r.id, r.series_id ?? null); deleteCampaign(r); }}
-                            className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>}
-                </div>
-
                 {!r.is_external && !r._parentCampaignId && (
                   <CampaignGroupBreakdown
                     workspaceOwnerId={workspaceOwnerId}
@@ -7541,6 +7540,7 @@ const CampaignCenter = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   useEffect(() => { setWizardChannel(null); }, [workspaceOwnerId]);
   const [repostRequest, setRepostRequest] = useState<RepostEditorRequest | null>(null);
+  const { prepare: prepareScheduledRepost, busy: preparingScheduledRepost } = usePreparePostRepost();
   useEffect(() => {
     setRepostRequest(null);
     const open = (event: Event) => {
@@ -8510,6 +8510,21 @@ const CampaignCenter = () => {
             groupEmptyLabel="לא נבחרו קבוצות לטיוטה"
             status="draft"
             dateLabel={new Date(r.updated_at || r.created_at).toLocaleString('he-IL')}
+            menu={<PostActionsMenu
+              onEdit={() => {
+                const next = new URLSearchParams(searchParams);
+                next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
+                if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
+                setSearchParams(next);
+              }}
+              onDelete={() => { void (async () => {
+                    setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
+                    removeQueueEntriesForPosts({ ids: [r.id], texts: [String(r.generated_text || '')] });
+                    const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
+                    if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
+                    else toast.success('הטיוטה נמחקה');
+              })(); }}
+            />}
             actions={
               <>
                 {draftSelectMode && (
@@ -8520,38 +8535,6 @@ const CampaignCenter = () => {
                     className="shrink-0"
                   />
                 )}
-                <Button
-
-                  size="icon"
-                  variant="outline"
-                  title="עריכת הטיוטה"
-                  aria-label="עריכת הטיוטה"
-                  className="h-8 w-8 shrink-0"
-                  onClick={() => {
-                    const next = new URLSearchParams(searchParams);
-                    next.set('tab', 'create'); next.set('channel', r.platform || 'facebook');
-                    if (r.listing_id) { next.set('listing', r.listing_id); next.set('properties', r.listing_id); }
-                    setSearchParams(next);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  title="מחק טיוטה"
-                  aria-label="מחק טיוטה"
-                  className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
-                  onClick={async () => {
-                    setCampaignDraftRows((prev) => prev.filter((x) => x.id !== r.id));
-                    removeQueueEntriesForPosts({ ids: [r.id], texts: [String(r.generated_text || '')] });
-                    const { error } = await supabase.from('ai_content_logs').delete().eq('id', r.id);
-                    if (error) { toast.error('מחיקת הטיוטה נכשלה'); setHistoryRefreshTick((t) => t + 1); }
-                    else toast.success('הטיוטה נמחקה');
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </>
             }
           />
@@ -8617,6 +8600,13 @@ const CampaignCenter = () => {
                 </ul>
               )}
               dateLabel={new Date(r.sent_at).toLocaleString('he-IL')}
+              menu={<PostActionsMenu
+                postUrl={derivePostUrl(r)}
+                onEdit={() => setEditSeriesRow(r)}
+                reposting={preparingScheduledRepost}
+                onRepost={() => { void prepareScheduledRepost(r); }}
+                onDelete={() => setFutureDeleteTarget(r)}
+              />}
               actions={
                 <>
                   {futureSelectMode && (
@@ -8627,27 +8617,6 @@ const CampaignCenter = () => {
                       className="shrink-0"
                     />
                   )}
-                  {groupIds.length > 0 && <ContinuePostingButton post={r} />}
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    title="עריכת קבוצות ונכסים"
-                    aria-label="עריכת קבוצות ונכסים"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => setEditSeriesRow(r)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="מחק פוסט מתוזמן"
-                    aria-label="מחק פוסט מתוזמן"
-                    className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10"
-                    onClick={() => setFutureDeleteTarget(r)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </>
               }
             />

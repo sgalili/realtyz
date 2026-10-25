@@ -8,3 +8,4 @@
 - Campaign feed refreshes preserve displayed post copy by stable post ID within the active workspace; refresh status/counters independently to prevent background content swaps.
 - Campaign cards group by stable series identity regardless of delivery status, sort by immutable creation time with ID tie-breakers, and distinguish comment-only warnings from publication failures.
 - Permanent campaign deletion uses a workspace-authorized transaction for posts and queued jobs; native import excludes deletion markers to prevent deleted cards returning.
+- Post card actions use one shared top-left menu; published edits open the native post, reposts reuse the explicit workspace-scoped composer, and refreshes reuse the targeted comments/metrics pipeline. Why: avoid accidental duplicate publishing and bulk provider calls.
