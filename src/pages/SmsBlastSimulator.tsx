@@ -499,6 +499,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const [aliasLoaded, setAliasLoaded] = useState(false);
   // Dedicated-WhatsApp two-step flow: skip the connection screen for now.
   const [waConnectSkipped, setWaConnectSkipped] = useState(false);
+  const [emailSenderChosen, setEmailSenderChosen] = useState<'alias' | 'gmail' | null>(null);
   const [phase, setPhase] = useState<'compose' | 'sending' | 'done'>('compose');
   const [sent, setSent] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -1140,7 +1141,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
   // Two-step flow for the dedicated email window: sender configuration must be
   // completed before recipient selection is reachable.
-  if (dedicatedChannel === 'email' && phase === 'compose' && connectionsLoaded && aliasLoaded && !senderReady) {
+  if (dedicatedChannel === 'email' && phase === 'compose' && connectionsLoaded && aliasLoaded && !emailSenderChosen) {
     return (
       <div className="mx-auto w-full max-w-3xl space-y-6" dir="rtl">
         <Card>
@@ -1154,18 +1155,19 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                 <Input value={aliasPrefix} onChange={(e) => setAliasPrefix(e.target.value)} placeholder="office" dir="ltr" className="h-11 flex-1 rounded-none border-0 text-left font-mono text-base focus-visible:ring-0 focus-visible:ring-offset-0" />
                 <div className="flex items-center border-r border-border bg-muted/60 px-3 font-mono text-sm" dir="ltr">@{EMAIL_SENDER_DOMAIN}</div>
               </div>
-              <Button type="button" className="w-full" disabled={sanitizeEmailAlias(aliasPrefix).length < 2 || aliasSaving} onClick={() => void saveAlias()}>
-                {aliasSaving ? 'שומר…' : 'שמור כתובת שולח'}
-              </Button>
+              {emailAlias && sanitizeEmailAlias(aliasPrefix) === emailAlias
+                ? <Button type="button" className="w-full" onClick={() => setEmailSenderChosen('alias')}>שליחה מ־<span dir="ltr">{emailAlias}@{EMAIL_SENDER_DOMAIN}</span></Button>
+                : <Button type="button" className="w-full" disabled={sanitizeEmailAlias(aliasPrefix).length < 2 || aliasSaving} onClick={() => void saveAlias().then(() => setEmailSenderChosen('alias'))}>
+                  {aliasSaving ? 'שומר…' : 'שמור והמשך עם כתובת זו'}
+                </Button>}
             </div>
             <div className="space-y-2 rounded-lg border border-border p-3 text-center">
               <Label className="block">או חיבור Gmail אישי</Label>
-              <Button type="button" variant="outline" className="w-full gap-2" onClick={() => handleConnectChannel('email')}>
-                <Mail className="h-4 w-4" />
-                התחברות עם Google
-              </Button>
+              {emailAccountInfo.count > 0
+                ? <Button type="button" variant="outline" className="w-full gap-2" onClick={() => setEmailSenderChosen('gmail')}><Mail className="h-4 w-4" />שליחה מחשבון Gmail המחובר</Button>
+                : <Button type="button" variant="outline" className="w-full gap-2" onClick={() => handleConnectChannel('email')}><Mail className="h-4 w-4" />התחברות עם Google</Button>}
             </div>
-            <p className="text-xs text-muted-foreground">יש להשלים את הגדרת השולח לפני בחירת נמענים.</p>
+            <p className="text-xs text-muted-foreground">שלב חובה: בחרו מאיזו תיבה תישלח ההודעה לפני בחירת נמענים.</p>
           </CardContent>
         </Card>
       </div>
