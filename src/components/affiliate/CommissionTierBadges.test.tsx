@@ -1,6 +1,6 @@
 import { render, screen, cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RewardIcons } from './CommissionTierBadges';
+import CommissionTierBadges, { RewardIcons } from './CommissionTierBadges';
 
 const access = vi.hoisted(() => ({ allowed: false }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: access.allowed }) }));
