@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -57,6 +58,6 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const display = tableRoyalties(types, tiers, !!user, level4Unlocked);
   if (!Object.values(display.types).some(Boolean) && !owned.data) return null;
   const icons = <RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={typeof source?.closing_level === 'number' ? source.closing_level : null} />;
-  if (table && owned.data) return <><Button variant="ghost" className="h-auto bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תמלוגים" onClick={event => { event.stopPropagation(); if (owned.data) setDraft({ ...listingToDraft(owned.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{icons}<span className="sr-only">עריכה</span></Button>{draft && <PublicListingPublisher pricingOnly resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
+  if (table && owned.data) return <><Button variant="ghost" className="min-h-8 min-w-8 bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תמלוגים" onClick={event => { event.stopPropagation(); if (owned.data) setDraft({ ...listingToDraft(owned.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{Object.values(display.types).some(Boolean) ? icons : <Pencil className="h-4 w-4 text-muted-foreground" />}<span className="sr-only">עריכה</span></Button>{draft && <PublicListingPublisher pricingOnly resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
   return <LeadPricingDialog readOnly rewardTypes={display.types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}><RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={typeof source?.closing_level === 'number' ? source.closing_level : null} /></LeadPricingDialog>;
 }
