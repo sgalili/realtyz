@@ -31,7 +31,7 @@ export default function TransparencyWidget({ filter, onFilter }: { filter?: Tran
     <Stat key="wallet" label={data.wallet?.frozen ? 'ארנק (מוקפא)' : 'ארנק'} value={fmtCredits(ilsToCredits(Number(data.wallet?.balance ?? 0)))} tone={data.wallet?.frozen ? 'destructive' : undefined} {...on('advertiser', 'wallet')} />,
     <Stat key="active" label="נכסים פעילים" value={n(a.active_listings)} {...on('advertiser', 'active_listings')} />,
     <Stat key="trust" label="ציון אמינות" value={data.trust_score != null ? n(data.trust_score) : '—'} />,
-    <Stat key="leads" label="סה״כ פניות" value={n(a.leads_30d)} {...on('advertiser', 'leads_30d')} />,
+    <Stat key="leads" label="פניות (30 יום)" value={n(a.leads_30d)} {...on('advertiser', 'leads_30d')} />,
   ];
   return (
     <section className="space-y-2" aria-label="סיכום">
