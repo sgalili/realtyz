@@ -865,7 +865,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
                   const active = price > 0;
-                  const expanded = openLeads[key] ?? false;
+                  const expanded = openLeads[key] ?? active;
                   const qList = key === 'Form' ? [] : ((((fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] as string[] | undefined)?.length ? (fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] : defaultQuestions(fields.dealType)) as string[]);
                   const extraCost = (key === 'Form' ? cleanFormFields(fields.formFields).length : Math.max(qList.filter(q => q.trim()).length - 3, 0)) * EXTRA_QUESTION_COST;
                   const toggle = () => {

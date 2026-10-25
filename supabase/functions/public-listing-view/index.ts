@@ -92,12 +92,15 @@ Deno.serve(async (req) => {
 
     const publicProperty = (row: Record<string, any>) => {
       if (snapshot && row.id === listing.id) {
-        const terms = snapshot.terms as Record<string, any> | null;
+        // A lock-in taken before a closing fee existed carries no rate; show the ad's current closing fee then.
+        const lockedClosing = Number(snapshot.tier4_amount) > 0;
+        const snap: Record<string, any> = lockedClosing ? snapshot : { ...snapshot, tier4_amount: row.affiliate_tier4_amount, tier4_type: row.affiliate_tier4_type, terms: { ...(snapshot.terms ?? {}), deal_closing_commission: row.features?.deal_closing_commission ?? null } };
+        const terms = snap.terms as Record<string, any> | null;
         row = { ...row,
-          affiliate_tier1_amount: snapshot.tier1_amount, affiliate_tier2_amount: snapshot.tier2_amount,
-          affiliate_tier3_amount: snapshot.tier3_amount, affiliate_tier4_amount: snapshot.tier4_amount,
-          affiliate_tier4_type: snapshot.tier4_type,
-          features: { ...row.features, deal_closing_commission: terms?.deal_closing_commission ?? { type: snapshot.tier4_type, value: snapshot.tier4_amount } },
+          affiliate_tier1_amount: snap.tier1_amount, affiliate_tier2_amount: snap.tier2_amount,
+          affiliate_tier3_amount: snap.tier3_amount, affiliate_tier4_amount: snap.tier4_amount,
+          affiliate_tier4_type: snap.tier4_type,
+          features: { ...row.features, deal_closing_commission: terms?.deal_closing_commission ?? { type: snap.tier4_type, value: snap.tier4_amount } },
         };
       }
       const {
