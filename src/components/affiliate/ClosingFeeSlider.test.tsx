@@ -50,8 +50,8 @@ describe('closing fee interaction', () => {
     expect(change).toHaveBeenCalledWith(100);
   });
   it('closing amounts always display as whole shekels without decimals', () => {
-    render(<ClosingFeeSlider dualMode dealType="rent" price={5300} value={1.5} valueType="percent" onChange={vi.fn()} onValueChange={vi.fn()} />);
-    expect(screen.getByText('₪80')).toBeTruthy();
-    expect(screen.queryByText(/79\.5/)).toBeNull();
+    render(<ClosingFeeSlider dualMode dealType="rent" price={5333} value={50} valueType="percent" onChange={vi.fn()} onValueChange={vi.fn()} />);
+    expect(screen.getByText('₪2,667')).toBeTruthy();
+    expect(screen.queryByText(/2,666\.5/)).toBeNull();
   });
 });
