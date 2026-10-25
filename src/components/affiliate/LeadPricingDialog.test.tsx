@@ -33,8 +33,8 @@ describe('partner lead pricing information', () => {
   it('shows the partner shekel value next to a percentage closing fee', () => {
     state.level4Unlocked = true;
     render(<LeadPricingInfo closingOnly listing={{ ...listing, tier4_amount: 1, tier4_type: 'percent' }} details={{ asking_price: 3000000 }} />);
-    expect(screen.getByText('(₪24,000)')).toBeTruthy();
-    expect(screen.getByText('0.8%')).toBeTruthy();
+    const closingAmount = screen.getAllByText('0.8%')[0];
+    expect(closingAmount.textContent).toBe('0.8%(₪24,000)');
   });
   it('shows closing net as whole shekels for fixed amounts, without decimals', () => {
     state.level4Unlocked = true;
