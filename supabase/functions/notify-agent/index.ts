@@ -96,11 +96,12 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: "Unauthorized — could not resolve user" }, 401);
 
     // Load preferences (auto-create defaults if missing)
-    let { data: pref } = await admin
+    let { data: pref, error: preferencesError } = await admin
       .from("notification_preferences")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
+    if (preferencesError) return json({ error: 'Notification preferences unavailable' }, 503);
     if (!pref) {
       const { data: created } = await admin
         .from("notification_preferences")
@@ -109,6 +110,7 @@ Deno.serve(async (req) => {
         .single();
       pref = created;
     }
+    if (!pref) return json({ error: 'Notification preferences unavailable' }, 503);
 
     const enabled = pref?.[PREF_COLUMN[body.event_type]] !== false;
     if (!enabled) {
