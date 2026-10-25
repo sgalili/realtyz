@@ -106,10 +106,10 @@
     --lead-whatsapp: 142 70% 40%;
     --lead-phone: 217 91% 55%;
     --lead-closing: 43 90% 48%;
-    --closing-low: 0 72% 48%;
-    --closing-medium: 26 92% 45%;
-    --closing-high: 45 95% 40%;
-    --closing-max: 142 76% 35%;
+    --closing-low: 142 76% 35%;
+    --closing-medium: 45 95% 40%;
+    --closing-high: 26 92% 45%;
+    --closing-max: 0 72% 48%;
     --closing-track: linear-gradient(to right, hsl(var(--closing-low)), hsl(var(--closing-medium)) 33%, hsl(var(--closing-high)) 66%, hsl(var(--closing-max)));
     --success-foreground: 0 0% 100%;
     --warning: 47 100% 50%;
@@ -1712,7 +1712,8 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .home-activity-drawer { display: flex; flex-direction: column; width: 100%; max-width: 100%; min-width: 0; max-height: calc(100dvh - 5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow: hidden; border-radius: 0 0 8px 8px; }
 .home-activity-drawer [data-activity-scroll] { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
 @media (min-width: 1024px) {
-  .realtyz-app-shell { --app-content-width: min(60vw, 72rem); }
+  :root { --app-content-width: min(60vw, 72rem); }
+  [data-site-dialog] { width: var(--app-content-width) !important; }
   .app-content-width { width: var(--app-content-width); max-width: 100%; margin-inline: auto; }
   .app-header-content { width: calc(var(--app-content-width) - 2rem); max-width: 100%; margin-inline: auto; }
 }

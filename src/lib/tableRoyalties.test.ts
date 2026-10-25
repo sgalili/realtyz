@@ -3,8 +3,8 @@ import { tableRoyalties } from './tableRoyalties';
 const types = { form: true, whatsapp: false, phone: true, closing: false };
 const amounts = { tier1: 100, tier2: 0, tier3: 200, tier4: 10000 };
 describe('table royalty visibility', () => {
-  it('guests see neither the closing icon nor prices', () => {
-    expect(tableRoyalties(types, amounts, false, true)).toEqual({ types: { ...types, closing: false }, prices: undefined });
+  it('guests always see the closing trophy without any prices', () => {
+    expect(tableRoyalties(types, { ...amounts, tier4: 0 }, false, false)).toEqual({ types: { ...types, closing: true }, prices: undefined });
   });
   it('signed-in non-brokers see net lead prices but no closing price', () => {
     const result = tableRoyalties(types, amounts, true, false);

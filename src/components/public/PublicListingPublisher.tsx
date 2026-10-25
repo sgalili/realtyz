@@ -873,10 +873,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     setOpenLeads((next) => ({ ...next, [key]: !expanded }));
                   };
                   return (
-                  <div key={key} className="space-y-2 border-b border-border pb-4">
+                  <div key={key} className="closing-fee space-y-2 border-b border-border pb-4" data-level={leadPriceLevel(tier, price)}>
                     <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-1 self-center font-medium">
                       <Button type="button" variant="ghost" className="h-auto justify-start gap-1 whitespace-normal p-0 text-start font-medium hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>
-                        {key === 'Form' ? <LeadFormIcon className="h-4 w-4 shrink-0 text-lead-form" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-4 w-4 shrink-0 text-lead-whatsapp" aria-hidden /> : <LeadPhoneIcon className="h-4 w-4 shrink-0 text-lead-phone" aria-hidden />}
+                        {key === 'Form' ? <LeadFormIcon className="h-4 w-4 shrink-0 closing-tone" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-4 w-4 shrink-0 closing-tone" aria-hidden /> : <LeadPhoneIcon className="h-4 w-4 shrink-0 closing-tone" aria-hidden />}
                         {label}
                       </Button>
                       <LeadTypeHelp label={label}>
@@ -886,7 +886,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                           {key === 'Phone' && 'הפונה משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI (ריטה) מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
                         </p>
                       </LeadTypeHelp>
-                    </span><span className="closing-fee ms-auto flex items-center gap-10" data-level={leadPriceLevel(tier, price)}>{!expanded && active && <Button type="button" variant="ghost" className="h-9 px-2 text-lg font-bold closing-tone" aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={active} onCheckedChange={(next) => { set(`commission${key}`, next ? String(LEAD_PRICE_RANGES[tier].min) : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /></span></div>
+                    </span><span className="ms-auto flex items-center gap-2">{!expanded && active && <Button type="button" variant="ghost" className="h-9 px-2 text-lg font-bold closing-tone" aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={active} onCheckedChange={(next) => { set(`commission${key}`, next ? String(LEAD_PRICE_RANGES[tier].min) : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></span></div>
                     {active && expanded && <div className="space-y-2">
                     <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
@@ -956,7 +956,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       </DialogContent>
     </Dialog>
     <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
-      <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
+      <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
         <DialogHeader className="shrink-0 px-10 pb-4 text-center">
           {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
