@@ -90,91 +90,19 @@ Deno.serve(async (req) => {
       return json({ error: insErr.message }, 500);
     }
 
-    // 2) Look up the Agent's WhatsApp number.
-    //    Profiles don't have a phone column today, so we fall back to the
-    //    auth.users phone. Both are read with the service role.
-    let agentPhone: string | null = null;
-    let agentName = "Agent";
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("full_name, email")
-      .eq("id", userId)
-      .maybeSingle();
-    if (profile?.full_name) agentName = profile.full_name;
-
-    const { data: authUser } = await admin.auth.admin.getUserById(userId);
-    agentPhone = authUser?.user?.phone || null;
-
-    let notificationResult: Record<string, unknown> = { agent_phone_resolved: !!agentPhone };
+    // Route the optional agent alert once through preference-governed delivery.
     let notified = false;
-
-    if (agentPhone) {
-      // 3) Send a WhatsApp message to the human Agent via the gateway.
-      const leadHint = body.lead_id ? `\nLead ID: ${body.lead_id}` : "";
-      const text =
-        `🚨 TORAFF Escalation Alert (${body.severity || "high"})\n` +
-        `Category: ${body.category}\n` +
-        `Keywords: ${(body.matched_keywords || []).join(", ") || "—"}${leadHint}\n` +
-        `\nLead said:\n"${body.lead_message.slice(0, 600)}"\n\n` +
-        `Open the Deal Room to take over this conversation.`;
-
-      try {
-        const sendRes = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${SERVICE_KEY}`,
-            apikey: SERVICE_KEY,
-          },
-          body: JSON.stringify({
-            phone_number: agentPhone,
-            message: text,
-            tenant_id: userId,
-          }),
-        });
-        notified = sendRes.ok;
-        notificationResult = {
-          ...notificationResult,
-          status: sendRes.status,
-          ok: sendRes.ok,
-        };
-        if (!sendRes.ok) {
-          notificationResult.body = (await sendRes.text()).slice(0, 400);
-        }
-      } catch (e) {
-        notificationResult.error = (e as Error).message;
-      }
-    } else {
-      notificationResult.reason = "Agent has no phone number on file";
-    }
-
-    await admin
-      .from("escalation_alerts")
-      .update({ notified_agent: notified, notification_result: notificationResult })
-      .eq("id", alertRow.id);
-
-    // Also fire the Smart Notification system so the agent's preferences (e.g.
-    // quiet hours, channel) are respected and the alert lands in the
-    // notifications history with a Deal Room deep link.
+    let notificationResult: Record<string, unknown> = {};
     try {
-      await fetch(`${SUPABASE_URL}/functions/v1/notify-agent`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${SERVICE_KEY}`,
-          apikey: SERVICE_KEY,
-        },
-        body: JSON.stringify({
-          event_type: "critical_question",
-          lead_id: body.lead_id || null,
-          lead_name: null,
-          detail: `[${body.category}] ${body.lead_message.slice(0, 240)}`,
-          override_user_id: userId,
-        }),
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/notify-agent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+        body: JSON.stringify({ event_type: 'critical_question', lead_id: body.lead_id || null, detail: `[${body.category}] ${body.lead_message.slice(0, 240)}`, override_user_id: userId }),
       });
-    } catch (e) {
-      console.warn("[escalation-alert] notify-agent dispatch failed", (e as Error).message);
-    }
+      const result = await response.json().catch(() => ({}));
+      notified = response.ok && result.delivered === true;
+      notificationResult = { status: response.status, ...result };
+    } catch { notificationResult = { error: 'notification_dispatch_failed' }; }
+    await admin.from('escalation_alerts').update({ notified_agent: notified, notification_result: notificationResult }).eq('id', alertRow.id);
 
     return json({ ok: true, alert_id: alertRow.id, notified, notificationResult });
   } catch (e) {
