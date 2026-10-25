@@ -30,7 +30,7 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
           <h2 className="flex flex-wrap items-center gap-2 text-xl font-bold text-foreground">
             {channel && <CampaignServiceIcon channel={channel.id} className="h-6 w-6" />}
             {channel ? `הגדרת קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}
-            {channel && <span className="text-sm font-normal text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span>}
+            {channel && <span className="basis-full text-sm font-normal text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span>}
           </h2>
         </div>
       </div>
