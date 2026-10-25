@@ -1,5 +1,9 @@
 # Roadmap
 
+## Consistent zero-fee lead indicators
+- [x] Show four ordered types for guests, Super Admins and brokers across shared indicators and pricing details.
+- [x] Mark known zero fees gray without exposing restricted amounts; 32 focused tests pass, guest and signed-in table indicators and guest pricing dialog verified.
+
 ## Weekly notification quiet hours
 - [x] Remove selected notice and add global/day-specific quiet-time controls.
 - [x] Persist and enforce weekly schedule; test overnight intervals and saved settings.

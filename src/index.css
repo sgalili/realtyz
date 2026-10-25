@@ -110,6 +110,7 @@
     --lead-whatsapp: 142 70% 40%;
     --lead-phone: 217 91% 55%;
     --lead-closing: 43 90% 48%;
+    --lead-no-fee: 210 8% 62%;
     --closing-low: 142 76% 35%;
     --closing-medium: 45 95% 40%;
     --closing-high: 26 92% 45%;
@@ -219,6 +220,7 @@
 }
 
 @layer components {
+  .lead-no-fee { color: hsl(var(--lead-no-fee)); }
   /* Compatibility shims so legacy classes don't break old pages
      until the sweep replaces them. They render as flat clean cards. */
   .glass-card {

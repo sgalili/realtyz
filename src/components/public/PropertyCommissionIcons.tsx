@@ -41,7 +41,8 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const { level4Unlocked } = useAffiliateLicense();
   const marketplace = useAffiliateMarketplace();
   const { activeWorkspaceId } = useWorkspace();
-  const { isSuperAdmin } = useUserRole();
+  const { isSuperAdmin, roles } = useUserRole();
+  const showAll = !user || isSuperAdmin || roles.some(role => ['managing_broker', 'lead_agent', 'agent'].includes(role));
   const [draft, setDraft] = useState<PublicListingDraft>();
   const owned = useQuery({
     queryKey: ['owned-royalties', listingId, user?.id, activeWorkspaceId, isSuperAdmin],
@@ -77,11 +78,18 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     tier3: Number(source?.affiliate_tier3_amount ?? 0), tier4: level4Unlocked ? closingIls : 0,
     tier4Type: 'fixed' as 'percent' | 'fixed',
   };
-  const types: RewardTypes = { ...(source?.reward_types as RewardTypes ?? { form: tiers.tier1 > 0, whatsapp: tiers.tier2 > 0, phone: tiers.tier3 > 0 }), closing: !!user && level4Unlocked && tiers.tier4 > 0 };
-  const display = tableRoyalties(types, tiers, !!user, level4Unlocked);
+  const configured = source?.reward_types as RewardTypes | undefined;
+  const types: RewardTypes = configured ?? {
+    form: source?.affiliate_tier1_amount == null ? undefined : tiers.tier1 > 0,
+    whatsapp: source?.affiliate_tier2_amount == null ? undefined : tiers.tier2 > 0,
+    phone: source?.affiliate_tier3_amount == null ? undefined : tiers.tier3 > 0,
+    closing: source?.affiliate_tier4_amount == null && dcc?.value == null ? undefined : rawTier4 > 0,
+  };
+  const zeroTypes = Object.fromEntries(Object.entries(types).map(([key, active]) => [key, active === false])) as RewardTypes;
+  const display = tableRoyalties(types, tiers, !!user, level4Unlocked, showAll);
   if (!Object.values(display.types).some(Boolean) && !owned.data) return null;
   const closingLevel = typeof source?.closing_level === 'number' ? source.closing_level : typeof raw?.closing_level === 'number' ? raw.closing_level : 0;
-  const icons = <RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={(source?.reward_levels ?? raw?.reward_levels) as never} />;
+  const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={(source?.reward_levels ?? raw?.reward_levels) as never} />;
   if (table && owned.data) return <><Button variant="ghost" className="relative min-h-8 min-w-8 bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תמלוגים" onClick={event => { event.stopPropagation(); if (owned.data) setDraft({ ...listingToDraft(owned.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{Object.values(display.types).some(Boolean) ? icons : (level4Unlocked ? <Trophy className="h-3.5 w-3.5 text-lead-closing" aria-label="סגירת עסקה" /> : <span className="text-xs font-semibold text-primary underline underline-offset-2">הגדרת תמלוגים</span>)}</Button>{draft && <PublicListingPublisher pricingOnly adminOnlyEdit={!!owned.data?.__adminOnly} resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
-  return <LeadPricingDialog readOnly rewardTypes={display.types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}>{icons}</LeadPricingDialog>;
+  return <LeadPricingDialog readOnly rewardTypes={types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}>{icons}</LeadPricingDialog>;
 }
