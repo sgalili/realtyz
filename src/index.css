@@ -1033,7 +1033,7 @@
     color: hsl(var(--foreground) / 0.86);
   }
 
-  @media (min-width: 400px) {
+  @media (min-width: 768px) {
     .auth-page-footer { padding-inline: 16px; }
     .auth-footer-legal { gap: 16px; }
     .auth-footer-links { gap: 1.75rem; }

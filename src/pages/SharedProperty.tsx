@@ -203,24 +203,6 @@ export default function SharedProperty() {
   // never the owner's / broker's personal WhatsApp.
   return (
     <div className="min-h-screen bg-background" dir="rtl">
-      <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur">
-        <div className="relative mx-auto flex max-w-4xl items-center justify-center px-4 py-3">
-          <div className="flex items-center gap-3">
-            {data?.logo_url ? (
-              <img
-                src={data.logo_url}
-                alt={data.workspace_name || 'לוגו'}
-                className="h-11 w-auto object-contain"
-                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
-              />
-            ) : null}
-            <h1 className="text-center text-[18px] font-bold text-slate-900">
-              TORAFF
-            </h1>
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-4xl space-y-6 px-4 py-6">
         <section className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
