@@ -1324,7 +1324,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                   );
                 })()}
               </CardContent>
-            </Card>
+            </Card>}
 
             <Card>
               <CardHeader>
