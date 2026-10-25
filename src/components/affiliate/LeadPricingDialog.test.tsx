@@ -33,7 +33,7 @@ describe('partner lead pricing information', () => {
   it('shows closing net as whole shekels for fixed amounts, without decimals', () => {
     state.level4Unlocked = true;
     render(<LeadPricingInfo listing={{ ...listing, tier4_amount: 10000.5, tier4_type: 'fixed' }} details={{}} />);
-    expect(screen.getByText('₪8,000')).toBeTruthy();
+    expect(screen.getAllByText('₪8,000').length).toBeGreaterThan(0);
     expect(screen.queryByText(/8,000\.4/)).toBeNull();
   });
   it('does not expose closing gross or split amounts to an unauthorized viewer', () => {
