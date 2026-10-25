@@ -4193,7 +4193,6 @@ const GlobalSocialFeed = ({
   rows, activeChannel, onChannelChange,
   connectedChannels, onConnectChannel,
   feedSelectMode = false,
-  onToggleSelectMode,
   selectedFeedIds = [],
   filteredRows = [],
   disabledNetworks = [], onToggleNetwork,
@@ -4207,7 +4206,6 @@ const GlobalSocialFeed = ({
   connectedChannels: Set<string>;
   onConnectChannel: (id: string) => void;
   feedSelectMode?: boolean;
-  onToggleSelectMode?: () => void;
   selectedFeedIds?: string[];
   filteredRows?: CampaignRow[];
   disabledNetworks?: string[];
