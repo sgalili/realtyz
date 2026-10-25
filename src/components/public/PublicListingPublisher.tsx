@@ -14,7 +14,7 @@ import { PropertyAmenitiesFields } from './PropertyAmenitiesFields';
 import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propertyFormOptions';
 import { LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
 import { enableLeadPrice } from '@/lib/enableLeadPrice';
-import { commitPricingEdit } from '@/lib/pricingSave';
+import { commitPricingEdit, pricingEditWorkspace } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
 import { leadPriceLevel } from '@/lib/leadPriceRanges';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -536,7 +536,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   const submit = async () => {
     if (pricingOnly) {
-      if (!user || !activeWorkspaceId || !fields.listingId || !(Number(fields.commissionDeal) > 0)) return;
+      if (!user || !fields.listingId || (adminOnlyEdit && !adminUnlocked)) return;
+      const targetWorkspace = pricingEditWorkspace(fields.importedListing ?? {}, user.id, activeWorkspaceId, isSuperAdmin);
+      if (!targetWorkspace) { toast.error('אין הרשאה לערוך את התמלוגים של מודעה זו'); return; }
       setPublishing(true);
       const outcome = await commitPricingEdit({
         commit: async () => {
@@ -544,7 +546,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           const { error } = await supabase.from('listings').update({
             ...pricing, asking_price: Number(fields.price),
             features: { ...(fields.importedListing?.features && !Array.isArray(fields.importedListing.features) ? fields.importedListing.features : { amenity_labels: fields.importedListing?.features ?? [] }), ...pricing.features },
-          }).eq('id', fields.listingId).eq('workspace_owner_id', activeWorkspaceId).select('id').single();
+          }).eq('id', fields.listingId).eq('workspace_owner_id', targetWorkspace).select('id').single();
           if (error) throw error;
         },
         // The write is committed: confirm and dismiss the editor before caches refresh,
@@ -556,7 +558,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] }),
         ]),
       });
-      if (!outcome.committed) toast.error('לא ניתן לשמור את התמלוגים');
+      if (!outcome.committed) {
+        const error = outcome.error as { message?: string } | null;
+        toast.error('לא ניתן לשמור את התמלוגים', { description: error?.message });
+      }
       setPublishing(false);
       return;
     }
@@ -900,7 +905,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       </LeadTypeHelp>
                     </span><span className="ms-auto flex items-center gap-2">{!expanded && active && <Button type="button" variant="ghost" className="h-9 px-2 text-lg font-bold closing-tone" aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={active} onCheckedChange={(next) => { set(`commission${key}`, next ? String(LEAD_PRICE_RANGES[tier].min) : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></span></div>
                     {active && expanded && <div className="space-y-2">
-                    <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} onChange={value => set(`commission${key}`, value)} />
+                    <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
                     <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-[18px] md:text-[18px] placeholder:text-[14px] md:placeholder:text-[14px]" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
@@ -927,7 +932,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   );
                 })}
               </div>
-              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
+              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
@@ -978,9 +983,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       </DialogContent>
     </Dialog>
     <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
-      <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl", pricingOnly && adminOnlyEdit && "[&>button:last-child]:left-14")}>
+      <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 text-center">
-          {pricingOnly && adminOnlyEdit && <Button type="button" variant="ghost" size="icon" className="absolute left-4 top-4" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תמלוגים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" />{!adminUnlocked && <span className="absolute -left-0.5 -top-0.5 h-3 w-3 rounded-full bg-destructive" aria-hidden />}</Button>}
+          {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" size="icon" className="absolute left-0 top-0 h-10 w-10" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תמלוגים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="absolute left-0 top-0 h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
           {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {pricingOnly ? <span>מחיר והגדרת תמלוגים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
@@ -1040,11 +1045,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           )}
         </div>
 
-        <div data-publisher-footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-background pt-3 pb-[env(safe-area-inset-bottom)]">
+        {!(pricingOnly && adminOnlyEdit && !adminUnlocked) && <div data-publisher-footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-background pt-3 pb-[env(safe-area-inset-bottom)]">
             {!pricingOnly && !reviewMode && step > 0 ? <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(0, current - 1))}>
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
-          {pricingOnly ? (adminOnlyEdit && !adminUnlocked ? <><span className="text-sm text-muted-foreground">מצב קריאה בלבד · לחצו על העיפרון כדי לערוך</span><Button variant="outline" className="ms-auto" onClick={() => { setOpen(false); onRecovered?.(); }}>סגירה</Button></> : <><Button variant="outline" onClick={() => { setOpen(false); onRecovered?.(); }}>ביטול</Button><Button className="ms-auto" disabled={publishing || !(Number(fields.price) > 0) || !(Number(fields.commissionDeal) > 0)} onClick={() => { if (Number(fields.price) !== Number(fields.importedListing?.asking_price ?? fields.price)) setPriceConfirm(true); else void submit(); }}>שמירה</Button>
+          {pricingOnly ? (<><Button variant="outline" onClick={() => { setOpen(false); onRecovered?.(); }}>ביטול</Button><Button className="ms-auto" disabled={publishing || !(Number(fields.price) > 0)} onClick={() => { if (Number(fields.price) !== Number(fields.importedListing?.asking_price ?? fields.price)) setPriceConfirm(true); else void submit(); }}>שמירה</Button>
             <AlertDialog open={priceConfirm} onOpenChange={setPriceConfirm}><AlertDialogContent dir="rtl"><AlertDialogHeader><AlertDialogTitle className="text-right text-[21px] leading-snug">לשנות את {fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר המכירה'}?</AlertDialogTitle><AlertDialogDescription className="space-y-2 text-right text-[17px] leading-relaxed"><span className="block">שותפים שכבר בחרו לשווק את הנכס נשארים עם התמלוגים הנעולים שקיבלו בעת הבחירה, ללא שינוי.</span><span className="block">המחיר החדש והתמלוגים המעודכנים יחולו רק על שותפים שיצטרפו מעכשיו ועל פניות חדשות.</span><span className="block">{fields.dealType === 'rent' ? 'עמלת הסגירה מוצגת בש״ח ותחושב מחדש לפי השכירות החדשה.' : 'עמלת הסגירה באחוזים תחושב מחדש לפי מחיר המכירה החדש.'}</span></AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="flex-row items-center justify-between gap-2 sm:flex-row sm:justify-between sm:space-x-0"><AlertDialogCancel className="mt-0 text-[17px]">ביטול</AlertDialogCancel><AlertDialogAction className="text-[17px]" onClick={() => void submit()}>אישור ושמירה</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></>) : reviewMode || isLast ? (
             <div className="flex w-full flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-center">
               {!canPublish && <span className="hidden text-xs text-muted-foreground sm:inline" title={missingPublish.join(' · ')}>חסר: {missingPublish[0]}{missingPublish.length > 1 ? ` +${missingPublish.length - 1}` : ''}</span>}
@@ -1055,7 +1060,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           ) : !reviewMode && step > 1 ? (
             <Button type="button" onClick={() => void goNext()}>לשלב הבא <ArrowLeft className="h-4 w-4" /></Button>
           ) : <span />}
-        </div>
+        </div>}
       </DialogContent>
       <Dialog open={legalSection !== null} onOpenChange={value => { if (!value) setLegalSection(null); }}>
         <DialogContent dir="rtl" className="grid h-[100dvh] w-screen max-w-none grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-none p-4 sm:max-w-3xl" onOpenAutoFocus={event => { event.preventDefault(); if (legalSection === 'brokerage') requestAnimationFrame(() => document.querySelector('[data-publisher-legal] #brokerage-commissions')?.scrollIntoView({ block: 'start' })); }}>
