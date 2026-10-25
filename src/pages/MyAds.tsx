@@ -134,8 +134,7 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
         {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}
       </Link>
       <div className="min-w-0 flex-1">
-        <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block truncate pe-9 text-sm font-semibold text-foreground" title={title}>{title}</Link>
-        <p className="pe-9 text-sm font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}{r.deal_type === 'rent' && Number(r.asking_price) ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</p>
+        <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block pe-9" title={title}><PublicAdHeading compact dense title={title} price={formatPrice(Number(r.asking_price) || 0, null)} dealType={r.deal_type} /></Link>
         <div className="mt-1 flex items-center justify-end gap-2">
 
           <button type="button" className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground" aria-expanded={open} aria-controls={`stats-${r.relation}-${r.listing_id}`} onClick={() => setOpen(v => !v)}>
@@ -191,8 +190,7 @@ function ActivityProperties() {
           {selectMode && <SelectBox checked={selected.has(r.listing_id)} onChange={() => toggle(r.listing_id)} label={`בחירת ${title}`} />}
           <Link to={`/p/${r.slug || r.listing_id}`} className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>{r.image_url ? <img src={r.image_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}</Link>
           <div className="min-w-0 flex-1">
-            <Link to={`/p/${r.slug || r.listing_id}`} className="block truncate text-sm font-semibold" title={title}>{title}</Link>
-            <p className="text-sm font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}{r.deal_type === 'rent' && Number(r.asking_price) ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</p>
+            <Link to={`/p/${r.slug || r.listing_id}`} className="block" title={title}><PublicAdHeading compact dense title={title} price={formatPrice(Number(r.asking_price) || 0, null)} dealType={r.deal_type} /></Link>
             <div className="flex flex-wrap gap-x-3 text-[11px] text-muted-foreground"><span className="font-semibold text-foreground"><Users className="me-0.5 inline h-3 w-3" />{number(r.affiliates)} שותפים משתפים</span><span><Eye className="me-0.5 inline h-3 w-3" />{number(r.views)}</span><span><MousePointerClick className="me-0.5 inline h-3 w-3" />{number(r.clicks)}</span></div>
           </div>
         </li>;
