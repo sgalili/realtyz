@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Send, CircleUserRound } from 'lucide-react';
+import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
@@ -32,6 +32,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
 import { propertyInquiryRef } from '@/lib/propertyReferral';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
+import { GuestSignupDialog } from '@/components/public/GuestSignupDialog';
 import BoardSearchControls from '@/components/public/BoardSearchControls';
 import { useAffiliateMarketplace } from '@/hooks/useAffiliate';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
@@ -140,8 +141,17 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   // the "ניהול המודעה שלי" menu all read this one cached list.
   const { favoriteIds: favIds, toggleFavorite: saveFavorite } = useListingFavorites();
   const toggleFavorite = async (card: PublicCard) => {
-    if (!user?.id) { navigate('/auth', { state: { returnTo: location.pathname + location.search, tab: 'signup' } }); return; }
+    if (!user?.id) { setGuestDialog(true); return; }
     await saveFavorite(card.id);
+  };
+  // Guests tapping any row action button (share / publish / open page / favorite /
+  // drag) get a free-registration popup instead of the action itself.
+  const [guestDialog, setGuestDialog] = useState(false);
+  const blockGuests = (e: ReactMouseEvent | ReactPointerEvent) => {
+    if (user) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setGuestDialog(true);
   };
   const [gate, setGate] = useState<{ card: PublicCard; intent: GateIntent } | null>(null);
   const [form, setForm] = useState({ name: '', phone: '' });
@@ -319,7 +329,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-[46.8px] w-[46.8px] cursor-pointer border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><CircleUserRound className="!h-[26px] !w-[26px]" strokeWidth={1} /></Button>}
+                {!user && <Button variant="ghost" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="h-auto shrink-0 cursor-pointer px-1.5 text-[15px] font-semibold text-primary hover:bg-transparent hover:underline">כניסה / הרשמה</Button>}
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
@@ -384,7 +394,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
                         <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
-                        <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
+                        <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1" onClickCapture={blockGuests} onPointerDownCapture={blockGuests}>
                           <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage />
                           <BoardPublishButton result={cardResult(card)} />
                           <BoardOpenPageButton result={cardResult(card)} />
@@ -447,6 +457,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
         );
       })()}
+
+      <GuestSignupDialog open={guestDialog} onOpenChange={setGuestDialog} returnTo={location.pathname + location.search} />
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
         <DialogContent dir="rtl" className="max-w-lg">
