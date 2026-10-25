@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { type BrokerAffiliateListing, type MarketplaceListing } from '@/hooks/useAffiliate';
 import { FORM_FIELD_TYPE_LABELS, type LeadFormField } from '@/lib/leadTiers';
 import { fmtILS } from '@/lib/formatCurrency';
+import { closingFeeAmount } from '@/lib/closingFee';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import type { ReactNode } from 'react';
@@ -28,6 +29,8 @@ type PricingListing = Pick<MarketplaceListing, 'listing_id' | 'broker_id' | 'pro
 
 type PricingDetails = {
   daily_lead_cap?: number | null;
+  asking_price?: number | null;
+  deal_type?: string | null;
   contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[]; lead_daily_limits?: import('@/lib/closingFee').LeadDailyLimits };
 };
 
