@@ -79,13 +79,13 @@ describe('commission visibility', () => {
   it('keeps the restricted closing trophy in its price color with a gray hint', () => {
     const { container } = render(<RewardIcons types={{ closing: true }} closingLevel={2} label={null} />);
     const trophy = screen.getByLabelText('סגירת עסקה');
-    expect(trophy.className).toContain('closing-level-2');
+    expect(trophy.getAttribute('class')).toContain('closing-level-2');
     expect(screen.getByText('למתווכים').className).toContain('lead-no-fee');
     expect(container.querySelector('span[title="סגירת עסקה"].text-muted-foreground')).toBeNull();
     cleanup();
     // Without a known level the trophy still shows the gold closing tone, never gray.
     render(<RewardIcons types={{ closing: true }} label={null} />);
-    expect(screen.getByLabelText('סגירת עסקה').className).toContain('text-lead-closing');
+    expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('text-lead-closing');
   });
   it('closing prices always render as whole amounts without decimals', () => {
     access.allowed = true;
