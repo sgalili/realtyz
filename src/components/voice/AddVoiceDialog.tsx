@@ -163,10 +163,7 @@ export const AddVoiceDialog = ({
         </div>
 
         <div className="space-y-3 mt-3">
-          <div className="space-y-1.5">
-            <Label className="text-right block text-xs font-semibold text-[#0f1b3d]">שם הקול</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="למשל: אודי ויטמן" className="text-right h-10 rounded-xl" />
-          </div>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="שם הקול" className="text-right h-10 rounded-xl placeholder:text-muted-foreground/50" />
 
           {mode === "clone" && (
             <>
