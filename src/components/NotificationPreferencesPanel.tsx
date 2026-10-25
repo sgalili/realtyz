@@ -1,278 +1,49 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Bell, Flame, CalendarCheck, AlertTriangle, Loader2, MessageCircle, Mail, Smartphone } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Flame, CalendarCheck, AlertTriangle, ExternalLink, Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { formatDistanceToNow } from 'date-fns';
-import { he } from 'date-fns/locale';
-import { Link } from 'react-router-dom';
-
-type Prefs = {
-  id?: string;
-  user_id?: string;
-  notify_new_high_priority: boolean;
-  notify_meeting_booked: boolean;
-  notify_critical_question: boolean;
-  delivery_channel: string;
-  quiet_hours_start: string | null;
-  quiet_hours_end: string | null;
-};
-
-type NotificationRow = {
-  id: string;
-  event_type: 'new_high_priority' | 'meeting_booked' | 'critical_question';
-  title: string;
-  body: string;
-  deep_link: string;
-  delivered: boolean;
-  created_at: string;
-  lead_id: string | null;
-};
-
-const EVENT_META: Record<NotificationRow['event_type'], { icon: typeof Flame; color: string; label: string }> = {
-  new_high_priority: { icon: Flame, color: 'text-warning', label: 'New Hot Lead' },
-  meeting_booked: { icon: CalendarCheck, color: 'text-success', label: 'Meeting Booked' },
-  critical_question: { icon: AlertTriangle, color: 'text-destructive', label: 'Critical Question' },
-};
-
-const DEFAULTS: Prefs = {
-  notify_new_high_priority: true,
-  notify_meeting_booked: true,
-  notify_critical_question: true,
-  delivery_channel: 'whatsapp',
-  quiet_hours_start: null,
-  quiet_hours_end: null,
-};
-
-export default function NotificationPreferencesPanel() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  const [local, setLocal] = useState<Prefs>(DEFAULTS);
-
-  const { data: prefs, isLoading } = useQuery({
-    queryKey: ['notification-preferences', user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('notification_preferences')
-        .select('*')
-        .eq('user_id', user!.id)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as Prefs) || { ...DEFAULTS, user_id: user!.id };
-    },
-  });
-
-  useEffect(() => {
-    if (prefs) setLocal(prefs);
-  }, [prefs]);
-
-  const saveMutation = useMutation({
-    mutationFn: async (next: Prefs) => {
-      if (!user?.id) throw new Error('Not authenticated');
-      const payload = { ...next, user_id: user.id };
-      const { error } = await supabase
-        .from('notification_preferences')
-        .upsert(payload, { onConflict: 'user_id' });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success('העדפות ההתראות נשמרו');
-      qc.invalidateQueries({ queryKey: ['notification-preferences'] });
-    },
-    onError: (e: any) => toast.error(e?.message || 'שמירה נכשלה'),
-  });
-
-  const toggle = (key: keyof Prefs) => (val: boolean) => {
-    setLocal((p) => ({ ...p, [key]: val }));
-  };
-
-  // Recent notifications log (last 10)
-  const { data: recent } = useQuery({
-    queryKey: ['recent-notifications', user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('id, event_type, title, body, deep_link, delivered, created_at, lead_id')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return (data || []) as NotificationRow[];
-    },
-  });
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle className="text-base">העדפות התראות</CardTitle>
-              <CardDescription className="text-xs">
-                Notification Preferences — בחר אילו אירועים קריטיים יישלחו אליך ב-WhatsApp עם קישור ישיר לעסקאות
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> טוען העדפות...
-            </div>
-          ) : (
-            <>
-              <ToggleRow
-                icon={Flame}
-                iconColor="text-warning"
-                title="New Hot Lead"
-                description="התראה כאשר נוסף מתעניין חדש בעדיפות גבוהה (Hot Lead)"
-                checked={local.notify_new_high_priority}
-                onCheckedChange={toggle('notify_new_high_priority')}
-              />
-              <ToggleRow
-                icon={CalendarCheck}
-                iconColor="text-success"
-                title="Meeting Booked"
-                description="התראה כאשר מתעניין נכנס לשלב 'משא ומתן / פגישה'"
-                checked={local.notify_meeting_booked}
-                onCheckedChange={toggle('notify_meeting_booked')}
-              />
-              <ToggleRow
-                icon={AlertTriangle}
-                iconColor="text-destructive"
-                title="Critical Question"
-                description="התראה מיידית כאשר מתעניין שואל שאלה קריטית הדורשת התערבות אנושית"
-                checked={local.notify_critical_question}
-                onCheckedChange={toggle('notify_critical_question')}
-              />
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div>
-                  <Label htmlFor="quiet_start" className="text-xs">Quiet hours — התחלה (UTC)</Label>
-                  <Input
-                    id="quiet_start"
-                    type="time"
-                    value={local.quiet_hours_start || ''}
-                    onChange={(e) =>
-                      setLocal((p) => ({ ...p, quiet_hours_start: e.target.value || null }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="quiet_end" className="text-xs">Quiet hours — סיום (UTC)</Label>
-                  <Input
-                    id="quiet_end"
-                    type="time"
-                    value={local.quiet_hours_end || ''}
-                    onChange={(e) =>
-                      setLocal((p) => ({ ...p, quiet_hours_end: e.target.value || null }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <Button
-                  size="sm"
-                  onClick={() => saveMutation.mutate(local)}
-                  disabled={saveMutation.isPending}
-                >
-                  {saveMutation.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                  שמירה
-                </Button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">היסטוריית התראות אחרונות</CardTitle>
-          <CardDescription className="text-xs">10 ההתראות האחרונות שנשלחו אליך</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="max-h-72">
-            {!recent || recent.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-4 text-center">אין התראות עדיין</p>
-            ) : (
-              <ul className="space-y-2">
-                {recent.map((n) => {
-                  const meta = EVENT_META[n.event_type];
-                  const Icon = meta?.icon || Bell;
-                  return (
-                    <li
-                      key={n.id}
-                      className="flex items-start gap-3 rounded-md border border-border/40 p-2 text-xs"
-                    >
-                      <Icon className={`h-4 w-4 mt-0.5 ${meta?.color || 'text-muted-foreground'}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{meta?.label || n.event_type}</span>
-                          <Badge variant={n.delivered ? 'default' : 'secondary'} className="text-[10px]">
-                            {n.delivered ? 'נשלח' : 'לא נשלח'}
-                          </Badge>
-                          <span className="text-muted-foreground mr-auto">
-                            {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: he })}
-                          </span>
-                        </div>
-                        <p className="text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>
-                        {n.lead_id && (
-                          <Link
-                            to={`/deal-room?leadId=${n.lead_id}`}
-                            className="inline-flex items-center gap-1 text-primary hover:underline mt-1"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            פתח עסקאות
-                          </Link>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </ScrollArea>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function ToggleRow({
-  icon: Icon,
-  iconColor,
-  title,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  icon: typeof Flame;
-  iconColor: string;
-  title: string;
-  description: string;
-  checked: boolean;
-  onCheckedChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-md border border-border/40 p-3">
-      <Icon className={`h-5 w-5 ${iconColor}`} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
-  );
+import { useNotificationPreferences, defaultNotificationPreferences, panelCategoryEnabled, type NotificationPreferences, type PanelCategory } from '@/hooks/useNotificationPreferences';
+import { channelsForEvent, eventPreferenceKeys, type NotificationEvent, type NotificationChannel } from '../../supabase/functions/_shared/notificationPreferences';
+const events: { key: NotificationEvent; label: string; Icon: typeof Bell }[] = [
+  { key: 'new_high_priority', label: 'ליד בעדיפות גבוהה', Icon: Flame },
+  { key: 'meeting_booked', label: 'פגישה או ליד שהבשיל', Icon: CalendarCheck },
+  { key: 'critical_question', label: 'שאלה הדורשת התערבות', Icon: AlertTriangle },
+];
+const categories: { key: PanelCategory; label: string }[] = [
+  { key: 'new_lead', label: 'לידים חדשים' }, { key: 'inbound', label: 'הודעות נכנסות' },
+  { key: 'rita_sms_reply', label: 'תשובות ריטה ב־SMS' }, { key: 'tour', label: 'סיורים' },
+  { key: 'critical', label: 'התראות שיחה' }, { key: 'budget', label: 'תקציב' },
+];
+const channels: { key: NotificationChannel; label: string; Icon: typeof Bell }[] = [
+  { key: 'whatsapp', label: 'WhatsApp', Icon: MessageCircle }, { key: 'sms', label: 'SMS', Icon: Smartphone }, { key: 'email', label: 'Email', Icon: Mail },
+];
+export default function NotificationPreferencesPanel({ compact = false, onSaved }: { compact?: boolean; onSaved?: () => void }) {
+  const preferences = useNotificationPreferences();
+  const [local, setLocal] = useState<NotificationPreferences>(defaultNotificationPreferences);
+  useEffect(() => { if (preferences.data) setLocal(preferences.data); }, [preferences.data]);
+  if (preferences.isLoading) return <p role="status" className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />טוען העדפות…</p>;
+  if (preferences.isError) return <div role="alert"><p>לא ניתן לטעון את ההעדפות.</p><Button variant="outline" onClick={() => void preferences.refetch()}>ניסיון נוסף</Button></div>;
+  return <div className="space-y-5" dir="rtl">
+    {!compact && <h2 className="flex items-center gap-2 font-semibold"><Bell className="h-4 w-4" />העדפות התראות</h2>}
+    <section className="space-y-1"><h3 className="text-sm font-semibold">הודעות אליי</h3>
+      {events.map(({ key, label, Icon }) => {
+        const selected = channelsForEvent(local, key);
+        const enabled = local[eventPreferenceKeys[key]];
+        return <div key={key} className="space-y-2 border-b border-border py-3">
+          <div className="flex items-center gap-2"><Icon className="h-4 w-4 text-primary" /><span className="flex-1 text-sm font-medium">{label}</span><Switch aria-label={label} checked={enabled} onCheckedChange={value => setLocal(previous => ({ ...previous, [eventPreferenceKeys[key]]: value }))} /></div>
+          {enabled && <div className="flex flex-wrap gap-2">{channels.map(({ key: channel, label: channelLabel, Icon: ChannelIcon }) => <Button key={channel} type="button" variant={selected.includes(channel) ? 'default' : 'outline'} size="sm" aria-pressed={selected.includes(channel)} aria-label={`${label} · ${channelLabel}`} className="h-8 gap-1.5" onClick={() => {
+            const next = selected.includes(channel) ? selected.filter(value => value !== channel) : [...selected, channel];
+            setLocal(previous => ({ ...previous, event_channels: { ...(previous.event_channels as Record<string, import('@/integrations/supabase/types').Json>), [key]: next } }));
+          }}><ChannelIcon className="h-3.5 w-3.5" />{channelLabel}</Button>)}</div>}
+        </div>;
+      })}
+    </section>
+    <section><h3 className="mb-2 text-sm font-semibold">בחלון ההתראות</h3><div className="grid grid-cols-2 gap-x-4 gap-y-3">{categories.map(({ key, label }) => <Label key={key} className="flex items-center justify-between gap-2 text-xs"><span>{label}</span><Switch aria-label={`בחלון · ${label}`} checked={panelCategoryEnabled(local, key)} onCheckedChange={value => setLocal(previous => ({ ...previous, panel_preferences: { ...(previous.panel_preferences as Record<string, import('@/integrations/supabase/types').Json>), [key]: value } }))} /></Label>)}</div></section>
+    <section><h3 className="mb-2 text-sm font-semibold">שעות שקטות (UTC)</h3><div className="grid grid-cols-2 gap-3"><Label className="space-y-1 text-xs">התחלה<Input aria-label="שעות שקטות · התחלה" type="time" value={local.quiet_hours_start ?? ''} onChange={event => setLocal(previous => ({ ...previous, quiet_hours_start: event.target.value || null }))} /></Label><Label className="space-y-1 text-xs">סיום<Input aria-label="שעות שקטות · סיום" type="time" value={local.quiet_hours_end ?? ''} onChange={event => setLocal(previous => ({ ...previous, quiet_hours_end: event.target.value || null }))} /></Label></div></section>
+    <p className="text-xs text-muted-foreground">העדפות אלו חלות על הודעות לחשבון שלך, ולא על הודעות ללקוחות או קודי אבטחה. בחירת Email היא הסכמה לקבלת ההתראה; השליחה מותנית בחיבור פעיל.</p>
+    <Button className="w-full" disabled={preferences.save.isPending} onClick={() => preferences.save.mutate(local, { onSuccess: () => { toast.success('העדפות ההתראות נשמרו'); onSaved?.(); }, onError: () => toast.error('לא ניתן לשמור כרגע. נסו שוב.') })}>{preferences.save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמירה'}</Button>
+  </div>;
 }
