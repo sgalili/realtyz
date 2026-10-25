@@ -1,0 +1,3 @@
+CREATE OR REPLACE FUNCTION public.account_owned_files(_uid uuid) RETURNS TABLE(bucket_id text, name text) LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$ SELECT o.bucket_id, o.name FROM storage.objects o WHERE o.owner_id = _uid::text LIMIT 100; $$;
+REVOKE ALL ON FUNCTION public.account_owned_files(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.account_owned_files(uuid) TO service_role;

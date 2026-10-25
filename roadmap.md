@@ -1,5 +1,9 @@
 # Roadmap
 
+## Super Admin user deletion
+- [x] Permanently deleted Barak Israely: 327 active records purged; verified zero login/profile/roles/files/listings/workspace memberships.
+- [x] Added shared confirmed multi-select deletion to API-settings and Super Admin users. Seven tests pass; signed-in two-account selection/confirmation canceled safely, Barak absent in search; build OK.
+
 ## Selected-property actions
 - [x] Preserve the clicked property's identity through Facebook connect-later, draft restoration and generation of the post/first comment; late connection checks cannot undo skip.
 - [x] Check shared action target paths; 22 regression tests pass and signed-in generation verified on two public properties with matching selector, photos, post and first comment. No post published.

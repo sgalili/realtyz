@@ -8295,6 +8295,13 @@ export type Database = {
     }
     Functions: {
       accept_affiliate_terms: { Args: { _version: string }; Returns: Json }
+      account_owned_files: {
+        Args: { _uid: string }
+        Returns: {
+          bucket_id: string
+          name: string
+        }[]
+      }
       acquire_scheduler_lock: {
         Args: { _job: string; _lease_seconds?: number; _worker?: string }
         Returns: boolean

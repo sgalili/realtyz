@@ -33,6 +33,7 @@ import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
 import { WebtivHomelySyncCard } from '@/components/integrations/WebtivHomelySyncCard';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
+import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
 import { ActionPricingCard } from '@/components/billing/ActionPricingCard';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
@@ -865,6 +866,7 @@ const ApiSettings = () => {
         </p>
       </div>
 
+      {isSuperAdmin && <SectionShell title="משתמשים" subtitle="ניהול משתמשים"><SuperAdminUsersTable /></SectionShell>}
       {isSuperAdmin && <ActionPricingCard />}
       <UsageMeterPanel />
 
