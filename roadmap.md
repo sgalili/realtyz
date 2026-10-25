@@ -1,5 +1,10 @@
 # Roadmap
 
+## Pricing editor corrections
+- [ ] Fix zero form-fee saves and Super Admin cross-workspace pricing edits without widening other permissions.
+- [ ] Align pencil/red dot opposite close; remove read-only footer; collapse questions and show configured form fields.
+- [ ] Run focused tests and verify signed-in save/reopen flow.
+
 ## Consistent zero-fee lead indicators
 - [x] Show four ordered types for guests, Super Admins and brokers across shared indicators and pricing details.
 - [x] Mark known zero fees gray without exposing restricted amounts; 32 focused tests pass, guest and signed-in table indicators and guest pricing dialog verified.
