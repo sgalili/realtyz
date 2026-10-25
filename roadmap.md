@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Property card presentation
-- [ ] Show authorized commissions inside the original publisher section in grid and full details.
-- [ ] Keep favorite/share controls above images and make close controls icon-only.
-- [ ] Enlarge mobile contact labels and keep form/WhatsApp in one row; verify live views.
+- [x] Show authorized commissions inside the original publisher section in grid and full details.
+- [x] Keep favorite/share controls above images and make close controls icon-only.
+- [x] Enlarge mobile contact labels and keep form/WhatsApp in one row; verify live views.
 
 ## Current request
 - [x] Rewrite legal pages and add commission mechanism with shared logo and footer link.
