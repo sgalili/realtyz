@@ -33,13 +33,11 @@ import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardCol
 import { propertyInquiryRef } from '@/lib/propertyReferral';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 import BoardSearchControls from '@/components/public/BoardSearchControls';
-import { useAffiliateMarketplace, useMyReferrals } from '@/hooks/useAffiliate';
-import { useUserRole } from '@/hooks/useUserRole';
-import { PartnerListingActions } from '@/pages/AffiliatePortal';
+import { useAffiliateMarketplace } from '@/hooks/useAffiliate';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
 import type { UnifiedResult } from '@/lib/propertySearch';
-import { usePartnerConsent } from '@/hooks/usePartnerConsent';
+import { useListingFavorites } from '@/hooks/useListingFavorites';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -82,9 +80,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const marketplace = useAffiliateMarketplace();
-  const referrals = useMyReferrals();
-  const { isAffiliate } = useUserRole();
-  const consent = usePartnerConsent();
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>(() => boardCache.get<PublicCard>() ?? []);
@@ -140,30 +135,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     try { localStorage.setItem('public-board-view', next ? 'grid' : 'list'); } catch { /* ignore */ }
     return next;
   });
-  // Favorite listings of the signed-in user (heart on the card image).
-  const [favIds, setFavIds] = useState<Set<string>>(() => new Set());
-  useEffect(() => {
-    if (!user?.id) { setFavIds(new Set()); return; }
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase.from('listing_favorites').select('listing_id').eq('user_id', user.id);
-      if (!cancelled) setFavIds(new Set(((data ?? []) as Array<{ listing_id: string }>).map((r) => r.listing_id)));
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id]);
+  // Favorite listings of the signed-in user. The card heart, the table heart and
+  // the "ניהול המודעה שלי" menu all read this one cached list.
+  const { favoriteIds: favIds, toggleFavorite: saveFavorite } = useListingFavorites();
   const toggleFavorite = async (card: PublicCard) => {
     if (!user?.id) { navigate('/auth', { state: { returnTo: location.pathname + location.search, tab: 'signup' } }); return; }
-    const isFav = favIds.has(card.id);
-    setFavIds((cur) => { const next = new Set(cur); if (isFav) next.delete(card.id); else next.add(card.id); return next; });
-    const { error } = isFav
-      ? await supabase.from('listing_favorites').delete().eq('user_id', user.id).eq('listing_id', card.id)
-      : await supabase.from('listing_favorites').insert({ user_id: user.id, listing_id: card.id });
-    if (error) {
-      setFavIds((cur) => { const next = new Set(cur); if (isFav) next.add(card.id); else next.delete(card.id); return next; });
-      toast.error('שמירת המועדף נכשלה, נסו שוב');
-    } else {
-      toast.success(isFav ? 'הנכס הוסר מהמועדפים' : 'הנכס נשמר במועדפים');
-    }
+    await saveFavorite(card.id);
   };
   const [gate, setGate] = useState<{ card: PublicCard; intent: GateIntent } | null>(null);
   const [form, setForm] = useState({ name: '', phone: '' });
@@ -287,11 +264,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     const row = marketplace.data?.find(item => item.listing_id === card.id);
     return matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter) && matchesLeadFilter(leadTierAmounts(row as unknown as Record<string, unknown>), leadFilter);
   }), [cards, propFilter, query, deal, marketplace.data, leadFilter]);
-  const partnerActions = (card: PublicCard) => {
-    if (!user || !isAffiliate || !consent.data || !card.affiliate_enabled) return null;
-    const listing = marketplace.data?.find(row => row.listing_id === card.id);
-    return listing ? <div onClick={event => event.stopPropagation()}><PartnerListingActions boardRow listing={listing} referralId={referrals.data?.find(row => row.listing_id === card.id)?.id} /></div> : null;
-  };
   // Custom row order chosen with the drag handle, saved per user/workspace on this device.
   const rowOrderKey = `public-board-row-order:v1:${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`;
   const [rowOrder, setRowOrder] = useState<string[]>([]);
@@ -362,7 +334,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
-            {filtered.slice(0, visibleCount).map(card => <StandardPropertyCard key={card.id} card={card} signedIn={!!user} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} actions={partnerActions(card)} />)}
+            {filtered.slice(0, visibleCount).map(card => <StandardPropertyCard key={card.id} card={card} signedIn={!!user} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} />)}
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>

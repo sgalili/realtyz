@@ -31,6 +31,7 @@ import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesM
 import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddress';
 import PropertyContactActions, { type ContactOptions } from '@/components/public/PropertyContactActions';
 import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
+import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { useAuth } from '@/hooks/useAuth';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
@@ -296,29 +297,19 @@ function PublicListingContent() {
     },
   });
   const data = payload?.properties.find((property) => property.id === selectedId) ?? payload?.property ?? null;
-  const { data: favorite = false, refetch: refetchFavorite } = useQuery({
-    queryKey: ['public-listing-favorite', user?.id, data?.id],
-    enabled: !!user?.id && !!data?.id,
-    queryFn: async () => {
-      if (!user?.id || !data?.id) return false;
-      const { data: saved, error } = await supabase.from('listing_favorites').select('listing_id').eq('user_id', user.id).eq('listing_id', data.id).maybeSingle();
-      if (error) throw error;
-      return !!saved;
-    },
-  });
+  // Same cached favorites list the board cards and the owner menu use, so the
+  // header heart and the "ניהול המודעה שלי" item always agree.
+  const { isFavorite, toggleFavorite: saveFavorite } = useListingFavorites();
+  const favorite = !!data?.id && isFavorite(data.id);
   const toggleFavorite = async () => {
     if (!data?.id || favoriteBusy) return;
     if (!user?.id) { navigate('/auth', { state: { returnTo: window.location.pathname + window.location.search } }); return; }
     setFavoriteBusy(true);
     try {
-      const { error } = favorite
-        ? await supabase.from('listing_favorites').delete().eq('user_id', user.id).eq('listing_id', data.id)
-        : await supabase.from('listing_favorites').insert({ user_id: user.id, listing_id: data.id });
-      if (error) throw error;
-      await refetchFavorite();
-      toast.success(favorite ? 'הנכס הוסר מהמועדפים' : 'הנכס נשמר במועדפים');
-    } catch { toast.error('שמירת המועדף נכשלה, נסו שוב'); }
-    finally { setFavoriteBusy(false); }
+      await saveFavorite(data.id);
+    } finally {
+      setFavoriteBusy(false);
+    }
   };
 
 
