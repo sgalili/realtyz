@@ -3,7 +3,7 @@
 import { returnState } from "@/lib/returnNav";
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Handshake, Loader2, Megaphone, MoreVertical, Pencil, Share2, Trash2 } from 'lucide-react';
+import { Handshake, Heart, Loader2, Megaphone, MoreVertical, Pencil, Share2, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { sourceYad2Url } from '@/lib/yad2Ad';
 import { mapLocalListingRow, type UnifiedResult } from '@/lib/propertySearch';
+import { useListingFavorites } from '@/hooks/useListingFavorites';
 
 export function Yad2AdButton({ url }: { url: string }) {
   const status = useYad2AdStatus(url);
@@ -87,6 +88,7 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
+  const { isFavorite, toggleFavorite } = useListingFavorites();
   const del = useDeleteListings();
   const [row, setRow] = useState<UnifiedResult | null>(null);
   const [raw, setRaw] = useState<any>(null);
@@ -122,6 +124,9 @@ export function OwnerListingActions({ listingId }: { listingId: string }) {
         <DropdownMenuContent align="start" className="w-52" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuLabel className="text-xs">ניהול המודעה שלי</DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem className="gap-2 text-sm" onSelect={() => void toggleFavorite(listingId)} aria-pressed={isFavorite(listingId)}>
+            <Heart className={`h-4 w-4 text-destructive ${isFavorite(listingId) ? 'fill-current' : ''}`} /> {isFavorite(listingId) ? 'הסרה מהמועדפים' : 'הוספה למועדפים'}
+          </DropdownMenuItem>
           <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setShareOpen(true)}>
             <Share2 className="h-4 w-4" /> שתף נכס
           </DropdownMenuItem>
