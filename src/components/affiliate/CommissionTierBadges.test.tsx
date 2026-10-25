@@ -2,11 +2,28 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import CommissionTierBadges, { RewardIcons } from './CommissionTierBadges';
 
-const access = vi.hoisted(() => ({ allowed: false }));
+const access = vi.hoisted(() => ({ allowed: false, guest: false, roles: [] as string[], admin: false }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: access.guest ? null : { id: 'viewer' } }) }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ roles: access.roles, isSuperAdmin: access.admin }) }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: access.allowed }) }));
 const tiers = { tier1: 10, tier2: 20, tier3: 0, tier4: 900, tier4Type: 'fixed' as const };
-afterEach(() => { cleanup(); access.allowed = false; });
+afterEach(() => { cleanup(); access.allowed = false; access.guest = false; access.roles = []; access.admin = false; });
 describe('commission visibility', () => {
+  it.each(['guest', 'super_admin', 'agent'])('shows four ordered types including zero leads for %s', (role) => {
+    access.guest = role === 'guest';
+    access.admin = role === 'super_admin';
+    access.roles = [role];
+    const { container } = render(<CommissionTierBadges tiers={tiers} />);
+    expect([...container.querySelectorAll('[data-commission-icons] span[title]')].map(row => row.getAttribute('title'))).toEqual(['שדות מטופס בעמוד נחיתה', 'סינון בווטסאפ', 'שיחת טלפון', 'סגירת עסקה']);
+    expect(screen.getByText('ללא עמלה')).toBeTruthy();
+    expect(screen.queryByText(/900/)).toBeNull();
+  });
+  it('never labels a redacted closing value as zero', () => {
+    access.admin = true;
+    render(<CommissionTierBadges tiers={{ ...tiers, tier3: 20, tier4: 0 }} />);
+    expect(screen.getByLabelText('סגירת עסקה')).toBeTruthy();
+    expect(screen.queryByText('ללא עמלה')).toBeNull();
+  });
   it('keeps three or four reward rows in both layouts', () => {
     access.allowed = true;
     const { container, rerender } = render(<CommissionTierBadges tiers={{ ...tiers, tier3: 30 }} />);
