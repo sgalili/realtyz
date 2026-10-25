@@ -1,5 +1,9 @@
 # Roadmap
 
+## Licensed-only closing display
+- [ ] Confirm the server closing gate and prevent nonlicensed closing-price displays across listing indicators and pricing views.
+- [ ] Show a gray closing icon and broker-only label with course/exam explanation for all nonlicensed viewers; test and verify.
+
 ## Pricing editor corrections
 - [x] Fix zero form-fee saves and Super Admin cross-workspace pricing edits without widening other permissions; reload authorized data before reopening.
 - [x] Align pencil/red dot opposite close; remove read-only footer; collapse questions and show configured form fields.
