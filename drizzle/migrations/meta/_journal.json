@@ -463,6 +463,13 @@
       "when": 1792886678253,
       "tag": "0065_test_license_counts_as_official",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1792886747756,
+      "tag": "0066_register_broker_accepts_test_license",
+      "breakpoints": true
     }
   ]
 }
