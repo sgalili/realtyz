@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     )
   }
 
-  if (templateName === 'account-deletion-otp' && !isServiceCaller) {
+  if (['account-deletion-otp', 'agent-notification'].includes(templateName) && !isServiceCaller) {
     return new Response(JSON.stringify({ error: 'forbidden' }), {
       status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
