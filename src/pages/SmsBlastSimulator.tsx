@@ -370,7 +370,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const [blastName, setBlastName] = useState('');
   // Bulk WhatsApp is business-initiated → Meta requires an approved template.
   const [waTemplate, setWaTemplate] = useState<WaTemplateSelection | null>(null);
-  const [messageBody, setMessageBody] = useState('שלום [שם_פרטי], מזכירים לך שהקלפי שלך ב[עיר] פתוחה היום. נשמח לראות אותך ב[קלפי].');
+  const [messageBody, setMessageBody] = useState('שלום [שם_פרטי], יש לנו נכס חדש ב[עיר] שיכול להתאים לך: [נכס]. נשמח לספר עוד.');
   // Per-channel message overrides — when set, overrides the master messageBody for that channel
   const [channelMessages, setChannelMessages] = useState<Partial<Record<ChannelId, string>>>({});
   const getChannelText = useCallback((channel: ChannelId) => channelMessages[channel] ?? messageBody, [channelMessages, messageBody]);
@@ -1498,23 +1498,20 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <Card>
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
-                  <Label>שם הקמפיין</Label>
                   <Input value={blastName} onChange={(event) => setBlastName(event.target.value)} placeholder="שם הקמפיין" maxLength={100} />
                 </div>
 
                 {selectedChannels.includes('whatsapp') && (
                   <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
-                    <Label className="text-blue-900">תבנית WhatsApp מאושרת (חובה לשיגור המוני)</Label>
                     <p className="text-xs text-blue-800">
                       Meta חוסמת הודעות חופשיות ביוזמת העסק. השיגור יתבצע בתבנית מאושרת, ונמענים שביקשו הסרה
                       (Opt-out) יידלגו אוטומטית.
                     </p>
-                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} />
+                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} campaignOnly />
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label>תוכן ההודעה</Label>
                   <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder="תוכן ההודעה" />
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                     <div className="flex flex-wrap items-center gap-2">
@@ -1640,29 +1637,6 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                 {selectedChannels.length > 0 && (
                   <div className={dedicatedChannel ? 'space-y-4' : 'grid gap-4 lg:grid-cols-2'}>
-                    {selectedChannels.includes('whatsapp') && (
-                      <Card className="border-social-whatsapp/25 bg-social-whatsapp/5">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="flex items-center gap-2 text-sm">
-                            <WhatsAppLogo className="h-4 w-4 text-social-whatsapp" /> תצוגת וואטסאפ
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          <Textarea
-                            value={getChannelText('whatsapp')}
-                            onChange={(event) => setChannelText('whatsapp', event.target.value)}
-                            rows={4}
-                            maxLength={1000}
-                            className="bg-background"
-                            placeholder="הודעה ייעודית לוואטסאפ..."
-                          />
-                          <div className="rounded-md bg-whatsapp-chat p-3 text-sm text-foreground shadow-inner">
-                            <div className="max-w-[88%] rounded-md bg-whatsapp-bubble-out p-3 leading-relaxed shadow-sm">{personalize(getChannelText('whatsapp'))}</div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
                     {selectedChannels.includes('sms') && (
                       <Card className="border-social-sms/25 bg-social-sms/5">
                         <CardHeader className="pb-2">

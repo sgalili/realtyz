@@ -17,14 +17,21 @@ type Props = {
   onChange: (v: WaTemplateSelection | null) => void;
   /** Tokens the broker can drop into a variable (personalized per recipient). */
   showTokenHint?: boolean;
+  /** Only campaign-relevant marketing templates; never system/OTP/reminder templates. */
+  campaignOnly?: boolean;
 };
+
+const SYSTEM_TEMPLATE = /(otp|verif|auth|code|login|reminder|tour|meeting|call|invite|wallet|payment|receipt|dispute|lead_alert|notification)/i;
 
 /**
  * Picker for APPROVED Meta templates. Meta blocks free-form business-initiated
  * messages outside the 24h window, so every proactive send goes through here.
  */
-export const WaTemplatePicker = ({ value, onChange, showTokenHint = true }: Props) => {
-  const { data: templates, isLoading, error } = useMetaWaTemplates();
+export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campaignOnly = false }: Props) => {
+  const { data: allTemplates, isLoading, error } = useMetaWaTemplates();
+  const templates = useMemo(() => campaignOnly
+    ? allTemplates?.filter((t) => (t.category ?? '').toUpperCase() === 'MARKETING' && !SYSTEM_TEMPLATE.test(t.name))
+    : allTemplates, [allTemplates, campaignOnly]);
 
   const selected: MetaWaTemplate | undefined = useMemo(
     () => templates?.find((t) => t.name === value?.name && t.language === value?.language),
@@ -68,7 +75,6 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true }: Prop
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <Label>תבנית מאושרת (Meta Template)</Label>
         <Select
           value={value ? `${value.name}|${value.language}` : undefined}
           onValueChange={(v) => {
@@ -95,8 +101,6 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true }: Prop
         <div className="space-y-2">
           {selectedKeys.map((key, i) => (
             <div key={key} className="space-y-1">
-              <Label className="text-xs">משתנה {`{{${key}}}`}</Label>
-
               <Input
                 className="bg-blue-50 border-blue-200"
                 value={value?.body_params[i] ?? ''}
@@ -105,13 +109,13 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true }: Prop
                   params[i] = e.target.value;
                   onChange({ name: selected.name, language: selected.language, body_params: params });
                 }}
-                placeholder={showTokenHint ? '[שם_פרטי]' : ''}
+                placeholder={`משתנה ${i + 1}`}
               />
             </div>
           ))}
           {showTokenHint && (
             <p className="text-[11px] text-muted-foreground">
-              ניתן להשתמש בתגיות אישיות: [שם_פרטי] · [עיר] · [קלפי] — יוחלפו לכל נמען בנפרד.
+              ניתן להשתמש בתגיות אישיות: [שם_פרטי] · [עיר] · [נכס] — יוחלפו לכל נמען בנפרד.
             </p>
           )}
         </div>

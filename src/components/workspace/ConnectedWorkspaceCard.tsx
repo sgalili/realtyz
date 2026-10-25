@@ -16,7 +16,6 @@ const ACCOUNT_TYPES = [
   { value: 'agency', label: 'סוכנות' },
   { value: 'broker_solo', label: 'מתווך עצמאי' },
   { value: 'developer', label: 'יזם' },
-  { value: 'national_elections', label: 'בחירות ארציות' },
 ];
 
 function initials(name?: string | null) {
