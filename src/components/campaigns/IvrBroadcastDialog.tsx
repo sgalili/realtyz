@@ -684,23 +684,37 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                   </Button>
               </div>
 
-              {!ttsText.trim() && <Button type="button" variant="link" onClick={regenerateScript} disabled={autoScripting} className="h-auto p-0">יצירת תסריט באמצעות AI</Button>}
-
               <div className="flex justify-end">
                 <Button
                   onClick={generateTtsAudio}
                   disabled={generatingTts || !ttsText.trim() || !agentVoiceId}
-                  className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 px-6 rounded-xl font-semibold"
+                  className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 px-6 rounded-xl font-semibold text-[17px]"
                 >
                   <Volume2 className="ml-2 h-4 w-4" />
                   {generatingTts ? 'יוצר…' : 'צור הודעה מוקלטת'}
                 </Button>
               </div>
+
+              {history.length > 0 && (
+                <div className="rounded-xl border border-[#0f1b3d]/20 bg-muted/30 p-3 flex items-center gap-3">
+                  <button type="button" onClick={() => playHistory(history[0])}
+                    className="shrink-0 h-9 w-9 rounded-lg border border-[#0f1b3d]/20 flex items-center justify-center hover:bg-muted/50">
+                    {playingId === history[0].id ? <Pause className="h-4 w-4 text-[#0f1b3d]" /> : <Play className="h-4 w-4 text-[#0f1b3d]" />}
+                  </button>
+                  <div className="flex-1 min-w-0 text-right">
+                    <div className="text-[11px] font-semibold text-[#0f1b3d]">ההקלטה האחרונה</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{history[0].text}</div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {source === 'recording' && (
             <div className="rounded-xl border border-[#0f1b3d]/15 bg-muted/30 p-5 text-center space-y-3">
+              <p className="rounded-lg bg-background border border-[#0f1b3d]/10 px-3 py-2 text-[12.5px] text-[#0f1b3d] text-center leading-snug">
+                התחילו את ההקלטה בהצגה: <span className="font-semibold">{introLine}</span>
+              </p>
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <span className={cn('h-2 w-2 rounded-full', recording ? 'bg-red-500 animate-pulse' : 'bg-muted-foreground/40')} />
                 {recording ? 'מקליט…' : recordedBlob ? 'הקלטה מוכנה' : 'מוכן להקלטה'}
