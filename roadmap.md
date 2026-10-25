@@ -63,6 +63,6 @@
 - [x] 35 focused tests pass; guest and signed-in table cells and the guest pricing window verified in the browser; build OK.
 
 ## Card 8 and unified pricing window
-- [ ] Show immediate live pricing summary independent of consent; enlarge property prices and lead icons by 80%.
-- [ ] Route every reward icon to its master pricing window, with inline licensing links and grayscale broker label.
-- [ ] Run focused tests and verify signed-in editing and guest pricing in the browser.
+- [x] Show immediate live pricing summary independent of consent; enlarge property prices and lead icons by 80%.
+- [x] Route every reward icon to its master pricing window, with inline licensing links and grayscale broker label.
+- [x] 34 focused tests passed; signed-in Card 8 showed ₪7,000, ₪40/50/80 and ₪700 closing immediately as complete without consent. Guest trophy opened one pricing window with inline course/exam links. Mobile screenshots and build OK; no listing published.
