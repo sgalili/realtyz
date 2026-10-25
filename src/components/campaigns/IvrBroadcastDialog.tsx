@@ -175,6 +175,16 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     [allAgents, agentVoiceId],
   );
 
+  // Every message must open with the agent introducing herself/himself as the
+  // digital assistant of the ad owner, using the chosen voice's first name.
+  const introLine = useMemo(() => {
+    const voice = allAgents.find((a) => a.voice_id === agentVoiceId);
+    const name = voice?.label || PRESET_VOICES[0].label;
+    const feminine = (voice?.voice_id ?? PRESET_VOICES[0].voice_id) === PRESET_VOICES[0].voice_id;
+    const owner = ownerName || 'המשרד';
+    return `שלום, אני ${name}, ${feminine ? 'העוזרת הדיגיטלית' : 'העוזר הדיגיטלי'} של ${owner}.`;
+  }, [allAgents, agentVoiceId, ownerName]);
+
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
 
@@ -359,7 +369,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (!agentVoiceId) { toast.error('בחרו נציג/ת AI להקלטה'); return; }
     setGeneratingTts(true);
     try {
-      const finalText = ttsText.trim();
+      const finalText = `${introLine} ${ttsText.trim()}`;
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
         body: { source: 'tts', text: finalText, voice_id: agentVoiceId, generate_only: true },
       });
