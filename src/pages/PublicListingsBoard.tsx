@@ -373,7 +373,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     };
                     return [
                       <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        {visibleColumns.filter(id => id !== 'deal').map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
+                        {visibleColumns.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
                           {id === 'photo' ? (
                           <div className="relative w-12">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
@@ -388,12 +388,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
                         <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
-                        {visibleColumns.includes('deal') && <td data-column="deal" className="p-2"><span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span></td>}
                         <td className="p-2 align-bottom"><div className="flex items-center gap-1">{partnerActions(card)}
                           <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); void toggleFavorite(card); }} aria-label={favIds.has(card.id) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={favIds.has(card.id)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favIds.has(card.id) && 'fill-current')} /></Button>
-                          <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; }}><GripVertical className="h-4 w-4" /></Button>
+                          <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={moveRowDrag} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; setDragGhost(null); }}><GripVertical className="h-4 w-4" /></Button>
                         </div>
-                        </td>
+                         </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={visibleColumns.length + 2} className="p-0">
