@@ -51,7 +51,6 @@ export type PublicCard = {
 
 type GateIntent = 'favorite' | 'details';
 const shekel = (n: number | null) => typeof n === 'number' && n > 0 ? `₪${n.toLocaleString('he-IL')}` : 'מחיר לא צוין';
-const dealLabel = (t: string | null) => t === 'rent' ? 'להשכרה' : 'למכירה';
 function cleanTitle(card: PublicCard) { return publicAdTitle(card); }
 
 export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
@@ -282,8 +281,16 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   }, [filtered, rowOrder]);
   const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, ordered);
   const rowDrag = useRef<{ id: string; pointerId: number } | null>(null);
+  // Floating preview + target highlight while a property row is dragged to a new position.
+  const [dragGhost, setDragGhost] = useState<{ id: string; x: number; y: number; overId: string | null } | null>(null);
+  const moveRowDrag = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = rowDrag.current; if (!drag || drag.pointerId !== e.pointerId) return;
+    const overId = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-row-id]')?.dataset.rowId ?? null;
+    setDragGhost({ id: drag.id, x: e.clientX, y: e.clientY, overId: overId === drag.id ? null : overId });
+  };
   const finishRowDrag = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = rowDrag.current; rowDrag.current = null;
+    setDragGhost(null);
     if (!drag || drag.pointerId !== e.pointerId) return;
     const target = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-row-id]')?.dataset.rowId;
     if (!target || target === drag.id) return;
@@ -340,9 +347,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
-                    {visibleColumns.filter(id => id !== 'deal').map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
+                    {visibleColumns.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
                     <th className="px-2 pt-2 text-start font-medium">מפרסם</th>
-                    {visibleColumns.includes('deal') && <BoardColumnHeader id="deal" controls={columns} />}
                     <th className="w-10 px-2 pb-0 pt-2"><BoardColumnMenu controls={columns} /></th>
                   </tr>
 
@@ -366,8 +372,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                       window.setTimeout(() => row?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
                     };
                     return [
-                      <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        {visibleColumns.filter(id => id !== 'deal').map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
+                      <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className={cn('cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', dragGhost?.overId === card.id && 'bg-primary/10 ring-1 ring-inset ring-primary/50')}>
+                        {visibleColumns.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
                           {id === 'photo' ? (
                           <div className="relative w-12">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
@@ -382,12 +388,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
                         <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
-                        {visibleColumns.includes('deal') && <td data-column="deal" className="p-2"><span className={cn('whitespace-nowrap text-xs', card.deal_type === 'rent' ? 'text-sale' : 'text-success')}>{dealLabel(card.deal_type)}</span></td>}
                         <td className="p-2 align-bottom"><div className="flex items-center gap-1">{partnerActions(card)}
                           <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); void toggleFavorite(card); }} aria-label={favIds.has(card.id) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={favIds.has(card.id)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favIds.has(card.id) && 'fill-current')} /></Button>
-                          <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; }}><GripVertical className="h-4 w-4" /></Button>
+                          <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={moveRowDrag} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; setDragGhost(null); }}><GripVertical className="h-4 w-4" /></Button>
                         </div>
-                        </td>
+                         </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={visibleColumns.length + 2} className="p-0">
@@ -427,6 +432,22 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         )}
         {!loading && grid && filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
       </main>
+
+      {dragGhost && (() => {
+        const card = columns.sorted.find(c => c.id === dragGhost.id);
+        if (!card) return null;
+        return (
+          <div dir="rtl" aria-hidden className="pointer-events-none fixed left-0 top-0 z-[70] w-56 rounded-lg border bg-card p-2 text-xs shadow-2xl ring-2 ring-primary/40 [will-change:transform]" style={{ transform: `translate(${dragGhost.x}px, ${dragGhost.y}px) translate(-50%, -50%) rotate(1.5deg)` }}>
+            <div className="flex items-center gap-2">
+              {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-10 w-10 shrink-0 rounded object-cover" /> : <div className="h-10 w-10 shrink-0 rounded bg-muted" />}
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{cleanTitle(card)}</p>
+                <p className="text-muted-foreground">{shekel(card.price)}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
         <DialogContent dir="rtl" className="max-w-lg">

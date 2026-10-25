@@ -79,10 +79,24 @@ export function meetsBoardRules(row: Record<string, any>, publisherName: string 
   return rewards && !!publisherName;
 }
 
-/** Stable demo profile photo for private publishers that have no uploaded image. */
-export function privatePublisherAvatar(seed: unknown): string {
-  const s = String(seed ?? '');
+/** Demo-avatar overrides so each known demo publisher keeps one image whose gender matches the copy. */
+const DEMO_PUBLISHER_AVATARS: Record<string, number> = {
+  'נועם ירושלמי': 4,
+  'אורן קרמונה': 2,
+  'אורנה קרמונה': 2,
+  'איתמר צמח': 3,
+};
+
+/**
+ * Stable demo profile photo for private publishers that have no uploaded image.
+ * The publisher name wins over the record id so the same person shows the same
+ * photo in every workspace, and different people never share one.
+ */
+export function privatePublisherAvatar(seed: unknown, name?: unknown): string {
+  const clean = String(name ?? '').trim().replace(/\s+/g, ' ');
+  const overridden = DEMO_PUBLISHER_AVATARS[clean];
+  const s = clean || String(seed ?? '');
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return `https://toraff.co.il/publisher-avatars/${(h % 4) + 1}.jpg`;
+  return `https://toraff.co.il/publisher-avatars/${overridden ?? (h % 4) + 1}.jpg`;
 }

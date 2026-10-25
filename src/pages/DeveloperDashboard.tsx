@@ -28,7 +28,7 @@ import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardCol
 
 const projectImages = developerProjectImages;
 const priceLabel = (price: number | null) => price && price > 0 ? `החל מ־₪${Number(price).toLocaleString('he-IL')}` : '';
-const PROJECT_COLUMNS = { columns: [{ id: 'photo', label: 'תמונה' }, { id: 'address', label: 'פרויקט' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'עמלות' }, { id: 'deal', label: 'עסקה' }, { id: 'rooms', label: 'סוגי יחידות' }, { id: 'floor', label: 'סטטוס' }] as { id: BoardColumnId; label: string }[], value: (p: DeveloperProject, id: BoardColumnId) => id === 'price' ? p.price_from : id === 'address' ? p.name : id === 'commissions' ? savedProjectHierarchy(p).buildings.length : id === 'rooms' ? savedProjectHierarchy(p).apartments.length : id === 'floor' ? p.status : id === 'deal' ? projectDeal(p) : projectImages(p).length };
+const PROJECT_COLUMNS = { columns: [{ id: 'photo', label: 'תמונה' }, { id: 'address', label: 'פרויקט' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'עמלות' }, { id: 'rooms', label: 'סוגי יחידות' }, { id: 'floor', label: 'סטטוס' }] as { id: BoardColumnId; label: string }[], value: (p: DeveloperProject, id: BoardColumnId) => id === 'price' ? p.price_from : id === 'address' ? p.name : id === 'commissions' ? savedProjectHierarchy(p).buildings.length : id === 'rooms' ? savedProjectHierarchy(p).apartments.length : id === 'floor' ? p.status : projectImages(p).length };
 
 type Mode = 'choose' | 'import' | 'manual' | null;
 export default function DeveloperDashboard() {
@@ -179,7 +179,7 @@ export default function DeveloperDashboard() {
             {columns.visible.map(id => <td key={id} className={cn('p-2', id === 'price' && 'whitespace-nowrap font-bold', id === 'price' && (deal === 'rent' ? 'text-sale' : 'text-success'))}>
               {id === 'photo' ? projectImages(p)[0] ? <img src={projectImages(p)[0]} alt="" className="h-12 w-12 rounded object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded bg-muted"><Building2 className="h-5 w-5 text-muted-foreground" /></div>
               : id === 'address' ? <div className="w-64"><strong className="block whitespace-normal [overflow-wrap:anywhere]">{p.name}</strong><span className="block truncate text-xs text-muted-foreground">{[p.city, p.neighborhood].filter(Boolean).join(' · ')}</span></div>
-              : id === 'price' ? priceLabel(p.price_from) : id === 'deal' ? <span className={cn('whitespace-nowrap', deal === 'rent' ? 'text-sale' : 'text-success')}>{deal === 'rent' ? 'להשכרה' : 'למכירה'}</span>
+              : id === 'price' ? priceLabel(p.price_from)
               : id === 'commissions' ? <DeveloperCommissionBadges project={p} /> : id === 'rooms' ? hierarchy.apartments.length || '' : PROJECT_STATUS[p.status] ?? p.status}
             </td>)}
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
