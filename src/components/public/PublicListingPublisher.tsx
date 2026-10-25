@@ -1,5 +1,7 @@
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
+import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
+import type { RewardTypes } from '@/components/affiliate/CommissionTierBadges';
 import Terms from '@/pages/Terms';
 import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
 import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
@@ -23,7 +25,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Loader2, Pencil, X } from 'lucide-react';
 import { ClipboardList as LeadFormIcon, Phone as LeadPhoneIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -153,6 +155,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  // Super Admin editing another user's ad opens read-only; the pencil unlocks editing.
+  const [adminUnlocked, setAdminUnlocked] = useState(!adminOnlyEdit);
   const [legalSection, setLegalSection] = useState<'terms' | 'brokerage' | null>(null);
   const { data: readyProperties, isLoading: readyPropertiesLoading, isError: readyPropertiesError } = useReadyBoardProperties(open && isBroker);
   // Pure partners must state who they publish as; other identities are never asked.
