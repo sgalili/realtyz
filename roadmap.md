@@ -1,3 +1,6 @@
+# Lead pricing card redesign
+- [ ] Restyle guest, read-only and publisher pricing views as distinct colored-icon cards with compact details and bounded scrolling; verify tests and live layouts.
+
 # Property landing and map layout
 - [x] Remove sharing-user name from landing header; reuse configured card contact/share controls at bottom.
 - [x] Unify map address/navigation and photo-marker popups; details action selects property and scrolls to top.
