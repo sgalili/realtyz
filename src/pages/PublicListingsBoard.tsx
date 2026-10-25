@@ -36,6 +36,9 @@ import BoardSearchControls from '@/components/public/BoardSearchControls';
 import { useAffiliateMarketplace, useMyReferrals } from '@/hooks/useAffiliate';
 import { useUserRole } from '@/hooks/useUserRole';
 import { PartnerListingActions } from '@/pages/AffiliatePortal';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
+import type { UnifiedResult } from '@/lib/propertySearch';
 import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 
 export type PublicCard = {
@@ -52,6 +55,26 @@ export type PublicCard = {
 type GateIntent = 'favorite' | 'details';
 const shekel = (n: number | null) => typeof n === 'number' && n > 0 ? `₪${n.toLocaleString('he-IL')}` : 'מחיר לא צוין';
 function cleanTitle(card: PublicCard) { return publicAdTitle(card); }
+// Every table row exposes the same action set; the buttons work straight from the card data.
+function cardResult(card: PublicCard): UnifiedResult {
+  return {
+    key: `board:${card.id}`,
+    source: 'mine',
+    sources: ['mine'],
+    localId: card.id,
+    title: cleanTitle(card),
+    price: card.price,
+    city: card.city,
+    address: card.street,
+    neighborhood: card.neighborhood,
+    rooms: card.rooms,
+    size_sqm: card.sqm,
+    photos: card.photos ?? [],
+    url: null,
+    listing_type: card.deal_type === 'rent' ? 'rent' : 'sale',
+    property_type: null,
+  };
+}
 
 export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
@@ -388,7 +411,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
                         <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
-                        <td className="p-2 align-bottom"><div className="flex items-center gap-1">{partnerActions(card)}
+                        <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
+                          <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage />
+                          <BoardPublishButton result={cardResult(card)} />
+                          <BoardOpenPageButton result={cardResult(card)} />
                           <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); void toggleFavorite(card); }} aria-label={favIds.has(card.id) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={favIds.has(card.id)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favIds.has(card.id) && 'fill-current')} /></Button>
                           <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={moveRowDrag} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; setDragGhost(null); }}><GripVertical className="h-4 w-4" /></Button>
                         </div>
