@@ -26,7 +26,6 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
       <div className="flex items-center gap-3">
         {channel && <Button type="button" variant="ghost" size="icon" onClick={onBack} aria-label="חזרה לבחירת ערוץ"><ArrowRight /></Button>}
         <div className="min-w-0 flex-1">
-          <div className="mb-1 text-xs font-medium text-muted-foreground">שלב {channel ? '2' : '1'} מתוך 2</div>
           <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
             {channel && <CampaignServiceIcon channel={channel.id} className="h-6 w-6" />}
             {channel ? `הגדרת קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}
