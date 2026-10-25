@@ -100,8 +100,8 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
         <p className="font-bold">מה אומרים הצבעים?</p>
         <p>כל אייקון הוא דרך להרוויח מהנכס. ככל שהצבע חם יותר, התגמול שהמפרסם מציע גבוה יותר.</p>
         <div className="space-y-1">
-          <span className="block h-[5px] w-full -scale-x-100 rounded-full [background:var(--closing-track)]" aria-hidden />
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground"><span>קר</span><span>חם</span></div>
+          <span className="block h-[5px] w-full rounded-full [background:var(--closing-track)]" aria-hidden />
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground"><span>חם</span><span>קר</span></div>
         </div>
         {!user && <><p>הצטרפו כשותפים וראו את הסכומים המדויקים. מתווכים עם רישיון רואים גם את עמלת סגירת העסקה.</p>
         <Button asChild size="sm" className="w-full"><Link to="/auth">הצטרפות חינם</Link></Button></>}
