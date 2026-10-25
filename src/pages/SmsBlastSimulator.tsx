@@ -221,6 +221,9 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   });
   // Connected account labels (e.g. "realtyzai@gmail.com") shown under the channel name on each card.
   const [connectedAccounts, setConnectedAccounts] = useState<Partial<Record<ChannelId, string>>>({});
+  // True once the connection statuses have been fetched, so the two-step
+  // connection screens never flash for users who are already connected.
+  const [connectionsLoaded, setConnectionsLoaded] = useState(false);
   const refreshConnectionStatus = useCallback(async () => {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -298,6 +301,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
       });
     } catch (err) {
       console.error('refreshConnectionStatus failed:', err);
+    } finally {
+      setConnectionsLoaded(true);
     }
   }, []);
   useEffect(() => { refreshConnectionStatus(); }, [refreshConnectionStatus]);
@@ -490,6 +495,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const [emailAlias, setEmailAlias] = useState<string | null>(null);
   const [aliasPrefix, setAliasPrefix] = useState('');
   const [aliasSaving, setAliasSaving] = useState(false);
+  // True once the saved mailbox alias has been fetched.
+  const [aliasLoaded, setAliasLoaded] = useState(false);
   // Dedicated-WhatsApp two-step flow: skip the connection screen for now.
   const [waConnectSkipped, setWaConnectSkipped] = useState(false);
   const [phase, setPhase] = useState<'compose' | 'sending' | 'done'>('compose');
@@ -1082,9 +1089,13 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   useEffect(() => {
     if (dedicatedChannel !== 'email') return;
     (async () => {
-      const { data } = await supabase.rpc('get_workspace_mailbox' as never);
-      const alias = ((data as any)?.alias ?? null) as string | null;
-      if (alias) { setEmailAlias(alias); setAliasPrefix(alias); }
+      try {
+        const { data } = await supabase.rpc('get_workspace_mailbox' as never);
+        const alias = ((data as any)?.alias ?? null) as string | null;
+        if (alias) { setEmailAlias(alias); setAliasPrefix(alias); }
+      } finally {
+        setAliasLoaded(true);
+      }
     })();
   }, [dedicatedChannel]);
 
@@ -1115,7 +1126,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
   // Two-step flow for the dedicated WhatsApp window: a clean connection screen
   // first, with an "I'll connect later" link to proceed straight to setup.
-  if (dedicatedChannel === 'whatsapp' && phase === 'compose' && !connectedChannels.whatsapp && !waConnectSkipped) {
+  if (dedicatedChannel === 'whatsapp' && phase === 'compose' && connectionsLoaded && !connectedChannels.whatsapp && !waConnectSkipped) {
     return (
       <section dir="rtl" className="mx-auto w-full max-w-3xl space-y-4 text-right">
         <Button type="button" className="h-12 w-full gap-2 bg-[#25D366] text-base font-semibold text-white hover:bg-[#25D366]/90" onClick={() => handleConnectChannel('whatsapp')}>
@@ -1129,7 +1140,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
   // Two-step flow for the dedicated email window: sender configuration must be
   // completed before recipient selection is reachable.
-  if (dedicatedChannel === 'email' && phase === 'compose' && !senderReady) {
+  if (dedicatedChannel === 'email' && phase === 'compose' && connectionsLoaded && aliasLoaded && !senderReady) {
     return (
       <div className="mx-auto w-full max-w-3xl space-y-6" dir="rtl">
         <Card>
