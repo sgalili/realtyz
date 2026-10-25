@@ -167,13 +167,13 @@ export default function PropertyContactActions({
     <>
       <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={cn(shareOnly ? 'inline-flex shrink-0' : compact ? 'grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap' : 'sticky bottom-3 z-10 grid grid-cols-2 items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur sm:flex sm:flex-wrap', !shareOnly && '[&>button]:h-auto [&>button]:min-h-12 [&>button]:min-w-0 [&>button]:gap-1 [&>button]:whitespace-normal [&>button]:px-2 [&>button]:py-2 [&>button]:text-[22px] sm:[&>button]:text-base [&>button>svg]:shrink-0', singleRow && 'sm:[&>button:not([aria-label="שיתוף נכס"])]:basis-0')}>
         {showDigital && formAsButton && (
-          <Button variant="outline" className="min-w-[8rem] flex-1 text-base" aria-expanded={formOpen} onClick={() => { setFormOpen((open) => !open); setInquiryStarted(true); }}>
+          <Button variant="outline" className="order-1 min-w-[8rem] flex-1 text-base sm:order-none" aria-expanded={formOpen} onClick={() => { setFormOpen((open) => !open); setInquiryStarted(true); }}>
             <ClipboardList className="h-4 w-4" />
             השאירו פרטים
           </Button>
         )}
         {showDigital && (!formAsButton || formOpen) && (
-          <form className="col-span-2 flex w-full flex-wrap items-end gap-2" onFocusCapture={() => setInquiryStarted(true)} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+          <form className="order-3 col-span-2 flex w-full flex-wrap items-end gap-2 sm:order-none" onFocusCapture={() => setInquiryStarted(true)} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`phone-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`phone-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, "").replace(/^972/, "0").slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>
             {extraFields.map((f) => {
@@ -198,7 +198,7 @@ export default function PropertyContactActions({
           </form>
         )}
         {showWhatsapp && (
-          <Button className={cn('min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90 text-base', formExpanded && 'mt-[30px]')} onClick={openRita}>
+          <Button className={cn('order-2 min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90 text-base sm:order-none', formExpanded && 'mt-[30px]')} onClick={openRita}>
             <>
               {/* RTL: Rita's picture sits before the label, WA logo on the opposite (left) side. */}
               <RitaAvatar className="h-6 w-6 border-0 ring-0" />
@@ -208,7 +208,7 @@ export default function PropertyContactActions({
           </Button>
         )}
         {showPhone && (
-          <Button variant="outline" className={cn('min-w-[8rem] flex-1 text-base', !showShare && showDigital && showWhatsapp && 'col-span-2', formExpanded && 'mt-[30px]')} onClick={() => setMode('phone')}>
+          <Button variant="outline" className={cn('order-4 min-w-[8rem] flex-1 text-base sm:order-none', !showShare && showDigital && showWhatsapp && 'col-span-2', formExpanded && 'mt-[30px]')} onClick={() => setMode('phone')}>
             <Phone className="h-4 w-4" />חייגו אליי
           </Button>
         )}
@@ -234,7 +234,7 @@ export default function PropertyContactActions({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {!shareOnly && inquiryStarted && mode === null && <div className="col-span-2 w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
+        {!shareOnly && inquiryStarted && mode === null && <div className="order-last col-span-2 w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
       </div>
       <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
       <JoinPartnerDialog open={joinOpen} onOpenChange={setJoinOpen} />
