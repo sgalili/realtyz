@@ -962,7 +962,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           <DialogTitle>
             {pricingOnly ? 'מחיר והגדרת תמלוגים' : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
-          {pricingOnly && <p className="text-sm text-muted-foreground">{fields.title || [addressLine, fields.city].filter(Boolean).join(', ')}</p>}
+          {pricingOnly && <p className="text-sm text-muted-foreground">{(fields.importedListing as { property_title?: string } | undefined)?.property_title || [addressLine, fields.city].filter(Boolean).join(', ')}</p>}
         </DialogHeader>
 
         <div data-publisher-scroll className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pb-2">
