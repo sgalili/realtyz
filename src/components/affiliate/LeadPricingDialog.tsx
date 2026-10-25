@@ -60,7 +60,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
     // Placeholder figures only: real amounts are never sent to guests.
     const guestRows = [
       ...rows.map((row) => ({ ...row, Icon: row.key === 'form' ? ClipboardList : row.key === 'whatsapp' ? WhatsAppIcon : Phone, tone: row.key === 'form' ? 'text-lead-form' : row.key === 'whatsapp' ? 'text-lead-whatsapp' : 'text-lead-phone', fake: row.key === 'form' ? '₪85' : row.key === 'whatsapp' ? '₪240' : '₪380', limit: options.lead_daily_limits?.[row.key] })),
-      ...(showAll || rewardTypes?.closing || closingOnly ? [{ key: 'closing' as const, label: 'סגירת עסקה', Icon: Trophy, tone: 'text-lead-closing', fake: '₪4,500', limit: undefined, questions: [] as string[] }] : []),
+      ...(showAll || rewardTypes?.closing || closingOnly ? [{ key: 'closing' as const, amount: Number(listing.tier4_amount), label: 'סגירת עסקה', Icon: Trophy, tone: 'text-lead-closing', fake: '₪4,500', limit: undefined, questions: [] as string[] }] : []),
     ];
     return <div className="space-y-4 text-base">
       <div className="space-y-4">
