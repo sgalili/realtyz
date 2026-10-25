@@ -91,3 +91,52 @@ export function resolveWorkspaceIdentity(
 export function workspaceInitial(name: string) {
   return (name || DEFAULT_NAME).trim().slice(0, 1).toUpperCase();
 }
+
+export type WorkspaceCardIdentity = {
+  /** First line: the office/company name, or the person's full name. */
+  title: string;
+  /** Second line: the owner's mobile, or their name under an office title. */
+  subtitle: string;
+  logo: string | null;
+  isOffice: boolean;
+  isTenant: boolean;
+};
+
+/**
+ * Resolves the two lines of a workspace ACCOUNT card (the sidebar switcher and
+ * the workspace picker). This is deliberately NOT shell branding: a person who
+ * works alone must be named on the first line with their mobile underneath,
+ * while a real office/company/office keeps its own name on top.
+ */
+export function resolveWorkspaceCardIdentity(
+  workspace: Workspace | null | undefined,
+  brand?: BrandLike,
+  master?: BrandLike,
+): WorkspaceCardIdentity {
+  const identity = resolveWorkspaceIdentity(workspace, brand, master);
+  const person = norm(workspace?.owner_full_name);
+  const email = norm(workspace?.owner_email);
+  const phoneLine = (workspace?.owner_phone ?? '').trim() ? formatPhoneDisplay(workspace!.owner_phone!) : '';
+  const brandName = norm(brand?.agency_name);
+  // The workspace list decides this server-side; a stale local cache that
+  // predates the field falls back to "does this workspace carry a brand name".
+  const isOffice = workspace?.is_office ?? (!!brandName && brandName !== DEFAULT_NAME);
+
+  if (isOffice) {
+    return {
+      title: identity.name,
+      subtitle: person || phoneLine || email,
+      logo: identity.logo,
+      isOffice: true,
+      isTenant: identity.isTenant,
+    };
+  }
+
+  return {
+    title: person || identity.name,
+    subtitle: phoneLine || (email && email !== person ? email : ''),
+    logo: identity.logo,
+    isOffice: false,
+    isTenant: identity.isTenant,
+  };
+}
