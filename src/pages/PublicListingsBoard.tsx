@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Send, CircleUserRound } from 'lucide-react';
+import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Send } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
@@ -32,6 +32,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
 import { propertyInquiryRef } from '@/lib/propertyReferral';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
+import { GuestSignupDialog } from '@/components/public/GuestSignupDialog';
 import BoardSearchControls from '@/components/public/BoardSearchControls';
 import { useAffiliateMarketplace } from '@/hooks/useAffiliate';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
@@ -140,8 +141,17 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   // the "ניהול המודעה שלי" menu all read this one cached list.
   const { favoriteIds: favIds, toggleFavorite: saveFavorite } = useListingFavorites();
   const toggleFavorite = async (card: PublicCard) => {
-    if (!user?.id) { navigate('/auth', { state: { returnTo: location.pathname + location.search, tab: 'signup' } }); return; }
+    if (!user?.id) { setGuestDialog(true); return; }
     await saveFavorite(card.id);
+  };
+  // Guests tapping any row action button (share / publish / open page / favorite /
+  // drag) get a free-registration popup instead of the action itself.
+  const [guestDialog, setGuestDialog] = useState(false);
+  const blockGuests = (e: ReactMouseEvent | ReactPointerEvent) => {
+    if (user) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setGuestDialog(true);
   };
   const [gate, setGate] = useState<{ card: PublicCard; intent: GateIntent } | null>(null);
   const [form, setForm] = useState({ name: '', phone: '' });
