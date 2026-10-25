@@ -1,3 +1,7 @@
+# Campaign channel-first wizard
+- [ ] Start new campaign/post creation with five channel cards and configured credit prices, then show only the selected existing composer with back navigation; remove crowded channel switches.
+- [ ] Verify channel selection and dedicated forms in the authenticated preview without sending a campaign.
+
 # Facebook cloud connection cleanup
 - [x] Replace connection prompts with shared cloud login, confirmed-group import and discovery guidance; remove manual cookie entry and delegate old connection controls to the cloud flow.
 - [x] Remove user-facing installation/extension wording across Facebook screens and tutorials; 14 focused tests pass and authenticated Connections UI verifies login/import/discovery controls with no installation wording. Preview builds pass.
