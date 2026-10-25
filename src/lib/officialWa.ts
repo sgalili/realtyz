@@ -92,15 +92,25 @@ export function openWhatsAppContactPicker(text: string): void {
  * Sends a message to a recipient THROUGH the official WBA gateway
  * (`send-whatsapp` edge function) so the sender identity is always our
  * official number — never a personal device.
+ *
+ * When `template` is provided the send goes out as a pre-approved Meta
+ * template (required for business-initiated messages outside the 24h
+ * customer-service window); `message` is kept as a readable preview.
  */
 export async function sendViaOfficialWaba(params: {
   phone_number?: string | null;
   lead_id?: string | null;
   message: string;
+  template?: { name: string; language: string; components: unknown[] } | null;
 }): Promise<{ ok: boolean; error?: string }> {
   const body: Record<string, unknown> = { message: params.message };
   if (params.lead_id) body.lead_id = params.lead_id;
   if (params.phone_number) body.phone_number = params.phone_number;
+  if (params.template?.name) {
+    body.template_id = params.template.name;
+    body.template_language = params.template.language;
+    body.template_components = params.template.components;
+  }
   try {
     const { data, error } = await supabase.functions.invoke('send-whatsapp', { body });
     if (error) return { ok: false, error: error.message };
