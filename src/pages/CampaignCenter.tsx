@@ -4557,6 +4557,7 @@ const PublishedFeed = ({
   /** Live item counts for the drafts/future tabs (published is counted locally). */
   tabCounts?: { drafts: number; future: number };
 } = {}) => {
+  const navigate = useNavigate();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const fbGroupMeta = useFbGroupMeta();
@@ -6290,13 +6291,7 @@ const PublishedFeed = ({
           <Button
             size="lg"
             className="mt-5 h-auto whitespace-normal rounded-xl px-8 py-3 text-base font-semibold"
-            onClick={() => {
-              const next = new URLSearchParams(searchParams);
-              next.set('tab', 'create');
-              next.delete('channel');
-              next.delete('sub');
-              setSearchParams(next, { replace: true });
-            }}
+            onClick={() => navigate('/campaigns?tab=create')}
           >
             <Plus className="me-2 h-5 w-5" /> צרו את הפוסט הראשון שלכם
           </Button>
@@ -8698,7 +8693,7 @@ const CampaignCenter = () => {
 
 
         <TabsContent value="broadcast" className="mt-6">
-          {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
+          {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'instagram' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
           {(wizardChannel === 'facebook' || wizardChannel === 'instagram') && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
