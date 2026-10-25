@@ -23,10 +23,15 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   if (networkOpen === false) return null;
   const source = property ?? raw;
   const listing = marketplace.data?.find(row => row.listing_id === listingId);
+  // Closing fee may live in the column or only in the wizard's deal_closing_commission; percent converts to ILS.
+  const dcc = (source?.features as { deal_closing_commission?: { type?: string; value?: number } } | undefined)?.deal_closing_commission;
+  const rawTier4 = Number(source?.affiliate_tier4_amount ?? 0) > 0 ? Number(source?.affiliate_tier4_amount) : Number(dcc?.value ?? 0);
+  const rawType = Number(source?.affiliate_tier4_amount ?? 0) > 0 ? source?.affiliate_tier4_type : dcc?.type;
+  const closingIls = rawType === 'percent' ? Math.round(Number(source?.asking_price ?? 0) * rawTier4 / 100) : rawTier4;
   const tiers = !property && listing ? listingTiers(listing) : {
     tier1: Number(source?.affiliate_tier1_amount ?? 0), tier2: Number(source?.affiliate_tier2_amount ?? 0),
-    tier3: Number(source?.affiliate_tier3_amount ?? 0), tier4: level4Unlocked ? Number(source?.affiliate_tier4_amount ?? 0) : 0,
-    tier4Type: (source?.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed') as 'percent' | 'fixed',
+    tier3: Number(source?.affiliate_tier3_amount ?? 0), tier4: level4Unlocked ? closingIls : 0,
+    tier4Type: 'fixed' as 'percent' | 'fixed',
   };
   const types: RewardTypes = { ...(source?.reward_types as RewardTypes ?? { form: tiers.tier1 > 0, whatsapp: tiers.tier2 > 0, phone: tiers.tier3 > 0 }), closing: !!user && level4Unlocked && tiers.tier4 > 0 };
   const display = tableRoyalties(types, tiers, !!user, level4Unlocked);
