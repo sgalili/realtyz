@@ -4,8 +4,7 @@ import { SortableContext, useSortable, horizontalListSortingStrategy, sortableKe
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowDown, ArrowUp, Columns3, GripVertical, HelpCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useAuth } from '@/hooks/useAuth';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
@@ -90,7 +89,7 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const label = controls.definitions.find(c => c.id === id)?.label;
   const sorted = controls.sort?.id === id;
-  const { user } = useAuth();
+  const location = useLocation();
   return <th ref={setNodeRef} data-column={id} aria-sort={sorted ? controls.sort?.descending ? 'descending' : 'ascending' : 'none'} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group/column px-2 pb-0 pt-2 text-right font-semibold ${isDragging ? 'relative z-10 bg-muted opacity-80' : ''} ${id === 'price' ? 'max-sm:sticky max-sm:left-0 max-sm:z-[4] max-sm:bg-card' : ''}`}>
     <div className="flex items-center gap-0.5">
       <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-auto min-h-7 gap-1 !whitespace-normal px-0 py-0.5 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
@@ -103,8 +102,7 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
           <span className="block h-[5px] w-full rounded-full [background:var(--closing-track)]" aria-hidden />
           <div className="flex items-center justify-between text-[10px] text-muted-foreground"><span>חם</span><span>קר</span></div>
         </div>
-        {!user && <><p>הצטרפו כשותפים וראו את הסכומים המדויקים. מתווכים עם רישיון רואים גם את עמלת סגירת העסקה.</p>
-        <Button asChild size="sm" className="w-full"><Link to="/auth">הצטרפות חינם</Link></Button></>}
+        <Button asChild size="sm" className="w-full"><Link to="/auth" state={{ tab: 'signup', returnTo: location.pathname + location.search }}>הרשמה לצפייה במחירי הלידים</Link></Button>
       </PopoverContent></Popover>}
       <Button variant="ghost" size="icon" {...attributes} {...listeners} aria-label={`הזזת עמודת ${label}`} title={`הזזת עמודת ${label}`} className="h-7 w-5 touch-none text-muted-foreground"><GripVertical className="h-3 w-3" /></Button>
     </div>
