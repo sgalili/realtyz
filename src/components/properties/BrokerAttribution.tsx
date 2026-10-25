@@ -48,13 +48,13 @@ export default function BrokerAttribution({
           {!isPrivate && office && office !== 'מפרסם פרטי' && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
           {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {license}</span>}
         </div>}
+        {exclusive && (
+          <span className={`flex w-fit items-center gap-1 text-xs font-semibold text-foreground ${compact ? 'mt-1' : 'mt-1.5'}`}>
+            <Award className="h-3.5 w-3.5 text-primary" />בבלעדיות
+          </span>
+        )}
       </div>
       {trailing && <div className="ms-auto max-w-[45%] shrink-0 [&_[data-commission-icons]]:justify-end">{trailing}</div>}
-      {exclusive && (
-        <span className={`-me-1 flex shrink-0 items-center gap-1 self-start text-xs font-semibold text-foreground ${compact ? 'mt-2' : 'mt-3'}`}>
-          <Award className="h-3.5 w-3.5 text-primary" />בבלעדיות
-        </span>
-      )}
     </div>
   );
 }
