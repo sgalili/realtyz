@@ -38,6 +38,7 @@ const AlertDialogContent = React.forwardRef<
         className,
       )}
       {...props}
+      data-site-dialog
     />
   </AlertDialogPortal>
 ));

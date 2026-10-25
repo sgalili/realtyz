@@ -3,6 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 afterEach(cleanup);
 describe('closing fee interaction', () => {
+  it('starts expanded and collapsing preserves the configured fee', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider dealType="sale" price={2000000} value={1} onChange={change} />);
+    expect(screen.getByRole('slider').getAttribute('aria-valuenow')).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: 'כווץ את עמלת התיווך' }));
+    expect(screen.queryByRole('slider')).toBeNull();
+    expect(change).not.toHaveBeenCalled();
+  });
   it('sale fees are always saved as a percentage bounded to 0.2%-2%', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider dualMode dealType="sale" price={2000000} value={20000} valueType="fixed" onChange={vi.fn()} onValueChange={change} />);

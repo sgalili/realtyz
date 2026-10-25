@@ -24,7 +24,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const progress = (percent - range.min) / (range.max - range.min);
   const level = Math.min(3, Math.floor(progress * 4));
   const [editing, setEditing] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [draft, setDraft] = useState('');
   const amount = closingFeeAmount(percent, range.price);
   const displayAmount = dualMode ? outType === 'fixed' : range.rent && range.price > 0;
