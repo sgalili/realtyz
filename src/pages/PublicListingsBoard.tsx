@@ -433,6 +433,22 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         {!loading && grid && filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
       </main>
 
+      {dragGhost && (() => {
+        const card = columns.sorted.find(c => c.id === dragGhost.id);
+        if (!card) return null;
+        return (
+          <div dir="rtl" aria-hidden className="pointer-events-none fixed left-0 top-0 z-[70] w-56 rounded-lg border bg-card p-2 text-xs shadow-2xl ring-2 ring-primary/40 [will-change:transform]">
+            <div className="flex items-center gap-2" style={{ transform: 'translate(-50%, -50%) rotate(1.5deg)', marginLeft: dragGhost.x, marginTop: dragGhost.y }}>
+              {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-10 w-10 shrink-0 rounded object-cover" /> : <div className="h-10 w-10 shrink-0 rounded bg-muted" />}
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{cleanTitle(card)}</p>
+                <p className="text-muted-foreground">{shekel(card.price)}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
         <DialogContent dir="rtl" className="max-w-lg">
           <DialogHeader className="text-right"><DialogTitle>השארת פרטים</DialogTitle><DialogDescription>ריטה תיצור איתכם מיד קשר בווטסאפ</DialogDescription></DialogHeader>
