@@ -24,6 +24,16 @@ describe('partner lead pricing information', () => {
     expect(screen.getByText('סגירת עסקה')).toBeTruthy();
     expect(screen.queryByText('₪8,000')).toBeNull();
   });
+  it('keeps the restricted closing trophy in its price color with a gray hint', () => {
+    state.user = null;
+    render(<LeadPricingInfo listing={{ ...listing, tier4_amount: 1.5, tier4_type: 'percent' }} details={{ asking_price: 3_000_000, deal_type: 'sale' }} rewardTypes={{ closing: true }} closingLevel={2} />);
+    expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('closing-level-2');
+    expect(screen.getByText('למתווכים').className).toContain('lead-no-fee');
+    cleanup();
+    // An unknown level still shows the gold closing tone rather than a gray icon.
+    render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ closing: true }} />);
+    expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('text-lead-closing');
+  });
   it('opens all lead details and inline licensing from the closing icon without a second popup', () => {
     state.editable = null;
     render(<LeadPricingDialog listing={listing} />);

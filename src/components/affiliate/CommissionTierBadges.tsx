@@ -1,7 +1,6 @@
 import { ClipboardList, Phone, Trophy } from 'lucide-react';
 import { fmtILS } from '@/lib/formatCurrency';
-import { leadPriceLevel } from '@/lib/leadPriceRanges';
-const LEVELS = ['low', 'medium', 'high', 'max'];
+import { leadPriceLevel, closingLevelColor, closingLevelClass } from '@/lib/leadPriceRanges';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import type { CommissionTiers } from '@/hooks/useAffiliate';
@@ -27,11 +26,11 @@ export function RewardIcons({ levels, types, prices, zeroTypes, closingPercent =
     <span className={prices || grid ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'flex items-center gap-2'}>{rows.map(({ key, label: title, Icon, tone }) => {
       // The trophy keeps the closing price's real level color even when the
       // amount itself stays hidden behind the broker-only explanation.
-      if (key === 'closing' && (!user || !level4Unlocked)) return <RestrictedClosingReward key={key} className="whitespace-nowrap" showLabel={!!user} label="למתווכים" iconStyle={closingLevel != null ? { color: `hsl(var(--closing-${LEVELS[closingLevel] ?? 'low'}))` } : undefined} />;
+      if (key === 'closing' && (!user || !level4Unlocked)) return <RestrictedClosingReward key={key} className="whitespace-nowrap" showLabel={!!user} label="למתווכים" iconClassName={closingLevel != null ? closingLevelClass(closingLevel) ?? 'text-lead-closing' : 'text-lead-closing'} />;
       // Icon and price share one level color: closing uses its server level, lead types their price level.
       const level = key === 'closing' ? closingLevel : prices?.[key] != null ? leadPriceLevel(key as 'form', Number(prices[key])) : levels?.[key as 'form'] ?? null;
       const zero = zeroTypes ? zeroTypes[key] === true : prices?.[key] === 0;
-      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: `hsl(var(--closing-${LEVELS[level] ?? 'low'}))` } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? user && <span className="text-xs font-semibold">ללא עמלה</span> : prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
+      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: closingLevelColor(level) } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? user && <span className="text-xs font-semibold">ללא עמלה</span> : prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
     })}</span>
   </span>;
 }

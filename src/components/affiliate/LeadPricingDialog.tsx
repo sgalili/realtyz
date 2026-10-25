@@ -14,6 +14,7 @@ import { type BrokerAffiliateListing, type MarketplaceListing } from '@/hooks/us
 import { cleanFormFields, FORM_FIELD_TYPE_LABELS, type LeadFormField } from '@/lib/leadTiers';
 import { fmtILS } from '@/lib/formatCurrency';
 import { closingFeeAmount } from '@/lib/closingFee';
+import { closingLevelClass, closingRewardLevel } from '@/lib/leadPriceRanges';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import type { ReactNode } from 'react';
@@ -36,7 +37,7 @@ type PricingDetails = {
   contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[]; lead_daily_limits?: import('@/lib/closingFee').LeadDailyLimits };
 };
 
-export function LeadPricingInfo({ listing, details, gross = false, closingOnly = false, rewardTypes }: { listing: PricingListing; details: PricingDetails; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes }) {
+export function LeadPricingInfo({ listing, details, gross = false, closingOnly = false, rewardTypes, closingLevel }: { listing: PricingListing; details: PricingDetails; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes; closingLevel?: number | null }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const { isSuperAdmin, roles } = useUserRole();
@@ -49,6 +50,9 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   const closingBase = Math.max(0, Number(details.asking_price) || 0);
   const closingNetPercent = partnerNetReward(Number(listing.tier4_amount));
   const closingNetShekels = closingBase > 0 ? Math.round(closingFeeAmount(closingNetPercent, closingBase)) : 0;
+  // The closing trophy keeps the fee's own cold→hot color even when the amount itself
+  // is licensed-broker only; an unknown level falls back to the gold closing tone.
+  const closingColorClass = closingLevelClass(closingLevel ?? closingRewardLevel(listing.tier4_amount, listing.tier4_type, details.deal_type, details.asking_price));
   const rows = closingOnly ? [] : [
     { key: 'form' as const, label: FORM_TIER_LABEL, amount: listing.tier1_amount, questions: [] },
     { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
@@ -73,7 +77,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
           {<p className="mt-2 text-base text-muted-foreground">מקס׳ ב־24 שעות: <strong className="text-foreground">{row.limit ?? 'ללא מגבלה'}</strong></p>}
         </Card>)}
       </div>
-      <Card className="space-y-3 rounded-2xl p-4"><div className="flex items-center gap-3 text-muted-foreground"><Trophy className="h-8 w-8 shrink-0" /><h3 className="flex-1 text-lg font-bold text-foreground">סגירת עסקה</h3><span className="text-base">למתווכים</span></div><ClosingLicenseInfo /></Card>
+      <Card className="space-y-3 rounded-2xl p-4"><div className="flex items-center gap-3 text-muted-foreground"><Trophy aria-label="סגירת עסקה" className={`h-8 w-8 shrink-0 ${closingColorClass ?? 'text-lead-closing'}`} /><h3 className="flex-1 text-lg font-bold text-foreground">סגירת עסקה</h3><span className="lead-no-fee text-base">למתווכים</span></div><ClosingLicenseInfo /></Card>
       <Button type="button" size="lg" onClick={join} className="h-14 w-full gap-2 rounded-2xl text-lg font-bold shadow-lg"><Sparkles className="h-5 w-5" />הצטרפו לצפייה במחירי הלידים</Button>
     </div>;
   }
@@ -84,12 +88,12 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
       {row.key === 'form' && <div className="space-y-1"><p>שם מלא · חובה</p><p>מספר טלפון · חובה</p>{cleanFormFields(options.form_fields).map((field) => <p key={field.id}>{field.label} · {FORM_FIELD_TYPE_LABELS[field.type]} · {field.required ? 'חובה' : 'רשות'}{field.options?.length ? ` · ${field.options.join(', ')}` : ''}</p>)}</div>}
       {row.questions.length ? <Collapsible><CollapsibleTrigger asChild><Button type="button" variant="ghost" className="group h-auto w-full justify-between gap-2 whitespace-normal px-0 py-2 text-start text-base text-muted-foreground"><span>שאלות הסינון של המפרסם</span><ChevronDown className="h-5 w-5 shrink-0 transition-transform motion-reduce:transition-none group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CollapsibleContent><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></CollapsibleContent></Collapsible> : row.key !== 'form' ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
     </Card>)}
-    {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <Card className="space-y-2 rounded-2xl p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="ms-auto shrink-0 text-2xl font-bold text-lead-closing">{listing.tier4_type === 'percent' ? <>{`${closingNetPercent}%`}{closingNetShekels > 0 ? <span className="ms-1 text-base font-extrabold">({fmtILS(closingNetShekels)})</span> : null}</> : `${fmtILS(Math.round(partnerNetReward(Number(listing.tier4_amount))))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></Card> : !level4Unlocked ? <Card className="space-y-3 rounded-2xl p-4"><div className="flex items-center gap-3 text-muted-foreground"><Trophy className="h-8 w-8 shrink-0" /><h3 className="flex-1 text-lg font-bold text-foreground">סגירת עסקה</h3><span className="text-base">למתווכים</span></div><ClosingLicenseInfo /></Card> : (showAll || rewardTypes?.closing || closingOnly) && <Card className="space-y-2 rounded-2xl p-4"><h3 className="flex items-center gap-3 text-lg font-bold"><Trophy className={`h-8 w-8 shrink-0 ${closingZero ? 'lead-no-fee' : 'text-lead-closing'}`} />סגירת עסקה{closingZero && <span className="lead-no-fee text-base">ללא עמלה</span>}</h3>{!closingZero && <p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p>}</Card>}
+    {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <Card className="space-y-2 rounded-2xl p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="ms-auto shrink-0 text-2xl font-bold text-lead-closing">{listing.tier4_type === 'percent' ? <>{`${closingNetPercent}%`}{closingNetShekels > 0 ? <span className="ms-1 text-base font-extrabold">({fmtILS(closingNetShekels)})</span> : null}</> : `${fmtILS(Math.round(partnerNetReward(Number(listing.tier4_amount))))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></Card> : !level4Unlocked ? <Card className="space-y-3 rounded-2xl p-4"><div className="flex items-center gap-3 text-muted-foreground"><Trophy aria-label="סגירת עסקה" className={`h-8 w-8 shrink-0 ${closingColorClass ?? 'text-lead-closing'}`} /><h3 className="flex-1 text-lg font-bold text-foreground">סגירת עסקה</h3><span className="lead-no-fee text-base">למתווכים</span></div><ClosingLicenseInfo /></Card> : (showAll || rewardTypes?.closing || closingOnly) && <Card className="space-y-2 rounded-2xl p-4"><h3 className="flex items-center gap-3 text-lg font-bold"><Trophy className={`h-8 w-8 shrink-0 ${closingZero ? 'lead-no-fee' : 'text-lead-closing'}`} />סגירת עסקה{closingZero && <span className="lead-no-fee text-base">ללא עמלה</span>}</h3>{!closingZero && <p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p>}</Card>}
     {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}
   </div>;
 }
 
-export default function LeadPricingDialog({ listing, referralId, children, readOnly = false, compact = true, gross = false, closingOnly = false, rewardTypes }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes }) {
+export default function LeadPricingDialog({ listing, referralId, children, readOnly = false, compact = true, gross = false, closingOnly = false, rewardTypes, closingLevel }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes; closingLevel?: number | null }) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const workspaceId = useActiveWorkspaceOwnerId();
@@ -117,7 +121,7 @@ export default function LeadPricingDialog({ listing, referralId, children, readO
       <DialogContent dir="rtl" onClick={event => event.stopPropagation()} className="mx-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto overscroll-contain rounded-2xl bg-muted p-4 sm:p-6">
         <div className="flex min-w-0 flex-col gap-4"><DialogHeader className="px-5"><DialogTitle className="text-xl font-extrabold leading-snug">תמחור לידים · {listing.property_title || 'נכס'}</DialogTitle><DialogDescription className="text-base">{user ? 'סוגי הלידים והתגמולים לשותף' : 'הצטרפו כשותפים ותרוויחו על כל ליד'}</DialogDescription></DialogHeader>
         {query.isLoading ? <p role="status">טוען פרטי תמחור…</p> : query.isError ? <div role="alert" className="space-y-2"><p>לא ניתן לטעון את פרטי התמחור כרגע.</p><Button variant="outline" onClick={() => void query.refetch()}>ניסיון נוסף</Button></div> : query.data ? <>
-          <LeadPricingInfo listing={listing} details={query.data.details} gross={gross} closingOnly={closingOnly} rewardTypes={rewardTypes} />
+          <LeadPricingInfo listing={listing} details={query.data.details} gross={gross} closingOnly={closingOnly} rewardTypes={rewardTypes} closingLevel={closingLevel} />
           {user && referralId && <section className="border-t pt-4"><LeftoverDiscountButton referralId={referralId} inline /></section>}
         </> : null}
         </div>

@@ -44,9 +44,14 @@ export function ClosingLicenseInfo() {
 }
 
 /** Let every icon click reach the surrounding master pricing trigger. */
-export function RestrictedClosingReward({ children, className = '', showLabel = true, label = 'למתווכים', iconStyle }: { children?: ReactNode; className?: string; showLabel?: boolean; label?: string; iconStyle?: CSSProperties }) {
-  return <span title="סגירת עסקה" className={`inline-flex items-center gap-1 text-muted-foreground ${className}`}>
-    {children ?? <><Trophy aria-label="סגירת עסקה" className="h-3.5 w-3.5 shrink-0" style={iconStyle} />{showLabel && <span className="text-xs text-muted-foreground">{label}</span>}</>}
+/**
+ * Restricted closing reward: the trophy keeps the closing price's own cold→hot color
+ * (iconStyle when the level is known, otherwise the gold closing tone), while the
+ * "למתווכים" hint stays a quiet gray so it never reads like a price.
+ */
+export function RestrictedClosingReward({ children, className = '', showLabel = true, label = 'למתווכים', iconStyle, iconClassName = 'text-lead-closing' }: { children?: ReactNode; className?: string; showLabel?: boolean; label?: string; iconStyle?: CSSProperties; iconClassName?: string }) {
+  return <span title="סגירת עסקה" className={`inline-flex items-center gap-1 ${className}`}>
+    {children ?? <><Trophy aria-label="סגירת עסקה" className={`h-3.5 w-3.5 shrink-0 ${iconClassName}`} style={iconStyle} />{showLabel && <span className="lead-no-fee text-xs">{label}</span>}</>}
   </span>;
 }
 

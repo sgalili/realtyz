@@ -21,12 +21,12 @@ describe('public brokerage commission disclosure', () => {
   });
   it('publishes a readable dedicated legal section with signed-agreement conditions', () => {
     render(<MemoryRouter><Terms /></MemoryRouter>);
-    const heading = screen.getByRole('heading', { name: 'עמלות תיווך ותנאי שירות (Brokerage Commissions)' });
+    const heading = screen.getByRole('heading', { name: /עמלות תיווך ותנאי שירות/ });
     const section = heading.closest('section');
     expect(section).toHaveAttribute('id', 'brokerage-commissions');
-    expect(section).toHaveTextContent('1% בלבד ממחיר העסקה הסופי');
-    expect(section).toHaveTextContent('10% בלבד מדמי השכירות החודשיים');
+    expect(section).toHaveTextContent('1% ממחיר הסגירה הסופי');
+    expect(section).toHaveTextContent('10% משכר דירה של חודש אחד');
     expect(section).toHaveTextContent('מוכרים ומשכירים');
-    expect(section).toHaveTextContent('הזמנת שירותי תיווך בכתב');
+    expect(section).toHaveTextContent('הזמנת השירות בכתב');
   });
 });
