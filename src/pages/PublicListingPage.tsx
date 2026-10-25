@@ -31,6 +31,7 @@ import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesM
 import { addressMapQuery, fullPropertyAddress, streetLine } from '@/lib/fullAddress';
 import PropertyContactActions, { type ContactOptions } from '@/components/public/PropertyContactActions';
 import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
+import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { useAuth } from '@/hooks/useAuth';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
