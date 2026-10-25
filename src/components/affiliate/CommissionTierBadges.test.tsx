@@ -40,6 +40,16 @@ describe('commission visibility', () => {
     expect(screen.getByTitle(/שדות מטופס בעמוד נחיתה/)).toBeTruthy();
     expect(screen.getByTitle(/סינון בווטסאפ/)).toBeTruthy();
   });
+  it('shows only a grayed icon where no lead price is displayed', () => {
+    access.guest = true;
+    const { container } = render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={{ form: false, whatsapp: false, phone: true, closing: false }} />);
+    expect(screen.queryByText('ללא עמלה')).toBeNull();
+    expect(screen.queryByText('למתווכים בלבד')).toBeNull();
+    expect(container.querySelector('span[title="שיחת טלפון"].lead-no-fee')).toBeTruthy();
+    // The restricted closing stays a gray trophy that still explains licensing.
+    fireEvent.click(screen.getByRole('button', { name: 'סגירת עסקה · למתווכים בלבד' }));
+    expect(screen.getByRole('link', { name: /קורס הכנה/ })).toBeTruthy();
+  });
   it.each(['guest', 'super_admin', 'developer', 'property_owner', 'property_seeker', 'affiliate', 'agent'])('redacts closing prices even if supplied to the indicator for %s', role => {
     access.guest = role === 'guest'; access.roles = [role]; access.admin = role === 'super_admin';
     render(<RewardIcons types={{ closing: true }} prices={{ closing: 10000 }} zeroTypes={{ closing: true }} />);
