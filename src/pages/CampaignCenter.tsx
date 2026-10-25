@@ -7540,6 +7540,7 @@ const CampaignCenter = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   useEffect(() => { setWizardChannel(null); }, [workspaceOwnerId]);
   const [repostRequest, setRepostRequest] = useState<RepostEditorRequest | null>(null);
+  const { prepare: prepareScheduledRepost, busy: preparingScheduledRepost } = usePreparePostRepost();
   useEffect(() => {
     setRepostRequest(null);
     const open = (event: Event) => {
@@ -8602,9 +8603,8 @@ const CampaignCenter = () => {
               menu={<PostActionsMenu
                 postUrl={derivePostUrl(r)}
                 onEdit={() => setEditSeriesRow(r)}
-                onRepost={() => {
-                  if (workspaceOwnerId) window.dispatchEvent(new CustomEvent(REPOST_EDITOR_EVENT, { detail: { owner: workspaceOwnerId, post: r, jobs: [] } }));
-                }}
+                reposting={preparingScheduledRepost}
+                onRepost={() => { void prepareScheduledRepost(r); }}
                 onDelete={() => setFutureDeleteTarget(r)}
               />}
               actions={
