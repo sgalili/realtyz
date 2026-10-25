@@ -8422,16 +8422,18 @@ const CampaignCenter = () => {
   const channelParam = searchParams.get('channel');
   useEffect(() => {
     if (!channelParam) return;
+    // Only the distribution channels drive the wizard; legacy cards (instagram,
+    // x, youtube…) keep their previous behavior of preselecting the card only.
+    if (!DISTRIBUTION_CHANNELS.some((c) => c.id === channelParam)) return;
     const card = CHANNEL_CARDS.find((c) => c.id === channelParam);
-    if (!card) return;
-    setPickedChannel((prev) => prev ?? card);
-    setPickedChannelIds((prev) => (prev.has(card.id) ? prev : new Set([...prev, card.id])));
+    if (card) {
+      setPickedChannel((prev) => prev ?? card);
+      setPickedChannelIds((prev) => (prev.has(card.id) ? prev : new Set([...prev, card.id])));
+    }
     // Deep links also select the wizard channel so the connection/composer step
     // mounts directly instead of stopping at the channel picker.
-    if (DISTRIBUTION_CHANNELS.some((c) => c.id === channelParam)) {
-      setWizardChannel(channelParam as DistributionChannel);
-      setFbReady(false);
-    }
+    setWizardChannel(channelParam as DistributionChannel);
+    setFbReady(false);
     // workspaceOwnerId is included so a deep link survives the workspace
     // resolution effect above, which resets the wizard channel on changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
