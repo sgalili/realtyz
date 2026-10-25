@@ -575,6 +575,13 @@
       "when": 1792915415427,
       "tag": "0081_workspace_card_identity_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1792916059367,
+      "tag": "0082_validate_signup_full_name",
+      "breakpoints": true
     }
   ]
 }
