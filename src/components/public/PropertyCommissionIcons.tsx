@@ -15,13 +15,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { tableRoyalties } from '@/lib/tableRoyalties';
 
-export default function PropertyCommissionIcons({ listingId, raw, networkOpen, table = false }: { listingId: string; raw?: Record<string, unknown>; networkOpen?: boolean; table?: boolean }) {
-  const { user } = useAuth();
-  const { level4Unlocked } = useAffiliateLicense();
-  const marketplace = useAffiliateMarketplace();
-  const { activeWorkspaceId } = useWorkspace();
-  const { isSuperAdmin } = useUserRole();
-  const [draft, setDraft] = useState<PublicListingDraft>();
 export type CommissionEditScope = 'edit' | 'admin-only' | 'none';
 
 /**
@@ -43,7 +36,25 @@ export function commissionEditScope(
   return row.workspace_owner_id === activeWorkspaceId ? 'edit' : 'none';
 }
 
-export function PropertyCommissionIcons({
+export default function PropertyCommissionIcons({ listingId, raw, networkOpen, table = false }: { listingId: string; raw?: Record<string, unknown>; networkOpen?: boolean; table?: boolean }) {
+  const { user } = useAuth();
+  const { level4Unlocked } = useAffiliateLicense();
+  const marketplace = useAffiliateMarketplace();
+  const { activeWorkspaceId } = useWorkspace();
+  const { isSuperAdmin } = useUserRole();
+  const [draft, setDraft] = useState<PublicListingDraft>();
+  const owned = useQuery({
+    queryKey: ['owned-royalties', listingId, user?.id, activeWorkspaceId, isSuperAdmin],
+    enabled: table && !!user && !!activeWorkspaceId,
+    queryFn: async () => {
+      if (!user || !activeWorkspaceId) return null;
+      const { data, error } = await supabase.from('listings').select('*').eq('id', listingId).maybeSingle();
+      if (error || !data) return null;
+      const scope = commissionEditScope(data, user.id, activeWorkspaceId, isSuperAdmin);
+      if (scope === 'none') return null;
+      return { ...data, __adminOnly: scope === 'admin-only' };
+    },
+  });
   const { data: property } = useQuery({
     queryKey: ['public-commission-pricing', listingId, user?.id, level4Unlocked],
     enabled: networkOpen !== false,
