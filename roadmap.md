@@ -1,6 +1,6 @@
 # Campaign card actions
 # IVR property script
-- [ ] Move voice/property labels into fields, remove step count, measure all recording durations in MM:SS and calculate maximum estimated credits from the selected recording; verify without dispatch.
+- [x] Move voice/property labels into fields, remove step count, measure recording durations in MM:SS and calculate maximum estimated credits from selected audio. Nine tests/build pass; authenticated 446px upload of 30-second audio verifies 00:30 and 15 credits for three recipients in confirmation. No calls/messages sent; actual wallet metering remains unverified as noted below.
 - [x] Add official WhatsApp audio checkbox with open-session/authorized-lead checks, credit totals on submit/confirmation, v3-only voices, workspace-scoped custom voices/history, unique script refresh and larger menus. Nine tests/build pass; authenticated real property generation and v3 audio creation return 200; no calls or WhatsApp sent.
 - [ ] Fourth default (second Israeli woman): provider public Hebrew library exposes only one female entry; do not substitute a private cloned voice or mislabel a foreign voice. Two male/one female defaults verified and added to provider account.
 - [ ] Live IVR/WhatsApp dispatch and actual billing readback remain unverified: no real recipient calls/messages authorized. Existing IVR endpoint does not implement metered wallet deduction; displayed credit totals are estimates, not verified charges.
