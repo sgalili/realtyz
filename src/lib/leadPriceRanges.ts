@@ -17,3 +17,30 @@ export function clampLeadPrice(key: LeadPriceKey, value: number) {
   const { min, max } = LEAD_PRICE_RANGES[key];
   return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 }
+
+/** Closing-commission color levels, cold → hot, matching the --closing-* tokens. */
+export const CLOSING_LEVELS = ['low', 'medium', 'high', 'max'] as const;
+
+/** Inline color of a closing-commission level; undefined leaves the current text color. */
+export function closingLevelColor(level: number | null | undefined) {
+  if (level == null) return undefined;
+  const name = CLOSING_LEVELS[Math.min(3, Math.max(0, Math.trunc(level)))] ?? CLOSING_LEVELS[0];
+  return `hsl(var(--closing-${name}))`;
+}
+
+/**
+ * Client mirror of closingRewardLevel in supabase/functions/_shared/publicListingVisibility.ts:
+ * the closing fee's position (0-3) between its deal-type bounds. The trophy keeps this
+ * cold→hot color even when the amount itself stays visible to licensed brokers only.
+ */
+export function closingRewardLevel(value: unknown, type: unknown, dealType: unknown, price: unknown): number | null {
+  const amount = Number(value);
+  if (!(amount > 0)) return null;
+  const rent = dealType === 'rent';
+  const min = rent ? 10 : 0.2, max = rent ? 100 : 2;
+  const base = Number(price);
+  const percent = type === 'percent' ? amount : base > 0 ? amount / base * 100 : NaN;
+  if (!Number.isFinite(percent)) return null;
+  const progress = (Math.min(max, Math.max(min, percent)) - min) / (max - min);
+  return Math.min(3, Math.floor(progress * 4));
+}
