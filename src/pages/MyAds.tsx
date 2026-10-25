@@ -9,7 +9,8 @@ import PropertyReferralButton from '@/components/public/PropertyReferralButton';
 import { readPublicListingDraft, clearPublicListingDraft, type PublicListingDraft } from '@/lib/publicListingDraft';
 import { SelectModeToggle, SelectBox, SelectAllRow } from '@/components/ui/multi-select-controls';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Trash2, Share2, Megaphone } from 'lucide-react';
+import { Trash2, Share2, Megaphone, ExternalLink, Pencil, Copy } from 'lucide-react';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { publicUrl } from '@/lib/publicUrl';
 import { listingToDraft, missingAdFields } from '@/lib/adRecovery';
@@ -91,6 +92,21 @@ function AdDetails({ listingId }: { listingId: string }) {
     </section>
   </div>;
 }
+/** Per-ad quick actions: global share, personal partner link, campaign, open in new tab, edit and copy link. */
+function AdActions({ row: r, owned, title }: { row: Row; owned: boolean; title: string }) {
+  const navigate = useNavigate();
+  const url = publicUrl(`/p/${r.slug || r.listing_id}`);
+  const result = { key: r.listing_id, localId: r.listing_id, source: 'mine', title: r.title ?? title, address: r.address ?? null, city: r.city ?? null, price: Number(r.asking_price) || null, listing_type: r.deal_type === 'rent' ? 'rent' : 'sale', photos: r.image_url ? [r.image_url] : [] } as any;
+  const icon = 'h-8 w-8 text-muted-foreground hover:text-foreground';
+  return <div className="flex min-w-0 items-center gap-0.5">
+    <PropertyShareMenu results={[result]} iconOnly variant="ghost" className={icon} />
+    <PropertyReferralButton listingId={r.listing_id} />
+    <Button variant="ghost" size="icon" className={icon} aria-label="יצירת קמפיין" title="יצירת קמפיין" onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.listing_id}&listing=${r.listing_id}`)}><Megaphone className="h-4 w-4" /></Button>
+    <Button variant="ghost" size="icon" className={icon} aria-label="פתיחה בחלון חדש" title="פתיחה בחלון חדש" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}><ExternalLink className="h-4 w-4" /></Button>
+    {owned && <Button variant="ghost" size="icon" className={icon} aria-label="עריכת הנכס" title="עריכת הנכס" onClick={() => navigate(`/properties/${r.listing_id}`)}><Pencil className="h-4 w-4" /></Button>}
+    <Button variant="ghost" size="icon" className={icon} aria-label="העתקת קישור למודעה" title="העתקת קישור למודעה" onClick={() => { void navigator.clipboard.writeText(url).then(() => toast.success('הקישור הועתק'), () => toast.error('ההעתקה נכשלה')); }}><Copy className="h-4 w-4" /></Button>
+  </div>;
+}
 function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
   const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = useExclusiveExpansion(`my-ads:${activeWorkspaceId}`, `${r.relation}:${r.listing_id}`);
@@ -101,15 +117,15 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
         {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}
       </Link>
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-start gap-1">
-          <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground" title={title}>{title}</Link>
-          <PropertyReferralButton listingId={r.listing_id} />
-        </div>
+        <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block truncate text-sm font-semibold text-foreground" title={title}>{title}</Link>
         <p className="text-sm font-bold text-primary">{formatPrice(Number(r.asking_price) || 0, r.deal_type === 'rent' ? 'rent' : r.deal_type === 'sale' ? 'sale' : null)}{r.deal_type === 'rent' && Number(r.asking_price) ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</p>
-        <button type="button" className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground" aria-expanded={open} aria-controls={`stats-${r.relation}-${r.listing_id}`} onClick={() => setOpen(v => !v)}>
-          {([{ icon: Eye, value: r.views, label: 'צפיות' }, { icon: MousePointerClick, value: r.clicks, label: 'קליקים' }, { icon: Users, value: r.affiliates, label: 'שותפים' }]).map(({ icon: Icon, value, label }) => <span key={label} title={label} className="inline-flex items-center gap-1"><Icon className="h-3.5 w-3.5" aria-label={label} /><span className="tabular-nums text-foreground">{number(value)}</span></span>)}
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} aria-label="פירוט" />
-        </button>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <AdActions row={r} owned={owned} title={title} />
+          <button type="button" className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground" aria-expanded={open} aria-controls={`stats-${r.relation}-${r.listing_id}`} onClick={() => setOpen(v => !v)}>
+            {([{ icon: Eye, value: r.views, label: 'צפיות' }, { icon: MousePointerClick, value: r.clicks, label: 'קליקים' }, { icon: Users, value: r.affiliates, label: 'שותפים' }]).map(({ icon: Icon, value, label }) => <span key={label} title={label} className="inline-flex items-center gap-1"><Icon className="h-3.5 w-3.5" aria-label={label} /><span className="tabular-nums text-foreground">{number(value)}</span></span>)}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} aria-label="פירוט" />
+          </button>
+        </div>
       </div>
     </div>
     <AnimatedExpansion open={open} id={`stats-${r.relation}-${r.listing_id}`}>{owned && <div className="pt-3"><ListingLifecycleStatus listingId={r.listing_id} /></div>}<AdDetails listingId={r.listing_id} /></AnimatedExpansion>
