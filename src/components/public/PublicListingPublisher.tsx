@@ -961,7 +961,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           {pricingOnly && adminOnlyEdit && <span title="ניתן לעריכה רק בזכות הרשאת מנהל-על" aria-label="עריכה בהרשאת מנהל-על" className="absolute right-4 top-4 h-3 w-3 rounded-full bg-destructive" />}
           {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
-            {pricingOnly ? <span className="relative inline-block">מחיר והגדרת תמלוגים{adminOnlyEdit && <span title="ניתן לעריכה רק בזכות הרשאת מנהל-על" aria-label="עריכה בהרשאת מנהל-על" className="absolute -left-3 top-0 h-2 w-2 rounded-full bg-destructive" />}</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
+            {pricingOnly ? <span>מחיר והגדרת תמלוגים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
           {pricingOnly && <p className="text-sm text-muted-foreground">{(fields.importedListing as { property_title?: string } | undefined)?.property_title || [addressLine, fields.city].filter(Boolean).join(', ')}</p>}
         </DialogHeader>
