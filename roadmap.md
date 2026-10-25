@@ -1,12 +1,13 @@
 # Roadmap
 
 ## Current request
-- [ ] Rewrite legal pages and add commission mechanism with shared logo and footer link.
-- [ ] Remove property landing headers and preserve configured contact/share actions.
-- [ ] Align service price with service title.
-- [ ] Implement workspace-authorized Facebook/Instagram draft billing: 2 credits per three drafts, explicit renewal confirmation.
-- [ ] Adapt Instagram connection presentation and verify supported provider capabilities.
-- [ ] Run focused tests and browser verification; report external blockers.
+- [x] Rewrite legal pages and add commission mechanism with shared logo and footer link.
+- [x] Remove property landing headers and preserve configured contact/share actions.
+- [x] Align service price with service title.
+- [x] Implement workspace-authorized Facebook/Instagram draft billing: successful batches, explicit renewal confirmation and idempotent usage ledger.
+- [x] Adapt Instagram connection presentation and verify documented provider capabilities.
+- [x] Run focused tests and browser verification of legal pages and live draft billing, including cancel and approval.
+- [ ] Full Instagram direct login, two-way DMs and comment automation: blocked on configured Instagram product, permissions and Meta access approval for customer accounts; existing Page connection alone does not grant these capabilities.
 
 1. [ ] Channel order: Facebook first, Instagram next to it (channel selection lists)
 2. [ ] Facebook two-step flow: clean connection box (blue button, white FB logo, "חיבור באמצעות פייסבוק", "אתחבר יותר מאוחר" skip link, remove header/cloud/explanations/group search) → publishing screen with "קידום נכס מהמאגר" widget
