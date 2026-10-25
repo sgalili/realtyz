@@ -2,6 +2,7 @@
 // purging their public data and then the login account itself.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { userDeletionProtection } from '../_shared/userDeletionPolicy.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,15 +53,15 @@ Deno.serve(async (req) => {
 
     const results: { user_id?: string; phone: string; status: string; rows?: number }[] = [];
     for (const m of matches) {
-      if (m.id === caller.id) { results.push({ user_id: m.id, phone: m.phone, status: "skipped_self" }); continue; }
       const { data: r, error: roleError } = await admin.from("user_roles").select("role").eq("user_id", m.id);
       if (roleError) throw roleError;
-      if ((r ?? []).some((x) => x.role === "super_admin")) { results.push({ user_id: m.id, phone: m.phone, status: "skipped_super_admin" }); continue; }
+      const protection = userDeletionProtection(caller.id, m.id, (r ?? []).map(x => x.role));
+      if (protection) { results.push({ user_id: m.id, phone: m.phone, status: protection }); continue; }
       if (parsed.data.dry_run) { results.push({ user_id: m.id, phone: m.phone, status: "found" }); continue; }
       // Remove owned files through Storage API before Auth deletion (never direct storage writes).
       let storageFailed = false;
       while (true) {
-        const { data: files, error: filesError } = await admin.schema("storage").from("objects").select("bucket_id,name").eq("owner_id", m.id).limit(100);
+        const { data: files, error: filesError } = await admin.rpc("account_owned_files", { _uid: m.id });
         if (filesError) { storageFailed = true; break; }
         if (!files?.length) break;
         for (const bucket of new Set(files.map(f => f.bucket_id))) {
