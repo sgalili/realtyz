@@ -937,6 +937,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   if (!pricingOnly && isDeveloper && user && !entryPending) return <Button disabled={disabled} onClick={() => navigate('/developer-dashboard?import=1')} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>;
 
+  // Read-only Super Admin view reuses the recovered ad row for the shared card presentation.
+  const adminRow = (fields.importedListing ?? {}) as Record<string, unknown>;
+  const adminDcc = (adminRow.features as { deal_closing_commission?: { type?: string; value?: number } } | undefined)?.deal_closing_commission;
+  const adminTier1 = Number(adminRow.affiliate_tier1_amount ?? 0);
+  const adminTier2 = Number(adminRow.affiliate_tier2_amount ?? 0);
+  const adminTier3 = Number(adminRow.affiliate_tier3_amount ?? 0);
+  const adminTier4 = Number(adminRow.affiliate_tier4_amount ?? 0) > 0 ? Number(adminRow.affiliate_tier4_amount) : Number(adminDcc?.value ?? 0);
+  const adminTier4Type = Number(adminRow.affiliate_tier4_amount ?? 0) > 0 ? String(adminRow.affiliate_tier4_type ?? 'fixed') : String(adminDcc?.type ?? 'fixed');
+  const adminTypes: RewardTypes = (adminRow.reward_types as RewardTypes | undefined) ?? { form: adminTier1 > 0, whatsapp: adminTier2 > 0, phone: adminTier3 > 0, closing: adminTier4 > 0 };
+
   return (
     <>
     {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => { if (user && isAffiliateOnly) { setPublishAs(null); setAskPublishAs(true); } else setOpen(true); }} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
