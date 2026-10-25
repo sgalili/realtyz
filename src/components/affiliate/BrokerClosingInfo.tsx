@@ -46,7 +46,7 @@ export function ClosingLicenseInfo() {
 /** Let every icon click reach the surrounding master pricing trigger. */
 export function RestrictedClosingReward({ children, className = '', showLabel = true, label = 'למתווכים', iconStyle }: { children?: ReactNode; className?: string; showLabel?: boolean; label?: string; iconStyle?: CSSProperties }) {
   return <span title="סגירת עסקה" className={`inline-flex items-center gap-1 text-muted-foreground ${className}`}>
-    {children ?? <><Trophy aria-label="סגירת עסקה" className="h-[25.2px] w-[25.2px] shrink-0" style={iconStyle} />{showLabel && <span className="text-xs text-muted-foreground">{label}</span>}</>}
+    {children ?? <><Trophy aria-label="סגירת עסקה" className="!h-[25.2px] !w-[25.2px] shrink-0" style={iconStyle} />{showLabel && <span className="text-xs text-muted-foreground">{label}</span>}</>}
   </span>;
 }
 

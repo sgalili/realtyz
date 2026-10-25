@@ -896,7 +896,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   <Card key={key} className="closing-fee space-y-2 rounded-2xl p-4" data-level={leadPriceLevel(tier, price)}>
                     <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex min-w-0 flex-1 basis-56 items-center gap-1 self-center font-medium">
                       <Button type="button" variant="ghost" className="h-auto justify-start gap-3 whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>
-                        {key === 'Form' ? <LeadFormIcon className="h-[48.6px] w-[48.6px] shrink-0 closing-tone" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-[48.6px] w-[48.6px] shrink-0 closing-tone" aria-hidden /> : <LeadPhoneIcon className="h-[48.6px] w-[48.6px] shrink-0 closing-tone" aria-hidden />}
+                        {key === 'Form' ? <LeadFormIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden /> : <LeadPhoneIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden />}
                         {label}
                       </Button>
                       <LeadTypeHelp label={label}>
