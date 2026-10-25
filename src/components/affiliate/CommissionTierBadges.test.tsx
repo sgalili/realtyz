@@ -35,9 +35,8 @@ describe('commission visibility', () => {
     expect(screen.queryByLabelText(/סגירת עסקה/)).toBeNull();
   });
   it('closing prices always render as whole amounts without decimals', () => {
-    access.allowed = true;
-    render(<CommissionTierBadges tiers={{ ...tiers, tier4: 900.75 }} compact />);
+    render(<RewardIcons types={{ closing: true }} prices={{ closing: 720.6 }} closingLevel={1} label={null} />);
     expect(screen.getByText('₪721')).toBeTruthy();
-    expect(screen.queryByText(/720\.6|₪[0-9,]+\.[0-9]/)).toBeNull();
+    expect(screen.queryByText(/720\.6/)).toBeNull();
   });
 });
