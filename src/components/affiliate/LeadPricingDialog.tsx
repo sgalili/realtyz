@@ -14,6 +14,7 @@ import { type BrokerAffiliateListing, type MarketplaceListing } from '@/hooks/us
 import { cleanFormFields, FORM_FIELD_TYPE_LABELS, type LeadFormField } from '@/lib/leadTiers';
 import { fmtILS } from '@/lib/formatCurrency';
 import { closingFeeAmount } from '@/lib/closingFee';
+import { closingLevelColor, closingRewardLevel } from '@/lib/leadPriceRanges';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import type { ReactNode } from 'react';
@@ -36,7 +37,7 @@ type PricingDetails = {
   contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[]; lead_daily_limits?: import('@/lib/closingFee').LeadDailyLimits };
 };
 
-export function LeadPricingInfo({ listing, details, gross = false, closingOnly = false, rewardTypes }: { listing: PricingListing; details: PricingDetails; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes }) {
+export function LeadPricingInfo({ listing, details, gross = false, closingOnly = false, rewardTypes, closingLevel }: { listing: PricingListing; details: PricingDetails; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes; closingLevel?: number | null }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const { isSuperAdmin, roles } = useUserRole();
@@ -49,6 +50,9 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   const closingBase = Math.max(0, Number(details.asking_price) || 0);
   const closingNetPercent = partnerNetReward(Number(listing.tier4_amount));
   const closingNetShekels = closingBase > 0 ? Math.round(closingFeeAmount(closingNetPercent, closingBase)) : 0;
+  // The closing trophy keeps the fee's own cold→hot color even when the amount itself
+  // is licensed-broker only; an unknown level falls back to the gold closing tone.
+  const closingColor = closingLevelColor(closingLevel ?? closingRewardLevel(listing.tier4_amount, listing.tier4_type, details.deal_type, details.asking_price));
   const rows = closingOnly ? [] : [
     { key: 'form' as const, label: FORM_TIER_LABEL, amount: listing.tier1_amount, questions: [] },
     { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
@@ -89,7 +93,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   </div>;
 }
 
-export default function LeadPricingDialog({ listing, referralId, children, readOnly = false, compact = true, gross = false, closingOnly = false, rewardTypes }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes }) {
+export default function LeadPricingDialog({ listing, referralId, children, readOnly = false, compact = true, gross = false, closingOnly = false, rewardTypes, closingLevel }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes; closingLevel?: number | null }) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const workspaceId = useActiveWorkspaceOwnerId();
@@ -117,7 +121,7 @@ export default function LeadPricingDialog({ listing, referralId, children, readO
       <DialogContent dir="rtl" onClick={event => event.stopPropagation()} className="mx-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto overscroll-contain rounded-2xl bg-muted p-4 sm:p-6">
         <div className="flex min-w-0 flex-col gap-4"><DialogHeader className="px-5"><DialogTitle className="text-xl font-extrabold leading-snug">תמחור לידים · {listing.property_title || 'נכס'}</DialogTitle><DialogDescription className="text-base">{user ? 'סוגי הלידים והתגמולים לשותף' : 'הצטרפו כשותפים ותרוויחו על כל ליד'}</DialogDescription></DialogHeader>
         {query.isLoading ? <p role="status">טוען פרטי תמחור…</p> : query.isError ? <div role="alert" className="space-y-2"><p>לא ניתן לטעון את פרטי התמחור כרגע.</p><Button variant="outline" onClick={() => void query.refetch()}>ניסיון נוסף</Button></div> : query.data ? <>
-          <LeadPricingInfo listing={listing} details={query.data.details} gross={gross} closingOnly={closingOnly} rewardTypes={rewardTypes} />
+          <LeadPricingInfo listing={listing} details={query.data.details} gross={gross} closingOnly={closingOnly} rewardTypes={rewardTypes} closingLevel={closingLevel} />
           {user && referralId && <section className="border-t pt-4"><LeftoverDiscountButton referralId={referralId} inline /></section>}
         </> : null}
         </div>
