@@ -21,7 +21,7 @@ const defaults = (): Preferences => ({ order: BOARD_COLUMNS.map(c => c.id), hidd
 const validId = (id: unknown): id is BoardColumnId => BOARD_COLUMNS.some(c => c.id === id);
 export function upgradeBoardColumnOrder(order: BoardColumnId[]): BoardColumnId[] {
   // The retired 'deal' column is dropped from saved preferences; 'commissions' is inserted after 'price'.
-  const next: BoardColumnId[] = order.filter(id => id !== 'deal');
+  const next: BoardColumnId[] = order.filter((id): id is BoardColumnId => (id as string) !== 'deal');
   if (next.includes('commissions')) return next;
   const priceIndex = next.indexOf('price');
   next.splice(priceIndex < 0 ? next.length : priceIndex + 1, 0, 'commissions');
