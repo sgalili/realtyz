@@ -1811,6 +1811,7 @@ export type Database = {
           user_id: string
           voice_gender: string | null
           voice_id: string
+          workspace_owner_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1823,6 +1824,7 @@ export type Database = {
           user_id: string
           voice_gender?: string | null
           voice_id: string
+          workspace_owner_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1835,6 +1837,7 @@ export type Database = {
           user_id?: string
           voice_gender?: string | null
           voice_id?: string
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }

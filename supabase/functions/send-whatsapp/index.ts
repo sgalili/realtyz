@@ -96,11 +96,12 @@ const BodySchema = z
     // OTP / system messages: always leave through the official Meta number,
     // whatever transport the workspace selected.
     force_official: z.boolean().optional(),
+    audio_url: z.string().url().optional(),
   })
   .refine((v) => !!v.lead_id || !!v.phone_number, {
     message: "lead_id or phone_number is required",
   })
-  .refine((v) => !!v.message || !!v.body || !!v.template_id, {
+  .refine((v) => !!v.message || !!v.body || !!v.template_id || !!v.audio_url, {
     message: "message or template_id is required",
   });
 
@@ -889,6 +890,28 @@ Deno.serve(async (req) => {
 
     // Owning workspace (credentials + logging). Transport is always Meta Cloud.
     const routing = await resolveWorkspaceOwner(admin, userId, routingTenantId);
+    // Audio-only IVR copies: authenticated, workspace-authorized and inside Meta's session window.
+    if (parsed.data.audio_url) {
+      if (!userId || !parsed.data.lead_id) return json({ error: 'Authenticated workspace lead required' }, 403);
+      const scoped = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+      const { data: owner } = await scoped.rpc('current_workspace_owner');
+      const { data: lead } = await scoped.from('leads').select('id').eq('id', parsed.data.lead_id).eq('workspace_owner_id', owner).maybeSingle();
+      if (!owner || !lead) return json({ error: 'Lead outside workspace' }, 403);
+      const audio = new URL(parsed.data.audio_url);
+      if (audio.origin !== new URL(SUPABASE_URL).origin || !audio.pathname.startsWith(`/storage/v1/object/sign/ivr-audio/${owner}/`)) return json({ error: 'Audio outside workspace' }, 403);
+      const { data: inbound } = await scoped.from('messages').select('id').eq('lead_id', lead.id).eq('direction', 'inbound').eq('channel', 'whatsapp').gte('created_at', new Date(Date.now() - 86400000).toISOString()).limit(1);
+      if (!inbound?.length) return json({ error: 'חלון 24 השעות סגור; לא ניתן לשלוח קובץ אודיו' }, 400);
+      const official = await resolveProvider(admin, userId, owner, true);
+      if (!official) return json({ error: 'Official WhatsApp unavailable' }, 503);
+      const cfg = official.config;
+      const response = await fetch(`https://graph.facebook.com/${cfg.api_version ?? 'v26.0'}/${cfg.phone_number_id}/messages`, {
+        method: 'POST', headers: { Authorization: `Bearer ${cfg.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'audio', audio: { link: parsed.data.audio_url } }),
+      });
+      const result = await response.json();
+      if (!response.ok) return json({ success: false, provider: 'WBA', message_id: null, error: `WhatsApp audio failed (${response.status})`, details: result }, response.status);
+      return json({ success: true, provider: 'WBA', message_id: result.messages?.[0]?.id ?? null });
+    }
 
     // ARCHITECTURE (HARD): WhatsApp messaging is Meta Cloud API only. There is
     // no alternative gateway and no fallback transport — every outbound message

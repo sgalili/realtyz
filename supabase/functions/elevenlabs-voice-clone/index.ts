@@ -39,6 +39,8 @@ Deno.serve(async (req) => {
 
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "unauthenticated" }, 401);
+    const { data: workspaceId } = await userClient.rpc('current_workspace_owner');
+    if (!workspaceId) return json({ error: 'workspace_unavailable' }, 403);
 
     const form = await req.formData();
     const name = String(form.get("name") ?? "").trim();
@@ -67,6 +69,7 @@ Deno.serve(async (req) => {
 
     const { error: insErr } = await admin.from("cloned_voices").upsert({
       user_id: user.id, name, voice_id: voiceId, provider: "elevenlabs",
+      workspace_owner_id: workspaceId,
       source: "upload", voice_gender: gender === "male" || gender === "female" ? gender : null,
     }, { onConflict: "user_id,voice_id" });
     if (insErr) return json({ error: "persist_failed", detail: insErr.message }, 500);

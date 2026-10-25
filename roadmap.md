@@ -1,6 +1,8 @@
 # Campaign card actions
 # IVR property script
-- [ ] Add optional official WhatsApp audio copy, total-credit submit estimates, Israeli v3-only default voices, workspace-only custom voices, regeneration and dropdown/button refinements; verify without real sends.
+- [x] Add official WhatsApp audio checkbox with open-session/authorized-lead checks, credit totals on submit/confirmation, v3-only voices, workspace-scoped custom voices/history, unique script refresh and larger menus. Nine tests/build pass; authenticated real property generation and v3 audio creation return 200; no calls or WhatsApp sent.
+- [ ] Fourth default (second Israeli woman): provider public Hebrew library exposes only one female entry; do not substitute a private cloned voice or mislabel a foreign voice. Two male/one female defaults verified and added to provider account.
+- [ ] Live IVR/WhatsApp dispatch and actual billing readback remain unverified: no real recipient calls/messages authorized. Existing IVR endpoint does not implement metered wallet deduction; displayed credit totals are estimates, not verified charges.
 - [x] Dedicated IVR generation bypasses social templates/emojis/signatures; TTS receives only reviewed text. Deployed and authenticated 446px real נווה מגן selection produces four concise spoken sentences with exact property facts and no emojis/licence. Seven tests and preview build pass; no audio generated or calls dispatched.
 # Call calendar
 - [x] Calls default to calendar with list toggle; authorized future-call RPC and scheduler reminder preparation reuse meetings/tour tick. Three tests pass; authenticated 446px save/reload/readback/delete succeeds without sending. Preview build OK.

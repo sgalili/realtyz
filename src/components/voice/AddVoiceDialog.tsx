@@ -93,8 +93,11 @@ export const AddVoiceDialog = ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return toast.error("נא להתחבר");
+      const { data: workspaceId } = await supabase.rpc('current_workspace_owner');
+      if (!workspaceId) return toast.error('לא נמצא משרד פעיל');
       const { data, error } = await supabase.from("cloned_voices").upsert({
         user_id: user.id, name: name.trim(), voice_id: voiceId.trim(),
+        workspace_owner_id: workspaceId,
         provider: "elevenlabs", source: "voice_id",
       }, { onConflict: "user_id,voice_id" }).select().single();
       if (error) return toast.error(`שמירה נכשלה: ${error.message}`);

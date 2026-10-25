@@ -39,6 +39,8 @@ Deno.serve(async (req) => {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
   if (!user) return json({ error: "unauthorized" }, 401);
+  const { data: workspaceId } = await supabase.rpc('current_workspace_owner');
+  if (!workspaceId) return json({ error: 'workspace_unavailable' }, 403);
 
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "invalid_json" }, 400); }
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
 
       const { data: row, error: insErr } = await supabase
         .from("cloned_voices")
-        .insert({ user_id: user.id, name, voice_id: voiceId, source: "upload" })
+        .insert({ user_id: user.id, workspace_owner_id: workspaceId, name, voice_id: voiceId, source: "upload" })
         .select("*").single();
       if (insErr) return json({ error: "db_insert_failed", detail: insErr.message }, 500);
       return json({ voice: row });
@@ -108,6 +110,7 @@ Deno.serve(async (req) => {
         .upsert(
           {
             user_id: user.id,
+            workspace_owner_id: workspaceId,
             name,
             voice_id: voiceId,
             source: "voice_id",
