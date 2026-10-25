@@ -979,6 +979,9 @@
   .app-route-pages:has(.public-board-page),
   .app-route-pages:has(.realtyz-app-shell) { height: 100dvh; min-height: 0; overflow: hidden; }
   .app-route-pages .group\/sidebar-wrapper { min-height: 0; height: calc(100dvh - var(--app-footer-space)); overflow: hidden; }
+  /* A pinned profile action bar owns the bottom gap so it rests flush above the legal footer. */
+  .realtyz-main-surface:has(.profile-sticky-actions) { padding-bottom: 0; }
+
 
   .auth-footer-credit {
     margin: 0;
