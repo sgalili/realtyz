@@ -92,10 +92,11 @@ Deno.serve(async (req) => {
         const office = text(metadata.agency_name) ?? text(metadata.office_name) ?? text(metadata.merchant_name);
         const license = verifiedSourceLicense(metadata);
         const broker = !!office || !!license || ['broker', 'agency'].includes(metadata.publisher_kind);
+        const publisherName = text(metadata.broker_name) ?? text(metadata.contact_name) ?? text(metadata.owner_name) ?? text(owners.data?.find(item => item.id === row.owner_id)?.full_name);
         return {
-          broker_name: text(metadata.broker_name) ?? text(metadata.contact_name) ?? text(metadata.owner_name) ?? text(owners.data?.find(item => item.id === row.owner_id)?.full_name),
+          broker_name: publisherName,
           office_name: office,
-          agency_logo_url: text(metadata.office_logo_url) ?? text(metadata.agency_logo_url) ?? text(metadata.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id)),
+          agency_logo_url: text(metadata.office_logo_url) ?? text(metadata.agency_logo_url) ?? text(metadata.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id, publisherName)),
           broker_license_number: license,
           publisher_kind: publisherDisplayKind(metadata.publisher_kind ?? (broker ? 'broker' : 'private')),
         };

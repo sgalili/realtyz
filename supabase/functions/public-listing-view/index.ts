@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
         broker_name: boardPublisherName(name, publisherDisplayKind(m.publisher_kind ?? (broker ? "broker" : "private"))),
         office_name: office ?? (broker ? "משרד תיווך" : m.publisher_kind === "private" ? "מפרסם פרטי" : null),
         broker_license_number: licence,
-        agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url) ?? txt(m.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id)),
+        agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url) ?? txt(m.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id, name)),
       };
     };
     for (const row of [listing, ...(workspaceRows ?? [])]) (row as any).__attr = attributionFor(row as any);
