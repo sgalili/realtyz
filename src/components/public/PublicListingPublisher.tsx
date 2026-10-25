@@ -274,6 +274,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [questionsOpen, setQuestionsOpen] = useState<'questionsWhatsapp' | 'questionsPhone' | null>(null);
   const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const [openLeads, setOpenLeads] = useState<Record<string, boolean>>({});
+  const [closingOpen, setClosingOpen] = useState(true);
+  const allExpanded = LEAD_TYPES.every(({ key }) => openLeads[key] ?? ((Number(fields[`commission${key}`]) || 0) > 0)) && closingOpen;
+  const toggleAllCards = () => {
+    const next = !allExpanded;
+    setOpenLeads(Object.fromEntries(LEAD_TYPES.map(({ key }) => [key, next])));
+    setClosingOpen(next);
+  };
   const [priceConfirm, setPriceConfirm] = useState(false);
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
@@ -865,7 +872,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="pricing-editor space-y-3">
-              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-16 w-auto min-w-[9rem] px-3 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="justify-self-end whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></div>
+              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><span className="flex items-center justify-self-center gap-[5px]"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-16 w-auto min-w-[9rem] px-3 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span><Button type="button" variant="ghost" size="icon" className="h-12 w-12 shrink-0 justify-self-end text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התמלוגים' : 'הרחב את כל כרטיסי התמלוגים'} title={allExpanded ? 'כווץ את כל כרטיסי התמלוגים' : 'הרחב את כל כרטיסי התמלוגים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-7 w-7 transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button></div>
               <div className="space-y-4 text-base">
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
@@ -920,7 +927,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   );
                 })}
               </div>
-              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
+              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
