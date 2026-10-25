@@ -17,7 +17,7 @@
 - Profile and office image uploads use the shared fixed-aspect crop dialog before storage; crop percentages map to original pixels and pending selections clear on workspace changes. Why: consistent image framing without premature uploads or tenant drift.
 - Tours use authorized menus; never auto-mutate.
 - Future calls use workspace-authorized meetings RPCs and the existing tour-reminder tick, with atomic per-call claims and purpose-specific approved official WhatsApp templates; never create a second permanent timer. Why: tenant-safe scheduling without duplicate sends or unauthorized free-text reminders.
-- Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts. Fee notices require workflow context, never browsing. Why: relevance.
+- Public grid/details use safe publishers with server-gated PropertyCommissionIcons inside BrokerAttribution; image actions share favorites. Fee notices stay contextual. Why: owner identity and pricing privacy.
 - Property headings fit one address/price row; maps use photo markers, safe DOM popups and details-only selection with scroll-to-top. Why: avoid overlap and premature navigation.
 - Inventory and project campaign targets are workspace-scoped; authorize AI targets server-side, never store project refs in listing UUID fields. Why: isolation.
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
