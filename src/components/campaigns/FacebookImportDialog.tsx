@@ -51,20 +51,20 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
     let comments = 0;
 
     try {
-      setStep('מסנכרן פוסטים ומדדים מעמוד הפייסבוק…');
+      setStep('מסנכרן קמפיינים ומדדים מעמוד הפייסבוק…');
       const sync = await syncWorkspacePagePosts({ ownerId, since, max: 10 });
       posts = sync.upserted;
       counters = sync.scraped;
       if (sync.status === 'no_extension') {
-        problems.push('סנכרון הפוסטים אינו זמין כרגע.');
-        fixes.push('בדקו את חיבור הפייסבוק וההרשאות לדף ונסו שוב. חלק מהפוסטים עשויים לא להיות זמינים לייבוא.');
+        problems.push('סנכרון הקמפיינים אינו זמין כרגע.');
+        fixes.push('בדקו את חיבור הפייסבוק וההרשאות לדף ונסו שוב. חלק מהקמפיינים עשויים לא להיות זמינים לייבוא.');
       } else if (sync.status === 'empty') {
-        problems.push('לא נמצאו פוסטים זמינים לייבוא בדף.');
+        problems.push('לא נמצאו קמפיינים זמינים לייבוא בדף.');
         fixes.push('בדקו את חיבור הפייסבוק והגישה לדף ונסו שוב.');
       } else if (sync.status === 'timeout') {
         problems.push('הסנכרון לא הושלם בזמן. נסה שוב.');
       } else if (sync.status === 'error') {
-        problems.push(`שמירת הפוסטים נכשלה: ${sync.error}`);
+        problems.push(`שמירת הקמפיינים נכשלה: ${sync.error}`);
       }
 
       setStep('מייבא עצי תגובות ותשובות…');
@@ -82,7 +82,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
         // re-ingest them, so the import completes instead of failing.
         const blockedIds: string[] = Array.isArray(res.extension_post_ids) ? res.extension_post_ids : [];
         if (blockedIds.length > 0) {
-          setStep('בודק אפשרות לייבא תגובות מפוסטים עם גישה מוגבלת…');
+          setStep('בודק אפשרות לייבא תגובות מקמפיינים עם גישה מוגבלת…');
           const bundles = await requestExtensionPostComments(blockedIds);
           if (bundles.length > 0) {
             const { data: extData } = await supabase.functions.invoke('fb-comments-backfill', {
@@ -94,7 +94,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
               res = { ...extRes, message: null, failures: [], failed_posts: 0 };
             }
           } else {
-            fixes.push('פייסבוק לא אישר גישה לתגובות בחלק מהפוסטים. הייבוא שלהם לא הושלם.');
+            fixes.push('פייסבוק לא אישר גישה לתגובות בחלק מהקמפיינים. הייבוא שלהם לא הושלם.');
           }
         }
 
@@ -102,7 +102,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
         (Array.isArray(res.how_to_fix) ? res.how_to_fix : []).forEach((f: string) => fixes.push(f));
         if (Array.isArray(res.failures) && res.failures.length > 0) {
           problems.push(
-            `פוסטים שנכשלו (${res.failed_posts}): ${res.failures
+            `קמפיינים שנכשלו (${res.failed_posts}): ${res.failures
               .slice(0, 3)
               .map((f: any) => `${f.post_id} — ${f.error}`)
               .join(' | ')}`,
@@ -153,7 +153,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
               ייבוא היסטוריית פייסבוק מ-{new Date(since).toLocaleDateString('he-IL')}
             </DialogTitle>
             <DialogDescription className="text-right text-[13px]">
-              פוסטים, תמונות, מדדי לייקים/שיתופים/צפיות ועצי תגובות כולל תשובות.
+              קמפיינים, תמונות, מדדי לייקים/שיתופים/צפיות ועצי תגובות כולל תשובות.
             </DialogDescription>
           </DialogHeader>
 
@@ -166,7 +166,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
             <div className="space-y-3 text-[13px]">
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  ['פוסטים', report.posts],
+                  ['קמפיינים', report.posts],
                   ['תמונות', report.images],
                   ['מדדים', report.counters],
                   ['תגובות', report.comments],

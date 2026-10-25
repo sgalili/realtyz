@@ -898,8 +898,8 @@ const ApiSettings = () => {
           />
           <FeatureRow
             title="מחולל תוכן AI"
-            description="יצירת פוסטים, סלוגנים ותגובות"
-            learnMore="מחולל התוכן יוצר טיוטות לפוסטים, סלוגנים ותגובות בהתבסס על הטון והמיתוג שהגדרת."
+            description="יצירת קמפיינים, סלוגנים ותגובות"
+            learnMore="מחולל התוכן יוצר טיוטות לקמפיינים, סלוגנים ותגובות בהתבסס על הטון והמיתוג שהגדרת."
             icon={Sparkles}
             iconColor="text-amber-500"
             serviceKey="ai_content"

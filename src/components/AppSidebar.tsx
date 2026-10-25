@@ -85,7 +85,7 @@ const NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
   },
   {
-    title: 'פוסטים',
+    title: 'קמפיינים',
     url: '/campaigns',
     icon: Megaphone,
     iconColor: '!text-[hsl(var(--nav-posts))]', // orange-700
@@ -160,7 +160,7 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
     badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
   },
   {
-    title: 'פוסטים',
+    title: 'קמפיינים',
     url: '/posts',
     icon: Megaphone,
     iconColor: '!text-[hsl(var(--nav-properties))]', // amber-700

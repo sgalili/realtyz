@@ -385,7 +385,7 @@ export function useCommandCenterPosts() {
         const when = r.scheduled_for ?? null;
         out.push({
           id: `si-${r.id}`,
-          title: String(r.title || 'פוסט'),
+          title: String(r.title || 'קמפיין'),
           content: r.content ?? null,
           channel: r.channel ?? null,
           status: String(r.status ?? 'draft'),

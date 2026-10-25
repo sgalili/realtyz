@@ -340,7 +340,7 @@ export function CustomGroupsQuickShare({
   };
 
   const handleDeleteGroup = async (g: CustomGroup, row: QueuedRow | null) => {
-    if (!confirm(`למחוק את הקבוצה "${g.group_name}" מהרשימה? פעולה זו גם תבטל פוסט תור פעיל.`)) return;
+    if (!confirm(`למחוק את הקבוצה "${g.group_name}" מהרשימה? פעולה זו גם תבטל קמפיין תור פעיל.`)) return;
     try {
       if (row) {
         await (supabase as any)
@@ -364,7 +364,7 @@ export function CustomGroupsQuickShare({
 
   const handleRegenerate = async (g: CustomGroup, row: QueuedRow | null) => {
     if (!(body ?? '').trim()) {
-      toast.error('אין תוכן זמין לחידוש — חולל קודם פוסט בסיסי');
+      toast.error('אין תוכן זמין לחידוש — חולל קודם קמפיין בסיסי');
       return;
     }
     setRegeneratingId(g.id);
@@ -529,7 +529,7 @@ export function CustomGroupsQuickShare({
                   <div className="space-y-2 border-t border-border/40 bg-muted/20 px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-bold text-foreground">
-                        {isReady ? 'ערוך את הטקסט לפני שיתוף' : 'טיוטת הפוסט (נשמרת אוטומטית)'}
+                        {isReady ? 'ערוך את הטקסט לפני שיתוף' : 'טיוטת הקמפיין (נשמרת אוטומטית)'}
                       </span>
                       <span className="text-[10px] text-muted-foreground" dir="ltr">
                         {(draftById[g.id] ?? '').length} chars

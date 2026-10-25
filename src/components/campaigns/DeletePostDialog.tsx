@@ -51,21 +51,21 @@ export function DeletePostDialog({
       <DialogContent dir="rtl" className="sm:max-w-md">
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
-            <Trash2 className="h-4 w-4" /> מחיקת פוסט
+            <Trash2 className="h-4 w-4" /> מחיקת קמפיין
           </DialogTitle>
           <DialogDescription>
             {hasExternalPost
-              ? 'איך למחוק את הפוסט? ניתן למחוק רק מהמערכת, או גם מעמוד הפייסבוק.'
-              : 'לפוסט הזה אין מזהה פרסום ברשת החברתית — הוא יימחק מהמערכת בלבד.'}
+              ? 'איך למחוק את הקמפיין? ניתן למחוק רק מהמערכת, או גם מעמוד הפייסבוק.'
+              : 'לקמפיין הזה אין מזהה פרסום ברשת החברתית — הוא יימחק מהמערכת בלבד.'}
           </DialogDescription>
         </DialogHeader>
 
         {hasSeries && (
           <div className="space-y-2">
-            <p className="text-sm font-medium">למחוק רק את הפוסט הנוכחי או את כל הסדרה?</p>
+            <p className="text-sm font-medium">למחוק רק את הקמפיין הנוכחי או את כל הסדרה?</p>
             <div className="flex min-w-0 gap-2">
-              <Button className="flex-1" variant={entireSeries ? 'outline' : 'default'} disabled={!!busy} onClick={() => setEntireSeries(false)}>הפוסט הנוכחי בלבד</Button>
-              <Button className="flex-1" variant={entireSeries ? 'destructive' : 'outline'} disabled={!!busy} onClick={() => setEntireSeries(true)}>כל הסדרה והפוסטים שלה</Button>
+              <Button className="flex-1" variant={entireSeries ? 'outline' : 'default'} disabled={!!busy} onClick={() => setEntireSeries(false)}>הקמפיין הנוכחי בלבד</Button>
+              <Button className="flex-1" variant={entireSeries ? 'destructive' : 'outline'} disabled={!!busy} onClick={() => setEntireSeries(true)}>כל הסדרה והקמפיינים שלה</Button>
             </div>
           </div>
         )}

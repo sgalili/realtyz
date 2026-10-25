@@ -946,7 +946,7 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
     },
     {
       id: `demo-aq-2-${candidate.id}`,
-      title: `פוסט פייסבוק - תגובה לכותרת בתקשורת`,
+      title: `קמפיין פייסבוק - תגובה לכותרת בתקשורת`,
       platform: 'facebook',
       content_type: 'social_post',
       proposed_content: `הכותרת הבוקר על ${focus2} מטעה. הנה העובדות, בלי רעש:\n• ${candidate.name} הציע/ה תוכנית מפורטת לפני 3 חודשים.\n• היא כוללת לוחות זמנים, מקורות תקציב ופיקוח חיצוני.\n• אנחנו ממשיכים לעבוד - לא להתלונן.`,
@@ -994,7 +994,7 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
     },
     {
       id: `demo-aq-5-${candidate.id}`,
-      title: `תגובה לפוסט ב-X - אזכור שלילי`,
+      title: `תגובה לקמפיין ב-X - אזכור שלילי`,
       platform: 'x',
       content_type: 'social_post',
       proposed_content: `אנחנו לא מתעלמים מביקורת. הנה התשובה שלנו, עם נתונים - בלי רעש ובלי האשמות אישיות.`,

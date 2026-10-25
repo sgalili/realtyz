@@ -170,7 +170,7 @@ export default function FbEngagement() {
         .select('id')
         .eq('fb_post_id', '122135406987020860')
         .maybeSingle();
-      if (postErr || !post) throw new Error('הפוסט המנוטר לא נמצא');
+      if (postErr || !post) throw new Error('הקמפיין המנוטר לא נמצא');
       const id = Date.now().toString();
       const { error } = await supabase.from('fb_comments').insert({
         post_id: post.id,
@@ -220,7 +220,7 @@ export default function FbEngagement() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Facebook Engagement Console</h1>
           <a className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:underline" href={POST_URL} target="_blank" rel="noopener noreferrer">
-            הפוסט המנוטר <ExternalLink className="h-3.5 w-3.5" />
+            הקמפיין המנוטר <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
         <div className="flex items-center gap-2">

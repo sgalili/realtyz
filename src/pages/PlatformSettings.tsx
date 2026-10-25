@@ -91,7 +91,7 @@ export default function PlatformSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">פייסבוק ומסנג'ר</CardTitle>
-          <CardDescription>מה קורה כשמישהו מגיב לפוסט של העמוד</CardDescription>
+          <CardDescription>מה קורה כשמישהו מגיב לקמפיין של העמוד</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start justify-between gap-4 py-2">
@@ -100,7 +100,7 @@ export default function PlatformSettingsPage() {
                 הודעה פרטית אוטומטית למגיבים
               </Label>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                כל מי שמגיב לפוסט של העמוד מקבל הודעה פרטית במסנג'ר, פעם אחת לכל תגובה. דורש הרשאת הודעות מאושרת בפייסבוק.
+                כל מי שמגיב לקמפיין של העמוד מקבל הודעה פרטית במסנג'ר, פעם אחת לכל תגובה. דורש הרשאת הודעות מאושרת בפייסבוק.
               </p>
             </div>
             <Switch

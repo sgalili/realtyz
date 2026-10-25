@@ -83,7 +83,7 @@ export function ResumePostingButton({ campaignLogId, fallbackProgress }: { campa
     try { pokeExtension(); } catch { /* extension may be absent */ }
     try {
       if (!persisted) {
-        toast.success('אין עדיין פרסום שמור לחידוש. נסו שוב לאחר שמירת הפוסט', { id: `resume-${campaignLogId}` });
+        toast.success('אין עדיין פרסום שמור לחידוש. נסו שוב לאחר שמירת הקמפיין', { id: `resume-${campaignLogId}` });
         return;
       }
       const { data: n, error } = await (supabase.rpc as any)('resume_group_posting', { _campaign_log_id: campaignLogId });

@@ -20,7 +20,7 @@ export function SocialDraftChargeDialog() {
   return <Dialog open={!!current} onOpenChange={open => { if (!open) answer(false); }}>
     <DialogContent dir="rtl" className="max-w-md">
       <DialogHeader><DialogTitle>יצירת נוסחים נוספים</DialogTitle>
-        <DialogDescription>יצירת שלוש טיוטות נוספות לפוסט תחויב ב־2 קרדיטים נוספים. להמשיך?</DialogDescription></DialogHeader>
+        <DialogDescription>יצירת שלוש טיוטות נוספות לקמפיין תחויב ב־2 קרדיטים נוספים. להמשיך?</DialogDescription></DialogHeader>
       <DialogFooter><Button variant="outline" onClick={() => answer(false)}>ביטול</Button><Button onClick={() => answer(true)}>אישור חיוב של 2 קרדיטים</Button></DialogFooter>
     </DialogContent>
   </Dialog>;

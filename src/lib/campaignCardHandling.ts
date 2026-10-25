@@ -1,6 +1,6 @@
 import { fbGroupUrl } from '@/lib/fbGroupUrl';
 
-export const FIRST_COMMENT_WARNING = 'הפוסט פורסם אך התגובה הראשונה לא נוספה';
+export const FIRST_COMMENT_WARNING = 'הקמפיין פורסם אך התגובה הראשונה לא נוספה';
 
 export function isCommentOnlyFailure(error: unknown): boolean {
   return /first[_\s-]?comment|תגובה\s*(?:ה)?ראשונה/i.test(String(error || ''));

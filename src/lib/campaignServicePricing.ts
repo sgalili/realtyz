@@ -8,7 +8,7 @@ export const CAMPAIGN_ACTIONS: Record<string, string> = {
 };
 export function campaignServicePrice(channel: string, prices: CampaignPrice[]) {
   const key = CAMPAIGN_ACTIONS[channel];
-  if (!key) return { credits: 0, unit: 'פוסט' };
+  if (!key) return { credits: 0, unit: 'קמפיין' };
   const row = prices.find((price) => price.action_key === key);
   if (!row || !Number.isFinite(Number(row.price_agorot))) return null;
   return { credits: agorotToCredits(Number(row.price_agorot)), unit: row.unit_he };

@@ -30,7 +30,7 @@ export async function generateSocialDraft(body: Record<string, unknown>, signal?
     } else if (details?.error) {
       const messages: Record<string, string> = {
         generation_in_progress: 'יצירת נוסח קודם עדיין בתהליך. נסו שוב בעוד רגע.',
-        insufficient_credits: 'אין מספיק קרדיטים ליצירת הפוסט.',
+        insufficient_credits: 'אין מספיק קרדיטים ליצירת הקמפיין.',
         failed_request: 'היצירה הקודמת לא הושלמה. נסו שוב.',
       };
       throw new Error(messages[details.error] ?? details.error);

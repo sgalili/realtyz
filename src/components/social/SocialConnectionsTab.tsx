@@ -46,7 +46,7 @@ const PLATFORMS: PlatformDef[] = [
   { platform: 'gmail',        display_name: 'Gmail',                   description: 'OAuth2 רשמי · שליחת מיילים מהדומיין' },
   { platform: 'google_drive', display_name: 'Google Drive',             description: 'ייבוא קבצי CSV/Excel ומדיה מהענן' },
   { platform: 'facebook',     display_name: 'Facebook',                 description: 'OAuth2 רשמי · עמוד ומסנג׳ר' },
-  { platform: 'instagram',    display_name: 'Instagram Business',       description: 'תזמון פוסטים, ריילז וסטוריז שנוצרו ב-AI ישירות מעמוד הקמפיין.' },
+  { platform: 'instagram',    display_name: 'Instagram Business',       description: 'תזמון קמפיינים, ריילז וסטוריז שנוצרו ב-AI ישירות מעמוד הקמפיין.' },
   { platform: 'tiktok',       display_name: 'TikTok for Business',      description: 'העלאה ותזמון של סרטונים קצרים, ניטור תגובות ומעקב טרנדים.' },
   { platform: 'telegram',     display_name: 'Telegram',                 description: 'זיווג מכשיר מהיר באמצעות QR' },
   { platform: 'linkedin',     display_name: 'LinkedIn Profile',         description: 'פרסום עדכוני AI ואינטראקציה עם לידים' },

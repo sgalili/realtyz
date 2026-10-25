@@ -34,7 +34,7 @@ const BROKER_STEPS: TourStep[] = [
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
   { title: 'לוח הבקרה אומר לך מה לעשות עכשיו', cta: { label: 'פתח את משימות היום', to: '/command-center' } },
   { title: 'תיבה אחת לכל הערוצים', cta: { label: 'פתח שיחות', to: '/live-conversations' } },
-  { title: 'נכס נכנס - פוסט יוצא', cta: { label: 'פתח נכסים', to: '/properties' } },
+  { title: 'נכס נכנס - קמפיין יוצא', cta: { label: 'פתח נכסים', to: '/properties' } },
   { title: 'חיבור חשבון Facebook', connections: true },
 ];
 

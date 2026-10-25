@@ -25,7 +25,7 @@ describe('campaign card handling', () => {
     expect(groupPostDestination({ post_id: '123_456' }, '123')).toContain('/posts/456');
   });
   it('distinguishes comment warnings from actual post failures', () => {
-    expect(isCommentOnlyFailure('הפוסט פורסם אך התגובה הראשונה לא נוספה')).toBe(true);
+    expect(isCommentOnlyFailure('הקמפיין פורסם אך התגובה הראשונה לא נוספה')).toBe(true);
     expect(isCommentOnlyFailure('first_comment_failed')).toBe(true);
     expect(isCommentOnlyFailure('Facebook rejected the post')).toBe(false);
   });

@@ -210,7 +210,7 @@ export function GroupStatusChips({
       {ids.slice(0, max).map((gid) => renderGroup(gid, showStatus))}
       {hasDetails && <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" type="button" aria-label="פרטי קבוצות ופוסטים" aria-expanded={open}
+          <Button variant="ghost" size="icon" type="button" aria-label="פרטי קבוצות וקמפיינים" aria-expanded={open}
             onClick={(e) => e.stopPropagation()} className="h-7 w-7 shrink-0 border-0">
             <ChevronDown className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
           </Button>

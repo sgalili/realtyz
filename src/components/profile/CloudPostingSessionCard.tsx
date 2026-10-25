@@ -113,7 +113,7 @@ function CloudPostingSessionContent() {
 
         {state === 'active' && !workerReady && (
           <p className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
-            החיבור נשמר. הפוסטים ימתינו בתור עד שהשרת שמבצע את הפרסום בענן יופעל.
+            החיבור נשמר. הקמפיינים ימתינו בתור עד שהשרת שמבצע את הפרסום בענן יופעל.
           </p>
         )}
 
@@ -133,7 +133,7 @@ function CloudPostingSessionContent() {
             </span>
           </div>
           {runs.length === 0 ? (
-            <div className="text-muted-foreground">אין עדיין פוסטים שטופלו בענן עבור סביבת העבודה</div>
+            <div className="text-muted-foreground">אין עדיין קמפיינים שטופלו בענן עבור סביבת העבודה</div>
           ) : runs.map((r, i) => (
             <div key={i} className="flex justify-between text-muted-foreground">
               <span>{new Date(r.ran_at).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>

@@ -118,7 +118,7 @@ export function MediaLibraryPanel() {
               ספריית מדיה
             </CardTitle>
             <CardDescription>
-              קבצי מדיה זמינים לשימוש בפוסטים, קמפיינים והודעות ישירות.
+              קבצי מדיה זמינים לשימוש בקמפיינים, קמפיינים והודעות ישירות.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">

@@ -39,9 +39,9 @@ const STATUS_LABEL: Record<JoinStatus | "queued" | "joining" | "saved", string> 
 
 const fmtActivity = (n: number | null) => {
   if (n === null) return null;
-  if (n >= 1) return `${Math.round(n).toLocaleString("he-IL")} פוסטים ביום`;
+  if (n >= 1) return `${Math.round(n).toLocaleString("he-IL")} קמפיינים ביום`;
   const week = Math.round(n * 7);
-  return week > 0 ? `${week} פוסטים בשבוע` : null;
+  return week > 0 ? `${week} קמפיינים בשבוע` : null;
 };
 
 /**

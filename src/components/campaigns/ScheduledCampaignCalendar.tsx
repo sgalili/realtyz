@@ -627,7 +627,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">תוכן הפוסט</label>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">תוכן הקמפיין</label>
               <Textarea
                 rows={6}
                 value={editBody}
@@ -636,7 +636,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
               />
             </div>
             <p className="text-[11px] text-muted-foreground">
-              עדכון מועד או תוכן ישנה את הרשומה במערכת. אם הפוסט כבר נשלח לתור של ספק הפרסום, ייתכן שיידרש לבטל ולפרסם מחדש.
+              עדכון מועד או תוכן ישנה את הרשומה במערכת. אם הקמפיין כבר נשלח לתור של ספק הפרסום, ייתכן שיידרש לבטל ולפרסם מחדש.
             </p>
           </div>
           <DialogFooter className="gap-2 sm:gap-2 flex-wrap">
@@ -726,7 +726,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose, initialDay }: {
                       className="w-full h-9 flex items-center justify-between rounded-md border border-input bg-background px-3 text-sm text-right hover:bg-muted/40"
                     >
                       <span className={cn('truncate', selectedListingIds.length === 0 && 'text-muted-foreground')}>
-                        {selectedListingIds.length === 0 ? 'פוסט תדמיתי' : `נכסים נבחרו (${selectedListingIds.length})`}
+                        {selectedListingIds.length === 0 ? 'קמפיין תדמיתי' : `נכסים נבחרו (${selectedListingIds.length})`}
                       </span>
                       <ChevronLeft className={cn('h-4 w-4 text-muted-foreground transition-transform shrink-0', listingsPopoverOpen && '-rotate-90')} />
                     </button>
@@ -1119,7 +1119,7 @@ function PublishedPostDetailDialog({ row, onClose }: { row: ScheduledRow | null;
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent dir="rtl" className="max-w-lg max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-right text-base">פוסט שפורסם · {when}</DialogTitle>
+          <DialogTitle className="text-right text-base">קמפיין שפורסם · {when}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 text-right">
@@ -1161,7 +1161,7 @@ function PublishedPostDetailDialog({ row, onClose }: { row: ScheduledRow | null;
             {groupsOpen && (
               <ul className="max-h-56 space-y-1 overflow-y-auto border-t border-border p-2">
                 {ids.length === 0 && (
-                  <li className="py-2 text-center text-xs text-muted-foreground">הפוסט פורסם לעמוד בלבד</li>
+                  <li className="py-2 text-center text-xs text-muted-foreground">הקמפיין פורסם לעמוד בלבד</li>
                 )}
                 {ids.map((id) => {
                   const res = results.find((r) => String(r.group_id) === id);

@@ -211,7 +211,7 @@ export default function ActivityLog() {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              <ExternalLink className="h-4 w-4" /> צפייה בפוסט
+                              <ExternalLink className="h-4 w-4" /> צפייה בקמפיין
                               החי
                             </a>
                           </Button>

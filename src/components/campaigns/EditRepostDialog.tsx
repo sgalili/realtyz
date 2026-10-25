@@ -350,14 +350,14 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
       const selectedListingId = resolvedListingId;
 
       const rotateNote = [
-        'נסח מחדש את הפוסט תוך שמירה קפדנית על תבנית המאסטר של אודי (5 בלוקים בלבד, בסדר הזה):',
+        'נסח מחדש את הקמפיין תוך שמירה קפדנית על תבנית המאסטר של אודי (5 בלוקים בלבד, בסדר הזה):',
         '1) הוק כותרת שכולל: סוג עסקה (למכירה/להשכרה) + סוג הנכס + חדרים כשקיים + שם רחוב (בלי מספר בית) + שכונה כשקיימת + עיר, ובנוסף מילת מפתח משכנעת אחת קצרה.',
         '2) 1-2 משפטים על גודל, קומה, נוף/פיצ׳ר בולט ושדרוגים.',
         '3) "🌇 <שכונה/רחוב + נגישות ונוחות>".',
         '4) "💫 <יתרון אורח חיים>".',
         '5) "מחיר מבוקש: <סכום>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" — מחיר ו-CTA באותה שורה.',
         'אסור: פסקאות פתיחה על "בעולם הנדל״ן", "כמתווך", "בתור מתווך", "אני אודי", "יש לי הכבוד", "אני שמח/גאה להציג", וכל הצגה עצמית או סלוגן שיווקי כללי.',
-        'אסור להוסיף שורת מילות מפתח עם | בגוף הפוסט, ואסור האשטגים.',
+        'אסור להוסיף שורת מילות מפתח עם | בגוף הקמפיין, ואסור האשטגים.',
         'אסור לכלול מספרי בית/דירה/כניסה בכתובת — שם רחוב בלבד.',
         'שמור על אותן עובדות מהנכס (מחיר, חדרים, מ״ר, קומה, שם רחוב) — אל תמציא נתונים.',
         'החתימה הקנונית תתווסף אוטומטית בשרת — אל תכתוב אותה בעצמך.',
@@ -366,8 +366,8 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
 
       const { data, error } = await generateSocialDraft({
           topic: selectedListingId
-            ? 'פוסט קידום נכס (רענון תבנית מאסטר)'
-            : `רענון תוכן לפוסט קיים בערוץ ${campaign.channel}`,
+            ? 'קמפיין קידום נכס (רענון תבנית מאסטר)'
+            : `רענון תוכן לקמפיין קיים בערוץ ${campaign.channel}`,
           platform: campaign.channel,
           customInstructions: rotateNote,
           selectedListingId: selectedListingId || undefined,
@@ -420,7 +420,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
 
       // Exact prompt structure used by CampaignCenter → handleGenerateFirstComment.
       const instructions = [
-        'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — פורמט קצר וקפדני של שתי שורות בלבד.',
+        'כתוב את התגובה הראשונה (First Comment) לקמפיין נדל"ן — פורמט קצר וקפדני של שתי שורות בלבד.',
         'מבנה מחייב, בדיוק שתי שורות ותו לא:',
         'שורה 1: משפט אחד קצר, אנושי ומשכנע על הנכס (עד ~18 מילים). בלי אימוג\'ים, בלי בולטים, בלי סוגריים מרובעים.',
         keywordLine
@@ -429,13 +429,13 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         factsLine ? `פרטים יבשים של הנכס להישען עליהם בלבד (אסור להמציא נתונים שלא מופיעים כאן): ${factsLine}` : '',
         'אסור בהחלט: יותר משתי שורות, פסקאות תיאור ארוכות, בולטים (✅/📍/💰/📞), אימוג\'ים בכלל, כוכביות, האשטגים, em-dash, מקפים כפולים (--), סוגריים מרובעים, או placeholders.',
         'אסור בתכלית האיסור: חתימה, שם המתווך, טלפון, רישיון תיווך, או פרטי יצירת קשר. התגובה חייבת להסתיים בשורת מילות המפתח.',
-        body ? `לצורך הקשר בלבד, גוף הפוסט הראשי שכבר נוצר — אל תחזור עליו: """${body.slice(0, 600)}"""` : '',
+        body ? `לצורך הקשר בלבד, גוף הקמפיין הראשי שכבר נוצר — אל תחזור עליו: """${body.slice(0, 600)}"""` : '',
       ].filter(Boolean).join('\n\n');
 
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
           purpose: 'first_comment',
-          topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
+          topic: 'תגובה ראשונה קצרה לקמפיין נדל"ן — שתי שורות בלבד',
           platform: campaign.channel,
           customInstructions: instructions,
           selectedListingId: resolvedListingId || undefined,
@@ -510,7 +510,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         return; // keep dialog open so the user can retry
       }
       if (errCode) throw new Error(payload?.message || String(errCode));
-      toast.success('הפוסט פורסם מחדש');
+      toast.success('הקמפיין פורסם מחדש');
       onPosted?.();
       onOpenChange(false);
     } catch (e: any) {
@@ -613,14 +613,14 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
             onChange={(e) => setBody(e.target.value)}
             rows={10}
             className="text-sm pl-10"
-            placeholder="ערוך את גוף הפוסט..."
+            placeholder="ערוך את גוף הקמפיין..."
           />
           <button
             type="button"
             onClick={() => {
               if (!resolvedListingId) {
-                toast.error('אין נכס מקושר לפוסט הזה', {
-                  description: 'קשר את הפוסט לנכס פעיל מה-CRM לפני שמנסחים מחדש עם AI.',
+                toast.error('אין נכס מקושר לקמפיין הזה', {
+                  description: 'קשר את הקמפיין לנכס פעיל מה-CRM לפני שמנסחים מחדש עם AI.',
                 });
                 setShowLookup(true);
                 return;
@@ -661,7 +661,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
               onClick={() => {
                 if (!resolvedListingId) {
                   toast.error('אין נכס מקושר', {
-                    description: 'קשר את הפוסט לנכס פעיל מה-CRM כדי לייצר תגובה ראשונה.',
+                    description: 'קשר את הקמפיין לנכס פעיל מה-CRM כדי לייצר תגובה ראשונה.',
                   });
                   setShowLookup(true);
                   return;
@@ -713,7 +713,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         onClose={() => setScheduleDialogOpen(false)}
         onScheduled={() => {
           setScheduleDialogOpen(false);
-          toast.success('הפוסט תוזמן');
+          toast.success('הקמפיין תוזמן');
           onPosted?.();
           onOpenChange(false);
         }}
