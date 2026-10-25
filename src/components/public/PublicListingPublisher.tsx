@@ -79,9 +79,9 @@ const STEP_TITLES = [
 ];
 
 const LEAD_TYPES = [
-  { key: 'Form', tier: 'form', label: 'פנייה דרך שדות מטופס בעמוד נחיתה' },
-  { key: 'Whatsapp', tier: 'whatsapp', label: 'פנייה דרך סינון בשיחת ווטסאפ' },
-  { key: 'Phone', tier: 'phone', label: 'פנייה דרך סינון בשיחת טלפון' },
+  { key: 'Form', tier: 'form', label: 'פנייה דרך השארת פרטים בטופס בעמוד נחיתה' },
+  { key: 'Whatsapp', tier: 'whatsapp', label: 'פנייה לאחר סינון בשיחת ווטסאפ עם ריטה AI' },
+  { key: 'Phone', tier: 'phone', label: 'פנייה לאחר סינון בשיחת טלפון עם ריטה AI' },
 ] as const;
 
 
