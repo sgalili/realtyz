@@ -371,7 +371,7 @@ function PublicListingContent() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-muted-foreground">
             <p>הנכס הוסר מהפרסום או שהקישור אינו תקין.</p>
-            <Button variant="ghost" onClick={closeDetails}><X className="h-4 w-4" />סגירה וחזרה</Button>
+            <Button variant="ghost" size="icon" onClick={closeDetails} aria-label="סגירה וחזרה לעמוד הקודם" title="סגירה"><X className="h-5 w-5" /></Button>
             <Button asChild variant="outline">
               <a href={officialWaLink('שלום, אשמח לעזרה במצוא נכס')} target="_blank" rel="noopener noreferrer">
                 <WhatsAppIcon className="h-4 w-4" /> דברו איתנו בוואטסאפ
@@ -405,7 +405,7 @@ function PublicListingContent() {
       <div className="mx-auto max-w-4xl space-y-5 px-4 pt-5">
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between gap-3 px-4 pt-3">
-            <Button variant="ghost" size="sm" onClick={closeDetails} aria-label="סגירה וחזרה לעמוד הקודם"><X className="h-4 w-4" />סגירה וחזרה</Button>
+            <Button variant="ghost" size="icon" onClick={closeDetails} aria-label="סגירה וחזרה לעמוד הקודם" title="סגירה"><X className="h-5 w-5" /></Button>
             <div className="flex items-center gap-2">
 
               {data.id && <OwnerListingActions listingId={data.id} />}
@@ -422,10 +422,11 @@ function PublicListingContent() {
             logoUrl={data.agencyLogoUrl}
             publisherKind={data.publisherKind}
             dealType={data.dealType}
+            trailing={data.id ? <PropertyCommissionIcons listingId={data.id} /> : undefined}
           />
           <div data-property-image-toolbar className="flex min-h-10 flex-wrap items-center gap-1 px-3">
             {data.photos.length > 1 && <><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="תמונה קודמת" onClick={() => setSlide((slide + data.photos.length - 1) % data.photos.length)}><ChevronRight className="h-4 w-4" /></Button><span className="text-xs tabular-nums">{slide + 1}/{data.photos.length}</span><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="תמונה הבאה" onClick={() => setSlide((slide + 1) % data.photos.length)}><ChevronLeft className="h-4 w-4" /></Button></>}
-            <div className="ms-auto flex items-center gap-1"><Button variant="ghost" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button></div>
+            <div className="ms-auto flex items-center gap-1"><Button variant="ghost" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button>{data.id && <PropertyContactActions listingId={data.id} title={data.title} compact shareOnly shareUrl={shareUrl} shareButtonClassName="h-10 w-10 border-0 bg-transparent shadow-none" />}</div>
           </div>
           <div className="relative mt-3 aspect-[16/10] w-full bg-muted">
             {cover ? (

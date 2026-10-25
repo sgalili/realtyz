@@ -13,6 +13,10 @@ import { normalizeListing } from '@/pages/PublicListingPage';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
 import PropertyContactActions from './PropertyContactActions';
 import { publicUrl } from '@/lib/publicUrl';
+import PropertyCommissionIcons from './PropertyCommissionIcons';
+import { useListingFavorites } from '@/hooks/useListingFavorites';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 type Raw = Record<string, unknown>;
 type Spec = { icon: LucideIcon; label: string; value: string };
@@ -65,6 +69,9 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
 }
 
 export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, gallery }: { idOrSlug: string; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; gallery?: ReactNode }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const favorites = useListingFavorites();
   useEffect(() => { void (supabase as any).rpc('track_listing_view', { _id_or_slug: idOrSlug }); }, [idOrSlug]);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['public-listing-expanded', idOrSlug],
@@ -80,6 +87,12 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   });
 
   const listingId = (data?.raw?.id as string | undefined) ?? null;
+  const favorite = onFavorite ? isFav : !!listingId && favorites.isFavorite(listingId);
+  const toggleFavorite = () => {
+    if (onFavorite) { onFavorite(); return; }
+    if (!user) { navigate('/auth'); return; }
+    if (listingId) void favorites.toggleFavorite(listingId);
+  };
   const hasPerks = Array.isArray(asObj(data?.raw?.area_perks).perks) && (asObj(data?.raw?.area_perks).perks as unknown[]).length > 0;
   useEffect(() => {
     if (!listingId || hasPerks) return;
@@ -170,11 +183,11 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapQuery)}`;
   const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&hl=iw&z=16&output=embed`;
 
-  const overlay = (onFavorite || listing.id) ? (
+  const overlay = listing.id ? (
     <>
-      {onFavorite && (
-        <Button type="button" variant="secondary" size="icon" onClick={(e) => { e.stopPropagation(); onFavorite(); }} aria-pressed={isFav} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" className="h-9 w-9 border-0 bg-transparent shadow-none hover:bg-muted">
-          <Heart className={`h-4 w-4 text-destructive ${isFav ? 'fill-current' : ''}`} />
+      {listing.id && (
+        <Button type="button" variant="secondary" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(); }} aria-pressed={favorite} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" className="h-9 w-9 border-0 bg-transparent shadow-none hover:bg-muted">
+          <Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} />
         </Button>
       )}
       {listing.id && <div className="[&_button]:border-0 [&_button]:bg-transparent [&_button]:shadow-none"><PropertyContactActions listingId={listing.id} title={listing.title} shareUrl={publicUrl(`/p/${encodeURIComponent(listing.slug || listing.id)}`)} compact shareOnly /></div>}
@@ -192,7 +205,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
             </Button>
           </div>
         )}
-        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} />
+        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} trailing={listing.id ? <PropertyCommissionIcons listingId={listing.id} raw={raw} /> : undefined} />
         {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
