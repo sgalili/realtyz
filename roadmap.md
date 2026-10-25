@@ -1,3 +1,6 @@
+# Campaign card actions
+- [ ] Add top-left post menus for refresh, edit, native view, explicit repost, sharing and deletion; remove Continue buttons and verify without publishing/deleting.
+
 # Campaign channel-first wizard
 - [x] Start new campaign/post creation with five channel cards and configured credit prices, then show only the selected existing composer with back navigation; remove crowded channel switches, multi-channel wallet list and history from dedicated setup.
 - [x] Authenticated desktop/446px checks verify five cards, SMS/WhatsApp/email-only settings, IVR dialog, Facebook composer and back navigation; 13 focused tests and preview build pass. No campaign sent; live delivery is unavailable in the current account.
