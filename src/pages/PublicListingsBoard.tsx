@@ -51,7 +51,6 @@ export type PublicCard = {
 
 type GateIntent = 'favorite' | 'details';
 const shekel = (n: number | null) => typeof n === 'number' && n > 0 ? `₪${n.toLocaleString('he-IL')}` : 'מחיר לא צוין';
-const dealLabel = (t: string | null) => t === 'rent' ? 'להשכרה' : 'למכירה';
 function cleanTitle(card: PublicCard) { return publicAdTitle(card); }
 
 export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
@@ -282,8 +281,16 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   }, [filtered, rowOrder]);
   const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, ordered);
   const rowDrag = useRef<{ id: string; pointerId: number } | null>(null);
+  // Floating preview + target highlight while a property row is dragged to a new position.
+  const [dragGhost, setDragGhost] = useState<{ id: string; x: number; y: number; overId: string | null } | null>(null);
+  const moveRowDrag = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = rowDrag.current; if (!drag || drag.pointerId !== e.pointerId) return;
+    const overId = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-row-id]')?.dataset.rowId ?? null;
+    setDragGhost({ id: drag.id, x: e.clientX, y: e.clientY, overId: overId === drag.id ? null : overId });
+  };
   const finishRowDrag = (e: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = rowDrag.current; rowDrag.current = null;
+    setDragGhost(null);
     if (!drag || drag.pointerId !== e.pointerId) return;
     const target = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-row-id]')?.dataset.rowId;
     if (!target || target === drag.id) return;
@@ -340,9 +347,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-xs text-muted-foreground">
                   <tr>
-                    {visibleColumns.filter(id => id !== 'deal').map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
+                    {visibleColumns.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
                     <th className="px-2 pt-2 text-start font-medium">מפרסם</th>
-                    {visibleColumns.includes('deal') && <BoardColumnHeader id="deal" controls={columns} />}
                     <th className="w-10 px-2 pb-0 pt-2"><BoardColumnMenu controls={columns} /></th>
                   </tr>
 
