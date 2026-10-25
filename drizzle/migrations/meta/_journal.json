@@ -477,6 +477,13 @@
       "when": 1792889245931,
       "tag": "0067_workspace_call_scheduling",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1792890089110,
+      "tag": "0068_ivr_voice_workspace_scope",
+      "breakpoints": true
     }
   ]
 }
