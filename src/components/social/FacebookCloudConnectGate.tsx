@@ -76,9 +76,11 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
         if (Date.now() > deadline) { stop(); setPhase('idle'); setErrorMessage('החיבור לא הושלם בזמן. נסו שוב.'); return; }
         if (checking) return;
         checking = true;
-        void getCloudSessionState().then(s => {
-          if (generation.current === run && s.active) void finish(run);
-        }).finally(() => { checking = false; });
+        void supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_check' } })
+          .catch(() => null)
+          .then(() => getCloudSessionState())
+          .then(s => { if (generation.current === run && s.active) void finish(run); })
+          .finally(() => { checking = false; });
       }, 5000);
     } catch (e) {
       win.close();

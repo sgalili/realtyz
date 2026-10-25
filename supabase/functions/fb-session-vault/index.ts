@@ -205,6 +205,35 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Poll the cloud browser profile: once Facebook login cookies exist there,
+  // encrypt and activate the workspace session (no Meta OAuth involved).
+  if (action === "remote_check") {
+    const token = Deno.env.get("GOLOGIN_API_TOKEN") ?? "";
+    if (!token || !ENC_KEY) return json({ success: true, active: false });
+    const { data: row } = await admin.from("fb_cloud_sessions")
+      .select("remote_profile_id,status").eq("workspace_owner_id", owner).maybeSingle();
+    if (row?.status === "active") return json({ success: true, active: true });
+    const profileId = row?.remote_profile_id as string | undefined;
+    if (!profileId) return json({ success: true, active: false });
+    try {
+      const r = await fetch(`https://api.gologin.com/browser/${profileId}/cookies`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) return json({ success: true, active: false });
+      const all = await r.json();
+      const fb = (Array.isArray(all) ? all : []).filter((c: any) => /facebook\.com$/.test(String(c?.domain ?? "")));
+      const has = (n: string) => fb.some((c: any) => c?.name === n && c?.value);
+      if (!has("c_user") || !has("xs")) return json({ success: true, active: false });
+      const cookies_encrypted = await encryptSession(JSON.stringify(fb), ENC_KEY);
+      const { error } = await admin.from("fb_cloud_sessions").update({
+        cookies_encrypted, status: "active", last_verified_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 25 * 86400_000).toISOString(), last_error: null,
+      }).eq("workspace_owner_id", owner);
+      if (error) return json({ error: "save_failed", message: "שמירת החיבור נכשלה" }, 500);
+      return json({ success: true, active: true });
+    } catch {
+      return json({ success: true, active: false });
+    }
+  }
+
   if (action === "clear") {
     const { error } = await admin.from("fb_cloud_sessions").delete().eq("workspace_owner_id", owner);
     if (error) return json({ error: error.message }, 500);
