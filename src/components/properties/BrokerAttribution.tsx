@@ -12,6 +12,7 @@ type BrokerAttributionProps = {
   publisherKind?: string | null;
   dealType?: string | null;
   trailing?: ReactNode;
+  table?: boolean;
 };
 
 export default function BrokerAttribution({
@@ -24,14 +25,15 @@ export default function BrokerAttribution({
   publisherKind,
   dealType,
   trailing,
+  table = false,
 }: BrokerAttributionProps) {
   const broker = brokerName?.trim() && !brokerName.includes('לא צוין') ? brokerName.trim() : '';
   const office = officeName?.trim() && !officeName.includes('לא צוין') ? officeName.trim() : '';
   const isPrivate = publisherKind === 'private' || (!publisherKind && office === 'מפרסם פרטי');
-  const license = !isPrivate && /^[1-9]\d{0,7}$/.test(licenceNumber?.trim() ?? '') ? licenceNumber?.trim() : '';
+  const license = !table && !isPrivate && /^[1-9]\d{0,7}$/.test(licenceNumber?.trim() ?? '') ? licenceNumber?.trim() : '';
 
   return (
-    <div data-publisher-attribution className={`flex min-w-0 items-center gap-2 border-y bg-muted/30 ${compact ? 'px-2 py-2' : 'px-4 py-3'}`}>
+    <div data-publisher-attribution className={`flex min-w-0 items-center gap-2 ${table ? '' : 'border-y bg-muted/30'} ${compact ? 'px-2 py-2' : 'px-4 py-3'}`}>
       {isPrivate ? <Avatar className={compact ? 'h-9 w-9' : 'h-12 w-12'}><AvatarFallback><UserRound className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" /></AvatarFallback></Avatar> : <div className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
         {logoUrl && !isPrivate ? (
           <img src={logoUrl} alt={`לוגו ${office}`} loading="lazy" className="h-full w-full object-contain p-1" />

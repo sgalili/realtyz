@@ -129,7 +129,7 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
   );
 }
 
-export function PublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '' }: { label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
+export function PublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '', pricingOnly = false }: { pricingOnly?: boolean; label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
   const { user, loading: authLoading } = useAuth();
   const { activeWorkspaceId, activeWorkspace, setActiveWorkspace, refresh: refreshWorkspaces } = useWorkspace();
   const { isPropertyOwner, isAgent, isSuperAdmin, isDeveloper, loading: rolesLoading, fetched: rolesFetched, error: rolesError, refetch: refetchRoles } = useUserRole();
@@ -191,7 +191,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   useEffect(() => {
     // Only an explicit open sends developers to project import; a recovered
     // draft just closes silently so the public board stays on screen.
-    if (!entryPending && user && isDeveloper && (open || resumeDraft)) {
+    if (!pricingOnly && !entryPending && user && isDeveloper && (open || resumeDraft)) {
       setOpen(false);
       if (open && !resumeDraft) navigate('/developer-dashboard?import=1');
     }
@@ -219,7 +219,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, draftScope]);
-  const saveDraft = (f = fields, images = files, clips = videos) => restoredScope.current !== draftScope ? Promise.resolve() : savePublicListingDraft({ ...f, publicationError: f.publicationError || publishError, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step, importUrl, reviewMode, importSlide, expandedStep, wizardStep: step }, images, clips, draftScope);
+  const saveDraft = (f = fields, images = files, clips = videos) => pricingOnly || restoredScope.current !== draftScope ? Promise.resolve() : savePublicListingDraft({ ...f, publicationError: f.publicationError || publishError, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step, importUrl, reviewMode, importSlide, expandedStep, wizardStep: step }, images, clips, draftScope);
   // Always restore the last saved draft (all slides, media, step) for this user/workspace when the wizard opens.
   useEffect(() => {
     if (!open || resumeDraft || restoredScope.current === draftScope) return;
@@ -252,7 +252,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     return () => window.clearTimeout(timer);
   }, [fields, files, videos, step, expandedStep, importUrl, reviewMode, importSlide, open, draftScope, publishing, importing]);
   useEffect(() => {
-    if (!open || !isBroker) return;
+    if (!open || !isBroker || pricingOnly) return;
     const identity = `${user?.id}:${activeWorkspaceId}`;
     const changedWorkspace = Boolean(initializedPublisher.current && initializedPublisher.current !== identity);
     const first = initializedPublisher.current !== identity;
@@ -519,6 +519,24 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   };
 
   const submit = async () => {
+    if (pricingOnly) {
+      if (!user || !activeWorkspaceId || !fields.listingId || !(Number(fields.commissionDeal) > 0)) return;
+      setPublishing(true);
+      try {
+        const pricing = draftPricingPayload(fields, imported?.contact_options ?? fields.importedListing?.contact_options ?? {});
+        const { error } = await supabase.from('listings').update({
+          ...pricing, asking_price: Number(fields.price),
+          features: { ...(fields.importedListing?.features && !Array.isArray(fields.importedListing.features) ? fields.importedListing.features : { amenity_labels: fields.importedListing?.features ?? [] }), ...pricing.features },
+        }).eq('id', fields.listingId).eq('workspace_owner_id', activeWorkspaceId).select('id').single();
+        if (error) throw error;
+        await queryClient.invalidateQueries({ queryKey: ['public-commission-pricing'] });
+        await queryClient.invalidateQueries({ queryKey: ['public-listing-expanded'] });
+        await queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
+        toast.success('התמלוגים נשמרו'); setOpen(false); onRecovered?.();
+      } catch { toast.error('לא ניתן לשמור את התמלוגים'); }
+      finally { setPublishing(false); }
+      return;
+    }
     const missing = missingAdFields(fields);
     if (missing.length) { toast.error(`יש להשלים: ${missing.join(' · ')}`); return; }
     if (!fields.city.trim() || !(fields.street.trim() || fields.address.trim()) || !fields.propertyType.trim() || !fields.price) {
@@ -899,7 +917,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     </>
   );
 
-  if (isDeveloper && user && !entryPending) return <Button disabled={disabled} onClick={() => navigate('/developer-dashboard?import=1')} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>;
+  if (!pricingOnly && isDeveloper && user && !entryPending) return <Button disabled={disabled} onClick={() => navigate('/developer-dashboard?import=1')} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>;
 
   return (
     <>
@@ -924,18 +942,18 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         </div>
       </DialogContent>
     </Dialog>
-    <Dialog open={open && !entryPending && !isDeveloper} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
+    <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       <DialogContent dir="rtl" className="h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-6 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
         <DialogHeader className="shrink-0 px-10 pb-4 text-center">
-          {(reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
+          {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-4 top-4" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
-            {reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
+            {pricingOnly ? 'מחיר והגדרת תמלוגים' : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
         </DialogHeader>
 
         <div data-publisher-scroll className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pb-2">
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
-          {reviewMode ? (
+          {pricingOnly ? renderStep(8) : reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
                {STEP_TITLES.map((title, i) => i === 0 ? null : (
                 <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
@@ -951,7 +969,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               ))}
             </Accordion>
           ) : renderStep(step)}
-          {(reviewMode || isLast) && (
+          {!pricingOnly && (reviewMode || isLast) && (
             <>
               <div className="flex items-start gap-2 text-sm">
                 <Checkbox id="commission-terms" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', Boolean(checked))} />
@@ -986,10 +1004,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         </div>
 
         <div data-publisher-footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-background pt-3 pb-[env(safe-area-inset-bottom)]">
-            {!reviewMode && step > 0 ? <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(0, current - 1))}>
+            {!pricingOnly && !reviewMode && step > 0 ? <Button type="button" variant="outline" onClick={() => setStep((current) => Math.max(0, current - 1))}>
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
-          {reviewMode || isLast ? (
+          {pricingOnly ? <><Button variant="outline" onClick={() => { setOpen(false); onRecovered?.(); }}>ביטול</Button><Button disabled={publishing || !(Number(fields.price) > 0) || !(Number(fields.commissionDeal) > 0)} onClick={() => void submit()}>שמירה</Button></> : reviewMode || isLast ? (
             <div className="flex w-full flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-center">
               {!canPublish && <span className="hidden text-xs text-muted-foreground sm:inline" title={missingPublish.join(' · ')}>חסר: {missingPublish[0]}{missingPublish.length > 1 ? ` +${missingPublish.length - 1}` : ''}</span>}
               <Button type="button" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()} className="shrink-0 bg-success text-[18px] font-bold text-success-foreground hover:bg-success/90">
