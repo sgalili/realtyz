@@ -14,7 +14,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
  * publishing screen. A "connect later" link lets the user skip straight to
  * publishing. No browser extension is involved.
  */
-export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDiscover }: { alwaysVisible?: boolean; onSynced?: () => void; onDiscover?: () => void }) {
+export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDiscover, onStatusChange }: { alwaysVisible?: boolean; onSynced?: () => void; onDiscover?: () => void; onStatusChange?: (ready: boolean) => void }) {
   const owner = useActiveWorkspaceOwnerId();
   const [open, setOpen] = useState(false);
   const [skipped, setSkipped] = useState(false);
@@ -34,7 +34,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     const run = ++generation.current;
     stop(); setOpen(false); setSkipped(false); setPhase('idle'); setConnected(false); setErrorMessage('');
     if (owner) void getCloudSessionState().then(s => {
-      if (generation.current === run) { setConnected(s.active); setOpen(!s.active); }
+      if (generation.current === run) { setConnected(s.active); setOpen(!s.active); onStatusChange?.(s.active); }
     });
     return () => { generation.current++; stop(); };
   }, [owner]);
@@ -48,6 +48,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
       if (generation.current !== run) return;
       toast.success(`פייסבוק מחובר · ${groups.length} קבוצות נסרקו`);
       onSynced?.();
+      onStatusChange?.(true);
       setPhase('idle'); setOpen(false);
     } catch (e) {
       if (generation.current !== run || abort.signal.aborted) return;
@@ -96,6 +97,6 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     {phase === 'waiting' && <p role="status" className="text-sm leading-relaxed text-muted-foreground">השלימו את הכניסה לפייסבוק בחלון שנפתח.</p>}
     {connected && <p className="flex items-center gap-1 text-sm text-success"><ShieldCheck className="h-4 w-4" />החיבור שמור ומוצפן בענן</p>}
     {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
-    <Button type="button" variant="link" className="w-full" disabled={phase !== 'idle'} onClick={() => setSkipped(true)}>אתחבר יותר מאוחר</Button>
+    <Button type="button" variant="link" className="w-full" disabled={phase !== 'idle'} onClick={() => { setSkipped(true); onStatusChange?.(true); }}>אתחבר יותר מאוחר</Button>
   </section>;
 }

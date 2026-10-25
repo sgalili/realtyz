@@ -2342,7 +2342,7 @@ const InlineComposer = ({
             </>
           ) : (
             <>
-          <Label className="font-semibold text-foreground" style={{ fontSize: 'calc(0.75rem + 3px)' }}>קדם נכס ספציפי מהמאגר</Label>
+          <Label className="font-semibold text-foreground" style={{ fontSize: 'calc(0.75rem + 3px)' }}>קידום נכס מהמאגר</Label>
           <Popover open={listingPickerOpen} onOpenChange={setListingPickerOpen}>
             <PopoverTrigger asChild>
               <button type="button"
@@ -7513,6 +7513,9 @@ const DraftCollapsibleCard = ({
 
 const CampaignCenter = () => {
   const [wizardChannel, setWizardChannel] = useState<DistributionChannel | null>(null);
+  // Facebook two-step flow: the publishing composer mounts only after the
+  // connection screen is completed (or explicitly skipped).
+  const [fbReady, setFbReady] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   // Live status per collapsed draft card (keyed by composer instanceId).
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
@@ -8390,6 +8393,7 @@ const CampaignCenter = () => {
 
   const selectWizardChannel = (channel: DistributionChannel) => {
     setWizardChannel(channel);
+    setFbReady(false);
     const next = new URLSearchParams(searchParams);
     next.set('channel', channel);
     next.set('tab', channel === 'facebook' ? 'create' : 'broadcast');
@@ -8675,7 +8679,7 @@ const CampaignCenter = () => {
           {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
-          {wizardChannel === 'facebook' && <FacebookCloudConnectGate />}
+          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
           
           <div hidden aria-hidden="true">
           <ChannelGrid
@@ -8715,7 +8719,7 @@ const CampaignCenter = () => {
             onAddFacebookPage={() => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!); }}
           />
           </div>
-          {wizardChannel === 'facebook' && pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
+          {wizardChannel === 'facebook' && fbReady && pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
             const propertiesParam = searchParams.get('properties') || '';
             let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
             let assignments: ComposerAssignment[] = [];
