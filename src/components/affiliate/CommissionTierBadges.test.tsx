@@ -15,7 +15,8 @@ describe('commission visibility', () => {
     access.roles = [role];
     const { container } = render(<CommissionTierBadges tiers={tiers} />);
     expect([...container.querySelectorAll('[data-commission-icons] span[title]')].map(row => row.getAttribute('title'))).toEqual(['שדות מטופס בעמוד נחיתה', 'סינון בווטסאפ', 'שיחת טלפון', 'סגירת עסקה']);
-    expect(screen.getByText('ללא עמלה')).toBeTruthy();
+    expect(screen.queryByText('ללא עמלה')).toBeNull();
+    expect(container.querySelector('span[title="שיחת טלפון"].lead-no-fee')).toBeTruthy();
     expect(screen.queryByText(/900/)).toBeNull();
   });
   it('never labels a redacted closing value as zero', () => {
