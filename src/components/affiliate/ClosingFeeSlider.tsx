@@ -33,7 +33,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const minimum = displayAmount && dualMode ? range.price * range.min / 100 : range.min;
   const maximum = displayAmount && dualMode ? range.price * range.max / 100 : range.max;
   const exactAmount = range.price * percent / 100;
-  const money = (n: number) => fmtILS(n);
+  const money = (n: number) => fmtILS(Math.round(n));
   const selectedLabel = displayAmount ? money(dualMode ? exactAmount : amount) : `${Number(percent.toFixed(2))}%`;
   const changePercent = (next: number) => {
     if (dualMode && onValueChange) onValueChange(displayAmount ? Math.round(range.price * next / 100) : next, outType);

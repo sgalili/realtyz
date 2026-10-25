@@ -22,7 +22,7 @@ export function RewardIcons({ levels, types, prices, closingPercent = false, lab
     <span className={prices || grid ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'flex items-center gap-2'}>{rows.map(({ key, label: title, Icon, tone }) => {
       // Icon and price share one level color: closing uses its server level, lead types their price level.
       const level = key === 'closing' ? closingLevel : prices?.[key] != null ? leadPriceLevel(key as 'form', Number(prices[key])) : levels?.[key as 'form'] ?? null;
-      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${tone}`} style={level != null ? { color: `hsl(var(--closing-${LEVELS[level] ?? 'low'}))` } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(prices[key])}</bdi>}</span>;
+      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${tone}`} style={level != null ? { color: `hsl(var(--closing-${LEVELS[level] ?? 'low'}))` } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
     })}</span>
   </span>;
 }
