@@ -1,7 +1,8 @@
 // Reusable share control for property results — cards, table rows, preview
 // dialog and batch selection all mint the same secure landing-page link.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,42 @@ import { Share2, MessageCircle, Copy, Loader2, Smartphone, Mail, ExternalLink, M
 import { toast } from 'sonner';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { shareProperties, mintShareUrlForResult, prepareCampaignListingIds, type ShareMode } from '@/lib/propertyShare';
+import { WaTemplatePicker, type WaTemplateSelection } from '@/components/whatsapp/WaTemplatePicker';
+
+/** Rotating status lines shown while a share is being dispatched. */
+const SEND_STATUS_MESSAGES = [
+  'מעבד נתונים...',
+  'שולח הודעה דרך הערוץ הרשמי...',
+  'מוודא הגעה...',
+];
+
+/** Scrolling status ticker with a spinner, used during the sending state. */
+function SendingStatusTicker() {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setIndex((prev) => (prev + 1) % SEND_STATUS_MESSAGES.length), 1800);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <div className="flex h-7 items-center gap-2 overflow-hidden text-base text-muted-foreground">
+      <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+      <div className="relative h-7 flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={index}
+            initial={{ y: 18, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -18, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute inset-0 flex items-center"
+          >
+            {SEND_STATUS_MESSAGES[index]}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
 
 export function PropertyShareMenu({
   results,
@@ -55,21 +92,33 @@ export function PropertyShareMenu({
   const [recipientMode, setRecipientMode] = useState<Exclude<ShareMode, 'copy'> | null>(null);
   const [recipientName, setRecipientName] = useState('');
   const [recipientValue, setRecipientValue] = useState('');
+  const [waTemplate, setWaTemplate] = useState<WaTemplateSelection | null>(null);
   const count = results.length;
 
+  const closeDialog = () => {
+    setRecipientMode(null);
+    setRecipientName('');
+    setRecipientValue('');
+    setWaTemplate(null);
+  };
+
   const run = async (mode: ShareMode) => {
+    // WhatsApp sends go out strictly through the official Meta API with a
+    // pre-approved template — never the personal app or a wa.me link.
+    if (mode === 'whatsapp' && !waTemplate?.name) {
+      toast.error('יש לבחור תבנית מאושרת של Meta לפני השליחה');
+      return;
+    }
     setBusy(true);
     try {
       await shareProperties(results, mode, recipientMode ? {
         name: recipientName,
         phone: recipientMode === 'email' ? null : recipientValue,
         email: recipientMode === 'email' ? recipientValue : null,
-      } : null);
+      } : null, mode === 'whatsapp' ? waTemplate : null);
       if (mode === 'copy') toast.success(count > 1 ? 'הפרטים הועתקו' : 'הקישור הועתק');
       else toast.success('השיתוף נשלח ותועד');
-      setRecipientMode(null);
-      setRecipientName('');
-      setRecipientValue('');
+      closeDialog();
     } catch (e: any) {
       toast.error(e?.message ?? 'יצירת קישור השיתוף נכשלה');
     } finally {
@@ -159,18 +208,27 @@ export function PropertyShareMenu({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-    <Dialog open={recipientMode !== null} onOpenChange={(open) => { if (!open) setRecipientMode(null); }}>
-      <DialogContent dir="rtl" className="sm:max-w-sm">
-        <DialogHeader><DialogTitle className="text-right">פרטי מקבל/ת השיתוף</DialogTitle></DialogHeader>
+    <Dialog open={recipientMode !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+      <DialogContent dir="rtl" className="sm:max-w-md">
+        <DialogHeader><DialogTitle className="text-right text-xl">{recipientMode === 'whatsapp' ? 'שיתוף נכס בוואטסאפ' : 'פרטי מקבל/ת השיתוף'}</DialogTitle></DialogHeader>
         <div className="space-y-3 py-2">
-          <div className="space-y-1.5"><Label htmlFor="share-recipient-name">שם</Label><Input id="share-recipient-name" value={recipientName} onChange={(event) => setRecipientName(event.target.value)} /></div>
+          <div className="space-y-1.5"><Label htmlFor="share-recipient-name" className="text-base">שם</Label><Input id="share-recipient-name" className="text-base" value={recipientName} onChange={(event) => setRecipientName(event.target.value)} /></div>
           <div className="space-y-1.5">
-            <Label htmlFor="share-recipient-value">{recipientMode === 'email' ? 'אימייל' : 'טלפון'}</Label>
-            <Input id="share-recipient-value" type={recipientMode === 'email' ? 'email' : 'tel'} inputMode={recipientMode === 'email' ? 'email' : 'tel'} value={recipientValue} onChange={(event) => setRecipientValue(event.target.value)} />
+            <Label htmlFor="share-recipient-value" className="text-base">{recipientMode === 'email' ? 'אימייל' : 'טלפון'}</Label>
+            <Input id="share-recipient-value" type={recipientMode === 'email' ? 'email' : 'tel'} inputMode={recipientMode === 'email' ? 'email' : 'tel'} className="text-base" value={recipientValue} onChange={(event) => setRecipientValue(event.target.value)} />
           </div>
+          {recipientMode === 'whatsapp' && (
+            <div className="space-y-1.5 border-t pt-3">
+              <p className="text-sm text-muted-foreground">
+                ההודעה נשלחת ברקע דרך הערוץ הרשמי של TORAFF עם תבנית מאושרת של Meta — לא מהאפליקציה האישית.
+              </p>
+              <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} />
+            </div>
+          )}
         </div>
+        {busy && <SendingStatusTicker />}
         <div className="flex flex-row items-center justify-between gap-2 pt-1">
-          <Button variant="outline" onClick={() => setRecipientMode(null)}>ביטול</Button>
+          <Button variant="outline" onClick={closeDialog}>ביטול</Button>
           <Button disabled={busy || !recipientValue.trim()} onClick={() => recipientMode && void run(recipientMode)}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שליחה'}</Button>
         </div>
       </DialogContent>
