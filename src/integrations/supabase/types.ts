@@ -5436,6 +5436,9 @@ export type Database = {
       }
       meetings: {
         Row: {
+          call_reminder_claimed_at: string | null
+          call_reminder_error: string | null
+          call_reminder_status: string | null
           conference_link: string | null
           created_at: string
           description: string | null
@@ -5458,6 +5461,9 @@ export type Database = {
           workspace_owner_id: string | null
         }
         Insert: {
+          call_reminder_claimed_at?: string | null
+          call_reminder_error?: string | null
+          call_reminder_status?: string | null
           conference_link?: string | null
           created_at?: string
           description?: string | null
@@ -5480,6 +5486,9 @@ export type Database = {
           workspace_owner_id?: string | null
         }
         Update: {
+          call_reminder_claimed_at?: string | null
+          call_reminder_error?: string | null
+          call_reminder_status?: string | null
           conference_link?: string | null
           created_at?: string
           description?: string | null
@@ -9227,6 +9236,15 @@ export type Database = {
       run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
       rz_phone_label: { Args: { _p: string }; Returns: string }
+      schedule_workspace_call: {
+        Args: {
+          _lead: string
+          _notes: string
+          _owner: string
+          _starts_at: string
+        }
+        Returns: string
+      }
       seed_demo_data: { Args: never; Returns: Json }
       select_my_affiliate_plan: {
         Args: { _billing_period?: string; _plan_slug: string }

@@ -10,6 +10,7 @@
  * marking, and a paused state on billing/policy failures.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { dispatchCallReminders } from '../_shared/callReminders.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,6 +73,7 @@ Deno.serve(async (req) => {
   let lastError: string | null = null;
 
   try {
+    await dispatchCallReminders(admin);
     const now = Date.now();
     const from = new Date(now + WINDOW_MIN * 60_000).toISOString();
     const to = new Date(now + WINDOW_MAX * 60_000).toISOString();

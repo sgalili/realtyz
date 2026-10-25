@@ -470,6 +470,13 @@
       "when": 1792886747756,
       "tag": "0066_register_broker_accepts_test_license",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792889245931,
+      "tag": "0067_workspace_call_scheduling",
+      "breakpoints": true
     }
   ]
 }
