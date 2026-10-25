@@ -1102,7 +1102,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
   const saveAlias = useCallback(async () => {
     const clean = sanitizeEmailAlias(aliasPrefix);
-    if (clean.length < 2 || aliasSaving) return;
+    if (clean.length < 2 || aliasSaving) return false;
     setAliasSaving(true);
     try {
       const { error } = await supabase.rpc('set_workspace_email_alias' as never, { p_alias: clean } as never);
@@ -1114,10 +1114,11 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
           : m.includes('only_workspace_owner') ? 'רק בעל מרחב העבודה יכול להגדיר את השולח'
           : m,
         );
-        return;
+        return false;
       }
       setEmailAlias(clean);
       toast.success(`השולח הוגדר: ${clean}@${EMAIL_SENDER_DOMAIN}`);
+      return true;
     } finally {
       setAliasSaving(false);
     }
@@ -1157,7 +1158,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
               </div>
               {emailAlias && sanitizeEmailAlias(aliasPrefix) === emailAlias
                 ? <Button type="button" className="w-full" onClick={() => setEmailSenderChosen('alias')}>שליחה מ־<span dir="ltr">{emailAlias}@{EMAIL_SENDER_DOMAIN}</span></Button>
-                : <Button type="button" className="w-full" disabled={sanitizeEmailAlias(aliasPrefix).length < 2 || aliasSaving} onClick={() => void saveAlias().then(() => setEmailSenderChosen('alias'))}>
+                : <Button type="button" className="w-full" disabled={sanitizeEmailAlias(aliasPrefix).length < 2 || aliasSaving} onClick={() => void saveAlias().then((ok) => { if (ok) setEmailSenderChosen('alias'); })}>
                   {aliasSaving ? 'שומר…' : 'שמור והמשך עם כתובת זו'}
                 </Button>}
             </div>
