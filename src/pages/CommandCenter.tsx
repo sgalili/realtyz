@@ -380,9 +380,9 @@ export default function CommandCenter() {
           const validation = validateFutureCall(values.when, values.lead?.id ?? null);
           if (validation) throw new Error(validation);
           if (!ownerId) throw new Error('לא נבחר משרד');
-          const { error } = await supabase.rpc('schedule_workspace_call' as never, {
-            _owner: ownerId, _lead: values.lead?.id, _starts_at: new Date(values.when).toISOString(), _notes: values.text,
-          } as never);
+          const { error } = await supabase.rpc('schedule_workspace_call', {
+            _owner: ownerId, _lead: values.lead?.id ?? '', _starts_at: new Date(values.when).toISOString(), _notes: values.text,
+          });
           if (error) throw error;
           setTaskMonth(new Date(new Date(values.when).getFullYear(), new Date(values.when).getMonth(), 1));
           const d = new Date(values.when);
