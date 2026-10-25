@@ -5,11 +5,12 @@ import { useEffect, useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import MyFavoriteAds from '@/components/public/MyFavoriteAds';
-import PropertyReferralButton from '@/components/public/PropertyReferralButton';
+import { personalPropertyLink } from '@/lib/propertyReferral';
 import { readPublicListingDraft, clearPublicListingDraft, type PublicListingDraft } from '@/lib/publicListingDraft';
 import { SelectModeToggle, SelectBox, SelectAllRow } from '@/components/ui/multi-select-controls';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Trash2, Share2, Megaphone, ExternalLink, Pencil, Copy } from 'lucide-react';
+import { Trash2, Share2, Megaphone, ExternalLink, Pencil, MoreVertical, Link2 } from 'lucide-react';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { publicUrl } from '@/lib/publicUrl';
@@ -92,19 +93,32 @@ function AdDetails({ listingId }: { listingId: string }) {
     </section>
   </div>;
 }
-/** Per-ad quick actions: global share, personal partner link, campaign, open in new tab, edit and copy link. */
+/** Per-ad quick actions collapsed into a single three-dots menu; copy link lives inside the share menu. */
 function AdActions({ row: r, owned, title }: { row: Row; owned: boolean; title: string }) {
   const navigate = useNavigate();
+  const [shareOpen, setShareOpen] = useState(false);
   const url = publicUrl(`/p/${r.slug || r.listing_id}`);
   const result = { key: r.listing_id, localId: r.listing_id, source: 'mine', title: r.title ?? title, address: r.address ?? null, city: r.city ?? null, price: Number(r.asking_price) || null, listing_type: r.deal_type === 'rent' ? 'rent' : 'sale', photos: r.image_url ? [r.image_url] : [] } as any;
-  const icon = 'h-8 w-8 text-muted-foreground hover:text-foreground';
-  return <div className="flex min-w-0 items-center gap-0.5">
-    <PropertyShareMenu results={[result]} iconOnly variant="ghost" className={icon} />
-    <PropertyReferralButton listingId={r.listing_id} />
-    <Button variant="ghost" size="icon" className={icon} aria-label="יצירת קמפיין" title="יצירת קמפיין" onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.listing_id}&listing=${r.listing_id}`)}><Megaphone className="h-4 w-4" /></Button>
-    <Button variant="ghost" size="icon" className={icon} aria-label="פתיחה בחלון חדש" title="פתיחה בחלון חדש" onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}><ExternalLink className="h-4 w-4" /></Button>
-    {owned && <Button variant="ghost" size="icon" className={icon} aria-label="עריכת הנכס" title="עריכת הנכס" onClick={() => navigate(`/properties/${r.listing_id}`)}><Pencil className="h-4 w-4" /></Button>}
-    <Button variant="ghost" size="icon" className={icon} aria-label="העתקת קישור למודעה" title="העתקת קישור למודעה" onClick={() => { void navigator.clipboard.writeText(url).then(() => toast.success('הקישור הועתק'), () => toast.error('ההעתקה נכשלה')); }}><Copy className="h-4 w-4" /></Button>
+  const copyPartnerLink = async () => {
+    try {
+      await navigator.clipboard.writeText(await personalPropertyLink(r.listing_id));
+      toast.success('הקישור האישי הועתק');
+    } catch { toast.error('לא ניתן להעתיק קישור אישי לנכס זה'); }
+  };
+  return <div className="relative flex items-center justify-start" onClick={(e) => e.stopPropagation()}>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" aria-label="פעולות המודעה" title="פעולות המודעה"><MoreVertical className="h-4 w-4" /></Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem className="gap-2 text-sm" onSelect={() => setShareOpen(true)}><Share2 className="h-4 w-4" /> שיתוף נכס</DropdownMenuItem>
+        <DropdownMenuItem className="gap-2 text-sm" onSelect={() => void copyPartnerLink()}><Link2 className="h-4 w-4" /> העתקת קישור שותף אישי</DropdownMenuItem>
+        <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.listing_id}&listing=${r.listing_id}`)}><Megaphone className="h-4 w-4" /> יצירת קמפיין</DropdownMenuItem>
+        <DropdownMenuItem className="gap-2 text-sm" onSelect={() => window.open(url, '_blank', 'noopener,noreferrer')}><ExternalLink className="h-4 w-4" /> פתיחה בחלון חדש</DropdownMenuItem>
+        {owned && <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/properties/${r.listing_id}`)}><Pencil className="h-4 w-4" /> עריכת הנכס</DropdownMenuItem>}
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <PropertyShareMenu results={[result]} iconOnly variant="ghost" hideTrigger open={shareOpen} onOpenChange={setShareOpen} />
   </div>;
 }
 function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
