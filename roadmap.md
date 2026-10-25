@@ -1,5 +1,9 @@
 # Roadmap
 
+## Weekly notification quiet hours
+- [ ] Remove selected notice and add global/day-specific quiet-time controls.
+- [ ] Persist and enforce weekly schedule; test overnight intervals and saved settings.
+
 ## Property card presentation
 - [x] Show authorized commissions inside the original publisher section in grid and full details.
 - [x] Keep favorite/share controls above images and make close controls icon-only.

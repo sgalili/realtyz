@@ -1,0 +1,2 @@
+ALTER TABLE public.notification_preferences ADD COLUMN IF NOT EXISTS quiet_hours_weekly jsonb DEFAULT NULL;
+COMMENT ON COLUMN public.notification_preferences.quiet_hours_weekly IS 'UTC weekly quiet intervals keyed 0 (Sunday) through 6 (Saturday), each with enabled/start/end; NULL preserves legacy daily quiet hours.';
