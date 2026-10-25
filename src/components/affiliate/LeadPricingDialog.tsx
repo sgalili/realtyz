@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { type BrokerAffiliateListing, type MarketplaceListing } from '@/hooks/useAffiliate';
 import { FORM_FIELD_TYPE_LABELS, type LeadFormField } from '@/lib/leadTiers';
 import { fmtILS } from '@/lib/formatCurrency';
+import { closingFeeAmount } from '@/lib/closingFee';
 import { partnerNetReward } from '@/lib/affiliatePlans';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import type { ReactNode } from 'react';
@@ -28,6 +29,8 @@ type PricingListing = Pick<MarketplaceListing, 'listing_id' | 'broker_id' | 'pro
 
 type PricingDetails = {
   daily_lead_cap?: number | null;
+  asking_price?: number | null;
+  deal_type?: string | null;
   contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[]; lead_daily_limits?: import('@/lib/closingFee').LeadDailyLimits };
 };
 
@@ -35,6 +38,11 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const options = details.contact_options ?? {};
+  // A percentage closing fee is always a share of the property price, so the
+  // partner's net share is also shown in shekels next to the percent.
+  const closingBase = Math.max(0, Number(details.asking_price) || 0);
+  const closingNetPercent = partnerNetReward(Number(listing.tier4_amount));
+  const closingNetShekels = closingBase > 0 ? Math.round(closingFeeAmount(closingNetPercent, closingBase)) : 0;
   const rows = closingOnly ? [] : [
     { key: 'form' as const, label: FORM_TIER_LABEL, amount: listing.tier1_amount, questions: [] },
     { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
@@ -70,7 +78,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
       {row.key === 'form' && options.form_fields?.map((field) => <p key={field.id}>{field.label} · {FORM_FIELD_TYPE_LABELS[field.type]} · {field.required ? 'חובה' : 'רשות'}{field.options?.length ? ` · ${field.options.join(', ')}` : ''}</p>)}
       {row.questions.length ? <><h4 className="text-muted-foreground">שאלות הסינון של המפרסם</h4><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></> : row.key !== 'form' ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
     </Card>)}
-    {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <Card className="space-y-2 rounded-2xl p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="ms-auto shrink-0 text-2xl font-bold text-lead-closing">{listing.tier4_type === 'percent' ? `${partnerNetReward(Number(listing.tier4_amount))}%` : `${fmtILS(Math.round(partnerNetReward(Number(listing.tier4_amount))))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></Card> : rewardTypes?.closing && <Card className="space-y-2 rounded-2xl p-4"><h3 className="flex items-center gap-3 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה</h3><p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p></Card>}
+    {user && level4Unlocked && Number(listing.tier4_amount) > 0 ? <Card className="space-y-2 rounded-2xl p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה · נטו לשותף *<BrokerClosingInfo /></h3><bdi dir="ltr" className="ms-auto shrink-0 text-2xl font-bold text-lead-closing">{listing.tier4_type === 'percent' ? <>{`${closingNetPercent}%`}{closingNetShekels > 0 ? <span className="ms-1 text-base font-extrabold">({fmtILS(closingNetShekels)})</span> : null}</> : `${fmtILS(Math.round(partnerNetReward(Number(listing.tier4_amount))))}`}</bdi></div><ClosingSplitNote gross={Number(listing.tier4_amount)} valueType={listing.tier4_type === 'percent' ? 'percent' : 'fixed'} /></Card> : rewardTypes?.closing && <Card className="space-y-2 rounded-2xl p-4"><h3 className="flex items-center gap-3 text-lg font-bold"><Trophy className="h-8 w-8 shrink-0 text-lead-closing" />סגירת עסקה</h3><p className="text-muted-foreground">תגמול לאחר סגירת העסקה. פרטי העמלה זמינים למתווכים בעלי רישיון מאומת בלבד.</p></Card>}
     {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}
   </div>;
 }
