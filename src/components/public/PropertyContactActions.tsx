@@ -1,6 +1,6 @@
 import { JoinPartnerDialog } from '@/components/affiliate/JoinPartnerDialog';
 import { useState } from 'react';
-import { ChevronDown, ChevronLeft, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
+import { ChevronLeft, ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -165,8 +165,8 @@ export default function PropertyContactActions({
       <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={cn(shareOnly ? 'inline-flex shrink-0' : compact ? 'flex w-full flex-wrap items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur', singleRow && 'gap-1 [&>button:not([aria-label="שיתוף נכס"])]:min-w-0 [&>button:not([aria-label="שיתוף נכס"])]:basis-0 [&>button]:gap-1 [&>button]:px-1 [&>button]:text-xs sm:[&>button]:text-base [&>button>svg]:shrink-0')}>
         {showDigital && formAsButton && (
           <Button variant="outline" className="min-w-[8rem] flex-1 text-base" aria-expanded={formOpen} onClick={() => { setFormOpen((open) => !open); setInquiryStarted(true); }}>
+            <ClipboardList className="h-4 w-4" />
             השאירו פרטים
-            <ChevronDown className={cn('h-4 w-4 transition-transform', formOpen && 'rotate-180')} />
           </Button>
         )}
         {showDigital && (!formAsButton || formOpen) && (
