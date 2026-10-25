@@ -15,7 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-import { channelsForEvent, withinQuietHours, allowsNotificationOverride } from "../_shared/notificationPreferences.ts";
+import { channelsForEvent, notificationIsQuiet, allowsNotificationOverride } from "../_shared/notificationPreferences.ts";
 import { sendSms019 } from "../_shared/sms019.ts";
 
 const corsHeaders = {
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     if (!enabled) {
       return json({ ok: true, skipped: "event disabled in preferences" });
     }
-    const inQuiet = withinQuietHours(pref?.quiet_hours_start, pref?.quiet_hours_end);
+    const inQuiet = notificationIsQuiet(pref);
     const channels = channelsForEvent(pref ?? {}, body.event_type);
 
     // Build deep link back to the Deal Room card

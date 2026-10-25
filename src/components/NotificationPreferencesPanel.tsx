@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Bell, Flame, CalendarCheck, AlertTriangle, Loader2, MessageCircle, Mail, Smartphone } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
+import WeeklyQuietHours from '@/components/WeeklyQuietHours';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useNotificationPreferences, defaultNotificationPreferences, panelCategoryEnabled, type NotificationPreferences, type PanelCategory } from '@/hooks/useNotificationPreferences';
-import { channelsForEvent, eventPreferenceKeys, type NotificationEvent, type NotificationChannel } from '../../supabase/functions/_shared/notificationPreferences';
+import { channelsForEvent, eventPreferenceKeys, quietWeekFromPreferences, quietWeekValid, type NotificationEvent, type NotificationChannel } from '../../supabase/functions/_shared/notificationPreferences';
 const events: { key: NotificationEvent; label: string; Icon: typeof Bell }[] = [
   { key: 'new_high_priority', label: 'ליד בעדיפות גבוהה', Icon: Flame },
   { key: 'meeting_booked', label: 'פגישה או ליד שהבשיל', Icon: CalendarCheck },
@@ -42,8 +42,7 @@ export default function NotificationPreferencesPanel({ compact = false, onSaved 
       })}
     </section>
     <section><h3 className="mb-2 text-sm font-semibold">בחלון ההתראות</h3><div className="grid grid-cols-2 gap-x-4 gap-y-3">{categories.map(({ key, label }) => <Label key={key} className="flex items-center justify-between gap-2 text-xs"><span>{label}</span><Switch aria-label={`בחלון · ${label}`} checked={panelCategoryEnabled(local, key)} onCheckedChange={value => setLocal(previous => ({ ...previous, panel_preferences: { ...(previous.panel_preferences as Record<string, import('@/integrations/supabase/types').Json>), [key]: value } }))} /></Label>)}</div></section>
-    <section><h3 className="mb-2 text-sm font-semibold">שעות שקטות (UTC)</h3><div className="grid grid-cols-2 gap-3"><Label className="space-y-1 text-xs">התחלה<Input aria-label="שעות שקטות · התחלה" type="time" value={local.quiet_hours_start ?? ''} onChange={event => setLocal(previous => ({ ...previous, quiet_hours_start: event.target.value || null }))} /></Label><Label className="space-y-1 text-xs">סיום<Input aria-label="שעות שקטות · סיום" type="time" value={local.quiet_hours_end ?? ''} onChange={event => setLocal(previous => ({ ...previous, quiet_hours_end: event.target.value || null }))} /></Label></div></section>
-    <p className="text-xs text-muted-foreground">העדפות אלו חלות על הודעות לחשבון שלך, ולא על הודעות ללקוחות או קודי אבטחה. בחירת Email היא הסכמה לקבלת ההתראה; השליחה מותנית בחיבור פעיל.</p>
-    <Button className="w-full" disabled={preferences.save.isPending} onClick={() => preferences.save.mutate(local, { onSuccess: () => { toast.success('העדפות ההתראות נשמרו'); onSaved?.(); }, onError: () => toast.error('לא ניתן לשמור כרגע. נסו שוב.') })}>{preferences.save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמירה'}</Button>
+    <WeeklyQuietHours value={local} onChange={week => setLocal(previous => ({ ...previous, quiet_hours_weekly: week }))} />
+    <Button className="w-full" disabled={preferences.save.isPending || !quietWeekValid(quietWeekFromPreferences(local))} onClick={() => preferences.save.mutate(local, { onSuccess: () => { toast.success('העדפות ההתראות נשמרו'); onSaved?.(); }, onError: () => toast.error('לא ניתן לשמור כרגע. נסו שוב.') })}>{preferences.save.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמירה'}</Button>
   </div>;
 }
