@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({ editable: null as unknown, level4Unlocked: fal
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({ data: { editable: state.editable, details: { daily_lead_cap: 12 } }, isLoading: false, isError: false }) }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: state.user }) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace' }));
+vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn(), useLocation: () => ({ pathname: '/', search: '' }) }));
 vi.mock('./RewardDialog', () => ({ RewardDialog: () => <div role="dialog"><label>הגדרות לידים<input aria-label="מחיר ליד" /></label></div> }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ level4Unlocked: state.level4Unlocked }) }));
 const listing = { tier1_amount: 100, tier2_amount: 150, tier3_amount: 0, tier4_amount: 10000 } as MarketplaceListing;
@@ -28,6 +29,12 @@ describe('partner lead pricing information', () => {
     expect(screen.getAllByText('0.8%')).toHaveLength(2);
     expect(screen.getByText('0.2%')).toBeTruthy();
     expect(screen.getByText('1%')).toBeTruthy();
+  });
+  it('shows closing net as whole shekels for fixed amounts, without decimals', () => {
+    state.level4Unlocked = true;
+    render(<LeadPricingInfo listing={{ ...listing, tier4_amount: 10000.5, tier4_type: 'fixed' }} details={{}} />);
+    expect(screen.getByText('₪8,000')).toBeTruthy();
+    expect(screen.queryByText(/8,000\.4/)).toBeNull();
   });
   it('does not expose closing gross or split amounts to an unauthorized viewer', () => {
     render(<LeadPricingInfo closingOnly listing={{ ...listing, tier4_amount: 1, tier4_type: 'percent' }} details={{}} />);
