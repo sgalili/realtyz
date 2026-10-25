@@ -353,8 +353,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
                     const open = expandedId === card.id;
                     const toggle = () => {
-                      if (open) { console.log('TOGGLE close'); setExpandedId(null); return; }
-                      console.log('TOGGLE open', card.id, new Error('toggle-stack').stack);
+                      if (open) { setExpandedId(null); return; }
                       setExpandedId(card.id);
                       // Scroll the expanded card's top to the top of the view.
                       // A short delay lets the expansion animation start first,
