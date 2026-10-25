@@ -36,11 +36,11 @@ export function BrokerTestLinks({ className = '' }: { className?: string }) {
 }
 
 /** The nested trigger stops activation of the surrounding listing-pricing control. */
-export function RestrictedClosingReward({ children, className = '', showLabel = true }: { children?: ReactNode; className?: string; showLabel?: boolean }) {
+export function RestrictedClosingReward({ children, className = '', showLabel = true, label = 'למתווכים בלבד', iconStyle }: { children?: ReactNode; className?: string; showLabel?: boolean; label?: string; iconStyle?: CSSProperties }) {
   const [open, setOpen] = useState(false);
   return <>
     <span role="button" tabIndex={0} aria-label="סגירת עסקה · למתווכים בלבד" title="סגירת עסקה" className={`inline-flex cursor-pointer items-center gap-1 text-muted-foreground ${className}`} onClick={event => { event.stopPropagation(); setOpen(true); }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); setOpen(true); } }}>
-      {children ?? <><Trophy aria-label="סגירת עסקה" className="h-3.5 w-3.5 shrink-0" />{showLabel && <span className="text-xs">למתווכים בלבד</span>}</>}
+      {children ?? <><Trophy aria-label="סגירת עסקה" className="h-3.5 w-3.5 shrink-0" style={iconStyle} />{showLabel && <span className="text-xs text-foreground">{label}</span>}</>}
     </span>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent dir="rtl" onClick={event => event.stopPropagation()} className="w-[calc(100%-2rem)] max-w-md">
