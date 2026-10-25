@@ -41,7 +41,7 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     },
   });
   if (networkOpen === false) return null;
-  const source = property ?? raw;
+  const source = owned.data ?? property ?? raw;
   const listing = marketplace.data?.find(row => row.listing_id === listingId);
   // Closing fee may live in the column or only in the wizard's deal_closing_commission; percent converts to ILS.
   const dcc = (source?.features as { deal_closing_commission?: { type?: string; value?: number } } | undefined)?.deal_closing_commission;
@@ -55,8 +55,8 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   };
   const types: RewardTypes = { ...(source?.reward_types as RewardTypes ?? { form: tiers.tier1 > 0, whatsapp: tiers.tier2 > 0, phone: tiers.tier3 > 0 }), closing: !!user && level4Unlocked && tiers.tier4 > 0 };
   const display = tableRoyalties(types, tiers, !!user, level4Unlocked);
-  if (!Object.values(display.types).some(Boolean)) return null;
+  if (!Object.values(display.types).some(Boolean) && !owned.data) return null;
   const icons = <RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={typeof source?.closing_level === 'number' ? source.closing_level : null} />;
-  if (table && owned.data) return <><Button variant="ghost" className="h-auto bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תמלוגים" onClick={event => { event.stopPropagation(); if (owned.data) setDraft({ ...listingToDraft(owned.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{icons}</Button>{draft && <PublicListingPublisher pricingOnly resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
+  if (table && owned.data) return <><Button variant="ghost" className="h-auto bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תמלוגים" onClick={event => { event.stopPropagation(); if (owned.data) setDraft({ ...listingToDraft(owned.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{icons}<span className="sr-only">עריכה</span></Button>{draft && <PublicListingPublisher pricingOnly resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
   return <LeadPricingDialog readOnly rewardTypes={display.types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}><RewardIcons types={display.types} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={typeof source?.closing_level === 'number' ? source.closing_level : null} /></LeadPricingDialog>;
 }
