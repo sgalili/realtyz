@@ -547,6 +547,13 @@
       "when": 1792910121092,
       "tag": "0077_superadmin_select_any_listing",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792912726675,
+      "tag": "0078_notification_weekly_quiet_hours",
+      "breakpoints": true
     }
   ]
 }

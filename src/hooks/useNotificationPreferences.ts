@@ -7,12 +7,12 @@ export type PanelCategory = typeof panelCategories[number];
 export type NotificationPreferences = {
   notify_new_high_priority: boolean; notify_meeting_booked: boolean; notify_critical_question: boolean;
   delivery_channel: string; quiet_hours_start: string | null; quiet_hours_end: string | null;
-  event_channels: Json; panel_preferences: Json;
+  event_channels: Json; panel_preferences: Json; quiet_hours_weekly: Json;
 };
 export const defaultNotificationPreferences: NotificationPreferences = {
   notify_new_high_priority: true, notify_meeting_booked: true, notify_critical_question: true,
   delivery_channel: 'whatsapp', quiet_hours_start: null, quiet_hours_end: null,
-  event_channels: {}, panel_preferences: {},
+  event_channels: {}, panel_preferences: {}, quiet_hours_weekly: null,
 };
 export function panelCategoryEnabled(preferences: NotificationPreferences | undefined, category: PanelCategory) {
   const map = preferences?.panel_preferences;
@@ -38,6 +38,7 @@ export function useNotificationPreferences(enabled = true) {
       delivery_channel: preferences.delivery_channel,
       quiet_hours_start: preferences.quiet_hours_start || null, quiet_hours_end: preferences.quiet_hours_end || null,
       event_channels: preferences.event_channels, panel_preferences: preferences.panel_preferences,
+      quiet_hours_weekly: preferences.quiet_hours_weekly,
     }, { onConflict: 'user_id' }).select().single();
     if (error) throw error;
     return data;

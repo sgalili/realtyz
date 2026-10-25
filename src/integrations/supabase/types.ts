@@ -5697,6 +5697,7 @@ export type Database = {
           panel_preferences: Json
           quiet_hours_end: string | null
           quiet_hours_start: string | null
+          quiet_hours_weekly: Json | null
           updated_at: string
           user_id: string
         }
@@ -5711,6 +5712,7 @@ export type Database = {
           panel_preferences?: Json
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          quiet_hours_weekly?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -5725,6 +5727,7 @@ export type Database = {
           panel_preferences?: Json
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
+          quiet_hours_weekly?: Json | null
           updated_at?: string
           user_id?: string
         }
