@@ -7,11 +7,14 @@ import { publicAdTitle } from '@/lib/publicAdPresentation';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 import { useAuth } from '@/hooks/useAuth';
 import PropertyCommissionIcons from './PropertyCommissionIcons';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export function PublicCardPublisher({ card }: { card: PublicCard }) {
   const { user } = useAuth();
+  const { activeWorkspaceId, loading } = useWorkspace();
   const { data } = useQuery({
-    queryKey: ['public-listing-expanded', card.slug || card.id, user?.id],
+    queryKey: ['public-listing-expanded', card.slug || card.id, user?.id, activeWorkspaceId],
+    enabled: !user || !loading,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(card.slug || card.id)}`, { method: 'GET' });
@@ -25,8 +28,10 @@ export function PublicCardPublisher({ card }: { card: PublicCard }) {
 
 export default function PublicCardSummary({ card, price, showBroker = true, showCommissions = true, dense = false }: { card: PublicCard; price?: string; showBroker?: boolean; showCommissions?: boolean; dense?: boolean }) {
   const { user } = useAuth();
+  const { activeWorkspaceId, loading } = useWorkspace();
   const { data } = useQuery({
-    queryKey: ['public-listing-expanded', card.slug || card.id, user?.id],
+    queryKey: ['public-listing-expanded', card.slug || card.id, user?.id, activeWorkspaceId],
+    enabled: !user || !loading,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(card.slug || card.id)}`, { method: 'GET' });

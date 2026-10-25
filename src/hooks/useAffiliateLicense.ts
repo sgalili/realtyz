@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export type LicenseStatus = 'none' | 'pending' | 'verified' | 'rejected';
 
@@ -47,12 +48,13 @@ const EMPTY: AffiliateLicense = {
 
 export function useAffiliateLicense() {
   const { user } = useAuth();
+  const { activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const queryClient = useQueryClient();
   const closingAccess = useQuery({
-    queryKey: ['partner-closing-access', user?.id, 'official-license-only'],
-    enabled: !!user?.id,
+    queryKey: ['partner-closing-access', user?.id, activeWorkspaceId, 'workspace-official-license'],
+    enabled: !!user?.id && !!activeWorkspaceId && !workspaceLoading,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('partner_can_view_closing', { _user_id: user?.id ?? '' });
+      const { data, error } = await supabase.rpc('can_view_closing_prices', { _workspace_owner_id: activeWorkspaceId });
       if (error) throw error;
       return data === true;
     },
@@ -120,7 +122,7 @@ export function useAffiliateLicense() {
     license,
     isLoading: query.isLoading,
     /** True only for a verified broker license — the gate for level 4 rewards. */
-    level4Unlocked: !!user && !closingAccess.isError && closingAccess.data === true,
+    level4Unlocked: !!user && !!activeWorkspaceId && !workspaceLoading && !closingAccess.isError && closingAccess.data === true,
     submit: submit.mutateAsync,
     isSubmitting: submit.isPending,
     acceptTerms: acceptTerms.mutateAsync,

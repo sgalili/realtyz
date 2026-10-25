@@ -1,5 +1,9 @@
 # Roadmap
 
+## Selected-workspace closing display
+- [x] Allow Super Admin display to follow the authorized selected owner's official broker eligibility, without changing payout eligibility.
+- [x] Refresh entitlement and authenticated redacted property data on workspace switches; 42 focused tests pass. Signed-in Super Admin switched through UI to Udi's workspace (server true, closing prices visible) and back to unlicensed workspace (server false, all broker-only labels restored); build OK.
+
 ## Licensed-only closing display
 - [x] Replaced role-only/Super Admin/test-license closing entitlement with current official registry evidence and server-verified licensing; shared displays fail closed.
 - [x] Gray closing icon and broker-only popup reuse saved course/exam links; 39 focused tests pass, guest and signed-in board popup checked, signed-in server denial confirmed and current build OK.

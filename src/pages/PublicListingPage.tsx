@@ -37,6 +37,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export type PublicListing = {
   id: string | null;
@@ -276,16 +277,14 @@ function PublicListingContent() {
     }
   }, []);
 
+  const { activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const { data: payload, isLoading, isError } = useQuery({
-    queryKey: ['public-listing', slug],
-    enabled: !!slug,
+    queryKey: ['public-listing', slug, user?.id, activeWorkspaceId],
+    enabled: !!slug && (!user || !workspaceLoading),
     retry: 1,
     queryFn: async (): Promise<{ property: PublicListing; properties: PublicListing[]; projectUnits: (PublicListing & { buildingName: string })[] } | null> => {
-      const endpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-listing-view?id=${encodeURIComponent(slug)}`;
-      const response = await fetch(endpoint, { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } });
-      if (response.status === 404) return null;
-      if (!response.ok) throw new Error(`public listing failed: ${response.status}`);
-      const payload = await response.json();
+      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(slug)}`, { method: 'GET' });
+      if (error) throw error;
       if (!payload?.property) return null;
       const workspaceProperties = Array.isArray(payload.workspace_properties) ? payload.workspace_properties : [];
       return {
