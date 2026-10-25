@@ -10,6 +10,9 @@ import { PUBLIC_CARD_COLUMNS, toPublicCard } from "../_shared/publicMask.ts";
 import { isFeedEligible, meetsBoardRules, boardPublisherName, publisherDisplayKind, closingRewardLevel, privatePublisherAvatar } from '../_shared/publicListingVisibility.ts';
 import { verifiedSourceLicense } from '../_shared/yad2Publisher.ts';
 
+// Coarse 0-3 lead price level matching the publisher sliders; reveals no amount.
+const LEAD_RANGES = { form: [40, 150], whatsapp: [50, 200], phone: [80, 250] } as const;
+const leadLevel = (key: keyof typeof LEAD_RANGES, value: unknown) => { const v = Number(value); if (!(v > 0)) return null; const [min, max] = LEAD_RANGES[key]; return Math.min(3, Math.floor((Math.min(max, Math.max(min, v)) - min) / (max - min) * 4)); };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -109,7 +112,7 @@ Deno.serve(async (req) => {
       const base = attribution(row);
       const name = boardPublisherName(base.broker_name, base.publisher_kind);
       if (!meetsBoardRules(row, name)) return [];
-      return [{ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true, closing_level: closingRewardLevel(row.features?.deal_closing_commission?.value ?? row.affiliate_tier4_amount, row.features?.deal_closing_commission?.type ?? row.affiliate_tier4_type, row.deal_type, row.asking_price), attribution: { ...base, broker_name: name } }];
+      return [{ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true, reward_levels: { form: leadLevel('form', row.affiliate_tier1_amount), whatsapp: leadLevel('whatsapp', row.affiliate_tier2_amount), phone: leadLevel('phone', row.affiliate_tier3_amount) }, closing_level: closingRewardLevel(row.features?.deal_closing_commission?.value ?? row.affiliate_tier4_amount, row.features?.deal_closing_commission?.type ?? row.affiliate_tier4_type, row.deal_type, row.asking_price), attribution: { ...base, broker_name: name } }];
     });
     return json({ properties, has_more: rows.length === limit });
   } catch (error) {

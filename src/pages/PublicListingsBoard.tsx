@@ -392,7 +392,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           </div>
                           ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></div>
                           : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}{card.deal_type === 'rent' && card.price ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</span>
-                          : id === 'commissions' ? <PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types, closing_level: card.closing_level }} />
+                          : id === 'commissions' ? <PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types, closing_level: card.closing_level, reward_levels: (card as { reward_levels?: unknown }).reward_levels }} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
