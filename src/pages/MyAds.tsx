@@ -125,7 +125,10 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
   const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = useExclusiveExpansion(`my-ads:${activeWorkspaceId}`, `${r.relation}:${r.listing_id}`);
   const title = [r.address, r.city].filter(Boolean).join(', ') || r.title || 'נכס';
-  return <article className="min-w-0 py-3" data-my-ad={r.listing_id}>
+  return <article className="relative min-w-0 py-3" data-my-ad={r.listing_id}>
+    <div className="absolute top-3 end-0 z-10">
+      <AdActions row={r} owned={owned} title={title} />
+    </div>
     <div className="flex min-w-0 gap-3">
       <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted" aria-label={title}>
         {r.image_url ? <img src={r.image_url} alt={title} loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}
