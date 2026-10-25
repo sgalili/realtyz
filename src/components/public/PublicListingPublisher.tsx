@@ -12,6 +12,7 @@ import { PropertyAmenitiesFields } from './PropertyAmenitiesFields';
 import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propertyFormOptions';
 import { LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
 import { enableLeadPrice } from '@/lib/enableLeadPrice';
+import { commitPricingEdit } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
@@ -522,21 +523,26 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     if (pricingOnly) {
       if (!user || !activeWorkspaceId || !fields.listingId || !(Number(fields.commissionDeal) > 0)) return;
       setPublishing(true);
-      try {
-        const pricing = draftPricingPayload(fields, imported?.contact_options ?? fields.importedListing?.contact_options ?? {});
-        const { error } = await supabase.from('listings').update({
-          ...pricing, asking_price: Number(fields.price),
-          features: { ...(fields.importedListing?.features && !Array.isArray(fields.importedListing.features) ? fields.importedListing.features : { amenity_labels: fields.importedListing?.features ?? [] }), ...pricing.features },
-        }).eq('id', fields.listingId).eq('workspace_owner_id', activeWorkspaceId).select('id').single();
-        if (error) throw error;
-        // The save is committed: report it and dismiss the editor before touching caches,
-        // so a background refetch failure can never leave a successfully saved dialog open.
-        toast.success('התמלוגים נשמרו'); setOpen(false); onRecovered?.();
-        void queryClient.invalidateQueries({ queryKey: ['public-commission-pricing'] });
-        void queryClient.invalidateQueries({ queryKey: ['public-listing-expanded'] });
-        void queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
-      } catch { toast.error('לא ניתן לשמור את התמלוגים'); }
-      finally { setPublishing(false); }
+      const outcome = await commitPricingEdit({
+        commit: async () => {
+          const pricing = draftPricingPayload(fields, imported?.contact_options ?? fields.importedListing?.contact_options ?? {});
+          const { error } = await supabase.from('listings').update({
+            ...pricing, asking_price: Number(fields.price),
+            features: { ...(fields.importedListing?.features && !Array.isArray(fields.importedListing.features) ? fields.importedListing.features : { amenity_labels: fields.importedListing?.features ?? [] }), ...pricing.features },
+          }).eq('id', fields.listingId).eq('workspace_owner_id', activeWorkspaceId).select('id').single();
+          if (error) throw error;
+        },
+        // The write is committed: confirm and dismiss the editor before caches refresh,
+        // so a failing background refresh can never leave an already-saved dialog open.
+        onCommitted: () => { toast.success('התמלוגים נשמרו'); setOpen(false); onRecovered?.(); },
+        refresh: () => Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['public-commission-pricing'] }),
+          queryClient.invalidateQueries({ queryKey: ['public-listing-expanded'] }),
+          queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] }),
+        ]),
+      });
+      if (!outcome.committed) toast.error('לא ניתן לשמור את התמלוגים');
+      setPublishing(false);
       return;
     }
     const missing = missingAdFields(fields);
