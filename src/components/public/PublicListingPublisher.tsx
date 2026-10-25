@@ -1,6 +1,9 @@
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
+import { pricingCardComplete } from '@/lib/pricingCardSummary';
+import { formatRentalPrice } from '@/lib/propertyPrice';
+import { fmtILS } from '@/lib/formatCurrency';
 import type { RewardTypes } from '@/components/affiliate/CommissionTierBadges';
 import Terms from '@/pages/Terms';
 import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
@@ -715,7 +718,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       case 5: return Boolean(f.sqm || f.builtSqm);
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
       case 7: return Boolean(f.contactName?.trim().split(/\s+/).length >= 2 && f.contactWhatsapp.replace(/\D/g, '').length >= 9);
-      case 8: return Boolean(Number(f.price) > 0 && f.commissionTermsAccepted);
+      case 8: return pricingCardComplete(f);
       default: return false;
     }
   };
@@ -877,7 +880,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="pricing-editor space-y-3">
-              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><span className="flex items-center justify-self-center gap-[5px]"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-16 w-auto min-w-[9rem] px-3 text-center text-3xl font-bold placeholder:text-lg sm:text-4xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span><Button type="button" variant="ghost" size="icon" className="h-12 w-12 shrink-0 justify-self-end text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התמלוגים' : 'הרחב את כל כרטיסי התמלוגים'} title={allExpanded ? 'כווץ את כל כרטיסי התמלוגים' : 'הרחב את כל כרטיסי התמלוגים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-7 w-7 transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button></div>
+              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><span className="flex items-center justify-self-center gap-[5px]"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-20 w-auto min-w-[9rem] px-3 text-center text-4xl font-bold placeholder:text-lg md:text-5xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span><Button type="button" variant="ghost" size="icon" className="h-12 w-12 shrink-0 justify-self-end text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התמלוגים' : 'הרחב את כל כרטיסי התמלוגים'} title={allExpanded ? 'כווץ את כל כרטיסי התמלוגים' : 'הרחב את כל כרטיסי התמלוגים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-7 w-7 transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button></div>
               <div className="space-y-4 text-base">
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
@@ -893,7 +896,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   <Card key={key} className="closing-fee space-y-2 rounded-2xl p-4" data-level={leadPriceLevel(tier, price)}>
                     <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex min-w-0 flex-1 basis-56 items-center gap-1 self-center font-medium">
                       <Button type="button" variant="ghost" className="h-auto justify-start gap-3 whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>
-                        {key === 'Form' ? <LeadFormIcon className="h-[27px] w-[27px] shrink-0 closing-tone" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="h-[27px] w-[27px] shrink-0 closing-tone" aria-hidden /> : <LeadPhoneIcon className="h-[27px] w-[27px] shrink-0 closing-tone" aria-hidden />}
+                        {key === 'Form' ? <LeadFormIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden /> : <LeadPhoneIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden />}
                         {label}
                       </Button>
                       <LeadTypeHelp label={label}>
@@ -1002,7 +1005,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   <AccordionTrigger className="gap-3 px-4 text-start hover:no-underline">
                     <span className="flex min-w-0 flex-1 items-center gap-3">
                       <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i} מתוך 8`}>{i}</span>
-                      <span className={cn("min-w-0 flex-1", expandedStep === `step-${i}` && "font-bold")}>{title}</span>
+                      <span className={cn("min-w-0 flex-1", expandedStep === `step-${i}` && "font-bold")}>{title}{i === 8 && expandedStep !== 'step-8' && Number(fields.price) > 0 && <span className="mt-2 block space-y-1" aria-live="polite"><span className={cn('block text-xl font-bold', fields.dealType === 'rent' ? 'text-sale' : 'text-success')}>{formatRentalPrice(fields.price, fields.dealType)}</span><span className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">{LEAD_TYPES.map(({ key, tier }) => <span key={key}>{tier === 'form' ? 'טופס' : tier === 'whatsapp' ? 'ווטסאפ' : 'טלפון'}: {Number(fields[`commission${key}`]) > 0 ? fmtILS(Number(fields[`commission${key}`])) : 'ללא עמלה'}</span>)}<span>סגירה: {fields.commissionDealType === 'fixed' ? fmtILS(Number(fields.commissionDeal)) : `${Number(fields.commissionDeal) || 0}%`}</span></span></span>}</span>
                       <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : <>חסרים פרטים<span className="text-destructive"> *</span></>}</span>
                     </span>
                   </AccordionTrigger>

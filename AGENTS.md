@@ -23,7 +23,7 @@
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
 - Publisher numbering excludes setup; preserves keys and resolved addresses; ignores stale searches.
 - Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state and consistent counts without tenant drift or duplicate legal content.
-- Publisher lead-price controls reuse shared bounds/colors and potential estimates; disabled fees hide settings without clearing limits/questions. Closing dual-mode callbacks persist both value and unit without changing legacy editors. Why: avoid unintended charges or fee conversions.
+- Public publisher pricing rules: read src/components/public/AGENTS.md before changes.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
 - Peer expansions use exclusive motion groups.
