@@ -1,4 +1,5 @@
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
+import { CampaignChannelPicker, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
@@ -7508,7 +7509,7 @@ const DraftCollapsibleCard = ({
 /* ───────────── Page ───────────── */
 
 const CampaignCenter = () => {
-  const { data: distributionPrices = [] } = useCampaignPricing();
+  const [wizardChannel, setWizardChannel] = useState<DistributionChannel | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   // Live status per collapsed draft card (keyed by composer instanceId).
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
@@ -7534,6 +7535,7 @@ const CampaignCenter = () => {
     ({ none: 'ללא', daily: 'יומי', weekly: 'שבועי', monthly: 'חודשי', custom: 'מותאם' } as const)[r];
 
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  useEffect(() => { setWizardChannel(null); }, [workspaceOwnerId]);
   const [repostRequest, setRepostRequest] = useState<RepostEditorRequest | null>(null);
   useEffect(() => {
     setRepostRequest(null);
@@ -8369,6 +8371,7 @@ const CampaignCenter = () => {
   };
 
   const handleChange = (value: string) => {
+    setWizardChannel(null);
     const next = new URLSearchParams(searchParams);
     const freshCompose = value === 'create'
       && active !== 'create'
@@ -8378,6 +8381,20 @@ const CampaignCenter = () => {
     if (freshCompose) resetComposerForNewPost();
     next.set('tab', value);
     next.delete('sub');
+    setSearchParams(next, { replace: true });
+  };
+
+  const selectWizardChannel = (channel: DistributionChannel) => {
+    setWizardChannel(channel);
+    const next = new URLSearchParams(searchParams);
+    next.set('channel', channel);
+    next.set('tab', channel === 'facebook' ? 'create' : 'broadcast');
+    if (channel === 'facebook') {
+      const facebook = CHANNEL_CARDS.find((card) => card.id === 'facebook');
+      if (facebook) setPickedChannel(facebook);
+      setPickedChannelIds(new Set(['facebook']));
+    }
+    if (channel === 'ivr') setIvrOpen(true);
     setSearchParams(next, { replace: true });
   };
 
@@ -8667,15 +8684,10 @@ const CampaignCenter = () => {
       )}
 
 
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        {['sms', 'ivr', 'whatsapp'].map((channel) => {
-          const price = campaignServicePrice(channel, distributionPrices);
-          return <Button key={channel} variant="ghost" className="h-auto gap-2 px-2 py-1" onClick={() => {
-            if (channel === 'ivr') { setIvrOpen(true); return; }
-            const next = new URLSearchParams(searchParams); next.set('tab', 'broadcast'); next.set('channel', channel); setSearchParams(next);
-          }}><CampaignServiceIcon channel={channel} /><span className="text-xs">{channel === 'whatsapp' ? 'WhatsApp הרשמי' : channel.toUpperCase()}<span className="block text-[10px] font-normal text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span></span></Button>;
-        })}
-      </div>
+      {(active === 'create' || active === 'broadcast') && <CampaignChannelPicker
+        selected={wizardChannel} onSelect={selectWizardChannel}
+        onBack={() => setWizardChannel(null)}
+      />}
       <Tabs value={active} onValueChange={handleChange} className="w-full">
         {/* Sub-tabs intentionally hidden — primary view is the published feed,
             and the "+" button in the page hero toggles the composer panel. */}
@@ -8686,9 +8698,11 @@ const CampaignCenter = () => {
         </TabsList>
 
 
-        <TabsContent value="broadcast" className="mt-6"><SmsBlastSimulator onIvrOpen={() => setIvrOpen(true)} /></TabsContent>
+        <TabsContent value="broadcast" className="mt-6">
+          {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
+        </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
-          <FacebookCloudConnectGate />
+          {wizardChannel === 'facebook' && <FacebookCloudConnectGate />}
           
           <div hidden aria-hidden="true">
           <ChannelGrid
@@ -8728,7 +8742,7 @@ const CampaignCenter = () => {
             onAddFacebookPage={() => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!); }}
           />
           </div>
-          {pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
+          {wizardChannel === 'facebook' && pickedChannel && pickedChannelIds.has(pickedChannel.id) && (() => {
             const propertiesParam = searchParams.get('properties') || '';
             let propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
             let assignments: ComposerAssignment[] = [];
@@ -9249,7 +9263,7 @@ const CampaignCenter = () => {
         onClose={() => setVoiceDialChannel(null)}
         channel={voiceDialChannel}
       />
-      <IvrBroadcastDialog open={ivrOpen} onClose={() => setIvrOpen(false)} />
+      <IvrBroadcastDialog open={ivrOpen} onClose={() => { setIvrOpen(false); if (wizardChannel === 'ivr') setWizardChannel(null); }} />
       <EmailAliasSetupDialog
         open={emailSetupOpen}
         onClose={() => setEmailSetupOpen(false)}
