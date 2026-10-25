@@ -277,7 +277,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
           {listing.addressForMap && <p className="mb-2 text-sm font-medium text-foreground">{listing.addressForMap}</p>}
           <div className="relative overflow-hidden rounded-xl border">
             <iframe title="מפת הנכס" src={embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-56 w-full border-0" />
-            <div className="absolute bottom-2 left-2 flex flex-col gap-1">
+            <div className="absolute left-2 top-2 flex flex-col gap-1">
               <a href={wazeUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 rounded-md border bg-card px-2 py-0.5 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted">
                 <Navigation className="h-3.5 w-3.5 text-primary" />ניווט בוויז
               </a>
