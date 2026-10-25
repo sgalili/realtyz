@@ -64,6 +64,9 @@ export default function PropertyContactActions({
   const showPhone = !shareOnly && settings.phone === true;
   const showDigital = !shareOnly && settings.digital === true && (formAsButton || (!showWhatsapp && !showPhone));
   const [formOpen, setFormOpen] = useState(false);
+  // In cards the lead form expands above the action row; push the WhatsApp and
+  // phone buttons down so they never sit next to the form's send button.
+  const formExpanded = showDigital && formAsButton && formOpen;
   const [mode, setMode] = useState<'digital' | 'phone' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -195,7 +198,7 @@ export default function PropertyContactActions({
           </form>
         )}
         {showWhatsapp && (
-          <Button className="min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90 text-base" onClick={openRita}>
+          <Button className={cn('min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90 text-base', formExpanded && 'mt-[30px]')} onClick={openRita}>
             <>
               {/* RTL: Rita's picture sits before the label, WA logo on the opposite (left) side. */}
               <RitaAvatar className="h-6 w-6 border-0 ring-0" />
@@ -205,7 +208,7 @@ export default function PropertyContactActions({
           </Button>
         )}
         {showPhone && (
-          <Button variant="outline" className="min-w-[8rem] flex-1 text-base" onClick={() => setMode('phone')}>
+          <Button variant="outline" className={cn('min-w-[8rem] flex-1 text-base', formExpanded && 'mt-[30px]')} onClick={() => setMode('phone')}>
             <Phone className="h-4 w-4" />חייגו אליי
           </Button>
         )}
