@@ -1,6 +1,6 @@
 import { Award, Building2, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type BrokerAttributionProps = {
   brokerName?: string | null;
@@ -34,18 +34,18 @@ export default function BrokerAttribution({
 
   return (
     <div data-publisher-attribution className={`flex min-w-0 items-center gap-2 ${table ? '' : 'border-y bg-muted/30'} ${compact ? 'px-2 py-2' : 'px-4 py-3'}`}>
-      {isPrivate ? <Avatar className={compact ? 'h-9 w-9' : 'h-12 w-12'}><AvatarFallback><UserRound className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" /></AvatarFallback></Avatar> : <div className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
-        {logoUrl && !isPrivate ? (
+      {isPrivate ? <Avatar className={compact ? 'h-9 w-9' : 'h-12 w-12'}>{logoUrl && <AvatarImage src={logoUrl} alt={broker} className="object-cover" />}<AvatarFallback><UserRound className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" /></AvatarFallback></Avatar> : <div className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
+        {logoUrl ? (
           <img src={logoUrl} alt={`לוגו ${office}`} loading="lazy" className="h-full w-full object-contain p-1" />
         ) : (
-          isPrivate ? <UserRound className="h-6 w-6 fill-muted-foreground/20 text-muted-foreground drop-shadow-sm" strokeWidth={1.5} aria-hidden="true" /> : <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         )}
       </div>}
       <div className="min-w-0 flex-1 text-right">
         <p title={broker || 'מפרסם המודעה'} className={`${compact ? 'text-xs' : 'text-sm'} whitespace-normal break-words font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
         {(isPrivate || office || license) && <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
           {isPrivate && <span>{dealType === 'rent' ? 'משכיר פרטי' : dealType === 'sale' ? 'מוכר פרטי' : 'מפרסם פרטי'}</span>}
-          {office && office !== 'מפרסם פרטי' && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
+          {!isPrivate && office && office !== 'מפרסם פרטי' && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
           {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {license}</span>}
         </div>}
       </div>
