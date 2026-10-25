@@ -1381,7 +1381,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
           <AlertDialogHeader>
             <AlertDialogTitle>מחיקת תגובה</AlertDialogTitle>
             <AlertDialogDescription>
-              התגובה וכל תגובות ההמשך שלה יימחקו גם מהפוסט בפייסבוק. להמשיך?
+              התגובה וכל תגובות ההמשך שלה יימחקו גם מהקמפיין בפייסבוק. להמשיך?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

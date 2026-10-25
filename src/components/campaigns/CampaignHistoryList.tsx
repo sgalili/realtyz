@@ -57,7 +57,7 @@ export function CampaignHistoryList() {
     return <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
   if (rows.length === 0) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים בהיסטוריה</p>;
+    return <p className="py-12 text-center text-sm text-muted-foreground">אין קמפיינים בהיסטוריה</p>;
   }
 
   return (
@@ -73,7 +73,7 @@ export function CampaignHistoryList() {
             {img ? <img src={img} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" loading="lazy" /> : null}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold">{(r.message_body || '').trim().split('\n')[0] || r.campaign_name || 'פוסט'}</p>
+                <p className="font-semibold">{(r.message_body || '').trim().split('\n')[0] || r.campaign_name || 'קמפיין'}</p>
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${failed ? 'bg-destructive/10 text-destructive' : 'bg-emerald-500/10 text-emerald-700'}`}>
                   {STATUS_LABEL[String(r.status)] ?? r.status}
                 </span>

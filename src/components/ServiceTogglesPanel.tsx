@@ -10,7 +10,7 @@ const SERVICES = [
   { key: 'ai_voice', label: 'שיחות AI (Touchpoint)', desc: 'בוט קולי שמתקשר ללידים חמים', icon: Phone },
   { key: 'whatsapp', label: 'WhatsApp', desc: 'שליחה וקבלה דרך הערוץ העסקי המחובר', icon: MessageSquare },
   { key: 'sms', label: 'SMS Blast', desc: 'משלוח המוני דרך ספק ההודעות המחובר', icon: Radio },
-  { key: 'ai_content', label: 'מחולל תוכן AI', desc: 'יצירת פוסטים, סלוגנים ותגובות', icon: Sparkles },
+  { key: 'ai_content', label: 'מחולל תוכן AI', desc: 'יצירת קמפיינים, סלוגנים ותגובות', icon: Sparkles },
   { key: 'meta_ads', label: 'סנכרון Meta Ads', desc: 'העברת קהלים לפייסבוק/אינסטגרם', icon: Megaphone },
   { key: 'omnichannel_inbox', label: 'תיבת Omnichannel', desc: 'איחוד כל הערוצים לתיבה אחת', icon: Inbox },
 ];

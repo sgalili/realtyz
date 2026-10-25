@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { campaignServiceEstimate, campaignServicePrice, formatCampaignCredits } from './campaignServicePricing';
 const prices = [
-  { action_key: 'social_post', label_he: 'יצירת פוסט', unit_he: 'פוסט', price_agorot: 8 },
+  { action_key: 'social_post', label_he: 'יצירת קמפיין', unit_he: 'קמפיין', price_agorot: 8 },
   { action_key: 'sms', label_he: 'SMS', unit_he: 'הודעה', price_agorot: 4 },
   { action_key: 'whatsapp_marketing', label_he: 'WhatsApp', unit_he: 'הודעה', price_agorot: 20 },
   { action_key: 'ai_call_minute', label_he: 'IVR', unit_he: 'דקה', price_agorot: 40 },

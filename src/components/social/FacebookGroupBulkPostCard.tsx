@@ -143,7 +143,7 @@ export const FacebookGroupBulkPostCard = () => {
    */
   const schedule = async () => {
     if (!message.trim()) {
-      toast.error('יש לכתוב תוכן לפוסט');
+      toast.error('יש לכתוב תוכן לקמפיין');
       return;
     }
     if (selected.size === 0) {
@@ -194,7 +194,7 @@ export const FacebookGroupBulkPostCard = () => {
       }
       const { error } = await (supabase as any).from('campaign_activity_queue').insert(rows);
       if (error) throw error;
-      toast.success(`תוזמנו ${rows.length} פוסטים לקבוצות`, {
+      toast.success(`תוזמנו ${rows.length} קמפיינים לקבוצות`, {
         description: when.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }),
       });
       setSelected(new Set());
@@ -212,7 +212,7 @@ export const FacebookGroupBulkPostCard = () => {
   // broker's own Facebook session.
   const publish = async () => {
     if (!message.trim()) {
-      toast.error('יש לכתוב תוכן לפוסט');
+      toast.error('יש לכתוב תוכן לקמפיין');
       return;
     }
     if (selected.size === 0) {
@@ -250,11 +250,11 @@ export const FacebookGroupBulkPostCard = () => {
     setSending(false);
     setProgress(null);
     if (queued > 0) {
-      toast.success(`${queued} פוסטים נוספו לתור הפרסום`, {
+      toast.success(`${queued} קמפיינים נוספו לתור הפרסום`, {
         description: 'ההתקדמות תתעדכן לאחר אישור הפרסום בפייסבוק.',
       });
     } else {
-      toast.error('לא נוספו פוסטים לתור הפרסום');
+      toast.error('לא נוספו קמפיינים לתור הפרסום');
     }
   };
 
@@ -266,13 +266,13 @@ export const FacebookGroupBulkPostCard = () => {
           פרסום מרוכז לקבוצות פייסבוק
         </CardTitle>
         <CardDescription className="text-xs">
-          כתיבת פוסט אחד (טקסט, תמונה וקישור לנכס) ושליחתו בו-זמנית לכל הקבוצות שנבחרו
+          כתיבת קמפיין אחד (טקסט, תמונה וקישור לנכס) ושליחתו בו-זמנית לכל הקבוצות שנבחרו
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label className="text-xs">תוכן הפוסט</Label>
+          <Label className="text-xs">תוכן הקמפיין</Label>
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -350,7 +350,7 @@ export const FacebookGroupBulkPostCard = () => {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-medium">{g.group_name}</span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground" dir="rtl">
-                      <span>פוסטים: <span className="font-semibold text-foreground" dir="ltr">{m.posts}</span></span>
+                      <span>קמפיינים: <span className="font-semibold text-foreground" dir="ltr">{m.posts}</span></span>
                       <span>אושרו: <span className="font-semibold text-emerald-600" dir="ltr">{m.published}</span></span>
                       <span className="inline-flex items-center gap-0.5"><Eye className="h-3 w-3" /><span dir="ltr">{m.views}</span></span>
                       <span className="inline-flex items-center gap-0.5"><MessageCircle className="h-3 w-3" /><span dir="ltr">{m.comments}</span></span>

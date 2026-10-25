@@ -142,7 +142,7 @@ export default function DeveloperDashboard() {
   const publishProject = (project: DeveloperProject, key?: string) => { if (confirm(key ? 'לפרסם את היחידה בלוח הציבורי?' : 'לפרסם את הפרויקט וכל היחידות בלוח הציבורי?')) publish.mutate({ project, key }); };
   const actions = (p: DeveloperProject) => <div className="flex items-center gap-1" onClick={event => event.stopPropagation()}>
     <Button size="sm" variant="outline" disabled={publish.isPending} title="קידום הפרויקט בלוח הציבורי" onClick={() => { const errors = projectCommissionErrors(p); if (errors.length) { toast.error(`לפני פרסום יש להשלים: ${[...new Set(errors)].slice(0, 6).join(' · ')}`); openPricing(p); return; } publishProject(p); }}><Globe className="h-4 w-4" />פרסום בלוח</Button>
-    <Button size="icon-sm" variant="ghost" aria-label={`יצירת פוסט ${p.name}`} title="יצירת פוסט" onClick={() => navigate(`/campaigns?tab=create&listing=${encodeURIComponent(`project:${p.id}`)}&fresh=1`)}><Megaphone /></Button>
+    <Button size="icon-sm" variant="ghost" aria-label={`יצירת קמפיין ${p.name}`} title="יצירת קמפיין" onClick={() => navigate(`/campaigns?tab=create&listing=${encodeURIComponent(`project:${p.id}`)}&fresh=1`)}><Megaphone /></Button>
     <Button size="icon-sm" variant="ghost" aria-label={`הגדרת עמלות ${p.name}`} title="עמלות ומגבלות" onClick={() => openPricing(p)}><Settings2 /></Button>
     <Button size="icon-sm" variant="ghost" aria-label="עריכת פרויקט" title="עריכת פרויקט" onClick={() => { setEditing(p); setMode('manual'); }}><Pencil /></Button>
     {p.source_url && <Button asChild size="icon-sm" variant="ghost"><a href={p.source_url} target="_blank" rel="noopener noreferrer" aria-label="עמוד הפרויקט ביד2" title="עמוד הפרויקט ביד2"><ExternalLink /></a></Button>}

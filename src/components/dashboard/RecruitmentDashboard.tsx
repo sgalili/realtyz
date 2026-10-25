@@ -143,7 +143,7 @@ export function RecruitmentDashboard() {
             label="פרסומים בחודש"
             value={publishedPosts ?? 0}
             loading={loadingPosts}
-            tooltip="פוסטים ופרסומים שיצאו בשלושים הימים האחרונים."
+            tooltip="קמפיינים ופרסומים שיצאו בשלושים הימים האחרונים."
             to="/campaigns"
           />
         </div>
@@ -162,7 +162,7 @@ export function RecruitmentDashboard() {
           </Button>
           <Button className="h-auto justify-start py-3" variant="outline" onClick={() => navigate('/campaigns')}>
             <Megaphone className="me-2 h-4 w-4 text-orange-500" />
-            פרסום פוסט חדש
+            פרסום קמפיין חדש
           </Button>
           <Button className="h-auto justify-start py-3" variant="outline" onClick={() => navigate('/inbox')}>
             <MessageCircle className="me-2 h-4 w-4 text-cyan-600" />

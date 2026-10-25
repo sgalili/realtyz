@@ -193,7 +193,7 @@ export function WhatsAppConversationImporter() {
         </CardTitle>
         <CardDescription>
           העלו ייצוא צ'אט WhatsApp (.txt או .zip). קבצי מדיה מתוך ה-ZIP נשמרים אוטומטית בספריית המדיה
-          לשימוש בפוסטים והודעות ישירות.
+          לשימוש בקמפיינים והודעות ישירות.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

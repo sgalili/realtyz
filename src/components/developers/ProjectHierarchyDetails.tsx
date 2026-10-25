@@ -27,7 +27,7 @@ function UnitDetails({ units, project, onPublish, onPost }: { units: ProjectUnit
       <AccordionContent className="space-y-3">
         <DeveloperCommissionBadges project={project} unit={unit} />
         {onPublish && <Button variant="outline" disabled={projectCommissionErrors(project, unit).length > 0} onClick={() => onPublish(unit)}>פרסום היחידה בלוח</Button>}
-        {onPost && <Button variant="outline" onClick={() => onPost(unit)}>יצירת פוסט ליחידה</Button>}
+        {onPost && <Button variant="outline" onClick={() => onPost(unit)}>יצירת קמפיין ליחידה</Button>}
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           {([['מרפסת (מ״ר)', unit.balcony_sqm], ['חניות', unit.parking], ['מספר יחידות', unit.count], ['זמינות', unit.availability ?? unit.status], ['מועד מסירה', unit.delivery_date ?? unit.deliveryDate], ['תיאור', unit.description], ['מפרט', unit.specifications ?? sourceRecord(unit.source_details).specifications], ['מאפיינים', unit.features ?? unit.amenities]] as const).filter(([, value]) => labelValue(value)).map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="break-words whitespace-pre-line font-medium">{labelValue(value)}</dd></div>)}
         </dl>

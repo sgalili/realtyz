@@ -306,7 +306,7 @@ export type ExtensionProgress = {
 const STAGE_META: Record<ExtensionStage, { label: string; percent: number }> = {
   queued: { label: "⏳ בתור", percent: 8 },
   navigating: { label: "🔄 ניווט לקבוצה", percent: 35 },
-  writing: { label: "✍️ כותב פוסט", percent: 60 },
+  writing: { label: "✍️ כותב קמפיין", percent: 60 },
   commenting: { label: "💬 מוסיף תגובה ראשונה", percent: 85 },
   completed: { label: "✅ פורסם בהצלחה", percent: 100 },
   failed: { label: "❌ שגיאה", percent: 100 },

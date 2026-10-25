@@ -164,7 +164,7 @@ export function FirstTimeSyncDialog() {
           <div className="space-y-2">
             {([
               ['autoPost', 'פרסום אוטומטי', 'פרסום תוכן שאושר בערוצים המחוברים'],
-              ['leadGeneration', 'יצירת לידים', 'קליטת פניות מפוסטים וקמפיינים'],
+              ['leadGeneration', 'יצירת לידים', 'קליטת פניות מקמפיינים וקמפיינים'],
               ['leadWarming', 'חימום לידים', 'ריטה ממשיכה שיחה ומקדמת להתאמה'],
               ['propertyFilter', 'סינון נכסים', 'הכנסת נכסים מתאימים למשפך בלבד'],
             ] as const).map(([key, title, description]) => <div key={key} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{description}</p></div><Switch checked={settings[key]} onCheckedChange={(checked) => setSettings((current) => ({ ...current, [key]: checked }))} /></div>)}

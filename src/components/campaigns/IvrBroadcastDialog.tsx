@@ -336,7 +336,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       if (l?.rooms) facts.push(`${l.rooms} חדרים`);
       if (l?.sqm) facts.push(`${l.sqm} מ"ר`);
       if (l?.asking_price) facts.push(`מחיר ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
-      const topic = `כתוב הודעת מכירה קולית חד-צדדית קצרה למי שמתעניין בנכס הזה בלבד, 2-4 משפטים עד כ-35 שניות בהקראה. עובדות: ${l ? facts.join(', ') : 'הודעה כללית בלבד ללא פרטי נכס מומצאים. כוונת המשתמש: ' + ttsText.trim().slice(0, 1500)}. ללא אימוג׳ים, עיצוב פוסט, חתימה, טלפון, רישיון או מלל מיותר. סיים בהזמנה קצרה לתיאום ביקור, ללא שאלות או הוראות ללחיצה על מקש. וריאציה חדשה ${crypto.randomUUID()}: שנה את הפתיחה והניסוח אך לא את העובדות. אין לחזור על התסריט הקודם: ${lastAutoScriptRef.current.slice(0, 700)}`;
+      const topic = `כתוב הודעת מכירה קולית חד-צדדית קצרה למי שמתעניין בנכס הזה בלבד, 2-4 משפטים עד כ-35 שניות בהקראה. עובדות: ${l ? facts.join(', ') : 'הודעה כללית בלבד ללא פרטי נכס מומצאים. כוונת המשתמש: ' + ttsText.trim().slice(0, 1500)}. ללא אימוג׳ים, עיצוב קמפיין, חתימה, טלפון, רישיון או מלל מיותר. סיים בהזמנה קצרה לתיאום ביקור, ללא שאלות או הוראות ללחיצה על מקש. וריאציה חדשה ${crypto.randomUUID()}: שנה את הפתיחה והניסוח אך לא את העובדות. אין לחזור על התסריט הקודם: ${lastAutoScriptRef.current.slice(0, 700)}`;
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: { topic, platform: 'ivr', selectedListingId: l?.id, listingFocusOnly: !!l },
       });

@@ -1,4 +1,4 @@
-// Partner-only "פוסטים" screen: every post the partner published to pages and
+// Partner-only "קמפיינים" screen: every post the partner published to pages and
 // groups, with engagement, Rita's automated first comment and campaign status.
 import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,7 +54,7 @@ function Metric({ icon: Icon, value, label, tone }: {
 }
 
 function PostCard({ post }: { post: PartnerPost }) {
-  const channel = PARTNER_CHANNEL_LABELS[(post.channel || '').toLowerCase()] || post.channel || 'פוסט';
+  const channel = PARTNER_CHANNEL_LABELS[(post.channel || '').toLowerCase()] || post.channel || 'קמפיין';
   const status = PARTNER_POST_STATUS_LABELS[(post.status || '').toLowerCase()] || post.status || '';
   const groups = groupCount(post.group_ids);
   return (
@@ -139,7 +139,7 @@ export default function PartnerPosts() {
     <div className="mx-auto w-full max-w-3xl space-y-3" dir="rtl">
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: 'פוסטים', value: posts.length, tone: 'text-violet-700', bg: 'bg-violet-50' },
+          { label: 'קמפיינים', value: posts.length, tone: 'text-violet-700', bg: 'bg-violet-50' },
           { label: 'תגובות', value: totals.comments, tone: 'text-sky-700', bg: 'bg-sky-50' },
           { label: 'לייקים', value: totals.likes, tone: 'text-rose-700', bg: 'bg-rose-50' },
         ].map((k) => (
@@ -156,7 +156,7 @@ export default function PartnerPosts() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="חיפוש פוסט"
+            placeholder="חיפוש קמפיין"
             className="pe-9 text-[14px]"
           />
         </div>
@@ -179,7 +179,7 @@ export default function PartnerPosts() {
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
             <Send className="h-6 w-6 text-slate-400" />
-            <p className="text-[14px] text-slate-600">אין פוסטים להצגה כרגע.</p>
+            <p className="text-[14px] text-slate-600">אין קמפיינים להצגה כרגע.</p>
           </CardContent>
         </Card>
       ) : (

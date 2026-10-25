@@ -12,8 +12,8 @@ it('captures a scoped Facebook rejection notice', () => {
   expect(reason()).toContain('group_post_rejected:');
 });
 it('captures Hebrew post rejection with the source reason', () => {
-  document.body.innerHTML = '<div role="status">הפוסט שלך נדחה בגלל כללי הקבוצה</div>';
-  expect(reason()).toBe('group_post_rejected: הפוסט שלך נדחה בגלל כללי הקבוצה');
+  document.body.innerHTML = '<div role="status">הקמפיין שלך נדחה בגלל כללי הקבוצה</div>';
+  expect(reason()).toBe('group_post_rejected: הקמפיין שלך נדחה בגלל כללי הקבוצה');
 });
 it('does not confuse pending moderation with rejection', () => {
   document.body.innerHTML = '<div role="alert">Your post is pending approval</div>';

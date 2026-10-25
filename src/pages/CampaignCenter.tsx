@@ -1037,7 +1037,7 @@ const InlineComposer = ({
         `הצגת מחיר: ${pick(pricingFrames)}.`,
         `CTA לסיום: ${pick(ctas)}.`,
         'טון אנושי וגולמי של מתווך אמיתי: ללא ניסוחים גנריים, ללא הצפת אמוג׳ים, ללא חתימה מלאכותית. אסור להעתיק משפטים שלמים מוריאציות אחרות.',
-        'אקראיות מבנית: ערבב סדר פסקאות, אורכי משפט, ובחירת אמוג׳ים (0–3 לכל הפוסט). אסור שתי וריאציות יחלקו מבנה פסקה זהה — חובה לעמוד במדיניות אנטי-ספאם של פייסבוק.',
+        'אקראיות מבנית: ערבב סדר פסקאות, אורכי משפט, ובחירת אמוג׳ים (0–3 לכל הקמפיין). אסור שתי וריאציות יחלקו מבנה פסקה זהה — חובה לעמוד במדיניות אנטי-ספאם של פייסבוק.',
       ].join('\n');
       setCustomInstructions((prev) => (prev && prev.includes('אנטי-ספאם') ? prev : (prev ? `${prev}\n\n${hint}` : hint)));
     }
@@ -1724,7 +1724,7 @@ const InlineComposer = ({
   };
 
   const handleAIImage = async () => {
-    const prompt = body.trim() || customInstructions.trim() || 'תמונת נדל"ן יוקרתית עבור פוסט שיווקי של מתווך בכיר';
+    const prompt = body.trim() || customInstructions.trim() || 'תמונת נדל"ן יוקרתית עבור קמפיין שיווקי של מתווך בכיר';
 
     if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
     const ctrl = registerGeneration();
@@ -1813,9 +1813,9 @@ const InlineComposer = ({
     try {
       const topic = usesGroupTopics ? groupPostTopic(selectedGroupTopicId).label : body.trim()
         || customInstructions.trim()
-        || (listingHeadline(selectedListing) ? `פוסט קידום: ${listingHeadline(selectedListing)}` : 'פוסט שיווקי');
+        || (listingHeadline(selectedListing) ? `קמפיין קידום: ${listingHeadline(selectedListing)}` : 'קמפיין שיווקי');
       const rotateNote = opts?.rotateTemplate
-        ? 'בחר תבנית שונה לחלוטין מהפעם הקודמת מתוך מאגר הידע (KB) של תבניות הפוסטים. גוון בין התבניות הקיימות במאגר הידע של החשבון. שמור על דיוק עובדתי מלא לפי נתוני הנכס, טון מקצועי בכיר וקריאה לפעולה חדה לוואטסאפ/טלפון. אל תחזור על אותו פתיח, אותה מבנה או אותו ניסוח CTA כמו בגרסה הקודמת.'
+        ? 'בחר תבנית שונה לחלוטין מהפעם הקודמת מתוך מאגר הידע (KB) של תבניות הקמפיינים. גוון בין התבניות הקיימות במאגר הידע של החשבון. שמור על דיוק עובדתי מלא לפי נתוני הנכס, טון מקצועי בכיר וקריאה לפעולה חדה לוואטסאפ/טלפון. אל תחזור על אותו פתיח, אותה מבנה או אותו ניסוח CTA כמו בגרסה הקודמת.'
         : '';
       const mergedInstructions = [
         usesGroupTopics ? groupPostTopicInstructions(selectedGroupTopicId) : null,
@@ -1861,7 +1861,7 @@ const InlineComposer = ({
       if (ctrl.signal.aborted || e?.name === 'AbortError') return; // silent kill
       const status = e?.context?.status;
       const detail = await e?.context?.clone?.().json().catch(() => null);
-      toast.error(detail?.error || (status === 429 ? 'יותר מדי בקשות. נסו שוב בעוד רגע.' : status === 402 ? 'אין מספיק קרדיטים ליצירת הפוסט.' : status === 404 ? 'הנכס לא נמצא בסביבת העבודה הפעילה. בחרו אותו מחדש.' : 'יצירת הטקסט נכשלה. נסו שוב.'));
+      toast.error(detail?.error || (status === 429 ? 'יותר מדי בקשות. נסו שוב בעוד רגע.' : status === 402 ? 'אין מספיק קרדיטים ליצירת הקמפיין.' : status === 404 ? 'הנכס לא נמצא בסביבת העבודה הפעילה. בחרו אותו מחדש.' : 'יצירת הטקסט נכשלה. נסו שוב.'));
     } finally {
       releaseGeneration(ctrl);
       setGenerating(false);
@@ -1877,7 +1877,7 @@ const InlineComposer = ({
    */
   const mintOfficialWaShortLink = async (): Promise<string> => {
     const phone = await getOfficialWaNumber();
-    const intro = 'היי, ראיתי את הפוסט של TORAFF ואשמח לשמוע איך זה עובד.';
+    const intro = 'היי, ראיתי את הקמפיין של TORAFF ואשמח לשמוע איך זה עובד.';
     const longUrl = `https://wa.me/${phone}?text=${encodeURIComponent(intro)}`;
     try {
       const { data } = await supabase.functions.invoke('shortlink-create', { body: { long_url: longUrl } });
@@ -1901,14 +1901,14 @@ const InlineComposer = ({
         const { data, error } = await supabase.functions.invoke('generate-content', {
           body: {
             purpose: 'first_comment',
-            topic: 'תגובה ראשונה לפוסט שיווקי של פלטפורמת TORAFF — שתי שורות בלבד',
+            topic: 'תגובה ראשונה לקמפיין שיווקי של פלטפורמת TORAFF — שתי שורות בלבד',
             platform: channel.id,
             customInstructions: [
               'כתוב תגובה ראשונה (First Comment) בשתי שורות בלבד, בעברית, פונה ישירות לסוכן נדל"ן.',
-              'שורה 1: משפט אחד קצר שממשיך את הכאב מהפוסט ומזמין לשיחת זום של 15 דקות. מקסימום 14 מילים.',
+              'שורה 1: משפט אחד קצר שממשיך את הכאב מהקמפיין ומזמין לשיחת זום של 15 דקות. מקסימום 14 מילים.',
               'שורה 2: הזמנה להמשיך בוואטסאפ עם הצוות (בלי לכתוב קישור — המערכת מוסיפה אותו).',
               'אסור: אמוג\'י יותר מאחד בשורה, האשטגים, סוגריים מרובעים, מחירים שלא במאגר הידע, רישיון תיווך, חתימת מתווך.',
-              postBody ? `גוף הפוסט להקשר בלבד, אל תחזור עליו: """${postBody.slice(0, 600)}"""` : '',
+              postBody ? `גוף הקמפיין להקשר בלבד, אל תחזור עליו: """${postBody.slice(0, 600)}"""` : '',
             ].filter(Boolean).join('\n\n'),
             skipLicenseFooter: true,
           },
@@ -1937,19 +1937,19 @@ const InlineComposer = ({
           ].filter(Boolean).join(' | ')
         : '';
       const styleInstructions = [
-        'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — פורמט קצר וקפדני של שתי שורות בלבד.',
+        'כתוב את התגובה הראשונה (First Comment) לקמפיין נדל"ן — פורמט קצר וקפדני של שתי שורות בלבד.',
         'מבנה מחייב, בדיוק שתי שורות ותו לא:',
         'שורה 1: משפט אחד ישיר ופשוט על הנכס, מקסימום 10 מילים בסך הכל. בלי מילות מילוי, בלי הקדמות, בלי אימוג\'ים, בלי בולטים, בלי סוגריים מרובעים.',
         `שורה 2: שורת מילות מפתח בדיוק זו, מופרדת בקווים אנכיים (|), ללא שינוי סדר או תוכן: ${keywordLine}`,
         listingFacts ? `פרטים יבשים של הנכס להישען עליהם בלבד (אסור להמציא נתונים שלא מופיעים כאן): ${listingFacts}` : '',
         'אסור בהחלט: יותר משתי שורות, פסקאות תיאור ארוכות, בולטים (✅/📍/💰/📞), אימוג\'ים בכלל, כוכביות, האשטגים, em-dash, מקפים כפולים (--), סוגריים מרובעים, או placeholders.',
         'אסור בתכלית האיסור: חתימה, שם המתווך, טלפון, רישיון תיווך, או פרטי יצירת קשר. התגובה חייבת להסתיים בשורת מילות המפתח.',
-        postBody ? `לצורך הקשר בלבד, גוף הפוסט הראשי שכבר נוצר — אל תחזור עליו: """${postBody.slice(0, 600)}"""` : '',
+        postBody ? `לצורך הקשר בלבד, גוף הקמפיין הראשי שכבר נוצר — אל תחזור עליו: """${postBody.slice(0, 600)}"""` : '',
       ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
           purpose: 'first_comment',
-          topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
+          topic: 'תגובה ראשונה קצרה לקמפיין נדל"ן — שתי שורות בלבד',
           platform: channel.id,
           customInstructions: styleInstructions,
           selectedListingId: selectedListingId || undefined,
@@ -2327,7 +2327,7 @@ const InlineComposer = ({
         <div className="pt-1">
           {usesGroupTopics ? (
             <>
-              <Label htmlFor={`group-post-topic-${channel.id}-${instanceId ?? 'single'}`} className="font-semibold text-foreground text-[15px]">נושאי פוסטים לקבוצות</Label>
+              <Label htmlFor={`group-post-topic-${channel.id}-${instanceId ?? 'single'}`} className="font-semibold text-foreground text-[15px]">נושאי קמפיינים לקבוצות</Label>
               <Select value={selectedGroupTopicId} onValueChange={(id) => setSelectedGroupTopicId(groupPostTopic(id).id)} dir="rtl">
                 <SelectTrigger id={`group-post-topic-${channel.id}-${instanceId ?? 'single'}`} className="mt-1 w-full min-w-0 h-auto min-h-10 text-right [&>span]:min-w-0 [&>span]:truncate">
                   <SelectValue />
@@ -2349,7 +2349,7 @@ const InlineComposer = ({
                 <span className={cn('truncate', selectedListing ? 'text-foreground font-medium' : 'text-muted-foreground')}>
                   {selectedListing
                     ? listingOptionLabel(selectedListing as CampaignListing)
-                    : 'ללא קידום נכס ספציפי (פוסט כללי)'}
+                    : 'ללא קידום נכס ספציפי (קמפיין כללי)'}
                 </span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
@@ -2373,7 +2373,7 @@ const InlineComposer = ({
                   setListingPickerOpen(false);
                 }}
                   className="mb-1 w-full rounded-md border border-dashed border-border px-3 py-2 text-right text-xs text-muted-foreground hover:bg-muted">
-                  נקה בחירה — פוסט כללי
+                  נקה בחירה — קמפיין כללי
                 </button>
               )}
               <div className="mb-2 px-1 text-[11px] text-muted-foreground">
@@ -2517,7 +2517,7 @@ const InlineComposer = ({
             const cleaned = cleanBody(e.target.value.replace(/^[\s\u200f\u200e]+/g, ''));
             if (cleaned !== e.target.value) setBody(cleaned);
           }}
-          placeholder="תוכן הפוסט"
+          placeholder="תוכן הקמפיין"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-12"
         />
         <button
@@ -2657,7 +2657,7 @@ const InlineComposer = ({
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            תיאור הסרטון נלקח מתיבת הטקסט הראשית של הפוסט.
+            תיאור הסרטון נלקח מתיבת הטקסט הראשית של הקמפיין.
           </p>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">תגיות (מופרדות בפסיק)</Label>
@@ -2786,7 +2786,7 @@ const InlineComposer = ({
           <DialogHeader>
             <DialogTitle className="text-right">לפרסם בלי תמונות?</DialogTitle>
             <DialogDescription className="text-right">
-              לא צורפו תמונות לפוסט. פוסטים עם תמונות מקבלים חשיפה גבוהה יותר.
+              לא צורפו תמונות לקמפיין. קמפיינים עם תמונות מקבלים חשיפה גבוהה יותר.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row-reverse gap-2 sm:justify-start">
@@ -3002,7 +3002,7 @@ const InlineComposer = ({
                       // Deletion is permanent and global — never comes back.
                       if (!editorMode && selectedListingId && removedUrl) void blocklistListingImage(selectedListingId, removedUrl);
                     }}
-                    aria-label="מחק מהפוסט"
+                    aria-label="מחק מהקמפיין"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -3198,7 +3198,7 @@ const FullRepostEditor = ({ request, brandName, socialProfiles, onClose }: {
   };
   return <Dialog open onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
     <DialogContent dir="rtl" className="flex max-h-[90dvh] w-[calc(100%-2rem)] min-w-0 max-w-3xl flex-col overflow-hidden p-4 sm:p-6" onInteractOutside={(e) => { if (busy) e.preventDefault(); }}>
-      <DialogHeader><DialogTitle>עריכה ופרסום מחדש</DialogTitle><DialogDescription>אישור יפרסם שוב לקבוצות שנבחרו, גם אם הפוסט כבר פורסם.</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>עריכה ופרסום מחדש</DialogTitle><DialogDescription>אישור יפרסם שוב לקבוצות שנבחרו, גם אם הקמפיין כבר פורסם.</DialogDescription></DialogHeader>
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain space-y-4">
         <InlineComposer channel={{ id: 'facebook', label: 'Facebook', brand: 'facebook' }} brandName={brandName}
           socialProfiles={socialProfiles} instanceId={`repost:${request.post.id}`} initialDraft={draft} editorMode hideBottomBar
@@ -3616,8 +3616,8 @@ const ConfirmDispatchDialog = ({
           if (queuedGroups > 0) {
             toast.success(
               scheduledAt
-                ? `${queuedGroups} פוסטים נוספו לתור הפרסום · ${new Date(scheduledAt).toLocaleString('he-IL')}`
-                : `${queuedGroups} פוסטים נוספו לתור הפרסום`,
+                ? `${queuedGroups} קמפיינים נוספו לתור הפרסום · ${new Date(scheduledAt).toLocaleString('he-IL')}`
+                : `${queuedGroups} קמפיינים נוספו לתור הפרסום`,
             );
           }
         }
@@ -3767,7 +3767,7 @@ const ConfirmDispatchDialog = ({
         });
         if (unverified) {
           const payload: any = unverified.data;
-          throw new Error(payload?.message || payload?.error || 'פייסבוק לא אישר שהפוסט פורסם בפועל');
+          throw new Error(payload?.message || payload?.error || 'פייסבוק לא אישר שהקמפיין פורסם בפועל');
         }
         const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
         // Idempotency: the backend detected the exact same post already live and
@@ -3809,11 +3809,11 @@ const ConfirmDispatchDialog = ({
         if (scheduledAt) {
 
           const when = new Date(scheduledAt).toLocaleString('he-IL');
-          toast.success(`הפוסט תוזמן ל-${when} · ${targets.length} יעד(ים) · ${Math.max(0, groupIds.length - queuedGroups)} קבוצות${reachNote}`);
+          toast.success(`הקמפיין תוזמן ל-${when} · ${targets.length} יעד(ים) · ${Math.max(0, groupIds.length - queuedGroups)} קבוצות${reachNote}`);
         } else if (duplicateOnly) {
-          toast.info((results[0]?.data as any)?.message || 'הפוסט הזה כבר פורסם — לא נשלח שוב.');
+          toast.info((results[0]?.data as any)?.message || 'הקמפיין הזה כבר פורסם — לא נשלח שוב.');
         } else if (groupIds.length > 0 && queuedGroups === 0 && groupFailures.length === 0) {
-          toast.success(`הפוסט שותף בהצלחה ב-${groupIds.length} קבוצות${reachNote}`);
+          toast.success(`הקמפיין שותף בהצלחה ב-${groupIds.length} קבוצות${reachNote}`);
         } else if (groupIds.length > 0 && queuedGroups === 0 && groupFailures.length > 0) {
           toast.error(`פורסם ב-${groupIds.length - groupFailures.length} קבוצות · נכשל ב-${groupFailures.length}`);
         } else {
@@ -3983,7 +3983,7 @@ const ConfirmDispatchDialog = ({
               <div className="text-lg font-bold tabular-nums text-foreground">{publishTargets.length || 1}</div>
             </div>
             <div className="rounded-lg bg-background p-2">
-              <div className="text-[11px] text-muted-foreground">תמונות בפוסט</div>
+              <div className="text-[11px] text-muted-foreground">תמונות בקמפיין</div>
               <div className="text-lg font-bold tabular-nums text-foreground">{mediaUrls.length}</div>
             </div>
             <div className="rounded-lg bg-background p-2">
@@ -4290,7 +4290,7 @@ const GlobalSocialFeed = ({
             <Checkbox
               checked={allSelected ? true : someSelected ? 'indeterminate' : false}
               onCheckedChange={() => { onToggleSelectAll?.(!allSelected); }}
-              aria-label={allSelected ? 'בטל את כל הבחירה' : 'בחר את כל הפוסטים'}
+              aria-label={allSelected ? 'בטל את כל הבחירה' : 'בחר את כל הקמפיינים'}
             />
           )}
         </div>
@@ -4302,7 +4302,7 @@ const GlobalSocialFeed = ({
           const inactive = disabledNetworks.includes(network);
           const meta = FEED_PLATFORMS.find((p) => p.id === network);
           return <Button key={network} variant="ghost" size="sm" aria-label={meta?.label ?? network} aria-pressed={!inactive}
-            title={`${meta?.label ?? network} · ${count} פוסטים${inactive ? ' · לא פעיל' : ''}`}
+            title={`${meta?.label ?? network} · ${count} קמפיינים${inactive ? ' · לא פעיל' : ''}`}
             onClick={() => onToggleNetwork?.(network)}
             className={cn('h-8 shrink-0 gap-1.5 px-1', inactive && 'grayscale opacity-40')}>
             <CampaignServiceIcon channel={network} className="h-[18px] w-[18px]" />
@@ -4318,8 +4318,8 @@ const GlobalSocialFeed = ({
             variant="destructive"
             disabled={selectedCount === 0 || bulkDeletingFeed}
             onClick={() => onDeleteSelected?.()}
-            title="מחיקת הפוסטים הנבחרים"
-            aria-label="מחיקת הפוסטים הנבחרים"
+            title="מחיקת הקמפיינים הנבחרים"
+            aria-label="מחיקת הקמפיינים הנבחרים"
             className="h-7 w-7 shrink-0"
           >
             {bulkDeletingFeed ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
@@ -4506,7 +4506,7 @@ const facebookDevModeText = (payload: unknown): string => {
   const raw = d?.sync_error?.message ?? d?.raw_error?.message ?? d?.raw_error ?? d?.message ?? '';
   const he = d?.sync_error?.message_he ?? d?.message_he ?? '';
   const code = d?.sync_error?.code ?? d?.code ?? 10;
-  return [he || 'פייסבוק סירבה לקריאת הפוסטים.', raw && !String(he).includes(String(raw)) ? `פירוט: ${typeof raw === 'string' ? raw : JSON.stringify(raw)}` : '', `(code ${code})`]
+  return [he || 'פייסבוק סירבה לקריאת הקמפיינים.', raw && !String(he).includes(String(raw)) ? `פירוט: ${typeof raw === 'string' ? raw : JSON.stringify(raw)}` : '', `(code ${code})`]
     .filter(Boolean).join(' ');
 };
 
@@ -5541,7 +5541,7 @@ const PublishedFeed = ({
       const toastId = 'campaigns-hero-sync';
       if (fullSyncRunningRef.current) { toast.loading('הסנכרון כבר רץ…', { id: toastId }); return; }
       fullSyncRunningRef.current = true;
-      toast.loading('מסנכרן פוסטים מעמוד הפייסבוק…', { id: toastId });
+      toast.loading('מסנכרן קמפיינים מעמוד הפייסבוק…', { id: toastId });
       let ok = false;
       let hadTransientIssue = false;
       let refreshWarning: string | null = null;
@@ -5560,23 +5560,23 @@ const PublishedFeed = ({
             setExtSync({ state: res.status, count: 0, at: Date.now() });
             hadTransientIssue = true;
             console.warn('[campaign] manual sync not completed', res);
-            refreshWarning = res.status === 'no_extension' ? 'לא ניתן לסנכרן את הפוסטים כרגע. בדקו את חיבור הפייסבוק ונסו שוב' : 'הסנכרון לא הושלם, נסה שוב';
+            refreshWarning = res.status === 'no_extension' ? 'לא ניתן לסנכרן את הקמפיינים כרגע. בדקו את חיבור הפייסבוק ונסו שוב' : 'הסנכרון לא הושלם, נסה שוב';
           }
         }
         // Repaint only from persisted rows. mergeRowsById keeps existing cards
         // if the provider returned nothing or timed out.
         await load({ skipFbImport: true });
         ok = refreshWarning === null;
-        if (ok && !hadTransientIssue) toast.success('הפוסטים עודכנו מפייסבוק', { id: toastId });
+        if (ok && !hadTransientIssue) toast.success('הקמפיינים עודכנו מפייסבוק', { id: toastId });
         else if (hadTransientIssue) toast.warning(refreshWarning || 'הסנכרון לא הושלם', { id: toastId });
         else toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
       } catch (err) {
         console.warn('[campaign] manual facebook sync failed', err);
         // A raw network/edge crash while already connected is also transient.
         if (facebookIsLive()) {
-          toast.message('רענון הפוסטים נדחה לרגע — החיבור נשמר', { id: toastId });
+          toast.message('רענון הקמפיינים נדחה לרגע — החיבור נשמר', { id: toastId });
         } else {
-          setFacebookSyncWarning('רענון הפוסטים לא הושלם כרגע. החיבור נשמר והפוסטים הקיימים נשארו ללא שינוי.');
+          setFacebookSyncWarning('רענון הקמפיינים לא הושלם כרגע. החיבור נשמר והקמפיינים הקיימים נשארו ללא שינוי.');
           toast.warning('החיבור נשמר. הרענון לא הושלם כרגע.', { id: toastId });
         }
       } finally {
@@ -5828,7 +5828,7 @@ const PublishedFeed = ({
       });
       queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     queryClient.invalidateQueries({ queryKey: ['scheduled-items'] });
-      if (!silent) toast.success('הפוסט נמחק מהמערכת');
+      if (!silent) toast.success('הקמפיין נמחק מהמערכת');
       return;
     }
     let targets = [r];
@@ -5872,7 +5872,7 @@ const PublishedFeed = ({
         }
       }));
       const fbFailed = fbResults.filter((x) => x.status === 'rejected').length;
-      if (fbFailed && !silent) toast.warning(`${fbFailed} פוסטים לא נמחקו מפייסבוק, נמחקו מהמערכת`);
+      if (fbFailed && !silent) toast.warning(`${fbFailed} קמפיינים לא נמחקו מפייסבוק, נמחקו מהמערכת`);
     }
 
     const [{ data: result, error }] = await Promise.all([
@@ -5918,8 +5918,8 @@ const PublishedFeed = ({
     void load({ forceFb: false }).catch(() => undefined);
     if (!silent) toast.success(
       externalIds.length > 0
-        ? `הפוסט נמחק מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
-        : `הפוסט נמחק מהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`,
+        ? `הקמפיין נמחק מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
+        : `הקמפיין נמחק מהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`,
     );
   };
 
@@ -5961,8 +5961,8 @@ const PublishedFeed = ({
     setBulkDeletingFeed(false);
     setSelectedFeedIds([]);
     setFeedSelectMode(false);
-    if (failures.length > 0) toast.error(`נמחקו ${ok} פוסטים, ${failures.length} נכשלו: ${failures[0]}`);
-    else toast.success(`${ok} פוסטים נמחקו לצמיתות`);
+    if (failures.length > 0) toast.error(`נמחקו ${ok} קמפיינים, ${failures.length} נכשלו: ${failures[0]}`);
+    else toast.success(`${ok} קמפיינים נמחקו לצמיתות`);
   };
 
 
@@ -6002,7 +6002,7 @@ const PublishedFeed = ({
           .eq('id', t.id);
         if (error) throw error;
       }
-      toast.success('התמונה הוסרה מהפוסט לצמיתות');
+      toast.success('התמונה הוסרה מהקמפיין לצמיתות');
     } catch (err: any) {
       console.error('[remove-media] failed', err);
       toast.error('הסרת התמונה נכשלה');
@@ -6113,7 +6113,7 @@ const PublishedFeed = ({
       const status = allDone ? 'sent' : (future && anyLive ? 'scheduled' : (anyLive ? 'publishing' : 'sent'));
       extRows.push({
         id: `ext-queue-${key}`,
-        campaign_name: (g.text || '').trim().split('\n')[0].slice(0, 60) || 'פוסט קבוצות',
+        campaign_name: (g.text || '').trim().split('\n')[0].slice(0, 60) || 'קמפיין קבוצות',
         channel: 'facebook',
         message_body: g.text,
         created_at: new Date(g.createdAt).toISOString(),
@@ -6238,10 +6238,10 @@ const PublishedFeed = ({
               <RefreshCw className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
             <p className="min-w-0 truncate text-xs text-muted-foreground">
-              {extSync.state === 'running' && 'מסנכרן פוסטים מעמוד הפייסבוק…'}
-              {extSync.state === 'done' && `סונכרנו ${extSync.count} פוסטים בהצלחה`}
-              {extSync.state === 'no_extension' && 'סנכרון הפוסטים אינו זמין כרגע — בדקו את חיבור הפייסבוק'}
-              {extSync.state === 'empty' && 'לא נמצאו פוסטים — בדקו את החיבור והגישה לדף הפייסבוק'}
+              {extSync.state === 'running' && 'מסנכרן קמפיינים מעמוד הפייסבוק…'}
+              {extSync.state === 'done' && `סונכרנו ${extSync.count} קמפיינים בהצלחה`}
+              {extSync.state === 'no_extension' && 'סנכרון הקמפיינים אינו זמין כרגע — בדקו את חיבור הפייסבוק'}
+              {extSync.state === 'empty' && 'לא נמצאו קמפיינים — בדקו את החיבור והגישה לדף הפייסבוק'}
               {extSync.state === 'error' && 'הסנכרון לא הושלם, נסה שוב'}
               {extSync.state === 'timeout' && 'הסנכרון ארך יותר מדי זמן — נסה שוב'}
             </p>
@@ -6292,7 +6292,7 @@ const PublishedFeed = ({
             className="mt-5 h-auto whitespace-normal rounded-xl px-8 py-3 text-base font-semibold"
             onClick={() => navigate('/campaigns?tab=create')}
           >
-            <Plus className="me-2 h-5 w-5" /> צרו את הפוסט הראשון שלכם
+            <Plus className="me-2 h-5 w-5" /> צרו את הקמפיין הראשון שלכם
           </Button>
         </div>
       ) : (filteredRows || []).map(function renderFeedCard(r: any, _index?: number, inGroupOverlay: unknown = false): any {
@@ -6447,7 +6447,7 @@ const PublishedFeed = ({
                     checked={selectedFeedIds.includes(r.id)}
                     onCheckedChange={() => toggleFeedSelected(r.id)}
                     onClick={(e) => e.stopPropagation()}
-                    aria-label="בחירת פוסט למחיקה"
+                    aria-label="בחירת קמפיין למחיקה"
                     className="shrink-0"
                   />
                 )}
@@ -6619,7 +6619,7 @@ const PublishedFeed = ({
               <>
                 {isSeries && seriesSlots && !hasGroupTargets && (
                   <div className="mx-4 mb-3" dir="rtl">
-                    <div className="mb-2 text-xs font-semibold text-muted-foreground">{seriesSlots.length} פוסטים בקמפיין</div>
+                    <div className="mb-2 text-xs font-semibold text-muted-foreground">{seriesSlots.length} קמפיינים בקמפיין</div>
                     <div className="space-y-3">{seriesSlots.map((slot) => renderFeedCard(slot))}</div>
                   </div>
                 )}
@@ -6642,7 +6642,7 @@ const PublishedFeed = ({
                         aria-label="הסר תמונה"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaUrl(r.id, src);
+                          if (window.confirm('להסיר את התמונה מהקמפיין?')) removeMediaUrl(r.id, src);
                         }}
                         className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
                       >
@@ -6743,7 +6743,7 @@ const PublishedFeed = ({
             {/* Expanded sub-posts: nested inside the card border with a
                 complementary muted shade so they clearly belong to the card. */}
             <AnimatedExpansion open={inGroupOverlay !== true && seriesOpen && isSeries && !!seriesSlots}>
-              <div id={`campaign-series-${r.id}`} role="region" aria-label="פוסטים בקבוצות"
+              <div id={`campaign-series-${r.id}`} role="region" aria-label="קמפיינים בקבוצות"
                 className="mx-2 mb-2 min-w-0 space-y-2 rounded-lg border border-border bg-muted/60 p-2 sm:mx-3 sm:mb-3 sm:space-y-3 sm:p-3" dir="rtl">
                 {seriesSlots?.map((slot) => renderFeedCard(slot, undefined, true))}
               </div>
@@ -7469,7 +7469,7 @@ const DraftCollapsibleCard = ({
           )}
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-semibold leading-snug text-foreground break-words">
-              {status?.title || fallbackTitle || `פוסט ${index + 1}`}
+              {status?.title || fallbackTitle || `קמפיין ${index + 1}`}
             </div>
             <div className="text-[11px] text-muted-foreground">
               {new Date(iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
@@ -7619,7 +7619,7 @@ const CampaignCenter = () => {
   // per-draft confirmation dialog.
   const [bulkSilent, setBulkSilent] = useState(false);
   // Controlled history dialog so a finished bulk dispatch can land the user
-  // directly on the "פוסטים עתידיים" tab with fresh rows.
+  // directly on the "קמפיינים עתידיים" tab with fresh rows.
   const [historyTab, setHistoryTab] = useState<FeedSubTab>('published');
   const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
   const [historyGroupMeta, setHistoryGroupMeta] = useState<Record<string, { name: string; icon: string | null; memberCount?: number | null; url?: string | null }>>({});
@@ -7850,9 +7850,9 @@ const CampaignCenter = () => {
       }
       setSelectedFutureIds([]);
       setFutureSelectMode(false);
-      toast.success(`${removed.size} פוסטים נמחקו לצמיתות`);
+      toast.success(`${removed.size} קמפיינים נמחקו לצמיתות`);
     } catch (error: any) {
-      toast.error(error?.message || 'מחיקת הפוסטים נכשלה');
+      toast.error(error?.message || 'מחיקת הקמפיינים נכשלה');
       setHistoryRefreshTick((t) => t + 1);
     } finally { setBulkDeletingFuture(false); }
   };
@@ -8518,7 +8518,7 @@ const CampaignCenter = () => {
         const media = normalizePostMediaUrls(r.media_urls);
         const first = media[0];
         const firstUrl = typeof first === 'string' ? first : (first as any)?.url ?? null;
-        const title = String(r.generated_text || '').trim().split('\n')[0] || r.topic || 'טיוטת פוסט';
+        const title = String(r.generated_text || '').trim().split('\n')[0] || r.topic || 'טיוטת קמפיין';
         return (
           <QueueCard
             key={r.id}
@@ -8569,7 +8569,7 @@ const CampaignCenter = () => {
           .filter((r) => ['scheduled', 'pending', 'queued'].includes(r.status) && !readDeletedTombstones().has(String(r.id)))
           .sort(stableCardCompare);
         const visible = collapseCampaignCards(future);
-        if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין פוסטים עתידיים</p>;
+        if (!visible.length) return <p className="py-12 text-center text-sm text-muted-foreground">אין קמפיינים עתידיים</p>;
         const header = (
           <div key="future-bulk-bar" className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
             <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-semibold text-foreground">
@@ -8580,7 +8580,7 @@ const CampaignCenter = () => {
                   setFutureSelectMode(on);
                   setSelectedFutureIds(on ? visible.map((x) => x.id) : []);
                 }}
-                aria-label="בחר את כל הפוסטים העתידיים"
+                aria-label="בחר את כל הקמפיינים העתידיים"
               />
               בחר הכל ({selectedFutureIds.length}/{visible.length})
             </label>
@@ -8599,7 +8599,7 @@ const CampaignCenter = () => {
           const image = media.length ? media[Math.abs(Number(r.series_index || 0)) % media.length] : null;
           const imageUrl = typeof image === 'string' ? image : (image as any)?.url ?? null;
           const groupIds: string[] = Array.isArray(r.group_ids) ? r.group_ids.map((g: any) => String(g)) : [];
-          const title = String(r.message_body || '').trim().split('\n')[0] || r.campaign_name || 'פוסט עתידי';
+          const title = String(r.message_body || '').trim().split('\n')[0] || r.campaign_name || 'קמפיין עתידי';
           return (
             <QueueCard
               key={r.id}
@@ -8633,7 +8633,7 @@ const CampaignCenter = () => {
                     <Checkbox
                       checked={selectedFutureIds.includes(r.id)}
                       onCheckedChange={() => toggleFutureSelected(r.id)}
-                      aria-label="בחירת פוסט מתוזמן למחיקה"
+                      aria-label="בחירת קמפיין מתוזמן למחיקה"
                       className="shrink-0"
                     />
                   )}
@@ -8820,11 +8820,11 @@ const CampaignCenter = () => {
               return (
                 <div className="space-y-4 pb-24" dir="rtl">
                   <div className="rounded-xl border border-emerald-300/60 bg-emerald-50 px-4 py-6 text-center text-sm font-semibold text-emerald-800">
-                    כל הטיוטות פורסמו ונכנסו לתור הפוסטים העתידיים.
+                    כל הטיוטות פורסמו ונכנסו לתור הקמפיינים העתידיים.
                   </div>
                   <div className="flex justify-center">
                     <Button onClick={() => { setHistoryTab('future'); setHistoryRefreshTick((t) => t + 1); }}>
-                      צפייה בפוסטים העתידיים
+                      צפייה בקמפיינים העתידיים
                     </Button>
                   </div>
                 </div>
@@ -8833,7 +8833,7 @@ const CampaignCenter = () => {
             return (
               <div className="space-y-4 pb-44">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
-                  נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{campaignPropertyCount}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
+                  נוצרו <span className="font-bold">{blocks.length}</span> טיוטות קמפיין עבור <span className="font-bold">{campaignPropertyCount}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
                 {blocks.map((b, idx) => {
                   // Order-independent key: a refresh (or a reshuffled property
@@ -8971,7 +8971,7 @@ const CampaignCenter = () => {
                     </DialogHeader>
                     <p className="text-sm text-muted-foreground text-right">
                       הפעולה מוחקת את כל {blocks.length} הטיוטות (טקסט, תמונות ותזמונים שלא פורסמו).
-                      פוסטים שכבר פורסמו או שתוזמנו בתור לא ייפגעו.
+                      קמפיינים שכבר פורסמו או שתוזמנו בתור לא ייפגעו.
                     </p>
                     <div className="flex justify-start gap-2 pt-2">
                       <Button variant="destructive" onClick={() => { void deleteAllDrafts(); }}>
@@ -9142,7 +9142,7 @@ const CampaignCenter = () => {
         hasExternalPost={false}
         hasSeries={!!futureDeleteTarget && (!!futureDeleteTarget.series_id || campaignHistoryRows.filter((r) => r.campaign_name === futureDeleteTarget.campaign_name && r.channel === futureDeleteTarget.channel).length > 1)}
         onConfirm={async (_mode, entireSeries) => {
-          if (!futureDeleteTarget || !workspaceOwnerId) throw new Error('לא נמצא פוסט במרחב העבודה');
+          if (!futureDeleteTarget || !workspaceOwnerId) throw new Error('לא נמצא קמפיין במרחב העבודה');
           const { data, error } = await supabase.rpc('delete_campaign_post', { p_workspace_owner_id: workspaceOwnerId, p_post_id: futureDeleteTarget.id, p_entire_series: entireSeries });
           if (error) throw new Error(error.message);
           const result = data as { deleted_ids: string[]; deleted_count: number; queue_ids?: string[]; local_queue_ids?: string[] };
@@ -9155,7 +9155,7 @@ const CampaignCenter = () => {
           setHistoryRefreshTick((t) => t + 1);
           queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     queryClient.invalidateQueries({ queryKey: ['scheduled-items'] });
-          toast.success(entireSeries ? 'כל הסדרה נמחקה לצמיתות' : 'הפוסט נמחק לצמיתות');
+          toast.success(entireSeries ? 'כל הסדרה נמחקה לצמיתות' : 'הקמפיין נמחק לצמיתות');
         }}
       />
       <EditScheduledSeriesDialog

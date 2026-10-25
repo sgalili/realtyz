@@ -114,7 +114,7 @@ const SOURCE_LABEL_HE: Record<string, string> = {
   webtiv_stream: 'סטרים ובטיב',
   webtiv: 'ובטיב',
   homely: 'הומלי',
-  shortlink: 'פוסט פייסבוק',
+  shortlink: 'קמפיין פייסבוק',
   facebook: 'פייסבוק',
   facebook_groups: 'פייסבוק קבוצות',
   instagram: 'אינסטגרם',
@@ -2579,7 +2579,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
                     ];
                     const sourceOpts = [
                       ...(homelyConnected ? [{ v: 'homely', l: 'הומלי' }] : []),
-                      { v: 'shortlink', l: 'פוסט פייסבוק' },
+                      { v: 'shortlink', l: 'קמפיין פייסבוק' },
                       { v: 'facebook_groups', l: 'פייסבוק קבוצות' }, { v: 'facebook', l: 'פייסבוק' },
                       { v: 'instagram', l: 'אינסטגרם' }, { v: 'whatsapp', l: 'וואטסאפ' },
                       { v: 'inbound_call', l: 'שיחה נכנסת' }, { v: 'yad2', l: 'יד2' },

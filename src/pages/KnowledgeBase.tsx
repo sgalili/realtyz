@@ -314,7 +314,7 @@ export default function KnowledgeBase() {
                   <Textarea
                     value={geminiPrompt}
                     onChange={(e) => setGeminiPrompt(e.target.value)}
-                    placeholder="שאל כל דבר על מאגר הידע: פרסונת הסוכן, תבניות פוסטים, הנחיות כתיבה ומענה וכללי תקשורת. לדוגמה: 'נתח את כללי המענה שלי וכתוב מדריך תגובות לפניות מחיר'"
+                    placeholder="שאל כל דבר על מאגר הידע: פרסונת הסוכן, תבניות קמפיינים, הנחיות כתיבה ומענה וכללי תקשורת. לדוגמה: 'נתח את כללי המענה שלי וכתוב מדריך תגובות לפניות מחיר'"
                     className="min-h-[120px] pt-10"
                   />
                   <div className="absolute top-1 start-1">

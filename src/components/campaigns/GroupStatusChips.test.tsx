@@ -25,7 +25,7 @@ it('keeps group names visible while opening series details in an overlay', () =>
   }}>series details</GroupStatusChips>);
   expect(screen.getByText('קבוצה א')).toBeVisible();
   expect(screen.queryByText('series details')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'פרטי קבוצות ופוסטים' }));
+  fireEvent.click(screen.getByRole('button', { name: 'פרטי קבוצות וקמפיינים' }));
   expect(screen.getByText('series details')).toBeVisible();
 });
 it('opens a single group directly without a dropdown, even when series children exist', () => {

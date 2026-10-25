@@ -360,7 +360,7 @@ export function ScheduleCurrentPostDialog({
       const rotateNote = buildRotateInstruction(index, total);
       if (!rotateNote) return body;
       const { data, error } = await generateSocialDraft({
-          topic: 'פוסט קידום נכס (וריאציה בסדרה מתוזמנת)',
+          topic: 'קמפיין קידום נכס (וריאציה בסדרה מתוזמנת)',
           platform: channelId,
           customInstructions: rotateNote,
           selectedListingId: listingId,
@@ -403,7 +403,7 @@ export function ScheduleCurrentPostDialog({
     }
     if (!body || !body.trim()) {
       console.warn('[ScheduleCurrentPostDialog] blocked: empty body');
-      toast.error('אין תוכן לתזמון — כתוב טקסט לפוסט לפני התזמון');
+      toast.error('אין תוכן לתזמון — כתוב טקסט לקמפיין לפני התזמון');
       return;
     }
     if (!channelId) {
@@ -669,7 +669,7 @@ export function ScheduleCurrentPostDialog({
           {
             description: blockedGroups.size > 0
               ? `${blockedGroups.size} קבוצות הגיעו למקסימום הפרסומים היומי ולכן דולגו בחלק מהמועדים.`
-              : 'הפוסט הראשון נוצר עכשיו. כל השאר יווצרו אוטומטית רגע לפני מועד הפרסום.',
+              : 'הקמפיין הראשון נוצר עכשיו. כל השאר יווצרו אוטומטית רגע לפני מועד הפרסום.',
             duration: 8000,
           },
         );
@@ -864,7 +864,7 @@ export function ScheduleCurrentPostDialog({
           {/* Preview before posting: text, attached photos, first comment */}
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
             <div className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md border border-input bg-background p-2 text-[13px] text-right leading-relaxed">
-              {body?.trim() || 'אין תוכן לפוסט'}
+              {body?.trim() || 'אין תוכן לקמפיין'}
             </div>
             {firstComment?.trim() && (
               <div className="rounded-md border border-dashed border-input bg-background/60 p-2 text-right">
@@ -884,7 +884,7 @@ export function ScheduleCurrentPostDialog({
                     <img
                       key={url}
                       src={url}
-                      alt="תמונת נכס לפוסט"
+                      alt="תמונת נכס לקמפיין"
                       loading="lazy"
                       className="h-14 w-full rounded-md object-cover ring-1 ring-border"
                     />

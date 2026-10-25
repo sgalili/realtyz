@@ -583,7 +583,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
   /** Disconnect a SINGLE page: its posts leave the workspace view immediately. */
   const disconnectOnePage = async (pageId: string, name: string | null) => {
     if (removingPageId) return;
-    if (!window.confirm(`לנתק את העמוד "${name || pageId}"? כל הפוסטים שלו יוסרו מסביבת העבודה.`)) return;
+    if (!window.confirm(`לנתק את העמוד "${name || pageId}"? כל הקמפיינים שלו יוסרו מסביבת העבודה.`)) return;
     setRemovingPageId(pageId);
     // Optimistic: drop the page and its cached posts before the server answers.
     setBindings((prev) => prev.filter((b) => b.id !== pageId));
@@ -603,7 +603,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       refreshHealth();
       void loadBindings();
       toast.success('העמוד נותק', {
-        description: res?.removed_posts ? `${res.removed_posts} פוסטים הוסרו` : undefined,
+        description: res?.removed_posts ? `${res.removed_posts} קמפיינים הוסרו` : undefined,
       });
     } catch (e: any) {
       toast.error('ניתוק העמוד נכשל', { description: e?.message });
