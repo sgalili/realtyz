@@ -1,4 +1,8 @@
 # Campaign card actions
+# Messaging report and notification settings
+- [x] Deliver comprehensive Hebrew messaging report with live UTC schedules, approved-template counts and explicit delivery limitations.
+- [x] Add header gear, per-event channels and in-app category filters; authenticated save/reload and server override rejection verified. Official WA/019/app-email adapters deployed, escalation duplicate removed. Email delivery awaits sender setup; call reminders await approved template.
+- [x] Match form/WA/phone lead amounts to canonical icon colors; preserve dynamic closing color and entitlements. Eleven focused tests pass; browser save/reload and current build OK.
 # Homepage royalties editing
 - [x] Remove table attribution license/background/borders; shared Card 8 pricing-only editor opens for authorized owned workspace listings. Filled 1,114 missing published positive-price closing rates with requested random 10–100%; preserved positive rates and snapshots. No eligible positive-price blanks remain; 171 zero-price published records stay excluded, without invented property prices. Current account lacks licensed broker role, so pricing is correctly hidden; licensed-account E2E remains unavailable without that user's approved session.
 # IVR property script

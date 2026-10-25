@@ -15,16 +15,19 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+import { channelsForEvent, withinQuietHours, allowsNotificationOverride } from "../_shared/notificationPreferences.ts";
+import { sendSms019 } from "../_shared/sms019.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const APP_URL = Deno.env.get("APP_PUBLIC_URL") || "https://realtyz.app";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const APP_URL = Deno.env.get("APP_PUBLIC_URL") || "https://realtyz.co.il";
 
 type EventType = "new_high_priority" | "meeting_booked" | "critical_question";
 
@@ -78,6 +81,7 @@ Deno.serve(async (req) => {
       return json({ error: "event_type must be one of " + allowed.join(", ") }, 400);
     }
 
+    if (!allowsNotificationOverride(auth, SERVICE_KEY, body.override_user_id)) return json({ error: "Forbidden recipient override" }, 403);
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     // Resolve user_id
@@ -92,11 +96,12 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: "Unauthorized — could not resolve user" }, 401);
 
     // Load preferences (auto-create defaults if missing)
-    let { data: pref } = await admin
+    let { data: pref, error: preferencesError } = await admin
       .from("notification_preferences")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
+    if (preferencesError) return json({ error: 'Notification preferences unavailable' }, 503);
     if (!pref) {
       const { data: created } = await admin
         .from("notification_preferences")
@@ -105,12 +110,14 @@ Deno.serve(async (req) => {
         .single();
       pref = created;
     }
+    if (!pref) return json({ error: 'Notification preferences unavailable' }, 503);
 
     const enabled = pref?.[PREF_COLUMN[body.event_type]] !== false;
     if (!enabled) {
       return json({ ok: true, skipped: "event disabled in preferences" });
     }
-    const inQuiet = isWithinQuietHours(pref?.quiet_hours_start, pref?.quiet_hours_end);
+    const inQuiet = withinQuietHours(pref?.quiet_hours_start, pref?.quiet_hours_end);
+    const channels = channelsForEvent(pref ?? {}, body.event_type);
 
     // Build deep link back to the Deal Room card
     const deepLink = body.lead_id
@@ -127,6 +134,11 @@ Deno.serve(async (req) => {
         .maybeSingle();
       lead = (leadRow as { full_name?: string } | null)?.full_name || lead;
 
+      if (!leadRow?.workspace_owner_id) return json({ error: 'Lead not accessible to recipient' }, 403);
+      if (leadRow.workspace_owner_id !== userId) {
+        const { data: member, error: membershipError } = await admin.rpc('is_workspace_member', { _owner: leadRow.workspace_owner_id, _user: userId });
+        if (membershipError || member !== true) return json({ error: 'Lead not accessible to recipient' }, 403);
+      }
       const workspaceOwnerId = (leadRow as { workspace_owner_id?: string } | null)?.workspace_owner_id;
       if (workspaceOwnerId) {
         const { data: relation } = await admin
@@ -167,57 +179,62 @@ Deno.serve(async (req) => {
         title,
         body: text,
         deep_link: deepLink,
-        channel: pref?.delivery_channel || "whatsapp",
+        channel: channels[0] || "in_app",
       })
       .select()
       .single();
 
+    if (!notifRow) throw new Error("Notification persistence failed");
     if (inQuiet) {
       await admin
         .from("notifications")
         .update({ delivered: false, delivery_result: { skipped: "quiet_hours" } })
-        .eq("id", notifRow!.id);
+        .eq("id", notifRow.id);
       return json({ ok: true, notification_id: notifRow?.id, skipped: "quiet_hours" });
     }
 
-    // Resolve agent phone
     const { data: authUser } = await admin.auth.admin.getUserById(userId);
-    const agentPhone = authUser?.user?.phone || null;
-
+    const { data: profile } = await admin.from('profiles').select('phone,email').eq('id', userId).maybeSingle();
+    const agentPhone = authUser?.user?.phone || profile?.phone || null;
+    const agentEmail = authUser?.user?.email || profile?.email || null;
+    const results: Record<string, unknown> = {};
     let delivered = false;
-    let deliveryResult: Record<string, unknown> = { agent_phone_resolved: !!agentPhone };
-
-    if (agentPhone) {
+    for (const channel of channels) {
       try {
-        const sendRes = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${SERVICE_KEY}`,
-            apikey: SERVICE_KEY,
-          },
-          body: JSON.stringify({
-            phone_number: agentPhone,
-            message: text,
-            tenant_id: userId,
-          }),
-        });
-        delivered = sendRes.ok;
-        deliveryResult = { ...deliveryResult, status: sendRes.status, ok: sendRes.ok };
-        if (!sendRes.ok) {
-          deliveryResult.body = (await sendRes.text()).slice(0, 400);
+        if (channel === 'sms') {
+          if (!agentPhone) { results.sms = { skipped: 'missing_phone' }; continue; }
+          const sent = await sendSms019(admin, agentPhone, text, userId);
+          results.sms = { accepted: sent.ok, error: sent.error ?? null };
+          delivered ||= sent.ok;
+        } else if (channel === 'email') {
+          if (!agentEmail) { results.email = { skipped: 'missing_email' }; continue; }
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+            method: 'POST', headers: { Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ templateName: 'agent-notification', recipientEmail: agentEmail, idempotencyKey: `agent-notification-${notifRow.id}`, templateData: { title, message: text, deepLink } }),
+          });
+          const result = await response.json().catch(() => ({}));
+          const queued = response.ok && result.success === true && result.queued === true;
+          results.email = { queued, reason: result.reason || result.error || null };
+          // Queue acceptance is not confirmed delivery.
+        } else {
+          if (!agentPhone) { results.whatsapp = { skipped: 'missing_phone' }; continue; }
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+            method: 'POST', headers: { Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone_number: agentPhone, message: text, tenant_id: userId, force_official: true }),
+          });
+          const result = await response.json().catch(() => ({}));
+          const accepted = response.ok && result.success === true;
+          results.whatsapp = { accepted, status: response.status };
+          delivered ||= accepted;
         }
-      } catch (e) {
-        deliveryResult.error = (e as Error).message;
-      }
-    } else {
-      deliveryResult.reason = "Agent has no phone number on file";
+      } catch { results[channel] = { error: 'channel_dispatch_failed' }; }
     }
+    const deliveryResult = { channels: results, ...(channels.length ? {} : { skipped: 'no_channels_selected' }) };
 
     await admin
       .from("notifications")
       .update({ delivered, delivery_result: deliveryResult })
-      .eq("id", notifRow!.id);
+      .eq("id", notifRow.id);
 
     return json({ ok: true, notification_id: notifRow?.id, delivered, deliveryResult });
   } catch (e) {

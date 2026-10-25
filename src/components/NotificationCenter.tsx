@@ -6,8 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock, Trash2, UserPlus } from 'lucide-react';
+import { Bell, AlertTriangle, ExternalLink, Wallet, MessageCircle, CalendarClock, Trash2, UserPlus, Settings } from 'lucide-react';
 import { useNotificationStates } from '@/hooks/useNotificationStates';
+import NotificationPreferencesPanel from './NotificationPreferencesPanel';
+import { useNotificationPreferences, panelCategoryEnabled } from '@/hooks/useNotificationPreferences';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -39,6 +42,9 @@ export default function NotificationCenter() {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const scope = workspaceOwnerId ?? user?.id ?? null;
   const [open, setOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { data: preferences } = useNotificationPreferences();
+  const allows = (category: Parameters<typeof panelCategoryEnabled>[1]) => panelCategoryEnabled(preferences, category);
   // Read / deleted state lives in the database so it never resets on refresh.
   const { readKeys: viewedIds, deletedKeys, markRead, remove } = useNotificationStates();
   const [dismissedBudgets, setDismissedBudgets] = useState<Set<string>>(() => {
@@ -251,7 +257,8 @@ export default function NotificationCenter() {
       if (baseline) return;
       const ts = i.at ? new Date(i.at).getTime() : 0;
       if (!ts || Date.now() - ts > FRESH_WINDOW_MS) return;
-      toast(i.msg);
+      const category = i.id.startsWith('rita-') ? 'rita_sms_reply' : i.id.startsWith('lead-') ? 'new_lead' : tours.some((tour: any) => tour.id === i.id) ? 'tour' : 'inbound';
+      if (allows(category)) toast(i.msg);
     });
     if (changed) {
       try {
@@ -261,7 +268,7 @@ export default function NotificationCenter() {
         localStorage.setItem(TOASTED_KEY, JSON.stringify(all));
       } catch { /* noop */ }
     }
-  }, [inbound, ritaSmsReplies, tours, newLeads]);
+  }, [inbound, ritaSmsReplies, tours, newLeads, preferences]);
 
 
 
@@ -284,18 +291,18 @@ export default function NotificationCenter() {
     return [...byLead.values()];
   })();
 
-  const visibleAlerts = alerts.filter((a: any) => !deletedKeys.has(a.id));
-  const visibleInbound = groupedInbound.filter((g) => !deletedKeys.has(g.row.id));
-  const visibleTours = tours.filter((t: any) => !deletedKeys.has(t.id));
-  const visibleLeads = newLeads.filter((l: any) => !deletedKeys.has(`lead-${l.id}`));
-  const visibleRitaSmsReplies = ritaSmsReplies.filter((n: any) => !deletedKeys.has(`rita-${n.id}`));
+  const visibleAlerts = alerts.filter((a: any) => allows('critical') && !deletedKeys.has(a.id));
+  const visibleInbound = groupedInbound.filter((g) => allows('inbound') && !deletedKeys.has(g.row.id));
+  const visibleTours = tours.filter((t: any) => allows('tour') && !deletedKeys.has(t.id));
+  const visibleLeads = newLeads.filter((l: any) => allows('new_lead') && !deletedKeys.has(`lead-${l.id}`));
+  const visibleRitaSmsReplies = ritaSmsReplies.filter((n: any) => allows('rita_sms_reply') && !deletedKeys.has(`rita-${n.id}`));
 
   const unviewedAlerts = visibleAlerts.filter((a: any) => !viewedIds.has(a.id));
   const unviewedInbound = visibleInbound.filter((g) => !viewedIds.has(g.row.id));
   const unviewedTours = visibleTours.filter((t: any) => !viewedIds.has(t.id));
   const unviewedLeads = visibleLeads.filter((l: any) => !viewedIds.has(`lead-${l.id}`));
   const unviewedRitaSmsReplies = visibleRitaSmsReplies.filter((n: any) => !viewedIds.has(`rita-${n.id}`));
-  const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
+  const activeBudgetAlerts = budgetAlerts.filter(b => allows('budget') && !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
   const badgeCount =
     unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + unviewedRitaSmsReplies.length + activeBudgetAlerts.length;
 
@@ -345,10 +352,10 @@ export default function NotificationCenter() {
 
 
   // The bell only exists while something is actually unread.
-  if (badgeCount === 0 && !open) return null;
+  if (!user) return null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <><Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -369,6 +376,7 @@ export default function NotificationCenter() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-primary/15">
           <h4 className="text-sm font-semibold text-primary">מרכז התראות</h4>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="הגדרות התראות" title="הגדרות התראות" onClick={() => { setOpen(false); setSettingsOpen(true); }}><Settings className="h-4 w-4" /></Button>
             {badgeCount > 0 && (
               <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={markAllRead}>
                 סמן הכל כנקרא
@@ -571,7 +579,7 @@ export default function NotificationCenter() {
           )}
         </ScrollArea>
       </PopoverContent>
-    </Popover>
+    </Popover><Dialog open={settingsOpen} onOpenChange={setSettingsOpen}><DialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto sm:max-w-md"><DialogHeader><DialogTitle>הגדרות התראות</DialogTitle><DialogDescription>סוגי הודעות וערוצי קבלה</DialogDescription></DialogHeader><NotificationPreferencesPanel compact onSaved={() => setSettingsOpen(false)} /></DialogContent></Dialog></>
   );
 }
 

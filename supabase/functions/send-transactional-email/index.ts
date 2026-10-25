@@ -6,7 +6,7 @@ import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
 // Configuration baked in at scaffold time — do NOT change these manually.
 // To update, re-run the email domain setup flow.
-const SITE_NAME = "realtyz"
+const SITE_NAME = "TORAFF"
 // SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
 // It MUST match the subdomain delegated to Lovable's nameservers — never the root domain.
 // The email API looks up this exact domain; a mismatch causes "No email domain record found".
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     )
   }
 
-  if (templateName === 'account-deletion-otp' && !isServiceCaller) {
+  if (['account-deletion-otp', 'agent-notification'].includes(templateName) && !isServiceCaller) {
     return new Response(JSON.stringify({ error: 'forbidden' }), {
       status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

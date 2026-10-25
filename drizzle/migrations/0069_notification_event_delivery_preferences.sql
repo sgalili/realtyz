@@ -1,0 +1,7 @@
+ALTER TABLE public.notification_preferences ADD COLUMN IF NOT EXISTS event_channels jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.notification_preferences ADD COLUMN IF NOT EXISTS panel_preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.notification_preferences ADD CONSTRAINT notification_event_channels_shape CHECK (jsonb_typeof(event_channels) = 'object' AND event_channels - ARRAY['new_high_priority','meeting_booked','critical_question']::text[] = '{}'::jsonb AND NOT jsonb_path_exists(event_channels, '$.* ? (@.type() != "array")') AND NOT jsonb_path_exists(event_channels, '$.*[*] ? (@ != "whatsapp" && @ != "sms" && @ != "email")'));
+ALTER TABLE public.notification_preferences ADD CONSTRAINT notification_panel_preferences_shape CHECK (jsonb_typeof(panel_preferences)='object' AND panel_preferences - ARRAY['new_lead','inbound','rita_sms_reply','tour','critical','budget']::text[]='{}'::jsonb AND NOT jsonb_path_exists(panel_preferences, '$.* ? (@.type() != "boolean")'));
+COMMENT ON COLUMN public.notification_preferences.event_channels IS 'Per-account smart-event opt-in delivery channels; missing keys retain legacy delivery_channel. Email requires explicit event selection.';
+GRANT SELECT,INSERT,UPDATE ON public.notification_preferences TO authenticated;
+GRANT ALL ON public.notification_preferences TO service_role;
