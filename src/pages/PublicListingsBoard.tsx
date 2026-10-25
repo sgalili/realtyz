@@ -329,7 +329,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                {!user && <Button size="icon" variant="ghost" onClick={goToAuth} aria-label="הרשמה או התחברות" title="הרשמה או התחברות" className="h-[46.8px] w-[46.8px] cursor-pointer border-0 bg-transparent p-0 shadow-none hover:bg-transparent"><CircleUserRound className="!h-[26px] !w-[26px]" strokeWidth={1} /></Button>}
+                {!user && <Button variant="ghost" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="h-auto shrink-0 cursor-pointer px-1.5 text-[15px] font-semibold text-primary hover:bg-transparent hover:underline">כניסה / הרשמה</Button>}
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
@@ -394,7 +394,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
                         <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
-                        <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
+                        <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1" onClickCapture={blockGuests} onPointerDownCapture={blockGuests}>
                           <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage />
                           <BoardPublishButton result={cardResult(card)} />
                           <BoardOpenPageButton result={cardResult(card)} />
@@ -457,6 +457,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
         );
       })()}
+
+      <GuestSignupDialog open={guestDialog} onOpenChange={setGuestDialog} returnTo={location.pathname + location.search} />
 
       <Dialog open={!!gate} onOpenChange={(open) => { if (!open) setGate(null); }}>
         <DialogContent dir="rtl" className="max-w-lg">
