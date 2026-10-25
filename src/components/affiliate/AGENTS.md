@@ -1,4 +1,5 @@
 # Affiliate pricing
+- Property pricing information uses distinct lead cards and a desktop max-w-2xl dialog; the publisher pricing-only editor shares the same bounded presentation without changing wizard or authorization flows. Why: consistent readable pricing across guest and authorized views.
 - Closing-split disclosures reuse ClosingSplitNote and existing reward-rate helpers; public closing notes mount only inside existing server-authorized pricing gates. Why: consistent gross/net explanations without changing payouts or visibility.
 - Reward drafts are keyed by authenticated user, active workspace and listing; reward writes include active workspace predicates. Why: tenant isolation.
 - Closing-fee editors share ClosingFeeSlider; explicit partner slider changes convert to fixed ILS, but unchanged stored reward type/value must round-trip without conversion. Publisher agreement percentages retain property-price semantics. Individual live caps use contact_options.lead_daily_limits; pricing snapshots remain immutable. Why: avoid corrupting saved fees or confusing percentage semantics.
