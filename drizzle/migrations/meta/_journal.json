@@ -505,6 +505,13 @@
       "when": 1792896351977,
       "tag": "0071_super_admin_views_closing",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1792896941427,
+      "tag": "0072_campaign_logs_workspace_feed_index",
+      "breakpoints": true
     }
   ]
 }
