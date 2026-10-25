@@ -145,7 +145,7 @@ function personalize(message: string) {
     .replace(/\[נכס\]/g, 'דירת 4 חדרים, רוטשילד');
 }
 
-export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => void } = {}) {
+export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onIvrOpen?: () => void; dedicatedChannel?: 'sms' | 'whatsapp' | 'email' } = {}) {
   const { user } = useAuth();
   const { data: servicePrices = [] } = useCampaignPricing();
   const { limitsEnabled } = useWorkspaceFeatures();
@@ -438,8 +438,12 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
   const [tagOptions, setTagOptions] = useState<string[]>([]);
   const [loyaltyOptions, setLoyaltyOptions] = useState<string[]>([]);
   const [recipientSource, setRecipientSource] = useState<string | null>(null);
-  const [selectedChannels, setSelectedChannels] = useState<ChannelId[]>([]);
-  useEffect(() => { const channel = new URLSearchParams(location.search).get('channel'); if (channel === 'sms' || channel === 'whatsapp') setSelectedChannels([channel]); }, [location.search]);
+  const [selectedChannels, setSelectedChannels] = useState<ChannelId[]>(dedicatedChannel ? [dedicatedChannel] : []);
+  useEffect(() => {
+    if (dedicatedChannel) { setSelectedChannels([dedicatedChannel]); return; }
+    const channel = new URLSearchParams(location.search).get('channel');
+    if (channel === 'sms' || channel === 'whatsapp' || channel === 'email') setSelectedChannels([channel]);
+  }, [location.search, dedicatedChannel]);
   const [showMoreChannels, setShowMoreChannels] = useState(false);
   // Per-channel AI Auto-Reply settings (enabled + tone). Default tone tuned per platform.
   const DEFAULT_AI_TONES: Partial<Record<ChannelId, string>> = {
@@ -1062,9 +1066,9 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
     <div className="space-y-6" dir="rtl">
 
       {phase === 'compose' && (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className={dedicatedChannel ? 'mx-auto w-full max-w-3xl' : 'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]'}>
           <div className="space-y-6">
-            <Card className="mt-5">
+            {!dedicatedChannel && <Card className="mt-5">
               <CardHeader>
                 <CardTitle className="text-base text-center">
                   בחירת ערוצים להפצה
@@ -1320,7 +1324,7 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
                   );
                 })()}
               </CardContent>
-            </Card>
+            </Card>}
 
             <Card>
               <CardHeader>
@@ -1401,7 +1405,7 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
 
                 <div className="space-y-2">
                   <Label>תוכן ההודעה</Label>
-                  <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder="כתבו הודעה אחת לכל הערוצים..." />
+                  <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder={dedicatedChannel ? 'כתבו את תוכן ההודעה...' : 'כתבו הודעה אחת לכל הערוצים...'} />
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-foreground">תגיות התאמה אישית</span>
@@ -1528,7 +1532,7 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
                 )}
 
                 {selectedChannels.length > 0 && (
-                  <div className="grid gap-4 lg:grid-cols-2">
+                  <div className={dedicatedChannel ? 'space-y-4' : 'grid gap-4 lg:grid-cols-2'}>
                     {selectedChannels.includes('whatsapp') && (
                       <Card className="border-social-whatsapp/25 bg-social-whatsapp/5">
                         <CardHeader className="pb-2">
@@ -1804,7 +1808,7 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
             
           </div>
 
-          <CreditBalanceWidget />
+          {!dedicatedChannel && <CreditBalanceWidget />}
         </div>
       )}
 
@@ -2018,7 +2022,7 @@ export default function SmsBlastSimulator({ onIvrOpen }: { onIvrOpen?: () => voi
         </div>
       )}
 
-      <CampaignHistoryTable />
+      {!dedicatedChannel && <CampaignHistoryTable />}
     </div>
   );
 }
