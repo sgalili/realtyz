@@ -38,6 +38,11 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const options = details.contact_options ?? {};
+  // A percentage closing fee is always a share of the property price, so the
+  // partner's net share is also shown in shekels next to the percent.
+  const closingBase = Math.max(0, Number(details.asking_price) || 0);
+  const closingNetPercent = partnerNetReward(Number(listing.tier4_amount));
+  const closingNetShekels = closingBase > 0 ? Math.round(closingFeeAmount(closingNetPercent, closingBase)) : 0;
   const rows = closingOnly ? [] : [
     { key: 'form' as const, label: FORM_TIER_LABEL, amount: listing.tier1_amount, questions: [] },
     { key: 'whatsapp' as const, label: 'ליד מסונן בווטסאפ', amount: listing.tier2_amount, questions: options.questions ?? [] },
