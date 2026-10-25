@@ -328,7 +328,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         </div>
       </header>
 
-      <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain px-4 py-6', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
+      <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain px-4 pb-0 pt-[19px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
@@ -345,24 +345,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     {visibleColumns.includes('deal') && <BoardColumnHeader id="deal" controls={columns} />}
                     <th className="w-10 px-2 pb-0 pt-2"><BoardColumnMenu controls={columns} /></th>
                   </tr>
-                  <tr>
-                    <td colSpan={visibleColumns.length + 2} className="p-0">
-<div className="sticky start-0 px-3 pb-2 pt-[7px]" style={wrapWidth ? { width: wrapWidth } : undefined}>
-                        {scrollIndicator.width < 99.5 && (
-                          <div
-                            className="relative h-[7px] cursor-grab touch-none select-none active:cursor-grabbing"
-                            onPointerDown={onBarPointerDown}
-                            onPointerMove={onBarPointerMove}
-                            onPointerUp={onBarPointerUp}
-                            onPointerCancel={onBarPointerUp}
-                          >
-<div className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-muted-foreground/15" />
-                            <div data-thumb className="absolute top-1/2 h-[5px] -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+
                 </thead>
                 <tbody>
                   {columns.sorted.slice(0, visibleCount).map((card) => {
@@ -388,7 +371,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           {id === 'photo' ? (
                           <div className="relative w-12">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
-                            {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-0 top-0 inline-flex h-4 w-4 items-center justify-center rounded-bl rounded-tr bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
+                            {(card.photos?.length ?? 0) > 1 && <span aria-label={`${card.photos!.length} תמונות`} className="absolute right-0.5 top-0.5 rounded bg-foreground/70 px-1 text-[9px] font-semibold leading-tight text-background">{card.photos!.length}</span>}
+                            {ownedIds.has(card.id) && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute bottom-0 right-0 inline-flex h-4 w-4 items-center justify-center rounded-br rounded-tl bg-white/80 text-success"><BadgeCheck className="h-3 w-3" aria-hidden="true" /></span>}
                           </div>
                           ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-72 sm:max-w-[18rem]"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></div>
                           : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}{card.deal_type === 'rent' && card.price ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</span>
@@ -421,6 +405,21 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                   })}
                 </tbody>
               </table>
+<div className="sticky bottom-0 start-0 z-[5] bg-card px-3 py-1.5" style={wrapWidth ? { width: wrapWidth } : undefined}>
+                        {scrollIndicator.width < 99.5 && (
+                          <div
+                            className="relative h-[7px] cursor-grab touch-none select-none active:cursor-grabbing"
+                            onPointerDown={onBarPointerDown}
+                            onPointerMove={onBarPointerMove}
+                            onPointerUp={onBarPointerUp}
+                            onPointerCancel={onBarPointerUp}
+                          >
+<div className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-muted-foreground/15" />
+                            <div data-thumb className="absolute top-1/2 h-[5px] -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    
               {filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
             </HorizontalTableScroll>
             </BoardColumnDragArea>
