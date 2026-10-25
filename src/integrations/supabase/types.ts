@@ -9466,6 +9466,7 @@ export type Database = {
         }
         Returns: string
       }
+      valid_signup_full_name: { Args: { _full_name: string }; Returns: boolean }
       wipe_demo_data: { Args: never; Returns: Json }
       ws_current_access: { Args: { _ws: string }; Returns: boolean }
       ws_fb_comment_access: { Args: { _comment_id: string }; Returns: boolean }
