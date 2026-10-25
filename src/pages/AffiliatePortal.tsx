@@ -39,7 +39,7 @@ import {
   MapPin,
   Megaphone,
   MousePointerClick,
-  SlidersHorizontal,
+  Filter,
   Sparkles,
   TrendingUp,
   XCircle,
@@ -1322,7 +1322,7 @@ export default function AffiliatePortal({ activityOnly = false, initialTab = 'ma
               onClick={() => { setFunnelDialogOpen(false); setFiltersOpen(true); }}
             >
               סינון נכסים לפרסום אוטומטי
-              <SlidersHorizontal className="h-4 w-4" />
+              <Filter className="h-4 w-4" />
             </Button>
             <DialogFooter className="flex-row items-center justify-between gap-2 sm:justify-between sm:space-x-0">
               <Button

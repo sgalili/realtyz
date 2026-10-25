@@ -23,7 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   Search, CheckCircle2, XCircle, User, MapPin, Tag, Clock,
   ArrowUpRight, ArrowDownLeft, Upload, FileSpreadsheet, AlertTriangle,
-  Users, Trash2, X, Eye, SlidersHorizontal,
+  Users, Trash2, X, Eye, Filter,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
   Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
   Loader2, Pencil, Check, Send
@@ -1896,7 +1896,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
                   className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   aria-label="סינון וייצוא"
                 >
-                  <SlidersHorizontal className="h-4 w-4" />
+                  <Filter className="h-4 w-4" />
                 </button>
               </div>
             </div>

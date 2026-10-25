@@ -31,7 +31,7 @@ import {
   Check,
   ShieldCheck,
   Home,
-  SlidersHorizontal,
+  Filter,
   Search,
   Phone,
   MapPin,
@@ -575,7 +575,7 @@ export default function DealRoom() {
             title="סינון מתקדם"
             aria-label="סינון מתקדם"
           >
-            <SlidersHorizontal className="h-4 w-4" />
+            <Filter className="h-4 w-4" />
             {activeFilterCount > 0 && (
               <span className="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold text-warning-foreground">
                 {activeFilterCount}
