@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Licensed-only closing display
-- [ ] Confirm the server closing gate and prevent nonlicensed closing-price displays across listing indicators and pricing views.
-- [ ] Show a gray closing icon and broker-only label with course/exam explanation for all nonlicensed viewers; test and verify.
+- [x] Replaced role-only/Super Admin/test-license closing entitlement with current official registry evidence and server-verified licensing; shared displays fail closed.
+- [x] Gray closing icon and broker-only popup reuse saved course/exam links; 39 focused tests pass, guest and signed-in board popup checked, signed-in server denial confirmed and current build OK.
 
 ## Pricing editor corrections
 - [x] Fix zero form-fee saves and Super Admin cross-workspace pricing edits without widening other permissions; reload authorized data before reopening.
