@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_campaign_logs_ws_archived_created ON public.campaign_logs (workspace_owner_id, is_archived, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_listings_status_published_created ON public.listings (status, is_published, created_at DESC);
