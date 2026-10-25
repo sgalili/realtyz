@@ -2017,6 +2017,7 @@ const InlineComposer = ({
     const cached = readListingCache(id);
     if (cached && cached.body.trim()) {
       listingAutoGenRef.current = id;
+      autoGenTriggeredRef.current = true;
       if (!body.trim()) {
         setBody(cached.body);
         setOriginalAiBody(cached.body);
@@ -2028,6 +2029,7 @@ const InlineComposer = ({
     if (body.trim() || generating) return;
     const t = setTimeout(() => {
       if (isGenerationStopped()) return;
+      if (autoGenTriggeredRef.current && listingAutoGenRef.current === id) return;
       if (body.trim() || generating) return;
       listingAutoGenRef.current = id;
       autoGenTriggeredRef.current = true;

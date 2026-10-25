@@ -118,7 +118,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       setWrapWidth(el.clientWidth);
       const width = el.scrollWidth > 0 ? Math.min(100, el.clientWidth / el.scrollWidth * 100) : 100;
       const maxScroll = el.scrollWidth - el.clientWidth;
-      setScrollIndicator({ width, offset: maxScroll > 0 ? Math.min(1, Math.abs(el.scrollLeft) / maxScroll) * (100 - width) : 0 });
+      const offset = maxScroll > 0 ? Math.min(1, Math.abs(el.scrollLeft) / maxScroll) * (100 - width) : 0;
+      setScrollIndicator(previous => previous.width === width && previous.offset === offset ? previous : { width, offset });
     };
     update();
     el.addEventListener('scroll', update, { passive: true });
