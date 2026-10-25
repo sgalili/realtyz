@@ -25,9 +25,9 @@ export function RewardIcons({ levels, types, prices, zeroTypes, closingPercent =
   return <span className="inline-flex flex-col gap-1 text-start" data-commission-icons>
     {label && <span className="text-[10px] font-medium text-muted-foreground">{label}</span>}
     <span className={prices || grid ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'flex items-center gap-2'}>{rows.map(({ key, label: title, Icon, tone }) => {
-      // Signed-out visitors get icons only: a gray icon carries both the zero-fee
-      // and the restricted-closing message. Signed-in users also get the labels.
-      if (key === 'closing' && (!user || !level4Unlocked)) return <RestrictedClosingReward key={key} className="whitespace-nowrap" showLabel={!!user} />;
+      // The trophy keeps the closing price's real level color even when the
+      // amount itself stays hidden behind the broker-only explanation.
+      if (key === 'closing' && (!user || !level4Unlocked)) return <RestrictedClosingReward key={key} className="whitespace-nowrap" showLabel={!!user} label="למתווכים" iconStyle={closingLevel != null ? { color: `hsl(var(--closing-${LEVELS[closingLevel] ?? 'low'}))` } : undefined} />;
       // Icon and price share one level color: closing uses its server level, lead types their price level.
       const level = key === 'closing' ? closingLevel : prices?.[key] != null ? leadPriceLevel(key as 'form', Number(prices[key])) : levels?.[key as 'form'] ?? null;
       const zero = zeroTypes ? zeroTypes[key] === true : prices?.[key] === 0;
