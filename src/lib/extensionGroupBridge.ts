@@ -953,7 +953,7 @@ export const queueProgressForText = (
     label: total > 1 && stage !== 'failed' ? `${meta.label} · ${done}/${total}` : meta.label,
     percent,
     error: stage === 'failed' || failedJobs.length > 0 || hits.some((e) => e.status === 'completed' && e.error)
-      ? (hits.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
+      ? (hits.find((e) => e.error)?.error ?? 'הפרסום בפייסבוק נכשל')
       : null,
     done,
     total,
@@ -1016,7 +1016,7 @@ export const queueProgressForGroups = (
     label: total > 1 && stage !== 'failed' ? `${meta.label} · ${done}/${total}` : meta.label,
     percent,
     error: stage === 'failed' || failedJobs.length > 0 || hits.some((e) => e.status === 'completed' && e.error)
-      ? (hits.find((e) => e.error)?.error ?? 'הפרסום דרך התוסף נכשל')
+      ? (hits.find((e) => e.error)?.error ?? 'הפרסום בפייסבוק נכשל')
       : null,
     done,
     total,

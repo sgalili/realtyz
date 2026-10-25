@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Cloud, Loader2, Plus, Search, Settings2, Users, ExternalLink, Activity } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { FacebookCloudConnectGate } from "./FacebookCloudConnectGate";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,6 @@ export function GroupDiscoveryDialog({
   onJoined?: () => void;
 }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const navigate = useNavigate();
   const { data: pageBinding } = useMetaPageBinding();
   const [query, setQuery] = useState("נכסים ודירות למכירה והשכרה");
   const [cloud, setCloud] = useState<CloudSessionState | null>(null);
@@ -229,11 +228,6 @@ export function GroupDiscoveryDialog({
 
   const busy = cloudScanning || joining;
 
-  const goConnectCloud = () => {
-    onOpenChange(false);
-    navigate("/api-settings#cloud-automation");
-  };
-
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!joining) onOpenChange(v); }}>
       <DialogContent dir="rtl" className="w-[calc(100vw-1.5rem)] max-w-lg p-4">
@@ -254,12 +248,7 @@ export function GroupDiscoveryDialog({
                 </Button>
               </form>
             ) : (
-              <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3 text-right">
-                <p className="text-[15px] font-semibold">חברו את פייסבוק בענן</p>
-                <Button type="button" size="sm" className="h-8 gap-1 text-[14px]" onClick={goConnectCloud}>
-                  <Settings2 className="h-3.5 w-3.5" /> חיבור פייסבוק בענן
-                </Button>
-              </div>
+              <FacebookCloudConnectGate key={workspaceOwnerId} alwaysVisible onSynced={() => { void getCloudSessionState().then(setCloud); onJoined?.(); }} onDiscover={() => document.querySelector<HTMLInputElement>('input[aria-label="שם הקבוצה"]')?.focus()} />
             )}
 
             {cloudScanning && (

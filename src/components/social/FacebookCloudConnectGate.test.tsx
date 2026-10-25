@@ -1,0 +1,67 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({ owner: 'workspace-a', state: vi.fn(), invoke: vi.fn(), sync: vi.fn(), navigate: vi.fn() }));
+vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => mocks.owner }));
+vi.mock('@/lib/cloudSession', () => ({ getCloudSessionState: mocks.state }));
+vi.mock('@/lib/cloudGroupDiscovery', () => ({ fetchGroupsViaCloud: mocks.sync }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
+vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
+import { FacebookCloudConnectGate } from './FacebookCloudConnectGate';
+
+describe('Facebook cloud connection', () => {
+  beforeEach(() => { vi.clearAllMocks(); mocks.owner = 'workspace-a'; mocks.state.mockResolvedValue({ active: false }); });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  it('imports confirmed memberships using the cloud job, not a keyword search', async () => {
+    mocks.state.mockResolvedValue({ active: true });
+    mocks.sync.mockResolvedValue([{ group_id: '123' }]);
+    const onSynced = vi.fn();
+    render(<FacebookCloudConnectGate alwaysVisible onSynced={onSynced} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'ייבוא הקבוצות שלי' }));
+    await waitFor(() => expect(onSynced).toHaveBeenCalledOnce());
+    expect(mocks.sync).toHaveBeenCalledWith('', { syncMemberships: true, signal: expect.any(AbortSignal) });
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
+  it('does not import memberships when remote login fails', async () => {
+    vi.spyOn(window, 'open').mockReturnValue({ opener: null, close: vi.fn(), location: { href: '' } } as unknown as Window);
+    mocks.invoke.mockResolvedValue({ data: { error: 'worker_unavailable', message: 'הענן אינו זמין' } });
+    render(<FacebookCloudConnectGate alwaysVisible />);
+    fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
+    await screen.findByRole('alert');
+    expect(mocks.invoke).toHaveBeenCalledWith('fb-session-vault', { body: { action: 'remote_login' } });
+    expect(mocks.sync).not.toHaveBeenCalled();
+  });
+
+  it('waits for server-confirmed login before importing', async () => {
+    vi.spyOn(window, 'open').mockReturnValue({ opener: null, close: vi.fn(), location: { href: '' } } as unknown as Window);
+    mocks.invoke.mockResolvedValue({ data: { url: 'https://example.com/login' } });
+    mocks.sync.mockResolvedValue([]);
+    render(<FacebookCloudConnectGate alwaysVisible />);
+    const connect = await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' });
+    vi.useFakeTimers();
+    await act(async () => { fireEvent.click(connect); });
+    expect(mocks.sync).not.toHaveBeenCalled();
+    mocks.state.mockResolvedValue({ active: true });
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(mocks.sync).toHaveBeenCalledOnce();
+  });
+
+  it('aborts an in-flight import on workspace switch and does not signal completion', async () => {
+    mocks.state.mockResolvedValue({ active: true });
+    let resolveSync: (groups: unknown[]) => void = () => {};
+    mocks.sync.mockImplementation(() => new Promise(resolve => { resolveSync = resolve; }));
+    const onSynced = vi.fn();
+    const { rerender } = render(<FacebookCloudConnectGate alwaysVisible onSynced={onSynced} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'ייבוא הקבוצות שלי' }));
+    await waitFor(() => expect(mocks.sync).toHaveBeenCalledOnce());
+    const signal = mocks.sync.mock.calls[0][1].signal as AbortSignal;
+    mocks.owner = 'workspace-b';
+    rerender(<FacebookCloudConnectGate alwaysVisible onSynced={onSynced} />);
+    expect(signal.aborted).toBe(true);
+    await act(async () => { resolveSync([]); });
+    expect(onSynced).not.toHaveBeenCalled();
+  });
+});

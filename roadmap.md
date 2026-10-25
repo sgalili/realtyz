@@ -1,3 +1,8 @@
+# Facebook cloud connection cleanup
+- [x] Replace connection prompts with shared cloud login, confirmed-group import and discovery guidance; remove manual cookie entry and delegate old connection controls to the cloud flow.
+- [x] Remove user-facing installation/extension wording across Facebook screens and tutorials; 14 focused tests pass and authenticated Connections UI verifies login/import/discovery controls with no installation wording. Preview builds pass.
+- [ ] Live Facebook login/import/posting completion needs the owner's Facebook approval and a working cloud runner; no groups joined or posts published during checks. Legacy internal Page-sync/comment fallback protocols remain unchanged and are not relabeled as cloud operations.
+
 # Board row actions
 - [x] Lock outer public/app document scrolling, correct sidebar/footer height bounds and bound inventory/project table views. Three wheel tests pass; guest 446px/1280px and signed-in homepage verify both scroll axes and window scroll 0. Populated inventory/project tables unavailable in current account; their end-to-end checks remain unverified.
 - [x] Share the auth footer once across all public/account/admin routes, replace older landing/portal footers and reserve viewport-shell space. One-line layout verified at 320/446/1280px; legal navigation and signed-in home/profile/wallet checked. Modal overlays appropriately hide background accessibility controls.

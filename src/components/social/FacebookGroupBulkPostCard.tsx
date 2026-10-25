@@ -245,16 +245,16 @@ export const FacebookGroupBulkPostCard = () => {
       firstComment: link.trim() || null,
     });
     const next: Record<string, { ok: boolean; reason?: string }> = {};
-    for (const id of ids) next[id] = queued > 0 ? { ok: true } : { ok: false, reason: 'לא ניתן היה להוסיף לתור התוסף' };
+    for (const id of ids) next[id] = queued > 0 ? { ok: true } : { ok: false, reason: 'לא ניתן היה להוסיף לתור הפרסום' };
     setResults(next);
     setSending(false);
     setProgress(null);
     if (queued > 0) {
-      toast.success(`${queued} פוסטים נוספו לתור הפרסום האוטומטי של התוסף בדפדפן`, {
-        description: 'ודא שתוסף TORAFF מותקן ופעיל בכרום ושאתה מחובר לפייסבוק.',
+      toast.success(`${queued} פוסטים נוספו לתור הפרסום`, {
+        description: 'ההתקדמות תתעדכן לאחר אישור הפרסום בפייסבוק.',
       });
     } else {
-      toast.error('לא נוספו פוסטים לתור התוסף');
+      toast.error('לא נוספו פוסטים לתור הפרסום');
     }
   };
 

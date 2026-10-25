@@ -56,11 +56,11 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
       posts = sync.upserted;
       counters = sync.scraped;
       if (sync.status === 'no_extension') {
-        problems.push('תוסף TORAFF לא זוהה בדפדפן.');
-        fixes.push('התקן את תוסף TORAFF (גרסה 1.7.0 ומעלה), הישאר מחובר לפייסבוק, ואז הרץ ייבוא שוב.');
+        problems.push('סנכרון הפוסטים אינו זמין כרגע.');
+        fixes.push('בדקו את חיבור הפייסבוק וההרשאות לדף ונסו שוב. חלק מהפוסטים עשויים לא להיות זמינים לייבוא.');
       } else if (sync.status === 'empty') {
-        problems.push('התוסף לא מצא פוסטים בעמוד.');
-        fixes.push('ודא שאתה מחובר לפייסבוק בדפדפן הזה ושיש לך גישה לעמוד, ואז נסה שוב.');
+        problems.push('לא נמצאו פוסטים זמינים לייבוא בדף.');
+        fixes.push('בדקו את חיבור הפייסבוק והגישה לדף ונסו שוב.');
       } else if (sync.status === 'timeout') {
         problems.push('הסנכרון לא הושלם בזמן. נסה שוב.');
       } else if (sync.status === 'error') {
@@ -82,7 +82,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
         // re-ingest them, so the import completes instead of failing.
         const blockedIds: string[] = Array.isArray(res.extension_post_ids) ? res.extension_post_ids : [];
         if (blockedIds.length > 0) {
-          setStep('פייסבוק חסמה חלק מהפוסטים — מייבא תגובות דרך התוסף…');
+          setStep('בודק אפשרות לייבא תגובות מפוסטים עם גישה מוגבלת…');
           const bundles = await requestExtensionPostComments(blockedIds);
           if (bundles.length > 0) {
             const { data: extData } = await supabase.functions.invoke('fb-comments-backfill', {
@@ -94,7 +94,7 @@ export function FacebookImportDialog({ since = DEFAULT_SINCE }: { since?: string
               res = { ...extRes, message: null, failures: [], failed_posts: 0 };
             }
           } else {
-            fixes.push('התקן את תוסף TORAFF לדפדפן והישאר מחובר לפייסבוק כדי לייבא תגובות מפוסטים חסומים.');
+            fixes.push('פייסבוק לא אישר גישה לתגובות בחלק מהפוסטים. הייבוא שלהם לא הושלם.');
           }
         }
 

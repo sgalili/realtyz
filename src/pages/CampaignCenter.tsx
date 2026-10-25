@@ -3615,8 +3615,8 @@ const ConfirmDispatchDialog = ({
           if (queuedGroups > 0) {
             toast.success(
               scheduledAt
-                ? `${queuedGroups} פוסטים נוספו לתור הפרסום האוטומטי של התוסף · ${new Date(scheduledAt).toLocaleString('he-IL')}`
-                : `${queuedGroups} פוסטים נוספו לתור הפרסום האוטומטי של התוסף בדפדפן`,
+                ? `${queuedGroups} פוסטים נוספו לתור הפרסום · ${new Date(scheduledAt).toLocaleString('he-IL')}`
+                : `${queuedGroups} פוסטים נוספו לתור הפרסום`,
             );
           }
         }
@@ -3781,7 +3781,7 @@ const ConfirmDispatchDialog = ({
           if (payload?.first_comment_extension_payload) {
             const { post_id, post_url, first_comment } = payload.first_comment_extension_payload;
             if (enqueuePageFirstComment({ postId: post_id, postUrl: post_url, firstComment: first_comment })) {
-              toast.info('התגובה הראשונה הועברה לתוסף הדפדפן לפרסום אוטומטי.');
+              toast.info('התגובה הראשונה נוספה לתור הפרסום.');
             }
           }
         });
@@ -5553,7 +5553,7 @@ const PublishedFeed = ({
             setExtSync({ state: res.status, count: 0, at: Date.now() });
             hadTransientIssue = true;
             console.warn('[campaign] manual sync not completed', res);
-            refreshWarning = res.status === 'no_extension' ? 'יש להתקין ולחבר את תוסף TORAFF כדי לסנכרן' : 'הסנכרון לא הושלם, נסה שוב';
+            refreshWarning = res.status === 'no_extension' ? 'לא ניתן לסנכרן את הפוסטים כרגע. בדקו את חיבור הפייסבוק ונסו שוב' : 'הסנכרון לא הושלם, נסה שוב';
           }
         }
         // Repaint only from persisted rows. mergeRowsById keeps existing cards
@@ -6225,8 +6225,8 @@ const PublishedFeed = ({
             <p className="min-w-0 truncate text-xs text-muted-foreground">
               {extSync.state === 'running' && 'מסנכרן פוסטים מעמוד הפייסבוק…'}
               {extSync.state === 'done' && `סונכרנו ${extSync.count} פוסטים בהצלחה`}
-              {extSync.state === 'no_extension' && 'התקן את תוסף TORAFF כדי לסנכרן פוסטים ומדדים'}
-              {extSync.state === 'empty' && 'לא נמצאו פוסטים — ודא שאתה מחובר לפייסבוק בדפדפן'}
+              {extSync.state === 'no_extension' && 'סנכרון הפוסטים אינו זמין כרגע — בדקו את חיבור הפייסבוק'}
+              {extSync.state === 'empty' && 'לא נמצאו פוסטים — בדקו את החיבור והגישה לדף הפייסבוק'}
               {extSync.state === 'error' && 'הסנכרון לא הושלם, נסה שוב'}
               {extSync.state === 'timeout' && 'הסנכרון ארך יותר מדי זמן — נסה שוב'}
             </p>

@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Cloud, ShieldCheck, Trash2, ExternalLink, Loader2 } from 'lucide-react';
+import { FacebookCloudConnectGate } from '@/components/social/FacebookCloudConnectGate';
+import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { Cloud, ShieldCheck, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -30,9 +32,10 @@ function CloudPostingSessionContent() {
   const [session, setSession] = useState<CloudSession>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [cookies, setCookies] = useState('');
+  const owner = useActiveWorkspaceOwnerId();
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [summary, setSummary] = useState<{ sent_today: number; pending: number; failed_today: number; active_pool: number; pool_cap: number } | null>(null);
-  const [opening, setOpening] = useState(false);
+
   const [workerReady, setWorkerReady] = useState(true);
   const [lastTick, setLastTick] = useState<string | null>(null);
   const [runs, setRuns] = useState<{ ran_at: string; dispatched: number; deferred: number; failed: number }[]>([]);
@@ -63,26 +66,7 @@ function CloudPostingSessionContent() {
     }
   };
 
-  useEffect(() => { void refresh(); }, []);
-
-  const save = async () => {
-    if (cookies.trim().length < 20) {
-      toast.error('הדביקו את נתוני ההתחברות המלאים');
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await call('save', { cookies: cookies.trim(), user_agent: navigator.userAgent });
-      setCookies('');
-      if (res?.session) setSession(res.session); // badge flips to פעיל בענן immediately
-      toast.success('החיבור נשמר מוצפן – פרסום בענן פעיל');
-      await refresh();
-    } catch (e) {
-      toast.error((e as Error).message || 'שמירת החיבור נכשלה');
-    } finally {
-      setSaving(false);
-    }
-  };
+  useEffect(() => { setSession(null); setSummary(null); void refresh(); }, [owner]);
 
   const clear = async () => {
     setSaving(true);
@@ -95,20 +79,6 @@ function CloudPostingSessionContent() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const openRemote = async () => {
-    const win = window.open('about:blank', '_blank', 'noopener,noreferrer');
-    setOpening(true);
-    try {
-      const data = await call('remote_login');
-      if (win) win.location.href = data.url; else window.open(data.url, '_blank', 'noopener,noreferrer');
-      toast.success('דפדפן הענן נפתח – התחברו לפייסבוק בחלון החדש');
-      await refresh();
-    } catch (e) {
-      win?.close();
-      toast.error((e as Error).message || 'פתיחת הדפדפן נכשלה');
-    } finally { setOpening(false); }
   };
 
   const expiredAt = session?.expires_at ? new Date(session.expires_at).getTime() < Date.now() : false;
@@ -137,7 +107,7 @@ function CloudPostingSessionContent() {
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
           שמירת חיבור הפייסבוק שלך בצורה מוצפנת מאפשרת לשרת לחפש קבוצות, לסנכרן ולפרסם
-          בזמנים שקבעת — גם בלי דפדפן פתוח וללא התקנת תוסף. הנתונים מוצפנים ואינם מוצגים
+          בזמנים שקבעת — גם כשהמחשב סגור. הנתונים מוצפנים ואינם מוצגים
           שוב אחרי השמירה, ומשותפים לכל חברי סביבת העבודה.
         </p>
 
@@ -172,10 +142,8 @@ function CloudPostingSessionContent() {
           ))}
         </div>
 
-        <Button size="sm" className="w-full" onClick={openRemote} disabled={opening}>
-          {opening ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <ExternalLink className="me-1 h-4 w-4" />}
-          חיבור ראשוני לפייסבוק בענן
-        </Button>
+        <FacebookCloudConnectGate key={owner} alwaysVisible onSynced={() => void refresh()} onDiscover={() => setDiscoveryOpen(true)} />
+        <GroupDiscoveryDialog key={`groups-${owner}`} open={discoveryOpen} onOpenChange={setDiscoveryOpen} onJoined={() => void refresh()} />
 
         {active && (
           <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
@@ -187,18 +155,7 @@ function CloudPostingSessionContent() {
           </div>
         )}
 
-        <Textarea
-          dir="ltr"
-          rows={4}
-          value={cookies}
-          onChange={(e) => setCookies(e.target.value)}
-          placeholder='הדבק כאן את נתוני ההתחברות (Cookies) מדפדפן מחובר לפייסבוק'
-        />
-
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={save} disabled={saving}>
-            {active ? 'רענון חיבור' : 'שמירת חיבור מוצפן'}
-          </Button>
           {active && (
             <Button size="sm" variant="outline" onClick={clear} disabled={saving}>
               <Trash2 className="me-1 h-4 w-4" /> מחיקת חיבור
