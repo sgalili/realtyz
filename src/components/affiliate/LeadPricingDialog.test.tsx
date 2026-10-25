@@ -19,9 +19,19 @@ describe('partner lead pricing information', () => {
     if (role === 'guest') state.user = null;
     render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ form: true, whatsapp: true, phone: false, closing: false }} />);
     expect(screen.getAllByText('ללא עמלה')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'סגירת עסקה · למתווכים בלבד' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /קורס הכנה/ })).toBeTruthy();
     expect(screen.getByText('ליד מסונן בשיחת טלפון')).toBeTruthy();
     expect(screen.getByText('סגירת עסקה')).toBeTruthy();
+    expect(screen.queryByText('₪8,000')).toBeNull();
+  });
+  it('opens all lead details and inline licensing from the closing icon without a second popup', () => {
+    state.editable = null;
+    render(<LeadPricingDialog listing={listing} />);
+    fireEvent.click(screen.getByLabelText('סגירת עסקה'));
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByText('שדות מטופס בעמוד נחיתה')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /קורס הכנה/ }).getAttribute('href')).toContain('easytest.co.il');
+    expect(screen.getByRole('link', { name: /הרשמה למבחן/ }).getAttribute('href')).toBe('https://www.gov.il/he/service/registration_for_examination_in_real_estate_law');
     expect(screen.queryByText('₪8,000')).toBeNull();
   });
   it('shows configured guest types and exact daily limits without any reward prices', () => {
@@ -87,7 +97,7 @@ describe('partner lead pricing information', () => {
     expect(screen.queryByText('מה התקציב שלך?')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'שאלות הסינון של המפרסם' }));
     expect(screen.getByText('מה התקציב שלך?')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'סגירת עסקה · למתווכים בלבד' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /קורס הכנה/ })).toBeTruthy();
     expect(screen.queryByText('ליד מסונן בשיחת טלפון')).toBeNull();
   });
   it('shows unlimited cap and custom form field requirements and choices', () => {

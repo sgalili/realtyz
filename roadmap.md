@@ -61,3 +61,8 @@
 ## Icon-only reward indicators where no price shows
 - [x] Compact indicators (table תמלוגים column, cards) show only the grayed icon for zero fees and restricted closing; ללא עמלה / למתווכים בלבד stay inside the pricing window.
 - [x] 35 focused tests pass; guest and signed-in table cells and the guest pricing window verified in the browser; build OK.
+
+## Card 8 and unified pricing window
+- [ ] Show immediate live pricing summary independent of consent; enlarge property prices and lead icons by 80%.
+- [ ] Route every reward icon to its master pricing window, with inline licensing links and grayscale broker label.
+- [ ] Run focused tests and verify signed-in editing and guest pricing in the browser.
