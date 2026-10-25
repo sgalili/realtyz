@@ -42,7 +42,7 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     },
   });
   if (networkOpen === false) return null;
-  const source = owned.data ?? property ?? raw;
+  const source: Record<string, unknown> | undefined = owned.data ?? property ?? raw;
   const listing = marketplace.data?.find(row => row.listing_id === listingId);
   // Closing fee may live in the column or only in the wizard's deal_closing_commission; percent converts to ILS.
   const dcc = (source?.features as { deal_closing_commission?: { type?: string; value?: number } } | undefined)?.deal_closing_commission;
