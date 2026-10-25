@@ -1,6 +1,7 @@
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { revealExpanded } from '@/lib/revealExpanded';
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 
 const PeerContext = React.createContext('collapsible-root');
@@ -25,7 +26,7 @@ Collapsible.displayName = 'Collapsible';
 
 const CollapsibleTrigger = CollapsiblePrimitive.CollapsibleTrigger;
 
-const CollapsibleContent = React.forwardRef<React.ElementRef<typeof CollapsiblePrimitive.Content>, React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>>(({ className, ...props }, ref) => <CollapsiblePrimitive.Content ref={ref} {...props} className={cn('overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up motion-reduce:animate-none', className)} />);
+const CollapsibleContent = React.forwardRef<React.ElementRef<typeof CollapsiblePrimitive.Content>, React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>>(({ className, onAnimationEnd, ...props }, ref) => <CollapsiblePrimitive.Content ref={ref} {...props} onAnimationEnd={(e) => { onAnimationEnd?.(e); if (e.currentTarget.dataset.state === 'open') revealExpanded(e.currentTarget); }} className={cn('overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up motion-reduce:animate-none', className)} />);
 CollapsibleContent.displayName = 'CollapsibleContent';
 
 export { Collapsible, CollapsibleTrigger, CollapsibleContent };

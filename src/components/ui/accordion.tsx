@@ -3,6 +3,7 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { revealExpanded } from "@/lib/revealExpanded";
 
 const Accordion = AccordionPrimitive.Root;
 
@@ -37,9 +38,10 @@ AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName;
 const AccordionContent = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onAnimationEnd, ...props }, ref) => (
   <AccordionPrimitive.Content
     ref={ref}
+    onAnimationEnd={(e) => { onAnimationEnd?.(e); if (e.currentTarget.dataset.state === "open") revealExpanded(e.currentTarget); }}
     className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none"
     {...props}
   >
