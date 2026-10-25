@@ -55,8 +55,8 @@ export const pairExtension = async (): Promise<{ ok: boolean; reason?: string }>
   post({ type: 'RZ_EXT_PAIR', token });
   await new Promise((r) => window.setTimeout(r, 900));
   const status = await readRunnerStatus();
-  if (!status) return { ok: false, reason: 'התוסף לא זוהה בדפדפן — התקן והפעל אותו' };
-  if (!status.paired) return { ok: false, reason: 'התוסף לא קיבל את מפתח הסנכרון' };
+  if (!status) return { ok: false, reason: 'חיבור הפרסום אינו זמין כרגע' };
+  if (!status.paired) return { ok: false, reason: 'חיבור הפרסום לא אושר' };
   return { ok: true };
 };
 

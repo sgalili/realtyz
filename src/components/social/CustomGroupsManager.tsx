@@ -141,7 +141,7 @@ export function CustomGroupsManager() {
       <div className="flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight">
           <Users className="h-4 w-4" />
-          ניהול קבוצות ידני / תוסף
+          ניהול קבוצות
         </h3>
         <div className="flex items-center gap-2">
           <Button
@@ -201,7 +201,7 @@ export function CustomGroupsManager() {
         {loading && <div className="px-3 py-4 text-center text-xs text-muted-foreground">טוען…</div>}
         {!loading && groups.length === 0 && (
           <div className="px-3 py-5 text-center text-xs text-muted-foreground">
-            אין קבוצות שמורות. הוסף קבוצה בשדות שלמעלה או סנכרן דרך התוסף.
+            אין קבוצות שמורות. הוסיפו קבוצה לפי קישור או ייבאו את הקבוצות שלכם בחיבור פייסבוק.
           </div>
         )}
 
