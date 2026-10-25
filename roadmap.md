@@ -1,4 +1,6 @@
 # Campaign card actions
+# Homepage royalties editing
+- [ ] Remove table attribution license/background/borders; diagnose licensed closing pricing; open shared Card 8 editor for authorized owned workspace listings; fill only missing published closing rates with requested random 10–100% of sale/monthly rent price, preserving snapshots.
 # IVR property script
 - [x] First-name-only menu and selected-field Hebrew v3 demos, always-visible script refresh/empty AI link, bold audience placeholder; server-owned final audio script metadata feeds successful-call-only sender/workspace style learning. Ten tests pass; authenticated mobile verifies two playback invocations, general generation/regeneration and real TTS 200 without calls. Learning after actual delivery remains unverified (no dispatch authorized).
 - [x] Move voice/property labels into fields, remove step count, measure recording durations in MM:SS and calculate maximum estimated credits from selected audio. Nine tests/build pass; authenticated 446px upload of 30-second audio verifies 00:30 and 15 credits for three recipients in confirmation. No calls/messages sent; actual wallet metering remains unverified as noted below.
