@@ -42,13 +42,6 @@ type HistoryItem = {
 
 const HISTORY_KEY = 'realtyz_ivr_audio_history';
 
-const loadHistory = (): HistoryItem[] => {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
-};
-const saveHistory = (items: HistoryItem[]) => {
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 50))); } catch { /* ignore */ }
-};
-
 const arrayBufferToBase64 = (buf: ArrayBuffer): string => {
   const bytes = new Uint8Array(buf);
   let binary = '';
@@ -331,7 +324,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('not authenticated');
       const { error } = await supabase.from('system_intelligence_kb').insert({
-        workspace_owner_id: user.id,
+        workspace_owner_id: workspaceId,
         created_by: user.id,
         actor_role: 'owner',
         source: 'ivr_final_version',
@@ -453,6 +446,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
         });
       }
       if (localUrl) URL.revokeObjectURL(localUrl);
+      setAudioSeconds(seconds);
       setReview({ audioUrl, payload: fallbackPayload, seconds });
       return;
     }
@@ -474,6 +468,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       const ok = (data as any)?.ok ?? 0;
       const failed = (data as any)?.failed ?? 0;
       toast.success(`שודרו ${ok} שיחות${failed ? ` · ${failed} נכשלו` : ''}`);
+      if (includeWhatsapp) toast.info(`וואטסאפ: ${(data as any)?.whatsapp_ok ?? 0} נשלחו · ${(data as any)?.whatsapp_failed ?? 0} לא נשלחו`);
     } catch (e: any) {
       toast.dismiss('ivr-dispatch');
       toast.error(`הוצאת השיחה נכשלה: ${e?.message ?? 'שגיאה'}`);
@@ -838,9 +833,9 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           <AlertDialogTitle>אישור הפצת IVR</AlertDialogTitle>
           <AlertDialogDescription>
             <span className="flex items-center gap-2"><CampaignServiceIcon channel="ivr" />{audienceCount} נמענים · {price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span>
-            <span className="block mt-2">{review?.seconds != null && price ? `עלות משוערת: ${formatCampaignCredits(audienceCount * review.seconds / 60 * price.credits)}` : 'לא ניתן לחשב את האורך כרגע. החיוב בקרדיטים לפי משך השיחות בפועל.'}</span>
+            <span className="block mt-2">עלות משוערת כוללת: {totalLabel}</span>
           </AlertDialogDescription>
-        </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>ביטול</AlertDialogCancel><AlertDialogAction disabled={!price} onClick={() => { if (!review) return; const current = review; setReview(null); void dispatchAudio(current.audioUrl, current.payload, true); }}>אישור ושיגור</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>ביטול</AlertDialogCancel><AlertDialogAction className="h-auto whitespace-normal" disabled={totalCredits == null} onClick={() => { if (!review) return; const current = review; setReview(null); void dispatchAudio(current.audioUrl, current.payload, true); }}>אישור ושיגור · {totalLabel}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
       <AddVoiceDialog
         open={addVoiceOpen}

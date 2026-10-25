@@ -3,7 +3,8 @@
 // using inline TwiML <Play>. Honors per-broker Twilio creds stored in
 // user_api_keys.api_key as "SID:TOKEN:NUMBER".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from 'npm:zod@3';
 import { encode as b64encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { decode as b64decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { IVR_MODEL_ID, IVR_DEFAULT_VOICES, canUseIvrVoice } from '../_shared/ivrVoices.ts';
@@ -96,7 +97,15 @@ Deno.serve(async (req) => {
     const { data: workspaceId, error: workspaceError } = await userClient.rpc('current_workspace_owner');
     if (workspaceError || !workspaceId) return json({ error: 'workspace_unavailable' }, 403);
 
-    const body = await req.json();
+    const parsedBody = z.object({
+      source: z.enum(['recording', 'tts', 'upload']), generate_only: z.boolean().optional(), include_whatsapp: z.boolean().optional(),
+      text: z.string().max(5000).optional(), voice_id: z.string().regex(/^[A-Za-z0-9_-]{10,64}$/).optional(),
+      audio_url: z.string().url().optional(), audio_b64: z.string().max(22000000).optional(),
+      ext: z.enum(['mp3', 'wav', 'm4a', 'webm', 'ogg']).optional(),
+      leads: z.array(z.object({ id: z.string().uuid().optional(), phone: z.string().min(9).max(30) })).max(1000).optional(),
+    }).safeParse(await req.json());
+    if (!parsedBody.success) return json({ error: parsedBody.error.flatten() }, 400);
+    const body = parsedBody.data;
     const source = body.source as "recording" | "tts" | "upload";
     const generateOnly = body.generate_only === true;
     const includeWhatsapp = body.include_whatsapp === true;
@@ -164,7 +173,7 @@ Deno.serve(async (req) => {
     }
 
     // 3. Dial each lead with inline TwiML <Play>
-    const twiml = `<Response><Play>${audioUrl}</Play></Response>`;
+    const twiml = `<Response><Play>${audioUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</Play></Response>`;
     const auth = "Basic " + b64encode(`${twSid}:${twToken}`);
     let ok = 0, failed = 0;
     let whatsappOk = 0, whatsappFailed = 0;
