@@ -25,13 +25,13 @@ export function RewardIcons({ levels, types, prices, zeroTypes, closingPercent =
   return <span className="inline-flex flex-col gap-1 text-start" data-commission-icons>
     {label && <span className="text-[10px] font-medium text-muted-foreground">{label}</span>}
     <span className={prices || grid ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'flex items-center gap-2'}>{rows.map(({ key, label: title, Icon, tone }) => {
-      // Where no amount is displayed the icon alone carries the message: a zero
-      // fee and a restricted closing both stay grayed out without any label.
-      if (key === 'closing' && (!user || !level4Unlocked)) return <RestrictedClosingReward key={key} className="whitespace-nowrap" showLabel={false} />;
+      // Signed-out visitors get icons only: a gray icon carries both the zero-fee
+      // and the restricted-closing message. Signed-in users also get the labels.
+      if (key === 'closing' && (!user || !level4Unlocked)) return <RestrictedClosingReward key={key} className="whitespace-nowrap" showLabel={!!user} />;
       // Icon and price share one level color: closing uses its server level, lead types their price level.
       const level = key === 'closing' ? closingLevel : prices?.[key] != null ? leadPriceLevel(key as 'form', Number(prices[key])) : levels?.[key as 'form'] ?? null;
       const zero = zeroTypes ? zeroTypes[key] === true : prices?.[key] === 0;
-      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: `hsl(var(--closing-${LEVELS[level] ?? 'low'}))` } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{!zero && prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
+      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: `hsl(var(--closing-${LEVELS[level] ?? 'low'}))` } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? user && <span className="text-xs font-semibold">ללא עמלה</span> : prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
     })}</span>
   </span>;
 }
