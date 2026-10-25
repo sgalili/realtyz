@@ -2,7 +2,10 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, horizontalListSortingStrategy, sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowDown, ArrowUp, Columns3, GripVertical } from 'lucide-react';
+import { ArrowDown, ArrowUp, Columns3, GripVertical, HelpCircle } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/hooks/useAuth';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
@@ -87,11 +90,18 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const label = controls.definitions.find(c => c.id === id)?.label;
   const sorted = controls.sort?.id === id;
+  const { user } = useAuth();
   return <th ref={setNodeRef} data-column={id} aria-sort={sorted ? controls.sort?.descending ? 'descending' : 'ascending' : 'none'} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group/column px-2 pb-0 pt-2 text-right font-semibold ${isDragging ? 'relative z-10 bg-muted opacity-80' : ''}`}>
     <div className="flex items-center gap-0.5 whitespace-nowrap">
       <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-7 gap-1 px-0 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
         {label}{sorted && (controls.sort?.descending ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />)}
       </Button>
+      {id === 'commissions' && !user && <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" aria-label="מה אומרים הצבעים?"><HelpCircle className="h-3.5 w-3.5" /></Button></PopoverTrigger><PopoverContent align="start" className="w-64 space-y-2 text-right text-sm font-normal leading-relaxed">
+        <p className="font-bold">מה אומרים הצבעים?</p>
+        <p>כל אייקון הוא דרך להרוויח מהנכס. ככל שהצבע חם יותר, התגמול שהמפרסם מציע גבוה יותר.</p>
+        <p>הצטרפו כשותפים וראו את הסכומים המדויקים. מתווכים עם רישיון רואים גם את עמלת סגירת העסקה.</p>
+        <Button asChild size="sm" className="w-full"><Link to="/auth">הצטרפות חינם</Link></Button>
+      </PopoverContent></Popover>}
       <Button variant="ghost" size="icon" {...attributes} {...listeners} aria-label={`הזזת עמודת ${label}`} title={`הזזת עמודת ${label}`} className="h-7 w-5 touch-none text-muted-foreground"><GripVertical className="h-3 w-3" /></Button>
     </div>
   </th>;
