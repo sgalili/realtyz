@@ -165,7 +165,7 @@ export default function PropertyContactActions({
 
   return (
     <>
-      <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={cn(shareOnly ? 'inline-flex shrink-0' : compact ? 'flex w-full flex-wrap items-center gap-2' : 'sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur', singleRow && 'gap-1 [&>button:not([aria-label="שיתוף נכס"])]:min-w-0 [&>button:not([aria-label="שיתוף נכס"])]:basis-0 [&>button]:gap-1 [&>button]:px-1 [&>button]:text-xs sm:[&>button]:text-base [&>button>svg]:shrink-0')}>
+      <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={cn(shareOnly ? 'inline-flex shrink-0' : compact ? 'grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap' : 'sticky bottom-3 z-10 grid grid-cols-2 items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur sm:flex sm:flex-wrap', !shareOnly && '[&>button]:h-auto [&>button]:min-h-12 [&>button]:min-w-0 [&>button]:gap-1 [&>button]:whitespace-normal [&>button]:px-2 [&>button]:py-2 [&>button]:text-[22px] sm:[&>button]:text-base [&>button>svg]:shrink-0', singleRow && 'sm:[&>button:not([aria-label="שיתוף נכס"])]:basis-0')}>
         {showDigital && formAsButton && (
           <Button variant="outline" className="min-w-[8rem] flex-1 text-base" aria-expanded={formOpen} onClick={() => { setFormOpen((open) => !open); setInquiryStarted(true); }}>
             <ClipboardList className="h-4 w-4" />
@@ -173,7 +173,7 @@ export default function PropertyContactActions({
           </Button>
         )}
         {showDigital && (!formAsButton || formOpen) && (
-          <form className="flex w-full flex-wrap items-end gap-2" onFocusCapture={() => setInquiryStarted(true)} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+          <form className="col-span-2 flex w-full flex-wrap items-end gap-2" onFocusCapture={() => setInquiryStarted(true)} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
             <div className="min-w-[7rem] flex-1"><Label htmlFor={`phone-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`phone-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, "").replace(/^972/, "0").slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>
             {extraFields.map((f) => {
@@ -208,7 +208,7 @@ export default function PropertyContactActions({
           </Button>
         )}
         {showPhone && (
-          <Button variant="outline" className={cn('min-w-[8rem] flex-1 text-base', formExpanded && 'mt-[30px]')} onClick={() => setMode('phone')}>
+          <Button variant="outline" className={cn('min-w-[8rem] flex-1 text-base', !showShare && showDigital && showWhatsapp && 'col-span-2', formExpanded && 'mt-[30px]')} onClick={() => setMode('phone')}>
             <Phone className="h-4 w-4" />חייגו אליי
           </Button>
         )}
@@ -234,7 +234,7 @@ export default function PropertyContactActions({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {!shareOnly && inquiryStarted && mode === null && <div className="w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
+        {!shareOnly && inquiryStarted && mode === null && <div className="col-span-2 w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
       </div>
       <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
       <JoinPartnerDialog open={joinOpen} onOpenChange={setJoinOpen} />
