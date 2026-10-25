@@ -11,7 +11,7 @@ import { BrokerTestLinks } from './BrokerClosingInfo';
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
 
-export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange }: {
+export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange, unrestricted = false }: {
   className?: string;
   dealType: string | null | undefined;
   price: number;
@@ -22,12 +22,14 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   onValueChange?: (value: number, mode: 'fixed' | 'percent') => void;
   open?: boolean;
   onOpenChange?: (next: boolean) => void;
+  unrestricted?: boolean;
 }) {
   const range = closingFeeRange(dealType, price);
   // Rentals are always priced in ₪, sales always in % (0.2%-2%).
   const outType: 'fixed' | 'percent' = dualMode ? (range.rent ? 'fixed' : 'percent') : valueType;
-  const percent = clampClosingPercent(valueType === 'fixed' && price > 0 ? value / price * 100 : valueType === 'percent' ? value : range.min, dealType);
-  const progress = (percent - range.min) / (range.max - range.min);
+  const rawPercent = valueType === 'fixed' && price > 0 ? value / price * 100 : valueType === 'percent' ? value : range.min;
+  const percent = unrestricted ? Math.max(0, rawPercent) : clampClosingPercent(rawPercent, dealType);
+  const progress = Math.max(0, Math.min(1, (percent - range.min) / (range.max - range.min)));
   const level = Math.min(3, Math.floor(progress * 4));
   const [editing, setEditing] = useState(false);
   const [internalOpen, setInternalOpen] = useState(true);
@@ -50,7 +52,10 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   };
   const commit = () => {
     const parsed = Number(draft.replace(/,/g, ''));
-    if (draft.trim() && Number.isFinite(parsed)) changePercent(clampClosingPercent(displayAmount && range.price > 0 ? parsed / range.price * 100 : parsed, dealType));
+    if (draft.trim() && Number.isFinite(parsed) && parsed >= 0) {
+      const next = displayAmount && range.price > 0 ? parsed / range.price * 100 : parsed;
+      changePercent(unrestricted ? next : clampClosingPercent(next, dealType));
+    }
     setEditing(false);
   };
   return <section className={cn("closing-fee space-y-4 pt-4", className)} data-level={level}>
