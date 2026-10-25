@@ -983,7 +983,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
         <div data-publisher-scroll className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pb-2">
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
-          {pricingOnly ? renderStep(8) : reviewMode ? (
+          {pricingOnly ? (adminOnlyEdit && !adminUnlocked ? <div className="pt-1"><LeadPricingInfo listing={{ listing_id: String(adminRow.id ?? ''), broker_id: String(adminRow.workspace_owner_id ?? ''), property_title: (adminRow.property_title as string) ?? null, tier1_amount: adminTier1, tier2_amount: adminTier2, tier3_amount: adminTier3, tier4_amount: adminTier4, tier4_type: adminTier4Type }} details={adminRow as never} rewardTypes={adminTypes} /></div> : renderStep(8)) : reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
                {STEP_TITLES.map((title, i) => i === 0 ? null : (
                 <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
