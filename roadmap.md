@@ -1,5 +1,9 @@
 # Roadmap
 
+## Profile action bar visibility
+- [x] Keep the sign-out / save-profile row pinned at the bottom of the profile screen on phone-sized viewports, resting above the legal footer; other tabs keep their normal bottom gap. Browser-verified at 446x728 and 1280x900, build OK.
+
+
 ## Auth and property consent forms
 - [x] Keep auth submission visible and disabled until valid; silently validate names on client and server. 37 focused tests passed and authenticated server validation checked.
 - [x] Align publisher header corners, bold expanded titles and move marketing consent above square legal checkboxes.
