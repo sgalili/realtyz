@@ -529,10 +529,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           features: { ...(fields.importedListing?.features && !Array.isArray(fields.importedListing.features) ? fields.importedListing.features : { amenity_labels: fields.importedListing?.features ?? [] }), ...pricing.features },
         }).eq('id', fields.listingId).eq('workspace_owner_id', activeWorkspaceId).select('id').single();
         if (error) throw error;
-        await queryClient.invalidateQueries({ queryKey: ['public-commission-pricing'] });
-        await queryClient.invalidateQueries({ queryKey: ['public-listing-expanded'] });
-        await queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
+        // The save is committed: report it and dismiss the editor before touching caches,
+        // so a background refetch failure can never leave a successfully saved dialog open.
         toast.success('התמלוגים נשמרו'); setOpen(false); onRecovered?.();
+        void queryClient.invalidateQueries({ queryKey: ['public-commission-pricing'] });
+        void queryClient.invalidateQueries({ queryKey: ['public-listing-expanded'] });
+        void queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
       } catch { toast.error('לא ניתן לשמור את התמלוגים'); }
       finally { setPublishing(false); }
       return;
