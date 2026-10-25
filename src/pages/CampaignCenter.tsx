@@ -8432,8 +8432,10 @@ const CampaignCenter = () => {
       setWizardChannel(channelParam as DistributionChannel);
       setFbReady(false);
     }
+    // workspaceOwnerId is included so a deep link survives the workspace
+    // resolution effect above, which resets the wizard channel on changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelParam]);
+  }, [channelParam, workspaceOwnerId]);
 
 
   const leadId = searchParams.get('lead') ?? searchParams.get('client') ?? searchParams.get('voter');
