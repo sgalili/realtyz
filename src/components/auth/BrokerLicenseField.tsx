@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { brokerLicenseSchema, brokerLicenseDigits, verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 import { ClosingSplitNote } from '@/components/affiliate/ClosingSplitNote';
+import { BrokerTestLinks } from '@/components/affiliate/BrokerClosingInfo';
 
 export function BrokerLicenseField({ value, onChange, onVerified, compact = false }: { value: string; onChange: (value: string) => void; onVerified: (value: string | null) => void; compact?: boolean }) {
   const [status, setStatus] = useState<'idle' | 'checking' | 'valid' | 'error'>('idle');
