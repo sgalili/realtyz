@@ -21,6 +21,12 @@ export function clampLeadPrice(key: LeadPriceKey, value: number) {
 /** Closing-commission color levels, cold → hot, matching the --closing-* tokens. */
 export const CLOSING_LEVELS = ['low', 'medium', 'high', 'max'] as const;
 
+/** Class form of a closing-commission level color (see .closing-level-* in index.css). */
+export function closingLevelClass(level: number | null | undefined) {
+  if (level == null) return undefined;
+  return `closing-level-${Math.min(3, Math.max(0, Math.trunc(level)))}`;
+}
+
 /** Inline color of a closing-commission level; undefined leaves the current text color. */
 export function closingLevelColor(level: number | null | undefined) {
   if (level == null) return undefined;
