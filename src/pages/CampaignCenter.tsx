@@ -4288,7 +4288,6 @@ const GlobalSocialFeed = ({
     <div className="grid w-full min-w-0 grid-cols-[4.5rem_minmax(0,1fr)_2rem] items-center gap-1 sm:gap-2" dir="rtl">
       {totalSelectable > 0 ? (
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 justify-self-start">
-          <SelectModeToggle total={totalSelectable} onSelectAll={() => onToggleSelectAll?.(true)} active={feedSelectMode} count={selectedCount} onToggle={() => onToggleSelectMode?.()} className="h-7 w-7" />
           {feedSelectMode && (
             <Checkbox
               checked={allSelected ? true : someSelected ? 'indeterminate' : false}
@@ -6174,6 +6173,14 @@ const PublishedFeed = ({
 
       {/* Inline queue tabs — published / future / drafts, all managed on this page. */}
       <div className="relative -top-[25px] flex h-[44px] items-center gap-2" dir="rtl">
+        <SelectModeToggle
+          total={filteredRows?.length ?? 0}
+          active={feedSelectMode}
+          count={selectedFeedIds.length}
+          onToggle={() => { setFeedSelectMode((v) => !v); setSelectedFeedIds([]); }}
+          onSelectAll={() => { setFeedSelectMode(true); setSelectedFeedIds((filteredRows || []).map((x) => x.id)); }}
+          className="h-7 w-7 shrink-0"
+        />
         <div className="grid h-[44px] flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
           {([
             { v: 'published' as FeedSubTab, label: 'פורסמו', count: filteredRows?.length ?? 0 },
@@ -6186,7 +6193,7 @@ const PublishedFeed = ({
               onClick={() => onSubTabChange?.(t.v)}
               style={{ fontSize: 'calc(0.875rem + 3px)' }}
               className={cn(
-                'h-9 rounded-lg px-2 py-2 font-semibold transition',
+                'relative flex h-9 items-center justify-center rounded-lg px-[6px] py-[6px] font-semibold transition',
                 subTab === t.v
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground',
