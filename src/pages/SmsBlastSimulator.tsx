@@ -1066,7 +1066,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
     <div className="space-y-6" dir="rtl">
 
       {phase === 'compose' && (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className={dedicatedChannel ? 'mx-auto w-full max-w-3xl' : 'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]'}>
           <div className="space-y-6">
             {!dedicatedChannel && <Card className="mt-5">
               <CardHeader>
@@ -1405,7 +1405,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                 <div className="space-y-2">
                   <Label>תוכן ההודעה</Label>
-                  <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder="כתבו הודעה אחת לכל הערוצים..." />
+                  <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder={dedicatedChannel ? 'כתבו את תוכן ההודעה...' : 'כתבו הודעה אחת לכל הערוצים...'} />
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-foreground">תגיות התאמה אישית</span>
@@ -1532,7 +1532,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                 )}
 
                 {selectedChannels.length > 0 && (
-                  <div className="grid gap-4 lg:grid-cols-2">
+                  <div className={dedicatedChannel ? 'space-y-4' : 'grid gap-4 lg:grid-cols-2'}>
                     {selectedChannels.includes('whatsapp') && (
                       <Card className="border-social-whatsapp/25 bg-social-whatsapp/5">
                         <CardHeader className="pb-2">
@@ -1808,7 +1808,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             
           </div>
 
-          <CreditBalanceWidget />
+          {!dedicatedChannel && <CreditBalanceWidget />}
         </div>
       )}
 
@@ -2022,7 +2022,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
         </div>
       )}
 
-      <CampaignHistoryTable />
+      {!dedicatedChannel && <CampaignHistoryTable />}
     </div>
   );
 }
