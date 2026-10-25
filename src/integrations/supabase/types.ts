@@ -8941,6 +8941,7 @@ export type Database = {
         Args: { _listing_id: string }
         Returns: string
       }
+      get_sidebar_counts: { Args: { _ws: string }; Returns: Json }
       get_system_status: {
         Args: never
         Returns: {

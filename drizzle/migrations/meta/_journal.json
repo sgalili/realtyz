@@ -512,6 +512,13 @@
       "when": 1792896941427,
       "tag": "0072_campaign_logs_workspace_feed_index",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1792897170508,
+      "tag": "0073_sidebar_counts_rpc",
+      "breakpoints": true
     }
   ]
 }
