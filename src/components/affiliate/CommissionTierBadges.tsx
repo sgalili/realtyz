@@ -1,7 +1,6 @@
 import { ClipboardList, Phone, Trophy } from 'lucide-react';
 import { fmtILS } from '@/lib/formatCurrency';
-import { leadPriceLevel } from '@/lib/leadPriceRanges';
-const LEVELS = ['low', 'medium', 'high', 'max'];
+import { leadPriceLevel, closingLevelColor } from '@/lib/leadPriceRanges';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import type { CommissionTiers } from '@/hooks/useAffiliate';
