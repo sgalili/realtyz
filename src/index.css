@@ -1705,6 +1705,15 @@
   line-height: 1.4;
 }
 
+/* Public board listing tables: the pinned column-header row keeps its original
+   fixed compact font size — the global legibility floor above inflated it and
+   overflowed the header cells — while long column labels wrap cleanly. */
+.board-head-sticky thead th,
+.board-head-sticky thead th * {
+  font-size: 12px !important;
+  line-height: 1.3;
+}
+
 
 
 .closing-fee { --closing-current: var(--closing-low); }
