@@ -49,9 +49,9 @@ function stripAddressNumbers(value: unknown): string {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
+  let reservedDraft: string | null = null;
   try {
-    const { topic, platform, customInstructions, selectedListingId, listingFocusOnly, skipLicenseFooter, purpose } = await req.json();
+    const { topic, platform, customInstructions, selectedListingId, listingFocusOnly, skipLicenseFooter, purpose, generationRequestId, confirmDraftCharge } = await req.json();
     const isFirstComment = purpose === 'first_comment';
     const isIvrScript = String(platform).toLowerCase() === 'ivr';
     if (!topic || !platform) {
@@ -122,6 +122,19 @@ serve(async (req) => {
       }
       // Stale selection (deleted or from another workspace): soft response so the UI can clear it.
       if (!promotedListing) return new Response(JSON.stringify({ listing_unavailable: true, content: '' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const socialPlatform = String(platform).toLowerCase();
+    if (!isFirstComment && ['facebook', 'instagram'].includes(socialPlatform)) {
+      if (generationRequestId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(generationRequestId)) return jsonError('Invalid request id', 400);
+      const requestId = generationRequestId || crypto.randomUUID();
+      const { data: reservation, error } = await supabase.rpc('begin_social_draft', {
+        _request: requestId, _platform: socialPlatform, _target: selectedListingId ? String(selectedListingId) : 'workspace-post', _confirm: confirmDraftCharge === true,
+      });
+      if (error) throw error;
+      if (reservation?.confirmation_required || reservation?.error) return new Response(JSON.stringify(reservation), { status: reservation.confirmation_required ? 409 : 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (reservation?.cached) return new Response(JSON.stringify({ content: reservation.content }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      reservedDraft = requestId;
     }
 
     const platformRules: Record<string, string> = {
@@ -687,11 +700,17 @@ ${EMOJI_BULLET_LAW}
       approvalId = approval?.id ?? null;
     }
 
+    if (reservedDraft) {
+      const { error } = await admin.rpc('finish_social_draft', { _request: reservedDraft, _content: content });
+      if (error) throw error;
+      reservedDraft = null;
+    }
     return new Response(
       JSON.stringify({ content, approval_id: approvalId, requires_human_review: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
+    if (reservedDraft) await adminClient().rpc('finish_social_draft', { _request: reservedDraft, _content: null }).catch(() => {});
     console.error("generate-content error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
