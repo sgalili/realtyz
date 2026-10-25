@@ -15,12 +15,13 @@
 - Cloud monitoring mounts only for authenticated super_admin roles and its read-only endpoint rechecks user_roles server-side; queue counts resolve and authorize the active workspace, while Railway heartbeat and scheduler ticks remain separate. Why: prevent operational data leaks and false readiness.
 - Wallet usage pricing is read-only and loaded from action_pricing on opening its hero dialog; reuse the admin query key without exposing editing controls. Why: display current configured costs consistently.
 - Profile and office image uploads use the shared fixed-aspect crop dialog before storage; crop percentages map to original pixels and pending selections clear on workspace changes. Why: consistent image framing without premature uploads or tenant drift.
-- Tours use authorized menus and stable state; never auto-mutate.
+- Tours use authorized menus; never auto-mutate.
 - Future calls use workspace-authorized meetings RPCs and the existing tour-reminder tick, with atomic per-call claims and purpose-specific approved official WhatsApp templates; never create a second permanent timer. Why: tenant-safe scheduling without duplicate sends or unauthorized free-text reminders.
 - Public ads use shared headings/publishers/public cache, never private profiles; container-width layouts. Fee notices require workflow context, never browsing. Why: relevance.
+- Property headings fit one address/price row; maps use photo markers, safe DOM popups and details-only selection with scroll-to-top. Why: avoid overlap and premature navigation.
 - Inventory and project campaign targets are workspace-scoped; authorize AI targets server-side, never store project refs in listing UUID fields. Why: isolation.
 - Drafts retain user/workspace steps/errors; explicit publish, member defaults. Celebration owns canvas/audio.
-- Publisher numbering excludes setup, preserves saved keys; resolved addresses reveal details; stale searches cannot overwrite selections.
+- Publisher numbering excludes setup; preserves keys and resolved addresses; ignores stale searches.
 - Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state and consistent counts without tenant drift or duplicate legal content.
 - Publisher lead-price controls reuse shared bounds/colors and potential estimates; disabled fees hide settings without clearing limits/questions. Closing dual-mode callbacks persist both value and unit without changing legacy editors. Why: avoid unintended charges or fee conversions.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
@@ -60,4 +61,4 @@
 - Global instructions use global_ai_documents/private global-ai-training with Super Admin checks; global_ai_config is legacy only. Brains share BrainResources title-free text entry and derived filenames; global library comes first. Why: one library without tenant leaks.
 - The shared advanced filter (LeadTypeFilterButton) resolves fields from server roles: partners get lead-first minimal sets, brokers the full set plus closing tier, developers/private market filters only; broker wins over affiliate. Why: each role sees only relevant filters.
 - Public publisher projections share classification-aware names from original source evidence or server user_roles for manual ads; unknown identities remain private. Board eligibility still requires positive price, configured rewards and a non-generic publisher, filtering without deletion. Why: consistent attribution without exposing private people or changing access rights.
-- Rental prices render as "₪X / לחודש" everywhere (deal_type rent): shared helpers live in src/lib/propertyPrice.ts (rentSuffix/formatRentalPrice/isRentDeal) and every price display must carry both the ₪ sign and the monthly suffix when the deal is rent. Why: one consistent rent presentation across the app.
+- Rent displays always use "₪X / לחודש" via src/lib/propertyPrice.ts helpers. Why: consistent monthly pricing.
