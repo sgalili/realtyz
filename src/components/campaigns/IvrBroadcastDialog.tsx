@@ -547,7 +547,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       type="button"
       onClick={() => setSource(id)}
       className={cn(
-        'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold transition-colors border',
+        'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-[17px] font-semibold transition-colors border',
         source === id
           ? 'bg-[#0f1b3d] text-white border-[#0f1b3d] shadow-sm'
           : 'bg-background text-[#0f1b3d] border-[#0f1b3d]/15 hover:bg-muted/40',
@@ -812,15 +812,15 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           </div>
 
           {/* Dispatch button */}
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <label className="flex items-center gap-2 text-[17px] cursor-pointer">
             <Checkbox checked={includeWhatsapp} onCheckedChange={value => setIncludeWhatsapp(value === true)} />
             שליחת ההקלטה גם בוואטסאפ הרשמי
           </label>
           {includeWhatsapp && <p className="text-xs text-muted-foreground">קובץ אודיו נשלח רק לנמענים עם חלון שיחה פתוח בוואטסאפ ב־24 השעות האחרונות.</p>}
           <Button onClick={dispatchCurrent} disabled={dispatching || audienceCount === 0 || !price || (source === 'tts' ? !ttsText.trim() || !agentVoiceId : audioSeconds == null)}
-            className="w-full min-h-12 h-auto py-3 whitespace-normal rounded-xl text-sm font-semibold">
+            className="w-full min-h-12 h-auto py-3 whitespace-normal rounded-xl text-[17px] font-semibold">
             <PhoneForwarded className="ml-2 h-5 w-5" />
-            {dispatching ? 'משגר…' : 'שגר חיוג קולי'} · {totalLabel}{totalCredits != null ? ' · מקסימום משוער' : ''}
+            {dispatching ? 'משגר…' : 'שגר חיוג קולי'}
           </Button>
 
           {/* History feed */}
