@@ -1,3 +1,7 @@
+# Property landing and map layout
+- [ ] Remove sharing-user name from landing header; reuse bottom contact/share controls.
+- [ ] Unify map address/navigation and photo-marker popups with details/top navigation.
+- [ ] Fit address and smaller price on one line across property views; verify mobile and desktop.
 # Campaign card actions
 # Reward colors and dialog bounds
 - [x] Always show guest closing trophy without amounts; shared colors run green/yellow/orange/red. Guest visibility regression test passes; live table reload did not finish, so its trophy rendering remains unverified.
