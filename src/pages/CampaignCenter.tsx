@@ -1,5 +1,5 @@
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
-import { CampaignChannelPicker, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
+import { CampaignChannelPicker, DISTRIBUTION_CHANNELS, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
@@ -8426,6 +8426,12 @@ const CampaignCenter = () => {
     if (!card) return;
     setPickedChannel((prev) => prev ?? card);
     setPickedChannelIds((prev) => (prev.has(card.id) ? prev : new Set([...prev, card.id])));
+    // Deep links also select the wizard channel so the connection/composer step
+    // mounts directly instead of stopping at the channel picker.
+    if (DISTRIBUTION_CHANNELS.some((c) => c.id === channelParam)) {
+      setWizardChannel(channelParam as DistributionChannel);
+      setFbReady(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelParam]);
 
