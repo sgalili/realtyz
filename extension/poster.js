@@ -296,7 +296,7 @@
 
   // Read only notices/composer UI, never other people's post text in the feed.
   const groupRejectionNotice = () => {
-    const pattern = /(?:your (?:post|content).{0,50}(?:rejected|declined|removed)|(?:post|posting).{0,40}(?:blocked|not allowed|disabled)|you (?:are|have been).{0,30}(?:blocked|banned|restricted).{0,40}(?:group|posting)|הפוסט שלך.{0,40}(?:נדחה|נחסם|הוסר)|(?:לא ניתן|אינך יכול|אין לך הרשאה).{0,30}לפרסם|(?:נחסמת|הושעית).{0,30}(?:בקבוצה|מהקבוצה))/i;
+    const pattern = /(?:your (?:post|content).{0,50}(?:rejected|declined|removed)|(?:post|posting).{0,40}(?:blocked|not allowed|disabled)|you (?:are|have been).{0,30}(?:blocked|banned|restricted).{0,40}(?:group|posting)|(?:הפוסט|הקמפיין|התוכן) שלך.{0,40}(?:נדחה|נחסם|הוסר)|(?:לא ניתן|אינך יכול|אין לך הרשאה).{0,30}לפרסם|(?:נחסמת|הושעית).{0,30}(?:בקבוצה|מהקבוצה))/i;
     const notice = [...document.querySelectorAll('[role="alert"], [role="status"], [role="dialog"], [data-pagelet="GroupInlineComposer"]')]
       .filter(visible).map(textOf).find((text) => pattern.test(text));
     return notice ? `group_post_rejected: ${notice.replace(/\s+/g, ' ').slice(0, 350)}` : null;
