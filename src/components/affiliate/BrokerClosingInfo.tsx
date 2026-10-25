@@ -51,14 +51,7 @@ export function BrokerClosingInfo() {
         <p className="leading-relaxed text-muted-foreground">
           עמלת הסגירה נעה בין 0.2% ל־2% מערך העסקה, בהתאם לקביעת המפרסם, ומיועדת אך ורק למתווכים בעלי רישיון תיווך ישראלי בתוקף.
         </p>
-        <a
-          href={REAL_ESTATE_LICENSING_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block font-medium text-primary underline underline-offset-2"
-        >
-          לאתר הרישוי הרשמי — קורס מתווכים (gov.il)
-        </a>
+        <BrokerTestLinks />
       </PopoverContent>
     </Popover>
   );
