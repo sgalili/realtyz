@@ -105,8 +105,16 @@ const CHANNEL_TO_PLATFORM: Record<ChannelId, string | null> = {
 // Channels considered "paid" for the cost calculation. Social channels are free.
 const PAID_CHANNELS = new Set<ChannelId>(['sms', 'whatsapp', 'voice', 'email']);
 
-// First 6 channels always visible. Channels 7–12 live behind "עוד ערוצים".
-const CORE_CHANNEL_IDS: ChannelId[] = ['whatsapp', 'sms', 'voice', 'ivr', 'email', 'linkedin'];
+// First 6 channels always visible. Channels 7–12 live behind "אפשרויות נוספות".
+// Facebook leads the list with Instagram right next to it.
+const CORE_CHANNEL_IDS: ChannelId[] = ['facebook', 'instagram', 'whatsapp', 'sms', 'voice', 'email'];
+
+// Branded sender domain offered for email campaigns.
+const EMAIL_SENDER_DOMAIN = 'toraff.co.il';
+
+// Username part of the branded sender address (@toraff.co.il).
+const sanitizeEmailAlias = (raw: string) =>
+  raw.toLowerCase().normalize('NFKD').replace(/[^a-z0-9._-]/g, '').replace(/^[._-]+|[._-]+$/g, '').slice(0, 32);
 
 const PERSONALIZATION_TAGS = ['[שם_פרטי]', '[עיר]', '[נכס]'];
 
@@ -350,7 +358,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
       toast.info('ערוץ זה עדיין לא זמין לחיבור - בקרוב.');
       return;
     }
-    const returnTo = encodeURIComponent('/campaigns?tab=broadcast');
+    const returnTo = encodeURIComponent(`/campaigns?tab=${channel === 'facebook' ? 'create' : 'broadcast'}&channel=${channel}`);
     navigate(`/social-connect?connect=${platform}&returnTo=${returnTo}`);
   }, [navigate]);
 
@@ -478,6 +486,12 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const [preferResend, setPreferResend] = useState(false);
   const [emailAccountInfo, setEmailAccountInfo] = useState<{ count: number; addresses: string[] }>({ count: 0, addresses: [] });
   const [resendReady, setResendReady] = useState(false);
+  // Dedicated-email sender setup: branded @toraff.co.il alias or connected Gmail.
+  const [emailAlias, setEmailAlias] = useState<string | null>(null);
+  const [aliasPrefix, setAliasPrefix] = useState('');
+  const [aliasSaving, setAliasSaving] = useState(false);
+  // Dedicated-WhatsApp two-step flow: skip the connection screen for now.
+  const [waConnectSkipped, setWaConnectSkipped] = useState(false);
   const [phase, setPhase] = useState<'compose' | 'sending' | 'done'>('compose');
   const [sent, setSent] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -1062,6 +1076,91 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const circumference = 2 * Math.PI * progressRadius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
+  // ── Email sender setup (dedicated email window) ─────────────────────────
+  // Sender must be configured before recipient selection: either a branded
+  // @toraff.co.il workspace alias or a connected Gmail account.
+  useEffect(() => {
+    if (dedicatedChannel !== 'email') return;
+    (async () => {
+      const { data } = await supabase.rpc('get_workspace_mailbox' as never);
+      const alias = ((data as any)?.alias ?? null) as string | null;
+      if (alias) { setEmailAlias(alias); setAliasPrefix(alias); }
+    })();
+  }, [dedicatedChannel]);
+
+  const saveAlias = useCallback(async () => {
+    const clean = sanitizeEmailAlias(aliasPrefix);
+    if (clean.length < 2 || aliasSaving) return;
+    setAliasSaving(true);
+    try {
+      const { error } = await supabase.rpc('set_workspace_email_alias' as never, { p_alias: clean } as never);
+      if (error) {
+        const m = error.message || '';
+        toast.error(
+          m.includes('alias_taken') || (error as any).code === '23505' ? 'הכתובת תפוסה, בחרו שם אחר'
+          : m.includes('alias_reserved') ? 'כתובת זו שמורה למערכת, בחרו שם אחר'
+          : m.includes('only_workspace_owner') ? 'רק בעל מרחב העבודה יכול להגדיר את השולח'
+          : m,
+        );
+        return;
+      }
+      setEmailAlias(clean);
+      toast.success(`השולח הוגדר: ${clean}@${EMAIL_SENDER_DOMAIN}`);
+    } finally {
+      setAliasSaving(false);
+    }
+  }, [aliasPrefix, aliasSaving]);
+
+  const senderReady = dedicatedChannel !== 'email' || !!emailAlias || emailAccountInfo.count > 0;
+
+  // Two-step flow for the dedicated WhatsApp window: a clean connection screen
+  // first, with an "I'll connect later" link to proceed straight to setup.
+  if (dedicatedChannel === 'whatsapp' && phase === 'compose' && !connectedChannels.whatsapp && !waConnectSkipped) {
+    return (
+      <section dir="rtl" className="mx-auto w-full max-w-3xl space-y-4 text-right">
+        <Button type="button" className="h-12 w-full gap-2 bg-[#25D366] text-base font-semibold text-white hover:bg-[#25D366]/90" onClick={() => handleConnectChannel('whatsapp')}>
+          <MessageCircle className="h-5 w-5 text-white" />
+          חיבור באמצעות וואטסאפ
+        </Button>
+        <Button type="button" variant="link" className="w-full" onClick={() => setWaConnectSkipped(true)}>אתחבר יותר מאוחר</Button>
+      </section>
+    );
+  }
+
+  // Two-step flow for the dedicated email window: sender configuration must be
+  // completed before recipient selection is reachable.
+  if (dedicatedChannel === 'email' && phase === 'compose' && !senderReady) {
+    return (
+      <div className="mx-auto w-full max-w-3xl space-y-6" dir="rtl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base text-center">הגדרת שולח ההודעות</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <Label>כתובת דומיין TORAFF</Label>
+              <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-background focus-within:ring-2 focus-within:ring-primary/50">
+                <Input value={aliasPrefix} onChange={(e) => setAliasPrefix(e.target.value)} placeholder="office" dir="ltr" className="h-11 flex-1 rounded-none border-0 text-left font-mono text-base focus-visible:ring-0 focus-visible:ring-offset-0" />
+                <div className="flex items-center border-r border-border bg-muted/60 px-3 font-mono text-sm" dir="ltr">@{EMAIL_SENDER_DOMAIN}</div>
+              </div>
+              <Button type="button" className="w-full" disabled={sanitizeEmailAlias(aliasPrefix).length < 2 || aliasSaving} onClick={() => void saveAlias()}>
+                {aliasSaving ? 'שומר…' : 'שמור כתובת שולח'}
+              </Button>
+            </div>
+            <div className="space-y-2 rounded-lg border border-border p-3 text-center">
+              <Label className="block">או חיבור Gmail אישי</Label>
+              <Button type="button" variant="outline" className="w-full gap-2" onClick={() => handleConnectChannel('email')}>
+                <Mail className="h-4 w-4" />
+                התחברות עם Google
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">יש להשלים את הגדרת השולח לפני בחירת נמענים.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
 
@@ -1332,7 +1431,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="rounded-md border border-input bg-background px-3 py-3">
+                  <div>
                     <input
                       ref={listFileInputRef}
                       type="file"
@@ -1349,7 +1448,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         onClick={() => setVoterPickerOpen(true)}
                       >
                         <Users className="ml-1 h-3.5 w-3.5" />
-                        מכירה מהמערכת
+                        בחירה מהמערכת
                       </Button>
                       <Button
                         type="button"
@@ -1389,7 +1488,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                   <Label>שם הקמפיין</Label>
-                  <Input value={blastName} onChange={(event) => setBlastName(event.target.value)} placeholder="למשל: תזכורת הצבעה אזור חיפה" maxLength={100} />
+                  <Input value={blastName} onChange={(event) => setBlastName(event.target.value)} placeholder="שם הקמפיין" maxLength={100} />
                 </div>
 
                 {selectedChannels.includes('whatsapp') && (
@@ -1405,7 +1504,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                 <div className="space-y-2">
                   <Label>תוכן ההודעה</Label>
-                  <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder={dedicatedChannel ? 'כתבו את תוכן ההודעה...' : 'כתבו הודעה אחת לכל הערוצים...'} />
+                  <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder="תוכן ההודעה" />
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-foreground">תגיות התאמה אישית</span>
@@ -1462,9 +1561,6 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         הקלט הודעה קולית
                       </Button>
                     )}
-                    <span className="text-[11px] text-muted-foreground">
-                      תמונות · וידאו · אודיו · PDF · Word · Excel · עד 25MB
-                    </span>
                   </div>
 
                   {/* Attachment previews */}
@@ -1580,112 +1676,6 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                       </Card>
                     )}
 
-                    {selectedChannels.includes('email') && (
-                      <Card className="border-[hsl(var(--social-email))]/25 bg-[hsl(var(--social-email))]/5">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="flex items-center gap-2 text-sm">
-                            <GmailLogo className="h-4 w-4" /> תצוגת אימייל
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          <Textarea
-                            value={getChannelText('email')}
-                            onChange={(event) => setChannelText('email', event.target.value)}
-                            rows={4}
-                            maxLength={1000}
-                            className="bg-background"
-                            placeholder="הודעה ייעודית לאימייל..."
-                          />
-                          <div className="rounded-md border border-border bg-background p-3 text-sm leading-relaxed text-foreground" dir="rtl">
-                            {personalize(getChannelText('email'))}
-                            <div className="mt-3 border-t border-border pt-2 text-center text-[11px] text-muted-foreground">
-                              קיבלת הודעה זו כחלק ממאגר התומכים של TORAFF. <span className="underline">לחצ/י כאן להסרה</span>.
-                            </div>
-                          </div>
-
-                          {/* ── Safe Sending controls (anti-blacklist) ─────────────────────── */}
-                          <div className="space-y-3 rounded-md border border-dashed border-[hsl(var(--social-email))]/40 bg-background/60 p-3" dir="rtl">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                                <h4 className="text-sm font-semibold">שליחה בטוחה (Anti-Spam)</h4>
-                              </div>
-                              {emailAccountInfo.count > 0 && (
-                                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                  {emailAccountInfo.count} חשבונות מחוברים
-                                </span>
-                              )}
-                            </div>
-
-                            {emailAccountInfo.count > 1 && (
-                              <p className="text-xs text-muted-foreground">
-                                המערכת תחלק את הנמענים אוטומטית בין {emailAccountInfo.count} חשבונות Gmail (
-                                {emailAccountInfo.addresses.slice(0, 3).join(', ')}
-                                {emailAccountInfo.addresses.length > 3 ? ', ...' : ''}
-                                ) כדי להגן על מוניטין השליחה.
-                              </p>
-                            )}
-
-                            <div>
-                              <Label className="text-xs font-medium">קצב שליחה</Label>
-                              <div className="mt-1 grid grid-cols-3 gap-2">
-                                {([
-                                  { id: 'burst', label: 'מיידי', sub: 'מהיר · סיכון', icon: '⚡' },
-                                  { id: 'safe', label: 'בטוח', sub: '20 / 30-120ש׳', icon: '🛡️' },
-                                  { id: 'slow', label: 'חימום', sub: '10 / 1-5ד׳', icon: '🐢' },
-                                ] as const).map((opt) => {
-                                  const active = emailSendRate === opt.id;
-                                  return (
-                                    <button
-                                      key={opt.id}
-                                      type="button"
-                                      onClick={() => setEmailSendRate(opt.id)}
-                                      className={`rounded-md border px-2 py-2 text-center text-xs transition ${
-                                        active
-                                          ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                                          : 'border-border bg-background hover:bg-muted'
-                                      }`}
-                                    >
-                                      <div className="text-base leading-none">{opt.icon}</div>
-                                      <div className="mt-1 font-semibold">{opt.label}</div>
-                                      <div className="text-[10px] text-muted-foreground">{opt.sub}</div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            {totalRecipients > 100 && (
-                              <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                                <div className="flex items-start gap-2">
-                                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                                  <div className="space-y-1">
-                                    <p className="font-medium">
-                                      רשימה גדולה ({totalRecipients.toLocaleString('he-IL')} נמענים) - מומלץ לעבור ל-Resend (דומיין מאומת) כדי למנוע חסימת חשבון Gmail.
-                                    </p>
-                                    {resendReady ? (
-                                      <label className="mt-1 flex cursor-pointer items-center gap-2">
-                                        <Switch checked={preferResend} onCheckedChange={setPreferResend} />
-                                        <span className="text-xs font-medium">
-                                          שלח דרך Resend (updates@realtyz.co.il)
-                                        </span>
-                                      </label>
-                                    ) : (
-                                      <p className="text-[11px] opacity-80">Resend לא מוגדר במערכת. ניתן להמשיך עם Gmail בקצב בטוח.</p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            <p className="text-[11px] leading-snug text-muted-foreground">
-                              קישור הסרה (להסרה) יתווסף אוטומטית לכל הודעה - חובה לפי חוק וחיוני להפחתת תלונות ספאם.
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
                     {selectedChannels.includes('voice') && (
                       <Card className="border-primary/25 bg-primary/5">
                         <CardHeader className="pb-2">
@@ -1752,7 +1742,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                 <DeliverySettings enabled={dripEnabled} onEnabledChange={setDripEnabled} dailyLimit={dailyLimit} onDailyLimitChange={setDailyLimit} windowStart={sendWindowStart} onWindowStartChange={setSendWindowStart} windowEnd={sendWindowEnd} onWindowEndChange={setSendWindowEnd} delayMin={delayMin} onDelayMinChange={setDelayMin} delayMax={delayMax} onDelayMaxChange={setDelayMax} testPhone={testPhone} onTestPhoneChange={setTestPhone} onTestSend={handleTestSend} />
 
-                <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-md border border-primary/15 bg-card p-3 shadow-lg">
+                <div className="flex flex-col gap-3 rounded-md border border-primary/15 bg-card p-3 shadow-lg">
                   <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-medium text-muted-foreground">עלות משוערת לקמפיין</span>
