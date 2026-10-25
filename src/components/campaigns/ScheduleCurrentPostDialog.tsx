@@ -1,3 +1,4 @@
+import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 // Dialog: schedule the CURRENT composer content (post body + first comment +
 // attached media) at a chosen day/time-window, with optional recurrence.
 // Mirrors the UI/UX of the calendar's "New scheduled campaign" dialog.
@@ -358,14 +359,12 @@ export function ScheduleCurrentPostDialog({
     try {
       const rotateNote = buildRotateInstruction(index, total);
       if (!rotateNote) return body;
-      const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: {
+      const { data, error } = await generateSocialDraft({
           topic: 'פוסט קידום נכס (וריאציה בסדרה מתוזמנת)',
           platform: channelId,
           customInstructions: rotateNote,
           selectedListingId: listingId,
           listingFocusOnly: true,
-        },
       });
       if (error) return body;
       const next = (data as any)?.content || (data as any)?.text || (data as any)?.body;

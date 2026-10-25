@@ -1,3 +1,4 @@
+import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -363,8 +364,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         'גוון פתיח, ניסוח ו-CTA לעומת הגרסה הקודמת כדי להימנע מחזרה.',
       ].join('\n');
 
-      const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: {
+      const { data, error } = await generateSocialDraft({
           topic: selectedListingId
             ? 'פוסט קידום נכס (רענון תבנית מאסטר)'
             : `רענון תוכן לפוסט קיים בערוץ ${campaign.channel}`,
@@ -372,7 +372,6 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           customInstructions: rotateNote,
           selectedListingId: selectedListingId || undefined,
           listingFocusOnly: !!selectedListingId,
-        },
       });
       if (error) throw error;
       const next = (data as any)?.content || (data as any)?.text || (data as any)?.body;

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-export const BROKERAGE_COMMISSION_TITLE = 'עמלות תיווך ותנאי שירות (Brokerage Commissions)';
+export const BROKERAGE_COMMISSION_TITLE = 'עמלות תיווך ותנאי שירות';
 type Props = { audience?: 'buyer' | 'renter' | 'seller' | 'landlord' | null };
 
 /** Short workflow notice; the full official disclosure lives only in Terms. */

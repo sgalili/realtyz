@@ -27,6 +27,10 @@
    ============================================================ */
 @layer base {
   :root {
+    --instagram-pink: 337 79% 54%;
+    --instagram-purple: 280 65% 42%;
+    --instagram-orange: 29 98% 64%;
+    --instagram-foreground: 0 0% 100%;
     --app-footer-space: 38px;
     /* Surfaces — clean white canvas + soft grey neutrals */
     --background: 0 0% 100%;
@@ -953,6 +957,12 @@
     scrollbar-width: none;
   }
 
+  .instagram-connect-button {
+    background: linear-gradient(110deg, hsl(var(--instagram-purple)), hsl(var(--instagram-pink)), hsl(var(--instagram-orange)));
+    color: hsl(var(--instagram-foreground));
+  }
+  .instagram-connect-button:hover { opacity: .9; }
+
   .app-route-pages { min-height: 100dvh; padding-bottom: var(--app-footer-space); }
   .app-route-pages:has(.auth-gradient-shell),
   .app-route-pages:has(.realtyz-app-shell),
@@ -1033,7 +1043,7 @@
     color: hsl(var(--foreground) / 0.86);
   }
 
-  @media (min-width: 400px) {
+  @media (min-width: 768px) {
     .auth-page-footer { padding-inline: 16px; }
     .auth-footer-legal { gap: 16px; }
     .auth-footer-links { gap: 1.75rem; }

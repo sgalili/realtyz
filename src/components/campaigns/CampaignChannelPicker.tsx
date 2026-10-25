@@ -27,11 +27,11 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
       <div className="flex items-center gap-3">
         {channel && <Button type="button" variant="ghost" size="icon" onClick={onBack} aria-label="חזרה לבחירת ערוץ"><ArrowRight /></Button>}
         <div className="min-w-0 flex-1">
-          <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
+          <h2 className="flex flex-wrap items-center gap-2 text-xl font-bold text-foreground">
             {channel && <CampaignServiceIcon channel={channel.id} className="h-6 w-6" />}
             {channel ? `הגדרת קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}
+            {channel && <span className="text-sm font-normal text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span>}
           </h2>
-          {channel && <div className="mt-1 text-sm text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</div>}
         </div>
       </div>
       {!channel && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -40,8 +40,8 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
           return <Button key={item.id} type="button" variant="outline" onClick={() => onSelect(item.id)} aria-label={`בחירת ${item.label}`}
             className="group relative h-auto min-h-36 flex-col gap-3 whitespace-normal rounded-lg border-border bg-card p-4 text-center hover:border-primary hover:bg-accent focus-visible:ring-primary [&_svg]:size-7">
             <CampaignServiceIcon channel={item.id} className="h-7 w-7" />
-            <span className="text-base font-semibold">{item.label}</span>
-            <span className="text-xs font-normal text-muted-foreground">{configured ? `${formatCampaignCredits(configured.credits)} ל${configured.unit}` : isLoading ? 'טוען מחיר…' : 'המחירון אינו זמין'}</span>
+            <span className="flex flex-wrap items-center justify-center gap-2"><span className="text-base font-semibold">{item.label}</span>
+            <span className="text-xs font-normal text-muted-foreground">{configured ? `${formatCampaignCredits(configured.credits)} ל${configured.unit}` : isLoading ? 'טוען מחיר…' : 'המחירון אינו זמין'}</span></span>
             <ArrowLeft className="absolute left-2 top-2 !size-4 text-muted-foreground transition-transform motion-safe:group-hover:-translate-x-1" aria-hidden />
           </Button>;
         })}

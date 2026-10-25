@@ -1,3 +1,4 @@
+import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
 import { CampaignChannelPicker, DISTRIBUTION_CHANNELS, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
@@ -5,6 +6,7 @@ import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { postNetwork, postNetworkCounts, togglePostNetwork } from '@/lib/postNetworkFilters';
 import { FacebookCloudConnectGate } from '@/components/social/FacebookCloudConnectGate';
+import { InstagramConnectGate } from '@/components/social/InstagramConnectGate';
 import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { isProjectTarget, projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
@@ -1820,16 +1822,13 @@ const InlineComposer = ({
         customInstructions.trim(),
         rotateNote,
       ].filter(Boolean).join('\n\n');
-      const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: {
+      const { data, error } = await generateSocialDraft({
           topic,
           platform: channel.id,
           customInstructions: mergedInstructions || undefined,
           selectedListingId: usesGroupTopics ? undefined : (selectedListingId || undefined),
           listingFocusOnly: !usesGroupTopics && !!selectedListingId,
-        },
-        signal: ctrl.signal,
-      });
+      }, ctrl.signal);
       if (ctrl.signal.aborted) return; // killed by the operator
       if (error) throw error;
       if (data?.listing_unavailable) {
@@ -8696,7 +8695,8 @@ const CampaignCenter = () => {
           {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'instagram' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
-          {(wizardChannel === 'facebook' || wizardChannel === 'instagram') && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
+          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
+          {wizardChannel === 'instagram' && <InstagramConnectGate onStatusChange={setFbReady} />}
           
           <div hidden aria-hidden="true">
           <ChannelGrid

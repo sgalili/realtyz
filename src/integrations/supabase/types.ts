@@ -7002,6 +7002,66 @@ export type Database = {
         }
         Relationships: []
       }
+      social_draft_batches: {
+        Row: {
+          drafts_used: number
+          pending_request: string | null
+          pending_until: string | null
+          platform: string
+          target_key: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          drafts_used?: number
+          pending_request?: string | null
+          pending_until?: string | null
+          platform: string
+          target_key: string
+          workspace_owner_id: string
+        }
+        Update: {
+          drafts_used?: number
+          pending_request?: string | null
+          pending_until?: string | null
+          platform?: string
+          target_key?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
+      social_draft_requests: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          platform: string
+          status: string
+          target_key: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id: string
+          platform: string
+          status?: string
+          target_key: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          platform?: string
+          status?: string
+          target_key?: string
+          user_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       social_listening_events: {
         Row: {
           ai_reasoning: string | null
@@ -8286,6 +8346,15 @@ export type Database = {
         Returns: Json
       }
       ban_user: { Args: { _reason: string; _user: string }; Returns: Json }
+      begin_social_draft: {
+        Args: {
+          _confirm?: boolean
+          _platform: string
+          _request: string
+          _target: string
+        }
+        Returns: Json
+      }
       bulk_update_leads: {
         Args: {
           lead_ids: string[]
@@ -8571,6 +8640,10 @@ export type Database = {
           _token: string
         }
         Returns: undefined
+      }
+      finish_social_draft: {
+        Args: { _content?: string; _request: string }
+        Returns: Json
       }
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
       gen_referral_code: { Args: never; Returns: string }

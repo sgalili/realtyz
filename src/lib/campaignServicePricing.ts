@@ -2,6 +2,7 @@ import { agorotToCredits } from '@/lib/credits';
 
 export type CampaignPrice = { action_key: string; label_he: string; unit_he: string; price_agorot: number };
 export const CAMPAIGN_ACTIONS: Record<string, string> = {
+  facebook: 'social_post', instagram: 'social_post',
   sms: 'sms', whatsapp: 'whatsapp_marketing', email: 'email',
   voice: 'ai_call_minute', ivr: 'ai_call_minute', 'ai-call': 'ai_call_minute',
 };
