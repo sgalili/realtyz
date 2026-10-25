@@ -6,14 +6,14 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { REPOST_EDITOR_EVENT, matchesRepostJob, type RepostPost } from '@/lib/repostEditor';
 import { toast } from 'sonner';
 
-export function ContinuePostingButton({ post }: { post: RepostPost }) {
+export function usePreparePostRepost() {
   const owner = useActiveWorkspaceOwnerId();
   const ownerRef = useRef(owner);
   ownerRef.current = owner;
   const [busy, setBusy] = useState(false);
   useEffect(() => { setBusy(false); }, [owner]);
 
-  const prepare = async () => {
+  const prepare = async (post: RepostPost) => {
     if (!owner || busy) return;
     setBusy(true);
     try {
@@ -32,8 +32,13 @@ export function ContinuePostingButton({ post }: { post: RepostPost }) {
     } catch (error) { toast.error(error && typeof error === 'object' && 'message' in error ? String(error.message) : String(error)); }
     finally { setBusy(false); }
   };
+  return { prepare, busy };
+}
+
+export function ContinuePostingButton({ post }: { post: RepostPost }) {
+  const { prepare, busy } = usePreparePostRepost();
   return <>
-    <Button type="button" variant="outline" size="icon" className="h-7 w-7 shrink-0 rounded-md border-border bg-background" title="המשך / פרסום מחדש" aria-label="המשך / פרסום מחדש" disabled={busy} onClick={(e) => { e.stopPropagation(); void prepare(); }}>
+    <Button type="button" variant="outline" size="icon" className="h-7 w-7 shrink-0 rounded-md border-border bg-background" title="המשך / פרסום מחדש" aria-label="המשך / פרסום מחדש" disabled={busy} onClick={(e) => { e.stopPropagation(); void prepare(post); }}>
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
     </Button>
   </>;
