@@ -84,6 +84,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const [addVoiceOpen, setAddVoiceOpen] = useState(false);
   const [listings, setListings] = useState<ListingOpt[]>([]);
   const [listingId, setListingId] = useState<string>('');
+  const [ownerName, setOwnerName] = useState<string>('');
 
   // Audience
   const [audience, setAudience] = useState<AudienceMode | ''>('');
@@ -125,7 +126,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     setSelectedLeadIds(new Set()); setAudience(''); setIncludeWhatsapp(false); setReview(null);
     (async () => {
       setLoadingLeads(true);
-      const [{ data: leadRows }, { data: voiceRows }, { data: listingRows }] = await Promise.all([
+      const [{ data: leadRows }, { data: voiceRows }, { data: listingRows }, { data: ownerRow }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city')
           .eq('workspace_owner_id', workspaceId)
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
@@ -136,8 +137,10 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           .in('status', ['live', 'pending'])
           .order('created_at', { ascending: false })
           .limit(200),
+        supabase.from('profiles').select('full_name').eq('id', workspaceId).maybeSingle(),
       ]);
       if (cancelled) return;
+      setOwnerName(String((ownerRow as any)?.full_name ?? '').trim());
       setLeads(((leadRows as any[]) ?? []).map((r) => ({
         id: r.id, full_name: r.full_name, phone: r.phone_number, city: r.city,
       })));
