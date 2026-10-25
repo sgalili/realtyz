@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     let query = admin
       .from("listings")
       .select(`${PUBLIC_CARD_COLUMNS},source,source_metadata,workspace_owner_id,user_id,owner_id`)
-      .or("is_published.eq.true,affiliate_enabled.eq.true")
+      .eq("is_published", true)
       .neq("status", "discarded")
       .gt("asking_price", 0)
       .or("affiliate_tier1_amount.gt.0,affiliate_tier2_amount.gt.0,affiliate_tier3_amount.gt.0,affiliate_tier4_amount.gt.0,features->deal_closing_commission->>value.gt.0")
