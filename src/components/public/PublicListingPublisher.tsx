@@ -82,7 +82,7 @@ const STEP_TITLES = [
   'תשלומים ומידות',
   'תמונות וסרטונים',
   'פרטי התקשרות',
-  'מחיר והגדרת תמלוגים',
+  'מחיר והגדרת תגמולים',
 ];
 
 const LEAD_TYPES = [
@@ -544,7 +544,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     if (pricingOnly) {
       if (!user || !fields.listingId || (adminOnlyEdit && !adminUnlocked)) return;
       const targetWorkspace = pricingEditWorkspace(fields.importedListing ?? {}, user.id, activeWorkspaceId, isSuperAdmin);
-      if (!targetWorkspace) { toast.error('אין הרשאה לערוך את התמלוגים של מודעה זו'); return; }
+      if (!targetWorkspace) { toast.error('אין הרשאה לערוך את התגמולים של מודעה זו'); return; }
       setPublishing(true);
       const outcome = await commitPricingEdit({
         commit: async () => {
@@ -557,7 +557,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         },
         // The write is committed: confirm and dismiss the editor before caches refresh,
         // so a failing background refresh can never leave an already-saved dialog open.
-        onCommitted: () => { toast.success('התמלוגים נשמרו'); setOpen(false); onRecovered?.(); },
+        onCommitted: () => { toast.success('התגמולים נשמרו'); setOpen(false); onRecovered?.(); },
         refresh: () => Promise.all([
           queryClient.invalidateQueries({ queryKey: ['public-commission-pricing'] }),
           queryClient.invalidateQueries({ queryKey: ['public-listing-expanded'] }),
@@ -566,7 +566,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       });
       if (outcome.committed === false) {
         const error = outcome.error as { message?: string } | null;
-        toast.error('לא ניתן לשמור את התמלוגים', { description: error?.message });
+        toast.error('לא ניתן לשמור את התגמולים', { description: error?.message });
       }
       setPublishing(false);
       return;
@@ -882,7 +882,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="pricing-editor space-y-3">
-              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><span className="flex items-center justify-self-center gap-[5px]"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-20 w-auto min-w-[9rem] px-3 text-center text-4xl font-bold placeholder:text-lg md:text-5xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span><Button type="button" variant="ghost" size="icon" className="h-12 w-12 shrink-0 justify-self-end text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התמלוגים' : 'הרחב את כל כרטיסי התמלוגים'} title={allExpanded ? 'כווץ את כל כרטיסי התמלוגים' : 'הרחב את כל כרטיסי התמלוגים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-7 w-7 transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button></div>
+              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><span className="flex items-center justify-self-center gap-[5px]"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-20 w-auto min-w-[9rem] px-3 text-center text-4xl font-bold placeholder:text-lg md:text-5xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span><Button type="button" variant="ghost" size="icon" className="h-12 w-12 shrink-0 justify-self-end text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-7 w-7 transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button></div>
               <div className="space-y-4 text-base">
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
@@ -990,10 +990,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 text-center">
-          {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תמלוגים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
+          {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תגמולים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
           {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
-            {pricingOnly ? <span>מחיר והגדרת תמלוגים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
+            {pricingOnly ? <span>מחיר והגדרת תגמולים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
           {pricingOnly && <p className="text-sm text-muted-foreground">{(fields.importedListing as { property_title?: string } | undefined)?.property_title || [addressLine, fields.city].filter(Boolean).join(', ')}</p>}
         </DialogHeader>
@@ -1059,7 +1059,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             <ArrowRight className="h-4 w-4" /> חזרה
            </Button> : <span />}
           {pricingOnly ? (<><Button variant="outline" onClick={() => { setOpen(false); onRecovered?.(); }}>ביטול</Button><Button className="ms-auto" disabled={publishing || !(Number(fields.price) > 0)} onClick={() => { if (Number(fields.price) !== Number(fields.importedListing?.asking_price ?? fields.price)) setPriceConfirm(true); else void submit(); }}>שמירה</Button>
-            <AlertDialog open={priceConfirm} onOpenChange={setPriceConfirm}><AlertDialogContent dir="rtl"><AlertDialogHeader><AlertDialogTitle className="text-right text-[21px] leading-snug">לשנות את {fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר המכירה'}?</AlertDialogTitle><AlertDialogDescription className="space-y-2 text-right text-[17px] leading-relaxed"><span className="block">שותפים שכבר בחרו לשווק את הנכס נשארים עם התמלוגים הנעולים שקיבלו בעת הבחירה, ללא שינוי.</span><span className="block">המחיר החדש והתמלוגים המעודכנים יחולו רק על שותפים שיצטרפו מעכשיו ועל פניות חדשות.</span><span className="block">{fields.dealType === 'rent' ? 'עמלת הסגירה מוצגת בש״ח ותחושב מחדש לפי השכירות החדשה.' : 'עמלת הסגירה באחוזים תחושב מחדש לפי מחיר המכירה החדש.'}</span></AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="flex-row items-center justify-between gap-2 sm:flex-row sm:justify-between sm:space-x-0"><AlertDialogCancel className="mt-0 text-[17px]">ביטול</AlertDialogCancel><AlertDialogAction className="text-[17px]" onClick={() => void submit()}>אישור ושמירה</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></>) : reviewMode || isLast ? (
+            <AlertDialog open={priceConfirm} onOpenChange={setPriceConfirm}><AlertDialogContent dir="rtl"><AlertDialogHeader><AlertDialogTitle className="text-right text-[21px] leading-snug">לשנות את {fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר המכירה'}?</AlertDialogTitle><AlertDialogDescription className="space-y-2 text-right text-[17px] leading-relaxed"><span className="block">שותפים שכבר בחרו לשווק את הנכס נשארים עם התגמולים הנעולים שקיבלו בעת הבחירה, ללא שינוי.</span><span className="block">המחיר החדש והתגמולים המעודכנים יחולו רק על שותפים שיצטרפו מעכשיו ועל פניות חדשות.</span><span className="block">{fields.dealType === 'rent' ? 'עמלת הסגירה מוצגת בש״ח ותחושב מחדש לפי השכירות החדשה.' : 'עמלת הסגירה באחוזים תחושב מחדש לפי מחיר המכירה החדש.'}</span></AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="flex-row items-center justify-between gap-2 sm:flex-row sm:justify-between sm:space-x-0"><AlertDialogCancel className="mt-0 text-[17px]">ביטול</AlertDialogCancel><AlertDialogAction className="text-[17px]" onClick={() => void submit()}>אישור ושמירה</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></>) : reviewMode || isLast ? (
             <div className="flex w-full flex-col items-stretch justify-end gap-3 sm:flex-row sm:items-center">
               {!canPublish && <span className="hidden text-xs text-muted-foreground sm:inline" title={missingPublish.join(' · ')}>חסר: {missingPublish[0]}{missingPublish.length > 1 ? ` +${missingPublish.length - 1}` : ''}</span>}
               <Button type="button" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()} className="shrink-0 bg-success text-[18px] font-bold text-success-foreground hover:bg-success/90">
