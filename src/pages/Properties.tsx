@@ -197,7 +197,25 @@ export default function Properties() {
   const [searching, setSearching] = useState(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
-  const [hasSearched, setHasSearched] = useState<boolean>(false);
+  const [hasSearched, setHasSearched] = useState<boolean>(cached?.hasSearched ?? false);
+
+  // Reset every remembered search field when the active workspace changes, so
+  // nothing from the previous office stays in the form.
+  const prevScopeRef = useRef(cacheScope);
+  useEffect(() => {
+    if (prevScopeRef.current === cacheScope) return;
+    prevScopeRef.current = cacheScope;
+    const c = loadCache(cacheScope);
+    setQ(c?.q ?? '');
+    setListingType(c?.listingType ?? 'all');
+    setCity(c?.city ?? 'כל הערים');
+    setPropertyType(c?.propertyType ?? 'all');
+    setRooms(c?.rooms ?? 'any');
+    setMaxPrice(c?.maxPrice ?? PRICE_MAX);
+    setAreaMin(c?.areaMin ?? '');
+    setResults(c?.results ?? []);
+    setHasSearched(c?.hasSearched ?? false);
+  }, [cacheScope]);
   // True when the current table is the default pool shown because the user's
   // own search returned nothing. The grid is never allowed to be empty.
   const [showingFallback, setShowingFallback] = useState(false);
