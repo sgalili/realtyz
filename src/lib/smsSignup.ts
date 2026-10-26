@@ -26,7 +26,7 @@ export const signupTypeFields: Record<SmsSignupType, readonly [string, string][]
 };
 export function signupDetailsValid(type: SmsSignupType, details: Record<string, string>) {
   return signupTypeFields[type].every(([key]) => z.string().trim().min(1).max(200).safeParse(details[key]).success)
-    && (type !== 'property_seeker' || z.coerce.number().positive().max(1e12).safeParse(details.budget).success)
+    && (type !== 'property_seeker' || (/^[0-9]+(\.[0-9]+)?$/.test(details.budget) && z.coerce.number().positive().max(1e12).safeParse(details.budget).success))
     && (type !== 'property_owner' || ['sale', 'rent'].includes(details.deal_type))
     && (type !== 'developer' || /^https:\/\/(www\.)?yad2\.co\.il\/yad1\/developers\/\d+\/?(?:\?.*)?$/.test(details.main_project));
 }

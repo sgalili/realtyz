@@ -65,7 +65,7 @@ const Auth = () => {
       toast.error(attempts + 1 >= 3 ? 'שלחו קוד חדש ונסו שוב.' : error instanceof Error ? error.message : 'האימות נכשל');
     } finally { setLoading(false); }
   };
-  return <div dir="rtl" className="relative flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pb-14 text-foreground">
+  return <div dir="rtl" className="auth-gradient-shell relative flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pb-14 text-foreground">
     <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute left-4 top-4 z-20 h-10 w-10 bg-transparent p-1 hover:bg-transparent" onClick={() => navigate('/')}><X className="h-8 w-8" /></Button>
     <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" onClick={() => { if (codeSent) { setCodeSent(false); setOtp(''); } else navigate('/'); }}><ArrowRight className="h-8 w-8" /></Button>
     <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[50px]">

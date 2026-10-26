@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { smsSignupSchema, signupDetailsValid, israeliMobile, signupTypes, formatAuthMobile } from './smsSignup';
+import { describe, it, expect, vi } from 'vitest';
+import { supabase } from '@/integrations/supabase/client';
+import { smsSignupSchema, signupDetailsValid, israeliMobile, signupTypes, formatAuthMobile, signupRpc } from './smsSignup';
 describe('SMS signup rules', () => {
   it('limits auth mobile entry to ten digits with a hyphen after digit three', () => {
     expect(formatAuthMobile('054123456789')).toBe('054-1234567');
@@ -32,6 +33,20 @@ describe('SMS signup rules', () => {
     expect(signupDetailsValid(type, {})).toBe(false);
   });
   it('requires positive buyer budget', () => { expect(signupDetailsValid('property_seeker', { search_area: 'חיפה', budget: '0' })).toBe(false); });
+  it('rejects scientific notation that the server cannot save', () => {
+    expect(signupDetailsValid('property_seeker', { search_area: 'חיפה', budget: '1e5' })).toBe(false);
+  });
+  it('calls signup with the client context rather than losing its rest property', async () => {
+    let calledWithClient = false;
+    const spy = vi.spyOn(supabase, 'rpc').mockImplementation(function (this: unknown) {
+      calledWithClient = this === supabase;
+      return Promise.resolve({ data: { ok: true }, error: null }) as unknown as ReturnType<typeof supabase.rpc>;
+    });
+    try {
+      await signupRpc('complete_sms_signup_details', { _type: 'property_owner', _details: { deal_type: 'sale', property_area: 'חיפה', property_type: 'דירה' } });
+      expect(calledWithClient).toBe(true);
+    } finally { spy.mockRestore(); }
+  });
   it('requires an owner sale or rent choice', () => {
     const fields = { property_area: 'חיפה', property_type: 'דירה' };
     expect(signupDetailsValid('property_owner', fields)).toBe(false);
