@@ -33,7 +33,7 @@ export async function fetchGroupsViaCloud(
   query: string,
   opts?: { pollMs?: number; timeoutMs?: number; syncMemberships?: boolean; signal?: AbortSignal },
 ): Promise<DiscoveredGroup[]> {
-  opts?.signal?.throwIfAborted();
+  if (opts?.signal?.aborted) throw opts.signal.reason || new DOMException('Cancelled', 'AbortError');
   const controller = new AbortController();
   const timeoutMessage = 'סריקת הקבוצות בפייסבוק ארכה יותר מדי. נסו שוב בעוד רגע.';
   const cancel = () => controller.abort(opts?.signal?.reason);
@@ -52,7 +52,7 @@ export async function fetchGroupsViaCloud(
   const pollMs = opts?.pollMs ?? 4000;
   while (true) {
     await Promise.race([new Promise((r) => setTimeout(r, pollMs)), interrupted]);
-    controller.signal.throwIfAborted();
+    if (controller.signal.aborted) throw controller.signal.reason;
     const res = await request({ action: 'fetch_status', job_id: jobId });
     const job = res?.job as FetchJob | undefined;
     if (!job) continue;

@@ -504,7 +504,7 @@ export default function OAuthCallback() {
         // Best-effort group import so the publishing targets list is populated.
         void supabase.functions.invoke('fb-groups-import', { body: {} }).catch(() => undefined);
         finish(
-          `${CONNECTIONS_PATH}&fb=connected${pageName ? `&fb_page=${encodeURIComponent(pageName)}` : ''}`,
+          `${CONNECTIONS_PATH}&fb=choose${pageName ? `&fb_page=${encodeURIComponent(pageName)}` : ''}`,
           { ok: true, name: pageName || null },
         );
       } catch (e: any) {
