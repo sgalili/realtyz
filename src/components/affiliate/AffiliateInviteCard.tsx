@@ -87,11 +87,14 @@ export function AffiliateInviteCard() {
       {!!data?.total && <div className="grid grid-cols-3 gap-2 text-center">
         {metrics.map((m) => <div key={m.label} className="min-w-0 space-y-1"><p className="text-xl font-bold tabular-nums">{m.value}</p><p className="text-sm text-muted-foreground">{m.label}</p></div>)}
       </div>}
-      <div className="sticky bottom-0 z-10 -mx-2 border-t border-border bg-background px-2 pb-[7px] pt-3 sm:-mx-6 sm:px-6">
-        <div className="grid grid-cols-3 gap-3">
-          <Button className="gap-2 px-2" size="lg" disabled={!link} onClick={() => void copy()} aria-label="העתק קישור אישי"><Copy className="h-5 w-5 shrink-0" /><span className="truncate">העתק קישור</span></Button>
-          <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><FaWhatsapp className="h-5 w-5 shrink-0 text-social-whatsapp" />וואטסאפ</Button>
-          <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־TORAFF · בונוס כפול')}&body=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 shrink-0 text-social-email" />אימייל</Button>
+      <div aria-hidden="true" className="h-[63px]" />
+      <div className="fixed inset-x-0 z-20 border-t border-border bg-background" style={{ bottom: `${barBottom}px` }}>
+        <div className="mx-auto w-full max-w-2xl px-2 pt-3 pb-[7px] sm:px-6">
+          <div className="grid grid-cols-3 gap-3">
+            <Button className="gap-2 px-2" size="lg" disabled={!link} onClick={() => void copy()} aria-label="העתק קישור אישי"><Copy className="h-5 w-5 shrink-0" /><span className="truncate">העתק קישור</span></Button>
+            <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><FaWhatsapp className="h-5 w-5 shrink-0 text-social-whatsapp" />וואטסאפ</Button>
+            <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־TORAFF · בונוס כפול')}&body=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 shrink-0 text-social-email" />אימייל</Button>
+          </div>
         </div>
       </div>
     </section>
