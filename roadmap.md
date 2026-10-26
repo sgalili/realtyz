@@ -1,5 +1,9 @@
 # Roadmap
 
+## Cloud campaign publishing validation
+- [ ] Validate cloud Facebook group publication independently of legacy Page tokens and display the server-confirmed cloud status.
+- [ ] Test cloud/Graph routing and confirmation without publishing a real post.
+
 ## Secure Facebook cloud guidance
 - [x] Add mobile-friendly guidance before cloud login, safe new-tab fallback and server-confirmed status checks.
 - [x] Reject client credential/cookie uploads; deployed endpoint rejects synthetic password input; disclose encrypted session storage accurately.
