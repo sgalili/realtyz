@@ -1,6 +1,7 @@
 import { tailorGroupTexts, ensureUniqueTexts, rotateMedia } from "../_shared/groupTailor.ts";
 import { dedupePostMedia } from '../_shared/postMediaIdentity.ts';
 import { campaignPublishRoute } from '../_shared/campaignPublishRoute.ts';
+import { anonymousSocialText, socialPrivacyIdentities } from '../_shared/socialIdentityPrivacy.ts';
 // meta-publish — direct Meta Graph API publishing for Facebook Pages and
 // Instagram Business accounts.
 //
@@ -498,7 +499,7 @@ Deno.serve(async (req) => {
     // ---- Post (or retry) the first comment on an existing Page post --------
     if (body?.action === "comment" || body?.action === "first_comment") {
       const postId = String(body?.post_id ?? body?.external_post_id ?? "").trim();
-      const message = ensureMandatoryComment(body?.first_comment ?? body?.message);
+      const message = ensureMandatoryComment(anonymousSocialText(body?.first_comment ?? body?.message, await socialPrivacyIdentities(db, ownerId, body?.listing_id)));
       if (!postId) return json({ success: false, error: "post_id is required" }, 400);
       if (!page) return json({ success: false, error: "not_connected", message: "דף הפייסבוק לא מחובר" }, 200);
       page = await ensurePageToken(db, ownerId, page);
@@ -522,7 +523,8 @@ Deno.serve(async (req) => {
 
 
     // ---- Publish -----------------------------------------------------------
-    const text = String(body?.post ?? body?.text ?? "").trim();
+    const identities = await socialPrivacyIdentities(db, ownerId, body?.listing_id);
+    const text = anonymousSocialText(body?.post ?? body?.text, identities);
     const channels: string[] = (Array.isArray(body?.channels) ? body.channels : ["facebook"]).map((c: unknown) =>
       String(c || "").toLowerCase()
     );
@@ -533,7 +535,7 @@ Deno.serve(async (req) => {
     const campaignName = String(body?.campaign_name ?? "TORAFF").trim();
     const scheduledIso = body?.scheduled_at ? String(body.scheduled_at) : null;
     // HARD RULE: every published post carries the mandatory contact comment.
-    const firstComment = ensureMandatoryComment(body?.first_comment, typeof body?.link === "string" ? body.link : null);
+    const firstComment = ensureMandatoryComment(anonymousSocialText(body?.first_comment, identities), typeof body?.link === "string" ? body.link : null);
     // "פרסם גם בעמוד הפייסבוק העסקי" — checked by default. When the caller
     // explicitly sends false, only the selected groups are published to.
     let publishToPage = body?.publish_to_page === undefined || body?.publish_to_page === null
