@@ -7,7 +7,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -65,13 +64,13 @@ const fmtTs = (iso: string) => {
   return `${dd}.${mm}.${d.getFullYear()}, ${hh}:${mi}:${ss}`;
 };
 
-export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+export const IvrBroadcastPanel = () => {
   const workspaceId = useActiveWorkspaceOwnerId();
   const { user } = useAuth();
   const historyKey = `${HISTORY_KEY}:${user?.id}:${workspaceId}`;
   const loadScopedHistory = (): HistoryItem[] => { try { return JSON.parse(localStorage.getItem(historyKey) || '[]'); } catch { return []; } };
   const saveScopedHistory = (items: HistoryItem[]) => { try { localStorage.setItem(historyKey, JSON.stringify(items.slice(0, 50))); } catch { /* ignore */ } };
-  const { data: prices = [] } = useCampaignPricing(open);
+  const { data: prices = [] } = useCampaignPricing();
   const price = campaignServicePrice('ivr', prices);
   const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
   const [audioSeconds, setAudioSeconds] = useState<number | null>(null);
@@ -118,7 +117,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
 
   const [dispatching, setDispatching] = useState(false);
   useEffect(() => {
-    if (!open || !workspaceId) return;
+    if (!workspaceId) return;
     let cancelled = false;
     setHistory(loadScopedHistory());
     setClonedVoices([]); setLeads([]); setListings([]); setListingId('');
@@ -149,7 +148,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       setLoadingLeads(false);
     })();
     return () => { cancelled = true; };
-  }, [open, workspaceId, user?.id]);
+  }, [workspaceId, user?.id]);
 
   const allAgents = useMemo(() => {
     const seen = new Set<string>();
@@ -211,7 +210,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     return request;
   };
   useEffect(() => {
-    if (!open || !workspaceId) return;
+    if (!workspaceId) return;
     let cancelled = false;
     void (async () => {
       for (const voice of PRESET_VOICES) {
@@ -229,7 +228,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       for (const pending of demoCache.current.values()) void pending.then(url => URL.revokeObjectURL(url)).catch(() => {});
       demoCache.current.clear();
     };
-  }, [open, workspaceId]);
+  }, [workspaceId]);
   const playVoicePreview = async (voice: { voice_id: string; label: string }) => {
     const request = ++previewRequestRef.current;
     previewAudioRef.current?.pause();
@@ -434,7 +433,6 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   }, [source, localAudio, currentAudio?.audioUrl]);
 
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
     const missing = history.filter(item => item.durationSeconds == null);
     if (missing.length) void Promise.all(missing.map(async item => ({ id: item.id, seconds: await readIvrAudioDuration(item.audioUrl) }))).then(results => {
@@ -446,7 +444,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       });
     });
     return () => { cancelled = true; };
-  }, [open, historyKey, history]);
+  }, [historyKey, history]);
 
   const selectedSeconds = review ? review.seconds : audioSeconds;
   const totalCredits = ivrMaximumEstimate(prices, targetLeads.length, selectedSeconds, includeWhatsapp);
