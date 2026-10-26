@@ -81,7 +81,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
         aria-pressed={mode === option} aria-label={option === 'broker' ? identity.label : partnerLabel}
         disabled={!!unavailable || (!identity.canSwitch && option === 'broker')}
         onClick={() => { if (mode !== option) activation.mutate(option); }}
-        className="h-7 min-w-0 flex-1 whitespace-nowrap rounded-sm px-1 text-[6px] font-semibold">
+        className="sidebar-mode-toggle-btn h-7 min-w-0 flex-1 whitespace-nowrap rounded-sm px-1 text-sm font-semibold">
         {busy && activation.variables === option ? <Loader2 className="h-3 w-3 animate-spin" /> : option === 'broker' ? identity.label : partnerLabel}
       </Button>)}
     </div>

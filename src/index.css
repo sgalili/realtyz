@@ -1972,6 +1972,10 @@ html.activity-drawer-open main[aria-label="רשימת נכסים"] {
 :is([data-site-dialog], [data-site-popup]) [class*="text-[52px]"] { font-size: calc(52px + var(--dialog-font-increase)) !important; }
 :is([data-site-dialog], [data-site-popup]) [class*="text-[74px]"] { font-size: calc(74px + var(--dialog-font-increase)) !important; }
 
+/* Sidebar mode toggle: matches the הדרכה/הגדרות row size (14px) even inside
+   the popup-inflated mobile sidebar sheet. */
+:is([data-site-popup], [data-site-dialog]) .sidebar-mode-toggle-btn { font-size: 14px !important; }
+
 /* Published site: keep two-axis scrolling but hide the horizontal bar. */
 .hide-x-scrollbar { scrollbar-width: none; }
 .hide-x-scrollbar::-webkit-scrollbar:horizontal { height: 0; }
