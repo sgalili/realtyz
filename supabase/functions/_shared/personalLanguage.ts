@@ -35,8 +35,14 @@ export function personalizeMessage(text: string, gender: PersonalGender): string
 }
 type ProfileReader = { from: (table: 'profiles') => { select: (fields: string) => { eq: (field: string, value: string) => { maybeSingle: () => PromiseLike<{ data: { gender?: unknown } | null; error?: unknown }> } } } };
 export async function profileGenderByAddress(reader: ProfileReader, field: 'phone' | 'email', value: string): Promise<PersonalGender> {
-  const { data, error } = await reader.from('profiles').select('gender').eq(field, value).maybeSingle();
-  return error ? null : profileGender(data?.gender);
+  const digits = value.replace(/\D/g, '');
+  const local = /^9725\d{8}$/.test(digits) ? `0${digits.slice(3)}` : digits;
+  const international = /^05\d{8}$/.test(local) ? `972${local.slice(1)}` : null;
+  const values = field === 'email' ? [value.trim().toLowerCase()] : [...new Set([value, local, ...(international ? [international, `+${international}`, `${local.slice(0, 3)}-${local.slice(3)}`] : [])])];
+  const matches = await Promise.all(values.map(address => reader.from('profiles').select('gender').eq(field, address).maybeSingle()));
+  if (matches.some(match => match.error)) return null;
+  const genders = new Set(matches.filter(match => match.data).map(match => profileGender(match.data?.gender)));
+  return genders.size === 1 ? [...genders][0] ?? null : null;
 }
 export async function recipientProfileGender(reader: ProfileReader, userId: string): Promise<PersonalGender> {
   const { data, error } = await reader.from('profiles').select('gender').eq('id', userId).maybeSingle();

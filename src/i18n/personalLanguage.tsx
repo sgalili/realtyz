@@ -9,6 +9,7 @@ export const personalGenderKey = (userId: string) => ['personal-language', userI
 const Context = createContext<PersonalGender>(null);
 let currentGender: PersonalGender = null;
 export const personalText = (forms: GenderText) => genderText(currentGender, forms);
+export const personalCommand = (text: string) => localizeCommand(text, currentGender) ?? text;
 export function PersonalLanguageProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const cache = useQueryClient();

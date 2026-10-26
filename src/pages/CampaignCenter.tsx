@@ -6871,10 +6871,6 @@ const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string; gender
 type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null; voice_gender?: Gender | null };
 
 // Hebrew gender helpers — render verbs/adjectives in the correct grammatical
-// gender of the addressee (the broker). Defaults to neutral male-form when
-// gender is unknown so we never silently address a male user as female.
-const heVerb = (g: Gender | null | undefined, male: string, female: string) =>
-  g === 'female' ? female : male;
 
 
 const VoiceLeadPickerDialog = ({
@@ -7247,7 +7243,7 @@ const VoiceLeadPickerDialog = ({
                       className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
                     />
                     <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                      אם {heVerb(userGender, 'תשאיר', 'תשאירי')} ריק, המערכת {heVerb(userGender, 'תשתמש', 'תשתמש')} באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם הליד.
+                      ללא הנחיות נוספות, המערכת תשתמש באסטרטגיה הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם הליד.
                     </p>
                   </div>
 
