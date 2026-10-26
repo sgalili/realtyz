@@ -948,15 +948,18 @@
 
   .auth-page-footer {
     position: fixed;
-    left: 0;
-    right: 0;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: var(--board-content-max-width, 1280px);
     bottom: 10px;
     z-index: 30;
     padding-inline: 4px;
     background: hsl(var(--card));
     border: 0;
     white-space: nowrap;
-    overflow-x: auto;
+    overflow: hidden;
     scrollbar-width: none;
   }
 
@@ -1014,7 +1017,7 @@
     flex-wrap: nowrap;
     gap: 8px;
     width: 100%;
-    min-width: max-content;
+    min-width: 0;
     background: transparent;
   }
 
@@ -1039,7 +1042,7 @@
   }
 
   .auth-footer-links a {
-    font-size: 0.68rem;
+    font-size: calc(0.68rem + 1px);
     font-weight: 400;
     color: hsl(var(--muted-foreground));
     transition: color 160ms ease;
@@ -1047,6 +1050,12 @@
 
   .auth-footer-links a:hover {
     color: hsl(var(--foreground) / 0.86);
+  }
+
+  @media (max-width: 420px) {
+    .auth-footer-legal { gap: 3px; }
+    .auth-footer-links { gap: 4px; }
+    .auth-footer-copyright { font-size: 9px; }
   }
 
   @media (min-width: 768px) {

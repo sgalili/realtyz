@@ -59,13 +59,13 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     } catch (error) { toast.error(error instanceof Error ? error.message : 'לא ניתן לשמור. נסו שוב.'); }
     finally { setBusy(false); }
   };
-  return <div dir="rtl" className="flex h-[100dvh] flex-col items-center overflow-y-auto bg-background px-4 pb-16 pt-[50px]">
+  return <div dir="rtl" className="flex h-[100dvh] flex-col items-center overflow-y-auto bg-background px-4 pb-16 pt-[40px]">
     <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
-    <h1 className="mb-6 mt-6 text-xl font-bold">מה סוג המשתמש שלך?</h1>
+    <h1 className="mb-6 mt-[50px] text-xl font-bold">מה סוג המשתמש שלך?</h1>
     {licenseSuspended && <div role="alert" className="mb-4 w-full max-w-lg border border-destructive p-3 text-destructive">{INVALID_BROKER_LICENSE}</div>}
     <div role="group" aria-label="סוג משתמש" className="grid w-full max-w-lg grid-cols-2 gap-3">{signupTypes.map(type => <Button key={type} type="button" variant={selected === type ? 'default' : 'outline'} aria-pressed={selected === type} className="h-16 whitespace-normal text-lg font-semibold" disabled={busy || (licenseSuspended && type !== 'broker')} onClick={() => { setSelected(type); setDetails({}); }}>{labels[type]}</Button>)}</div>
     {selected && <form onSubmit={submit} className="mt-6 w-full max-w-lg space-y-3">
-      {signupTypeFields[selected].map(([key, label]) => <Input key={key} aria-label={label} placeholder={label} maxLength={200} type={key === 'budget' ? 'number' : 'text'} min={key === 'budget' ? 1 : undefined} className="h-12 text-lg" value={details[key] ?? ''} onChange={e => setDetails(previous => ({ ...previous, [key]: e.target.value }))} />)}
+      {signupTypeFields[selected].map(([key, label]) => <Input key={key} aria-label={label} placeholder={label} maxLength={200} type={key === 'budget' ? 'number' : 'text'} min={key === 'budget' ? 1 : undefined} className="h-12 text-xl font-bold" value={details[key] ?? ''} onChange={e => setDetails(previous => ({ ...previous, [key]: e.target.value }))} />)}
       {selected === 'broker' && <BrokerLicenseField value={license} onChange={setLicense} onVerified={setVerifiedLicense} />}
       <Button type="submit" className="h-12 w-full text-lg" disabled={busy || !ready}>{busy ? 'שומר...' : 'המשך'}</Button>
     </form>}

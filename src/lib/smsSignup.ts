@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 
 export const signupNamePart = z.string().trim().min(2).max(80).regex(/^\p{L}+$/u);
+export function formatAuthMobile(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  return digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits;
+}
 export const israeliMobile = z.string().transform(value => value.replace(/[\s()+-]/g, '')).refine(value => /^05\d{8}$/.test(value) || /^9725\d{8}$/.test(value)).transform(value => value.startsWith('0') ? `972${value.slice(1)}` : value);
 export const smsSignupSchema = z.object({ firstName: signupNamePart, lastName: signupNamePart, gender: z.enum(['male', 'female']), phone: israeliMobile });
 export type SmsSignup = z.input<typeof smsSignupSchema>;
