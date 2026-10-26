@@ -81,7 +81,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
       const state = await getCloudSessionState();
       if (generation.current !== run) return;
       if (state.active) { await finish(run); return; }
-      if (manual) setErrorMessage('החיבור עדיין לא זוהה. השלימו את הכניסה לפייסבוק בדפדפן הענן וחזרו לבדיקה.');
+      if (manual) setErrorMessage('החיבור עדיין לא זוהה. השלימו את הכניסה לפייסבוק בחלון שנפתח וחזרו לבדיקה.');
     } catch {
       if (generation.current === run) setErrorMessage('בדיקת החיבור נכשלה. נסו שוב.');
     } finally {
@@ -111,7 +111,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     try {
       const { data, error } = await supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_login' } });
       const payload = data ?? await (error as { context?: Response } | null)?.context?.json().catch(() => null);
-      if (error || payload?.error || !payload?.url) throw new Error(payload?.message || 'פתיחת החיבור בענן נכשלה');
+      if (error || payload?.error || !payload?.url) throw new Error(payload?.message || 'פתיחת החיבור לפייסבוק נכשלה');
       if (generation.current !== run) { placeholder?.close(); return; }
       cloudUrl = payload.url;
     } catch (e) {
@@ -136,7 +136,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     if (!tab) {
       placeholder?.close();
       setManualUrl(cloudUrl);
-      toast.warning('הדפדפן חסם פתיחת חלון חדש. לחצו "פתיחת דפדפן הענן" כדי להמשיך.');
+      toast.warning('הדפדפן חסם פתיחת חלון חדש. לחצו "פתיחת חיבור לפייסבוק" כדי להמשיך.');
     }
     deadline.current = Date.now() + 10 * 60_000;
     timer.current = window.setInterval(() => {
@@ -155,26 +155,26 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
       {phase === 'waiting' ? 'ממתינים להשלמת החיבור…' : phase === 'syncing' ? 'מייבאים את הקבוצות…' : connected ? 'ייבוא הקבוצות שלי' : 'חיבור באמצעות פייסבוק'}
     </Button>
     {phase === 'waiting' && <p role="status" className="text-sm leading-relaxed text-muted-foreground">השלימו את הכניסה לפייסבוק בחלון שנפתח.</p>}
-    {connected && <p className="flex items-center gap-1 text-sm text-success"><ShieldCheck className="h-4 w-4" />החיבור שמור ומוצפן בענן</p>}
+    {connected && <p className="flex items-center gap-1 text-sm text-success"><ShieldCheck className="h-4 w-4" />החיבור שמור ומוצפן</p>}
     {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
     <Button type="button" variant="link" className="w-full" disabled={phase === 'syncing'} onClick={() => { generation.current++; stop(); setGuidanceOpen(false); setManualUrl(''); setSkipped(true); onStatusChange?.(true); }}>אתחבר יותר מאוחר</Button>
     <Dialog open={guidanceOpen} onOpenChange={setGuidanceOpen}>
       <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
         <ShieldCheck className="mx-auto h-9 w-9 text-social-facebook" />
         <DialogTitle className="text-center text-xl">חיבור מאובטח לפייסבוק</DialogTitle>
-        <DialogDescription className="text-base leading-relaxed">החיבור מתבצע בסביבת ענן מאובטחת ומבודדת. סיסמת הפייסבוק שלך אינה נאספת או נשמרת במערכת TORAFF.</DialogDescription>
-        <p className="text-sm leading-relaxed text-muted-foreground">סיסמת פייסבוק מוזנת רק באתר פייסבוק בדפדפן הענן. לצורך הפעילות שאישרתם, TORAFF שומרת חיבור מוצפן לסביבת העבודה, שניתן למחוק בהגדרות החיבורים.</p>
+        <DialogDescription className="text-base leading-relaxed">החיבור מתבצע בסביבה מאובטחת ומבודדת. סיסמת הפייסבוק שלך אינה נאספת או נשמרת במערכת TORAFF.</DialogDescription>
+        <p className="text-sm leading-relaxed text-muted-foreground">סיסמת פייסבוק מוזנת רק באתר פייסבוק. לצורך הפעילות שאישרתם, TORAFF שומרת חיבור מוצפן לסביבת העבודה, שניתן למחוק בהגדרות החיבורים.</p>
         <ol className="list-inside list-decimal space-y-2 text-base leading-relaxed">
-          <li>פתחו את דפדפן הענן בלשונית חדשה.</li>
+          <li>פתחו את חלון החיבור בלשונית חדשה.</li>
           <li>היכנסו לפייסבוק רק באתר facebook.com והשלימו כל אימות שפייסבוק מבקשת.</li>
           <li>לפרסום בשם העסק, עברו בפייסבוק לעמוד העסקי שאתם מנהלים, ולא לפרופיל האישי. קבוצות שלא מאפשרות פעילות של עמודים אינן ניתנות לפרסום בשם העמוד.</li>
           <li>חזרו ללשונית TORAFF. נבדוק את החיבור אוטומטית; אפשר גם ללחוץ על בדיקת החיבור.</li>
         </ol>
         {phase !== 'idle' && <p role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{phase === 'syncing' ? 'מייבאים את הקבוצות…' : 'ממתינים לאישור החיבור מפייסבוק…'}</p>}
         {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
-        <Button className="h-auto min-h-12 gap-2 whitespace-normal bg-social-facebook text-base text-social-foreground hover:bg-social-facebook/90" disabled={phase !== 'idle'} onClick={() => void connect()}><ExternalLink className="h-5 w-5 shrink-0" />{manualUrl ? 'פתיחת חיבור חדש בענן' : 'פתיחת דפדפן הענן בלשונית חדשה'}</Button>
+        <Button className="h-auto min-h-12 gap-2 whitespace-normal bg-social-facebook text-base text-social-foreground hover:bg-social-facebook/90" disabled={phase !== 'idle'} onClick={() => void connect()}><ExternalLink className="h-5 w-5 shrink-0" />{manualUrl ? 'פתיחת חיבור חדש לפייסבוק' : 'פתח חיבור לפייסבוק בלשונית חדשה'}</Button>
         {manualUrl && <>
-          <a href={manualUrl} target="_blank" rel="noopener noreferrer" className="text-center text-base font-semibold text-primary underline underline-offset-4">פתיחת דפדפן הענן</a>
+          <a href={manualUrl} target="_blank" rel="noopener noreferrer" className="text-center text-base font-semibold text-primary underline underline-offset-4">פתיחת חיבור לפייסבוק</a>
           <Button variant="outline" disabled={checkingStatus || phase === 'syncing'} onClick={() => void checkConnection(generation.current, true)}><RefreshCw className={`me-2 h-4 w-4 ${checkingStatus ? 'animate-spin motion-reduce:animate-none' : ''}`} />בדיקת החיבור</Button>
         </>}
       </DialogContent>

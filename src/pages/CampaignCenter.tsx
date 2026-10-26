@@ -39,7 +39,7 @@ import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
-  ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square, Users,
+  ChevronDown as ChevronDownIcon, Plug, Square, Users,
   Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History, Save, XCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1263,12 +1263,9 @@ const InlineComposer = ({
 
   // Attachment / media state
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>(initial.attachments || []);
   // True while the property's gallery is being pulled/attached.
   const [photosLoading, setPhotosLoading] = useState(false);
-  const [generatingImage, setGeneratingImage] = useState(false);
 
 
   // Audio recording
@@ -1774,34 +1771,6 @@ const InlineComposer = ({
       console.error('[CampaignCenter] media upload failed', err);
       toast.error('העלאת הקובץ נכשלה — לא יישמר בטיוטה');
     }
-  };
-
-  const handleAIImage = async () => {
-    const prompt = body.trim() || customInstructions.trim() || 'תמונת נדל"ן יוקרתית עבור קמפיין שיווקי של מתווך בכיר';
-
-    if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
-    const ctrl = registerGeneration();
-    setGeneratingImage(true);
-    const context = { listingId: selectedListingId, workspace: workspaceOwnerId };
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: { purpose: 'image', prompt, brand: brandName, language: 'he' },
-        signal: ctrl.signal,
-      });
-      if (ctrl.signal.aborted || selectedContextRef.current.listingId !== context.listingId || selectedContextRef.current.workspace !== context.workspace) return; // discard stale property responses
-      if (error) throw error;
-      const url = data?.url || data?.image_url;
-      if (url) {
-        setAttachments((a) => [...a, { name: 'AI Image', kind: 'image', url }]);
-        if (selectedListingId) void appendImagesToListing(selectedListingId, [url]);
-        toast.success('תמונה נוצרה');
-
-      } else toast.info('לא התקבלה תמונה מה-AI');
-    } catch (e: any) {
-      if (ctrl.signal.aborted || e?.name === 'AbortError') return;
-      toast.error('יצירת תמונה נכשלה');
-    }
-    finally { releaseGeneration(ctrl); setGeneratingImage(false); }
   };
 
   const startRecording = async () => {
@@ -2594,42 +2563,22 @@ const InlineComposer = ({
           <RefreshCw className={cn('h-4 w-4', (generating || finalizingBody) && 'animate-spin')} />
         </button>
         <div className="mt-2 flex items-center gap-1.5" dir="rtl">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
-                aria-label="צירוף מדיה"
-              >
-                <Paperclip className="h-4 w-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-44 p-1" dir="rtl">
-              <button type="button" onClick={() => galleryInputRef.current?.click()}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-                <span>גלריה</span>
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-              </button>
-              <button type="button" onClick={() => cameraInputRef.current?.click()}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-                <span>מצלמה</span>
-                <Camera className="h-4 w-4 text-muted-foreground" />
-              </button>
-              <button type="button" onClick={handleAIImage} disabled={generatingImage}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
-                <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
-                <Sparkles className="h-4 w-4 text-primary" />
-              </button>
-            </PopoverContent>
-          </Popover>
           {photosLoading && (
             <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
               מייבא תמונות הנכס…
             </span>
           )}
-          {attachments.length > 0 && (
-            <div className="relative flex items-center gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
+          <div className="relative flex items-center gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-border bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                aria-label="הוספת תמונות מהגלריה"
+                title="הוספת תמונות מהגלריה"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
               {attachments.map((att, i) => {
                 const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
                 const isImage = att.kind === 'image' && !!att.url && !isVideo;
@@ -2675,7 +2624,6 @@ const InlineComposer = ({
               })}
               <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" aria-hidden="true" />
             </div>
-          )}
 
         </div>
 
@@ -2857,11 +2805,6 @@ const InlineComposer = ({
       {/* Hidden inputs */}
       <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
-      <input ref={cameraInputRef} type="file" accept="image/*,video/*" capture="environment" className="hidden"
-        onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
-
-      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
-        onChange={(e) => { handleFiles(e.target.files, 'file'); e.target.value = ''; }} />
 
       {/* Attachments preview moved inline next to the Paperclip button above. */}
 
@@ -3548,16 +3491,16 @@ const ConfirmDispatchDialog = ({
       if (useCloudPublishing) {
         const state = await getCloudSessionState();
         setCloudConnection(state);
-        if (!state.active) throw new Error('אין חיבור פייסבוק פעיל בענן. יש להתחבר מחדש.');
-        if (!groupIds.length) throw new Error('בחרו לפחות קבוצה אחת לפרסום בדפדפן הענן.');
+        if (!state.active) throw new Error('אין חיבור פייסבוק פעיל. יש להתחבר מחדש.');
+        if (!groupIds.length) throw new Error('בחרו לפחות קבוצה אחת לפרסום.');
         const { data, error } = await supabase.functions.invoke('meta-publish', { body: {
           post: safeUtf8(body).trim(), channels: ['facebook'], runner: 'cloud',
           workspace_owner_id: ownerScope, group_ids: groupIds, publish_to_page: false,
           campaign_name: `${brandName} · ${channel.label}`, media_urls: mediaUrls,
           scheduled_at: scheduledAt, listing_id: listingId, first_comment: firstComment || null,
         } });
-        if (error || data?.error || data?.success === false) throw new Error(data?.message || error?.message || 'שמירת הפרסום בענן נכשלה');
-        toast.success(`${data.group_count ?? data.group_results?.length ?? groupIds.length} קבוצות נוספו לתור הפרסום בענן`);
+        if (error || data?.error || data?.success === false) throw new Error(data?.message || error?.message || 'שמירת הפרסום נכשלה');
+        toast.success(`${data.group_count ?? data.group_results?.length ?? groupIds.length} קבוצות נוספו לתור הפרסום`);
         onConfirmed();
         onClose();
         return;
@@ -3998,12 +3941,12 @@ const ConfirmDispatchDialog = ({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="text-right text-sm font-semibold text-foreground">{useCloudPublishing ? 'פרסום בדפדפן הענן' : 'פרסום בעמוד / פרופיל'}</div>
+          <div className="text-right text-sm font-semibold text-foreground">{useCloudPublishing ? 'פרסום לקבוצות בפייסבוק' : 'פרסום בעמוד / פרופיל'}</div>
           <div className="rounded-xl border border-border bg-background p-3 space-y-3">
             {useCloudPublishing ? (
               <div className="flex items-center gap-2 text-sm text-foreground">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
-                <span>פייסבוק מחובר באמצעות GoLogin · פרסום לקבוצות בענן</span>
+                <span>פייסבוק מחובר · פרסום לקבוצות בפייסבוק</span>
               </div>
             ) : pagesLoading || (channel.id === 'facebook' && !cloudConnection) ? (
               <div className="text-right text-xs text-muted-foreground py-2">טוען עמודים מחוברים…</div>

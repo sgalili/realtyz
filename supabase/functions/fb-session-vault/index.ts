@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch { body = {}; }
   if (!acceptsFacebookConnectionRequest(body)) {
-    return json({ error: "credentials_not_accepted", message: "ההתחברות מתבצעת רק בפייסבוק בדפדפן הענן. אין לשלוח פרטי התחברות ל-TORAFF." }, 400);
+    return json({ error: "credentials_not_accepted", message: "ההתחברות מתבצעת רק באתר פייסבוק. אין לשלוח פרטי התחברות ל-TORAFF." }, 400);
   }
   const action = String(body?.action ?? "status");
 
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const { error: updateError } = await admin.from("fb_group_fetch_jobs").update({
       status: ok ? "completed" : "failed",
       groups: ok && Array.isArray(body?.groups) ? body.groups.slice(0, 500) : null,
-      error: ok ? null : String(body?.error ?? "סריקת הקבוצות בענן נכשלה").slice(0, 1000),
+      error: ok ? null : String(body?.error ?? "סריקת הקבוצות בפייסבוק נכשלה").slice(0, 1000),
       claim_expires_at: null,
     }).eq("id", jobId).eq("status", "processing");
     if (updateError) return json({ error: updateError.message }, 500);
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
 
   if (action === "remote_login") {
     const token = Deno.env.get("GOLOGIN_API_TOKEN") ?? "";
-    if (!token) return json({ error: "not_configured", message: "שירות הדפדפן בענן עדיין לא הוגדר. פנו למנהל המערכת" }, 400);
+    if (!token) return json({ error: "not_configured", message: "שירות החיבור לפייסבוק עדיין לא הוגדר. פנו למנהל המערכת" }, 400);
     const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     const { data: row } = await admin.from("fb_cloud_sessions")
       .select("remote_profile_id").eq("workspace_owner_id", owner).maybeSingle();
@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
         if (w.status === 401 || w.status === 403) {
           return json({
             error: "remote_forbidden",
-            message: "חשבון הדפדפן בענן אינו מאפשר פתיחת דפדפן מרוחק (נדרש מפתח תקף ומנוי הכולל Cloud Browser)",
+            message: "חשבון החיבור אינו מאפשר פתיחת חיבור מרוחק (נדרש מפתח תקף ומנוי מתאים)",
           }, 200);
         }
         throw new Error(`web_${w.status}`);
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
       return json({ success: true, url });
     } catch (e) {
       console.error("gologin remote_login error", (e as Error).message);
-      return json({ error: "remote_failed", message: `פתיחת הדפדפן בענן נכשלה (${(e as Error).message})` }, 200);
+      return json({ error: "remote_failed", message: `פתיחת החיבור לפייסבוק נכשלה (${(e as Error).message})` }, 200);
     }
   }
 
@@ -274,11 +274,11 @@ Deno.serve(async (req) => {
       .eq("workspace_owner_id", owner).maybeSingle();
     const expired = session?.expires_at ? new Date(session.expires_at).getTime() < Date.now() : false;
     if (!session?.cookies_encrypted || session.status !== "active" || expired) {
-      return json({ error: "no_cloud_session", message: "אין חיבור פייסבוק פעיל בענן – חברו את פייסבוק תחילה" }, 400);
+      return json({ error: "no_cloud_session", message: "אין חיבור פייסבוק פעיל – חברו את פייסבוק תחילה" }, 400);
     }
     const workerUrl = Deno.env.get("CLOUD_BROWSER_WORKER_URL") ?? "";
     if (!workerUrl || !ENC_KEY) {
-      return json({ error: "cloud_worker_not_configured", message: "שירות הדפדפן בענן עדיין לא הוגדר" }, 400);
+      return json({ error: "cloud_worker_not_configured", message: "שירות החיבור לפייסבוק עדיין לא הוגדר" }, 400);
     }
 
     let cookies: string;
@@ -304,9 +304,9 @@ Deno.serve(async (req) => {
       if (!res.ok) throw new Error(`worker_http_${res.status}`);
     } catch (e) {
       await admin.from("fb_group_fetch_jobs").update({
-        status: "failed", error: `שגיאת ענן: ${String((e as Error).message)}`,
+        status: "failed", error: `שגיאה זמנית: ${String((e as Error).message)}`,
       }).eq("id", job.id);
-      return json({ error: "dispatch_failed", message: "סריקת הקבוצות בענן נכשלה, נסו שוב" }, 502);
+      return json({ error: "dispatch_failed", message: "סריקת הקבוצות בפייסבוק נכשלה, נסו שוב" }, 502);
     }
     return json({ success: true, job_id: job.id });
   }
@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
     if (!job) return json({ error: "not_found" }, 404);
     // Expired lease: the cloud runner crashed or timed out mid-scan.
     if (job.status === "processing" && job.claim_expires_at && new Date(job.claim_expires_at).getTime() < Date.now()) {
-      const timeoutError = "הסריקה בענן ארכה יותר מדי – נסו שוב";
+      const timeoutError = "הסריקה בפייסבוק ארכה יותר מדי – נסו שוב";
       await admin.from("fb_group_fetch_jobs").update({
         status: "failed", error: timeoutError,
       }).eq("id", job.id).eq("status", "processing");

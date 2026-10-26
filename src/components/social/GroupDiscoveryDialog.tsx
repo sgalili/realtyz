@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Cloud, Loader2, Plus, Search, Settings2, Users, ExternalLink, Activity } from "lucide-react";
+import { Check, Loader2, Plus, Search, Settings2, Users, ExternalLink, Activity } from "lucide-react";
+import { FacebookGroupsIcon } from "@/components/icons/FacebookGroupsIcon";
 import { FacebookCloudConnectGate } from "./FacebookCloudConnectGate";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,7 +127,7 @@ export function GroupDiscoveryDialog({
       }
       setManualName("");
       setManualUrl("");
-      toast.success("הקבוצה נוספה לתור ההצטרפות בענן");
+      toast.success("הקבוצה נוספה לרשימת הקבוצות");
       onJoined?.();
     } finally {
       setAddingManual(false);
@@ -161,7 +162,7 @@ export function GroupDiscoveryDialog({
       setSearched(true);
       if (!fresh.length) toast.info("לא נמצאו קבוצות — נסו מילת חיפוש אחרת");
     } catch (e: any) {
-      toast.error("הסריקה בענן נכשלה", { description: e?.message });
+      toast.error("הסריקה בפייסבוק נכשלה", { description: e?.message });
       if (e?.message?.includes("חיבור פייסבוק")) {
         setCloud((c) => (c ? { ...c, active: false } : c));
       }
@@ -221,7 +222,7 @@ export function GroupDiscoveryDialog({
     setJoining(false);
     setPicked(new Set());
     if (ok > 0) {
-      toast.success(`נשמרו ${ok} קבוצות לרשימת הפרסום`, { description: "ההצטרפות תטופל בענן; קבוצות הממתינות לאישור לא יפורסמו" });
+      toast.success(`נשמרו ${ok} קבוצות לרשימת הפרסום`, { description: "ההצטרפות תטופל בפייסבוק; קבוצות הממתינות לאישור לא יפורסמו" });
       onJoined?.();
     }
   };
@@ -233,10 +234,10 @@ export function GroupDiscoveryDialog({
       <DialogContent dir="rtl" className="w-[calc(100vw-1.5rem)] max-w-lg p-4">
         <DialogTitle className="sr-only">חיפוש והצטרפות לקבוצות</DialogTitle>
 
-        <div className="flex items-center gap-2 text-base font-semibold"><Cloud className="h-5 w-5" /> קבוצות בענן</div>
+        <div className="flex items-center gap-2 text-base font-semibold"><FacebookGroupsIcon className="h-5 w-5" /> קבוצות בפייסבוק</div>
             {!cloudLoaded ? (
               <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> בודק את חיבור הענן…
+                <Loader2 className="h-4 w-4 animate-spin" /> בודק את חיבור הפייסבוק…
               </div>
             ) : cloud?.active ? (
               <form className="flex min-w-0 gap-2" onSubmit={(e) => { e.preventDefault(); void runCloudSearch(); }}>
@@ -244,7 +245,7 @@ export function GroupDiscoveryDialog({
                   className="min-w-0 flex-1 text-[15px]" disabled={busy} aria-label="מילות חיפוש" />
                 <Button type="submit" disabled={busy || !query.trim()} className="shrink-0 gap-1">
                   {cloudScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  חיפוש בענן
+                  חיפוש בפייסבוק
                 </Button>
               </form>
             ) : (
@@ -253,7 +254,7 @@ export function GroupDiscoveryDialog({
 
             {cloudScanning && (
               <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> סורק קבוצות בענן… זה עשוי לקחת עד דקה
+                <Loader2 className="h-4 w-4 animate-spin" /> סורק קבוצות בפייסבוק… זה עשוי לקחת עד דקה
               </div>
             )}
             {!cloudScanning && searched && visible.length === 0 && (

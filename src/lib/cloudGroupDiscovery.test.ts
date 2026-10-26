@@ -19,9 +19,9 @@ describe('cloud group discovery', () => {
     expect(mocks.invoke.mock.calls[1][1].body).toEqual({ action: 'fetch_status', job_id: 'job-1' });
   });
 
-  it('surfaces the server error when no cloud session exists', async () => {
-    mocks.invoke.mockResolvedValueOnce({ data: { error: 'no_cloud_session', message: 'אין חיבור פייסבוק פעיל בענן – חברו את פייסבוק תחילה' } });
-    await expect(fetchGroupsViaCloud('דירות')).rejects.toThrow('אין חיבור פייסבוק פעיל בענן');
+  it('surfaces the server error when no Facebook session exists', async () => {
+    mocks.invoke.mockResolvedValueOnce({ data: { error: 'no_cloud_session', message: 'אין חיבור פייסבוק פעיל – חברו את פייסבוק תחילה' } });
+    await expect(fetchGroupsViaCloud('דירות')).rejects.toThrow('אין חיבור פייסבוק פעיל');
   });
 
   it('syncs existing memberships rather than searching an empty query', async () => {

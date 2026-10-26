@@ -74,8 +74,8 @@ Deno.serve(async req => {
   if(!g || g.is_blocked || g.pool_status==='overflow') return json({error:'group_unavailable'},409);
   const {data:s} = await db.from('fb_cloud_sessions').select('cookies_encrypted,user_agent,status,expires_at').eq('workspace_owner_id',job.workspace_owner_id).maybeSingle();
   if(!worker || !secret || !enc || !s?.cookies_encrypted || s.status!=='active' || (s.expires_at && Date.parse(s.expires_at)<Date.now())) {
-    await db.from('fb_group_join_jobs').update({last_error:'נדרש חיבור פייסבוק ושירות ענן פעיל'}).eq('id',job.id);
-    await db.from('fb_user_groups').update({cloud_join_state:'queued',waiting_reason:'נדרש חיבור פייסבוק ושירות ענן פעיל'}).eq('id',g.id).eq('workspace_owner_id',job.workspace_owner_id);
+    await db.from('fb_group_join_jobs').update({last_error:'נדרש חיבור פייסבוק פעיל'}).eq('id',job.id);
+    await db.from('fb_user_groups').update({cloud_join_state:'queued',waiting_reason:'נדרש חיבור פייסבוק פעיל'}).eq('id',g.id).eq('workspace_owner_id',job.workspace_owner_id);
     return json({error:'cloud_unavailable'},409);
   }
   const {data:claimed} = await db.rpc('fb_claim_group_join',{_job:job.id,_token:body.dispatch_token});
@@ -91,8 +91,8 @@ Deno.serve(async req => {
     if(response.status!==202 || ack?.accepted!==true) throw new Error('invalid_worker_ack');
     return json({success:true,dispatched:true});
   } catch {
-    await db.from('fb_group_join_jobs').update({status:'failed',claim_expires_at:null,last_error:'שירות ההצטרפות בענן אינו זמין'}).eq('id',job.id).eq('status','processing');
-    await db.from('fb_user_groups').update({cloud_join_state:'failed',waiting_reason:'שירות ההצטרפות בענן אינו זמין'}).eq('id',g.id).eq('workspace_owner_id',job.workspace_owner_id);
+    await db.from('fb_group_join_jobs').update({status:'failed',claim_expires_at:null,last_error:'שירות ההצטרפות לקבוצות אינו זמין'}).eq('id',job.id).eq('status','processing');
+    await db.from('fb_user_groups').update({cloud_join_state:'failed',waiting_reason:'שירות ההצטרפות לקבוצות אינו זמין'}).eq('id',g.id).eq('workspace_owner_id',job.workspace_owner_id);
     return json({error:'dispatch_failed'},502);
   }
 });
