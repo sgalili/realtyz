@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from '@/i18n/personalToast';
-import { ArrowRight, Mars, Venus, X } from 'lucide-react';
+import { ArrowRight, User, UserRound, X } from 'lucide-react';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clearPendingSignupRole } from '@/lib/signupRole';
@@ -85,7 +85,7 @@ const Auth = () => {
           </div>}
           <div className={signup ? 'grid grid-cols-2 gap-3' : ''}>
             <Input type="tel" inputMode="tel" autoComplete="tel" aria-label="מספר טלפון נייד" placeholder="מספר טלפון נייד" maxLength={11} className={fieldClass} dir={phone ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(formatAuthMobile(e.target.value))} />
-            {signup && <div role="group" aria-label="מגדר" className="flex min-w-0 gap-1">{[['male', 'גבר', Mars], ['female', 'אישה', Venus]].map(([value, label, Icon]) => <Button key={value as string} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 min-w-0 flex-1 gap-1 px-2 text-lg font-normal" onClick={() => setGender(value as string)}><Icon className="h-5 w-5 shrink-0" />{label as string}</Button>)}</div>}
+            {signup && <div role="group" aria-label="מגדר" className="flex min-w-0 gap-1">{[['male', 'גבר', User], ['female', 'אישה', UserRound]].map(([value, label, Icon]) => <Button key={value as string} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 min-w-0 flex-1 gap-1 px-2 text-lg font-normal" onClick={() => setGender(value as string)}><Icon className="h-5 w-5 shrink-0" />{label as string}</Button>)}</div>}
           </div>
           {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-xl font-bold">{loading ? 'שולח...' : 'שלחו לי קוד ב-SMS'}</Button>}
         </form>}
