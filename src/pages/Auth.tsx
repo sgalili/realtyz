@@ -1,489 +1,94 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-
-/** Every OTP channel (WhatsApp, SMS, email) uses a 4-digit code. */
-const OTP_LENGTH = 4;
-import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { lovable } from '@/integrations/lovable';
-import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
-import { ArrowRight, Mail, MessageSquareText, X } from 'lucide-react';
-import { useDemoMode } from '@/hooks/useDemoMode';
-import { cn } from '@/lib/utils';
-import { RealtyzWave } from '@/components/RealtyzWave';
+import { ArrowRight, X } from 'lucide-react';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useNavigate } from 'react-router-dom';
-import { SIGNUP_ROLE_LABELS, setPendingSignupRole, setPendingSignupName, clearPendingSignupRole, type SignupRole } from '@/lib/signupRole';
-import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
-import { savePendingBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
-import { authFormReady, validFullName } from '@/lib/authFormValidation';
-
-
-type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
-type PhoneAuthResult = { token_hash?: string; session?: { access_token: string; refresh_token: string } };
-const acceptVerifiedSession = async (data: PhoneAuthResult | null) => {
-  if (data?.session) return supabase.auth.setSession(data.session);
-  if (data?.token_hash) return supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
-  return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
-};
-
-const AUTH_HEADER_HEADLINES: { key: string; render: () => JSX.Element }[] = [
-  { key: 'h1', render: () => <>קונים ומוכרים:<br />נכסים, סוכנים ו<strong>שיתופי פעולה</strong> במקום אחד</> },
-  { key: 'h2', render: () => <>משכירים ושוכרים:<br />פרסום נכס, פניות ושיתופים <strong>בלחיצה אחת</strong></> },
-  { key: 'h3', render: () => <>יזמים וקבלנים:<br />ניהול פרויקטים, דירות ו<strong>לידים חמים</strong></> },
-  { key: 'h4', render: () => <>מתווכים וסוכנויות:<br />CRM, אוטומציה ו<strong>סגירת עסקאות</strong> מהירה</> },
-  { key: 'h5', render: () => <>תוכנית שותפים:<br />משתפים נכסים ומרוויחים <strong>עמלות</strong>.</> },
-  { key: 'h6', render: () => <>סוכני ה-AI:<br />עובדים בשבילך ומייצרים לך <strong>הכנסה פאסיבית</strong>.</> },
-];
-
-const AUTH_HEADER_ROTATION_MS = 6000;
-
-const GoogleLogo = () => (
-  <svg className="auth-google-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path className="auth-google-blue" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-    <path className="auth-google-green" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-    <path className="auth-google-yellow" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" />
-    <path className="auth-google-red" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z" />
-  </svg>
-);
-
-const WhatsAppLogo = () => (
-  <svg className="auth-whatsapp-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path className="auth-whatsapp-circle" d="M20.52 3.48A11.86 11.86 0 0 0 12.07 0C5.5 0 .16 5.34.16 11.9c0 2.1.55 4.15 1.6 5.96L0 24l6.3-1.65a11.9 11.9 0 0 0 5.77 1.47h.01c6.56 0 11.9-5.34 11.92-11.9 0-3.18-1.24-6.17-3.48-8.44Z" />
-    <path className="auth-whatsapp-glyph" d="M12.08 21.8h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.64-.24-.38a9.84 9.84 0 0 1-1.5-5.27c0-5.44 4.43-9.87 9.88-9.87a9.8 9.8 0 0 1 6.98 2.9 9.82 9.82 0 0 1 2.89 6.99c-.01 5.44-4.44 9.87-9.87 9.87Zm5.41-7.39c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.46-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.75-.72 2-1.41.25-.7.25-1.29.17-1.42-.07-.13-.27-.2-.57-.35Z" />
-  </svg>
-);
-
+import { useLocation, useNavigate } from 'react-router-dom';
+import { clearPendingSignupRole } from '@/lib/signupRole';
+import { israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
 
 const Auth = () => {
-  const { setDemoMode } = useDemoMode();
   const navigate = useNavigate();
-
-  // Force demo OFF whenever the user lands on /auth
-  useEffect(() => {
-    window.localStorage.setItem('realtyz-demo-mode', 'false');
-    setDemoMode(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleAuthDemoToggle = (checked: boolean) => {
-    if (checked) {
-      // Turning ON → enable demo and go to dashboard
-      window.localStorage.setItem('realtyz-demo-mode', 'true');
-      setDemoMode(true);
-      window.location.assign('/');
-    } else {
-      // Already off - ensure off and stay on /auth
-      window.localStorage.setItem('realtyz-demo-mode', 'false');
-      setDemoMode(false);
-    }
-  };
-
-  const [email, setEmail] = useState('');
-  const [signup, setSignup] = useState(true);
-  const [signupType, setSignupType] = useState<SignupRole | ''>('');
-  const [fullName, setFullName] = useState('');
-  const [brokerLicense, setBrokerLicense] = useState('');
-  const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
+  const location = useLocation();
+  const [signup, setSignup] = useState(location.state?.signup !== false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  // SMS is the default sign-in / sign-up channel on both screens.
-  const [activeMethod, setActiveMethod] = useState<AuthMethod>('sms');
   const [codeSent, setCodeSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
-  const [otpAttempts, setOtpAttempts] = useState(0);
-  const [headerHeadlineIndex, setHeaderHeadlineIndex] = useState(0);
-  // Match dashboard hero wave: random seed on mount (1-100) for unique rhythm per visit
-  const [heroWaveSeed] = useState(() => Math.floor(Math.random() * 100) + 1);
-
+  const [attempts, setAttempts] = useState(0);
+  const mobile = israeliMobile.safeParse(phone);
+  const profile = smsSignupSchema.safeParse({ firstName, lastName, gender, phone });
+  const ready = mobile.success && (!signup || profile.success);
+  useEffect(() => { clearPendingSignupRole(); }, []);
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-    const googleOneTap = (window as any).google?.accounts?.id;
-    if (!clientId || !googleOneTap) return;
-    googleOneTap.initialize({
-      client_id: clientId,
-      callback: async ({ credential }: { credential?: string }) => {
-        if (!credential) return;
-        window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
-        const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credential });
-        if (error) toast.error(error.message);
-      },
-    });
-    googleOneTap.prompt();
-  }, []);
-
-  useEffect(() => {
-    if (!codeSent || resendSeconds <= 0) return;
-    const timer = window.setTimeout(() => setResendSeconds((seconds) => seconds - 1), 1000);
+    if (resendSeconds <= 0) return;
+    const timer = window.setTimeout(() => setResendSeconds(value => value - 1), 1000);
     return () => window.clearTimeout(timer);
-  }, [codeSent, resendSeconds]);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setHeaderHeadlineIndex((current) => (current + 1) % AUTH_HEADER_HEADLINES.length);
-    }, AUTH_HEADER_ROTATION_MS);
-
-    return () => window.clearInterval(intervalId);
-  }, []);
-
-  const isPhoneFlow = activeMethod === 'whatsapp' || activeMethod === 'sms';
-  const isGoogleFlow = activeMethod === 'google';
-  const plainPhone = phone.replace(/\D/g, '');
-  const formattedPhone = plainPhone.length > 3 ? `${plainPhone.slice(0, 3)}-${plainPhone.slice(3, 10)}` : plainPhone;
-  const identifierValid = isPhoneFlow ? /^05\d-\d{7}$/.test(formattedPhone) : /\S+@\S+\.\S+/.test(email);
-  // Signup keeps the explicit type and name through verified authentication.
-  const brokerReady = !signup || signupType !== 'broker' || (!!brokerLicense && verifiedBrokerLicense === brokerLicense);
-  const signupReady = !signup || (!!signupType && validFullName(fullName));
-  const canSubmit = authFormReady({ signup, signupType, fullName, brokerReady, identifier: isPhoneFlow ? phone : email, phone: isPhoneFlow });
-
-  const prepareSignup = () => {
-    if (signup && !signupType) { toast.error('יש לבחור סוג משתמש'); return false; }
-    if (signup && !validFullName(fullName)) return false;
-    if (!brokerReady) { toast.error(INVALID_BROKER_LICENSE); return false; }
-    savePendingBrokerLicense(signup && signupType === 'broker' ? brokerLicense : '');
-    if (signup && signupType) {
-      setPendingSignupRole(signupType);
-      setPendingSignupName(fullName);
-    } else {
-      clearPendingSignupRole();
-    }
-    return true;
-  };
-
-  // Preview host = Lovable preview sandbox. Skip real OTP delivery and accept
-  // the master secret OTP "9321" for sign-in / sign-up (super-admin override).
-  const isPreviewHost = typeof window !== 'undefined' && (
-    window.location.hostname.startsWith('id-preview--') ||
-    window.location.hostname.endsWith('.lovable.dev') ||
-    window.location.hostname.endsWith('.lovableproject.com') ||
-    window.location.hostname.endsWith('.lovable.app') ||
-    window.location.hostname === 'realtyz.kalpiz.co.il' ||
-    window.location.hostname === 'realtyz.udiman.com'
-  );
-
-  const handlePhoneChange = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 10);
-    setPhone(digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits);
-  };
-
-  const handleSendCode = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!canSubmit || loading) return;
-    if (!prepareSignup()) return;
-    if (isGoogleFlow) return;
+  }, [resendSeconds]);
+  const sendCode = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (!ready || !mobile.success || loading || resendSeconds > 0) return;
     setLoading(true);
-
-    // Phone codes (SMS and WhatsApp) always go out through the real gateways so
-    // a code actually arrives; only email keeps the preview shortcut.
-    if (false) {
-      setCodeSent(true);
-      setResendSeconds(0);
-      setOtpAttempts(0);
-      setOtp('');
-      setLoading(false);
-      toast.success('מצב Preview: השתמשו בקוד המאסטר 9321');
-      return;
-    }
-
-
-
-    const normalizedPhone = formattedPhone.replace(/^0/, '+972').replace('-', '');
-    const { error } = activeMethod === 'whatsapp'
-      ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send', phone: normalizedPhone } })
-      : activeMethod === 'sms'
-        // SMS codes ship through the central 019 gateway, not the built-in
-        // phone provider (which is not configured for this project).
-        ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send_sms', phone: normalizedPhone } })
-        : await supabase.functions.invoke('email-auth', { body: { action: 'send', email } });
-    if (error) {
-      // Real OTP delivery failed (e.g. unconfigured WhatsApp gateway).
-      // Still open the code-entry screen so the master OTP override can be used.
-      setCodeSent(true);
-      setResendSeconds(0);
-      setOtpAttempts(0);
-      setOtp('');
-      toast.message('לא ניתן לשלוח קוד כרגע. ניתן להזין קוד מאסטר אם יש לך.');
-    } else {
-      setCodeSent(true);
-      setResendSeconds(60);
-      setOtpAttempts(0);
-      setOtp('');
-      toast.success('קוד אימות נשלח אליך');
-    }
-    setLoading(false);
-  };
-
-  // Try the master-OTP bypass. Returns true if it succeeded and the session is set.
-  const tryMasterOtp = async (code: string, normalizedPhone: string): Promise<boolean> => {
-    // Plain fetch (not functions.invoke) so a non-master code never bubbles up as
-    // a thrown FunctionsHttpError / reported runtime error.
-    let data: PhoneAuthResult | null = null;
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/preview-master-auth`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string}`,
-        },
-        body: JSON.stringify({
-          identifier: isPhoneFlow ? normalizedPhone : email,
-          kind: isPhoneFlow ? 'phone' : 'email',
-          code,
-        }),
-      });
-      data = res.ok ? await res.json().catch(() => null) : null;
-    } catch {
-      return false;
-    }
-    if (!data?.token_hash && !data?.session) return false;
-    const { error: vErr } = await acceptVerifiedSession(data);
-    return !vErr;
+      const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send_sms', phone: `+${mobile.data}` } });
+      if (error || data?.error) throw new Error(data?.error ?? 'לא ניתן לשלוח קוד כרגע. נסו שוב.');
+      if (signup && profile.success) saveSmsSignup(profile.data);
+      setCodeSent(true); setOtp(''); setAttempts(0); setResendSeconds(60);
+      toast.success('קוד האימות נשלח ב-SMS');
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'שליחת הקוד נכשלה'); }
+    finally { setLoading(false); }
   };
-
-  const handleVerifyCode = async (code = otp) => {
-    const expectedLength = OTP_LENGTH;
-    if (isGoogleFlow || code.length !== expectedLength || loading || otpAttempts >= 3) return;
+  const verify = async (code = otp) => {
+    if (!mobile.success || code.length !== 4 || loading || attempts >= 3) return;
     setLoading(true);
-    window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
-    const normalizedPhone = formattedPhone.replace(/^0/, '+972').replace('-', '');
-
-    // Always attempt master-OTP first (works on any host with the correct master code).
-    if (code.length === 4) {
-      const ok = await tryMasterOtp(code, normalizedPhone);
-      if (ok) { setLoading(false); return; }
-      // Phone codes fall through to real verification; only email stops here.
-      if (false) {
-        setOtpAttempts((a) => a + 1);
-        setOtp('');
-        toast.error('קוד מאסטר שגוי');
-        setLoading(false);
-        return;
-      }
-
-    }
-
-    const { error } = activeMethod === 'whatsapp'
-      ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: normalizedPhone, code } }).then(async ({ data, error }) => {
-          if (error) return { error };
-          return await acceptVerifiedSession(data);
-        })
-      : activeMethod === 'sms'
-        ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: normalizedPhone, code } }).then(async ({ data, error }) => {
-            if (error) return { error };
-            return await acceptVerifiedSession(data);
-          })
-        : await supabase.functions.invoke('email-auth', { body: { action: 'verify', email, code } }).then(async ({ data, error }) => {
-            if (error) return { error };
-            if (!data?.token_hash) return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
-            return await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
-          });
-    if (error) {
-      setOtpAttempts((attempts) => attempts + 1);
-      setOtp('');
-      toast.error(otpAttempts + 1 >= 3 ? 'יותר מדי ניסיונות. שלחו קוד חדש.' : error.message);
-    }
-    setLoading(false);
-  };
-
-  const handleGoogleLogin = async () => {
-    if (!prepareSignup()) return;
-    setLoading(true);
-    window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
-    // After the managed Google login completes, the app will auto-redirect
-    // to a combined Gmail/Calendar/YouTube OAuth consent so all three
-    // services are linked without extra manual clicks.
     try {
-      window.sessionStorage.setItem('realtyz-google-services-pending', '1');
-    } catch {
-      /* storage disabled */
-    }
-    const result = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
-      extraParams: { prompt: 'select_account' },
-    });
-    if (result.error) {
-      window.localStorage.removeItem(DEMO_EXIT_PENDING_KEY);
-      try { window.sessionStorage.removeItem('realtyz-google-services-pending'); } catch { /* */ }
-      toast.error(result.error.message);
-    }
-    if (!result.redirected && !result.error) window.location.assign('/');
-    setLoading(false);
+      const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: `+${mobile.data}`, code } });
+      if (error || data?.error) throw new Error(data?.error ?? 'קוד האימות אינו תקין');
+      // The server verifies OTP; there are no client master-code or alternate-provider paths.
+      const result = data?.session ? await supabase.auth.setSession(data.session)
+        : data?.token_hash ? await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' })
+        : { error: new Error('הכניסה נכשלה. נסו שוב.') };
+      if (result.error) throw result.error;
+      navigate('/', { replace: true });
+    } catch (error) {
+      setAttempts(value => value + 1); setOtp('');
+      toast.error(attempts + 1 >= 3 ? 'שלחו קוד חדש ונסו שוב.' : error instanceof Error ? error.message : 'האימות נכשל');
+    } finally { setLoading(false); }
   };
-
-  return (
-    <div
-      className="auth-gradient-shell relative flex flex-col overflow-hidden bg-background px-4"
-    >
-      {codeSent && !isGoogleFlow && (
-        <button type="button" aria-label="חזרה להתחברות" className="absolute left-4 top-4 z-20 border-0 bg-transparent p-0 text-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
-          <ArrowRight className="h-10 w-10" />
-        </button>
-      )}
-      {!codeSent && (
-        <button type="button" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute left-4 top-4 z-20 border-0 bg-transparent p-1 text-foreground transition-opacity hover:opacity-70" onClick={() => navigate('/')}>
-          <X className="h-8 w-8" />
-        </button>
-      )}
-
-      <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
-        <div className="auth-fixed-header w-full shrink-0 text-center">
-          <div className="auth-header-ticker mx-auto mb-[44px] mt-[35px]" aria-live="polite">
-            {AUTH_HEADER_HEADLINES.map((line, index) => (
-              <span
-                key={line.key}
-                className={cn(
-                  'auth-header-ticker-line col-start-1 row-start-1 transition-opacity duration-[900ms] ease-in-out',
-                  index === headerHeadlineIndex ? 'opacity-100' : 'opacity-0',
-                )}
-              >
-                {line.render()}
-              </span>
-            ))}
+  return <div dir="rtl" className="relative flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pb-14 text-foreground">
+    <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute left-4 top-4 z-20 h-10 w-10 bg-transparent p-1 hover:bg-transparent" onClick={() => navigate('/')}><X className="h-8 w-8" /></Button>
+    {codeSent && <Button type="button" variant="ghost" size="icon" aria-label="חזרה להתחברות" className="absolute right-4 top-4 h-10 w-10" onClick={() => { setCodeSent(false); setOtp(''); }}><ArrowRight className="h-8 w-8" /></Button>}
+    <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[50px]">
+      <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
+      <h1 className="mb-8 mt-6 text-center text-xl font-normal">{codeSent ? 'הזינו את הקוד שקיבלתם ב-SMS' : signup ? <>להרשמה מהירה <strong>בחינם:</strong></> : 'כניסה לחשבון'}</h1>
+      <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
+        {codeSent ? <div className="space-y-5 text-center">
+          <InputOTP maxLength={4} value={otp} onChange={value => { setOtp(value); if (value.length === 4) void verify(value); }} containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
+            <InputOTPGroup className="gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-4xl font-bold text-primary" />)}</InputOTPGroup>
+          </InputOTP>
+          <Button type="button" className="w-full" disabled={loading || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
+          <Button type="button" variant="link" disabled={loading || resendSeconds > 0} onClick={() => void sendCode()}>{resendSeconds > 0 ? `שליחה חוזרת בעוד ${resendSeconds}` : 'שלחו לי קוד שוב'}</Button>
+        </div> : <form onSubmit={sendCode} className="space-y-3">
+          {signup && <div className="grid grid-cols-2 gap-3">
+            <Input aria-label="שם פרטי" placeholder="שם פרטי" autoComplete="given-name" maxLength={80} className="h-12 min-w-0 text-lg" value={firstName} onChange={e => setFirstName(e.target.value)} />
+            <Input aria-label="שם משפחה" placeholder="שם משפחה" autoComplete="family-name" maxLength={80} className="h-12 min-w-0 text-lg" value={lastName} onChange={e => setLastName(e.target.value)} />
+          </div>}
+          <div className={signup ? 'grid grid-cols-[minmax(0,1fr)_auto] gap-3' : ''}>
+            <Input type="tel" inputMode="tel" autoComplete="tel" aria-label="מספר טלפון נייד" placeholder="מספר טלפון נייד" maxLength={22} className="h-12 min-w-0 text-lg" dir={phone ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(e.target.value)} />
+            {signup && <div role="group" aria-label="מגדר" className="flex gap-1">{[['male', 'זכר'], ['female', 'נקבה']].map(([value, label]) => <Button key={value} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 px-3 text-base" onClick={() => setGender(value)}>{label}</Button>)}</div>}
           </div>
-          <img
-            src={realtyzLogo}
-            alt="TORAFF"
-            className="auth-official-logo mx-auto mb-[30px] h-[3.6rem] w-auto object-contain"
-          />
-        </div>
-
-        <Card variant="active" className="auth-login-card border-0 bg-transparent shadow-none" dir="rtl">
-          <CardContent className="auth-card-content p-6">
-            {!codeSent && <>
-              <div className="grid shrink-0 grid-cols-2 gap-1" role="group" aria-label="כניסה או הרשמה">
-                <Button type="button" className="text-lg" variant={signup ? 'default' : 'ghost'} onClick={() => setSignup(true)}>הרשמה</Button>
-                <Button type="button" className="text-lg" variant={!signup ? 'default' : 'ghost'} onClick={() => { setSignup(false); clearPendingSignupRole(); }}>התחברות</Button>
-              </div>
-            </>}
-            <div className="auth-dynamic-content">
-            <form onSubmit={handleSendCode} className="space-y-3">
-                {!codeSent && signup && <><Select value={signupType} onValueChange={value => {
-                  setSignupType(value as SignupRole);
-                }}>
-                  <SelectTrigger className="auth-unified-field" id="signup-type" aria-required="true" aria-label="סוג משתמש"><SelectValue placeholder="בחרו סוג משתמש" /></SelectTrigger>
-                  <SelectContent>{(['property_seeker', 'property_owner', 'developer', 'broker', 'partner'] as const).map(type => <SelectItem className="text-lg" key={type} value={type}>{type === 'developer' ? 'יזם / קבלן' : SIGNUP_ROLE_LABELS[type]}</SelectItem>)}</SelectContent>
-                </Select>
-                <Input className="auth-unified-field" id="signup-full-name" name="name" autoComplete="name" required maxLength={200} aria-label="שם מלא" placeholder="מה השם המלא שלך?" value={fullName} onChange={event => setFullName(event.target.value)} />
-                </>}
-              {codeSent && !isGoogleFlow ? (
-                <div className="space-y-4 text-center animate-fade-in">
-                  <Label className="block text-xl font-bold text-foreground">הזינו את הקוד שקיבלתם {activeMethod === 'whatsapp' ? 'בווטסאפ' : activeMethod === 'sms' ? 'ב-SMS' : 'באימייל'}</Label>
-                  <InputOTP maxLength={OTP_LENGTH} value={otp} onChange={(value) => { setOtp(value); if (value.length === OTP_LENGTH) void handleVerifyCode(value); }} containerClassName="justify-center" dir="ltr" disabled={otpAttempts >= 3}>
-                    <InputOTPGroup className="flex-row-reverse gap-2">
-                      {Array.from({ length: OTP_LENGTH }).map((_, index) => (
-                        <InputOTPSlot key={index} index={index} className="h-20 w-20 rounded-md border bg-background p-0 text-7xl font-black leading-none text-primary" />
-                      ))}
-                    </InputOTPGroup>
-                  </InputOTP>
-                  <Button type="button" className="auth-gold-button w-full" onClick={() => handleVerifyCode()} disabled={loading || otp.length !== OTP_LENGTH || otpAttempts >= 3}>
-                    {loading ? 'מאמת...' : 'כניסה למערכת'}
-                  </Button>
-                  {resendSeconds > 0 ? (
-                    <p className="text-sm font-bold text-muted-foreground">שלחו לי שוב בעוד {resendSeconds}</p>
-                  ) : (
-                    <button type="button" className="text-sm font-normal text-primary underline-offset-4 hover:underline" onClick={() => handleSendCode()} disabled={loading}>
-                      שלחו לי שוב
-                    </button>
-                  )}
-                </div>
-              ) : isGoogleFlow ? (
-                <Button type="button" className="auth-provider-button auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || !signupReady}>
-                  <GoogleLogo />
-                  כניסה עם גוגל
-                </Button>
-              ) : signup ? (
-                <Input
-                  id={isPhoneFlow ? 'auth-phone' : 'auth-email'}
-                  className="auth-unified-field"
-                  aria-label={isPhoneFlow ? 'מספר טלפון' : 'אימייל'}
-                  placeholder={isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}
-                  type={isPhoneFlow ? 'tel' : 'email'}
-                  inputMode={isPhoneFlow ? 'tel' : 'email'}
-                  value={isPhoneFlow ? formattedPhone : email}
-                  onChange={(e) => (isPhoneFlow ? handlePhoneChange(e.target.value) : setEmail(e.target.value))}
-                  required
-                  dir={isPhoneFlow && !formattedPhone || !isPhoneFlow && !email ? 'rtl' : 'ltr'}
-                />
-              ) : (
-                <div
-                  className={`auth-method-field ${activeMethod === 'whatsapp' ? 'auth-method-field-whatsapp' : ''} ${activeMethod === 'sms' ? 'auth-method-field-sms' : ''} ${activeMethod === 'email' ? 'auth-method-field-email' : ''}`}
-                >
-                  {activeMethod === 'whatsapp' ? (
-                    <WhatsAppLogo />
-                  ) : activeMethod === 'sms' ? (
-                    <MessageSquareText className="auth-sms-mark h-5 w-5" />
-                  ) : (
-                    <Mail className="h-5 w-5" />
-                  )}
-                  <Input
-                    id={isPhoneFlow ? 'auth-phone' : 'auth-email'}
-                    className="auth-method-input"
-                    aria-label={isPhoneFlow ? 'מספר טלפון' : 'אימייל'}
-                    placeholder={activeMethod === 'whatsapp' ? 'מה מספר הווטסאפ שלך?' : isPhoneFlow ? 'מה מספר הטלפון שלך?' : 'מה האימייל שלך?'}
-                    type={isPhoneFlow ? 'tel' : 'email'}
-                    inputMode={isPhoneFlow ? 'tel' : 'email'}
-                    value={isPhoneFlow ? formattedPhone : email}
-                    onChange={(e) => (isPhoneFlow ? handlePhoneChange(e.target.value) : setEmail(e.target.value))}
-                    required
-                    dir={isPhoneFlow ? (formattedPhone ? 'ltr' : 'rtl') : (email ? 'ltr' : 'rtl')}
-                  />
-                </div>
-              )}
-              {!codeSent && signup && signupType === 'broker' && <BrokerLicenseField compact value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
-              {!codeSent && !isGoogleFlow && (
-                <Button type="submit" className={`auth-submit-button auth-submit-${activeMethod} w-full`} disabled={loading || !canSubmit}>
-                  {loading ? 'שולח...' : activeMethod === 'whatsapp' ? 'שלחו לי קוד בווטסאפ' : activeMethod === 'sms' ? 'שלחו לי קוד ב SMS' : 'שלחו לי קוד באימייל'}
-                </Button>
-              )}
-            </form>
-
-            {!codeSent && <div className="my-4 text-center text-sm font-bold text-muted-foreground">
-              <div>או באמצעות:</div>
-            </div>}
-            </div>
-
-            {!codeSent && <div className="auth-method-tabs" role="tablist" aria-label="אפשרויות כניסה">
-              <Button type="button" className="auth-method-tab auth-provider-google" onClick={handleGoogleLogin} disabled={loading || !brokerReady || !signupReady} aria-pressed={activeMethod === 'google'}>
-                <GoogleLogo />
-                גוגל
-              </Button>
-              {activeMethod === 'sms' ? (
-                <Button type="button" className="auth-method-tab auth-provider-whatsapp" onClick={() => { setActiveMethod('whatsapp'); setCodeSent(false); setOtp(''); }} disabled={loading} aria-pressed={false}>
-                  <WhatsAppLogo />
-                  ווטסאפ
-                </Button>
-              ) : (
-                <Button type="button" className="auth-method-tab auth-provider-sms" onClick={() => { setActiveMethod('sms'); setCodeSent(false); setOtp(''); }} disabled={loading} aria-pressed={false}>
-                  <MessageSquareText className="auth-sms-mark" />
-                  SMS
-                </Button>
-              )}
-              {activeMethod === 'email' ? (
-                <Button type="button" className="auth-method-tab auth-provider-whatsapp" onClick={() => { setActiveMethod('whatsapp'); setCodeSent(false); setOtp(''); }} disabled={loading} aria-pressed={false}>
-                  <WhatsAppLogo />
-                  ווטסאפ
-                </Button>
-              ) : (
-                <Button type="button" variant="outline" className="auth-method-tab auth-provider-email" onClick={() => { setActiveMethod('email'); setCodeSent(false); setOtp(''); }} disabled={loading} aria-pressed={false}>
-                  <Mail />
-                  אימייל
-                </Button>
-              )}
-            </div>}
-          </CardContent>
-        </Card>
+          {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-lg">{loading ? 'שולח...' : 'שלחו לי קוד ב-SMS'}</Button>}
+          <div className="pt-4 text-center"><Button type="button" variant="link" className="text-sm text-muted-foreground" onClick={() => { setSignup(value => !value); setOtp(''); }}>{signup ? 'יש לי חשבון' : 'פתח חשבון חדש'}</Button></div>
+        </form>}
       </div>
-
     </div>
-  );
+  </div>;
 };
-
 export default Auth;
