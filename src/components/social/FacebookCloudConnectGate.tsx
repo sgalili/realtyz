@@ -162,13 +162,12 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
       <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
         <ShieldCheck className="mx-auto h-9 w-9 text-social-facebook" />
         <DialogTitle className="text-center text-xl">חיבור מאובטח לפייסבוק</DialogTitle>
-        <DialogDescription className="text-base leading-relaxed">החיבור מתבצע בסביבה מאובטחת ומבודדת. סיסמת הפייסבוק שלך אינה נאספת או נשמרת במערכת TORAFF.</DialogDescription>
-        <p className="text-sm leading-relaxed text-muted-foreground">סיסמת פייסבוק מוזנת רק באתר פייסבוק. לצורך הפעילות שאישרתם, TORAFF שומרת חיבור מוצפן לסביבת העבודה, שניתן למחוק בהגדרות החיבורים.</p>
+        <DialogDescription className="text-base leading-relaxed">החיבור מתבצע בסביבה מאובטחת ומבודדת. סיסמת הפייסבוק שלך אינה נאספת או נשמרת במערכת שלנו.</DialogDescription>
         <ol className="list-inside list-decimal space-y-2 text-base leading-relaxed">
-          <li>פתחו את חלון החיבור בלשונית חדשה.</li>
-          <li>היכנסו לפייסבוק רק באתר facebook.com והשלימו כל אימות שפייסבוק מבקשת.</li>
-          <li>לפרסום בשם העסק, עברו בפייסבוק לעמוד העסקי שאתם מנהלים, ולא לפרופיל האישי. קבוצות שלא מאפשרות פעילות של עמודים אינן ניתנות לפרסום בשם העמוד.</li>
-          <li>חזרו ללשונית TORAFF. נבדוק את החיבור אוטומטית; אפשר גם ללחוץ על בדיקת החיבור.</li>
+          <li>לחצי על הכפתור למטה לפתיחת חלון החיבור.</li>
+          <li>היכנסי לפייסבוק, התחברי והשלימי את האימות.</li>
+          <li>עברי בפייסבוק לדף העסקי שלך&nbsp;, ולא לפרופיל האישי&nbsp;(אם עדיין אין לך דף עסקי אז את צריכה ליצור אותו דרך פייסבוק).</li>
+          <li>חזרי לכאן לאחר מכן לסיום החיבור.</li>
         </ol>
         {phase !== 'idle' && <p role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{phase === 'syncing' ? 'מייבאים את הקבוצות…' : 'ממתינים לאישור החיבור מפייסבוק…'}</p>}
         {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
