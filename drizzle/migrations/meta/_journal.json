@@ -610,6 +610,13 @@
       "when": 1792992056281,
       "tag": "0086_scraping_audit_and_response_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1792992695135,
+      "tag": "0087_fix_social_draft_two_credit_settlement",
+      "breakpoints": true
     }
   ]
 }
