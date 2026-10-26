@@ -41,10 +41,6 @@ function json(body: unknown, status = 200) {
 
 function itemToken(u: string): string | null {
   try {
-    const backend = Deno.env.get('SUPABASE_URL') ?? '';
-    const scoped = createClient(backend, Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
-    const { data: { user } } = await scoped.auth.getUser();
-    if (!user) return json({ ok: true, statuses: {}, dates: {} });
     const m = new URL(u).pathname.match(/\/item\/([A-Za-z0-9_-]+)/);
     return m ? m[1] : null;
   } catch {
@@ -111,6 +107,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const scoped = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+    const { data: { user } } = await scoped.auth.getUser();
+    if (!user) return json({ ok: true, statuses: {}, dates: {} });
     const body = await req.json().catch(() => ({} as any));
     const urls: string[] = Array.from(
       new Set(
@@ -174,18 +173,15 @@ Deno.serve(async (req) => {
             const pageTitle = await page.title().catch(() => '');
             if (/radware/i.test(pageTitle)) {
               statuses[u] = 'unknown';
-              console.log(`[yad2-ad-status] ${u} blocked by bot wall -> unknown`);
+              console.log('[yad2-ad-status] source blocked');
               throw new Error('source_blocked');
             }
             statuses[u] = classify(finalUrl, httpStatus, pageTitle, html);
             const d = extractDates(html);
             if (d.published_at || d.updated_at) dates[u] = d;
             return JSON.stringify({ status: statuses[u], dates: d });
-            console.log(
-              `[yad2-ad-status] ${u} http=${httpStatus} final=${finalUrl} title=${JSON.stringify(pageTitle)} bytes=${html.length} -> ${statuses[u]}`,
-            );
           } catch (e) {
-            console.warn(`[yad2-ad-status] probe failed ${u}: ${(e as Error).message}`);
+            console.warn('[yad2-ad-status] probe failed');
             statuses[u] = 'unknown';
             throw e;
           } finally {
