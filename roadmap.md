@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Secure Facebook cloud guidance
-- [ ] Add mobile-friendly guidance before cloud login, safe new-tab fallback and server-confirmed status checks.
-- [ ] Reject client credential/cookie uploads; verify password-free flow and disclose encrypted session storage accurately.
-- [ ] Run privacy/connection tests and review mobile guidance in the signed-in app.
+- [x] Add mobile-friendly guidance before cloud login, safe new-tab fallback and server-confirmed status checks.
+- [x] Reject client credential/cookie uploads; deployed endpoint rejects synthetic password input; disclose encrypted session storage accurately.
+- [x] All 17 privacy/connection tests pass; signed-in guidance and provider-error state reviewed at 411x802 and desktop; build OK.
+- [ ] Complete actual Facebook login/group import: GoLogin still refuses Cloud Browser launch for the configured account (403); no Facebook password entered or requested by TORAFF.
 
 ## Super Admin user deletion
 - [x] Permanently deleted Barak Israely: 327 active records purged; verified zero login/profile/roles/files/listings/workspace memberships.
