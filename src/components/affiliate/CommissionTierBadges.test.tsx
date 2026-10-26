@@ -16,8 +16,8 @@ describe('commission visibility', () => {
     const { container } = render(<CommissionTierBadges tiers={tiers} />);
     expect([...container.querySelectorAll('[data-commission-icons] span[title]')].map(row => row.getAttribute('title'))).toEqual(['שדות מטופס בעמוד נחיתה', 'סינון בווטסאפ', 'שיחת טלפון', 'סגירת עסקה']);
     if (role === 'guest') {
-      // Explicit zeros have labels; restricted amounts remain hidden.
-      expect(screen.getByText('ללא עמלה')).toBeTruthy();
+      // Signed-out visitors see the gray icon but never the zero wording.
+      expect(screen.queryByText('ללא עמלה')).toBeNull();
       expect(screen.queryByText('למתווכים בלבד')).toBeNull();
     } else {
       // Signed-in users see the labels next to the grayed icons.
@@ -48,15 +48,19 @@ describe('commission visibility', () => {
     expect(screen.getByTitle(/שדות מטופס בעמוד נחיתה/)).toBeTruthy();
     expect(screen.getByTitle(/סינון בווטסאפ/)).toBeTruthy();
   });
-  it('shows the explicit zero label without exposing restricted amounts', () => {
+  it('shows the explicit zero label only to signed-in users', () => {
     access.guest = true;
-    const { container } = render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={{ form: false, whatsapp: false, phone: true, closing: false }} />);
-    expect(screen.getByText('ללא עמלה')).toBeTruthy();
+    const { container, unmount } = render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={{ form: false, whatsapp: false, phone: true, closing: false }} />);
+    expect(screen.queryByText('ללא עמלה')).toBeNull();
     expect(screen.queryByText('למתווכים בלבד')).toBeNull();
     expect(container.querySelector('span[title="שיחת טלפון"].lead-no-fee')).toBeTruthy();
     // The restricted closing stays a gray trophy that still explains licensing.
     fireEvent.click(screen.getByLabelText('סגירת עסקה'));
     expect(screen.queryByRole('dialog')).toBeNull();
+    unmount();
+    access.guest = false;
+    render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={{ form: false, whatsapp: false, phone: true, closing: false }} />);
+    expect(screen.getByText('ללא עמלה')).toBeTruthy();
   });
   it.each(['guest', 'super_admin', 'developer', 'property_owner', 'property_seeker', 'affiliate', 'agent'])('redacts closing prices even if supplied to the indicator for %s', role => {
     access.guest = role === 'guest'; access.roles = [role]; access.admin = role === 'super_admin';
