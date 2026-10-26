@@ -5,7 +5,6 @@ import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import type { CommissionTiers } from '@/hooks/useAffiliate';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserRole } from '@/hooks/useUserRole';
 import { RestrictedClosingReward } from './BrokerClosingInfo';
 
 export type RewardTypes = { form?: boolean; whatsapp?: boolean; phone?: boolean; closing?: boolean };
@@ -37,9 +36,6 @@ export function RewardIcons({ levels, types, prices, zeroTypes, closingPercent =
 
 export function CommissionTierBadges({ tiers, compact: _compact = false, level4Locked = false, closingOnly = false }: { tiers: CommissionTiers; compact?: boolean; level4Locked?: boolean; closingOnly?: boolean }) {
   const { level4Unlocked } = useAffiliateLicense();
-  const { user } = useAuth();
-  const { isSuperAdmin, roles } = useUserRole();
-  const showAll = !user || isSuperAdmin || roles.some(role => ['managing_broker', 'lead_agent', 'agent'].includes(role));
   return <RewardIcons zeroTypes={{ form: tiers.tier1 === 0, whatsapp: tiers.tier2 === 0, phone: tiers.tier3 === 0, closing: level4Unlocked && tiers.tier4 === 0 }} types={{ form: !closingOnly, whatsapp: !closingOnly, phone: !closingOnly, closing: !level4Locked }} />;
 }
 

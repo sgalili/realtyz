@@ -7,6 +7,7 @@ import { Check, ChevronLeft, Loader2, Megaphone, Sparkles, Users } from 'lucide-
 import { supabase } from '@/integrations/supabase/client';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
+import { readPostSignupWelcome } from '@/lib/signupRole';
 import {
   buildGoogleAllAuthUrl,
   clearFlag,
@@ -37,7 +38,7 @@ export function FirstTimeSyncDialog() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (readFlag(window.localStorage, FIRST_TIME_SYNC_KEY) === '1') return;
+      if (readFlag(window.localStorage, FIRST_TIME_SYNC_KEY) === '1' || readPostSignupWelcome()) return;
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return;
       const pending = readFlag(window.sessionStorage, GOOGLE_SERVICES_PENDING_KEY) === '1';
@@ -45,7 +46,7 @@ export function FirstTimeSyncDialog() {
       const createdAt = (profile as { created_at?: string } | null)?.created_at ? Date.parse(String((profile as { created_at: string }).created_at)) : NaN;
       if (!pending && !(Number.isFinite(createdAt) && Date.now() - createdAt < FIRST_SESSION_WINDOW_MS)) return;
       await refreshConnections();
-      if (!cancelled) setOpen(true);
+      if (!cancelled && !readPostSignupWelcome()) setOpen(true);
     })();
     const onFocus = () => { if (!cancelled) void refreshConnections(); };
     window.addEventListener('focus', onFocus);

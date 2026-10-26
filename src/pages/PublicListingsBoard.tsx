@@ -7,6 +7,7 @@ import { WelcomeSlides } from '@/components/public/WelcomeSlides';
 import { boardCache } from '@/lib/boardCache';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
+import { readPostSignupWelcome } from '@/lib/signupRole';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
@@ -257,10 +258,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     }
   };
 
-  const [showWelcome, setShowWelcome] = useState(() => shouldShowWelcome('home'));
+  const [showWelcome, setShowWelcome] = useState(() => !readPostSignupWelcome() && shouldShowWelcome('home'));
   const [welcomeKey, setWelcomeKey] = useState(0);
   useEffect(() => {
-    setShowWelcome(shouldShowWelcome('home'));
+    setShowWelcome(!readPostSignupWelcome() && shouldShowWelcome('home'));
     setWelcomeKey((key) => key + 1);
   }, [location.key]);
   useEffect(() => {
