@@ -20,6 +20,7 @@ import { SuperAdminDeleteUsersCard } from '@/components/admin/SuperAdminDeleteUs
 import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
 import { DeletedAccountsArchive } from '@/components/admin/DeletedAccountsArchive';
 import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
+import { ScrapingUsageReport } from '@/components/admin/ScrapingUsageReport';
 
 import { DEMO_CANDIDATES } from '@/lib/demoData';
 import { toast } from 'sonner';
@@ -380,6 +381,7 @@ const SuperAdmin = () => {
           <TabsTrigger value="finance"><Wallet className="ml-2 h-4 w-4" /> פיננסי</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="ml-2 h-4 w-4" /> פעילות</TabsTrigger>
           <TabsTrigger value="monitoring"><Bot className="ml-2 h-4 w-4" /> ניטור</TabsTrigger>
+          <TabsTrigger value="scraping"><Activity className="ml-2 h-4 w-4" /> שימוש Bright Data</TabsTrigger>
           <TabsTrigger value="connections">
             <PlugZap className="ml-2 h-4 w-4" /> חיבורים
             {(connectionHealth?.length ?? 0) > 0 && (
@@ -410,6 +412,7 @@ const SuperAdmin = () => {
         </TabsContent>
 
         <TabsContent value="finance" className="mt-4"><FinanceTab /></TabsContent>
+        <TabsContent value="scraping" className="mt-4"><ScrapingUsageReport /></TabsContent>
         <TabsContent value="activity" className="mt-4"><Card><CardHeader><CardTitle>יומן פעילות אחרון</CardTitle><CardDescription>50 הפעולות האחרונות במערכת</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>זמן</TableHead><TableHead>משתמש</TableHead><TableHead>פעולה</TableHead><TableHead>יעד</TableHead></TableRow></TableHeader><TableBody>{(audit ?? []).map((a: any) => <TableRow key={a.id}><TableCell className="text-xs text-muted-foreground">{format(new Date(a.created_at), 'dd/MM HH:mm')}</TableCell><TableCell className="font-mono text-xs">{a.actor_email || a.actor_id?.slice(0, 8)}</TableCell><TableCell><Badge variant="outline">{a.action}</Badge></TableCell><TableCell className="text-xs text-muted-foreground">{a.target_table ? `${a.target_table}/${(a.target_id || '').slice(0, 8)}` : '-'}</TableCell></TableRow>)}{(!audit || audit.length === 0) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">אין רשומות</TableCell></TableRow>}</TableBody></Table></CardContent></Card></TabsContent>
         <TabsContent value="monitoring" className="mt-4"><Card><CardHeader><CardTitle>Global Monitoring</CardTitle><CardDescription>היסטוריית אינטראקציות מכל הערוצים.</CardDescription></CardHeader><CardContent className="space-y-3">{(globalActivity ?? []).map((row: any) => <div key={row.id} className="rounded-md border border-border/60 bg-background p-3"><div className="mb-2 flex flex-wrap items-center gap-2"><Badge variant={row.actor_type === 'ai_agent' ? 'secondary' : 'default'}>{row.actor_type === 'ai_agent' ? 'AI Agent' : 'Supervisor'}</Badge><Badge variant="outline">{row.platform}</Badge><span className="text-xs text-muted-foreground">{format(new Date(row.created_at), 'dd/MM HH:mm')}</span>{row.live_post_url && <Button asChild size="sm" variant="ghost" className="h-7"><a href={row.live_post_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" /> קמפיין חי</a></Button>}</div><p className="whitespace-pre-wrap text-sm">{row.content}</p></div>)}{(!globalActivity || globalActivity.length === 0) && <p className="py-8 text-center text-sm text-muted-foreground">אין עדיין פעילות גלובלית</p>}</CardContent></Card></TabsContent>
         <TabsContent value="connections" className="mt-4 space-y-4">

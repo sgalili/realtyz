@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 /** Direct Bright Data top-up billing flow. */
 const TOPUP_URL = 'https://brightdata.com/cp/billing_flow?id=hl_2432c380&type=top_up';
 
@@ -66,9 +68,12 @@ export function BrightDataUsageDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
+  const { user } = useAuth();
+  const { isSuperAdmin, loading: roleLoading, error: roleError } = useUserRole();
+  const authorized = !!user && isSuperAdmin && !roleLoading && !roleError;
   const balanceQ = useQuery({
-    queryKey: ['brightdata-balance-detail'],
-    enabled: open,
+    queryKey: ['brightdata-balance-detail', user?.id],
+    enabled: open && authorized,
     staleTime: 60_000,
     queryFn: async (): Promise<BalanceResponse | null> => {
       const { data } = await supabase.functions.invoke('brightdata-balance', { body: {} });
@@ -77,8 +82,8 @@ export function BrightDataUsageDialog({
   });
 
   const usageQ = useQuery({
-    queryKey: ['brightdata-usage', 30],
-    enabled: open,
+    queryKey: ['brightdata-usage', user?.id, 30],
+    enabled: open && authorized,
     staleTime: 60_000,
     queryFn: async (): Promise<UsageResponse | null> => {
       const { data } = await supabase.functions.invoke('brightdata-usage', { body: { days: 30 } });
@@ -110,6 +115,7 @@ export function BrightDataUsageDialog({
   const loading = usageQ.isLoading || balanceQ.isLoading;
   const totals = usageQ.data?.totals;
   const balance = balanceQ.data?.balance ?? balanceQ.data?.available;
+  if (!authorized) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -226,7 +232,7 @@ export function BrightDataUsageDialog({
             <section className="space-y-2">
               <h4 className="text-sm font-semibold">פעולות מערכת (30 יום)</h4>
               <div className="space-y-1">
-                {usageQ.data!.local_ops!.slice(0, 12).map((op, i) => (
+                {usageQ.data?.local_ops?.slice(0, 12).map((op, i) => (
                   <div key={i} className="flex items-center justify-between rounded-md bg-muted/20 px-3 py-1.5 text-[12px]">
                     <span className="truncate">{op.kind}</span>
                     <span className="flex items-center gap-3 tabular-nums" dir="ltr">
