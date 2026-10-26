@@ -15,7 +15,8 @@ it('approves renewal with the same request ID and returns the generated draft', 
   window.addEventListener(SOCIAL_DRAFT_CONFIRM_EVENT, ((event: CustomEvent) => event.detail.resolve(true)) as EventListener, {once:true});
   const result = await generateSocialDraft({platform:'facebook',topic:'דירה'});
   expect(result.data.content).toBe('נוסח חדש');
-  expect(invoke.mock.calls[1][1]?.body).toMatchObject({confirmDraftCharge:true,generationRequestId:invoke.mock.calls[0][1]?.body.generationRequestId});
+  const firstBody = invoke.mock.calls[0][1]?.body as Record<string, unknown>;
+  expect(invoke.mock.calls[1][1]?.body).toMatchObject({confirmDraftCharge:true,generationRequestId:firstBody.generationRequestId});
 });
 it('cancel does not execute or charge a renewed generation', async () => {
   vi.mocked(supabase.functions.invoke).mockResolvedValueOnce({data:{confirmation_required:true},error:null} as any);
