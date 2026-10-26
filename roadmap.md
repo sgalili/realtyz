@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Cloud campaign publishing validation
-- [ ] Validate cloud Facebook group publication independently of legacy Page tokens and display the server-confirmed cloud status.
-- [ ] Test cloud/Graph routing and confirmation without publishing a real post.
+- [x] Cloud group publication uses server-confirmed sessions and the background cloud runner without Page tokens; confirmation shows GoLogin connection, and Graph credentials stay required for Page/Instagram.
+- [x] 22 tests pass; signed-in confirmation displays active GoLogin with zero Page targets. Validation correctly requires selected groups; no post sent. Actual dispatch cannot be tested in this workspace because it has no available groups.
 
 ## Secure Facebook cloud guidance
 - [x] Add mobile-friendly guidance before cloud login, safe new-tab fallback and server-confirmed status checks.

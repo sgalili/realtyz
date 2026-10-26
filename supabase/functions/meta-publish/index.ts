@@ -551,11 +551,11 @@ Deno.serve(async (req) => {
           .select("group_id, is_selected, is_blocked")
           .eq("workspace_owner_id", ownerId);
         if (error) throw error;
-        const excluded = new Set(
-          ((data ?? []) as any[]).filter((r) => r?.is_selected === false || r?.is_blocked)
+        const allowed = new Set(
+          ((data ?? []) as any[]).filter((r) => r?.is_selected !== false && !r?.is_blocked)
             .map((r) => String(r.group_id).replace(/^(ext:|manual:|fb:)/, '')),
         );
-        return requestedGroupIds.filter((g) => !excluded.has(g));
+        return requestedGroupIds.filter((g) => allowed.has(g));
       } catch {
         throw new Error('לא ניתן לבדוק את הקבוצות החסומות כרגע. נסה שוב.');
       }
@@ -630,9 +630,9 @@ Deno.serve(async (req) => {
           .from("fb_user_groups")
           .select("group_id, group_url, group_name, privacy, member_count")
           .eq("workspace_owner_id", ownerId)
-          .in("group_id", groupIds);
-        groupUrls = Object.fromEntries(((grows ?? []) as any[]).map((r) => [String(r.group_id), r.group_url ?? null]));
-        groupMetas = ((grows ?? []) as any[]).map((r) => ({ ...r, group_id: String(r.group_id) }));
+          .in("group_id", groupIds.flatMap(id => [id, `fb:${id}`, `ext:${id}`, `manual:${id}`]));
+        groupUrls = Object.fromEntries(((grows ?? []) as any[]).map((r) => [String(r.group_id).replace(/^(ext:|manual:|fb:)/, ''), r.group_url ?? null]));
+        groupMetas = ((grows ?? []) as any[]).map((r) => ({ ...r, group_id: String(r.group_id).replace(/^(ext:|manual:|fb:)/, '') }));
       } catch { /* best effort */ }
 
       // Tailor wording per group audience (caller-supplied texts win), then
