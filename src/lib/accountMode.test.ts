@@ -13,7 +13,7 @@ describe('universal account identity', () => {
     ['developer', 'יזם', '/developer-dashboard'],
     ['agent', 'מתווך', '/'],
     ['managing_broker', 'מתווך', '/'],
-    ['property_owner', 'מפרסם', '/owner/properties'],
+    ['property_owner', 'מפרסם', '/my-ads'],
     ['property_seeker', 'פרטי', '/public-listings'],
   ] as const)('retains %s identity with additive partner membership', (role, label, home) => {
     const before = accountIdentity([role]);

@@ -51,7 +51,7 @@ const PARTNER_STEPS: TourStep[] = [
 const OWNER_STEPS: TourStep[] = [
   { title: 'מפרסמים נכס ומפעילים עבורו רשת שיווק של שותפים' },
   { title: 'נכיר אותך רגע לפני שמתחילים', profileForm: true },
-  { title: 'מוסיפים תמונות, מחיר ופרטי נכס מלאים במקום אחד', cta: { label: 'פתח את הנכס שלי', to: '/owner/properties' } },
+  { title: 'מוסיפים תמונות, מחיר ופרטי נכס מלאים במקום אחד', cta: { label: 'פתח את הנכס שלי', to: '/my-ads' } },
   { title: 'כל מתעניין נשמר, נענה ומטופל', cta: { label: 'פתח מתעניינים', to: '/owner/leads' } },
   { title: 'קובעים תגמול למשווקים ומגדילים חשיפה', cta: { label: 'הגדרת תגמולים', to: '/owner/rewards' } },
   { title: 'ריטה זמינה לכל שאלה על הנכס', cta: { label: 'צ׳אט עם ריטה', to: '/owner/rita' } },
