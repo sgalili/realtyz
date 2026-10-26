@@ -14,6 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { decryptSession } from "../_shared/sessionCrypto.ts";
 import { anonymousSocialText, socialPrivacyIdentities } from '../_shared/socialIdentityPrivacy.ts';
+import { publishedPostText } from '../_shared/promotionalFooter.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -150,12 +151,14 @@ Deno.serve(async (req) => {
 
     const payload = row.payload ?? {};
     const identities = await socialPrivacyIdentities(admin, ws, payload.listing_id ?? row.listing_id);
+    try {
+    const finalText = await publishedPostText(admin, ws, `group:${row.id}`, anonymousSocialText(payload.body ?? payload.text, identities));
     const jobBody = {
       job_id: row.id,
       workspace_owner_id: ws,
       group_url: payload.group_url ?? payload.groupUrl ?? row.target_ref ?? null,
       group_name: row.target_label ?? payload.group_name ?? null,
-      text: anonymousSocialText(payload.body ?? payload.text, identities),
+      text: finalText,
       images: Array.isArray(payload.images) ? payload.images : Array.isArray(payload.media_urls) ? payload.media_urls : [],
       first_comment: anonymousSocialText(payload.first_comment ?? payload.firstComment, identities) || null,
       session_cookies: session.cookies,
@@ -163,7 +166,6 @@ Deno.serve(async (req) => {
       report_url: `${SUPABASE_URL}/functions/v1/cloud-group-poster`,
     };
 
-    try {
       const res = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-worker-secret": WORKER_SECRET },

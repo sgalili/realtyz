@@ -5,6 +5,8 @@
 // so a job can never stay stuck "in progress".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { publishedPostText } from '../_shared/promotionalFooter.ts';
+import { anonymousSocialText, socialPrivacyIdentities } from '../_shared/socialIdentityPrivacy.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -46,5 +48,17 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: (data as any)?.reason ?? "invalid_token" }, 401);
   }
 
-  return json({ ok: true, workspace_owner_id: (data as any).workspace_owner_id, jobs: (data as any).jobs ?? [] });
+  const workspace = (data as any).workspace_owner_id;
+  try {
+    const jobs = await Promise.all(((data as any).jobs ?? []).map(async (job: any) => {
+      if (job.activity_type !== 'fb_group_post') return job;
+      const payload = job.payload ?? {};
+      const identities = await socialPrivacyIdentities(admin, workspace, payload.listing_id ?? job.listing_id);
+      const text = await publishedPostText(admin, workspace, `group:${job.id}`, anonymousSocialText(payload.outbound_text ?? payload.body ?? payload.text, identities));
+      return { ...job, payload: { ...payload, body: text, text, outbound_text: text } };
+    }));
+    return json({ ok: true, workspace_owner_id: workspace, jobs });
+  } catch {
+    return json({ ok: false, reason: 'publication_footer_unavailable' }, 503);
+  }
 });

@@ -2,7 +2,7 @@ import { publicCampaignProperty } from '../_shared/publicCampaignProperty.ts';
 import { anonymousSocialText, socialPrivacyIdentities } from '../_shared/socialIdentityPrivacy.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { IVR_SCRIPT_RULES, cleanIvrScript } from '../_shared/ivrScript.ts';
-import { completedPostText, evidencedPropertyDetails, POST_GENERATION_OPTIONS } from '../_shared/postGeneration.ts';
+import { completedPostText, evidencedPropertyDetails, POST_GENERATION_OPTIONS, removeTelephoneEmojis } from '../_shared/postGeneration.ts';
 import { isProjectTarget, projectCampaignTargets } from '../_shared/projectCampaignTargets.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import {
@@ -680,7 +680,7 @@ ${EMOJI_BULLET_LAW}
     // HARD EMOJI LAW: never two emojis side by side, always one emoji + space,
     // and every content line opens with one relevant emoji bullet.
     content = enforceSingleEmojis(content);
-    content = anonymousSocialText(content, privateIdentities);
+    content = removeTelephoneEmojis(anonymousSocialText(content, privateIdentities));
 
 
 

@@ -8,6 +8,8 @@
 // without inventing facts or street numbers. Compliance footer is reapplied
 // client-side via ensureCanonicalFooter() so this endpoint stays focused.
 
+import { removeTelephoneEmojis } from '../_shared/postGeneration.ts';
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -95,7 +97,7 @@ Deno.serve(async (req) => {
       .replace(/-{2,}/g, "-")
       .trim();
 
-    return json({ draft });
+    return json({ draft: removeTelephoneEmojis(draft) });
   } catch (e) {
     console.error("[spin-group-post] fatal", e);
     return json({ error: (e as Error).message }, 500);
