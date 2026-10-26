@@ -562,19 +562,8 @@ export const IvrBroadcastPanel = () => {
   const audienceCount = targetLeads.length;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="w-full max-w-lg h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-y-auto p-5" dir="rtl">
-        <DialogHeader className="space-y-1">
-          <DialogTitle className="text-center text-[#0f1b3d] text-[17px] font-bold leading-tight">
-            <span className="inline-flex items-center gap-2"><CampaignServiceIcon channel="ivr" />IVR וקול AI</span>
-          </DialogTitle>
-          <DialogDescription className="text-center text-[12px] text-muted-foreground">
-            צרו הודעה קולית והפיצו אותה לרשימת יעד
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 mt-2">
-          <p className="text-center text-xs text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</p>
+    <div className="mx-auto w-full max-w-3xl space-y-4" dir="rtl">
+      <div className="space-y-4">
           {/* Top 3-tab toggle: TTS active first */}
           <div className="flex gap-2">
             {tabBtn('tts', 'טקסט לדיבור', Volume2)}
