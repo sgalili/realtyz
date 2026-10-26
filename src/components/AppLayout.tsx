@@ -484,7 +484,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               workspace logo, then the workspace name with the signed-in user's
               full name directly below it (right-aligned). Rita and the other
               icon controls stay at the far left. No profile picture here. */}
-          <header className="relative flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-[10px] pt-[env(safe-area-inset-top)] text-foreground z-30" dir="rtl">
+          <header className="relative flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-[15px] pt-[env(safe-area-inset-top)] text-foreground z-30" dir="rtl">
             <div className="app-header-content flex w-full items-center justify-between gap-2">
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
@@ -509,7 +509,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
           <PageHero />
-          <main className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-x-hidden px-[10px] ${location.pathname.startsWith('/properties') ? 'pt-0' : 'pt-[20px]'} ${location.pathname === '/' || location.pathname === '/public-listings' || location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
+          <main className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-x-hidden px-[15px] ${location.pathname.startsWith('/properties') ? 'pt-0' : 'pt-[20px]'} ${location.pathname === '/' || location.pathname === '/public-listings' || location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
             <div key={`${user?.id}:${activeWorkspaceId}`} className={`app-content-width w-full ${location.pathname === '/' || location.pathname === '/public-listings' ? '!flex h-full min-h-0 flex-col' : location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
               <FacebookConnectionBanner />
               {user && (workspaceLoading || !activeWorkspaceId) ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : children}

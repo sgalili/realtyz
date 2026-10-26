@@ -52,8 +52,8 @@ const ACTION_COPY: Record<string, { selector: string; title: string; body: strin
   '/developer-dashboard': { selector: '[aria-label="הוספת פרויקט"]', title: 'מוסיפים פרויקט', body: 'הפלוס פותח בחירה בין ייבוא מעמוד היזם ביד2 לבין יצירה ידנית בשלבים.' },
   '/properties': { selector: '[data-page-hero] button[title*="נכס"], [data-page-hero] button[aria-label*="הוספ"]', title: 'מוסיפים נכס', body: 'פותחים את טופס הנכס, משלימים את הפרטים ובודקים אותם לפני אישור.' },
   '/lead-crm': { selector: '[data-page-hero] button[aria-label*="הוספ"], [data-page-hero] button[title*="ליד"]', title: 'מוסיפים ליד', body: 'מוסיפים פרטים וממשיכים במעקב האישי.' },
-  '/': { selector: 'main input[placeholder="חיפוש חופשי"]', title: 'מוצאים את הנכס המתאים', body: 'מצמצמים את המודעות בעזרת חיפוש וסינון.' },
-  '/public-listings': { selector: 'main input[placeholder="חיפוש חופשי"]', title: 'מוצאים את הנכס המתאים', body: 'מצמצמים את המודעות בעזרת חיפוש וסינון.' },
+  '/': { selector: 'main input[placeholder="חיפוש נכס"]', title: 'מוצאים את הנכס המתאים', body: 'מצמצמים את המודעות בעזרת חיפוש וסינון.' },
+  '/public-listings': { selector: 'main input[placeholder="חיפוש נכס"]', title: 'מוצאים את הנכס המתאים', body: 'מצמצמים את המודעות בעזרת חיפוש וסינון.' },
 };
 
 /** Use only navigation actually rendered by the authorized role/workspace/mode. */
