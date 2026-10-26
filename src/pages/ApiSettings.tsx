@@ -36,6 +36,7 @@ import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
 import { ActionPricingCard } from '@/components/billing/ActionPricingCard';
 import { SignupBonusSettings } from '@/components/billing/SignupBonusSettings';
+import { InviteBonusSettings } from '@/components/billing/InviteBonusSettings';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { MetaWhatsAppAuthCard } from '@/components/settings/MetaWhatsAppAuthCard';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
@@ -870,6 +871,7 @@ const ApiSettings = () => {
       {isSuperAdmin && <SectionShell title="משתמשים" subtitle="ניהול משתמשים"><SuperAdminUsersTable /></SectionShell>}
       {isSuperAdmin && <ActionPricingCard />}
       {isSuperAdmin && <SignupBonusSettings />}
+      {isSuperAdmin && <InviteBonusSettings />}
       <UsageMeterPanel />
 
       <SectionShell title="פרטיות ו-GDPR" subtitle="מסכת PII, ביקורת ומחיקת ליד לצמיתות">
