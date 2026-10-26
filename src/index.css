@@ -32,6 +32,7 @@
     --instagram-orange: 29 98% 64%;
     --instagram-foreground: 0 0% 100%;
     --app-footer-space: 38px;
+    --dialog-font-increase: 3px;
     /* Surfaces — clean white canvas + soft grey neutrals */
     --background: 0 0% 100%;
     --foreground: 213 73% 12%; /* navy ink for legibility on white */
@@ -1920,3 +1921,15 @@ html.activity-drawer-open main[aria-label="רשימת נכסים"] {
 .pricing-editor .text-xs { font-size: 15px; }
 .pricing-editor .text-sm, .pricing-editor.text-sm, .pricing-editor .space-y-4.text-sm { font-size: 17px; }
 .pricing-editor .text-base { font-size: 19px; }
+
+/* Shared modal type scale: fixed sizes avoid compounding inherited text. */
+:is([data-site-dialog], [data-site-popup]) { font-size: calc(16px + var(--dialog-font-increase)); }
+:is([data-site-dialog], [data-site-popup]) :is(.text-xs, .text-sm) { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) .text-base { font-size: calc(16px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) .text-lg { font-size: calc(18px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) .text-xl { font-size: calc(20px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) .text-2xl { font-size: calc(24px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) .text-3xl { font-size: calc(30px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) .text-4xl { font-size: calc(36px + var(--dialog-font-increase)) !important; }
+[data-dialog-actions] { flex-direction: row !important; justify-content: space-between !important; align-items: center; gap: 12px; }
+[data-dialog-actions] > :is(button, a) { margin: 0 !important; min-width: 0; max-width: calc(100% - 3rem); height: auto; min-height: 40px; white-space: normal; }
