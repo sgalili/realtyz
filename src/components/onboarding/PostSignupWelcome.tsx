@@ -86,7 +86,7 @@ export function PostSignupWelcome() {
   if (role === 'broker') {
     return (
       <Dialog open onOpenChange={(o) => { if (!o) close(); }}>
-        <DialogContent dir="rtl" className="grid h-[92dvh] w-[calc(100%-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
+        <DialogContent onInteractOutside={event => event.preventDefault()} dir="rtl" className="grid h-[92dvh] w-[calc(100%-2rem)] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 [&>button:last-child]:left-4 [&>button:last-child]:right-auto">
           <DialogHeader className="border-b px-5 py-4 text-right">
             <DialogTitle className="text-xl font-extrabold leading-tight">ברוכים הבאים! הנה הכלים שילוו אתכם בכל יום עבודה</DialogTitle>
             <DialogDescription className="text-sm">סיירו בדף המקצועי למתווכים וסוכנויות — ואז השלימו את הפרופיל כדי להתחיל.</DialogDescription>
@@ -105,7 +105,7 @@ export function PostSignupWelcome() {
   }
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !isAcceptingTerms) close(); }}>
-      <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto text-right">
+      <DialogContent onInteractOutside={event => event.preventDefault()} dir="rtl" className="w-[calc(100%-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto text-right">
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/20 via-warning/10 to-transparent" />
         <DialogHeader className="relative text-center sm:text-center">
           <div className="text-5xl" aria-hidden>🎉</div>

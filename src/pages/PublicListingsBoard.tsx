@@ -332,7 +332,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
-                <PublicListingPublisher autoResume />
+                <PublicListingPublisher autoResume triggerClassName="!w-[104px] sm:!w-[134px] !px-1 !text-[18px] sm:!text-[22px]" />
               </div>
             </div>
           )}
