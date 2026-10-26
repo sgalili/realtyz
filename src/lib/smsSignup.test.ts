@@ -22,14 +22,24 @@ describe('SMS signup rules', () => {
   });
   it('offers exactly the five required types', () => { expect([...signupTypes]).toEqual(['property_owner', 'property_seeker', 'broker', 'developer', 'partner']); });
   it.each([
-    ['property_owner', { property_area: 'תל אביב', property_type: 'דירה' }],
+    ['property_owner', { deal_type: 'sale', property_area: 'תל אביב', property_type: 'דירה' }],
     ['property_seeker', { search_area: 'חיפה', budget: '5000' }],
     ['broker', { office_name: 'משרד', service_area: 'חיפה' }],
-    ['developer', { company_name: 'חברה', main_project: 'פרויקט' }],
+    ['developer', { company_name: 'חברה', main_project: 'https://www.yad2.co.il/yad1/developers/1000000' }],
     ['partner', { marketing_channel: 'פייסבוק' }],
   ] as const)('requires essential fields for %s', (type, fields) => {
     expect(signupDetailsValid(type, fields)).toBe(true);
     expect(signupDetailsValid(type, {})).toBe(false);
   });
   it('requires positive buyer budget', () => { expect(signupDetailsValid('property_seeker', { search_area: 'חיפה', budget: '0' })).toBe(false); });
+  it('requires an owner sale or rent choice', () => {
+    const fields = { property_area: 'חיפה', property_type: 'דירה' };
+    expect(signupDetailsValid('property_owner', fields)).toBe(false);
+    expect(signupDetailsValid('property_owner', { ...fields, deal_type: 'rent' })).toBe(true);
+    expect(signupDetailsValid('property_owner', { ...fields, deal_type: 'other' })).toBe(false);
+  });
+  it('requires a Yad2 developer page rather than a project name', () => {
+    expect(signupDetailsValid('developer', { company_name: 'חברה', main_project: 'פרויקט' })).toBe(false);
+    expect(signupDetailsValid('developer', { company_name: 'חברה', main_project: 'https://example.com/yad1/developers/1000000' })).toBe(false);
+  });
 });
