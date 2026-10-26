@@ -245,7 +245,7 @@ export default function BillingTab() {
           <p className="flex items-start gap-2">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>
-              כל השירותים שמופעלים על ידי ה-AI (WhatsApp, SMS, אימייל, שיחות קוליות, פרסום ברשתות, מענה לתגובות ו-IVR) כלולים בחבילה.
+              כל השירותים שמופעלים על ידי ה-AI (WhatsApp, SMS, אימייל, שיחות קוליות, פרסום ברשתות, מענה לתגובות והודעות טלפוניות מוקלטות) כלולים בחבילה.
               חיוב נוסף חל רק על הפצה פרטית שאינה נדרשת על ידי ה-AI.
             </span>
           </p>

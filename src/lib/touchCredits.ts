@@ -32,7 +32,7 @@ export const CHANNEL_RATES: ChannelRate[] = [
     serviceTypes: ['whatsapp_message', 'whatsapp'],
   },
   { key: 'voice', label: 'שיחת AI קולית', price: 1, unit: 'לדקה', serviceTypes: ['voice_minutes', 'voice'] },
-  { key: 'ivr', label: 'AI IVR', price: 0.2, unit: 'לשיחה', serviceTypes: ['ivr', 'ivr_call'] },
+  { key: 'ivr', label: 'הודעה טלפונית מוקלטת', price: 0.2, unit: 'לשיחה', serviceTypes: ['ivr', 'ivr_call'] },
   { key: 'email', label: 'אימייל', price: 0.01, unit: 'להודעה', serviceTypes: ['email'] },
 ];
 

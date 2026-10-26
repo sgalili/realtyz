@@ -110,7 +110,7 @@ const PLATFORMS: Platform[] = [
   {
     id: 'Twilio',
     label: 'Twilio (גיבוי קולי / SMS)',
-    hint: 'משמש לתשתית IVR ושיחות יוצאות בגיבוי לוופי.',
+    hint: 'משמש לתשתית הודעות טלפוניות מוקלטות ושיחות יוצאות בגיבוי לוופי.',
     link: { url: 'https://console.twilio.com/', label: 'Twilio Console' },
     instructions: [
       'Twilio Console → Account → API keys & tokens.',

@@ -21,7 +21,7 @@ const RATES: { label: string; price: string }[] = [
   { label: 'אימייל יוצא', price: '₪0.01' },
   { label: 'שיחת קול AI ידנית (חיוב לפי שנייה)', price: '₪1.00 לדקה' },
   { label: 'מענה ברשת חברתית לחלון 24 שעות', price: '₪0.002' },
-  { label: 'הפצת שיחת IVR קולית', price: '₪0.20 לדקה' },
+  { label: 'הפצת הודעה טלפונית מוקלטת', price: '₪0.20 לדקה' },
 ];
 
 function formatIls(n: number): string {
