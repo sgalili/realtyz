@@ -11,7 +11,7 @@ import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import { completePartnerIntro } from '@/lib/partnerIntroPreference';
-import { POST_SIGNUP_WELCOME_EVENT, readPostSignupWelcome, clearPostSignupWelcome, type SignupRole } from '@/lib/signupRole';
+import { POST_SIGNUP_WELCOME_EVENT, readPostSignupWelcome, readPostSignupWelcomeDeal, clearPostSignupWelcome, type SignupRole } from '@/lib/signupRole';
 import { LandingContent } from '@/pages/Landing';
 import { celebrateSignup } from '@/lib/rewardFeedback';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,7 @@ const BENEFITS: Record<SignupRole, { title: string; items: [string, string][] }>
   broker: { title: 'ברוכים הבאים ל-TORAFF!', items: [['🏢', 'נכסים ופרויקטים לשיווק'], ['💰', '80% מעמלות הסגירה'], ['🤖', 'ריטה ופייסבוק בענן'], ['🤝', 'פרופיל מלא = יותר אמון']] },
   partner: { title: 'ברוכים הבאים לשותפים!', items: [['🔗', 'משתפים קישור אישי'], ['💰', 'מרוויחים על כל ליד'], ['📊', 'מעקב מלא בזמן אמת'], ['🤝', 'פרופיל מלא = יותר אמון']] },
 };
+const OWNER_SALE: [string, string][] = [['🔑', 'מכירה מהירה יותר'], ['👥', 'שותפים מביאים קונים'], ['🎯', 'סינון פניות אוטומטי'], ['🤝', 'פרופיל מלא = יותר אמון']];
 const TONES = ['bg-primary/10', 'bg-success/10', 'bg-warning/10', 'bg-accent'];
 
 /** One merged post-signup welcome: benefits, partner terms (when needed) and profile CTA. */
@@ -62,7 +63,7 @@ export function PostSignupWelcome() {
     void queryClient.invalidateQueries({ queryKey: ['credit-wallet'] });
   }, [role, user?.id, queryClient]);
   if (!user || !role) return null;
-  const b = BENEFITS[role];
+  const b = role === 'property_owner' && readPostSignupWelcomeDeal() === 'sale' ? { ...BENEFITS[role], items: OWNER_SALE } : BENEFITS[role];
   const bonusNotice = bonus.data && Number(bonus.data.credits) > 0 ? <p role="status" className="relative flex items-center justify-center gap-2 py-3 text-center text-xl font-bold text-success"><Gift className="h-6 w-6 shrink-0" />בונוס הרשמה: {fmtCredits(Number(bonus.data.credits))} חינם!</p> : null;
   const needsTerms = role === 'partner' && consent.data !== true;
   const personal = ['partner', 'property_owner', 'property_seeker'].includes(role);
