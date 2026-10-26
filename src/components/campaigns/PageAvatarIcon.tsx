@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { BrandIcon } from '@/components/BrandIcon';
 import { cn } from '@/lib/utils';
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 export function PageAvatarIcon({ className }: { className?: string }) {
   const { data } = useMetaPageBinding();
   const [broken, setBroken] = useState(false);
+  useEffect(() => { setBroken(false); }, [data?.pageId, data?.pageAvatarUrl]);
   if (data?.pageAvatarUrl && !broken) {
     return (
       <img src={data.pageAvatarUrl} alt={data.pageName || 'עמוד פייסבוק'} title={data.pageName || undefined}
