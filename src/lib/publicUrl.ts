@@ -6,8 +6,6 @@
  */
 export const PUBLIC_SITE_ORIGIN = 'https://toraff.co.il';
 
-const INTERNAL_HOST_RE = /(lovable\.app|lovableproject\.com|lovable\.dev|localhost|127\.0\.0\.1)$/i;
-
 /** Returns the origin that outbound links must use. */
 export function publicOrigin(): string {
   return PUBLIC_SITE_ORIGIN;

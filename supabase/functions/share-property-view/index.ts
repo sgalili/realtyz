@@ -167,14 +167,17 @@ Deno.serve(async (req) => {
     );
 
     // Reuse the anonymous canonical projection, never the affiliate/share metadata.
+    let canonicalWorkspace: any[] = [];
     const canonical = async (row: any) => {
-      if (!row?.id) return { ...maskProperty(row), attribution: null };
+      if (!row?.id) return null;
       const response = await fetch(`${SUPABASE_URL}/functions/v1/public-listing-view?id=${encodeURIComponent(row.id)}`);
       const result = await response.json().catch(() => null);
-      return response.ok && result?.property ? result.property : { ...maskProperty(row), attribution: null };
+      if (!response.ok || !result?.property) return null;
+      canonicalWorkspace = Array.isArray(result.workspace_properties) ? result.workspace_properties : [];
+      return result.property;
     };
     const safeProperty = property ? await canonical(property) : null;
-    const safeWorkspaceProperties = await Promise.all((workspaceListings ?? []).map(canonical));
+    const safeWorkspaceProperties = canonicalWorkspace;
     return new Response(JSON.stringify({
       workspace_name: safeProperty?.attribution?.office_name ?? null,
       agency_name: safeProperty?.attribution?.office_name ?? null,
