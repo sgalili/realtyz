@@ -2913,7 +2913,7 @@ const InlineComposer = ({
             </label>
           </div>
 
-          <DialogFooter className="sm:justify-start">
+          <DialogFooter className="flex-row justify-end sm:justify-end">
             <Button type="button" className="w-auto" onClick={() => setGroupPickerOpen(false)}>
               אישור{groupIds.length > 0 ? ` (${groupIds.length})` : ''}
             </Button>

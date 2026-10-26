@@ -23,5 +23,5 @@ export function ThumbnailReorderHandle({ index, onMove, onTarget }: {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault(); onMove(index, index + (e.key === 'ArrowLeft' ? 1 : -1));
       }
-    }}><GripVertical className="h-4 w-4 rotate-45" /></Button>;
+    }}><GripVertical className="h-4 w-4 rotate-90" /></Button>;
 }

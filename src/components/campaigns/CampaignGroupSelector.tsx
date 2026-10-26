@@ -197,9 +197,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   };
 
   return (
-    <div className={cn("w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-background p-3 space-y-3", className)} dir="rtl">
+    <div className={cn("w-full min-w-0 max-w-full overflow-hidden space-y-3", className)} dir="rtl">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Users className="h-4 w-4 shrink-0 text-primary" />
         <span className="min-w-0 break-words text-[15px] font-semibold text-foreground">{"\n"}</span>
         {groups.length > 0 && (
           <span className="text-[14px] text-muted-foreground">({selection.length}/{groups.length})</span>
@@ -217,7 +216,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={syncing || !workspaceOwnerId} onClick={() => void syncGroups()}>{syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}ייבוא הקבוצות שלי</Button><Button type="button" variant="ghost" onClick={() => setDiscoveryOpen(true)}>חיפוש קבוצות</Button></div>
+      <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={syncing || !workspaceOwnerId} onClick={() => void syncGroups()}>{syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}ייבוא הקבוצות שלי</Button><Button type="button" variant="outline" onClick={() => setDiscoveryOpen(true)}><Search className="h-4 w-4" />חיפוש קבוצות</Button></div>
       <GroupDiscoveryDialog open={discoveryOpen} onOpenChange={setDiscoveryOpen} onJoined={() => void load()} />
       {loading && !hasVisibleGroups && (
         <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
@@ -226,10 +225,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         </div>
       )}
 
-      {!loading && !hasVisibleGroups && (
-        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-[14px] text-muted-foreground">
-          {syncNote || 'אין קבוצות זמינות. סנכרן את הקבוצות בעמוד החיבורים, או הוסף קבוצה ידנית.'}
-        </div>
+      {!loading && !hasVisibleGroups && syncNote && (
+        <div className="p-3 text-center text-[14px] text-muted-foreground">{syncNote}</div>
       )}
 
       {hasVisibleGroups && (

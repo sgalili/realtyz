@@ -8,6 +8,8 @@ import { getCloudSessionState } from '@/lib/cloudSession';
 import { fetchGroupsViaCloud } from '@/lib/cloudGroupDiscovery';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { GroupDiscoveryDialog } from './GroupDiscoveryDialog';
+import { BrandIcon } from '@/components/BrandIcon';
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
 
 /**
  * Clean two-step Facebook connection screen shown before creating a post when
@@ -147,11 +149,12 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
   };
 
   if (((!open && !alwaysVisible) || skipped) && !discoverOpen) return null;
+  const g = (female: string, male: string) => personal({ female, male, neutral: male });
   return <section dir="rtl" className="space-y-4 text-right" aria-label="חיבור לפייסבוק">
     <GroupDiscoveryDialog open={discoverOpen} onOpenChange={setDiscoverOpen} onJoined={onSynced} />
     <Button type="button" disabled={phase === 'syncing' || !owner} onClick={() => { if (connected) void finish(generation.current); else setGuidanceOpen(true); }}
       className="h-12 w-full gap-2 bg-social-facebook text-base font-semibold text-social-foreground hover:bg-social-facebook/90">
-      {phase !== 'idle' ? <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" /> : <Facebook className="h-5 w-5" />}
+      {phase !== 'idle' ? <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" /> : <Facebook className="h-[30px] w-[30px]" />}
       {phase === 'waiting' ? 'ממתינים להשלמת החיבור…' : phase === 'syncing' ? 'מייבאים את הקבוצות…' : connected ? 'ייבוא הקבוצות שלי' : 'חיבור באמצעות פייסבוק'}
     </Button>
     {phase === 'waiting' && <p role="status" className="text-sm leading-relaxed text-muted-foreground">השלימו את הכניסה לפייסבוק בחלון שנפתח.</p>}
@@ -160,14 +163,14 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     <Button type="button" variant="link" className="w-full" disabled={phase === 'syncing'} onClick={() => { generation.current++; stop(); setGuidanceOpen(false); setManualUrl(''); setSkipped(true); onStatusChange?.(true); }}>אתחבר יותר מאוחר</Button>
     <Dialog open={guidanceOpen} onOpenChange={setGuidanceOpen}>
       <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
-        <ShieldCheck className="mx-auto h-9 w-9 text-social-facebook" />
+        <BrandIcon name="facebook" className="mx-auto h-9 w-9 text-social-facebook" />
         <DialogTitle className="text-center text-xl">חיבור מאובטח לפייסבוק</DialogTitle>
         <DialogDescription className="text-base leading-relaxed">החיבור מתבצע בסביבה מאובטחת ומבודדת. סיסמת הפייסבוק שלך אינה נאספת או נשמרת במערכת שלנו.</DialogDescription>
         <ol className="list-inside list-decimal space-y-2 text-base leading-relaxed">
-          <li>לחצי על הכפתור למטה לפתיחת חלון החיבור.</li>
-          <li>היכנסי לפייסבוק, התחברי והשלימי את האימות.</li>
-          <li>עברי בפייסבוק לדף העסקי שלך&nbsp;, ולא לפרופיל האישי&nbsp;(אם עדיין אין לך דף עסקי אז את צריכה ליצור אותו דרך פייסבוק).</li>
-          <li>חזרי לכאן לאחר מכן לסיום החיבור.</li>
+          <li>{g('לחצי', 'לחץ')} על הכפתור למטה לפתיחת חלון החיבור.</li>
+          <li>{g('היכנסי לפייסבוק, התחברי והשלימי את האימות.', 'היכנס לפייסבוק, התחבר והשלם את האימות.')}</li>
+          <li>{g('עברי', 'עבור')} בפייסבוק לדף העסקי שלך&nbsp;, ולא לפרופיל האישי&nbsp;(אם עדיין אין לך דף עסקי אז {g('את צריכה', 'אתה צריך')} ליצור אותו דרך פייסבוק).</li>
+          <li>{g('חזרי', 'חזור')} לכאן לאחר מכן לסיום החיבור.</li>
         </ol>
         {phase !== 'idle' && <p role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{phase === 'syncing' ? 'מייבאים את הקבוצות…' : 'ממתינים לאישור החיבור מפייסבוק…'}</p>}
         {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
