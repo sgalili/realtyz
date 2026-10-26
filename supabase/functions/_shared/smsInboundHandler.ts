@@ -69,7 +69,7 @@ function displayIL(raw: string): string {
   return `${local.slice(0, 3)}-${local.slice(3)}`;
 }
 
-/** Branded short link (https://realtyz.co.il/r/<slug>) for an SMS-safe URL. */
+/** Branded short link (https://toraff.co.il/r/<slug>) for an SMS-safe URL. */
 async function shortenLink(admin: any, longUrl: string, createdBy: string | null): Promise<string> {
   const alpha = "abcdefghijkmnpqrstuvwxyz23456789";
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -80,7 +80,7 @@ async function shortenLink(admin: any, longUrl: string, createdBy: string | null
     const { error } = await admin
       .from("short_urls")
       .insert({ slug, property_id: null, long_url: longUrl, created_by: createdBy });
-    if (!error) return `https://realtyz.co.il/r/${slug}`;
+    if (!error) return `https://toraff.co.il/r/${slug}`;
   }
   // Never block the reply on the shortener.
   return longUrl;

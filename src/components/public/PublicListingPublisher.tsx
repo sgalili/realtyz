@@ -1,3 +1,4 @@
+import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConfirmation';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
@@ -178,6 +179,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
   const [files, setFiles] = useState<File[]>([]);
+  const [pendingFileDelete, setPendingFileDelete] = useState<File | null>(null);
   const [videos, setVideos] = useState<File[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [resumed, setResumed] = useState(false);
@@ -865,7 +867,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   onChange={(e) => { const all = Array.from(e.target.files ?? []); const imgs = all.filter(f => f.type.startsWith('image/')); const vids = all.filter(f => f.type.startsWith('video/')); if (imgs.length) addMedia(imgs, 'image'); if (vids.length) addMedia(vids, 'video'); if (all.length > imgs.length + vids.length) toast.error('ניתן להעלות תמונות או סרטונים בלבד'); e.target.value = ''; }}
                 />
               </div>
-               {previews.length > 0 && <div className="sm:col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{previews.map(({ file, url }) => <div key={`${file.name}-${file.size}-${file.lastModified}`} className="relative aspect-video overflow-hidden rounded-md border bg-muted">{file.type.startsWith('video/') ? <video src={url} controls className="h-full w-full object-cover" /> : <img src={url} alt={file.name} className="h-full w-full object-cover" />}<Button type="button" size="icon" variant="secondary" className="absolute end-1 top-1 h-7 w-7" aria-label={`הסרת ${file.name}`} onClick={() => { setFiles((current) => current.filter((item) => item !== file)); setVideos((current) => current.filter((item) => item !== file)); }}><X className="h-4 w-4" /></Button></div>)}</div>}
+               {previews.length > 0 && <div className="sm:col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{previews.map(({ file, url }) => <div key={`${file.name}-${file.size}-${file.lastModified}`} className="relative aspect-video overflow-hidden rounded-md border bg-muted">{file.type.startsWith('video/') ? <video src={url} controls className="h-full w-full object-cover" /> : <img src={url} alt={file.name} className="h-full w-full object-cover" />}<Button type="button" size="icon" variant="secondary" className="absolute end-1 top-1 h-7 w-7" aria-label={`הסרת ${file.name}`} onClick={() => setPendingFileDelete(file)}><X className="h-4 w-4" /></Button></div>)}</div>}
             </div>
           )}
 
@@ -1069,6 +1071,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           ) : <span />}
         </div>}
       </DialogContent>
+      <ImageDeleteConfirmation open={pendingFileDelete !== null} onOpenChange={open => { if (!open) setPendingFileDelete(null); }} onConfirm={() => { setFiles(current => current.filter(file => file !== pendingFileDelete)); setVideos(current => current.filter(file => file !== pendingFileDelete)); setPendingFileDelete(null); }} />
       <Dialog open={legalSection !== null} onOpenChange={value => { if (!value) setLegalSection(null); }}>
         <DialogContent dir="rtl" className="grid h-[100dvh] w-screen max-w-none grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-none p-4 sm:max-w-3xl" onOpenAutoFocus={event => { event.preventDefault(); if (legalSection === 'brokerage') requestAnimationFrame(() => document.querySelector('[data-publisher-legal] #brokerage-commissions')?.scrollIntoView({ block: 'start' })); }}>
           <DialogHeader className="px-8"><DialogTitle>{legalSection === 'brokerage' ? 'תנאי התיווך' : 'התקנון'}</DialogTitle></DialogHeader>

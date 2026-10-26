@@ -105,6 +105,8 @@ import { SupportRequiredDialog, isNativeChannel } from '@/components/campaigns/S
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { startMetaPageConnect, FACEBOOK_PAGE_PROVIDER } from '@/lib/facebookPageConnect';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
+import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConfirmation';
+import { publicUrl } from '@/lib/publicUrl';
 import { PageAvatarIcon } from '@/components/campaigns/PageAvatarIcon';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useRefreshMetaPageBinding, useMetaPageBinding } from '@/hooks/useMetaPageBinding';
@@ -925,7 +927,7 @@ const InlineComposer = ({
       // Common variation openers we cycle through — strip them too so re-toggle
       // doesn't leave the previous variant behind.
       .replace(/\n*[^\n]*(?:לפרטים נוספים|מוזמנים לפנות|רוצה לשמוע עוד|לתיאום ביקור|שולחים הודעה|קופצים לוואטסאפ|הכי מהיר בוואטסאפ)[^\n]*/g, '')
-      .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
+      .replace(/\n*[^\n]*(?:toraff|realtyz|realtys)\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
       .replace(/\n*[^\n]*wa\.me\/[0-9]+[^\n]*/gi, '')
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
@@ -997,6 +999,8 @@ const InlineComposer = ({
   const msngrInjectedRef = useRef<string>('');
   // Image lightbox for the attachments grid.
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [pendingImageDelete, setPendingImageDelete] = useState<string | null>(null);
+  const { data: composerPage } = useMetaPageBinding();
   // Tracks the last AI-generated body so manual edits before publish can be
   // shipped to learn-from-edit on success. Reset on send.
   const [originalAiBody, setOriginalAiBody] = useState<string>('');
@@ -1903,7 +1907,7 @@ const InlineComposer = ({
     try {
       const { data } = await supabase.functions.invoke('shortlink-create', { body: { long_url: longUrl } });
       const slug = (data as any)?.slug;
-      if (slug) return `https://realtyz.co.il/r/${slug}`;
+      if (slug) return `https://toraff.co.il/r/${slug}`;
     } catch { /* fall back to the native deep link */ }
     return nativeWaLink(phone, intro);
   };
@@ -2091,7 +2095,7 @@ const InlineComposer = ({
   // Messenger link, even after regeneration, draft restore or re-toggle.
   const stripAllWaLinkLines = () => {
     setFirstComment((curr) => (curr || '')
-      .replace(/\n*[^\n]*(?:wa\.me\/\d+|whatsapp:\/\/send|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
+      .replace(/\n*[^\n]*(?:wa\.me\/\d+|whatsapp:\/\/send|(?:toraff|realtyz|realtys)\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
       .replace(/\n{3,}/g, '\n\n')
       .replace(/\s+$/, ''));
   };
@@ -2114,7 +2118,7 @@ const InlineComposer = ({
       return;
     }
 
-    if (editorMode && /wa\.me\/|api\.whatsapp\.com\/|realtyz\.co\.il\/r\//i.test(initial.firstComment || '') && !waInjectedRef.current) return;
+    if (editorMode && /wa\.me\/|api\.whatsapp\.com\/|(?:toraff|realtyz|realtys)\.co\.il\/r\//i.test(initial.firstComment || '') && !waInjectedRef.current) return;
     let cancelled = false;
     (async () => {
       // Fallback CTA must always target the official Meta WhatsApp Business
@@ -2141,7 +2145,7 @@ const InlineComposer = ({
             body: { property_id: selectedListingId },
           });
           const slug = (slugRes as any)?.slug;
-          if (slug) url = `https://realtyz.co.il/r/${slug}`;
+          if (slug) url = `https://toraff.co.il/r/${slug}`;
         } else {
           // Platform (SaaS) post: brand the official WABA chat link too.
           url = await mintOfficialWaShortLink();
@@ -2157,7 +2161,7 @@ const InlineComposer = ({
       // The WhatsApp CTA lives ONLY in the first comment — never in the post
       // body. Strip any tracking line that leaked into the body.
       setBody((curr) => (curr || '')
-        .replace(/\n*[^\n]*(?:wa\.me\/\d+|whatsapp:\/\/send|realtyz\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
+        .replace(/\n*[^\n]*(?:wa\.me\/\d+|whatsapp:\/\/send|(?:toraff|realtyz|realtys)\.co\.il\/r\/[A-Za-z0-9]+)[^\n]*/gi, '')
         .replace(/\n{3,}/g, '\n\n')
         .replace(/\s+$/, ''));
 
@@ -2395,7 +2399,7 @@ const InlineComposer = ({
                   autoPhotoListingRef.current = null;
                   setAttachments((curr) => curr.filter((a) => a.kind !== 'image'));
                   setPhotosLoading(false);
-                  setBody((current) => cleanBody(current.replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')));
+                  setBody((current) => cleanBody(current.replace(/\n*[^\n]*(?:toraff|realtyz|realtys)\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')));
                   setListingPickerOpen(false);
                 }}
                   className="mb-1 w-full rounded-md border border-dashed border-border px-3 py-2 text-right text-xs text-muted-foreground hover:bg-muted">
@@ -2631,7 +2635,7 @@ const InlineComposer = ({
                     {isImage ? (
                       <button
                         type="button"
-                        onClick={() => setPreviewImageUrl(att.url!)}
+                        onClick={() => setPreviewImageUrl(att.url ?? null)}
                         className={cn(
                           'block overflow-hidden rounded-none bg-muted focus:outline-none focus:ring-1 focus:ring-primary',
                           box,
@@ -2802,7 +2806,7 @@ const InlineComposer = ({
           <Label>קבוצות לפרסום</Label>
           <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={groupTextVariation} onCheckedChange={(v) => setGroupTextVariation(v === true)} />שינוי טקסט לקבוצות</label>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={publishToPage} onCheckedChange={(v) => setPublishToPage(v === true)} />פרסם גם בעמוד הפייסבוק העסקי</label>
+          <label className="flex items-center gap-2 text-sm"><Checkbox checked={publishToPage} onCheckedChange={(v) => setPublishToPage(v === true)} />פרסם גם בעמוד הפייסבוק העסקי{composerPage?.pageName ? ` · ${composerPage.pageName}` : ''}</label>
         </div>
       )}
 
@@ -2861,10 +2865,10 @@ const InlineComposer = ({
           : '';
         if (hideBottomBar) return null;
         return (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-[6px] pt-2 backdrop-blur">
 
-            <div className="flex flex-row-reverse items-stretch justify-between gap-2">
-              <button
+            <div className="flex flex-row-reverse items-stretch justify-between gap-2 [&_svg]:scale-[1.3]">
+              <Button variant="ghost"
                 type="button"
                 onClick={() => { submitDraft(); }}
                 disabled={!canSend}
@@ -2877,9 +2881,9 @@ const InlineComposer = ({
               >
                 <Megaphone className="h-4 w-4" />
                 {calendarLocked ? `פרסם ב-${scheduledLabel}` : (mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו')}
-              </button>
+              </Button>
               <div className="flex items-stretch gap-2">
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={() => { void saveDraftNow(); }}
                 disabled={!hasBody || saveState === 'saving'}
@@ -2893,8 +2897,8 @@ const InlineComposer = ({
                 )}
               >
                 {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              </button>
-              <button
+              </Button>
+              <Button variant="ghost"
                 type="button"
                 onClick={() => setScheduleDialogOpen(true)}
                 disabled={!hasBody}
@@ -2914,9 +2918,9 @@ const InlineComposer = ({
                     {recurrenceBubble}
                   </span>
                 )}
-              </button>
+              </Button>
               {channel.id === 'facebook' && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setGroupPickerOpen(true)}
                   title="בחירת קבוצות לפרסום"
@@ -2929,7 +2933,7 @@ const InlineComposer = ({
                       {groupIds.length}
                     </span>
                   )}
-                </button>
+                </Button>
               )}
               </div>
             </div>
@@ -2959,7 +2963,7 @@ const InlineComposer = ({
                 onCheckedChange={(v) => setPublishToPage(v === true)}
                 aria-label="פרסם גם בעמוד הפייסבוק העסקי"
               />
-              <span className="text-sm font-semibold text-foreground">פרסם גם בעמוד הפייסבוק העסקי</span>
+              <span className="text-sm font-semibold text-foreground">פרסם גם בעמוד הפייסבוק העסקי{composerPage?.pageName ? ` · ${composerPage.pageName}` : ''}</span>
             </label>
           </div>
 
@@ -2974,7 +2978,7 @@ const InlineComposer = ({
 
       {/* Lightbox for image attachments with prev/next navigation */}
       <Dialog open={!!previewImageUrl} onOpenChange={(o) => !o && setPreviewImageUrl(null)}>
-        <DialogContent dir="rtl" className="max-w-3xl p-0 overflow-hidden bg-black">
+        <DialogContent dir="rtl" className="max-w-3xl p-0 overflow-hidden bg-background">
           {(() => {
             const imageUrls = attachments
               .filter((a) => {
@@ -2988,29 +2992,29 @@ const InlineComposer = ({
             return (
               <div className="relative">
                 {previewImageUrl && (
-                  <img src={previewImageUrl} alt="" className="max-h-[80vh] w-full object-contain bg-black" />
+                  <img src={previewImageUrl} alt="" className="max-h-[80vh] w-full object-contain bg-background" />
                 )}
                 {imageUrls.length > 1 && (
                   <>
-                    <button
+                    <Button variant="secondary" size="icon"
                       type="button"
-                      onClick={() => hasPrev && setPreviewImageUrl(imageUrls[idx - 1])}
-                      disabled={!hasPrev}
-                      className="absolute top-1/2 right-3 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30"
+                      onClick={() => setPreviewImageUrl(imageUrls[(idx - 1 + imageUrls.length) % imageUrls.length])}
+                      
+                      className="absolute top-1/2 right-3 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/50 text-foreground hover:bg-background/70 disabled:opacity-30"
                       aria-label="הקודם"
                     >
                       <ChevronRight className="h-5 w-5" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button variant="secondary" size="icon"
                       type="button"
-                      onClick={() => hasNext && setPreviewImageUrl(imageUrls[idx + 1])}
-                      disabled={!hasNext}
-                      className="absolute top-1/2 left-3 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30"
+                      onClick={() => setPreviewImageUrl(imageUrls[(idx + 1) % imageUrls.length])}
+                      
+                      className="absolute top-1/2 left-3 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-background/50 text-foreground hover:bg-background/70 disabled:opacity-30"
                       aria-label="הבא"
                     >
                       <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <div className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs text-white tabular-nums" dir="ltr">
+                    </Button>
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-background/50 px-3 py-1 text-xs text-foreground tabular-nums" dir="ltr">
                       {idx + 1} / {imageUrls.length}
                     </div>
                   </>
@@ -3020,14 +3024,7 @@ const InlineComposer = ({
                     type="button"
                     variant="destructive"
                     size="icon"
-                    onClick={() => {
-                      const nextUrl = hasNext ? imageUrls[idx + 1] : (hasPrev ? imageUrls[idx - 1] : null);
-                      const removedUrl = previewImageUrl;
-                      setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
-                      setPreviewImageUrl(nextUrl);
-                      // Deletion is permanent and global — never comes back.
-                      if (!editorMode && selectedListingId && removedUrl) void blocklistListingImage(selectedListingId, removedUrl);
-                    }}
+                    onClick={() => setPendingImageDelete(previewImageUrl)}
                     aria-label="מחק מהקמפיין"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -3046,6 +3043,15 @@ const InlineComposer = ({
 
 
 
+      <ImageDeleteConfirmation open={pendingImageDelete !== null} onOpenChange={open => { if (!open) setPendingImageDelete(null); }} onConfirm={() => {
+        const removed = pendingImageDelete;
+        if (!removed) return;
+        const remaining = attachments.filter(att => att.kind === 'image' && att.url && att.url !== removed);
+        setAttachments(current => current.filter(att => att.url !== removed));
+        setPreviewImageUrl(remaining[0]?.url ?? null);
+        setPendingImageDelete(null);
+        if (!editorMode && selectedListingId) void blocklistListingImage(selectedListingId, removed);
+      }} />
       {/* Unified controlled-share cockpit for Facebook groups (merged selector + Time Bank queue) */}
       {!editorMode && hasBody && channel.id === 'facebook' && (
         <CustomGroupsQuickShare body={body} />
@@ -8899,7 +8905,7 @@ const CampaignCenter = () => {
                   );
                 })}
                 {/* Bulk dispatch — publishes every ready draft one after another. */}
-                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur" dir="rtl">
+                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 p-3 pb-[18px] shadow-lg backdrop-blur [&_button_svg]:scale-[1.3]" dir="rtl">
                   <div className="mx-auto flex max-w-3xl items-stretch gap-2">
                   <div className="flex items-stretch gap-2">
 
