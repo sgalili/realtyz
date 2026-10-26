@@ -59,7 +59,7 @@ describe('Facebook cloud connection', () => {
 
   it('does not import memberships when remote login fails', async () => {
     vi.spyOn(window, 'open').mockReturnValue({ opener: null, close: vi.fn(), location: { href: '' } } as unknown as Window);
-    mocks.invoke.mockResolvedValue({ data: { error: 'worker_unavailable', message: 'הענן אינו זמין' } });
+    mocks.invoke.mockResolvedValue({ data: { error: 'worker_unavailable', message: 'החיבור אינו זמין' } });
     render(<FacebookCloudConnectGate alwaysVisible />);
     fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
     fireEvent.click(screen.getByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
@@ -68,7 +68,7 @@ describe('Facebook cloud connection', () => {
     expect(mocks.sync).not.toHaveBeenCalled();
   });
 
-  it('offers a manual cloud-browser link when every new tab is blocked', async () => {
+  it('offers a manual connection link when every new tab is blocked', async () => {
     vi.spyOn(window, 'open').mockReturnValue(null);
     mocks.invoke.mockResolvedValue({ data: { url: 'https://gologin.example/session' } });
     render(<FacebookCloudConnectGate alwaysVisible />);
