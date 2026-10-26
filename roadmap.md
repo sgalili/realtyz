@@ -1,16 +1,16 @@
 # Roadmap
 
 ## Signup celebration and reward polish
-- [ ] All lead icons and known-zero labels, sidebar typography and fixed-size header icon/button updates.
-- [ ] Immediate type-specific signup welcome, seven-second falling confetti and sound, configurable one-time signup bonus shown in welcome.
-- [ ] Account-scoped confirmed earnings sound without playing historical credits or top-ups.
-- [ ] Focused tests and live UI verification.
+- [x] Four lead icons and explicit-zero labels without restricted-price leaks; sidebar fonts -3px, publish text +3px, empty bell hidden, glyph sizes changed without frame changes.
+- [x] Immediate type-specific welcome, seven-second full-height falling confetti and generated ElevenLabs sounds; server-configurable atomic signup bonus (initial default 500 credits) read from the actual grant. Legacy intros no longer cover the welcome.
+- [x] Account-only confirmed lead/referral/closing earning sound, cached once and enabled after user interaction; no playback for historical grants, adjustments or topups.
+- [x] Focused tests and real fictitious-phone signup verified: 500-credit welcome, seven-second cleanup, close/reload without repeat welcome; header frame 36px and chart glyph 23px, publish frame 97x40 with 16px text; build OK. No real commission generated during testing; injected account has no Super Admin access to settings.
 
 ## Signup details and gender October 26
 - [x] Match signup language to chosen gender; extra logo space, back controls, smaller footer and matching headings.
 - [x] Separate type picker from details; city and property menus, owner sale/rent, developer import link, license placeholder without signup disclosures; owner deal persists through constrained RPC.
 - [x] Fix unbound RPC causing undefined rest error; 37 tests pass, phone UI navigation and live authenticated rejection/friendly error verified without changing the real user's identity; build OK.
-- [ ] Successful new-account signup readback waits for a recipient-controlled test account with verified phone; existing user's identity was not changed.
+- [x] Successful fictitious-phone account completion and actual bonus readback verified in the signup celebration task; no existing real-user identity changed.
 
 ## Profile gender and personalized language
 - [x] Rename gender selectors globally to גבר/אישה; keep canonical male/female in existing constrained profiles.gender, remove metadata/cache fallback.
