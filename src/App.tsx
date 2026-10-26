@@ -382,11 +382,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <DirectionProvider dir="rtl">
       <TooltipProvider>
-        <Sonner />
         <BrowserRouter>
           <RouteScrollRestoration />
           <AuthProvider>
           <PersonalLanguageProvider>
+          <Sonner />
             <WorkspaceProvider>
             <WhiteLabelProvider>
             <DemoModeProvider>

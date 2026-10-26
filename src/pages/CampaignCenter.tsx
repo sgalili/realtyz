@@ -67,7 +67,7 @@ import {
   deleteCloudQueueForPosts,
 } from '@/lib/extensionGroupBridge';
 
-import { toast } from 'sonner';
+import { toast } from '@/i18n/personalToast';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';

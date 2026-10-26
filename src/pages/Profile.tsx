@@ -98,6 +98,7 @@ function ProfileFieldRow({
   inputDir?: 'ltr' | 'rtl';
   children?: React.ReactNode;
 }) {
+  const { command } = usePersonalLanguage();
   return (
     <div
       dir="rtl"
@@ -119,7 +120,7 @@ function ProfileFieldRow({
             />
           )
         ) : (
-          <button
+          <Button variant="ghost"
             type="button"
             onClick={onToggleEdit}
             dir={inputDir}
@@ -129,8 +130,8 @@ function ProfileFieldRow({
               !value && 'text-muted-foreground/60',
             )}
           >
-            {value || placeholder || '—'}
-          </button>
+            {value || command(placeholder) || '—'}
+          </Button>
         )}
       </div>
       <div className="flex items-center gap-0.5 shrink-0">
