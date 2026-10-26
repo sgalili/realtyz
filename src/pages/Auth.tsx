@@ -70,7 +70,7 @@ const Auth = () => {
     {codeSent && <Button type="button" variant="ghost" size="icon" aria-label="חזרה להתחברות" className="absolute right-4 top-4 h-10 w-10" onClick={() => { setCodeSent(false); setOtp(''); }}><ArrowRight className="h-8 w-8" /></Button>}
     <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[50px]">
       <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
-      <h1 className={`mb-8 mt-[50px] text-center font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? 'הזינו את הקוד שקיבלתם ב-SMS' : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
+      <h1 className={`mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? 'הזינו את הקוד שקיבלתם ב-SMS' : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
           <InputOTP maxLength={4} value={otp} onChange={value => { setOtp(value); if (value.length === 4) void verify(value); }} containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
