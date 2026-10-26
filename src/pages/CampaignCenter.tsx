@@ -3024,7 +3024,7 @@ const InlineComposer = ({
                     type="button"
                     variant="destructive"
                     size="icon"
-                    onClick={() => setPendingImageDelete(previewImageUrl)}
+                    onClick={() => { setPendingImageDelete(previewImageUrl); setPreviewImageUrl(null); }}
                     aria-label="מחק מהקמפיין"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -3043,7 +3043,7 @@ const InlineComposer = ({
 
 
 
-      <ImageDeleteConfirmation open={pendingImageDelete !== null} onOpenChange={open => { if (!open) setPendingImageDelete(null); }} onConfirm={() => {
+      <ImageDeleteConfirmation open={pendingImageDelete !== null} onOpenChange={open => { if (!open) { setPreviewImageUrl(pendingImageDelete); setPendingImageDelete(null); } }} onConfirm={() => {
         const removed = pendingImageDelete;
         if (!removed) return;
         const remaining = attachments.filter(att => att.kind === 'image' && att.url && att.url !== removed);
