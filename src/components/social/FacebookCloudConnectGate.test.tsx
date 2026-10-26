@@ -46,6 +46,16 @@ describe('Facebook cloud connection', () => {
     expect(mocks.sync).not.toHaveBeenCalled();
   });
 
+  it('offers a manual cloud-browser link when every new tab is blocked', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    mocks.invoke.mockResolvedValue({ data: { url: 'https://gologin.example/session' } });
+    render(<FacebookCloudConnectGate alwaysVisible />);
+    fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
+    const link = await screen.findByRole('link', { name: 'פתיחת דפדפן הענן' });
+    expect(link).toHaveAttribute('href', 'https://gologin.example/session');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
   it('waits for server-confirmed login before importing', async () => {
     vi.spyOn(window, 'open').mockReturnValue({ opener: null, close: vi.fn(), location: { href: '' } } as unknown as Window);
     mocks.invoke.mockResolvedValue({ data: { url: 'https://example.com/login' } });
