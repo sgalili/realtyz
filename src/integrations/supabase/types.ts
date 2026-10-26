@@ -6412,6 +6412,7 @@ export type Database = {
           primary_user_type: string | null
           referral_code: string | null
           service_areas: string[]
+          signup_details: Json
           trial_end_date: string | null
           trial_start_date: string
           trust_score: number | null
@@ -6447,6 +6448,7 @@ export type Database = {
           primary_user_type?: string | null
           referral_code?: string | null
           service_areas?: string[]
+          signup_details?: Json
           trial_end_date?: string | null
           trial_start_date?: string
           trust_score?: number | null
@@ -6482,6 +6484,7 @@ export type Database = {
           primary_user_type?: string | null
           referral_code?: string | null
           service_areas?: string[]
+          signup_details?: Json
           trial_end_date?: string | null
           trial_start_date?: string
           trust_score?: number | null
@@ -8468,6 +8471,19 @@ export type Database = {
         Returns: undefined
       }
       complete_signup_profile: { Args: { _full_name: string }; Returns: Json }
+      complete_sms_signup: {
+        Args: {
+          _first_name: string
+          _gender: string
+          _last_name: string
+          _phone: string
+        }
+        Returns: Json
+      }
+      complete_sms_signup_details: {
+        Args: { _details: Json; _type: string }
+        Returns: Json
+      }
       compute_closing_split: {
         Args: { _submission_id: string }
         Returns: undefined

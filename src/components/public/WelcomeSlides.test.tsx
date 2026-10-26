@@ -1,12 +1,27 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import { MemoryRouter } from 'react-router-dom';
+import type { ReactElement } from 'react';
 import { WelcomeSlides } from "@/components/public/WelcomeSlides";
+const render = (element: ReactElement) => rtlRender(<MemoryRouter>{element}</MemoryRouter>);
 
 beforeAll(() => {
   Element.prototype.animate = vi.fn(() => ({ onfinish: null, cancel: vi.fn() })) as unknown as typeof Element.prototype.animate;
 });
 
 describe("welcome slides", () => {
+  it('closes when swiping forward past the final slide', () => {
+    vi.useFakeTimers();
+    const done = vi.fn();
+    render(<WelcomeSlides onDone={done} />);
+    fireEvent.click(screen.getByRole('button', { name: 'שקופית 3' }));
+    const carousel = screen.getByLabelText('היכרות עם TORAFF');
+    fireEvent.touchStart(carousel, { touches: [{ clientX: 50, clientY: 100 }] });
+    fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 200, clientY: 100 }] });
+    vi.advanceTimersByTime(250);
+    expect(done).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
   it("has exactly 3 slides", () => {
     render(<WelcomeSlides onDone={() => {}} />);
     expect(screen.getAllByRole("button", { name: /^שקופית \d$/ })).toHaveLength(3);

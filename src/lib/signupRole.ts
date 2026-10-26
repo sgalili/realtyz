@@ -1,6 +1,7 @@
 // Pending choices are signup intentions only; the authenticated RPC owns grants.
 import { supabase } from '@/integrations/supabase/client';
 import { readPendingBrokerLicense, savePendingBrokerLicense, verifyBrokerLicense } from '@/lib/brokerLicense';
+import { clearSmsSignup, readSmsSignup, signupRpc } from '@/lib/smsSignup';
 
 export type SignupRole = 'broker' | 'partner' | 'property_owner' | 'property_seeker' | 'developer' | 'contractor';
 
@@ -69,6 +70,13 @@ export function clearPostSignupWelcome() {
  * Returns the path the user should land on, or null when nothing was pending.
  */
 export async function applyPendingSignupRole(): Promise<string | null> {
+  const sms = readSmsSignup();
+  if (sms) {
+    try {
+      await signupRpc('complete_sms_signup', { _first_name: sms.firstName, _last_name: sms.lastName, _gender: sms.gender, _phone: sms.phone });
+      clearSmsSignup();
+    } catch { /* Keep pending profile for authenticated completion to retry. */ }
+  }
   const role = readPendingSignupRole();
   if (!role) return null;
   const { data: { user } } = await supabase.auth.getUser();
