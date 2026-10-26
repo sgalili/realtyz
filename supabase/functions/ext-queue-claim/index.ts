@@ -51,11 +51,13 @@ Deno.serve(async (req) => {
   const workspace = (data as any).workspace_owner_id;
   try {
     const jobs = await Promise.all(((data as any).jobs ?? []).map(async (job: any) => {
-      if (job.activity_type !== 'fb_group_post') return job;
-      const payload = job.payload ?? {};
-      const identities = await socialPrivacyIdentities(admin, workspace, payload.listing_id ?? job.listing_id);
-      const text = await publishedPostText(admin, workspace, `group:${job.id}`, anonymousSocialText(payload.outbound_text ?? payload.body ?? payload.text, identities));
-      return { ...job, payload: { ...payload, body: text, text, outbound_text: text } };
+      const { data: row, error: rowError } = await admin.from('campaign_activity_queue').select('payload,listing_id').eq('id', job.id).eq('workspace_owner_id', workspace).maybeSingle();
+      if (rowError || !row) throw new Error('Unauthorized publication');
+      const identities = await socialPrivacyIdentities(admin, workspace, row.payload?.listing_id ?? row.listing_id);
+      const body = anonymousSocialText(job.message, identities);
+      const link = typeof job.link === 'string' ? job.link.trim() : '';
+      const text = await publishedPostText(admin, workspace, `group:${job.id}`, link && !body.includes(link) ? `${body}\n\n${link}` : body);
+      return { ...job, message: text };
     }));
     return json({ ok: true, workspace_owner_id: workspace, jobs });
   } catch {

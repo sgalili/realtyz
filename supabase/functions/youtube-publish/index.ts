@@ -14,6 +14,7 @@
 //   6. Persist a campaign_logs row and return the watch URL.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { publishedPostText } from '../_shared/promotionalFooter.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -149,7 +150,7 @@ Deno.serve(async (req) => {
       });
     }
     const title = String(body.title || '').trim().slice(0, 100) || 'TORAFF';
-    const description = String(body.description || '').slice(0, 5000);
+    let description = String(body.description || '').slice(0, 5000);
     const tags = Array.isArray(body.tags) ? body.tags.map((t) => String(t)).filter(Boolean).slice(0, 30) : [];
     const privacy = ['public', 'unlisted', 'private'].includes(String(body.privacy_status))
       ? String(body.privacy_status)
@@ -221,6 +222,9 @@ Deno.serve(async (req) => {
       return json({ success: false, error: 'קובץ הווידאו ריק.' });
     }
 
+    const identity = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([videoUrl, title, description, body.scheduled_at ?? null])));
+    const key = Array.from(new Uint8Array(identity), byte => byte.toString(16).padStart(2, '0')).join('');
+    description = await publishedPostText(admin, userId, `youtube:${key}`, description, 5000);
     const metadata: Record<string, unknown> = {
       snippet: { title, description, tags, categoryId },
       status: {
