@@ -262,57 +262,6 @@ Deno.serve(async (req) => {
     return json({ success: true, session: null });
   }
 
-  if (action === "save") {
-    if (!ENC_KEY) return json({ error: "missing_encryption_key" }, 500);
-    const raw = body?.cookies;
-    const serialized = typeof raw === "string" ? raw.trim() : JSON.stringify(raw ?? null);
-    if (!serialized || serialized === "null" || serialized.length < 20) {
-      return json({ error: "invalid_cookies", message: "לא נמצאו נתוני התחברות תקינים" }, 400);
-    }
-    if (serialized.length > 200_000) {
-      return json({ error: "cookies_too_large", message: "נתוני ההתחברות גדולים מדי" }, 400);
-    }
-
-    // Must contain Facebook's login cookies, in any common export format
-    // (JSON array from an extension, or a "name=value; ..." header string).
-    const hasCookie = (n: string) => new RegExp(`(["']?name["']?\\s*:\\s*["']${n}["'])|(\\b${n}=)`).test(serialized);
-    if (!hasCookie("c_user") || !hasCookie("xs")) {
-      return json({ error: "missing_login_cookies", message: "חסרים נתוני ההתחברות של פייסבוק (c_user ו-xs). ודאו שהעתקתם מדפדפן מחובר" }, 400);
-    }
-
-    let cookies_encrypted: string;
-    try {
-      cookies_encrypted = await encryptSession(serialized, ENC_KEY);
-    } catch {
-      return json({ error: "encryption_failed", message: "ההצפנה נכשלה, נסו שוב" }, 500);
-    }
-
-    const expires_at = typeof body?.expires_at === "string" && body.expires_at
-      ? body.expires_at
-      : new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString();
-
-    const { error } = await admin.from("fb_cloud_sessions").upsert(
-      {
-        workspace_owner_id: owner,
-        cookies_encrypted,
-        user_agent: typeof body?.user_agent === "string" ? body.user_agent.slice(0, 512) : null,
-        status: "active",
-        last_verified_at: new Date().toISOString(),
-        expires_at,
-        last_error: null,
-      },
-      { onConflict: "workspace_owner_id" },
-    );
-    if (error) return json({ error: error.message }, 500);
-
-    const { data: saved } = await admin
-      .from("fb_cloud_sessions")
-      .select("status, last_verified_at, expires_at, user_agent, updated_at, last_error")
-      .eq("workspace_owner_id", owner)
-      .maybeSingle();
-    return json({ success: true, session: saved ?? { status: "active", expires_at, last_error: null } });
-  }
-
   /* ── Cloud-first group discovery ─────────────────────────────────────── */
 
   if (action === "fetch_groups" || action === "sync_groups") {
