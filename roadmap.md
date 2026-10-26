@@ -1,5 +1,11 @@
 # Roadmap
 
+## Secure Facebook cloud guidance
+- [x] Add mobile-friendly guidance before cloud login, safe new-tab fallback and server-confirmed status checks.
+- [x] Reject client credential/cookie uploads; deployed endpoint rejects synthetic password input; disclose encrypted session storage accurately.
+- [x] All 17 privacy/connection tests pass; signed-in guidance and provider-error state reviewed at 411x802 and desktop; build OK.
+- [ ] Complete actual Facebook login/group import: GoLogin still refuses Cloud Browser launch for the configured account (403); no Facebook password entered or requested by TORAFF.
+
 ## Super Admin user deletion
 - [x] Permanently deleted Barak Israely: 327 active records purged; verified zero login/profile/roles/files/listings/workspace memberships.
 - [x] Added shared confirmed multi-select deletion to API-settings and Super Admin users. Seven tests pass; signed-in two-account selection/confirmation canceled safely, Barak absent in search; build OK.
@@ -75,4 +81,4 @@
 - [x] Route every reward icon to its master pricing window, with inline licensing links and grayscale broker label.
 - [x] 34 focused tests passed; signed-in Card 8 showed ₪7,000, ₪40/50/80 and ₪700 closing immediately as complete without consent. Guest trophy opened one pricing window with inline course/exam links. Mobile screenshots and build OK; no listing published.
 
-- [ ] Facebook cloud connect: waiting for the cloud-browser service key from the user
+- [ ] Facebook cloud connect: service key saved; actual remote browser launch remains dependent on GoLogin account Cloud Browser access.

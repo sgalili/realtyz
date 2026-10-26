@@ -2,8 +2,8 @@
 // Stores / inspects / clears the workspace owner's encrypted Facebook session
 // cookies so the cloud worker can publish to groups while the laptop is off.
 //
-// Actions (POST JSON): { action: "status" | "save" | "clear" }
-//   save  -> { cookies: string | object[], user_agent?: string, expires_at?: string }
+// Login takes place only in Facebook's interface inside GoLogin. No client
+// password or manual session-cookie uploads are supported.
 //
 // The raw cookie payload is encrypted with AES-GCM (FB_SESSION_ENC_KEY) before
 // it touches the database and is NEVER returned to the client.
@@ -11,6 +11,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { encryptSession, decryptSession } from "../_shared/sessionCrypto.ts";
+import { acceptsFacebookConnectionRequest } from "../_shared/facebookConnectionPrivacy.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -29,6 +30,9 @@ Deno.serve(async (req) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { body = {}; }
+  if (!acceptsFacebookConnectionRequest(body)) {
+    return json({ error: "credentials_not_accepted", message: "ההתחברות מתבצעת רק בפייסבוק בדפדפן הענן. אין לשלוח פרטי התחברות ל-TORAFF." }, 400);
+  }
   const action = String(body?.action ?? "status");
 
   // ── Cloud runner callback: group-fetch results (worker secret, no user JWT).
@@ -202,8 +206,7 @@ Deno.serve(async (req) => {
         w = await launch(profileId);
       }
       if (!w.ok) {
-        const detail = (await w.text().catch(() => "")).slice(0, 300);
-        console.error("gologin web launch failed", w.status, detail);
+        console.error("gologin web launch failed", w.status);
         if (w.status === 401 || w.status === 403) {
           return json({
             error: "remote_forbidden",
@@ -238,7 +241,7 @@ Deno.serve(async (req) => {
       const r = await fetch(`https://api.gologin.com/browser/${profileId}/cookies`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) return json({ success: true, active: false });
       const all = await r.json();
-      const fb = (Array.isArray(all) ? all : []).filter((c: any) => /facebook\.com$/.test(String(c?.domain ?? "")));
+      const fb = (Array.isArray(all) ? all : []).filter((c: any) => /(^|\.)facebook\.com$/i.test(String(c?.domain ?? "")) && ["c_user", "xs", "datr", "sb", "fr", "presence", "wd"].includes(c?.name));
       const has = (n: string) => fb.some((c: any) => c?.name === n && c?.value);
       if (!has("c_user") || !has("xs")) return json({ success: true, active: false });
       const cookies_encrypted = await encryptSession(JSON.stringify(fb), ENC_KEY);
@@ -257,57 +260,6 @@ Deno.serve(async (req) => {
     const { error } = await admin.from("fb_cloud_sessions").delete().eq("workspace_owner_id", owner);
     if (error) return json({ error: error.message }, 500);
     return json({ success: true, session: null });
-  }
-
-  if (action === "save") {
-    if (!ENC_KEY) return json({ error: "missing_encryption_key" }, 500);
-    const raw = body?.cookies;
-    const serialized = typeof raw === "string" ? raw.trim() : JSON.stringify(raw ?? null);
-    if (!serialized || serialized === "null" || serialized.length < 20) {
-      return json({ error: "invalid_cookies", message: "לא נמצאו נתוני התחברות תקינים" }, 400);
-    }
-    if (serialized.length > 200_000) {
-      return json({ error: "cookies_too_large", message: "נתוני ההתחברות גדולים מדי" }, 400);
-    }
-
-    // Must contain Facebook's login cookies, in any common export format
-    // (JSON array from an extension, or a "name=value; ..." header string).
-    const hasCookie = (n: string) => new RegExp(`(["']?name["']?\\s*:\\s*["']${n}["'])|(\\b${n}=)`).test(serialized);
-    if (!hasCookie("c_user") || !hasCookie("xs")) {
-      return json({ error: "missing_login_cookies", message: "חסרים נתוני ההתחברות של פייסבוק (c_user ו-xs). ודאו שהעתקתם מדפדפן מחובר" }, 400);
-    }
-
-    let cookies_encrypted: string;
-    try {
-      cookies_encrypted = await encryptSession(serialized, ENC_KEY);
-    } catch {
-      return json({ error: "encryption_failed", message: "ההצפנה נכשלה, נסו שוב" }, 500);
-    }
-
-    const expires_at = typeof body?.expires_at === "string" && body.expires_at
-      ? body.expires_at
-      : new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString();
-
-    const { error } = await admin.from("fb_cloud_sessions").upsert(
-      {
-        workspace_owner_id: owner,
-        cookies_encrypted,
-        user_agent: typeof body?.user_agent === "string" ? body.user_agent.slice(0, 512) : null,
-        status: "active",
-        last_verified_at: new Date().toISOString(),
-        expires_at,
-        last_error: null,
-      },
-      { onConflict: "workspace_owner_id" },
-    );
-    if (error) return json({ error: error.message }, 500);
-
-    const { data: saved } = await admin
-      .from("fb_cloud_sessions")
-      .select("status, last_verified_at, expires_at, user_agent, updated_at, last_error")
-      .eq("workspace_owner_id", owner)
-      .maybeSingle();
-    return json({ success: true, session: saved ?? { status: "active", expires_at, last_error: null } });
   }
 
   /* ── Cloud-first group discovery ─────────────────────────────────────── */
