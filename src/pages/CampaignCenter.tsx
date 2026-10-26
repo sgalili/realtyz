@@ -7066,7 +7066,7 @@ const VoiceLeadPickerDialog = ({
                       const { data, error } = await supabase.from('profiles').update({ gender: o.v }).eq('id', user.id).select('gender').single();
                       if (error) { toast.error('שמירת ההעדפה נכשלה'); return; }
                       personalLanguageCache.setQueryData(personalGenderKey(user.id), profileGender(data.gender));
-                      window.dispatchEvent(new Event('realtyz:profile-saved'));
+                      window.dispatchEvent(new Event('toraff:gender-saved'));
                     }}
                     className={cn(
                       'rounded-md border px-2 py-0.5 text-[11px] font-semibold transition',

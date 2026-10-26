@@ -18,7 +18,7 @@ export function PersonalGenderSetting() {
       const { data, error } = await supabase.from('profiles').update({ gender: value }).eq('id', user.id).select('gender').single();
       if (error) throw error;
       cache.setQueryData(personalGenderKey(user.id), profileGender(data.gender));
-      window.dispatchEvent(new Event('realtyz:profile-saved'));
+      window.dispatchEvent(new Event('toraff:gender-saved'));
     } catch { toast.error('שמירת ההעדפה נכשלה'); }
     finally { setBusy(false); }
   };

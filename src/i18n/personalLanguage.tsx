@@ -27,7 +27,11 @@ export function PersonalLanguageProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     const refresh = () => { if (user) void cache.invalidateQueries({ queryKey: personalGenderKey(user.id) }); };
     window.addEventListener('realtyz:profile-saved', refresh);
-    return () => window.removeEventListener('realtyz:profile-saved', refresh);
+    window.addEventListener('toraff:gender-saved', refresh);
+    return () => {
+      window.removeEventListener('realtyz:profile-saved', refresh);
+      window.removeEventListener('toraff:gender-saved', refresh);
+    };
   }, [user?.id, cache]);
   return <Context.Provider value={gender}>{children}</Context.Provider>;
 }
