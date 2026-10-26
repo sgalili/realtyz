@@ -14,17 +14,24 @@ export function CompleteProfileBanner({ force = false }: { force?: boolean }) {
 
   useEffect(() => {
     if (!user) return;
-    try { if (!force && localStorage.getItem(KEY(user.id)) === '1') { setHidden(true); return; } } catch { /* ignore */ }
-    void supabase.from('profiles').select('full_name, city, phone').eq('id', user.id).maybeSingle().then(({ data }) => {
+    let alive = true;
+    setMissing(null);
+    setHidden(false);
+    try { if (!force && localStorage.getItem(KEY(user.id)) === '1') setHidden(true); } catch { /* ignore */ }
+    const refresh = () => void supabase.from('profiles').select('full_name, city, phone').eq('id', user.id).maybeSingle().then(({ data, error }) => {
+      if (!alive || error) return;
       const m: string[] = [];
       if (!data?.full_name?.trim()) m.push('שם מלא');
       if (!data?.city?.trim()) m.push('עיר');
       if (!data?.phone?.trim()) m.push('טלפון');
       setMissing(m);
     });
-  }, [user, force]);
+    refresh();
+    window.addEventListener('realtyz:profile-saved', refresh);
+    return () => { alive = false; window.removeEventListener('realtyz:profile-saved', refresh); };
+  }, [user?.id, force]);
 
-  if (!user || hidden || !missing || (missing.length === 0 && !force)) return null;
+  if (!user || hidden || !missing || missing.length === 0) return null;
   const dismiss = () => { try { localStorage.setItem(KEY(user.id), '1'); } catch { /* ignore */ } setHidden(true); };
 
   return (

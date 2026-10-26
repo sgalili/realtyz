@@ -88,7 +88,7 @@ function HeaderProfileLink() {
       data-walkthrough="menu"
       className="h-[46.8px] w-[46.8px] shrink-0 cursor-pointer rounded-md text-foreground/80 hover:bg-muted hover:text-foreground"
     >
-      <Menu className="!h-[26px] !w-[26px]" strokeWidth={1} aria-hidden="true" />
+      <Menu className="!h-[26px] !w-[26px]" strokeWidth={3} aria-hidden="true" />
     </Button>
   );
 }
@@ -504,7 +504,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!h-10 !w-[97px] sm:!w-[108px] whitespace-nowrap px-1 !text-[16px] sm:!text-[18px]" />
+              <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!h-10 !w-[97px] sm:!w-[108px] whitespace-nowrap px-1 !text-[18px] sm:!text-[20px]" />
             </div>
             </div>
           </header>
