@@ -4,7 +4,10 @@ import { AffiliateInviteCard } from './AffiliateInviteCard';
 vi.mock('@/hooks/useInviteBonusSettings', () => ({ INVITE_BONUS_DEFAULTS: { referrer_credits: 200, friend_credits: 100 }, useInviteBonusSettings: () => ({ data: undefined }) }));
 
 const personalGender = { value: null as 'male' | 'female' | null };
-vi.mock('@/i18n/personalLanguage', () => ({ usePersonalLanguage: () => ({ gender: personalGender.value }) }));
+vi.mock('@/i18n/personalLanguage', async () => {
+  const actual = await vi.importActual<typeof import('@/i18n/personalLanguage')>('@/i18n/personalLanguage');
+  return { ...actual, usePersonalLanguage: () => ({ gender: personalGender.value }) };
+});
 
 vi.mock('@/hooks/useReferralProgram', () => ({ useReferralProgram: () => ({ data: { code: 'INVITE7', total: 0, earned_ils: 0, verified_deals: 0 }, isLoading: false, isError: false }) }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
