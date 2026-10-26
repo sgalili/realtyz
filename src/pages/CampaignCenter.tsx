@@ -2563,42 +2563,22 @@ const InlineComposer = ({
           <RefreshCw className={cn('h-4 w-4', (generating || finalizingBody) && 'animate-spin')} />
         </button>
         <div className="mt-2 flex items-center gap-1.5" dir="rtl">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
-                aria-label="צירוף מדיה"
-              >
-                <Paperclip className="h-4 w-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-44 p-1" dir="rtl">
-              <button type="button" onClick={() => galleryInputRef.current?.click()}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-                <span>גלריה</span>
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-              </button>
-              <button type="button" onClick={() => cameraInputRef.current?.click()}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-                <span>מצלמה</span>
-                <Camera className="h-4 w-4 text-muted-foreground" />
-              </button>
-              <button type="button" onClick={handleAIImage} disabled={generatingImage}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
-                <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
-                <Sparkles className="h-4 w-4 text-primary" />
-              </button>
-            </PopoverContent>
-          </Popover>
           {photosLoading && (
             <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
               מייבא תמונות הנכס…
             </span>
           )}
-          {attachments.length > 0 && (
-            <div className="relative flex items-center gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
+          <div className="relative flex items-center gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => galleryInputRef.current?.click()}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-border bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                aria-label="הוספת תמונות מהגלריה"
+                title="הוספת תמונות מהגלריה"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
               {attachments.map((att, i) => {
                 const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
                 const isImage = att.kind === 'image' && !!att.url && !isVideo;
