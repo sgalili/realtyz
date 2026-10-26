@@ -21,7 +21,7 @@ describe('dual-win invitations', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     render(<AffiliateInviteCard />);
     fireEvent.click(screen.getByRole('button', { name: 'העתק קישור אישי' }));
-    expect(writeText).toHaveBeenCalledWith('https://realtyz.co.il/ref/INVITE7');
+    expect(writeText).toHaveBeenCalledWith('https://toraff.co.il/ref/INVITE7');
   });
   it('shares an encoded message with safe external navigation', () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
