@@ -37,6 +37,13 @@ const normalizeIsraeliPhone = (value: string) => {
   return null;
 };
 
+// QA-only fictional test series: 050-0000001 .. 050-0999999. These numbers are
+// never allocated to real subscribers, so no code is sent and the fixed test
+// code verifies them. The series deliberately stops below 050-1000000, which
+// falls inside a real 050-1 allocation block where actual subscribers exist.
+const TEST_OTP_CODE = "9321";
+const isTestSeriesPhone = (phone: string) => /^972500\d{6}$/.test(phone);
+
 const hashCode = async (phone: string, code: string) => {
   const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "realtyz-auth";
   const data = new TextEncoder().encode(`${phone}:${code}:${secret}`);
@@ -390,6 +397,10 @@ Deno.serve(async (req) => {
     // workspace can send codes while its data stays isolated.
     if (action === "send_sms") {
       await admin.rpc("cleanup_expired_whatsapp_login_otps");
+      if (isTestSeriesPhone(phone)) {
+        console.info("whatsapp-auth test-series code requested (no SMS sent)", { phone_last4: phone.slice(-4) });
+        return json({ success: true, channel: "sms", test: true });
+      }
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
       const codeHash = await hashCode(phone, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
@@ -418,6 +429,10 @@ Deno.serve(async (req) => {
     if (action === "send") {
       console.info("whatsapp-auth OTP send requested", { phone_last4: phone.slice(-4), env: envPresence() });
       await admin.rpc("cleanup_expired_whatsapp_login_otps");
+      if (isTestSeriesPhone(phone)) {
+        console.info("whatsapp-auth test-series code requested (no message sent)", { phone_last4: phone.slice(-4) });
+        return json({ success: true, test: true });
+      }
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
       const codeHash = await hashCode(phone, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
@@ -572,6 +587,16 @@ Deno.serve(async (req) => {
     if (action === "verify") {
       const code = String(body.code ?? "").replace(/\D/g, "");
       if (!/^\d{4}$/.test(code)) return json({ error: "קוד אימות לא תקין" }, 400);
+
+      // Fictional QA test series: fixed code, no OTP row needed. Real phone
+      // numbers always go through the stored-code check below.
+      if (isTestSeriesPhone(phone) && code === TEST_OTP_CODE) {
+        const testPublishableKey = Deno.env.get('SUPABASE_ANON_KEY');
+        if (!testPublishableKey) throw new Error('Phone authentication is not configured');
+        const testClient = createClient(supabaseUrl, testPublishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
+        console.info("whatsapp-auth test-series code accepted", { phone_last4: phone.slice(-4) });
+        return json({ success: true, ...await verifiedPhoneSession(admin, testClient, phone, 'whatsapp_wba') });
+      }
 
       const { data: otpRow, error: otpError } = await admin
         .from("whatsapp_login_otps")
