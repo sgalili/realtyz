@@ -22,8 +22,8 @@ export function useEarningsFeedback() {
     queryFn: async () => {
       if (!user) return null;
       const key = `toraff:earnings-cursor:${user.id}`;
-      let cursor: { since: string; seen: string[] };
-      try { cursor = JSON.parse(sessionStorage.getItem(key) ?? 'null'); } catch { cursor = null as never; }
+      let cursor: { since: string; seen: string[] } | null;
+      try { cursor = JSON.parse(sessionStorage.getItem(key) ?? 'null'); } catch { cursor = null; }
       if (!cursor?.since || !Array.isArray(cursor.seen)) {
         cursor = { since: new Date().toISOString(), seen: [] };
         sessionStorage.setItem(key, JSON.stringify(cursor));
@@ -31,7 +31,8 @@ export function useEarningsFeedback() {
       }
       const { data, error } = await supabase.rpc('get_my_new_earnings', { _since: cursor.since });
       if (error) throw error;
-      const fresh = (data as Earning[] ?? []).filter(row => isEarnedCredit(row) && !cursor.seen.includes(row.id));
+      const seen = new Set(cursor.seen);
+      const fresh = (data as Earning[] ?? []).filter(row => isEarnedCredit(row) && !seen.has(row.id));
       if (fresh.length) {
         // Keep a small overlap for transactions committed just after a poll.
         const newest = fresh[fresh.length - 1];
