@@ -6,6 +6,7 @@ import { PlatformTicker } from '@/components/landing/LogoTickers';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dismissWelcome, welcomeDismissed } from '@/lib/welcomePreference';
+import { useNavigate } from 'react-router-dom';
 
 type Accent = 'gold' | 'red' | 'sky';
 const Hi = ({ children, tone }: { children: ReactNode; tone: Accent }) => <span className={`welcome-accent-${tone}`}>{children}</span>;
@@ -27,6 +28,7 @@ export function hasSeenWelcomeSlides() {
 }
 
 export function WelcomeSlides({ onDone }: { onDone: () => void }) {
+  const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const touch = useRef<{ x: number; y: number } | null>(null);
@@ -79,7 +81,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
       data-theme={slide.theme}
       className={cn('welcome-slide relative mt-2 flex h-[calc(100dvh-4.75rem)] w-full select-none flex-col overflow-hidden rounded-3xl transition-opacity duration-300 motion-reduce:transition-none', leaving && 'opacity-0')}
       onTouchStart={e => { const t = e.touches[0]; touch.current = t ? { x: t.clientX, y: t.clientY } : null; }}
-      onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) go(index + (dx > 0 ? 1 : -1)); }}
+      onTouchEnd={e => { const s = touch.current, t = e.changedTouches[0]; touch.current = null; if (!s || !t) return; const dx = t.clientX - s.x; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(t.clientY - s.y)) { if (last && dx > 0) finish(); else go(index + (dx > 0 ? 1 : -1)); } }}
     >
       <div ref={backgroundIcon} aria-hidden="true" className="welcome-icon pointer-events-none absolute inset-0 flex items-center justify-center">{Icon ? <Icon className="h-full w-full" strokeWidth={4} /> : <span className="welcome-sparkle block h-full w-full"><GeminiSparkle /></span>}</div>
       <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההיכרות" onClick={finish} className="welcome-control absolute left-2 top-2 z-20 h-10 w-10 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 active:bg-transparent"><X className="!h-[30px] !w-[30px]" /></Button>
@@ -91,7 +93,7 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
         {last && <img src={ritaPointing} alt="ריטה" width={768} height={1376} decoding="async" className="welcome-rita w-auto object-contain" />}
         {last && <div aria-hidden="true" className="welcome-divider" />}
         {last && <div className="welcome-marquee"><PlatformTicker /></div>}
-        {last && <Button type="button" onClick={finish} className="welcome-cta welcome-enter h-12 min-h-0 whitespace-nowrap rounded-xl px-7 py-2 text-[20px] font-extrabold leading-tight shadow-lg ring-2 ring-background/60 [animation-delay:150ms]">יאללה, נכנסים ללוח!</Button>}
+        {last && <Button type="button" onClick={() => { onDone(); navigate('/auth', { state: { signup: true } }); }} className="welcome-cta welcome-enter h-12 min-h-0 whitespace-nowrap rounded-xl px-7 py-2 text-[20px] font-extrabold leading-tight shadow-lg ring-2 ring-background/60 [animation-delay:150ms]">להרשמה חינם</Button>}
       </div>
       <div className="welcome-footer relative z-10 flex shrink-0 flex-col items-center gap-2 pb-4">
         <div className="flex items-center gap-1">

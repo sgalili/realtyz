@@ -329,7 +329,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                {!user && <Button variant="ghost" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="h-auto shrink-0 cursor-pointer px-1.5 text-[15px] font-semibold text-primary hover:bg-transparent hover:underline">כניסה / הרשמה</Button>}
+                {!user && <Button variant="outline" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="h-9 shrink-0 whitespace-nowrap border bg-transparent text-[15px] font-bold leading-none text-primary hover:bg-transparent sm:text-[19px]">כניסה / הרשמה</Button>}
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
