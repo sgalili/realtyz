@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import DeveloperCommissionEditor from './DeveloperCommissionEditor';
+import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConfirmation';
 import { savedProjectHierarchy } from '@/lib/developerProjectBoard';
 import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 import { ArrowRight, Loader2, Plus, Trash2, Upload } from 'lucide-react';
@@ -31,6 +32,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [pendingImageDelete, setPendingImageDelete] = useState<string | null>(null);
   const set = <K extends keyof ProjectForm>(key: K, value: ProjectForm[K]) => setForm(old => ({ ...old, [key]: value }));
   const field = (key: keyof Omit<ProjectForm, 'units' | 'images' | 'amenities' | 'commission_config' | 'deal_type'>, label: string, numeric = false) => (
     <div className="space-y-2" key={key}>
@@ -102,7 +104,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
       <Label htmlFor="project-images" className="flex min-h-20 cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border text-base font-semibold">{uploading ? <Loader2 className="animate-spin" /> : <Upload />}העלאת תמונות</Label>
       <Input id="project-images" type="file" accept="image/*" multiple className="sr-only" disabled={uploading} onChange={e => { void upload(e.target.files); e.target.value = ''; }} />
       <div className="flex gap-2"><Input aria-label="קישור לתמונה" dir="ltr" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://" /><Button size="icon" variant="outline" aria-label="הוספת תמונה מקישור" title="הוספת תמונה מקישור" onClick={() => { try { if (new URL(imageUrl).protocol !== 'https:') throw new Error(); set('images', [...new Set([...form.images, imageUrl])]); setImageUrl(''); setError(''); } catch { setError('יש להזין קישור תמונה תקין'); } }}><Plus /></Button></div>
-      <div className="grid grid-cols-2 gap-3">{form.images.map((image, idx) => <div key={image} className="space-y-1"><img src={image} alt={`תמונת פרויקט ${idx + 1}`} className="aspect-[4/3] w-full rounded-md object-cover" /><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{idx === 0 ? 'תמונה ראשית' : idx + 1}</span><div className="flex"><Button size="icon-sm" variant="ghost" disabled={idx === 0} title="הקדמת תמונה" aria-label={`הקדמת תמונה ${idx + 1}`} onClick={() => { const images = [...form.images]; [images[idx - 1], images[idx]] = [images[idx], images[idx - 1]]; set('images', images); }}><ArrowRight /></Button><Button size="icon-sm" variant="ghost" title="הסרת תמונה" aria-label={`הסרת תמונה ${idx + 1}`} onClick={() => set('images', form.images.filter(v => v !== image))}><Trash2 /></Button></div></div></div>)}</div>
+      <div className="grid grid-cols-2 gap-3">{form.images.map((image, idx) => <div key={image} className="space-y-1"><img src={image} alt={`תמונת פרויקט ${idx + 1}`} className="aspect-[4/3] w-full rounded-md object-cover" /><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">{idx === 0 ? 'תמונה ראשית' : idx + 1}</span><div className="flex"><Button size="icon-sm" variant="ghost" disabled={idx === 0} title="הקדמת תמונה" aria-label={`הקדמת תמונה ${idx + 1}`} onClick={() => { const images = [...form.images]; [images[idx - 1], images[idx]] = [images[idx], images[idx - 1]]; set('images', images); }}><ArrowRight /></Button><Button size="icon-sm" variant="ghost" title="הסרת תמונה" aria-label={`הסרת תמונה ${idx + 1}`} onClick={() => setPendingImageDelete(image)}><Trash2 /></Button></div></div></div>)}</div>
     </>}
     {i === 6 && <>
       <div className="space-y-2"><Label htmlFor="project-specifications" className="text-base">מפרט הפרויקט</Label><Textarea id="project-specifications" className="min-h-28 text-base" value={form.specifications} onChange={e => set('specifications', e.target.value)} /></div>
@@ -121,6 +123,7 @@ export default function DeveloperProjectWizard({ project, company, onSaved, onCa
   </div>;
 
   return <div className="flex min-h-0 flex-col gap-4">
+    <ImageDeleteConfirmation open={pendingImageDelete !== null} onOpenChange={open => { if (!open) setPendingImageDelete(null); }} onConfirm={() => { set('images', form.images.filter(image => image !== pendingImageDelete)); setPendingImageDelete(null); }} />
     <BrokerageCommissionDisclosure audience="seller" />
     <Accordion type="single" collapsible value={openStep} onValueChange={setOpenStep} className="space-y-2">
       {PROJECT_STEPS.map((title, i) => (

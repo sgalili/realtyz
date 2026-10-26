@@ -1,4 +1,5 @@
 import { publicCampaignProperty } from '../_shared/publicCampaignProperty.ts';
+import { anonymousSocialText, socialPrivacyIdentities } from '../_shared/socialIdentityPrivacy.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { IVR_SCRIPT_RULES, cleanIvrScript } from '../_shared/ivrScript.ts';
 import { completedPostText, evidencedPropertyDetails, POST_GENERATION_OPTIONS } from '../_shared/postGeneration.ts';
@@ -145,7 +146,7 @@ serve(async (req) => {
       });
       if (error) throw error;
       if (reservation?.confirmation_required || reservation?.error) return new Response(JSON.stringify(reservation), { status: reservation.confirmation_required ? 409 : 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      if (reservation?.cached) return new Response(JSON.stringify({ content: reservation.content }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (reservation?.cached) return new Response(JSON.stringify({ content: anonymousSocialText(reservation.content, await socialPrivacyIdentities(admin, workspaceOwnerId, selectedListingId)) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       reservedDraft = requestId;
     }
 
@@ -165,6 +166,7 @@ serve(async (req) => {
     const ownerBranding = await fetchOwnerBranding(admin as any, userId);
     const brokerName = ownerBranding.name || "המתווך";
     const brokerFirst = brokerName.split(/\s+/)[0];
+    const privateIdentities = await socialPrivacyIdentities(admin, workspaceOwnerId, selectedListingId);
 
     const wsPersona = await fetchWorkspacePersona(admin as any, workspaceOwnerId);
     const isSaas = wsPersona.domain === "software" && !promotedListing;
@@ -499,6 +501,7 @@ ${EMOJI_BULLET_LAW}
               // Rich professional property-post template + strict single-emoji law.
               promotedListing && !isFirstComment && !isIvrScript ? RICH_TEMPLATE_CONTRACT : "",
               isFirstComment || isIvrScript ? '' : await fetchLearnedOverridesBlock(admin as any, workspaceOwnerId),
+              isIvrScript ? '' : 'MANDATORY PRIVACY: Never include any person, partner, advertiser or company name, phone number, email, signature, licence or identifying byline in social content or first comments. Describe property facts only. This overrides all signature and personal-brand instructions above.',
             ]
               .filter(Boolean)
               .join("\n\n"),
@@ -541,7 +544,7 @@ ${EMOJI_BULLET_LAW}
       if (!content) return jsonError('לא התקבל תסריט קולי תקין.', 422);
       return new Response(JSON.stringify({ content, requires_human_review: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    if (isFirstComment) return new Response(JSON.stringify({ content, requires_human_review: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (isFirstComment) return new Response(JSON.stringify({ content: anonymousSocialText(content, privateIdentities), requires_human_review: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     // Persona post-processing: strip bullets/markdown/dashes, collapse blank lines.
     content = content
@@ -677,6 +680,7 @@ ${EMOJI_BULLET_LAW}
     // HARD EMOJI LAW: never two emojis side by side, always one emoji + space,
     // and every content line opens with one relevant emoji bullet.
     content = enforceSingleEmojis(content);
+    content = anonymousSocialText(content, privateIdentities);
 
 
 
