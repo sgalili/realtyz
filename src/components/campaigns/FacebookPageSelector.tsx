@@ -17,7 +17,7 @@ export function FacebookPageSelector() {
   const { data: pages = [], refetch, isFetching, error: pagesError } = useQuery<Page[]>({
     queryKey: ['managed-facebook-pages', owner], enabled: !!owner, retry: false, staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'list_pages', workspace_owner_id: owner } });
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'list_pages', owner_id: owner } });
       if (error || data?.error || data?.ok === false) throw new Error(data?.error || 'לא ניתן לטעון את עמודי הפייסבוק. יש לחדש את החיבור.');
       return Array.isArray(data?.pages) ? data.pages : [];
     },
@@ -31,7 +31,7 @@ export function FacebookPageSelector() {
     if (!owner || saving) return;
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'select_page', page_id: pageId, workspace_owner_id: owner } });
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'select_page', page_id: pageId, owner_id: owner } });
       if (error || data?.error || data?.ok === false) throw new Error(data?.error || error?.message || 'בחירת העמוד נכשלה');
       refresh();
     } catch (e) { toast.error(e instanceof Error ? e.message : 'בחירת העמוד נכשלה'); }
