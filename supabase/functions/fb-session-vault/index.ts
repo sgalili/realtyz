@@ -2,8 +2,8 @@
 // Stores / inspects / clears the workspace owner's encrypted Facebook session
 // cookies so the cloud worker can publish to groups while the laptop is off.
 //
-// Actions (POST JSON): { action: "status" | "save" | "clear" }
-//   save  -> { cookies: string | object[], user_agent?: string, expires_at?: string }
+// Login takes place only in Facebook's interface inside GoLogin. No client
+// password or manual session-cookie uploads are supported.
 //
 // The raw cookie payload is encrypted with AES-GCM (FB_SESSION_ENC_KEY) before
 // it touches the database and is NEVER returned to the client.
@@ -11,6 +11,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { encryptSession, decryptSession } from "../_shared/sessionCrypto.ts";
+import { acceptsFacebookConnectionRequest } from "../_shared/facebookConnectionPrivacy.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -29,6 +30,9 @@ Deno.serve(async (req) => {
 
   let body: any = {};
   try { body = await req.json(); } catch { body = {}; }
+  if (!acceptsFacebookConnectionRequest(body)) {
+    return json({ error: "credentials_not_accepted", message: "ההתחברות מתבצעת רק בפייסבוק בדפדפן הענן. אין לשלוח פרטי התחברות ל-TORAFF." }, 400);
+  }
   const action = String(body?.action ?? "status");
 
   // ── Cloud runner callback: group-fetch results (worker secret, no user JWT).
@@ -202,8 +206,7 @@ Deno.serve(async (req) => {
         w = await launch(profileId);
       }
       if (!w.ok) {
-        const detail = (await w.text().catch(() => "")).slice(0, 300);
-        console.error("gologin web launch failed", w.status, detail);
+        console.error("gologin web launch failed", w.status);
         if (w.status === 401 || w.status === 403) {
           return json({
             error: "remote_forbidden",
@@ -238,7 +241,7 @@ Deno.serve(async (req) => {
       const r = await fetch(`https://api.gologin.com/browser/${profileId}/cookies`, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) return json({ success: true, active: false });
       const all = await r.json();
-      const fb = (Array.isArray(all) ? all : []).filter((c: any) => /facebook\.com$/.test(String(c?.domain ?? "")));
+      const fb = (Array.isArray(all) ? all : []).filter((c: any) => /(^|\.)facebook\.com$/i.test(String(c?.domain ?? "")) && ["c_user", "xs", "datr", "sb", "fr", "presence", "wd"].includes(c?.name));
       const has = (n: string) => fb.some((c: any) => c?.name === n && c?.value);
       if (!has("c_user") || !has("xs")) return json({ success: true, active: false });
       const cookies_encrypted = await encryptSession(JSON.stringify(fb), ENC_KEY);
