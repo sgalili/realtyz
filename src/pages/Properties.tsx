@@ -184,7 +184,7 @@ export default function Properties() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
-  const [results, setResults] = useState<UnifiedResult[]>([]);
+  const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const [sourceStatus, setSourceStatus] = useState<Record<string, SourceInfo>>({});
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
