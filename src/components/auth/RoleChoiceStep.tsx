@@ -12,6 +12,7 @@ import { genderText, personalGenderKey, usePersonalLanguage } from '@/i18n/perso
 import { useAuth } from '@/hooks/useAuth';
 import { userRolesQueryKey } from '@/hooks/useUserRole';
 import { clearPendingSignupRole, markPostSignupWelcome } from '@/lib/signupRole';
+import { prepareRewardSounds } from '@/lib/rewardFeedback';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
@@ -49,6 +50,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (busy || !user || !selected || !ready) return;
+    prepareRewardSounds();
     setBusy(true);
     try {
       const pending = readSmsSignup();
