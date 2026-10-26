@@ -169,10 +169,11 @@ export default function Properties() {
       return (count as number) ?? 0;
     },
   });
-  const cached = useMemo(() => loadCache(), []);
+  const cacheScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'anon';
+  const cached = useMemo(() => loadCache(cacheScope), [cacheScope]);
 
-  const [q, setQ] = useState<string>('');
-  const [listingType, setListingType] = useState<ListingType | 'all'>('all');
+  const [q, setQ] = useState<string>(cached?.q ?? '');
+  const [listingType, setListingType] = useState<ListingType | 'all'>(cached?.listingType ?? 'all');
   const [city, setCity] = useState<string>(cached?.city ?? 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>(cached?.propertyType ?? 'all');
   const [rooms, setRooms] = useState<string>(cached?.rooms ?? 'any');
