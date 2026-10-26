@@ -1,5 +1,10 @@
 # Roadmap
 
+## Bright Data audit and optimization
+- [ ] Add protected operational report with feature/API/cache breakdowns, ledger credits and provider costs kept distinct.
+- [ ] Instrument paid scraping calls and preserve daily item claims and scheduled pool updates; deduplicate safe batch work.
+- [ ] Add non-disruptive alerts and verify authorized reporting, denied access and focused tests.
+
 ## Post composer controls
 - [x] Increase input fonts by 2px, retain bottom-left manual textarea resizing and remove content counter.
 - [x] Add touch-pointer thumbnail handles with keyboard fallback; show saved effective Facebook Page below setup heading without legacy token gating.
