@@ -48,7 +48,7 @@ async function callFunction(name: string, body: unknown) {
 
 /** Union of every workspace's service areas — one scrape serves them all. */
 async function resolveCities(admin: any, requested?: string[]): Promise<string[]> {
-  if (requested?.length) return requested.slice(0, MAX_CITIES);
+  if (requested?.length) return [...new Set(requested.map(city => city.trim()).filter(Boolean))].slice(0, MAX_CITIES);
   const { data } = await admin.from('profiles').select('service_areas').limit(500);
   const set = new Set<string>();
   for (const row of data ?? []) {
@@ -88,6 +88,7 @@ async function runSync(admin: any, token: string, cities: string[]) {
 
         try {
           const d: any = await callFunction('yad2-unlocker', {
+            owner_id: '00000000-0000-0000-0000-000000000000',
             city,
             listing_type: deal,
             mode: 'search',
@@ -96,6 +97,7 @@ async function runSync(admin: any, token: string, cities: string[]) {
             scrape_token: token,
             since,
           });
+          if (d?.error || d?.success !== true) throw new Error(d?.error ?? 'scrape_not_successful');
           const count = Array.isArray(d?.results) ? d.results.length : 0;
           scraped += Number(d?.records_scraped ?? count) || 0;
           newRows += Number(d?.records_saved ?? 0) || 0;
@@ -125,6 +127,7 @@ async function runSync(admin: any, token: string, cities: string[]) {
           await admin.from('market_scrape_state').upsert({
             source: 'yad2', city, deal_type: deal, last_run_at: new Date().toISOString(),
           }, { onConflict: 'source,city,deal_type' });
+          throw e;
         }
       }
     }

@@ -6886,6 +6886,69 @@ export type Database = {
         }
         Relationships: []
       }
+      scraping_response_cache: {
+        Row: {
+          cache_key: string
+          fetched_at: string | null
+          lease_token: string | null
+          lease_until: string | null
+          payload: string | null
+        }
+        Insert: {
+          cache_key: string
+          fetched_at?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          payload?: string | null
+        }
+        Update: {
+          cache_key?: string
+          fetched_at?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
+          payload?: string | null
+        }
+        Relationships: []
+      }
+      scraping_usage_events: {
+        Row: {
+          created_at: string
+          duration_ms: number
+          feature: string
+          http_status: number | null
+          id: string
+          operation: string
+          outcome: string
+          response_bytes: number
+          target_hash: string | null
+          workspace_owner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number
+          feature: string
+          http_status?: number | null
+          id?: string
+          operation: string
+          outcome?: string
+          response_bytes?: number
+          target_hash?: string | null
+          workspace_owner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number
+          feature?: string
+          http_status?: number | null
+          id?: string
+          operation?: string
+          outcome?: string
+          response_bytes?: number
+          target_hash?: string | null
+          workspace_owner_id?: string | null
+        }
+        Relationships: []
+      }
       service_toggles: {
         Row: {
           config: Json | null
@@ -8459,6 +8522,10 @@ export type Database = {
       }
       claim_market_scrape_slot: { Args: { _source?: string }; Returns: Json }
       claim_monthly_free_credits: { Args: never; Returns: number }
+      claim_scraping_response: {
+        Args: { _key: string; _ttl_seconds: number }
+        Returns: Json
+      }
       claim_yad2_item_import: {
         Args: { _item: string; _url: string }
         Returns: Json
@@ -9046,6 +9113,7 @@ export type Database = {
         Args: { _listing_id: string }
         Returns: string
       }
+      get_scraping_usage_report: { Args: { _days?: number }; Returns: Json }
       get_sidebar_counts: { Args: { _ws: string }; Returns: Json }
       get_system_status: {
         Args: never

@@ -17,6 +17,7 @@
 import puppeteer from 'npm:puppeteer-core@22.15.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 
 const BD_WS = Deno.env.get('BRIGHTDATA_WS_ENDPOINT') ?? '';
 
@@ -106,6 +107,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const scoped = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+    const { data: { user } } = await scoped.auth.getUser();
+    if (!user) return json({ ok: true, statuses: {}, dates: {} });
     const body = await req.json().catch(() => ({} as any));
     const urls: string[] = Array.from(
       new Set(
@@ -120,7 +124,9 @@ Deno.serve(async (req) => {
     const probeList: string[] = [];
 
     for (const u of urls) {
-      if (!/^https?:\/\//i.test(u) || !/yad2\.co\.il/i.test(u) || !itemToken(u)) {
+      let valid = false;
+      try { const parsed = new URL(u); valid = parsed.protocol === 'https:' && /(^|\.)yad2\.co\.il$/i.test(parsed.hostname) && !parsed.username && !parsed.password && !!itemToken(u); } catch { /* invalid */ }
+      if (!valid) {
         statuses[u] = 'gone';
       } else {
         statuses[u] = 'unknown';
@@ -139,15 +145,17 @@ Deno.serve(async (req) => {
         Promise.race([p, new Promise<undefined>((r) => setTimeout(() => r(undefined), Math.max(0, ms)))]);
 
       const work = (async () => {
-        browser = await withDeadline(puppeteer.connect({ browserWSEndpoint: BD_WS }), 20_000);
-        if (!browser) throw new Error('connect timeout');
-
         const probeOne = async (u: string) => {
           if (remaining() < 15_000) return;
+          try {
+          const serialized = await cachedScrapingText('yad2_status', u, 86400, async () => {
+          if (!browser) {
+            browser = await trackScraping('yad2_status', 'browser_session', u, () => puppeteer.connect({ browserWSEndpoint: BD_WS }));
+          }
           const page = await browser.newPage();
           try {
             const navTimeout = Math.min(35_000, remaining() - 10_000);
-            const resp = await page.goto(u, { waitUntil: 'domcontentloaded', timeout: navTimeout });
+            const resp = await trackScraping('yad2_status', 'browser_navigation', u, () => page.goto(u, { waitUntil: 'domcontentloaded', timeout: navTimeout }), (r: any) => ({ status: r?.status?.() }));
             const httpStatus = resp?.status?.() ?? 0;
             // Radware serves a JS loader shell first; wait until the real ad
             // document replaces it, otherwise every URL looks identical.
@@ -165,24 +173,27 @@ Deno.serve(async (req) => {
             const pageTitle = await page.title().catch(() => '');
             if (/radware/i.test(pageTitle)) {
               statuses[u] = 'unknown';
-              console.log(`[yad2-ad-status] ${u} blocked by bot wall -> unknown`);
-              return;
+              console.log('[yad2-ad-status] source blocked');
+              throw new Error('source_blocked');
             }
             statuses[u] = classify(finalUrl, httpStatus, pageTitle, html);
             const d = extractDates(html);
             if (d.published_at || d.updated_at) dates[u] = d;
-            console.log(
-              `[yad2-ad-status] ${u} http=${httpStatus} final=${finalUrl} title=${JSON.stringify(pageTitle)} bytes=${html.length} -> ${statuses[u]}`,
-            );
+            return JSON.stringify({ status: statuses[u], dates: d });
           } catch (e) {
-            console.warn(`[yad2-ad-status] probe failed ${u}: ${(e as Error).message}`);
+            console.warn('[yad2-ad-status] probe failed');
             statuses[u] = 'unknown';
+            throw e;
           } finally {
             await page.close().catch(() => {});
           }
+          });
+          const cached = JSON.parse(serialized);
+          statuses[u] = cached.status; dates[u] = cached.dates;
+          } catch { statuses[u] = 'unknown'; }
         };
 
-        const CONCURRENCY = 2;
+        const CONCURRENCY = 1;
         for (let i = 0; i < probeList.length; i += CONCURRENCY) {
           if (remaining() < 15_000) break;
           await Promise.all(probeList.slice(i, i + CONCURRENCY).map(probeOne));
@@ -207,11 +218,7 @@ Deno.serve(async (req) => {
     const dateUrls = Object.keys(dates);
     if (dateUrls.length) {
       try {
-        const admin = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-          { auth: { persistSession: false } },
-        );
+        const admin = scoped;
         for (const u of dateUrls) {
           const token = itemToken(u);
           const { data: rows } = await admin

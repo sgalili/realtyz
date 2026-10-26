@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
     const { data: userData } = await authed.auth.getUser();
     const user = userData?.user;
     if (!user) return json({ ok: false, error: 'unauthorized' }, 401);
+    const { data: roles, error: roleError } = await authed.from('user_roles').select('role').eq('user_id', user.id);
+    if (roleError || !roles?.some(role => role.role === 'super_admin')) return json({ ok: false, error: 'forbidden' }, 403);
 
     // Account-level (admin/billing) token wins: only it can read the wallet.
     let token = (Deno.env.get('BRIGHTDATA_ADMIN_API_TOKEN') ?? Deno.env.get('BRIGHTDATA_API_TOKEN') ?? '').trim();

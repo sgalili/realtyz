@@ -5,6 +5,7 @@ import { CloudAutomationHealthCard } from './CloudAutomationHealthCard';
 
 const mocks = vi.hoisted(() => ({ role: { isSuperAdmin: false, loading: false, error: false }, invoke: vi.fn() }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => mocks.role }));
+vi.mock('@/components/admin/ScrapingUsageReport', () => ({ ScrapingUsageReport: () => null }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace-a' }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });

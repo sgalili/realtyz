@@ -18,6 +18,7 @@ import puppeteer from "npm:puppeteer-core@22.15.0";
 import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
 import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2Publisher.ts";
 import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
+import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -168,6 +169,7 @@ async function brightDataRequest(
   // with "stream error detected: unspecific protocol error" against it. Pin
   // the connection to HTTP/1.1 via a custom HTTP client when the runtime
   // exposes one; fall back to plain fetch otherwise.
+  const result = await trackScraping('yad2_extraction', 'rest', url, async () => {
   const res = await fetch("https://api.brightdata.com/request", {
     method: "POST",
     headers: {
@@ -188,6 +190,8 @@ async function brightDataRequest(
     }
   }
   return { status: res.status, body, bdHeaders };
+  }, value => ({ status: value.bdHeaders['x-brd-err-code'] ? 403 : value.status, bytes: new TextEncoder().encode(value.body).length }));
+  return result;
 }
 
 // Bright Data returns 200 with an EMPTY body and an `x-brd-err-code` header
@@ -1583,7 +1587,7 @@ async function scrapingBrowserHarvest(
   let browser: any = null;
   try {
     console.log("[yad2-unlocker] scraping-browser: connecting…");
-    browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
+    browser = await trackScraping('yad2_extraction', 'browser_session', pageUrl, () => puppeteer.connect({ browserWSEndpoint: BD_WS }));
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 2200 });
     // NOTE: Bright Data Scraping Browser forbids overriding accept-language
@@ -1591,7 +1595,7 @@ async function scrapingBrowserHarvest(
     // il-geolocated exit node instead.
 
     console.log(`[yad2-unlocker] scraping-browser: goto ${pageUrl}`);
-    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 35_000 });
+    await trackScraping('yad2_extraction', 'browser_navigation', pageUrl, () => page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 35_000 }), (response: any) => ({ status: response?.status?.() }));
     if (/captcha|bot manager|access denied/i.test(await page.title())) throw new Error("Yad2 requires browser verification; manual entry remains available");
     await page
       .waitForSelector('a[href*="/item/"], [data-testid="feed-item"], article', { timeout: 10_000 })
@@ -1625,13 +1629,14 @@ async function scrapingBrowserHarvest(
     }
     for (const f of feedTargets) {
       try {
-        const body: string = await page.evaluate(async (u: string) => {
+        const fetched = await trackScraping('yad2_extraction', 'browser_fetch', f, () => page.evaluate(async (u: string) => {
           const r = await fetch(u, {
             credentials: "include",
             headers: { Accept: "application/json, text/plain, */*" },
           });
-          return await r.text();
-        }, f);
+          return { status: r.status, body: await r.text() };
+        }, f), (value: any) => ({ status: value.status, bytes: new TextEncoder().encode(value.body).length }));
+        const body: string = fetched.body;
         console.log(
           `[yad2-unlocker] scraping-browser: in-page fetch ${f} bytes=${body?.length ?? 0} preview=${JSON.stringify((body ?? "").slice(0, 200))}`,
         );
@@ -2201,6 +2206,7 @@ Deno.serve(async (req) => {
       workspaceOwnerId = owner;
     }
     const cachedResponse = async (row: Scraped, servedFrom: string, fetchedAt: string | null) => {
+      await recordCacheHit('yad2_extraction', servedFrom, inputUrl);
       let listingId: string | null = null;
       // A cache read is not a new import: do not rewrite the workspace's edits,
       // reorder its photos, increment its version or restart the freshness clock.
@@ -2274,6 +2280,7 @@ Deno.serve(async (req) => {
     }
     if (!poolMode && !isItemUrl) {
       const pooled = await readMarketPool(admin, body, limit, inputUrl);
+      await recordCacheHit('yad2_search', 'pool', inputUrl);
       console.log(`[yad2-unlocker] pool mode → ${pooled.length} row(s), no external call`);
       return json({
         success: true,

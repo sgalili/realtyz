@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { BrightDataUsageDialog } from '@/components/BrightDataUsageDialog';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 
 type BalanceResponse = {
   ok?: boolean;
@@ -41,10 +42,11 @@ function readCache(): BalanceResponse | null {
 export function BrightDataHeroPill() {
   const [usageOpen, setUsageOpen] = useState(false);
   const { session } = useAuth();
+  const { isSuperAdmin, loading: roleLoading, error: roleError } = useUserRole();
   const { data, isLoading } = useQuery({
-    queryKey: ['brightdata-balance-hero'],
+    queryKey: ['brightdata-balance-hero', session?.user.id],
     // The edge function requires a signed-in caller; skip it while signed out.
-    enabled: !!session,
+    enabled: !!session && isSuperAdmin && !roleLoading && !roleError,
     staleTime: 5 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
     // Never poll while the tab is hidden/backgrounded — zero idle credit drain.
@@ -67,7 +69,7 @@ export function BrightDataHeroPill() {
   });
 
   const amount = fmt(data?.balance ?? data?.available);
-  if (!session) return null;
+  if (!session || !isSuperAdmin || roleLoading || roleError) return null;
   // The pill is permanent — with no value yet we still render it (as a
   // clickable usage/top-up shortcut) instead of disappearing.
 

@@ -1,5 +1,12 @@
 # Roadmap
 
+## Bright Data audit and optimization
+- [x] Add Super Admin report with feature/API/cache breakdowns, recorded app credits, provider costs kept distinct, daily activity and export; signed-in report verified.
+- [x] Instrument REST/browser calls; shared atomic non-sliding caches for developer/sections/status reads, deduplicated bounded developer batches; preserve daily item claims and scheduled slots and report failed scheduled responses truthfully.
+- [x] Add non-disruptive alerts and optional foreground live refresh; 14 tests passed, schema denies anonymous reports and client cache claims; build OK.
+- [ ] Exact historical provider costs and observed savings await available Bright Data billing detail and comparable post-deployment traffic; report currently marks costs unavailable.
+- [ ] Live CPU/memory utilization history awaits a backend resource-metrics interface; current health snapshot does not supply continuous utilization.
+
 ## Post composer controls
 - [x] Increase input fonts by 2px, retain bottom-left manual textarea resizing and remove content counter.
 - [x] Add touch-pointer thumbnail handles with keyboard fallback; show saved effective Facebook Page below setup heading without legacy token gating.

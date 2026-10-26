@@ -1,5 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.45.0';
 import { mergeProject, readPage } from './extract.ts';
+import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
+import { DEVELOPER_CACHE_SECONDS, MAX_DEVELOPER_PAGES, uniqueScrapingUrls } from '../_shared/scrapingPolicy.ts';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 Deno.serve(async req => {
@@ -31,10 +33,15 @@ Deno.serve(async req => {
   const fetchPage = async (url: string) => {
     const remaining = deadline - Date.now();
     if (remaining < 1500) throw new Error('import_deadline');
-    const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(Math.min(30000, remaining)) });
-    const html = await res.text();
-    if (!res.ok) { console.error('Developer import provider failure', { status: res.status, url, details: html.slice(0, 300) }); throw new Error(`provider_${res.status}`); }
-    if (/captcha|access denied|verify you are human/i.test(html) && !/__NEXT_DATA__|projectName/.test(html)) throw new Error('source_blocked');
+    const html = await cachedScrapingText('developer_import', url, DEVELOPER_CACHE_SECONDS, async () => {
+      const result = await trackScraping('developer_import', 'rest', url, async () => {
+        const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(Math.min(30000, remaining)) });
+        return { status: res.status, html: await res.text() };
+      }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.html).length }));
+      if (result.status >= 400) throw new Error(`provider_${result.status}`);
+      if (/captcha|access denied|verify you are human/i.test(result.html) && !/__NEXT_DATA__|projectName/.test(result.html)) throw new Error('source_blocked');
+      return result.html;
+    });
     return readPage(html, url);
   };
   try {
@@ -43,8 +50,9 @@ Deno.serve(async req => {
     // Follow only links belonging to projects discovered on the developer's page.
     // Never discover projects globally or mix related advertiser recommendations.
     const visited = new Set<string>([pageUrl.href]);
-    const pending = [...first.links];
+    const pending = uniqueScrapingUrls(first.links);
     for (let i = 0; i < pending.length; i++) {
+      if (visited.size >= MAX_DEVELOPER_PAGES) { pending.slice(i).forEach(url => { failed.push(url); failReasons[url] = 'batch_limit'; }); break; }
       const url = pending[i].split('?')[0];
       if (Date.now() >= deadline - 1500) { pending.slice(i).filter(item => !visited.has(item)).forEach(item => { failed.push(item); failReasons[item] = 'import_deadline'; }); break; }
       if (i > 0) await new Promise(r => setTimeout(r, 1500));
