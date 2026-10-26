@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
         status: ok ? "completed" : "failed",
         completed_at: ok ? new Date().toISOString() : null,
         processed_at: new Date().toISOString(),
-        last_error: ok ? null : String(body?.error ?? "פרסום בענן נכשל"),
+        last_error: ok ? null : String(body?.error ?? "פרסום נכשל"),
         runner_note: typeof body?.post_url === "string" ? body.post_url : null,
         claimed_by: null,
         claim_expires_at: null,
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
         .from("campaign_activity_queue")
         .update({
           status: "failed",
-          last_error: "אין חיבור פייסבוק שמור לענן – התחברו מחדש בהגדרות הפרסום",
+          last_error: "אין חיבור פייסבוק שמור – התחברו מחדש בהגדרות הפרסום",
           processed_at: nowIso,
         })
         .eq("id", row.id)
@@ -183,8 +183,8 @@ Deno.serve(async (req) => {
           claim_expires_at: null,
           scheduled_for: giveUp ? row.scheduled_for : new Date(Date.now() + 15 * 60_000).toISOString(),
           last_error: giveUp
-            ? `הפרסום בענן נכשל אחרי ${attempts} ניסיונות: ${String((e as Error).message)}`
-            : `שגיאת ענן זמנית: ${String((e as Error).message)}`,
+            ? `הפרסום נכשל אחרי ${attempts} ניסיונות: ${String((e as Error).message)}`
+            : `שגיאה זמנית: ${String((e as Error).message)}`,
         })
         .eq("id", row.id);
       results.push({ id: row.id, status: giveUp ? "failed" : "retry", error: String((e as Error).message) });
