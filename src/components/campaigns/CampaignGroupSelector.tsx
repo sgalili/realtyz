@@ -200,7 +200,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     <div className={cn("w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-background p-3 space-y-3", className)} dir="rtl">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <Users className="h-4 w-4 shrink-0 text-primary" />
-        <span className="min-w-0 break-words text-[15px] font-semibold text-foreground">פרסום בקבוצות פייסבוק</span>
+        <span className="min-w-0 break-words text-[15px] font-semibold text-foreground">{"\n"}</span>
         {groups.length > 0 && (
           <span className="text-[14px] text-muted-foreground">({selection.length}/{groups.length})</span>
         )}
