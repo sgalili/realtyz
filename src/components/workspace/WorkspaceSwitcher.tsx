@@ -89,6 +89,21 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   // Only office logos are inherited; profile photos remain independent.
   const squareLogo = resolveWorkspaceIdentity(activeWorkspace, settings ? { ...settings, landscape_logo_url: settings.logo_url ? null : settings.landscape_logo_url } : null, masterBrand ? { ...masterBrand, landscape_logo_url: masterBrand.logo_url ? null : masterBrand.landscape_logo_url } : null).logo;
 
+  const profilePic = (
+    <span
+      role="link"
+      tabIndex={0}
+      onClick={goProfile}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goProfile(e as unknown as React.MouseEvent); } }}
+      className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-slate-900 text-white ring-1 ring-slate-200 hover:opacity-90"
+      aria-label="הפרופיל שלי"
+      title="הפרופיל שלי"
+    >
+      {profileAvatarUrl ? <img src={profileAvatarUrl} alt="הפרופיל שלי" className="h-full w-full object-cover" referrerPolicy="no-referrer" /> : <User className="h-5 w-5" strokeWidth={1.5} />}
+    </span>
+  );
+
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
               <div className="truncate text-[8px] font-bold text-foreground">{card.title}</div>
@@ -113,24 +128,6 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
 
   return (
     <div ref={setPortalContainer} className={cn('flex w-full items-center gap-2', className)}>
-      <button
-        type="button"
-        onClick={goProfile}
-        className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-900 text-xs font-bold text-white ring-1 ring-slate-200 transition-opacity hover:opacity-90"
-        aria-label="הפרופיל שלי"
-        title="הפרופיל שלי"
-      >
-        {profileAvatarUrl ? (
-          <img
-            src={profileAvatarUrl}
-            alt="הפרופיל שלי"
-            className="h-full w-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <User className="h-5 w-5" strokeWidth={1.5} />
-        )}
-      </button>
 
       {multi ? (
         <Popover open={open} onOpenChange={setOpen}>
@@ -141,6 +138,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
               onClick={(e) => e.stopPropagation()}
               className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-background px-2.5 py-2 text-right transition-colors hover:bg-slate-50"
             >
+              {profilePic}
               {workspaceInfo}
               {workspaceLogoSquare}
               <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" />
@@ -204,6 +202,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
           onClick={goProfile}
           className="flex h-auto min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-2 text-right"
         >
+          {profilePic}
           {workspaceInfo}
           {workspaceLogoSquare}
         </Button>

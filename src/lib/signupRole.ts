@@ -52,8 +52,13 @@ export function clearPendingSignupRole() {
 const WELCOME_KEY = 'toraff-post-signup-welcome';
 export const POST_SIGNUP_WELCOME_EVENT = 'toraff:post-signup-welcome';
 /** Display-only flag: shows the one-time welcome/trust prompt after signup. */
-export function markPostSignupWelcome(role: SignupRole) {
-  try { window.localStorage.setItem(WELCOME_KEY, role); } catch { /* storage disabled */ }
+const WELCOME_DEAL_KEY = 'toraff-post-signup-welcome-deal';
+export function markPostSignupWelcome(role: SignupRole, dealType?: string) {
+  try {
+    window.localStorage.setItem(WELCOME_KEY, role);
+    if (dealType === 'sale' || dealType === 'rent') window.localStorage.setItem(WELCOME_DEAL_KEY, dealType);
+    else window.localStorage.removeItem(WELCOME_DEAL_KEY);
+  } catch { /* storage disabled */ }
   window.dispatchEvent(new CustomEvent(POST_SIGNUP_WELCOME_EVENT, { detail: role }));
 }
 export function readPostSignupWelcome(): SignupRole | null {
@@ -62,8 +67,11 @@ export function readPostSignupWelcome(): SignupRole | null {
     return v && v in SIGNUP_ROLE_LABELS ? (v as SignupRole) : null;
   } catch { return null; }
 }
+export function readPostSignupWelcomeDeal(): 'sale' | 'rent' | null {
+  try { const v = window.localStorage.getItem(WELCOME_DEAL_KEY); return v === 'sale' || v === 'rent' ? v : null; } catch { return null; }
+}
 export function clearPostSignupWelcome() {
-  try { window.localStorage.removeItem(WELCOME_KEY); } catch { /* storage disabled */ }
+  try { window.localStorage.removeItem(WELCOME_KEY); window.localStorage.removeItem(WELCOME_DEAL_KEY); } catch { /* storage disabled */ }
 }
 
 /**

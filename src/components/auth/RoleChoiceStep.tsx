@@ -63,7 +63,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         const { data, error } = await supabase.rpc('select_signup_user_type', { _type: 'broker' });
         if (error || !(data as { ok?: boolean } | null)?.ok) throw new Error(error?.message ?? INVALID_BROKER_LICENSE);
       } else await signupRpc('complete_sms_signup_details', { _type: selected, _details: details });
-      markPostSignupWelcome(selected);
+      markPostSignupWelcome(selected, selected === 'property_owner' ? details.deal_type : undefined);
       clearSmsSignup(); clearPendingSignupRole();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) }),
@@ -84,7 +84,8 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     <Button type="button" variant="ghost" size="icon" aria-label="סגירה" className="absolute left-4 top-4 h-10 w-10" onClick={() => navigate('/auth')}><X className="h-8 w-8" /></Button>
     <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" disabled={busy} onClick={() => { if (selected && !licenseSuspended) setSelected(null); else navigate('/auth'); }}><ArrowRight className="h-8 w-8" /></Button>
     <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
-    <h1 className="mb-8 mt-[100px] shrink-0 text-center text-[17px] !font-bold">{selected ? wording('השלם פרטים אישיים', 'השלימי פרטים אישיים', 'השלימו פרטים אישיים') : wording('מה סוג המשתמש שלך?', 'מה סוג המשתמשת שלך?', 'מה סוג החשבון שלך?')}</h1>
+    {!selected && <h1 className="mb-8 mt-[100px] shrink-0 text-center text-[17px] !font-bold">{wording('מה סוג המשתמש שלך?', 'מה סוג המשתמשת שלך?', 'מה סוג החשבון שלך?')}</h1>}
+    {selected && <div className="mt-[100px] shrink-0" aria-hidden />}
     {licenseSuspended && <div role="alert" className="mb-4 w-full max-w-lg border border-destructive p-3 text-destructive">{INVALID_BROKER_LICENSE}</div>}
     {!selected && <div role="group" aria-label="סוג משתמש" className="grid w-full max-w-lg grid-cols-2 gap-3">{signupTypes.map(type => <Button key={type} type="button" variant="outline" className="h-16 whitespace-normal text-lg font-bold" disabled={busy || (licenseSuspended && type !== 'broker')} onClick={() => { setSelected(type); setDetails({}); }}>{currentLabels[type]}</Button>)}</div>}
     {selected && <form onSubmit={submit} className="w-full max-w-lg space-y-3">
