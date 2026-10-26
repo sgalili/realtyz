@@ -1,10 +1,10 @@
 # Roadmap
 
 ## Signup and profile controls October 26
-- [ ] Two deal buttons, gender-aware details title, aligned city/property menus and visible last Other option.
-- [ ] Larger profile text, full-circle avatar with outside camera/trash, live completion notice and fixed office save.
-- [ ] Multi-select service areas with nationwide first; bold menu and publish text +2px with unchanged frame.
-- [ ] Focused tests and signed-in screen verification.
+- [x] Two deal buttons, gender-aware details title, aligned city/property menus and visible last Other option.
+- [x] Larger profile text, full-circle avatar with outside camera/trash, live completion notice and fixed office save.
+- [x] Multi-select service areas with nationwide first; bold menu and publish text +2px with unchanged frame.
+- [x] 24 focused tests; signed-in 446px profile, 94px avatar, 97x40 publish frame, visible Other and office save verified. Service areas saved/read back and original empty selection restored. New signup completion and uploaded-avatar deletion were not repeated.
 
 ## Signup celebration and reward polish
 - [x] Four lead icons and explicit-zero labels without restricted-price leaks; sidebar fonts -3px, publish text +3px, empty bell hidden, glyph sizes changed without frame changes.
