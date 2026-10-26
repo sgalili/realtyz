@@ -10,7 +10,7 @@ const ONE_YEAR = 60 * 60 * 24 * 365;
 
 function GenderAvatar({ gender }: { gender: 'male' | 'female' | null }) {
   return (
-    <svg viewBox="12 12 72 72" className="h-full w-full text-muted-foreground/40" fill="currentColor" aria-hidden="true">
+    <svg viewBox="12 12 72 72" className="!h-full !w-full text-muted-foreground/40" fill="currentColor" aria-hidden="true">
       {gender === 'female' ? (
         <>
           <path d="M48 14c-15 0-24 11-24 26 0 12-3 20-8 26 8 3 18 4 32 4s24-1 32-4c-5-6-8-14-8-26 0-15-9-26-24-26z" opacity="0.55" />

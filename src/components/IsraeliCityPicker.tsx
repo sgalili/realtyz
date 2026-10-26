@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Check, ChevronsUpDown, MapPin } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { SelectBox } from '@/components/ui/multi-select-controls';
 import { cn } from '@/lib/utils';
@@ -21,6 +20,7 @@ type Props = {
 };
 
 export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עיר', className, itemClassName, selectedValues, onSelectionChange, firstOptions = [] }: Props) {
+  const otherId = useId();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [otherText, setOtherText] = useState('');
@@ -51,6 +51,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
     if (selectedValues && onSelectionChange) onSelectionChange([...new Set([...selectedValues, v])]);
     else onChange(v);
     setOtherText('');
+    setEditingOther(false);
     setOpen(false);
     setSearch('');
   };
@@ -115,11 +116,11 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
         </div>
         </>}
         {editingOther && <div className="space-y-2 p-3 bg-muted/30">
-          <Label htmlFor="city-other" className={cn('text-sm text-muted-foreground', itemClassName)}>אחר (טקסט חופשי)</Label>
+          <Label htmlFor={otherId} className={cn('text-sm text-muted-foreground', itemClassName)}>אחר (טקסט חופשי)</Label>
           <div className="flex gap-1.5">
             <Input
               dir="rtl"
-              id="city-other"
+              id={otherId}
               autoFocus
               aria-label="עיר או אזור אחר"
               placeholder={showsOther ? value : 'הזן עיר / אזור...'}

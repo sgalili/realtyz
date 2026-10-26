@@ -430,6 +430,7 @@ function PersonalTab() {
 }
 
 function WorkspaceTab() {
+  const queryClient = useQueryClient();
   const identity = useAccountIdentity();
   const company = ['יזם', 'קבלן'].includes(identity.label);
   const { user } = useAuth();
@@ -578,6 +579,7 @@ function WorkspaceTab() {
       try { window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({ agency_name: agencyName, service_areas: serviceAreas })); } catch {}
       await refreshBrand();
       window.dispatchEvent(new Event('realtyz:profile-saved'));
+      void queryClient.invalidateQueries({ queryKey: ['service_areas', ownerId] });
       toast.success('פרטי המשרד נשמרו ושותפו לכל חברי המשרד');
     } catch (err: any) {
       toast.error(err?.message || 'שמירה נכשלה');
