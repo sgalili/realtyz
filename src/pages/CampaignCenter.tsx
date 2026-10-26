@@ -3506,7 +3506,7 @@ const ConfirmDispatchDialog = ({
   };
   const publishTargets = dedupePages(selectedPages.length > 0 ? selectedPages : pages.slice(0, 1));
   const useCloudPublishing = channel.id === 'facebook' && cloudConnection?.active === true &&
-    (publishToPage === false || publishTargets.length === 0);
+    (publishToPage === false || selectedProfileIds.length === 0 || publishTargets.length === 0);
   const selectedPage = publishTargets[0] || null;
   const profileLabel = selectedPage
     ? `${selectedPage.name}${selectedPage.username ? ` · @${selectedPage.username}` : ''}`
