@@ -1885,7 +1885,7 @@ const InlineComposer = ({
       if (ctrl.signal.aborted || e?.name === 'AbortError') return; // silent kill
       const status = e?.context?.status;
       const detail = await e?.context?.clone?.().json().catch(() => null);
-      toast.error(detail?.error || (status === 429 ? 'יותר מדי בקשות. נסו שוב בעוד רגע.' : status === 402 ? 'אין מספיק קרדיטים ליצירת הקמפיין.' : status === 404 ? 'הנכס לא נמצא בסביבת העבודה הפעילה. בחרו אותו מחדש.' : 'יצירת הטקסט נכשלה. נסו שוב.'));
+      toast.error(detail?.error || e?.message || (status === 429 ? 'יותר מדי בקשות. נסו שוב בעוד רגע.' : status === 402 ? 'אין מספיק קרדיטים ליצירת הקמפיין.' : status === 404 ? 'הנכס לא נמצא בסביבת העבודה הפעילה. בחרו אותו מחדש.' : 'יצירת הטקסט נכשלה. נסו שוב.'));
     } finally {
       releaseGeneration(ctrl);
       setGenerating(false);

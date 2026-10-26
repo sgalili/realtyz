@@ -727,7 +727,8 @@ ${EMOJI_BULLET_LAW}
     );
   } catch (e) {
     console.error("generate-content error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    const message = e instanceof Error ? e.message : e && typeof e === 'object' && 'message' in e ? String(e.message) : 'לא ניתן ליצור את הנוסח כרגע. נסו שוב מאוחר יותר.';
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -35,6 +35,7 @@ const DrawerContent = React.forwardRef<
         className,
       )}
       {...props}
+      data-site-dialog
     >
       <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
       {children}
@@ -49,7 +50,7 @@ const DrawerHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DrawerHeader.displayName = "DrawerHeader";
 
 const DrawerFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("mt-auto flex flex-col gap-2 p-4", className)} {...props} />
+  <div className={cn("mt-auto flex flex-row items-center justify-between gap-3 p-4", className)} {...props} data-dialog-actions />
 );
 DrawerFooter.displayName = "DrawerFooter";
 
