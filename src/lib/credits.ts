@@ -8,6 +8,8 @@ export const agorotToCredits = (agorot: number) => agorot / AGOROT_PER_CREDIT;
 export const ilsToCredits = (ils: number) => ils * CREDITS_PER_ILS;
 export const fmtCredits = (c: number) =>
   `${c.toLocaleString('he-IL', { maximumFractionDigits: Math.abs(c) < 1 ? 2 : 1 })} קרדיטים`;
+/** תצוגה מקוצרת לשורות המחירון: "קר'" במקום "קרדיטים". */
+export const fmtCreditsShort = (c: number) => fmtCredits(c).replace('קרדיטים', "קר'");
 export const fmtCompactCredits = (c: number, maximumFractionDigits = 1) => {
   const magnitude = Math.abs(c);
   const divisor = magnitude >= 1_000_000 ? 1_000_000 : magnitude >= 1_000 ? 1_000 : 1;
