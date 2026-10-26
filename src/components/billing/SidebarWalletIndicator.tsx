@@ -74,18 +74,18 @@ export function SidebarWalletIndicator() {
         title={locked ? 'נדרש תשלום' : 'ארנק ותשלומים'}
       >
         {locked ? <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" /> : <Wallet className="h-4 w-4 shrink-0 text-[hsl(var(--nav-wallet))]" />}
-        <span className={cn('min-w-0 whitespace-normal text-[11px] font-bold leading-tight', balance <= 0 && 'text-destructive')}>
+        <span className={cn('min-w-0 whitespace-normal text-[8px] font-bold leading-tight', balance <= 0 && 'text-destructive')}>
           {isLoading ? '…' : fmtCompactCredits(ilsToCredits(balance))}
         </span>
       </Button>
       {showContacts && <Button
         variant="outline"
         onClick={() => go(leadsPath)}
-        className="flex min-w-0 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-1 py-2 text-[11px] font-semibold transition-colors hover:border-primary"
+        className="flex min-w-0 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-1 py-2 text-[8px] font-semibold transition-colors hover:border-primary"
         aria-label={`לידים שהתקבלו: ${incoming}`}
         title="לידים שהתקבלו"
       >
-        <span aria-label="מספר לידים שהתקבלו" className={cn('flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[8px] font-bold', incoming > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground')}>{incoming > 99 ? '99+' : incoming}</span>
+        <span aria-label="מספר לידים שהתקבלו" className={cn('flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-[5px] font-bold', incoming > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground')}>{incoming > 99 ? '99+' : incoming}</span>
         <span className="min-w-0 whitespace-normal leading-tight">לידים</span>
       </Button>}
     </div>

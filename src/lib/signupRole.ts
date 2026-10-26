@@ -50,9 +50,11 @@ export function clearPendingSignupRole() {
 }
 
 const WELCOME_KEY = 'toraff-post-signup-welcome';
+export const POST_SIGNUP_WELCOME_EVENT = 'toraff:post-signup-welcome';
 /** Display-only flag: shows the one-time welcome/trust prompt after signup. */
 export function markPostSignupWelcome(role: SignupRole) {
   try { window.localStorage.setItem(WELCOME_KEY, role); } catch { /* storage disabled */ }
+  window.dispatchEvent(new CustomEvent(POST_SIGNUP_WELCOME_EVENT, { detail: role }));
 }
 export function readPostSignupWelcome(): SignupRole | null {
   try {

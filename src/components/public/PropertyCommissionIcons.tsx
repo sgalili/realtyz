@@ -86,7 +86,12 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     closing: source?.affiliate_tier4_amount == null && dcc?.value == null ? undefined : rawTier4 > 0,
   };
   const zeroTypes = Object.fromEntries(Object.entries(types).map(([key, active]) => [key, active === false])) as RewardTypes;
-  const display = tableRoyalties(types, tiers, !!user, level4Unlocked, showAll);
+  // Missing/redacted values must not become numeric zero through Number(... ?? 0).
+  const display = tableRoyalties(types, { ...tiers,
+    tier1: source?.affiliate_tier1_amount == null && !listing ? undefined : tiers.tier1,
+    tier2: source?.affiliate_tier2_amount == null && !listing ? undefined : tiers.tier2,
+    tier3: source?.affiliate_tier3_amount == null && !listing ? undefined : tiers.tier3,
+  }, !!user, level4Unlocked, showAll);
   if (!Object.values(display.types).some(Boolean) && !owned.data) return null;
   const closingLevel = typeof source?.closing_level === 'number' ? source.closing_level : typeof raw?.closing_level === 'number' ? raw.closing_level : 0;
   const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={(source?.reward_levels ?? raw?.reward_levels) as never} />;

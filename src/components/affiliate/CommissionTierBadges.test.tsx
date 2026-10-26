@@ -16,8 +16,8 @@ describe('commission visibility', () => {
     const { container } = render(<CommissionTierBadges tiers={tiers} />);
     expect([...container.querySelectorAll('[data-commission-icons] span[title]')].map(row => row.getAttribute('title'))).toEqual(['שדות מטופס בעמוד נחיתה', 'סינון בווטסאפ', 'שיחת טלפון', 'סגירת עסקה']);
     if (role === 'guest') {
-      // Signed-out visitors keep the grayed icons without any text labels.
-      expect(screen.queryByText('ללא עמלה')).toBeNull();
+      // Explicit zeros have labels; restricted amounts remain hidden.
+      expect(screen.getByText('ללא עמלה')).toBeTruthy();
       expect(screen.queryByText('למתווכים בלבד')).toBeNull();
     } else {
       // Signed-in users see the labels next to the grayed icons.
@@ -44,14 +44,14 @@ describe('commission visibility', () => {
     render(<CommissionTierBadges tiers={tiers} />);
     expect(screen.getByLabelText('סגירת עסקה')).toBeTruthy();
     expect(screen.queryByText(/720/)).toBeNull();
-    expect(screen.queryByTitle(/שיחת טלפון/)).toBeNull();
+    expect(screen.getByTitle(/שיחת טלפון/)).toBeTruthy();
     expect(screen.getByTitle(/שדות מטופס בעמוד נחיתה/)).toBeTruthy();
     expect(screen.getByTitle(/סינון בווטסאפ/)).toBeTruthy();
   });
-  it('shows only a grayed icon where no lead price is displayed', () => {
+  it('shows the explicit zero label without exposing restricted amounts', () => {
     access.guest = true;
     const { container } = render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={{ form: false, whatsapp: false, phone: true, closing: false }} />);
-    expect(screen.queryByText('ללא עמלה')).toBeNull();
+    expect(screen.getByText('ללא עמלה')).toBeTruthy();
     expect(screen.queryByText('למתווכים בלבד')).toBeNull();
     expect(container.querySelector('span[title="שיחת טלפון"].lead-no-fee')).toBeTruthy();
     // The restricted closing stays a gray trophy that still explains licensing.

@@ -28,6 +28,7 @@ import ResetPassword from "./pages/ResetPassword";
 import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
 import { applyPendingSignupRole, readPostSignupWelcome } from '@/lib/signupRole';
 import { PostSignupWelcome } from '@/components/onboarding/PostSignupWelcome';
+import { useEarningsFeedback } from '@/hooks/useEarningsFeedback';
 import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
@@ -378,6 +379,8 @@ function AuthRoute() {
   return <Auth />;
 }
 
+function EarningsFeedback() { useEarningsFeedback(); return null; }
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <DirectionProvider dir="rtl">
@@ -386,6 +389,7 @@ const App = () => (
           <RouteScrollRestoration />
           <AuthProvider>
           <PersonalLanguageProvider>
+          <EarningsFeedback />
           <Sonner />
             <WorkspaceProvider>
             <WhiteLabelProvider>
