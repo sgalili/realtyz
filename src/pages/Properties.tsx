@@ -134,14 +134,16 @@ type SavedState = {
 };
 
 
-function loadCache(): SavedState | null {
+// The cache is namespaced per user AND per active workspace, so a search done
+// in one office can never resurface inside another one.
+function loadCache(scope: string): SavedState | null {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
+    const raw = sessionStorage.getItem(`${CACHE_KEY}:${scope}`);
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
-function saveCache(s: SavedState) {
-  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+function saveCache(s: SavedState, scope: string) {
+  try { sessionStorage.setItem(`${CACHE_KEY}:${scope}`, JSON.stringify(s)); } catch { /* ignore */ }
 }
 
 export default function Properties() {
@@ -167,10 +169,11 @@ export default function Properties() {
       return (count as number) ?? 0;
     },
   });
-  const cached = useMemo(() => loadCache(), []);
+  const cacheScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'anon';
+  const cached = useMemo(() => loadCache(cacheScope), [cacheScope]);
 
-  const [q, setQ] = useState<string>('');
-  const [listingType, setListingType] = useState<ListingType | 'all'>('all');
+  const [q, setQ] = useState<string>(cached?.q ?? '');
+  const [listingType, setListingType] = useState<ListingType | 'all'>(cached?.listingType ?? 'all');
   const [city, setCity] = useState<string>(cached?.city ?? 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>(cached?.propertyType ?? 'all');
   const [rooms, setRooms] = useState<string>(cached?.rooms ?? 'any');
@@ -181,7 +184,7 @@ export default function Properties() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
-  const [results, setResults] = useState<UnifiedResult[]>([]);
+  const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const [sourceStatus, setSourceStatus] = useState<Record<string, SourceInfo>>({});
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
@@ -194,7 +197,25 @@ export default function Properties() {
   const [searching, setSearching] = useState(false);
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
-  const [hasSearched, setHasSearched] = useState<boolean>(false);
+  const [hasSearched, setHasSearched] = useState<boolean>(cached?.hasSearched ?? false);
+
+  // Reset every remembered search field when the active workspace changes, so
+  // nothing from the previous office stays in the form.
+  const prevScopeRef = useRef(cacheScope);
+  useEffect(() => {
+    if (prevScopeRef.current === cacheScope) return;
+    prevScopeRef.current = cacheScope;
+    const c = loadCache(cacheScope);
+    setQ(c?.q ?? '');
+    setListingType(c?.listingType ?? 'all');
+    setCity(c?.city ?? 'כל הערים');
+    setPropertyType(c?.propertyType ?? 'all');
+    setRooms(c?.rooms ?? 'any');
+    setMaxPrice(c?.maxPrice ?? PRICE_MAX);
+    setAreaMin(c?.areaMin ?? '');
+    setResults(c?.results ?? []);
+    setHasSearched(c?.hasSearched ?? false);
+  }, [cacheScope]);
   // True when the current table is the default pool shown because the user's
   // own search returned nothing. The grid is never allowed to be empty.
   const [showingFallback, setShowingFallback] = useState(false);
@@ -543,8 +564,8 @@ export default function Properties() {
   // Persist the full search state (criteria + results) on every change, so
   // navigating away and back restores the exact same table.
   useEffect(() => {
-    saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results: results.slice(0, 100) });
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results]);
+    saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results: results.slice(0, 100) }, cacheScope);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results, cacheScope]);
 
 
   // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,

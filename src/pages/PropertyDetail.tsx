@@ -2,6 +2,7 @@ import { PriceInput } from "@/components/ui/price-input";
 import { preserveListingFeatures } from '@/lib/adRecovery';
 import { useState, useEffect, useRef } from 'react';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { returnState } from "@/lib/returnNav";
 import { ensureMetadataImport, isListingMetadataImported } from '@/lib/propertyFullSync';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
@@ -203,7 +204,9 @@ type EditableFields = {
 };
 
 
-const draftStorageKey = (id: string | undefined) => (id ? `realtyz:property-draft:${id}` : null);
+// Draft keys are namespaced per workspace as well as per property, so an
+// in-progress edit from one office can never be restored inside another.
+const draftStorageKey = (id: string | undefined, scope = 'anon') => (id ? `realtyz:property-draft:${scope}:${id}` : null);
 
 async function invokeWithTimeout<T>(
   fnName: string,
@@ -229,6 +232,7 @@ async function invokeWithTimeout<T>(
 
 export default function PropertyDetail() {
   const { connected: homelyConnected } = useHomelyConnection();
+  const draftScope = useActiveWorkspaceOwnerId() ?? 'anon';
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -642,7 +646,7 @@ export default function PropertyDetail() {
         photos: dbPhotos,
         photo_url_draft: '',
       };
-      const key = draftStorageKey(id);
+      const key = draftStorageKey(id, draftScope);
       let restored: EditableFields | null = null;
       if (key) {
         try {
@@ -660,16 +664,16 @@ export default function PropertyDetail() {
       setInitialFormSnapshot(JSON.stringify(base));
     }
     if (!editMode) setForm(null);
-  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, dbPhotos, id]);
+  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, dbPhotos, id, draftScope]);
 
   // Persist current draft on every change, keyed to property id.
   useEffect(() => {
-    const key = draftStorageKey(id);
+    const key = draftStorageKey(id, draftScope);
     if (!key || !editMode || !form) return;
     try {
       window.localStorage.setItem(key, JSON.stringify(form));
     } catch { /* quota / privacy mode — silently skip */ }
-  }, [form, editMode, id]);
+  }, [form, editMode, id, draftScope]);
 
   // Warn on tab close / hard navigation while form is dirty.
   useEffect(() => {
@@ -683,7 +687,7 @@ export default function PropertyDetail() {
   }, [isDirty]);
 
   const clearDraft = () => {
-    const key = draftStorageKey(id);
+    const key = draftStorageKey(id, draftScope);
     if (key) {
       try { window.localStorage.removeItem(key); } catch { /* noop */ }
     }
