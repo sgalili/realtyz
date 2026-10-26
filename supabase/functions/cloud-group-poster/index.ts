@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
       group_url: payload.group_url ?? payload.groupUrl ?? row.target_ref ?? null,
       group_name: row.target_label ?? payload.group_name ?? null,
       text: payload.body ?? payload.text ?? "",
-      images: Array.isArray(payload.images) ? payload.images : [],
+      images: Array.isArray(payload.images) ? payload.images : Array.isArray(payload.media_urls) ? payload.media_urls : [],
       first_comment: payload.first_comment ?? payload.firstComment ?? null,
       session_cookies: session.cookies,
       user_agent: session.user_agent,
