@@ -23,6 +23,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [manualUrl, setManualUrl] = useState('');
   const [connected, setConnected] = useState(false);
   const stop = () => {
     if (timer.current !== null) window.clearInterval(timer.current);
