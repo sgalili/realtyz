@@ -1,5 +1,11 @@
 # Roadmap
 
+## Signup and profile controls October 26
+- [ ] Two deal buttons, gender-aware details title, aligned city/property menus and visible last Other option.
+- [ ] Larger profile text, full-circle avatar with outside camera/trash, live completion notice and fixed office save.
+- [ ] Multi-select service areas with nationwide first; bold menu and publish text +2px with unchanged frame.
+- [ ] Focused tests and signed-in screen verification.
+
 ## Signup celebration and reward polish
 - [x] Four lead icons and explicit-zero labels without restricted-price leaks; sidebar fonts -3px, publish text +3px, empty bell hidden, glyph sizes changed without frame changes.
 - [x] Immediate type-specific welcome, seven-second full-height falling confetti and generated ElevenLabs sounds; server-configurable atomic signup bonus (initial default 500 credits) read from the actual grant. Legacy intros no longer cover the welcome.
