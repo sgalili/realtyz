@@ -1971,3 +1971,8 @@ html.activity-drawer-open main[aria-label="רשימת נכסים"] {
 :is([data-site-dialog], [data-site-popup]) [class*="text-[44px]"] { font-size: calc(44px + var(--dialog-font-increase)) !important; }
 :is([data-site-dialog], [data-site-popup]) [class*="text-[52px]"] { font-size: calc(52px + var(--dialog-font-increase)) !important; }
 :is([data-site-dialog], [data-site-popup]) [class*="text-[74px]"] { font-size: calc(74px + var(--dialog-font-increase)) !important; }
+
+/* Published site: keep two-axis scrolling but hide the horizontal bar. */
+.hide-x-scrollbar { scrollbar-width: none; }
+.hide-x-scrollbar::-webkit-scrollbar:horizontal { height: 0; }
+.hide-x-scrollbar::-webkit-scrollbar { height: 0; }
