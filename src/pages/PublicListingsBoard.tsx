@@ -367,15 +367,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     const toggle = () => {
                       if (open) { setExpandedId(null); return; }
                       setExpandedId(card.id);
-                      // Scroll the expanded card's top to the top of the view.
-                      // A short delay lets the expansion animation start first,
-                      // otherwise the smooth scroll is cancelled by the reflow.
-                      // The pinned header row covers the top of the scroller, so the row
-                      // needs its own scroll margin to land fully below it.
-                      const head = tableWrapRef.current?.querySelector('thead') as HTMLElement | null;
-                      const row = document.getElementById(`row-${card.id}`);
-                      if (row) row.style.scrollMarginTop = `${(head?.offsetHeight ?? 0) + 6}px`;
-                      window.setTimeout(() => row?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+                      // AnimatedExpansion reveals the summary and details together once
+                      // their final height is known; do not start a competing scroll here.
                     };
                     return [
                       <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className={cn('cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', dragGhost?.overId === card.id && 'bg-primary/10 ring-1 ring-inset ring-primary/50')}>

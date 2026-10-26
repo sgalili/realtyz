@@ -16,6 +16,20 @@ export function revealExpanded(content: Element | null) {
     }
   }
   const vertical = () => {
+  // An expanded table property belongs to the summary row immediately above it.
+  // Reveal that row, not just the owner's card, and scroll only the table owner.
+  const summary = card.closest('tr')?.previousElementSibling;
+  const tableScroll = card.closest<HTMLElement>('[data-table-scroll]');
+  if (summary?.matches('[data-row-id]') && tableScroll) {
+    const head = card.closest('table')?.querySelector('thead');
+    const visibleTop = Math.max(
+      tableScroll.getBoundingClientRect().top + tableScroll.clientTop,
+      head?.getBoundingClientRect().bottom ?? 0,
+    );
+    const delta = summary.getBoundingClientRect().top - visibleTop - 8;
+    tableScroll.scrollTo({ top: Math.max(0, tableScroll.scrollTop + delta), behavior: reducedH ? 'auto' : 'smooth' });
+    return;
+  }
   // Sticky table headings cover the top of the card; keep it fully below them.
   const head = card.closest('table')?.querySelector('thead');
   const headBottom = head ? Math.max(0, head.getBoundingClientRect().bottom) : 0;
