@@ -1,5 +1,5 @@
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Copy, Handshake, Link2, Mail, Wallet, RefreshCw } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import { useReferralProgram } from '@/hooks/useReferralProgram';
 import { referralLink } from '@/lib/referralAttribution';
 import { fmtCredits } from '@/lib/credits';
 import { INVITE_BONUS_DEFAULTS, useInviteBonusSettings } from '@/hooks/useInviteBonusSettings';
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
 
 const STEPS = [
   { icon: Link2, label: 'שולחים קישור', color: 'text-deal-blue', surface: 'bg-deal-blue/10' },
@@ -16,7 +17,24 @@ const STEPS = [
 
 export function AffiliateInviteCard() {
   const { data, isLoading, isError, refetch } = useReferralProgram();
+  // Fixed share bar sits 7px above the fixed auth footer (footer bottom edge is 10px above viewport bottom).
+  const [barBottom, setBarBottom] = useState(38);
+  useEffect(() => {
+    const footer = document.querySelector('footer.auth-page-footer');
+    if (!footer) return;
+    const update = () => setBarBottom(10 + footer.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(footer);
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
   const bonus = useInviteBonusSettings().data ?? INVITE_BONUS_DEFAULTS;
+  const { gender } = usePersonalLanguage();
+  const referrerLabel = gender === 'female' ? 'לך · המזמינה' : 'לך · המזמין';
   const link = data?.code ? referralLink(data.code) : '';
   const message = `בואו ל־TORAFF! אחרי העסקה המאושרת הראשונה שלכם, תקבלו ${fmtCredits(bonus.friend_credits)} לארנק ואני אקבל ${fmtCredits(bonus.referrer_credits)}. מצטרפים דרך הקישור שלי: ${link}`;
   const copy = async () => {
@@ -25,7 +43,7 @@ export function AffiliateInviteCard() {
       await navigator.clipboard.writeText(link);
       toast.success('קישור ההזמנה הועתק');
     } catch {
-      toast.error('לא ניתן להעתיק כרגע. אפשר לבחור ולהעתיק את הקישור שמופיע כאן.');
+      toast.error('לא ניתן להעתיק כרגע. נסו שוב.');
     }
   };
   const metrics = [
@@ -52,14 +70,14 @@ export function AffiliateInviteCard() {
       </div>
       <div className="grid grid-cols-2 border-y border-border py-6 text-center">
         <div className="space-y-1 border-e border-border">
-          <p className="text-sm text-muted-foreground">לכם · המזמין</p>
+          <p className="text-sm text-muted-foreground">{referrerLabel}</p>
           <p className="text-4xl font-extrabold text-deal-blue"><bdi>{bonus.referrer_credits.toLocaleString('en-US')}</bdi></p>
-          <p className="text-sm">קרדיטים לארנק</p>
+          <p className="text-base">קרדיטים לארנק</p>
         </div>
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">לחבר · המוזמן</p>
           <p className="text-4xl font-extrabold text-success"><bdi>{bonus.friend_credits.toLocaleString('en-US')}</bdi></p>
-          <p className="text-sm">קרדיטים לארנק</p>
+          <p className="text-base">קרדיטים לארנק</p>
         </div>
       </div>
       <div className="space-y-3">
@@ -69,12 +87,14 @@ export function AffiliateInviteCard() {
       {!!data?.total && <div className="grid grid-cols-3 gap-2 text-center">
         {metrics.map((m) => <div key={m.label} className="min-w-0 space-y-1"><p className="text-xl font-bold tabular-nums">{m.value}</p><p className="text-sm text-muted-foreground">{m.label}</p></div>)}
       </div>}
-      <div className="sticky bottom-0 z-10 -mx-2 space-y-3 border-t border-border bg-background px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:-mx-6 sm:px-6">
-        <Input readOnly value={isLoading ? 'טוען…' : link || 'לא נוצר קישור'} className="bg-muted/30 text-center font-mono text-xs" dir="ltr" aria-label="קישור ההזמנה האישי" onFocus={(e) => e.currentTarget.select()} />
-        <Button className="w-full gap-2" size="lg" disabled={!link} onClick={() => void copy()}><Copy className="h-5 w-5" />העתק קישור אישי</Button>
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" className="gap-2" disabled={!link} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><FaWhatsapp className="h-5 w-5 text-social-whatsapp" />וואטסאפ</Button>
-          <Button variant="outline" className="gap-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־TORAFF · בונוס כפול')}&body=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 text-social-email" />אימייל</Button>
+      <div aria-hidden="true" className="h-[63px]" />
+      <div className="fixed inset-x-0 z-20 border-t border-border bg-background" style={{ bottom: `${barBottom}px` }}>
+        <div className="mx-auto w-full max-w-2xl px-2 pt-3 pb-[7px] sm:px-6">
+          <div className="grid grid-cols-3 gap-3">
+            <Button className="gap-2 px-2" size="lg" disabled={!link} onClick={() => void copy()} aria-label="העתק קישור אישי"><Copy className="h-5 w-5 shrink-0" /><span className="truncate">העתק קישור</span></Button>
+            <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><FaWhatsapp className="h-5 w-5 shrink-0 text-social-whatsapp" />וואטסאפ</Button>
+            <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־TORAFF · בונוס כפול')}&body=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 shrink-0 text-social-email" />אימייל</Button>
+          </div>
         </div>
       </div>
     </section>
