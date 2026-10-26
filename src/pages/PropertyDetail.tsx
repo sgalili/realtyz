@@ -203,7 +203,9 @@ type EditableFields = {
 };
 
 
-const draftStorageKey = (id: string | undefined) => (id ? `realtyz:property-draft:${id}` : null);
+// Draft keys are namespaced per workspace as well as per property, so an
+// in-progress edit from one office can never be restored inside another.
+const draftStorageKey = (id: string | undefined, scope = 'anon') => (id ? `realtyz:property-draft:${scope}:${id}` : null);
 
 async function invokeWithTimeout<T>(
   fnName: string,
