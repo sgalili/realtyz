@@ -17,6 +17,21 @@ const STEPS = [
 
 export function AffiliateInviteCard() {
   const { data, isLoading, isError, refetch } = useReferralProgram();
+  // Fixed share bar sits 7px above the fixed auth footer (footer bottom edge is 10px above viewport bottom).
+  const [barBottom, setBarBottom] = useState(38);
+  useEffect(() => {
+    const footer = document.querySelector('footer.auth-page-footer');
+    if (!footer) return;
+    const update = () => setBarBottom(10 + footer.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(footer);
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
   const bonus = useInviteBonusSettings().data ?? INVITE_BONUS_DEFAULTS;
   const { gender } = usePersonalLanguage();
   const referrerLabel = gender === 'female' ? 'לך · המזמינה' : 'לך · המזמין';
