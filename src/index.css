@@ -1753,7 +1753,6 @@
 .closing-fee { --closing-current: var(--closing-low); }
 
 .pricing-editor { font-size: 16px; line-height: 1.5; }
-.pricing-editor .closing-fee { border-inline-start: 3px solid hsl(var(--closing-current)); }
 .pricing-editor #wizard-price { min-width: 0; max-width: 100%; }
 .pricing-editor > div:first-child { grid-template-columns: minmax(0,1fr) auto; }
 .pricing-editor > div:first-child > span:first-child { grid-column: 1 / -1; }
