@@ -1,5 +1,11 @@
 # Roadmap
 
+## Signup details and gender October 26
+- [x] Match signup language to chosen gender; extra logo space, back controls, smaller footer and matching headings.
+- [x] Separate type picker from details; city and property menus, owner sale/rent, developer import link, license placeholder without signup disclosures; owner deal persists through constrained RPC.
+- [x] Fix unbound RPC causing undefined rest error; 37 tests pass, phone UI navigation and live authenticated rejection/friendly error verified without changing the real user's identity; build OK.
+- [ ] Successful new-account signup readback waits for a recipient-controlled test account with verified phone; existing user's identity was not changed.
+
 ## Profile gender and personalized language
 - [x] Rename gender selectors globally to גבר/אישה; keep canonical male/female in existing constrained profiles.gender, remove metadata/cache fallback.
 - [x] Add auth-user-keyed language context, shared authored-control localization and profile preference controls including when viewing another workspace; read back saved rows before context update.
