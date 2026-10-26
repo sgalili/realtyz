@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ owner: 'workspace-a', state: vi.fn(), invoke: vi.fn(), sync: vi.fn(), navigate: vi.fn() }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => mocks.owner }));
+vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data: null }) }));
 vi.mock('@/lib/cloudSession', () => ({ getCloudSessionState: mocks.state }));
 vi.mock('@/lib/cloudGroupDiscovery', () => ({ fetchGroupsViaCloud: mocks.sync }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
