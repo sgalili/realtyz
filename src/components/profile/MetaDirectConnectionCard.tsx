@@ -326,7 +326,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
       strip();
       clearPendingOAuth();
       finishConnecting();
-      toast.message('בחר את עמוד הפרסום', { description: 'לא הצלחנו לבחור עמוד אוטומטית.' });
+      toast.message('בחרו את עמוד הפייסבוק לפרסום');
       void loadPageOptions();
       return;
     }

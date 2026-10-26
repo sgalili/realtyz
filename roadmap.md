@@ -1,5 +1,11 @@
 # Roadmap
 
+## Facebook Page selection and bounded group scanning
+- [x] Reuse server Graph managed-Page discovery and authorized selection under campaign header; OAuth return opens existing Page picker, name/photo refresh on return.
+- [x] Bound full group scan including hung initial/status requests to 60 seconds; cancel on discovery close/workspace change, preserve structured server failures.
+- [x] Center group headings with official Facebook brand icon and clean manual-link placeholders; 18 focused tests and build OK.
+- [ ] Live Graph Page selection and successful group scan await an authorized managed Page and functioning Facebook session in the selected workspace.
+
 ## Final post footer and composer alignment
 - [x] Verified existing +3px modal scale (21px heading, opposite-side actions) and two-credit confirmation regression tests without adding another increase or making a new charge.
 - [x] Gallery tile and thumbnail image edges match exactly at 411px; clockwise 45-degree handles verified. Telephone emoji cleanup covers generation, polish, variations and final publishing.
