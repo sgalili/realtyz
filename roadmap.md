@@ -1,9 +1,10 @@
 # Roadmap
 
 ## Final post footer and composer alignment
-- [ ] Verify existing +3px modal scale and two-credit confirmation repair without adding another increase.
-- [ ] Align gallery tile with thumbnails; preserve clockwise 45-degree drag handles and remove telephone emojis from generated posts.
-- [ ] Append a server-only, durable and retry-stable 10-sentence round-robin footer only at publication; test and deploy publishing paths.
+- [x] Verified existing +3px modal scale (21px heading, opposite-side actions) and two-credit confirmation regression tests without adding another increase or making a new charge.
+- [x] Gallery tile and thumbnail image edges match exactly at 411px; clockwise 45-degree handles verified. Telephone emoji cleanup covers generation, polish, variations and final publishing.
+- [x] Added service-only durable retry-keyed 10-sentence final footer for Graph Facebook/Instagram, cloud/claimed group posts and YouTube; deployed seven functions. Nineteen tests pass; client allocation/read denied; rotation 0–9–0 verified. No post published.
+- [ ] External final-post readback awaits an explicitly approved real publication and a usable target connection; no Facebook or YouTube post sent during verification.
 
 ## Dialog readability and extra draft approval
 - [x] Increase shared modal/pop-up typography by 3px and place Cancel/Submit on one row at opposite ends; mobile confirmation verified at 411x802 with 21px heading, 17px body/buttons and opposite aligned actions.
