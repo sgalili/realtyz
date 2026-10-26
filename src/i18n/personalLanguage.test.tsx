@@ -43,6 +43,19 @@ describe('personal gender rules', () => {
     const broken = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: 'unavailable' }) }) }) }) };
     expect(await recipientProfileGender(broken, 'recipient-user')).toBeNull();
   });
+  it('does not reuse another account preference after switching accounts', async () => {
+    const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={cache}><PersonalLanguageProvider>{children}</PersonalLanguageProvider></QueryClientProvider>;
+    const { result, rerender } = renderHook(usePersonalLanguage, { wrapper });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+    expect(result.current.gender).toBe('female');
+    mocks.userId = 'second-user'; mocks.gender = 'male';
+    rerender();
+    expect(result.current.gender).not.toBe('female');
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+    expect(result.current.gender).toBe('male');
+    expect(mocks.ids).toContain('second-user');
+  });
   it('looks up normalized phone variants, not the sender gender', async () => {
     const reader = { from: () => ({ select: () => ({ eq: (_field: string, phone: string) => ({ maybeSingle: async () => ({ data: phone === '054-1234567' ? { gender: 'female' } : null }) }) }) }) };
     expect(await profileGenderByAddress(reader, 'phone', '+972541234567')).toBe('female');

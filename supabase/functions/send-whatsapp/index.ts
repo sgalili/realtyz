@@ -1003,6 +1003,13 @@ Deno.serve(async (req) => {
             ownerId: routing.owner_id,
             overrides: parsed.data.template_variables,
           });
+          if (bearer === SERVICE_ROLE_KEY && Object.values(values).some(value => typeof value === 'string' && value.includes('{{gender:'))) {
+            const recipient = normalizePhone(rawPhone);
+            const gender = recipient ? await profileGenderByAddress(admin, 'phone', recipient) : null;
+            for (const key of Object.keys(values)) {
+              if (typeof values[key] === 'string') values[key] = personalizeMessage(values[key], gender);
+            }
+          }
           const built = buildTemplateComponents(bodyText, values);
           if (built.missing.length) {
             return json({

@@ -1,10 +1,10 @@
 # Roadmap
 
 ## Profile gender and personalized language
-- [ ] Rename gender labels globally and keep canonical profile storage.
-- [ ] Add profile-backed personal language context and instant saved-preference refresh.
-- [ ] Share gender-aware helper across UI and automated recipient messaging without modifying approved template text.
-- [ ] Test profile save/reload, account isolation and male/female/unknown phrasing; verify live profile flow.
+- [x] Rename gender selectors globally to גבר/אישה; keep canonical male/female in existing constrained profiles.gender, remove metadata/cache fallback.
+- [x] Add auth-user-keyed language context, shared authored-control localization and profile preference controls including when viewing another workspace; read back saved rows before context update.
+- [x] Share explicit male/female/neutral helper for controls, selected toasts, notifications and email; SMS/WA system slots query actual recipient profile, fixed approved WhatsApp text untouched. Existing neutral text and user/property content stay unchanged; arbitrary legacy sentences are not machine-rewritten.
+- [x] Verified real female save, immediate command change, reload persistence, male switch and original preference restoration; focused tests cover recipient resolution/account isolation. External message delivery not exercised; no message sent.
 
 ## Platform alignment October 26
 - [x] Auth spacing, bold larger fields, ten-digit formatted mobile and reversed OTP boxes; keep real server OTP verification, no universal bypass.
