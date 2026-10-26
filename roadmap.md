@@ -1,5 +1,10 @@
 # Roadmap
 
+## Signup details and gender October 26
+- [ ] Match signup language to chosen gender; extra logo space, back controls, smaller footer and matching headings.
+- [ ] Separate type picker from details; city and property menus, owner sale/rent, developer import link, license placeholder without signup disclosures.
+- [ ] Fix signup saving error and verify completion, navigation and field validation.
+
 ## Profile gender and personalized language
 - [x] Rename gender selectors globally to גבר/אישה; keep canonical male/female in existing constrained profiles.gender, remove metadata/cache fallback.
 - [x] Add auth-user-keyed language context, shared authored-control localization and profile preference controls including when viewing another workspace; read back saved rows before context update.
