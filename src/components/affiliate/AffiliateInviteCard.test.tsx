@@ -6,7 +6,7 @@ vi.mock('@/hooks/useInviteBonusSettings', () => ({ INVITE_BONUS_DEFAULTS: { refe
 const personalGender = { value: null as 'male' | 'female' | null };
 vi.mock('@/i18n/personalLanguage', async () => {
   const actual = await vi.importActual<typeof import('@/i18n/personalLanguage')>('@/i18n/personalLanguage');
-  return { ...actual, usePersonalLanguage: () => ({ gender: personalGender.value, command: () => undefined }) };
+  return { ...actual, usePersonalLanguage: () => ({ gender: personalGender.value, command: (t?: string) => t }) };
 });
 
 vi.mock('@/hooks/useReferralProgram', () => ({ useReferralProgram: () => ({ data: { code: 'INVITE7', total: 0, earned_ils: 0, verified_deals: 0 }, isLoading: false, isError: false }) }));
