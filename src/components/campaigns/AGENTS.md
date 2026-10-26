@@ -1,4 +1,5 @@
 # Campaign rules
+- Composer media order uses a shared immutable reorder helper with touch pointer handles; text auto-grows while retaining manual vertical resizing. Page header identity uses the effective workspace binding, not token health or cloud-profile identity. Why: mobile editing without tenant or provider confusion.
 - Campaign feed metadata uses one nonwrapping RTL row ordered platform, date, group target, repost and engagement; shrinkable names open full-name popovers, and inline bordered series retain per-target statuses inside their parent.
 - Multi-target campaign expansion derives one child per persisted target and reuses the feed card renderer with campaign/group keys; synthetic children never submit campaign-level actions.
 - Queue progress and card mirrors share a stable workspace-filtered live subscription with polling fallback; normalize both server payloads and browser job payloads so every active card reflects persisted jobs.

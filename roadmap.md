@@ -1,5 +1,11 @@
 # Roadmap
 
+## Post composer controls
+- [x] Increase input fonts by 2px, retain bottom-left manual textarea resizing and remove content counter.
+- [x] Add touch-pointer thumbnail handles with keyboard fallback; show saved effective Facebook Page below setup heading without legacy token gating.
+- [x] Ten focused tests pass; signed-in mobile image 1-to-3 and restore, auto-expansion, desktop manual resize and screenshots verified; build OK, no publication.
+- [ ] Live Page name/photo check waits for a saved Page binding in the active workspace; none returned during verification.
+
 ## SMS-only registration and intro
 - [x] Update final intro signup/swipe exit and outlined header login action.
 - [x] Replace auth UI with validated split names, gender and mobile; SMS OTP only, no master-code path.

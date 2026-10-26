@@ -3,7 +3,7 @@ import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { BrandIcon } from '@/components/BrandIcon';
 import { cn } from '@/lib/utils';
 
-/** The workspace's own Facebook Page photo; falls back to the Facebook logo. */
+/** Effective workspace/shared Page photo, not cloud-profile or token health evidence. */
 export function PageAvatarIcon({ className }: { className?: string }) {
   const { data } = useMetaPageBinding();
   const [broken, setBroken] = useState(false);
