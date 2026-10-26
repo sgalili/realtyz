@@ -7,7 +7,7 @@ vi.mock('@/lib/cloudSession', () => ({ getCloudSessionState: mocks.state }));
 vi.mock('@/lib/cloudGroupDiscovery', () => ({ fetchGroupsViaCloud: mocks.sync }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn() } }));
 import { FacebookCloudConnectGate } from './FacebookCloudConnectGate';
 
 describe('Facebook cloud connection', () => {
@@ -44,6 +44,16 @@ describe('Facebook cloud connection', () => {
     await screen.findByRole('alert');
     expect(mocks.invoke).toHaveBeenCalledWith('fb-session-vault', { body: { action: 'remote_login' } });
     expect(mocks.sync).not.toHaveBeenCalled();
+  });
+
+  it('offers a manual cloud-browser link when every new tab is blocked', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    mocks.invoke.mockResolvedValue({ data: { url: 'https://gologin.example/session' } });
+    render(<FacebookCloudConnectGate alwaysVisible />);
+    fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
+    const link = await screen.findByRole('link', { name: 'פתיחת דפדפן הענן' });
+    expect(link).toHaveAttribute('href', 'https://gologin.example/session');
+    expect(link).toHaveAttribute('target', '_blank');
   });
 
   it('waits for server-confirmed login before importing', async () => {

@@ -23,6 +23,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [manualUrl, setManualUrl] = useState('');
   const [connected, setConnected] = useState(false);
   const stop = () => {
     if (timer.current !== null) window.clearInterval(timer.current);
@@ -32,7 +33,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
 
   useEffect(() => {
     const run = ++generation.current;
-    stop(); setOpen(false); setSkipped(false); setPhase('idle'); setConnected(false); setErrorMessage('');
+    stop(); setOpen(false); setSkipped(false); setPhase('idle'); setConnected(false); setErrorMessage(''); setManualUrl('');
     if (owner) void getCloudSessionState().then(s => {
       if (generation.current === run) { setConnected(s.active); setOpen(!s.active); onStatusChange?.(s.active); }
     });
@@ -62,34 +63,53 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
   const connect = async () => {
     const run = generation.current;
     if (connected) { await finish(run); return; }
-    const win = window.open('about:blank', '_blank');
-    if (!win) { setErrorMessage('אפשרו פתיחת חלון חדש ונסו שוב.'); return; }
-    win.opener = null;
-    setPhase('waiting'); setErrorMessage('');
+    // Placeholder opened synchronously on the click gesture so a new tab stays
+    // allowed while the backend prepares the GoLogin cloud browser URL.
+    const placeholder = window.open('about:blank', '_blank');
+    if (placeholder) placeholder.opener = null;
+    setPhase('waiting'); setErrorMessage(''); setManualUrl('');
+    let cloudUrl = '';
     try {
       const { data, error } = await supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_login' } });
       const payload = data ?? await (error as { context?: Response } | null)?.context?.json().catch(() => null);
       if (error || payload?.error || !payload?.url) throw new Error(payload?.message || 'פתיחת החיבור בענן נכשלה');
-      if (generation.current !== run) { win.close(); return; }
-      win.location.href = payload.url;
-      const deadline = Date.now() + 10 * 60_000;
-      let checking = false;
-      timer.current = window.setInterval(() => {
-        if (generation.current !== run) return;
-        if (Date.now() > deadline) { stop(); setPhase('idle'); setErrorMessage('החיבור לא הושלם בזמן. נסו שוב.'); return; }
-        if (checking) return;
-        checking = true;
-        void supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_check' } })
-          .catch(() => null)
-          .then(() => getCloudSessionState())
-          .then(s => { if (generation.current === run && s.active) void finish(run); })
-          .finally(() => { checking = false; });
-      }, 5000);
+      if (generation.current !== run) { placeholder?.close(); return; }
+      cloudUrl = payload.url;
     } catch (e) {
-      win.close();
+      placeholder?.close();
       if (generation.current !== run) return;
       stop(); setPhase('idle'); setErrorMessage((e as Error).message);
+      return;
     }
+    // Open the GoLogin cloud browser URL directly in a new tab; never navigate
+    // the current frame. If the direct open is blocked, reuse the placeholder
+    // tab, and as a last resort offer a manual link the user can click.
+    let tab: Window | null = null;
+    try { tab = window.open(cloudUrl, '_blank'); } catch { tab = null; }
+    if (tab && tab !== placeholder) placeholder?.close();
+    if (!tab) {
+      try {
+        if (placeholder && !placeholder.closed) { placeholder.location.href = cloudUrl; tab = placeholder; }
+      } catch { tab = null; }
+    }
+    if (!tab) {
+      placeholder?.close();
+      setManualUrl(cloudUrl);
+      toast.warning('הדפדפן חסם פתיחת חלון חדש. לחצו "פתיחת דפדפן הענן" כדי להמשיך.');
+    }
+    const deadline = Date.now() + 10 * 60_000;
+    let checking = false;
+    timer.current = window.setInterval(() => {
+      if (generation.current !== run) return;
+      if (Date.now() > deadline) { stop(); setPhase('idle'); setErrorMessage('החיבור לא הושלם בזמן. נסו שוב.'); return; }
+      if (checking) return;
+      checking = true;
+      void supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_check' } })
+        .catch(() => null)
+        .then(() => getCloudSessionState())
+        .then(s => { if (generation.current === run && s.active) void finish(run); })
+        .finally(() => { checking = false; });
+    }, 5000);
   };
 
   if ((!open && !alwaysVisible) || skipped) return null;
@@ -102,6 +122,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     {phase === 'waiting' && <p role="status" className="text-sm leading-relaxed text-muted-foreground">השלימו את הכניסה לפייסבוק בחלון שנפתח.</p>}
     {connected && <p className="flex items-center gap-1 text-sm text-success"><ShieldCheck className="h-4 w-4" />החיבור שמור ומוצפן בענן</p>}
     {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
+    {manualUrl && <a role="link" href={manualUrl} target="_blank" rel="noopener noreferrer" className="block text-center text-sm font-semibold text-primary underline underline-offset-4">פתיחת דפדפן הענן</a>}
     <Button type="button" variant="link" className="w-full" disabled={phase !== 'idle'} onClick={() => { generation.current++; stop(); setSkipped(true); onStatusChange?.(true); }}>אתחבר יותר מאוחר</Button>
   </section>;
 }
