@@ -5,6 +5,7 @@ import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { PersonalLanguageProvider } from '@/i18n/personalLanguage';
 import { useUserRole } from "@/hooks/useUserRole";
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
@@ -509,6 +510,7 @@ const App = () => (
             </DemoModeProvider>
             </WhiteLabelProvider>
             </WorkspaceProvider>
+          </PersonalLanguageProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
