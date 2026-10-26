@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { personalGenderKey, profileGender, usePersonalLanguage } from '@/i18n/personalLanguage';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { RITA_WORKSPACE_OWNER_ID } from '@/config/workspaceMode';
@@ -202,6 +203,7 @@ function hasRealEmailLogin(user: any): boolean {
 
 function PersonalTab() {
   const { user, signOut } = useAuth();
+  const language = usePersonalLanguage();
   const queryClient = useQueryClient();
   const identity = useAccountIdentity();
   const { activeWorkspaceId } = useWorkspace();
@@ -276,7 +278,7 @@ function PersonalTab() {
         setPhones(rowList(extra?.phones, [phone].filter(Boolean)));
         setFullName(serverName);
         setCity(String(server.city ?? extra?.city ?? ''));
-        setGender(String(server.gender ?? extra?.gender ?? ''));
+        setGender(profileGender(server.gender) ?? '');
         setBrokerLicense(String(server.broker_license_number ?? ''));
       } catch { /* ignore */ }
       setHydratedFor(ownerId);
@@ -286,24 +288,26 @@ function PersonalTab() {
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
 
   const save = async () => {
-    const payload = { emails, whatsapps, phones, fullName, city, gender };
+    const payload = { emails, whatsapps, phones, fullName, city };
     if (!profileOwnerId) return;
-    try { window.localStorage.setItem(profileStorageKey(profileOwnerId), JSON.stringify(payload)); } catch {}
     try {
       if (showBrokerFields && brokerLicense && isOwnProfile) await verifyBrokerLicense(brokerLicense, 'verify');
       const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
-      const { error: profErr } = await supabase
+      const { data: savedProfile, error: profErr } = await supabase
         .from('profiles')
         .update({
           city: city || null,
-          gender: gender || null,
+          gender: profileGender(gender),
           phone: primaryPhone,
           full_name: fullName || null,
           email: realEmail(emails[0]?.value) || null,
           ...(showBrokerFields ? { broker_license_number: brokerLicense.trim() || null } : {}),
         } as any)
-        .eq('id', profileOwnerId);
+        .eq('id', profileOwnerId).select('id,gender').single();
       if (profErr) throw profErr;
+      if (!savedProfile || savedProfile.id !== profileOwnerId) throw new Error('הפרופיל לא נשמר');
+      if (isOwnProfile && user) queryClient.setQueryData(personalGenderKey(user.id), profileGender(savedProfile.gender));
+      try { window.localStorage.setItem(profileStorageKey(profileOwnerId), JSON.stringify(payload)); } catch {}
       if (isOwnProfile) {
         const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload, full_name: fullName } });
         if (error) throw error;
@@ -390,19 +394,18 @@ function PersonalTab() {
         <ProfileFieldRow
           icon={UserIcon}
           label="מגדר"
-          value={gender === 'male' ? 'זכר' : gender === 'female' ? 'נקבה' : gender}
+          value={gender === 'male' ? 'גבר' : gender === 'female' ? 'אישה' : ''}
           editing={editing.gender ?? false}
           onChange={setGender}
           onToggleEdit={() => setEdit('gender')}
           inputDir="rtl"
-          placeholder="בחר מגדר"
+          placeholder={language.command('בחר מגדר')}
         >
           <Select value={gender || undefined} onValueChange={(v) => { setGender(v); setEdit('gender'); }}>
-            <SelectTrigger dir="rtl" className="h-8 text-right text-sm"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>
+            <SelectTrigger dir="rtl" className="h-8 text-right text-sm"><SelectValue placeholder={language.command('בחר מגדר')} /></SelectTrigger>
             <SelectContent dir="rtl">
-              <SelectItem value="male" className="text-right">זכר</SelectItem>
-              <SelectItem value="female" className="text-right">נקבה</SelectItem>
-              <SelectItem value="other" className="text-right">אחר</SelectItem>
+              <SelectItem value="male" className="text-right">גבר</SelectItem>
+              <SelectItem value="female" className="text-right">אישה</SelectItem>
             </SelectContent>
           </Select>
         </ProfileFieldRow>

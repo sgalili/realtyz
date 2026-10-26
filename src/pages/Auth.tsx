@@ -82,7 +82,7 @@ const Auth = () => {
           </div>}
           <div className={signup ? 'grid grid-cols-[minmax(0,1fr)_auto] gap-3' : ''}>
             <Input type="tel" inputMode="tel" autoComplete="tel" aria-label="מספר טלפון נייד" placeholder="מספר טלפון נייד" maxLength={11} className="h-12 min-w-0 text-xl font-bold" dir={phone ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(formatAuthMobile(e.target.value))} />
-            {signup && <div role="group" aria-label="מגדר" className="flex gap-1">{[['male', 'זכר'], ['female', 'נקבה']].map(([value, label]) => <Button key={value} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 px-3 text-lg font-bold" onClick={() => setGender(value)}>{label}</Button>)}</div>}
+            {signup && <div role="group" aria-label="מגדר" className="flex gap-1">{[['male', 'גבר'], ['female', 'אישה']].map(([value, label]) => <Button key={value} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 px-3 text-lg font-bold" onClick={() => setGender(value)}>{label}</Button>)}</div>}
           </div>
           {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-xl font-bold">{loading ? 'שולח...' : 'שלחו לי קוד ב-SMS'}</Button>}
           <div className="pt-4 text-center"><Button type="button" variant="link" className="text-base text-muted-foreground underline decoration-dotted underline-offset-4" onClick={() => { setSignup(value => !value); setOtp(''); }}>{signup ? 'יש לי חשבון' : 'פתח חשבון חדש'}</Button></div>

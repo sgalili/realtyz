@@ -386,6 +386,7 @@ const App = () => (
         <BrowserRouter>
           <RouteScrollRestoration />
           <AuthProvider>
+          <PersonalLanguageProvider>
             <WorkspaceProvider>
             <WhiteLabelProvider>
             <DemoModeProvider>

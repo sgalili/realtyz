@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 import { DEMO_UPGRADE_EVENT } from "@/lib/demoGuard";
+import { usePersonalLanguage, localizeControlNode } from '@/i18n/personalLanguage';
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -50,6 +51,7 @@ const getButtonText = (node: React.ReactNode): string => {
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const { gender, command } = usePersonalLanguage();
     const Comp = asChild ? Slot : "button";
     const guardedOnClick: React.MouseEventHandler<HTMLButtonElement> = (event) => {
       const label = getButtonText(props.children).toLowerCase();
@@ -70,7 +72,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       props.onClick?.(event);
     };
 
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} onClick={guardedOnClick} />;
+    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} aria-label={command(props['aria-label'])} title={command(props.title)} onClick={guardedOnClick}>{localizeControlNode(props.children, gender)}</Comp>;
   },
 );
 Button.displayName = "Button";

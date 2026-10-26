@@ -50,6 +50,6 @@ export function resolveLeadGender(lead: {
 
 /** Hebrew labels for the CRM picker. */
 export const GENDER_LABELS: Record<HebrewGender, string> = {
-  male: 'זכר',
-  female: 'נקבה',
+  male: 'גבר',
+  female: 'אישה',
 };

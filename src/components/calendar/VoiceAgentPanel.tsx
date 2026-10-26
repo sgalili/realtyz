@@ -23,10 +23,10 @@ interface VoiceAgentRow {
 }
 
 const VOICES = [
-  { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah (חמה, נקבה)' },
-  { id: 'XrExE9yKIg1WjnnlVkGX', label: 'Matilda (רגועה, נקבה)' },
-  { id: 'JBFqnCBsd6RMkjVDRZzb', label: 'George (בוגר, זכר)' },
-  { id: 'TX3LPaxmHKxFdv7VOQHJ', label: 'Liam (בטוח, זכר)' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah (חמה, אישה)' },
+  { id: 'XrExE9yKIg1WjnnlVkGX', label: 'Matilda (רגועה, אישה)' },
+  { id: 'JBFqnCBsd6RMkjVDRZzb', label: 'George (בוגר, גבר)' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', label: 'Liam (בטוח, גבר)' },
 ];
 
 export function VoiceAgentPanel() {
