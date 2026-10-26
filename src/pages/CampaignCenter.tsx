@@ -1872,6 +1872,7 @@ const InlineComposer = ({
       toast.error(detail?.error || e?.message || (status === 429 ? 'יותר מדי בקשות. נסו שוב בעוד רגע.' : status === 402 ? 'אין מספיק קרדיטים ליצירת הקמפיין.' : status === 404 ? 'הנכס לא נמצא בסביבת העבודה הפעילה. בחרו אותו מחדש.' : 'יצירת הטקסט נכשלה. נסו שוב.'));
     } finally {
       releaseGeneration(ctrl);
+      generateInFlightRef.current = false;
       setGenerating(false);
     }
   };
