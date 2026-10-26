@@ -33,7 +33,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
 
   useEffect(() => {
     const run = ++generation.current;
-    stop(); setOpen(false); setSkipped(false); setPhase('idle'); setConnected(false); setErrorMessage('');
+    stop(); setOpen(false); setSkipped(false); setPhase('idle'); setConnected(false); setErrorMessage(''); setManualUrl('');
     if (owner) void getCloudSessionState().then(s => {
       if (generation.current === run) { setConnected(s.active); setOpen(!s.active); onStatusChange?.(s.active); }
     });
