@@ -16,6 +16,11 @@ describe('dual-win invitations', () => {
     expect(screen.getByText(/הרשמה בלבד אינה מזכה/)).toBeInTheDocument();
     expect(screen.queryByText(/50%|Pro|₪15/)).not.toBeInTheDocument();
   });
+  it('shows the masculine inviter label by default with no link field', () => {
+    render(<AffiliateInviteCard />);
+    expect(screen.getByText('לך · המזמין')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
   it('copies the personal canonical link', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
