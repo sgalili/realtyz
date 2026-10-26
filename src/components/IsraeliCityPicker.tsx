@@ -89,7 +89,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
         </div>
         <div className="min-h-0 max-h-64 overflow-y-auto overscroll-contain">
           <div className="p-1">
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && !firstOptions.some(option => !search || option.includes(search)) ? (
               <div className="px-2 py-6 text-center text-xs text-muted-foreground">
                 לא נמצאו ערים. הזן בעצמך למטה.
               </div>
