@@ -19,6 +19,7 @@ import { usePersonalLanguage } from '@/i18n/personalLanguage';
  * publishing. No browser extension is involved.
  */
 export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDiscover, onStatusChange }: { alwaysVisible?: boolean; onSynced?: () => void; onDiscover?: () => void; onStatusChange?: (ready: boolean) => void }) {
+  const { text: personal } = usePersonalLanguage();
   const owner = useActiveWorkspaceOwnerId();
   const [open, setOpen] = useState(false);
   const [skipped, setSkipped] = useState(false);

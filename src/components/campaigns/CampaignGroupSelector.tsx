@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { shortenName } from "@/lib/shortenName";
 import { openExternal } from "@/lib/openExternal";
 import { fbGroupId, fbGroupUrl, fbGroupUrlFrom } from "@/lib/fbGroupUrl";
-import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown, List } from "lucide-react";
+import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown, List, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { useMetaPageBinding } from "@/hooks/useMetaPageBinding";
