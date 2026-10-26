@@ -1,5 +1,10 @@
 # Roadmap
 
+## Post composer controls
+- [ ] Increase input fonts, retain manual textarea resizing and remove content counter.
+- [ ] Add touch-friendly thumbnail reordering and show authorized Facebook Page below setup heading.
+- [ ] Run focused tests and verify signed-in mobile/desktop composer without publishing.
+
 ## SMS-only registration and intro
 - [x] Update final intro signup/swipe exit and outlined header login action.
 - [x] Replace auth UI with validated split names, gender and mobile; SMS OTP only, no master-code path.

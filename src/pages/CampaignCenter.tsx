@@ -1,5 +1,7 @@
 import { canRestorePropertyDraft, propertyCampaignSelection } from '@/lib/campaignPropertyContext';
 import { generateSocialDraft } from '@/lib/socialDraftGeneration';
+import { reorderItems } from '@/lib/reorderItems';
+import { ThumbnailReorderHandle } from '@/components/campaigns/ThumbnailReorderHandle';
 import { selectedCampaignChannels } from '@/lib/campaignCreationChannel';
 import { getCloudSessionState, type CloudSessionState } from '@/lib/cloudSession';
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
@@ -1164,6 +1166,7 @@ const InlineComposer = ({
     });
   }, [channel.id, platformProfiles]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [thumbnailTarget, setThumbnailTarget] = useState<number | null>(null);
   useLayoutEffect(() => {
     const fields = [textareaRef.current, firstCommentRef.current].filter(
       (field): field is HTMLTextAreaElement => field !== null,
@@ -2373,7 +2376,7 @@ const InlineComposer = ({
 
 
   return (
-    <div className={editorMode ? "min-w-0 space-y-4" : "rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4"} dir="rtl">
+    <div className={cn(editorMode ? "min-w-0 space-y-4" : "rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4", "[&_input:not([type=checkbox])]:!text-[18px] md:[&_input:not([type=checkbox])]:!text-base [&_textarea]:!text-base [&_textarea]:resize-y")} dir="rtl">
       {/* Header row removed — title lives in the page hero; history is in the hero icon */}
 
 
@@ -2575,7 +2578,7 @@ const InlineComposer = ({
             if (cleaned !== e.target.value) setBody(cleaned);
           }}
           placeholder="תוכן הקמפיין"
-          className="resize-none overflow-y-hidden text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-3 pl-12"
+          className="resize-y overflow-y-auto text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-3 pl-12"
         />
         <button
           type="button"
@@ -2590,12 +2593,7 @@ const InlineComposer = ({
         >
           <RefreshCw className={cn('h-4 w-4', (generating || finalizingBody) && 'animate-spin')} />
         </button>
-        {count > 0 && (
-          <span className="pointer-events-none absolute left-2 bottom-2 text-[11px] tabular-nums text-muted-foreground/80" dir="ltr">
-            {count}
-          </span>
-        )}
-        <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1.5" dir="rtl">
+        <div className="mt-2 flex items-center gap-1.5" dir="rtl">
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -2638,21 +2636,15 @@ const InlineComposer = ({
                 // The FIRST thumbnail is always the main cover image of the post
                 // and is rendered 15% larger so it is visually unmistakable.
                 const isCover = i === 0;
-                const box = isCover ? 'h-[36px] w-[36px]' : 'h-[31px] w-[31px]';
+                const box = 'h-12 w-12';
                 const reorder = (from: number, to: number) => {
-                  if (from === to || Number.isNaN(from)) return;
-                  setAttachments((curr) => {
-                    const next = [...curr];
-                    const [moved] = next.splice(from, 1);
-                    if (!moved) return curr;
-                    next.splice(to, 0, moved);
-                    return next;
-                  });
+                  setAttachments(curr => reorderItems(curr, from, to));
                 };
                 return (
                   <div
-                    key={i}
-                    className={cn('relative shrink-0 cursor-grab active:cursor-grabbing', isCover && 'z-10')}
+                    key={att.url || att.name || i}
+                    data-thumbnail-index={i}
+                    className={cn('relative shrink-0 rounded-sm transition-transform motion-reduce:transition-none', isCover && 'z-10', thumbnailTarget === i && 'ring-2 ring-primary')}
                     draggable
                     onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; }}
                     onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
@@ -2681,6 +2673,7 @@ const InlineComposer = ({
                           : <Paperclip className="h-4 w-4 text-muted-foreground" />}
                       </div>
                     )}
+                    <ThumbnailReorderHandle index={i} onMove={reorder} onTarget={setThumbnailTarget} />
                   </div>
                 );
               })}
@@ -2796,7 +2789,7 @@ const InlineComposer = ({
           onChange={(e) => setFirstComment(e.target.value)}
           placeholder="תוכן התגובה"
           disabled={!firstCommentEnabled}
-          className="resize-none overflow-y-hidden text-right placeholder:text-muted-foreground/60"
+          className="resize-y overflow-y-auto text-right placeholder:text-muted-foreground/60"
         />
         {firstCommentEnabled && (
           <div className="flex flex-wrap items-center gap-4">
