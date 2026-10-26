@@ -115,7 +115,7 @@ function ProfileFieldRow({
               onChange={(e) => onChange(e.target.value)}
               onBlur={onToggleEdit}
               placeholder={placeholder}
-              className={cn('h-8 px-2 text-base font-bold placeholder:font-normal', inputDir === 'ltr' ? 'text-left' : 'text-right')}
+              className={cn('h-8 px-2 !text-base font-bold placeholder:font-normal', inputDir === 'ltr' ? 'text-left' : 'text-right')}
             />
           )
         ) : (
@@ -349,7 +349,7 @@ function PersonalTab() {
               onChange={(e) => setFullName(e.target.value)}
               onBlur={() => setEdit('fullName')}
               placeholder="הזן שם מלא"
-              className="text-center text-lg font-bold max-w-xs"
+              className="text-center !text-lg font-bold max-w-xs"
             />
           ) : (
             <div className="flex items-center gap-1.5">
@@ -747,7 +747,7 @@ export default function Profile() {
   };
 
   return (
-    <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4 [&_input]:text-base [&_input]:font-bold [&_input]:placeholder:font-normal [&_textarea]:text-base">
+    <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4 [&_input]:text-lg md:[&_input]:text-base [&_input]:font-bold [&_input]:placeholder:font-normal [&_textarea]:text-lg md:[&_textarea]:text-base">
       <Dialog open={brainPrompt} onOpenChange={setBrainPrompt}>
         <DialogContent dir="rtl" className="max-w-lg">
           <DialogHeader>
