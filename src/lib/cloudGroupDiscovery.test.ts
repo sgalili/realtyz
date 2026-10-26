@@ -48,4 +48,15 @@ describe('cloud group discovery', () => {
     mocks.invoke.mockResolvedValue({ data: { success: true, job_id: 'job-3', job: { id: 'job-3', status: 'processing', groups: null, error: null } } });
     await expect(fetchGroupsViaCloud('דירות', { pollMs: 1, timeoutMs: 20 })).rejects.toThrow('ארכה יותר מדי');
   });
+  it('bounds the initial request even when the API never responds', async () => {
+    mocks.invoke.mockImplementation(() => new Promise(() => {}));
+    await expect(fetchGroupsViaCloud('דירות', { timeoutMs: 20 })).rejects.toThrow('ארכה יותר מדי');
+    expect(mocks.invoke.mock.calls[0][1].signal.aborted).toBe(true);
+  });
+  it('bounds a hung status request and surfaces structured API failures', async () => {
+    mocks.invoke.mockResolvedValueOnce({ data: { job_id: 'job-1' } }).mockImplementation(() => new Promise(() => {}));
+    await expect(fetchGroupsViaCloud('דירות', { timeoutMs: 20, pollMs: 1 })).rejects.toThrow('ארכה יותר מדי');
+    mocks.invoke.mockResolvedValueOnce({ error: { message: 'non-2xx', context: new Response(JSON.stringify({ message: 'פייסבוק דורש אימות מחדש' })) } });
+    await expect(fetchGroupsViaCloud('דירות')).rejects.toThrow('פייסבוק דורש אימות מחדש');
+  });
 });
