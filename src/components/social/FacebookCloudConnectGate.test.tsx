@@ -7,7 +7,7 @@ vi.mock('@/lib/cloudSession', () => ({ getCloudSessionState: mocks.state }));
 vi.mock('@/lib/cloudGroupDiscovery', () => ({ fetchGroupsViaCloud: mocks.sync }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn() } }));
 import { FacebookCloudConnectGate } from './FacebookCloudConnectGate';
 
 describe('Facebook cloud connection', () => {
