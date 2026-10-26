@@ -5,7 +5,7 @@
 - [x] Guest table share reuses image-card dialog; social publication opens matching tailored dialog; public landing opens synchronously without prompts; edge-align table settings.
 - [x] Standardize visible rewards to תגמולים and block reward sorting in public/shared tables while retaining reorder.
 - [x] Contain global footer and enlarge legal links; selected Page requests explicitly scope to authorized workspace and surface discovery errors.
-- [ ] Verify mobile/desktop actions, footer containment and focused tests.
+- [x] Verified guest/signed-in publication dialogs, matching guest share, direct landing tab and 320/411px plus desktop footer; 23 focused tests pass and preview build OK.
 - [ ] Real Facebook Page selection and successful group results await renewed Graph authorization and external scan-worker results.
 
 ## Facebook Page selection and bounded group scanning
