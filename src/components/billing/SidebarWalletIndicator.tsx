@@ -61,7 +61,7 @@ export function SidebarWalletIndicator() {
   const showContacts = !loading && !error && !isPropertySeekerOnly && (isPartnerMode || isAffiliateOnly || isTeamMember || isDeveloper || isPropertyOwnerOnly);
   const leadsPath = isPartnerMode || isAffiliateOnly ? '/partner/contacts' : isPropertyOwnerOnly ? '/owner/leads' : '/lead-crm';
   return (
-    <div data-sidebar="balance-controls" className={cn('mx-3 mb-[15px] grid gap-2', showContacts ? 'grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]' : 'grid-cols-1')}>
+    <div data-sidebar="balance-controls" className={cn('mx-3 mb-[10px] grid gap-2', showContacts ? 'grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]' : 'grid-cols-1')}>
       <Button
         data-walkthrough="wallet"
         variant="outline"
@@ -74,14 +74,14 @@ export function SidebarWalletIndicator() {
         title={locked ? 'נדרש תשלום' : 'ארנק ותשלומים'}
       >
         {locked ? <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" /> : <Wallet className="h-4 w-4 shrink-0 text-[hsl(var(--nav-wallet))]" />}
-        <span className={cn('min-w-0 whitespace-normal text-[8px] font-bold leading-tight', balance <= 0 && 'text-destructive')}>
-          {isLoading ? '…' : fmtCompactCredits(ilsToCredits(balance))}
+        <span className={cn('min-w-0 whitespace-normal text-[6px] font-bold leading-tight', balance <= 0 && 'text-destructive')}>
+          {isLoading ? '…' : <>{fmtCompactCredits(ilsToCredits(balance)).replace(' קרדיטים', '')} <span className="font-normal">קרדיטים</span></>}
         </span>
       </Button>
       {showContacts && <Button
         variant="outline"
         onClick={() => go(leadsPath)}
-        className="flex min-w-0 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-1 py-2 text-[8px] font-semibold transition-colors hover:border-primary"
+        className="flex min-w-0 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-1 py-2 text-[6px] font-semibold transition-colors hover:border-primary"
         aria-label={`לידים שהתקבלו: ${incoming}`}
         title="לידים שהתקבלו"
       >

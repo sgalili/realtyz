@@ -54,8 +54,8 @@ export function SidebarRitaChat() {
   const fullName = (profile?.full_name?.trim() || friendlyUserDisplayName(user, '')).trim();
   const firstName = fullName.split(/\s+/).filter(Boolean)[0] ?? '';
   const placeholder = firstName
-    ? `היי ${firstName}, כאן ריטה, איך אני יכולה לעזור?`
-    : 'היי, כאן ריטה, איך אני יכולה לעזור?';
+    ? `היי ${firstName}, איך אני יכולה לעזור?`
+    : 'היי, איך אני יכולה לעזור?';
 
   const openFull = () => window.dispatchEvent(new CustomEvent('open-ai-drawer', { detail: { expanded: true } }));
 
@@ -84,7 +84,7 @@ export function SidebarRitaChat() {
           <RitaAvatar className="h-7 w-7 ring-0" />
         </button>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} aria-label="הודעה לריטה"
-          className="min-w-0 flex-1 bg-transparent py-1 text-xs text-foreground outline-none placeholder:text-[10px] placeholder:text-muted-foreground" />
+          className="min-w-0 flex-1 bg-transparent py-1 text-[12px] text-foreground outline-none placeholder:text-[12px] placeholder:text-muted-foreground" />
         <Button type="submit" size="icon" disabled={!text.trim() || loading} className="h-7 w-7 shrink-0 rounded-full" aria-label="שליחה">
           <ArrowUp className="h-4 w-4" />
         </Button>

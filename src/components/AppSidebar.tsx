@@ -52,6 +52,7 @@ import { useAppMode } from '@/hooks/useAppMode';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { SidebarRitaChat } from '@/components/sidebar/SidebarRitaChat';
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
 import { Megaphone as MyAdsIcon } from 'lucide-react';
 
 
@@ -188,20 +189,6 @@ const OWNER_NAV_ITEMS: NavItem[] = [
     iconColor: '!text-[hsl(var(--nav-properties))]', // amber-700
     badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
   },
-  {
-    title: 'הגדרת תגמולים ועמלות',
-    url: '/owner/rewards',
-    icon: Coins,
-    iconColor: '!text-[hsl(var(--nav-rewards))]', // teal-700
-    badgeClass: 'bg-teal-50 text-teal-700 ring-teal-200',
-  },
-  {
-    title: 'צ׳אט עם ריטה',
-    url: '/owner/rita',
-    icon: MessageCircle,
-    iconColor: '!text-[hsl(var(--nav-chats))]', // cyan-700
-    badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
-  },
 ];
 
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
@@ -221,6 +208,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { data: counts } = useSidebarCounts();
   const { isPartnerMode } = useAppMode();
   const identity = useAccountIdentity();
+  const { gender } = usePersonalLanguage();
 
   // Navigation follows the ACTIVE workspace: Rita's marketing workspace hides
   // properties, deals and partners; every other workspace shows them all.
@@ -400,7 +388,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
                       >
                         <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
-                        {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
+                        {!collapsed && <span className="text-sm font-medium">{gender === 'female' && item.title === 'הזמן חברים' ? 'הזמיני חברים' : item.title}</span>}
                         {!collapsed && item.badge && (
                           <span className="ms-auto rounded-full bg-background px-2.5 py-0.5 text-xs font-bold leading-none text-foreground ring-1 ring-border">
                             {item.badge}

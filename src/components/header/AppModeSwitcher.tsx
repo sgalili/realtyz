@@ -1,3 +1,4 @@
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
 import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -29,7 +30,11 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { loading: workspaceLoading, activeWorkspaceId } = useWorkspace();
-  const identity = useAccountIdentity();
+  const baseIdentity = useAccountIdentity();
+  const { gender } = usePersonalLanguage();
+  const fem: Record<string, string> = { 'מפרסם': 'מפרסמת', 'מתווך': 'מתווכת', 'יזם': 'יזמית', 'קבלן': 'קבלנית', 'שותף': 'שותפה' };
+  const identity = gender === 'female' ? { ...baseIdentity, label: fem[baseIdentity.label] ?? baseIdentity.label } : baseIdentity;
+  const partnerLabel = gender === 'female' ? 'שותפה' : 'שותף';
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const busy = useIsMutating({ mutationKey: ['activate-partner', user?.id] }) > 0;
   const activation = useMutation({
@@ -73,11 +78,11 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
     >
       {(['broker', 'partner'] as const).map(option => <Button key={option}
         type="button" size="sm" variant={mode === option ? 'default' : 'ghost'}
-        aria-pressed={mode === option} aria-label={option === 'broker' ? identity.label : 'שותף'}
+        aria-pressed={mode === option} aria-label={option === 'broker' ? identity.label : partnerLabel}
         disabled={!!unavailable || (!identity.canSwitch && option === 'broker')}
         onClick={() => { if (mode !== option) activation.mutate(option); }}
-        className="h-7 min-w-0 flex-1 whitespace-nowrap rounded-sm px-1 text-[9px] font-semibold">
-        {busy && activation.variables === option ? <Loader2 className="h-3 w-3 animate-spin" /> : option === 'broker' ? identity.label : 'שותף'}
+        className="h-7 min-w-0 flex-1 whitespace-nowrap rounded-sm px-1 text-[6px] font-semibold">
+        {busy && activation.variables === option ? <Loader2 className="h-3 w-3 animate-spin" /> : option === 'broker' ? identity.label : partnerLabel}
       </Button>)}
     </div>
     <Dialog open={onboarding} onOpenChange={setOnboarding}>
