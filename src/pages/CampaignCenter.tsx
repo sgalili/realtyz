@@ -2900,7 +2900,7 @@ const InlineComposer = ({
             <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
             <label className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 cursor-pointer">
               <Checkbox checked={groupTextVariation} onCheckedChange={(v) => setGroupTextVariation(v === true)} />
-              <span className="text-sm font-semibold text-foreground">שינוי טקסט לקבוצות</span>
+              <span className="text-sm font-semibold text-foreground">שינוי טקסט ב AI בהתאמה לכל קבוצה</span>
             </label>
             {/* Business Page toggle sits directly above the submit button. */}
             <label className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 cursor-pointer">
@@ -2909,7 +2909,7 @@ const InlineComposer = ({
                 onCheckedChange={(v) => setPublishToPage(v === true)}
                 aria-label="פרסם גם בעמוד הפייסבוק העסקי"
               />
-              <span className="text-sm font-semibold text-foreground">פרסם גם בעמוד הפייסבוק העסקי{composerPage?.pageName ? ` · ${composerPage.pageName}` : ''}</span>
+              <span className="text-sm font-semibold text-foreground">פרסם גם בדף הפייסבוק העסקי שלי{composerPage?.pageName ? ` · ${composerPage.pageName}` : ''}</span>
             </label>
           </div>
 
