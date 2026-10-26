@@ -1,5 +1,11 @@
 # Roadmap
 
+## Profile gender and personalized language
+- [ ] Rename gender labels globally and keep canonical profile storage.
+- [ ] Add profile-backed personal language context and instant saved-preference refresh.
+- [ ] Share gender-aware helper across UI and automated recipient messaging without modifying approved template text.
+- [ ] Test profile save/reload, account isolation and male/female/unknown phrasing; verify live profile flow.
+
 ## Platform alignment October 26
 - [x] Auth spacing, bold larger fields, ten-digit formatted mobile and reversed OTP boxes; keep real server OTP verification, no universal bypass.
 - [x] Guest table share reuses image-card dialog; social publication opens matching tailored dialog; public landing opens synchronously without prompts; edge-align table settings.
