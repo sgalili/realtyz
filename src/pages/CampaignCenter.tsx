@@ -1266,7 +1266,6 @@ const InlineComposer = ({
   const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>(initial.attachments || []);
   // True while the property's gallery is being pulled/attached.
   const [photosLoading, setPhotosLoading] = useState(false);
-  const [generatingImage, setGeneratingImage] = useState(false);
 
 
   // Audio recording
@@ -1772,34 +1771,6 @@ const InlineComposer = ({
       console.error('[CampaignCenter] media upload failed', err);
       toast.error('העלאת הקובץ נכשלה — לא יישמר בטיוטה');
     }
-  };
-
-  const handleAIImage = async () => {
-    const prompt = body.trim() || customInstructions.trim() || 'תמונת נדל"ן יוקרתית עבור קמפיין שיווקי של מתווך בכיר';
-
-    if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
-    const ctrl = registerGeneration();
-    setGeneratingImage(true);
-    const context = { listingId: selectedListingId, workspace: workspaceOwnerId };
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: { purpose: 'image', prompt, brand: brandName, language: 'he' },
-        signal: ctrl.signal,
-      });
-      if (ctrl.signal.aborted || selectedContextRef.current.listingId !== context.listingId || selectedContextRef.current.workspace !== context.workspace) return; // discard stale property responses
-      if (error) throw error;
-      const url = data?.url || data?.image_url;
-      if (url) {
-        setAttachments((a) => [...a, { name: 'AI Image', kind: 'image', url }]);
-        if (selectedListingId) void appendImagesToListing(selectedListingId, [url]);
-        toast.success('תמונה נוצרה');
-
-      } else toast.info('לא התקבלה תמונה מה-AI');
-    } catch (e: any) {
-      if (ctrl.signal.aborted || e?.name === 'AbortError') return;
-      toast.error('יצירת תמונה נכשלה');
-    }
-    finally { releaseGeneration(ctrl); setGeneratingImage(false); }
   };
 
   const startRecording = async () => {
