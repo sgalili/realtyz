@@ -126,7 +126,7 @@ export function GroupDiscoveryDialog({
       }
       setManualName("");
       setManualUrl("");
-      toast.success("הקבוצה נוספה לתור ההצטרפות בענן");
+      toast.success("הקבוצה נוספה לרשימת הקבוצות");
       onJoined?.();
     } finally {
       setAddingManual(false);
@@ -161,7 +161,7 @@ export function GroupDiscoveryDialog({
       setSearched(true);
       if (!fresh.length) toast.info("לא נמצאו קבוצות — נסו מילת חיפוש אחרת");
     } catch (e: any) {
-      toast.error("הסריקה בענן נכשלה", { description: e?.message });
+      toast.error("הסריקה בפייסבוק נכשלה", { description: e?.message });
       if (e?.message?.includes("חיבור פייסבוק")) {
         setCloud((c) => (c ? { ...c, active: false } : c));
       }
@@ -221,7 +221,7 @@ export function GroupDiscoveryDialog({
     setJoining(false);
     setPicked(new Set());
     if (ok > 0) {
-      toast.success(`נשמרו ${ok} קבוצות לרשימת הפרסום`, { description: "ההצטרפות תטופל בענן; קבוצות הממתינות לאישור לא יפורסמו" });
+      toast.success(`נשמרו ${ok} קבוצות לרשימת הפרסום`, { description: "ההצטרפות תטופל בפייסבוק; קבוצות הממתינות לאישור לא יפורסמו" });
       onJoined?.();
     }
   };
