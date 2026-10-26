@@ -7,7 +7,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -65,13 +64,13 @@ const fmtTs = (iso: string) => {
   return `${dd}.${mm}.${d.getFullYear()}, ${hh}:${mi}:${ss}`;
 };
 
-export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+export const IvrBroadcastPanel = () => {
   const workspaceId = useActiveWorkspaceOwnerId();
   const { user } = useAuth();
   const historyKey = `${HISTORY_KEY}:${user?.id}:${workspaceId}`;
   const loadScopedHistory = (): HistoryItem[] => { try { return JSON.parse(localStorage.getItem(historyKey) || '[]'); } catch { return []; } };
   const saveScopedHistory = (items: HistoryItem[]) => { try { localStorage.setItem(historyKey, JSON.stringify(items.slice(0, 50))); } catch { /* ignore */ } };
-  const { data: prices = [] } = useCampaignPricing(open);
+  const { data: prices = [] } = useCampaignPricing();
   const price = campaignServicePrice('ivr', prices);
   const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
   const [audioSeconds, setAudioSeconds] = useState<number | null>(null);
@@ -118,7 +117,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
 
   const [dispatching, setDispatching] = useState(false);
   useEffect(() => {
-    if (!open || !workspaceId) return;
+    if (!workspaceId) return;
     let cancelled = false;
     setHistory(loadScopedHistory());
     setClonedVoices([]); setLeads([]); setListings([]); setListingId('');
@@ -149,7 +148,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       setLoadingLeads(false);
     })();
     return () => { cancelled = true; };
-  }, [open, workspaceId, user?.id]);
+  }, [workspaceId, user?.id]);
 
   const allAgents = useMemo(() => {
     const seen = new Set<string>();
@@ -211,7 +210,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     return request;
   };
   useEffect(() => {
-    if (!open || !workspaceId) return;
+    if (!workspaceId) return;
     let cancelled = false;
     void (async () => {
       for (const voice of PRESET_VOICES) {
@@ -229,7 +228,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       for (const pending of demoCache.current.values()) void pending.then(url => URL.revokeObjectURL(url)).catch(() => {});
       demoCache.current.clear();
     };
-  }, [open, workspaceId]);
+  }, [workspaceId]);
   const playVoicePreview = async (voice: { voice_id: string; label: string }) => {
     const request = ++previewRequestRef.current;
     previewAudioRef.current?.pause();
@@ -434,7 +433,6 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   }, [source, localAudio, currentAudio?.audioUrl]);
 
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
     const missing = history.filter(item => item.durationSeconds == null);
     if (missing.length) void Promise.all(missing.map(async item => ({ id: item.id, seconds: await readIvrAudioDuration(item.audioUrl) }))).then(results => {
@@ -446,7 +444,7 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       });
     });
     return () => { cancelled = true; };
-  }, [open, historyKey, history]);
+  }, [historyKey, history]);
 
   const selectedSeconds = review ? review.seconds : audioSeconds;
   const totalCredits = ivrMaximumEstimate(prices, targetLeads.length, selectedSeconds, includeWhatsapp);
@@ -564,19 +562,8 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const audienceCount = targetLeads.length;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="w-full max-w-lg h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[92vh] overflow-y-auto p-5" dir="rtl">
-        <DialogHeader className="space-y-1">
-          <DialogTitle className="text-center text-[#0f1b3d] text-[17px] font-bold leading-tight">
-            <span className="inline-flex items-center gap-2"><CampaignServiceIcon channel="ivr" />IVR וקול AI</span>
-          </DialogTitle>
-          <DialogDescription className="text-center text-[12px] text-muted-foreground">
-            צרו הודעה קולית והפיצו אותה לרשימת יעד
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 mt-2">
-          <p className="text-center text-xs text-muted-foreground">{price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</p>
+    <div className="mx-auto w-full max-w-3xl space-y-4" dir="rtl">
+      <div className="space-y-4">
           {/* Top 3-tab toggle: TTS active first */}
           <div className="flex gap-2">
             {tabBtn('tts', 'טקסט לדיבור', Volume2)}
@@ -860,10 +847,9 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
             </div>
           )}
         </div>
-      </DialogContent>
       <AlertDialog open={!!review} onOpenChange={(value) => { if (!value) setReview(null); }}>
         <AlertDialogContent dir="rtl"><AlertDialogHeader>
-          <AlertDialogTitle>אישור הפצת IVR</AlertDialogTitle>
+          <AlertDialogTitle>אישור הפצת הודעה טלפונית מוקלטת</AlertDialogTitle>
           <AlertDialogDescription>
             <span className="flex items-center gap-2"><CampaignServiceIcon channel="ivr" />{audienceCount} נמענים · {price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span>
             <span className="block mt-2">משך ההקלטה: <span dir="ltr">{formatIvrDuration(review?.seconds)}</span></span>
@@ -879,6 +865,6 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           setAgentVoiceId(v.voice_id);
         }}
       />
-    </Dialog>
+    </div>
   );
 };

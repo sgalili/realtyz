@@ -23,7 +23,7 @@ export function TouchCreditsExplainerBody() {
         <h3 className="text-base font-extrabold">מה זה מגע קרדיט (T.C)?</h3>
         <p className="text-muted-foreground">
           מגע אחד = פעולה אחת שה-AI מבצע מול ליד: תשובה בוואטסאפ, הודעת SMS, אימייל,
-          שיחה קולית, מענה ל-IVR או תגובה ברשתות. שיחת וואטסאפ שלמה נספרת כמגע אחד בחלון של
+          שיחה קולית, מענה להודעה טלפונית או תגובה ברשתות. שיחת וואטסאפ שלמה נספרת כמגע אחד בחלון של
           24 שעות, גם אם הוחלפו בה עשר הודעות.
         </p>
       </section>
@@ -34,7 +34,7 @@ export function TouchCreditsExplainerBody() {
           <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <span>
             <b>{FREE_TC_PER_CONTACT} מגעים לכל ליד בחודש</b> — כלולים במלואם בכל חבילה,
-            בכל הערוצים, בלי הפרדה בין וואטסאפ, SMS, אימייל, שיחות קוליות ו-IVR.
+            בכל הערוצים, בלי הפרדה בין וואטסאפ, SMS, אימייל, שיחות קוליות והודעות טלפוניות מוקלטות.
           </span>
         </p>
         <p className="flex items-start gap-2">

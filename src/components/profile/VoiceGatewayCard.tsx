@@ -162,7 +162,7 @@ export function VoiceGatewayCard() {
 
         {/* Twilio block */}
         <div className="space-y-3 rounded-md border border-border p-3">
-          <div className="text-sm font-semibold text-right">Twilio · מספרים ו-IVR</div>
+          <div className="text-sm font-semibold text-right">Twilio · מספרים והודעות טלפוניות</div>
 
           <div className="space-y-1.5">
             <Label htmlFor="tw-sid" className="text-right block">Account SID</Label>

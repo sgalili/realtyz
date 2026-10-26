@@ -98,7 +98,7 @@ import { MAX_POST_IMAGES, randomImageSet, requestSmartMediaFilter } from '@/lib/
 import { resolveMediaUrl, resolveMediaUrls, mediaDedupeKey, mediaSourceIdentity } from '@/lib/postMediaUrl';
 
 import { stripAddressNumbers } from '@/lib/formatAddress';
-import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
+import { IvrBroadcastPanel } from '@/components/campaigns/IvrBroadcastPanel';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
 import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
@@ -309,7 +309,7 @@ const CHANNEL_CARDS: ChannelCard[] = [
   { id: 'facebook',  label: 'Facebook',   free: true, brand: 'facebook' },
   { id: 'instagram', label: 'Instagram',  free: true, brand: 'instagram' },
   { id: 'x',         label: 'X',          free: true, brand: 'x' },
-  { id: 'ivr',       label: 'IVR',        price: '0.20', priceUnit: 'לדקה',   icon: Phone, iconColor: 'text-[#0f1b3d]' },
+  { id: 'ivr',       label: 'הודעה טלפונית מוקלטת', price: '0.20', priceUnit: 'לדקה',   icon: Phone, iconColor: 'text-[#0f1b3d]' },
   { id: 'email',     label: 'אימייל',     price: '0.01', priceUnit: 'לנמען',  icon: Mail,  iconColor: 'text-rose-500' },
   { id: 'ai-call',   label: 'שיחת AI',    price: '1.00', priceUnit: 'לדקה',   icon: Bot,   iconColor: 'text-[#0f1b3d]' },
   { id: 'youtube',   label: 'YouTube',    free: true, brand: 'youtube' },
@@ -7716,7 +7716,6 @@ const CampaignCenter = () => {
   const [pickedChannelIds, setPickedChannelIds] = useState<Set<string>>(new Set());
 
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
-  const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
   const [supportChannel, setSupportChannel] = useState<string | null>(null);
 
@@ -8420,7 +8419,6 @@ const CampaignCenter = () => {
       if (card) setPickedChannel(card);
       setPickedChannelIds(selectedCampaignChannels(channel));
     }
-    if (channel === 'ivr') setIvrOpen(true);
     setSearchParams(next, { replace: true });
   };
 
@@ -8709,7 +8707,7 @@ const CampaignCenter = () => {
 
 
         <TabsContent value="broadcast" className="mt-6">
-          {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'instagram' && wizardChannel !== 'ivr' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200"><SmsBlastSimulator dedicatedChannel={wizardChannel} /></div>}
+          {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'instagram' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200">{wizardChannel === 'ivr' ? <IvrBroadcastPanel /> : <SmsBlastSimulator dedicatedChannel={wizardChannel} />}</div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
           {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
@@ -8720,7 +8718,7 @@ const CampaignCenter = () => {
             selectedIds={pickedChannelIds}
             onPick={(c) => {
               if (c.id === 'ivr') {
-                setIvrOpen(true);
+                selectWizardChannel('ivr');
                 return;
               }
               if (c.id === 'ai-call') {
@@ -9238,7 +9236,6 @@ const CampaignCenter = () => {
         onClose={() => setVoiceDialChannel(null)}
         channel={voiceDialChannel}
       />
-      <IvrBroadcastDialog open={ivrOpen} onClose={() => { setIvrOpen(false); if (wizardChannel === 'ivr') setWizardChannel(null); }} />
       <EmailAliasSetupDialog
         open={emailSetupOpen}
         onClose={() => setEmailSetupOpen(false)}
