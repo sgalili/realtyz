@@ -564,8 +564,8 @@ export default function Properties() {
   // Persist the full search state (criteria + results) on every change, so
   // navigating away and back restores the exact same table.
   useEffect(() => {
-    saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results: results.slice(0, 100) });
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results]);
+    saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results: results.slice(0, 100) }, cacheScope);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, hasSearched, results, cacheScope]);
 
 
   // A pasted Yad2 link is scraped end-to-end on the spot (full page: details,
