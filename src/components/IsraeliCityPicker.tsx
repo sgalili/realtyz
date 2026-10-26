@@ -51,6 +51,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
           type="button"
           variant="outline"
           role="combobox"
+          aria-label={placeholder}
           aria-expanded={open}
           dir="rtl"
           className={cn('h-9 w-full justify-between text-right text-sm font-semibold', className)}
@@ -67,9 +68,10 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
             dir="rtl"
             autoFocus
             placeholder="חיפוש עיר..."
+            aria-label="חיפוש עיר"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 text-right text-sm"
+            className="h-8 text-right text-sm font-bold placeholder:font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
         <ScrollArea className="h-64">
@@ -80,16 +82,17 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
               </div>
             ) : (
               filtered.map((city) => (
-                <button
+                <Button
                   key={city}
                   type="button"
+                  variant="ghost"
                   onClick={() => selectCity(city)}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-right text-sm hover:bg-accent"
+                  className="flex h-auto w-full justify-start gap-2 rounded-md px-2 py-1.5 text-right text-sm font-normal"
                 >
                   <Check className={cn('h-3.5 w-3.5', value === city ? 'opacity-100 text-primary' : 'opacity-0')} />
                   <MapPin className="h-3 w-3 text-muted-foreground" />
                   <span className="flex-1">{city}</span>
-                </button>
+                </Button>
               ))
             )}
           </div>
@@ -108,7 +111,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
                   applyOther();
                 }
               }}
-              className="h-8 text-right text-sm"
+              className="h-8 text-right text-sm font-bold placeholder:font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             <Button type="button" size="sm" className="h-8 shrink-0" onClick={applyOther} disabled={!otherText.trim()}>
               הוסף
