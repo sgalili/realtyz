@@ -14,7 +14,7 @@ import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_C
 import { isProjectTarget, projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { resolvePosterDestination, applyContactCta } from '@/lib/posterDestination';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { shortenName } from "@/lib/shortenName";
@@ -1164,6 +1164,33 @@ const InlineComposer = ({
     });
   }, [channel.id, platformProfiles]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const fields = [textareaRef.current, firstCommentRef.current].filter(
+      (field): field is HTMLTextAreaElement => field !== null,
+    );
+    const resize = () => {
+      for (const field of fields) {
+        field.style.height = 'auto';
+        const border = field.offsetHeight - field.clientHeight;
+        field.style.height = `${field.scrollHeight + border}px`;
+      }
+    };
+    resize();
+    // Observe width only: height changes from auto-sizing must not loop.
+    const widths = new WeakMap<Element, number>();
+    const observer = new ResizeObserver(entries => {
+      let changed = false;
+      for (const entry of entries) {
+        if (widths.get(entry.target) !== entry.contentRect.width) {
+          widths.set(entry.target, entry.contentRect.width);
+          changed = true;
+        }
+      }
+      if (changed) resize();
+    });
+    fields.forEach(field => observer.observe(field));
+    return () => observer.disconnect();
+  }, [body, firstComment]);
   const [generating, setGenerating] = useState(false);
   const [finalizingBody, setFinalizingBody] = useState(false);
 
@@ -2346,7 +2373,7 @@ const InlineComposer = ({
 
 
   return (
-    <div className={editorMode ? "min-w-0 space-y-4" : "rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-44 shadow-sm space-y-4"} dir="rtl">
+    <div className={editorMode ? "min-w-0 space-y-4" : "rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4"} dir="rtl">
       {/* Header row removed — title lives in the page hero; history is in the hero icon */}
 
 
@@ -2548,7 +2575,7 @@ const InlineComposer = ({
             if (cleaned !== e.target.value) setBody(cleaned);
           }}
           placeholder="תוכן הקמפיין"
-          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-12"
+          className="resize-none overflow-y-hidden text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-3 pl-12"
         />
         <button
           type="button"
@@ -2739,7 +2766,7 @@ const InlineComposer = ({
           When enabled (checkbox on), the Meta API posts this text as the first
           comment on the published post. WA / Messenger link options live
           here and no longer touch the main post body. */}
-      <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2" dir="rtl">
+      <div className="rounded-xl border border-border bg-muted/20 px-3 pt-3 pb-2 space-y-2" dir="rtl">
         <div className="flex flex-row items-center justify-between gap-2">
           <label className="flex items-center gap-2 text-sm font-semibold text-foreground select-none cursor-pointer">
             <Checkbox
@@ -2763,16 +2790,16 @@ const InlineComposer = ({
           )}
         </div>
         <Textarea
-          ref={firstCommentRef as any}
-          rows={5}
+          ref={firstCommentRef}
+          rows={2}
           value={firstComment}
           onChange={(e) => setFirstComment(e.target.value)}
           placeholder="תוכן התגובה"
           disabled={!firstCommentEnabled}
-          className="resize-y text-right placeholder:text-muted-foreground/60"
+          className="resize-none overflow-y-hidden text-right placeholder:text-muted-foreground/60"
         />
         {firstCommentEnabled && (
-          <div className="flex flex-wrap items-center gap-4 pt-1">
+          <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-xs text-foreground select-none cursor-pointer">
               <Checkbox
                 checked={attachWaLink}
