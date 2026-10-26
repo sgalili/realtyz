@@ -1,5 +1,12 @@
 # Roadmap
 
+## Platform publishing and privacy updates
+- [ ] Enforce anonymous partner redistribution and original advertiser landing attribution; update generated links to toraff.co.il.
+- [ ] Add image navigation and confirmed deletion.
+- [ ] Show confirmed Business Page photo/name and named distribution choice; preserve isolated cloud groups and offer keyword discovery after empty import.
+- [ ] Split social post credit label and refine bottom button icons/gap.
+- [ ] Run focused regression tests and verify available signed-in flows without publishing.
+
 ## Cloud campaign publishing validation
 - [x] Cloud group publication uses server-confirmed sessions and the background cloud runner without Page tokens; confirmation shows GoLogin connection, and Graph credentials stay required for Page/Instagram.
 - [x] 22 tests pass; signed-in confirmation displays active GoLogin with zero Page targets. Validation correctly requires selected groups; no post sent. Actual dispatch cannot be tested in this workspace because it has no available groups.
