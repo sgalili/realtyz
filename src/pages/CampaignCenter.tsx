@@ -2889,7 +2889,7 @@ const InlineComposer = ({
       <Dialog open={groupPickerOpen} onOpenChange={setGroupPickerOpen}>
         <DialogContent dir="rtl" className="w-[calc(100%-2rem)] min-w-0 max-w-lg overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="text-right">קבוצות לפרסום</DialogTitle>
+            <DialogTitle className="flex items-center justify-center gap-2 text-center"><BrandIcon name="facebook" className="h-6 w-6 text-social-facebook" />קבוצות לפרסום</DialogTitle>
           </DialogHeader>
           <div className="min-w-0 max-w-full space-y-3">
             <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />

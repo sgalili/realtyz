@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Loader2, Plus, Search, Settings2, Users, ExternalLink, Activity } from "lucide-react";
-import { FacebookGroupsIcon } from "@/components/icons/FacebookGroupsIcon";
+import { BrandIcon } from "@/components/BrandIcon";
 import { FacebookCloudConnectGate } from "./FacebookCloudConnectGate";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,6 +70,11 @@ export function GroupDiscoveryDialog({
   const [cloud, setCloud] = useState<CloudSessionState | null>(null);
   const [cloudLoaded, setCloudLoaded] = useState(false);
   const [cloudScanning, setCloudScanning] = useState(false);
+  const scanController = useRef<AbortController | null>(null);
+  useEffect(() => {
+    setCloudScanning(false);
+    return () => { scanController.current?.abort(); };
+  }, [open, workspaceOwnerId]);
   const [results, setResults] = useState<DiscoveredGroup[]>([]);
   const [searched, setSearched] = useState(false);
   const [sortBy, setSortBy] = useState<(typeof SORTS)[number]["id"]>("popularity");
@@ -151,10 +156,13 @@ export function GroupDiscoveryDialog({
     const q = query.trim();
     if (!q || cloudScanning) return;
     setCloudScanning(true);
+    const controller = new AbortController();
+    scanController.current = controller;
     setPicked(new Set());
     setProgress({});
     try {
-      const rows = await fetchGroupsViaCloud(q);
+      const rows = await fetchGroupsViaCloud(q, { signal: controller.signal });
+      if (controller.signal.aborted) return;
       const seen = new Set<string>();
       const fresh = rows.filter((g) => g?.group_id && !seen.has(g.group_id) && seen.add(g.group_id)).slice(0, 100);
       setResults(fresh);
@@ -162,12 +170,13 @@ export function GroupDiscoveryDialog({
       setSearched(true);
       if (!fresh.length) toast.info("לא נמצאו קבוצות — נסו מילת חיפוש אחרת");
     } catch (e: any) {
+      if (controller.signal.aborted) return;
       toast.error("הסריקה בפייסבוק נכשלה", { description: e?.message });
       if (e?.message?.includes("חיבור פייסבוק")) {
         setCloud((c) => (c ? { ...c, active: false } : c));
       }
     } finally {
-      setCloudScanning(false);
+      if (scanController.current === controller) setCloudScanning(false);
     }
   };
 
@@ -234,7 +243,7 @@ export function GroupDiscoveryDialog({
       <DialogContent dir="rtl" className="w-[calc(100vw-1.5rem)] max-w-lg p-4">
         <DialogTitle className="sr-only">חיפוש והצטרפות לקבוצות</DialogTitle>
 
-        <div className="flex items-center gap-2 text-base font-semibold"><FacebookGroupsIcon className="h-5 w-5" /> קבוצות בפייסבוק</div>
+        <div className="flex items-center justify-center gap-2 text-center text-base font-semibold"><BrandIcon name="facebook" className="h-6 w-6 text-social-facebook" /> קבוצות בפייסבוק</div>
             {!cloudLoaded ? (
               <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> בודק את חיבור הפייסבוק…
@@ -344,7 +353,7 @@ export function GroupDiscoveryDialog({
           <div className="flex min-w-0 flex-wrap gap-2">
             <Input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="שם הקבוצה"
               className="min-w-0 flex-1 text-[14px]" aria-label="שם הקבוצה" />
-            <Input value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} placeholder="קישור הקבוצה (facebook.com/groups/…)"
+            <Input value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} placeholder="קישור הקבוצה בפייסבוק"
               className="min-w-0 flex-1 text-[14px]" dir="ltr" aria-label="קישור הקבוצה" />
             <Button type="button" size="sm" variant="outline" className="h-9 shrink-0 gap-1 text-[14px]"
               disabled={addingManual || !manualName.trim() || !manualUrl.trim()} onClick={() => void addManualGroup()}>

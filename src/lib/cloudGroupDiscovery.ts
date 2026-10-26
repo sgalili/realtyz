@@ -14,9 +14,12 @@ type FetchJob = {
   error: string | null;
 };
 
-const invoke = async (body: Record<string, unknown>) => {
-  const { data, error } = await supabase.functions.invoke('fb-session-vault', { body });
-  if (error) throw new Error(error.message || 'cloud_fetch_failed');
+const invoke = async (body: Record<string, unknown>, signal: AbortSignal) => {
+  const { data, error } = await supabase.functions.invoke('fb-session-vault', { body, signal });
+  if (error) {
+    const details = await error.context?.clone?.().json().catch(() => null);
+    throw new Error(details?.message || details?.error || error.message || 'סריקת הקבוצות בפייסבוק נכשלה');
+  }
   if (data?.error) throw new Error(data.message || data.error);
   return data;
 };
@@ -30,21 +33,34 @@ export async function fetchGroupsViaCloud(
   query: string,
   opts?: { pollMs?: number; timeoutMs?: number; syncMemberships?: boolean; signal?: AbortSignal },
 ): Promise<DiscoveredGroup[]> {
-  opts?.signal?.throwIfAborted();
-  const started = await invoke(opts?.syncMemberships ? { action: 'sync_groups' } : { action: 'fetch_groups', query });
+  if (opts?.signal?.aborted) throw opts.signal.reason || new DOMException('Cancelled', 'AbortError');
+  const controller = new AbortController();
+  const timeoutMessage = 'סריקת הקבוצות בפייסבוק ארכה יותר מדי. נסו שוב בעוד רגע.';
+  const cancel = () => controller.abort(opts?.signal?.reason);
+  opts?.signal?.addEventListener('abort', cancel, { once: true });
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const interrupted = new Promise<never>((_, reject) => {
+    controller.signal.addEventListener('abort', () => reject(controller.signal.reason), { once: true });
+    timeout = setTimeout(() => controller.abort(new Error(timeoutMessage)), opts?.timeoutMs ?? 60_000);
+  });
+  const request = (body: Record<string, unknown>) => Promise.race([invoke(body, controller.signal), interrupted]);
+  try {
+  const started = await request(opts?.syncMemberships ? { action: 'sync_groups' } : { action: 'fetch_groups', query });
   const jobId = String(started?.job_id ?? '');
-  if (!jobId) throw new Error('סריקת הקבוצות בענן לא הופעלה');
+  if (!jobId) throw new Error('סריקת הקבוצות בפייסבוק לא הופעלה');
 
   const pollMs = opts?.pollMs ?? 4000;
-  const deadline = Date.now() + (opts?.timeoutMs ?? 180_000);
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, pollMs));
-    opts?.signal?.throwIfAborted();
-    const res = await invoke({ action: 'fetch_status', job_id: jobId });
+  while (true) {
+    await Promise.race([new Promise((r) => setTimeout(r, pollMs)), interrupted]);
+    if (controller.signal.aborted) throw controller.signal.reason;
+    const res = await request({ action: 'fetch_status', job_id: jobId });
     const job = res?.job as FetchJob | undefined;
     if (!job) continue;
     if (job.status === 'completed') return Array.isArray(job.groups) ? job.groups : [];
-    if (job.status === 'failed') throw new Error(job.error || 'הסריקה בענן נכשלה');
+    if (job.status === 'failed') throw new Error(job.error || 'הסריקה בפייסבוק נכשלה');
   }
-  throw new Error('הסריקה בענן ארכה יותר מדי – נסו שוב');
+  } finally {
+    clearTimeout(timeout);
+    opts?.signal?.removeEventListener('abort', cancel);
+  }
 }

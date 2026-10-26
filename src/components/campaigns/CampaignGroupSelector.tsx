@@ -333,7 +333,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
             <input
               value={manualUrl}
               onChange={(e) => setManualUrl(e.target.value)}
-              placeholder="https://www.facebook.com/groups/..."
+              placeholder="קישור הקבוצה בפייסבוק"
               dir="ltr"
               maxLength={500}
               className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1.5 text-[15px] text-foreground"

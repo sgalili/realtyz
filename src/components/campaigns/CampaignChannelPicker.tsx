@@ -3,8 +3,7 @@ import { Button } from '@/components/ui/button';
 import { CampaignServiceIcon } from './CampaignServiceIcon';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
-import { useMetaPageBinding } from '@/hooks/useMetaPageBinding';
-import { PageAvatarIcon } from './PageAvatarIcon';
+import { FacebookPageSelector } from './FacebookPageSelector';
 import { SOCIAL_DRAFT_CREDITS } from '@/lib/socialDraftGeneration';
 
 export const DISTRIBUTION_CHANNELS = [
@@ -25,7 +24,6 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
   const { data: prices = [], isLoading, isError, refetch } = useCampaignPricing();
   const channel = DISTRIBUTION_CHANNELS.find((item) => item.id === selected);
   const price = channel ? campaignServicePrice(channel.id, prices) : null;
-  const { data: page } = useMetaPageBinding();
   return (
     <section className="mx-auto w-full max-w-3xl space-y-6" dir="rtl">
       <div className="flex items-center gap-3">
@@ -36,7 +34,7 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
             <span className="min-w-0">{channel ? `הגדרת קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}</span>
             {channel && <span className="ms-auto shrink-0 text-center text-sm font-normal text-muted-foreground">{['facebook', 'instagram'].includes(channel.id) ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(SOCIAL_DRAFT_CREDITS)}</span><span className="block">לפוסט</span></> : price ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(price.credits)}</span><span className="block">ל{price.unit}</span></> : 'המחירון אינו זמין'}</span>}
           </h2>
-          {channel?.id === 'facebook' && page?.pageId && <div className="mt-2 flex min-w-0 items-center gap-2 text-sm text-muted-foreground" aria-label="עמוד הפייסבוק לפרסום"><PageAvatarIcon className="h-8 w-8" /><span className="min-w-0 break-words">{page.isShared ? 'עמוד משותף' : 'עמוד עסקי'} · {page.pageName || 'עמוד פייסבוק'}</span></div>}
+          {channel?.id === 'facebook' && <FacebookPageSelector />}
         </div>
       </div>
       {!channel && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
