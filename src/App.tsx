@@ -98,7 +98,6 @@ const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
-const OwnerProperties = lazy(() => import("./pages/owner/OwnerProperties"));
 const Developers = lazy(() => import("./pages/Developers"));
 const Wallet = lazy(() => import("./pages/Wallet"));
 const DeveloperDashboard = lazy(() => import("./pages/DeveloperDashboard"));
