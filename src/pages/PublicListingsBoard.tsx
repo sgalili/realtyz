@@ -318,18 +318,18 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     <div dir="rtl" className={cn('flex min-h-0 flex-col overflow-hidden bg-background', embedded ? 'h-full' : 'public-board-page h-[100dvh]')}>
       {showWelcome && (
         <div className={cn('fixed inset-x-0 bottom-0 z-40 overflow-hidden overscroll-none bg-background', embedded ? 'top-16' : 'top-14 sm:top-16')}>
-          <div className={cn('mx-auto w-full max-w-6xl px-1 sm:px-4', embedded && 'app-content-width')}>
+          <div className={cn('mx-auto w-full max-w-6xl', embedded ? 'app-content-width px-[10px] sm:px-0' : 'px-[10px]')}>
             <WelcomeSlides key={welcomeKey} onDone={() => setShowWelcome(false)} />
           </div>
         </div>
       )}
       <header className="relative z-20 shrink-0 bg-card">
-        <div className="mx-auto w-full max-w-6xl px-1 sm:px-4 pb-0 pt-2">
+        <div className={cn('mx-auto w-full max-w-6xl pb-0 pt-2', embedded ? 'px-0' : 'px-[10px]')}>
           {embedded ? null : (
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                {!user && <Button variant="ghost" size="icon" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="h-9 w-9 shrink-0 border-0 bg-transparent text-primary hover:bg-transparent"><UserPlus className="h-6 w-6" strokeWidth={1.75} /></Button>}
+                {!user && <Button variant="ghost" size="icon" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="h-12 w-12 shrink-0 border-0 bg-transparent p-0 text-primary hover:bg-transparent"><UserPlus className="!h-12 !w-12" strokeWidth={1.75} /></Button>}
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
@@ -341,7 +341,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         </div>
       </header>
 
-      <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain px-1 pb-0 sm:px-4 pt-[19px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
+      <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain pb-0 pt-[19px]', embedded ? 'px-0' : 'px-[10px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
           <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
