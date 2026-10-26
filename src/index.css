@@ -1933,3 +1933,32 @@ html.activity-drawer-open main[aria-label="רשימת נכסים"] {
 :is([data-site-dialog], [data-site-popup]) .text-4xl { font-size: calc(36px + var(--dialog-font-increase)) !important; }
 [data-dialog-actions] { flex-direction: row !important; justify-content: space-between !important; align-items: center; gap: 12px; }
 [data-dialog-actions] > :is(button, a) { margin: 0 !important; min-width: 0; max-width: calc(100% - 3rem); height: auto; min-height: 40px; white-space: normal; }
+
+/* Explicit pixel utilities retain their existing legibility floor, plus 3px. */
+:is([data-site-dialog], [data-site-popup]) [class*="text-[8px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[9px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[10px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[10.5px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[11px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[11.5px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[12px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[12.5px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[13px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[14px]"] { font-size: calc(14px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[15px]"] { font-size: calc(15px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[16px]"] { font-size: calc(16px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[17px]"] { font-size: calc(17px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[18px]"] { font-size: calc(18px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[19px]"] { font-size: calc(19px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[20px]"] { font-size: calc(20px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[21px]"] { font-size: calc(21px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[22px]"] { font-size: calc(22px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[24px]"] { font-size: calc(24px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[25px]"] { font-size: calc(25px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[26px]"] { font-size: calc(26px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[28px]"] { font-size: calc(28px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[38px]"] { font-size: calc(38px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[42px]"] { font-size: calc(42px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[44px]"] { font-size: calc(44px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[52px]"] { font-size: calc(52px + var(--dialog-font-increase)) !important; }
+:is([data-site-dialog], [data-site-popup]) [class*="text-[74px]"] { font-size: calc(74px + var(--dialog-font-increase)) !important; }
