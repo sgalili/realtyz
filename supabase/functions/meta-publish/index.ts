@@ -540,7 +540,7 @@ Deno.serve(async (req) => {
       ? true
       : body.publish_to_page !== false;
     const requestedGroupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : [])
-      .map((g: unknown) => String(g ?? "").replace(/^(ext:|manual:)/, "").trim())
+      .map((g: unknown) => String(g ?? "").replace(/^(ext:|manual:|fb:)/, "").trim())
       .filter((g: string) => g.length > 0);
     // Targeted publishing: imported groups the broker de-selected are dropped.
     const groupIds: string[] = await (async () => {
@@ -553,7 +553,7 @@ Deno.serve(async (req) => {
         if (error) throw error;
         const excluded = new Set(
           ((data ?? []) as any[]).filter((r) => r?.is_selected === false || r?.is_blocked)
-            .map((r) => String(r.group_id).replace(/^(ext:|manual:)/, '')),
+            .map((r) => String(r.group_id).replace(/^(ext:|manual:|fb:)/, '')),
         );
         return requestedGroupIds.filter((g) => !excluded.has(g));
       } catch {
