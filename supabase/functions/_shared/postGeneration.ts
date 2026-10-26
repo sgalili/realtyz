@@ -4,6 +4,10 @@ export const POST_GENERATION_OPTIONS = {
   reasoning: { enabled: false, effort: 'none', exclude: true },
 };
 
+export function removeTelephoneEmojis(text: string): string {
+  return text.replace(/[☎☏📞📱📲📳📴📵📟📠]\uFE0F?/gu, '').replace(/[ \t]+$/gm, '').replace(/^\s*\n/, '').trim();
+}
+
 export function completedPostText(data: { choices?: { finish_reason?: string; message?: { content?: string; refusal?: string } }[] }): string {
   const choice = data.choices?.[0];
   if (choice?.message?.refusal) throw new Error('יצירת התוכן נדחתה על ידי ספק ה-AI.');

@@ -10,6 +10,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 import { enforceOwnerLaws, fetchOwnerBranding, scrubForbiddenBylines, stripStreetNumbers } from "../_shared/owner-laws.ts";
 import { fetchWorkspacePersona, EMPTY_PERSONA } from "../_shared/workspacePersona.ts";
+import { removeTelephoneEmojis } from '../_shared/postGeneration.ts';
 
 
 import { ensureLeadingEmojiBullets, EMOJI_BULLET_LAW } from "../_shared/emoji.ts";
@@ -208,6 +209,7 @@ Deno.serve(async (req) => {
       }
     } catch (_e) { /* never block on enforcement failure */ }
 
+    if (purpose === 'social_post') finalText = removeTelephoneEmojis(finalText);
     return new Response(JSON.stringify({ final_text: finalText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -2,6 +2,7 @@ import { tailorGroupTexts, ensureUniqueTexts, rotateMedia } from "../_shared/gro
 import { dedupePostMedia } from '../_shared/postMediaIdentity.ts';
 import { campaignPublishRoute } from '../_shared/campaignPublishRoute.ts';
 import { anonymousSocialText, socialPrivacyIdentities } from '../_shared/socialIdentityPrivacy.ts';
+import { publishedPostText, stripPromotionalFooter } from '../_shared/promotionalFooter.ts';
 // meta-publish — direct Meta Graph API publishing for Facebook Pages and
 // Instagram Business accounts.
 //
@@ -524,7 +525,7 @@ Deno.serve(async (req) => {
 
     // ---- Publish -----------------------------------------------------------
     const identities = await socialPrivacyIdentities(db, ownerId, body?.listing_id);
-    const text = anonymousSocialText(body?.post ?? body?.text, identities);
+    const text = stripPromotionalFooter(anonymousSocialText(body?.post ?? body?.text, identities));
     const channels: string[] = (Array.isArray(body?.channels) ? body.channels : ["facebook"]).map((c: unknown) =>
       String(c || "").toLowerCase()
     );
@@ -840,7 +841,8 @@ Deno.serve(async (req) => {
 
       if (ch === "facebook") {
         let activePage = page;
-        let res = await publishFacebook(activePage.pageId, activePage.token, text, media, link);
+        const finalCaption = await publishedPostText(db, ownerId, `facebook:${hashes[ch]}`, link && !text.includes(link) ? `${text}\n\n${link}` : text);
+        let res = await publishFacebook(activePage.pageId, activePage.token, finalCaption, media, link);
 
 
         // The stored page_id may not be a Page this token can publish to.
@@ -849,7 +851,7 @@ Deno.serve(async (req) => {
         if ("error" in res && isPageScopeError(res.error)) {
           const tried = [activePage.pageId];
           for (const alt of await alternatePages(db, ownerId, tried)) {
-            const retry = await publishFacebook(alt.pageId, alt.token, text, media, link);
+            const retry = await publishFacebook(alt.pageId, alt.token, finalCaption, media, link);
             tried.push(alt.pageId);
             if (!("error" in retry)) {
               activePage = alt;
@@ -910,7 +912,8 @@ Deno.serve(async (req) => {
         if (!igId) {
           failures.push({ platform: ch, message: "לא נמצא חשבון אינסטגרם עסקי המקושר לדף." });
         } else {
-          const res = await publishInstagram(igId, page.token, text, media);
+          const finalCaption = await publishedPostText(db, ownerId, `instagram:${hashes[ch]}`, text, 2200);
+          const res = await publishInstagram(igId, page.token, finalCaption, media);
           if ("error" in res) failures.push({ platform: ch, message: res.error });
           else postIds.push({ platform: ch, id: res.id });
         }

@@ -5,6 +5,8 @@
 // so a job can never stay stuck "in progress".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { publishedPostText } from '../_shared/promotionalFooter.ts';
+import { anonymousSocialText, socialPrivacyIdentities } from '../_shared/socialIdentityPrivacy.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -46,5 +48,19 @@ Deno.serve(async (req) => {
     return json({ ok: false, reason: (data as any)?.reason ?? "invalid_token" }, 401);
   }
 
-  return json({ ok: true, workspace_owner_id: (data as any).workspace_owner_id, jobs: (data as any).jobs ?? [] });
+  const workspace = (data as any).workspace_owner_id;
+  try {
+    const jobs = await Promise.all(((data as any).jobs ?? []).map(async (job: any) => {
+      const { data: row, error: rowError } = await admin.from('campaign_activity_queue').select('payload,listing_id').eq('id', job.id).eq('workspace_owner_id', workspace).maybeSingle();
+      if (rowError || !row) throw new Error('Unauthorized publication');
+      const identities = await socialPrivacyIdentities(admin, workspace, row.payload?.listing_id ?? row.listing_id);
+      const body = anonymousSocialText(job.message, identities);
+      const link = typeof job.link === 'string' ? job.link.trim() : '';
+      const text = await publishedPostText(admin, workspace, `group:${job.id}`, link && !body.includes(link) ? `${body}\n\n${link}` : body);
+      return { ...job, message: text };
+    }));
+    return json({ ok: true, workspace_owner_id: workspace, jobs });
+  } catch {
+    return json({ ok: false, reason: 'publication_footer_unavailable' }, 503);
+  }
 });

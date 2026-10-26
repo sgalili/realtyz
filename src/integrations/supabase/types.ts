@@ -6689,6 +6689,27 @@ export type Database = {
           },
         ]
       }
+      published_post_footer_allocations: {
+        Row: {
+          created_at: string
+          ordinal: number
+          publication_key: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          ordinal: number
+          publication_key: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          ordinal?: number
+          publication_key?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       quick_message_templates: {
         Row: {
           body: string
@@ -8522,6 +8543,10 @@ export type Database = {
       }
       claim_market_scrape_slot: { Args: { _source?: string }; Returns: Json }
       claim_monthly_free_credits: { Args: never; Returns: number }
+      claim_published_post_footer: {
+        Args: { _publication_key: string; _workspace: string }
+        Returns: number
+      }
       claim_scraping_response: {
         Args: { _key: string; _ttl_seconds: number }
         Returns: Json

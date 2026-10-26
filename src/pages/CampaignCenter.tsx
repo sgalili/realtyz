@@ -2569,16 +2569,18 @@ const InlineComposer = ({
               מייבא תמונות הנכס…
             </span>
           )}
-          <div className="relative flex items-center gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
-              <button
+          <div className="relative flex items-start gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
+              <Button
                 type="button"
+                variant="outline"
+                size="icon"
                 onClick={() => galleryInputRef.current?.click()}
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-border bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                 aria-label="הוספת תמונות מהגלריה"
                 title="הוספת תמונות מהגלריה"
               >
                 <Plus className="h-5 w-5" />
-              </button>
+              </Button>
               {attachments.map((att, i) => {
                 const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
                 const isImage = att.kind === 'image' && !!att.url && !isVideo;
