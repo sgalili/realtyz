@@ -1,5 +1,11 @@
 # Roadmap
 
+## Signup celebration and reward polish
+- [ ] All lead icons and known-zero labels, sidebar typography and fixed-size header icon/button updates.
+- [ ] Immediate type-specific signup welcome, seven-second falling confetti and sound, configurable one-time signup bonus shown in welcome.
+- [ ] Account-scoped confirmed earnings sound without playing historical credits or top-ups.
+- [ ] Focused tests and live UI verification.
+
 ## Signup details and gender October 26
 - [x] Match signup language to chosen gender; extra logo space, back controls, smaller footer and matching headings.
 - [x] Separate type picker from details; city and property menus, owner sale/rent, developer import link, license placeholder without signup disclosures; owner deal persists through constrained RPC.
