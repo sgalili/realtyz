@@ -42,7 +42,7 @@ export function FacebookPageSelector() {
     {pages.length > 0 ? <Select value={pages.some(p => p.id === selected?.pageId) ? selected?.pageId : undefined} onValueChange={id => void choose(id)} disabled={saving || isFetching}>
       <SelectTrigger className="w-full sm:w-64" aria-label="בחירת עמוד פייסבוק"><SelectValue placeholder="בחירת עמוד פייסבוק" /></SelectTrigger>
       <SelectContent>{pages.map(page => <SelectItem key={page.id} value={page.id}><span className="flex items-center gap-2">{page.picture && <img src={page.picture} alt="" className="h-6 w-6 rounded-full object-cover" referrerPolicy="no-referrer" />}{page.name || page.id}</span></SelectItem>)}</SelectContent>
-    </Select> : <Button variant="link" asChild><a href="/profile?tab=connections&fb=choose">חיבור עמוד עסקי</a></Button>}
+    </Select> : null}
     {pagesError && <span role="alert" className="w-full text-xs text-destructive">{pagesError.message}</span>}
   </div>;
 }
