@@ -37,8 +37,8 @@ export function BrokerTestLinks({ className = '' }: { className?: string }) {
 /** Licensing content is inline in the master pricing dialog. */
 export function ClosingLicenseInfo() {
   return <div className="space-y-2 text-base leading-relaxed text-muted-foreground">
-    <p>תיווך בעסקאות מקרקעין וקבלת דמי תיווך מחייבים רישיון תיווך ישראלי בתוקף. מחיר ליד סגירת עסקה מוצג רק למתווכים שרישיונם אומת במערכת; הרשמה או סוג חשבון לבדם אינם מספיקים.</p>
-    <p>רוצים לקבל רישיון? אפשר ללמוד בקורס המקוון ולהירשם למבחן המתווכים הקרוב.</p>
+    <p>תיווך בעסקאות מקרקעין וקבלת דמי תיווך מחייבים רישיון תיווך ישראלי בתוקף. מחיר ליד סגירת עסקה מוצג רק למתווכים שרישיונם אומת במערכת.</p>
+    <p>{'\n'}רוצים להוציא רישיון תיווך? אפשר ללמוד בקורס המקוון ולהירשם למבחן המתווכים הקרוב.</p>
     <BrokerTestLinks />
   </div>;
 }
