@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy, Handshake, Link2, Mail, Wallet, RefreshCw } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
