@@ -28,6 +28,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { appendDisclosure } from "../_shared/compliance.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
+import { profileGenderByAddress, personalizeMessage } from '../_shared/personalLanguage.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -944,6 +945,13 @@ Deno.serve(async (req) => {
     // requested by the caller. We do this AFTER body validation but BEFORE
     // dispatching, so the lead sees the same text we audit.
     let outboundMessage = parsed.data.message ?? parsed.data.body ?? null;
+    // System-authored dynamic slots only. Never modify approved fixed template text.
+    if (bearer === SERVICE_ROLE_KEY && outboundMessage?.includes('{{gender:') && !parsed.data.template_id) {
+      const normalizedRecipient = normalizePhone(rawPhone);
+      const localRecipient = normalizedRecipient?.startsWith('9725') ? `0${normalizedRecipient.slice(3)}` : normalizedRecipient;
+      const gender = localRecipient ? await profileGenderByAddress(admin, 'phone', localRecipient) : null;
+      outboundMessage = personalizeMessage(outboundMessage, gender);
+    }
     let disclosureAppended = false;
     if (outboundMessage && parsed.data.ai_assisted) {
       const r = appendDisclosure(

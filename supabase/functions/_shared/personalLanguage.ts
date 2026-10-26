@@ -34,6 +34,10 @@ export function personalizeMessage(text: string, gender: PersonalGender): string
     (_match, male, female, neutral) => genderText(gender, { male, female, neutral }));
 }
 type ProfileReader = { from: (table: 'profiles') => { select: (fields: string) => { eq: (field: string, value: string) => { maybeSingle: () => PromiseLike<{ data: { gender?: unknown } | null; error?: unknown }> } } } };
+export async function profileGenderByAddress(reader: ProfileReader, field: 'phone' | 'email', value: string): Promise<PersonalGender> {
+  const { data, error } = await reader.from('profiles').select('gender').eq(field, value).maybeSingle();
+  return error ? null : profileGender(data?.gender);
+}
 export async function recipientProfileGender(reader: ProfileReader, userId: string): Promise<PersonalGender> {
   const { data, error } = await reader.from('profiles').select('gender').eq('id', userId).maybeSingle();
   return error ? null : profileGender(data?.gender);

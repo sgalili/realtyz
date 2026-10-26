@@ -50,6 +50,7 @@ import { syncWorkspacePagePosts } from '@/lib/extensionPageSync';
 import { deletePostImage } from '@/lib/postImageDeletion';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
+import { usePersonalLanguage, personalGenderKey, profileGender } from '@/i18n/personalLanguage';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
 import { GROUP_POST_TOPICS, groupPostTopic, groupPostTopicInstructions } from '@/lib/groupPostTopics';
@@ -6891,7 +6892,8 @@ const VoiceLeadPickerDialog = ({
   const [dialing, setDialing] = useState(false);
 
   // Broker (caller) gender — used to address the user in correct Hebrew grammar.
-  const [userGender, setUserGender] = useState<Gender | null>(null);
+  const { gender: userGender } = usePersonalLanguage();
+  const personalLanguageCache = useQueryClient();
 
   // Property promotion picker — optional focus listing for the call.
   const [voiceListings, setVoiceListings] = useState<{ id: string; title: string; city: string | null; asking_price: number | null; deal_type: string | null }[]>([]);
@@ -6938,20 +6940,17 @@ const VoiceLeadPickerDialog = ({
     hasLoadedRef.current = true;
     (async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      const [{ data: leadRows }, { data: listingRows }, { data: profile }] = await Promise.all([
+      const [{ data: leadRows }, { data: listingRows }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city, deal_type, preferences')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
         supabase.from('listings').select('id, property_title, city, asking_price, deal_type, status')
           .eq('status', 'live').order('created_at', { ascending: false }).limit(200),
-        user ? supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null } as any),
         loadClonedVoices(),
       ]);
       setLeads(((leadRows as any[]) ?? []).map(mapVoiceLead));
       setVoiceListings(((listingRows as any[]) ?? []).map((l) => ({
         id: l.id, title: l.property_title || 'נכס ללא כותרת', city: l.city ?? null, asking_price: l.asking_price ?? null, deal_type: l.deal_type ?? null,
       })));
-      setUserGender(((profile as any)?.gender ?? null) as Gender | null);
       setLoading(false);
 
     })();
@@ -7062,13 +7061,16 @@ const VoiceLeadPickerDialog = ({
                   { v: 'male' as const, label: 'גבר' },
                   { v: 'female' as const, label: 'אישה' },
                 ]).map((o) => (
-                  <button
+                  <Button
                     key={o.v}
                     type="button"
                     onClick={async () => {
-                      setUserGender(o.v);
                       const { data: { user } } = await supabase.auth.getUser();
-                      if (user) await supabase.from('profiles').update({ gender: o.v }).eq('id', user.id);
+                      if (!user) return;
+                      const { data, error } = await supabase.from('profiles').update({ gender: o.v }).eq('id', user.id).select('gender').single();
+                      if (error) { toast.error('שמירת ההעדפה נכשלה'); return; }
+                      personalLanguageCache.setQueryData(personalGenderKey(user.id), profileGender(data.gender));
+                      window.dispatchEvent(new Event('realtyz:profile-saved'));
                     }}
                     className={cn(
                       'rounded-md border px-2 py-0.5 text-[11px] font-semibold transition',
@@ -7078,7 +7080,7 @@ const VoiceLeadPickerDialog = ({
                     )}
                   >
                     {o.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
