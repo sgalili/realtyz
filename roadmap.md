@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Dialog readability and extra draft approval
-- [ ] Increase modal/pop-up typography by 3px and place Cancel/Submit on one row at opposite ends.
-- [ ] Fix confirmed two-credit draft renewal, preserving successful-only idempotent billing; test and verify live generation.
+- [x] Increase shared modal/pop-up typography by 3px and place Cancel/Submit on one row at opposite ends; mobile confirmation verified at 411x802 with 21px heading, 17px body/buttons and opposite aligned actions.
+- [x] Fix confirmed two-credit draft renewal independently of publication pricing; preserve successful-only idempotent settlement and request ID. Six tests passed; signed-in approval generated a new draft (200), advanced batch 3 to 4 and recorded exactly 2 credits once. Build OK; no post published.
 
 ## Bright Data audit and optimization
 - [x] Add Super Admin report with feature/API/cache breakdowns, recorded app credits, provider costs kept distinct, daily activity and export; signed-in report verified.
