@@ -4,6 +4,7 @@
 // whatever answers is normalized into a flat list of line items.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -21,6 +22,7 @@ type LineItem = {
 };
 
 const num = (v: unknown): number | null => {
+  if (v == null || v === '') return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
@@ -96,6 +98,8 @@ Deno.serve(async (req) => {
     });
     const { data: userData } = await authed.auth.getUser();
     if (!userData?.user) return json({ ok: false, error: 'unauthorized' }, 401);
+    const { data: roles, error: roleError } = await authed.from('user_roles').select('role').eq('user_id', userData.user.id);
+    if (roleError || !roles?.some(role => role.role === 'super_admin')) return json({ ok: false, error: 'forbidden' }, 403);
 
     let days = 30;
     try {
@@ -134,21 +138,27 @@ Deno.serve(async (req) => {
 
     for (const url of endpoints) {
       try {
-        const r = await fetch(url, { headers });
-        const text = await r.text();
-        console.log(`brightdata-usage: GET ${url} -> ${r.status} :: ${text.slice(0, 300)}`);
+        const serialized = await cachedScrapingText('provider_usage', url, 300, async () => {
+          const result = await trackScraping('provider_usage', 'account_api', url, async () => {
+            const r = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+            return { status: r.status, text: await r.text() };
+          }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.text).length }));
+          return JSON.stringify(result);
+        });
+        const { status, text } = JSON.parse(serialized);
         let parsed: unknown = null;
         try { parsed = JSON.parse(text); } catch { parsed = null; }
         const normalized = parsed ? normalize(parsed, zone) : [];
-        attempts.push({ url, status: r.status, items: normalized.length });
-        if (r.ok && normalized.length > 0) {
+        attempts.push({ url, status, items: normalized.length });
+        if (status >= 200 && status < 300 && normalized.length > 0) {
           items = normalized;
           usedUrl = url;
           break;
         }
+        if ([401,402,403].includes(status)) break;
       } catch (err) {
         attempts.push({ url, status: 'network_error', items: 0 });
-        console.log(`brightdata-usage: ${url} network error ${(err as Error)?.message}`);
+        console.log('brightdata-usage: provider diagnostic unavailable');
       }
     }
 
@@ -158,13 +168,13 @@ Deno.serve(async (req) => {
     try {
       const { data: events } = await authed
         .from('usage_events')
-        .select('event_type, created_at')
+        .select('service_type, created_at')
         .gte('created_at', from.toISOString())
         .limit(2000);
       const bucket = new Map<string, number>();
       for (const e of events ?? []) {
         const day = String((e as any).created_at ?? '').slice(0, 10);
-        const kind = String((e as any).event_type ?? 'other');
+        const kind = String((e as any).service_type ?? 'other');
         const key = `${day}|${kind}`;
         bucket.set(key, (bucket.get(key) ?? 0) + 1);
       }
@@ -187,7 +197,7 @@ Deno.serve(async (req) => {
       to: t,
       endpoint: usedUrl || null,
       items,
-      totals: { cost: totalCost, requests: totalRequests, bytes: totalBytes },
+      totals: { cost: items.some(i => i.cost != null) ? totalCost : null, requests: items.some(i => i.requests != null) ? totalRequests : null, bytes: items.some(i => i.bytes != null) ? totalBytes : null },
       local_ops: localOps,
       attempts,
       fetched_at: new Date().toISOString(),
