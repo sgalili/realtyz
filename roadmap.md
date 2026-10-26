@@ -1,11 +1,13 @@
 # Roadmap
 
 ## Platform publishing and privacy updates
-- [ ] Enforce anonymous partner redistribution and original advertiser landing attribution; update generated links to toraff.co.il.
-- [ ] Add image navigation and confirmed deletion.
-- [ ] Show confirmed Business Page photo/name and named distribution choice; preserve isolated cloud groups and offer keyword discovery after empty import.
-- [ ] Split social post credit label and refine bottom button icons/gap.
-- [ ] Run focused regression tests and verify available signed-in flows without publishing.
+- [x] Add shared server-record identity redaction to generation and Graph/cloud publication; shared landing reuses canonical original advertiser projection; generated short links use toraff.co.il.
+- [x] Add cyclic image navigation and confirmed deletion in campaign, listing wizard, projects and media library.
+- [x] Add stored Business Page photo/name and named crossposting choice; one-click cloud group import offers keyword discovery when empty.
+- [x] Split social draft price into 2 credits / per post and enlarge toolbar icons 30% with 6px bottom gap.
+- [x] 45 focused tests passed; signed-in mobile composer and image next/cancel checked; build OK; no post published.
+- [ ] Business Page-only cloud acting identity and full live import: requires server-confirmed Page acting identity from the cloud runner, absent in current session contract; existing GoLogin launch access remains blocked. Page badge unverified live because current workspace has no Page binding.
+- [ ] Private-owner social identity exception: remain anonymous until the server can verify the actual publishing user owns the private listing and the target groups; no client identity bypass added.
 
 ## Cloud campaign publishing validation
 - [x] Cloud group publication uses server-confirmed sessions and the background cloud runner without Page tokens; confirmation shows GoLogin connection, and Graph credentials stay required for Page/Instagram.

@@ -16,9 +16,11 @@ export function anonymousSocialText(input: unknown, identities: string[] = []): 
 
 /** Remove identities that exist in server-owned records, never arbitrary client claims. */
 export async function socialPrivacyIdentities(db: any, workspace: string, listingId?: string | null): Promise<string[]> {
-  const { data: members } = await db.from('workspace_memberships').select('user_id').eq('workspace_owner_id', workspace);
+  const { data: members, error: membersError } = await db.from('workspace_memberships').select('user_id').eq('workspace_owner_id', workspace);
+  if (membersError) throw new Error('לא ניתן לאמת את פרטיות המפרסם כרגע');
   const ids = [...new Set([workspace, ...(members ?? []).map((row: any) => row.user_id)].filter(Boolean))];
-  const { data: profiles } = await db.from('profiles').select('full_name,phone,broker_byline').in('id', ids);
+  const { data: profiles, error: profilesError } = await db.from('profiles').select('full_name,phone,broker_byline').in('id', ids);
+  if (profilesError) throw new Error('לא ניתן לאמת את פרטיות המפרסם כרגע');
   const identities = (profiles ?? []).flatMap((row: any) => [row.full_name, row.phone, row.broker_byline]).filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 1);
   if (listingId && /^[0-9a-f-]{36}$/i.test(listingId)) {
     const { data: listing } = await db.from('listings').select('source_metadata').eq('id', listingId).maybeSingle();
