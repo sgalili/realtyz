@@ -134,14 +134,16 @@ type SavedState = {
 };
 
 
-function loadCache(): SavedState | null {
+// The cache is namespaced per user AND per active workspace, so a search done
+// in one office can never resurface inside another one.
+function loadCache(scope: string): SavedState | null {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
+    const raw = sessionStorage.getItem(`${CACHE_KEY}:${scope}`);
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
-function saveCache(s: SavedState) {
-  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+function saveCache(s: SavedState, scope: string) {
+  try { sessionStorage.setItem(`${CACHE_KEY}:${scope}`, JSON.stringify(s)); } catch { /* ignore */ }
 }
 
 export default function Properties() {
