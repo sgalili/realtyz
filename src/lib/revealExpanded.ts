@@ -16,8 +16,12 @@ export function revealExpanded(content: Element | null) {
     }
   }
   const vertical = () => {
+  // Sticky table headings cover the top of the card; keep it fully below them.
+  const head = card.closest('table')?.querySelector('thead');
+  const headBottom = head ? Math.max(0, head.getBoundingClientRect().bottom) : 0;
+  card.style.scrollMarginTop = head ? `${Math.ceil(head.getBoundingClientRect().height) + 8}px` : '';
   const rect = card.getBoundingClientRect();
-  if (rect.top >= 0 && rect.bottom <= window.innerHeight) return;
+  if (rect.top >= headBottom && rect.bottom <= window.innerHeight) return;
   card.scrollIntoView({ behavior: reducedH ? 'auto' : 'smooth', block: rect.height > window.innerHeight * 0.85 ? 'start' : 'nearest', inline: 'nearest' });
   };
   // Let the horizontal return finish first so the two smooth scrolls don't cancel each other.
