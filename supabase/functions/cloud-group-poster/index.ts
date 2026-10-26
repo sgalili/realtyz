@@ -13,6 +13,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { decryptSession } from "../_shared/sessionCrypto.ts";
+import { anonymousSocialText, socialPrivacyIdentities } from '../_shared/socialIdentityPrivacy.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -148,14 +149,15 @@ Deno.serve(async (req) => {
     row = prepared;
 
     const payload = row.payload ?? {};
+    const identities = await socialPrivacyIdentities(admin, ws, payload.listing_id ?? row.listing_id);
     const jobBody = {
       job_id: row.id,
       workspace_owner_id: ws,
       group_url: payload.group_url ?? payload.groupUrl ?? row.target_ref ?? null,
       group_name: row.target_label ?? payload.group_name ?? null,
-      text: payload.body ?? payload.text ?? "",
+      text: anonymousSocialText(payload.body ?? payload.text, identities),
       images: Array.isArray(payload.images) ? payload.images : Array.isArray(payload.media_urls) ? payload.media_urls : [],
-      first_comment: payload.first_comment ?? payload.firstComment ?? null,
+      first_comment: anonymousSocialText(payload.first_comment ?? payload.firstComment, identities) || null,
       session_cookies: session.cookies,
       user_agent: session.user_agent,
       report_url: `${SUPABASE_URL}/functions/v1/cloud-group-poster`,

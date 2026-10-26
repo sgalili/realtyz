@@ -7,7 +7,7 @@
  *
  * Never remove the link, never point it at another number/domain.
  */
-export const MANDATORY_COMMENT_LINK = "https://realtyz.co.il/r/94mp59n9";
+export const MANDATORY_COMMENT_LINK = "https://toraff.co.il/r/94mp59n9";
 export const CANONICAL_CONTACT_PREFIX = "לחצו ודברו איתי ישירות";
 export const MANDATORY_FIRST_COMMENT = `${CANONICAL_CONTACT_PREFIX}:\n${MANDATORY_COMMENT_LINK}`;
 
@@ -39,7 +39,7 @@ export function enforceRitaIdentity(input: string | null | undefined): string {
   return t;
 }
 
-const CONTACT_LINE_RE = /(wa\.me\/|api\.whatsapp\.com|m\.me\/|realtyz\.co\.il\/(r|p)\/|מוזמנים לפנות אליי|לחצו ודברו איתי ישירות|לפרטים ויצירת קשר)/i;
+const CONTACT_LINE_RE = /(wa\.me\/|api\.whatsapp\.com|m\.me\/|(?:toraff|realtyz|realtys)\.co\.il\/(r|p)\/|מוזמנים לפנות אליי|לחצו ודברו איתי ישירות|לפרטים ויצירת קשר)/i;
 
 /**
  * Builds the first comment: repaired emojis, duplicate lines and redundant
@@ -48,8 +48,8 @@ const CONTACT_LINE_RE = /(wa\.me\/|api\.whatsapp\.com|m\.me\/|realtyz\.co\.il\/(
  */
 export function ensureMandatoryComment(text: string | null | undefined, destination?: string | null): string {
   const dest = String(destination ?? "").trim();
-  const existing = String(text ?? "").match(/https?:\/\/realtyz\.co\.il\/r\/[A-Za-z0-9]+/)?.[0];
-  const link = dest || existing || MANDATORY_COMMENT_LINK;
+  const existing = String(text ?? "").match(/https?:\/\/(?:toraff|realtyz|realtys)\.co\.il\/r\/[A-Za-z0-9]+/)?.[0];
+  const link = (dest || existing || MANDATORY_COMMENT_LINK).replace(/https?:\/\/(?:realtyz|realtys)\.co\.il\/r\//gi, 'https://toraff.co.il/r/');
   const line = `${CANONICAL_CONTACT_PREFIX}:\n${link}`;
   const seen = new Set<string>();
   const cleaned = enforceRitaIdentity(repairEmojis(text))

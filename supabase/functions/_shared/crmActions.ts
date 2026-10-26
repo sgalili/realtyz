@@ -281,10 +281,10 @@ export async function searchProperties(
   const ranked = picked.slice(0, 10);
 
   return await Promise.all(ranked.map(async (row: any) => {
-    const longUrl = `https://realtyz.co.il/p/${row.slug || row.id}`;
+    const longUrl = `https://toraff.co.il/p/${row.slug || row.id}`;
     const { data: existing } = await supabase.from("short_urls")
       .select("slug").eq("property_id", row.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (existing?.slug) return { ...row, short_url: `https://realtyz.co.il/r/${existing.slug}` };
+    if (existing?.slug) return { ...row, short_url: `https://toraff.co.il/r/${existing.slug}` };
     const alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
     for (let attempt = 0; attempt < 5; attempt++) {
       const bytes = new Uint8Array(7);
@@ -292,7 +292,7 @@ export async function searchProperties(
       const slug = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
       const { error: insertError } = await supabase.from("short_urls")
         .insert({ slug, property_id: row.id, long_url: longUrl, created_by: ownerId });
-      if (!insertError) return { ...row, short_url: `https://realtyz.co.il/r/${slug}` };
+      if (!insertError) return { ...row, short_url: `https://toraff.co.il/r/${slug}` };
     }
     return { ...row, short_url: longUrl };
   }));

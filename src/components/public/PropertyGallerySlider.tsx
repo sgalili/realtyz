@@ -2,11 +2,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Heart, ImageOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ImageSequenceDialog } from '@/components/properties/ImageSequenceDialog';
 
 /** Horizontal snap slider with arrows, counter and thumbnail strip (RTL safe). */
 export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay }: { photos: string[]; alt: string; onFavorite?: () => void; overlay?: ReactNode }) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
+  const [enlarged, setEnlarged] = useState<string | null>(null);
 
   useEffect(() => {
     const el = trackRef.current;
@@ -49,12 +51,13 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
         <div ref={trackRef} dir="rtl" className="flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto scroll-smooth sm:aspect-[16/7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {photos.map((src, i) => (
             <div key={`${src}-${i}`} className="h-full w-full shrink-0 snap-start">
-              <img src={src} alt={`${alt} ${i + 1}`} loading={i === 0 ? 'eager' : 'lazy'} className="h-full w-full object-cover" />
+              <Button type="button" variant="ghost" aria-label={`הגדלת תמונה ${i + 1}`} className="h-full w-full p-0" onClick={() => setEnlarged(src)}><img src={src} alt={`${alt} ${i + 1}`} loading={i === 0 ? 'eager' : 'lazy'} className="h-full w-full object-cover" /></Button>
             </div>
           ))}
         </div>
 
       </div>
+      <ImageSequenceDialog photos={photos} current={enlarged} onChange={setEnlarged} alt={alt} />
       {photos.length > 1 && (
         <div dir="rtl" className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
           {photos.map((src, i) => (

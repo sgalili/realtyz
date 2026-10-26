@@ -1754,7 +1754,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                       <p className="mt-1 text-[10px] italic text-amber-600 dark:text-amber-400">* העלות תושלם לאחר טעינת המחירון ואורך ההקלטה.</p>
                     )}
                   </div>
-                  <div className="flex flex-col items-center gap-1.5">
+                  <div className="mb-[6px] flex flex-col items-center gap-1.5 [&_button_svg]:scale-[1.3]">
                     {(() => {
                       const hasConnectedSelected = selectedChannels.some((c) => connectedChannels[c]);
                       const trialBlocked = trial.isTrialExpired;

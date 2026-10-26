@@ -9,6 +9,8 @@ import { Users, Check, Loader2, Plus, ExternalLink, ChevronDown, List } from "lu
 import { toast } from "sonner";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { useMetaPageBinding } from "@/hooks/useMetaPageBinding";
+import { fetchGroupsViaCloud } from '@/lib/cloudGroupDiscovery';
+import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 
 export type FacebookGroup = {
   group_id: string;
@@ -44,6 +46,19 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const [addingManual, setAddingManual] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
+  const syncGroups = async () => {
+    if (syncing || !workspaceOwnerId) return;
+    setSyncing(true);
+    try {
+      const rows = await fetchGroupsViaCloud('', { syncMemberships: true });
+      setGroups(await fetchStoredGroups());
+      setSyncNote(rows.length ? `נסרקו ${rows.length} קבוצות` : 'לא נמצאו קבוצות. אפשר לחפש לפי מילת מפתח.');
+      if (!rows.length) setDiscoveryOpen(true);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'ייבוא הקבוצות נכשל'); }
+    finally { setSyncing(false); }
+  };
 
   const hasVisibleGroups = groups.length > 0;
 
@@ -202,6 +217,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         )}
       </div>
 
+      <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={syncing || !workspaceOwnerId} onClick={() => void syncGroups()}>{syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}ייבוא הקבוצות שלי</Button><Button type="button" variant="ghost" onClick={() => setDiscoveryOpen(true)}>חיפוש קבוצות</Button></div>
+      <GroupDiscoveryDialog open={discoveryOpen} onOpenChange={setDiscoveryOpen} onJoined={() => void load()} />
       {loading && !hasVisibleGroups && (
         <div className="flex items-center justify-center gap-2 py-6 text-[14px] text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />

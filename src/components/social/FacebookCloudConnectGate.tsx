@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getCloudSessionState } from '@/lib/cloudSession';
 import { fetchGroupsViaCloud } from '@/lib/cloudGroupDiscovery';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { GroupDiscoveryDialog } from './GroupDiscoveryDialog';
 
 /**
  * Clean two-step Facebook connection screen shown before creating a post when
@@ -28,6 +29,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
   const [connected, setConnected] = useState(false);
   const [guidanceOpen, setGuidanceOpen] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [discoverOpen, setDiscoverOpen] = useState(false);
   const checking = useRef(false);
   const deadline = useRef(0);
   const stop = () => {
@@ -54,6 +56,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
       if (generation.current !== run) return;
       toast.success(`פייסבוק מחובר · ${groups.length} קבוצות נסרקו`);
       onSynced?.();
+      if (!groups.length) { onDiscover?.(); setDiscoverOpen(true); }
       onStatusChange?.(true);
       setPhase('idle'); setOpen(false); setGuidanceOpen(false); setManualUrl('');
     } catch (e) {
@@ -143,8 +146,9 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     }, 5000);
   };
 
-  if ((!open && !alwaysVisible) || skipped) return null;
+  if (((!open && !alwaysVisible) || skipped) && !discoverOpen) return null;
   return <section dir="rtl" className="space-y-4 text-right" aria-label="חיבור לפייסבוק">
+    <GroupDiscoveryDialog open={discoverOpen} onOpenChange={setDiscoverOpen} onJoined={onSynced} />
     <Button type="button" disabled={phase === 'syncing' || !owner} onClick={() => { if (connected) void finish(generation.current); else setGuidanceOpen(true); }}
       className="h-12 w-full gap-2 bg-social-facebook text-base font-semibold text-social-foreground hover:bg-social-facebook/90">
       {phase !== 'idle' ? <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" /> : <Facebook className="h-5 w-5" />}
@@ -163,6 +167,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
         <ol className="list-inside list-decimal space-y-2 text-base leading-relaxed">
           <li>פתחו את דפדפן הענן בלשונית חדשה.</li>
           <li>היכנסו לפייסבוק רק באתר facebook.com והשלימו כל אימות שפייסבוק מבקשת.</li>
+          <li>לפרסום בשם העסק, עברו בפייסבוק לעמוד העסקי שאתם מנהלים, ולא לפרופיל האישי. קבוצות שלא מאפשרות פעילות של עמודים אינן ניתנות לפרסום בשם העמוד.</li>
           <li>חזרו ללשונית TORAFF. נבדוק את החיבור אוטומטית; אפשר גם ללחוץ על בדיקת החיבור.</li>
         </ol>
         {phase !== 'idle' && <p role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{phase === 'syncing' ? 'מייבאים את הקבוצות…' : 'ממתינים לאישור החיבור מפייסבוק…'}</p>}

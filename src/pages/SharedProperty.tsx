@@ -29,6 +29,8 @@ import PropertyContactActions from '@/components/public/PropertyContactActions';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { publicUrl } from '@/lib/publicUrl';
+import { ImageSequenceDialog } from '@/components/properties/ImageSequenceDialog';
+import BrokerAttribution from '@/components/properties/BrokerAttribution';
 
 type SharedPayload = {
   workspace_name: string | null;
@@ -209,6 +211,7 @@ export default function SharedProperty() {
             {p.project_name ? <Badge variant="outline">{p.project_name}</Badge> : null}
           </div>
           <PublicAdHeading title={displayTitle} price={priceStr} dealType={isRent ? 'rent' : 'sale'} />
+          {p.attribution && <BrokerAttribution brokerName={p.attribution.broker_name} officeName={p.attribution.office_name} logoUrl={p.attribution.agency_logo_url} licenceNumber={p.attribution.broker_license_number} publisherKind={p.attribution.publisher_kind} dealType={p.deal_type} />}
           {pricePerMeter && <p className="text-sm text-muted-foreground">({pricePerMeter} ₪ למ״ר)</p>}
         </section>
 
@@ -375,11 +378,7 @@ export default function SharedProperty() {
         {p.id ? <PropertyContactActions listingId={String(p.id)} title={displayTitle} dealType={p.deal_type ?? p.listing_type} premsg={ritaPropertyPremsg(p)} options={p.contact_options} compact formAsButton singleRow shareUrl={publicUrl(`/p/${encodeURIComponent(p.slug || p.id)}`)} /> : null}
       </main>
 
-      <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
-        <DialogContent className="max-w-4xl p-2">
-          {lightbox ? <img src={lightbox} alt="" className="max-h-[80vh] w-full rounded-lg object-contain" /> : null}
-        </DialogContent>
-      </Dialog>
+      <ImageSequenceDialog photos={photos} current={lightbox} onChange={setLightbox} alt={displayTitle} />
 
     </div>
   );

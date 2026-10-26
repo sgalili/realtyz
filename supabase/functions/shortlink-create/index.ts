@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
       if (existingAdhoc?.slug) {
         return json(200, {
           slug: existingAdhoc.slug,
-          short_url: `https://realtyz.co.il/r/${existingAdhoc.slug}`,
+          short_url: `https://toraff.co.il/r/${existingAdhoc.slug}`,
           long_url: rawLongUrl,
           reused: true,
         });
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
       }
       return json(200, {
         slug: adhocSlug,
-        short_url: `https://realtyz.co.il/r/${adhocSlug}`,
+        short_url: `https://toraff.co.il/r/${adhocSlug}`,
         long_url: rawLongUrl,
       });
     }
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
       await admin.from("short_urls").update({ long_url }).eq("slug", existing.slug);
       return json(200, {
         slug: existing.slug,
-        short_url: `https://realtyz.co.il/r/${existing.slug}`,
+        short_url: `https://toraff.co.il/r/${existing.slug}`,
         long_url,
         prefilled_text: text,
         refreshed: true,
@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
 
     return json(200, {
       slug,
-      short_url: `https://realtyz.co.il/r/${slug}`,
+      short_url: `https://toraff.co.il/r/${slug}`,
       long_url,
       prefilled_text: text,
     });

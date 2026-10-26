@@ -79,15 +79,15 @@ Deno.serve(async (req) => {
           .limit(100)
       : { data: [] };
 
-    // Workspace branding (logo + name) for the public header.
+    // Original advertiser only: a share creator is never the public publisher.
     let logo_url: string | null = null;
     let agency_name: string | null = null;
-    let workspace_name = share.workspace_name as string | null;
-    if (share.owner_id) {
+    let workspace_name: string | null = null;
+    if (property?.workspace_owner_id) {
       const { data: wl } = await admin
         .from("white_label_settings")
         .select("agency_name, logo_url, landscape_logo_url")
-        .eq("user_id", share.owner_id)
+        .eq("user_id", property.workspace_owner_id)
         .maybeSingle();
       if (wl) {
         logo_url = wl.logo_url || wl.landscape_logo_url || null;
@@ -107,7 +107,8 @@ Deno.serve(async (req) => {
         .select("full_name")
         .eq("id", property.owner_id)
         .maybeSingle();
-      owner_name = owner?.full_name ?? null;
+      const parts = String(owner?.full_name ?? '').trim().split(/\s+/);
+      owner_name = parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0] || null;
     }
 
     // Neighborhood market data (computed with service role so the public page
@@ -165,15 +166,27 @@ Deno.serve(async (req) => {
       },
     );
 
+    // Reuse the anonymous canonical projection, never the affiliate/share metadata.
+    let canonicalWorkspace: any[] = [];
+    const canonical = async (row: any) => {
+      if (!row?.id) return null;
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/public-listing-view?id=${encodeURIComponent(row.id)}`);
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.property) return null;
+      canonicalWorkspace = Array.isArray(result.workspace_properties) ? result.workspace_properties : [];
+      return result.property;
+    };
+    const safeProperty = property ? await canonical(property) : null;
+    const safeWorkspaceProperties = canonicalWorkspace;
     return new Response(JSON.stringify({
-      workspace_name,
-      agency_name,
-      logo_url,
+      workspace_name: safeProperty?.attribution?.office_name ?? null,
+      agency_name: safeProperty?.attribution?.office_name ?? null,
+      logo_url: safeProperty?.attribution?.agency_logo_url ?? null,
       area_facts,
-      owner_name,
+      owner_name: safeProperty?.attribution?.broker_name ?? null,
       broker_wa: null,
-      property: property ? maskProperty(property) : null,
-      workspace_properties: (workspaceListings ?? []).map((row) => maskProperty(row)),
+      property: safeProperty,
+      workspace_properties: safeWorkspaceProperties,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
