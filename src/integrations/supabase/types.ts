@@ -4095,6 +4095,30 @@ export type Database = {
           },
         ]
       }
+      invite_bonus_settings: {
+        Row: {
+          friend_credits: number
+          id: boolean
+          referrer_credits: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          friend_credits?: number
+          id?: boolean
+          referrer_credits?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          friend_credits?: number
+          id?: boolean
+          referrer_credits?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       invite_dual_rewards: {
         Row: {
           created_at: string
@@ -9108,6 +9132,7 @@ export type Database = {
       get_growth_analytics: { Args: never; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
+      get_invite_bonus_settings: { Args: never; Returns: Json }
       get_lead_enrichment: { Args: { _lead_id: string }; Returns: Json }
       get_lead_price_recommendation: {
         Args: { _city?: string; _deal_type: string }
@@ -9528,6 +9553,10 @@ export type Database = {
       set_homely_password: {
         Args: { _password: string; _user_id: string }
         Returns: undefined
+      }
+      set_invite_bonus_settings: {
+        Args: { _friend: number; _referrer: number }
+        Returns: Json
       }
       set_referral_leftover_discount: {
         Args: { _referral_id: string; _type: string; _value: number }
