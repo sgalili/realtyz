@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadMediaToLibrary, detectMediaKind, type MediaKind } from "@/lib/mediaUpload";
+import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConfirmation';
+import { ImageSequenceDialog } from '@/components/properties/ImageSequenceDialog';
 
 interface MediaRow {
   id: string;
@@ -41,15 +43,18 @@ export function MediaLibraryPanel() {
   const [filter, setFilter] = useState<"all" | MediaKind>("all");
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<MediaRow | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["media-library", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from("media_library")
         .select("*")
-        .eq("user_id", user!.id)
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -177,7 +182,7 @@ export function MediaLibraryPanel() {
                 <div key={m.id} className="group relative rounded-md border bg-muted/20 overflow-hidden">
                   <div className="aspect-square w-full bg-muted/40 flex items-center justify-center overflow-hidden">
                     {m.media_kind === "image" ? (
-                      <img src={m.public_url} alt={m.file_name} className="w-full h-full object-cover" loading="lazy" />
+                      <Button type="button" variant="ghost" className="h-full w-full p-0" aria-label={`הגדלת ${m.file_name}`} onClick={() => setPreview(m.public_url)}><img src={m.public_url} alt={m.file_name} className="w-full h-full object-cover" loading="lazy" /></Button>
                     ) : m.media_kind === "video" ? (
                       <video src={m.public_url} className="w-full h-full object-cover" muted />
                     ) : (
@@ -196,9 +201,7 @@ export function MediaLibraryPanel() {
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6 text-destructive"
-                          onClick={() => {
-                            if (confirm(`למחוק את ${m.file_name}?`)) del.mutate(m);
-                          }}
+                          onClick={() => setPendingDelete(m)}
                           title="מחק"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -212,6 +215,8 @@ export function MediaLibraryPanel() {
           </div>
         )}
       </CardContent>
+      <ImageSequenceDialog photos={filtered.filter(item => item.media_kind === 'image').map(item => item.public_url)} current={preview} onChange={setPreview} />
+      <ImageDeleteConfirmation open={pendingDelete !== null} onOpenChange={open => { if (!open) setPendingDelete(null); }} onConfirm={() => { if (pendingDelete) del.mutate(pendingDelete); setPendingDelete(null); }} />
     </Card>
   );
 }

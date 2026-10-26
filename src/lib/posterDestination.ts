@@ -47,7 +47,7 @@ export async function resolvePosterDestination(listingId: string, userId: string
 export function applyContactCta(comment: string | null | undefined, ctaLine: string): string {
   const cleaned = String(comment ?? '')
     .split(/\n+/)
-    .filter((l) => !/(wa\.me\/|api\.whatsapp\.com|realtyz\.co\.il\/(r|p)\/)/i.test(l))
+    .filter((l) => !/(wa\.me\/|api\.whatsapp\.com|(?:toraff|realtyz|realtys)\.co\.il\/(r|p)\/)/i.test(l))
     .join('\n')
     .trim();
   return cleaned ? `${cleaned}\n\n${ctaLine}` : ctaLine;
