@@ -4,6 +4,7 @@ import { CampaignChannelPicker, DISTRIBUTION_CHANNELS } from './CampaignChannelP
 
 vi.mock('@/hooks/useCampaignPricing', () => ({ useCampaignPricing: () => ({ data: [], isLoading: false, isError: false }) }));
 vi.mock('./CampaignServiceIcon', () => ({ CampaignServiceIcon: () => null }));
+vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data: null }) }));
 afterEach(cleanup);
 
 it.each(DISTRIBUTION_CHANNELS)('selects only the requested $id channel', ({ id, label }) => {

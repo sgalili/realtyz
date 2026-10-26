@@ -36,7 +36,7 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
             <span className="min-w-0">{channel ? `הגדרת קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}</span>
             {channel && <span className="ms-auto shrink-0 text-center text-sm font-normal text-muted-foreground">{['facebook', 'instagram'].includes(channel.id) ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(SOCIAL_DRAFT_CREDITS)}</span><span className="block">לפוסט</span></> : price ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(price.credits)}</span><span className="block">ל{price.unit}</span></> : 'המחירון אינו זמין'}</span>}
           </h2>
-          {channel?.id === 'facebook' && page?.hasToken && <div className="mt-2 flex min-w-0 items-center gap-2 text-sm text-muted-foreground"><PageAvatarIcon className="h-6 w-6" /><span className="min-w-0 break-words">עמוד עסקי · {page.pageName || 'עמוד פייסבוק'}</span></div>}
+          {channel?.id === 'facebook' && page?.pageId && <div className="mt-2 flex min-w-0 items-center gap-2 text-sm text-muted-foreground" aria-label="עמוד הפייסבוק לפרסום"><PageAvatarIcon className="h-8 w-8" /><span className="min-w-0 break-words">{page.isShared ? 'עמוד משותף' : 'עמוד עסקי'} · {page.pageName || 'עמוד פייסבוק'}</span></div>}
         </div>
       </div>
       {!channel && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
