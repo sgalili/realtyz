@@ -956,7 +956,7 @@
     bottom: 10px;
     z-index: 30;
     padding-inline: 4px;
-    background: hsl(var(--card));
+    background: hsl(var(--background));
     border: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -1042,7 +1042,7 @@
   }
 
   .auth-footer-links a {
-    font-size: calc(0.68rem + 1px);
+    font-size: calc(0.68rem + 3px);
     font-weight: 400;
     color: hsl(var(--muted-foreground));
     transition: color 160ms ease;
