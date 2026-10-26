@@ -955,7 +955,7 @@
     max-width: 72rem;
     bottom: 10px;
     z-index: 30;
-    padding-inline: 4px;
+    padding-inline: 15px;
     background: hsl(var(--background));
     border: 0;
     white-space: nowrap;
@@ -1059,7 +1059,7 @@
   }
 
   @media (min-width: 768px) {
-    .auth-page-footer { padding-inline: 16px; }
+    .auth-page-footer { padding-inline: 15px; }
     .auth-footer-legal { gap: 16px; }
     .auth-footer-links { gap: 1.75rem; }
   }
