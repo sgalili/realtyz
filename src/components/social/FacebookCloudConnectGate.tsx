@@ -122,6 +122,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     {phase === 'waiting' && <p role="status" className="text-sm leading-relaxed text-muted-foreground">השלימו את הכניסה לפייסבוק בחלון שנפתח.</p>}
     {connected && <p className="flex items-center gap-1 text-sm text-success"><ShieldCheck className="h-4 w-4" />החיבור שמור ומוצפן בענן</p>}
     {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
+    {manualUrl && <a role="link" href={manualUrl} target="_blank" rel="noopener noreferrer" className="block text-center text-sm font-semibold text-primary underline underline-offset-4">פתיחת דפדפן הענן</a>}
     <Button type="button" variant="link" className="w-full" disabled={phase !== 'idle'} onClick={() => { generation.current++; stop(); setSkipped(true); onStatusChange?.(true); }}>אתחבר יותר מאוחר</Button>
   </section>;
 }
