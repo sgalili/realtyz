@@ -1,5 +1,10 @@
 # Roadmap
 
+## Final post footer and composer alignment
+- [ ] Verify existing +3px modal scale and two-credit confirmation repair without adding another increase.
+- [ ] Align gallery tile with thumbnails; preserve clockwise 45-degree drag handles and remove telephone emojis from generated posts.
+- [ ] Append a server-only, durable and retry-stable 10-sentence round-robin footer only at publication; test and deploy publishing paths.
+
 ## Dialog readability and extra draft approval
 - [x] Increase shared modal/pop-up typography by 3px and place Cancel/Submit on one row at opposite ends; mobile confirmation verified at 411x802 with 21px heading, 17px body/buttons and opposite aligned actions.
 - [x] Fix confirmed two-credit draft renewal independently of publication pricing; preserve successful-only idempotent settlement and request ID. Six tests passed; signed-in approval generated a new draft (200), advanced batch 3 to 4 and recorded exactly 2 credits once. Build OK; no post published.
