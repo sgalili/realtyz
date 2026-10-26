@@ -158,7 +158,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
       <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
         <ShieldCheck className="mx-auto h-9 w-9 text-social-facebook" />
         <DialogTitle className="text-center text-xl">חיבור מאובטח לפייסבוק</DialogTitle>
-        <DialogDescription className="text-base leading-relaxed">החיבור מתבצע בסביבת ענן מאובטחת ומבודדת. פרטי ההתחברות שלך אינם נשמרים במערכת TORAFF.</DialogDescription>
+        <DialogDescription className="text-base leading-relaxed">החיבור מתבצע בסביבת ענן מאובטחת ומבודדת. סיסמת הפייסבוק שלך אינה נאספת או נשמרת במערכת TORAFF.</DialogDescription>
         <p className="text-sm leading-relaxed text-muted-foreground">סיסמת פייסבוק מוזנת רק באתר פייסבוק בדפדפן הענן. לצורך הפעילות שאישרתם, TORAFF שומרת חיבור מוצפן לסביבת העבודה, שניתן למחוק בהגדרות החיבורים.</p>
         <ol className="list-inside list-decimal space-y-2 text-base leading-relaxed">
           <li>פתחו את דפדפן הענן בלשונית חדשה.</li>
@@ -166,7 +166,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
           <li>חזרו ללשונית TORAFF. נבדוק את החיבור אוטומטית; אפשר גם ללחוץ על בדיקת החיבור.</li>
         </ol>
         {phase !== 'idle' && <p role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{phase === 'syncing' ? 'מייבאים את הקבוצות…' : 'ממתינים לאישור החיבור מפייסבוק…'}</p>}
-        {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+        {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
         <Button className="h-auto min-h-12 gap-2 whitespace-normal bg-social-facebook text-base text-social-foreground hover:bg-social-facebook/90" disabled={phase !== 'idle'} onClick={() => void connect()}><ExternalLink className="h-5 w-5 shrink-0" />{manualUrl ? 'פתיחת חיבור חדש בענן' : 'פתיחת דפדפן הענן בלשונית חדשה'}</Button>
         {manualUrl && <>
           <a href={manualUrl} target="_blank" rel="noopener noreferrer" className="text-center text-base font-semibold text-primary underline underline-offset-4">פתיחת דפדפן הענן</a>
