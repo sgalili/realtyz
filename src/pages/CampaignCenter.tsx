@@ -47,7 +47,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import { supabase } from '@/integrations/supabase/client';
 import { syncWorkspacePagePosts } from '@/lib/extensionPageSync';
-import { nextBlockedKeys } from '@/lib/mediaBlocklist';
+import { deletePostImage } from '@/lib/postImageDeletion';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -1264,6 +1264,9 @@ const InlineComposer = ({
   // Attachment / media state
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>(initial.attachments || []);
+  const [removedPostImageUrls, setRemovedPostImageUrls] = useState<string[]>(initial.removedPostImageUrls || []);
+  const removedPostImageUrlsRef = useRef(removedPostImageUrls);
+  removedPostImageUrlsRef.current = removedPostImageUrls;
   // True while the property's gallery is being pulled/attached.
   const [photosLoading, setPhotosLoading] = useState(false);
 
@@ -1304,6 +1307,7 @@ const InlineComposer = ({
         selectedListingId,
         selectedGroupTopicId,
         attachments,
+        removedPostImageUrls,
         logId,
         firstComment,
         firstCommentEnabled,
@@ -1330,7 +1334,7 @@ const InlineComposer = ({
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey, body, customInstructions, selectedListingId, selectedGroupTopicId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, publishToPage, groupIds, mode, scheduledLocal, hydrated]);
+  }, [draftKey, body, customInstructions, selectedListingId, selectedGroupTopicId, attachments, removedPostImageUrls, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink, publishToPage, groupIds, mode, scheduledLocal, hydrated]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -1387,6 +1391,7 @@ const InlineComposer = ({
     setSelectedListingId(usesGroupTopics ? null : (deepLinked ? deepLinkListingId : (saved.selectedListingId ?? deepLinkListingId ?? null)));
     setSelectedGroupTopicId(groupPostTopic(saved.selectedGroupTopicId).id);
     setAttachments(deepLinked ? [] : (saved.attachments || []));
+    setRemovedPostImageUrls(deepLinked ? [] : (saved.removedPostImageUrls || []));
     setLogId(deepLinked ? null : (saved.logId ?? null));
     setFirstComment(deepLinked ? '' : (saved.firstComment || ''));
     setFirstCommentEnabled(saved.firstCommentEnabled ?? true);
@@ -1433,6 +1438,7 @@ const InlineComposer = ({
         if (cloud.selectedListingId && !usesGroupTopics) setSelectedListingId(cloud.selectedListingId);
         setSelectedGroupTopicId(groupPostTopic(cloud.selectedGroupTopicId).id);
         if (Array.isArray(cloud.attachments) && cloud.attachments.length) setAttachments(cloud.attachments);
+        if (Array.isArray(cloud.removedPostImageUrls)) setRemovedPostImageUrls(cloud.removedPostImageUrls);
         if (cloud.logId) setLogId(cloud.logId);
         if (cloud.firstComment) setFirstComment(cloud.firstComment);
         if (typeof cloud.firstCommentEnabled === 'boolean') setFirstCommentEnabled(cloud.firstCommentEnabled);
@@ -1628,7 +1634,7 @@ const InlineComposer = ({
       const label = (local?.property_title || local?.address || 'property') as string;
       setAttachments((curr) => {
         const existing = new Set(curr.map((a) => a.url).filter(Boolean) as string[]);
-        const missing = urls.filter((u) => !existing.has(u));
+        const missing = urls.filter((u) => !existing.has(u) && !removedPostImageUrlsRef.current.includes(u));
         if (missing.length === 0) return curr;
         const nonImages = curr.filter((a) => a.kind !== 'image');
         const images = curr.filter((a) => a.kind === 'image');
@@ -1649,32 +1655,6 @@ const InlineComposer = ({
     return deduped.filter((listing) => listingSearchText(listing).includes(q));
   }, [listings, listingQuery]);
 
-
-  /**
-   * Permanently blocklists an image the broker deleted from the post generator.
-   * The key joins `listings.source_metadata.removed_photo_keys`, so no future
-   * Yad2 / Homely / Facebook sync (or any other workspace) can resurrect it.
-   */
-  const blocklistListingImage = async (listingId: string, url: string) => {
-    if (!listingId || !url || isProjectTarget(listingId)) return;
-    try {
-      const { data: row, error } = await supabase
-        .from('listings').select('media_photos, source_metadata').eq('id', listingId).maybeSingle();
-      if (error) throw error;
-      const meta = (row?.source_metadata ?? {}) as Record<string, unknown>;
-      const before = Array.isArray(row?.media_photos) ? (row.media_photos as unknown[]) : [];
-      const keyOf = (p: unknown) =>
-        typeof p === 'string' ? p : String((p as any)?.url ?? (p as any)?.src ?? (p as any)?.image_url ?? '');
-      const after = before.filter((p) => keyOf(p) !== url);
-      const removed = nextBlockedKeys(meta, before.map(keyOf), after.map(keyOf));
-      await supabase.from('listings').update({
-        media_photos: after as any[],
-        source_metadata: { ...meta, photos: after, removed_photo_keys: removed } as any,
-      }).eq('id', listingId);
-    } catch (e) {
-      console.warn('[CampaignCenter] blocklist listing image failed', e);
-    }
-  };
 
   // Append user-uploaded campaign images to the selected listing's gallery so
   // they survive beyond the current post and stay available everywhere.
@@ -3004,14 +2984,15 @@ const InlineComposer = ({
 
 
 
-      <ImageDeleteConfirmation open={pendingImageDelete !== null} onOpenChange={open => { if (!open) { setPreviewImageUrl(pendingImageDelete); setPendingImageDelete(null); } }} onConfirm={() => {
+      <ImageDeleteConfirmation open={pendingImageDelete !== null} onOpenChange={open => { if (!open) { setPreviewImageUrl(null); setPendingImageDelete(null); } }} onConfirm={() => {
         const removed = pendingImageDelete;
         if (!removed) return;
-        const remaining = attachments.filter(att => att.kind === 'image' && att.url && att.url !== removed);
-        setAttachments(current => current.filter(att => att.url !== removed));
-        setPreviewImageUrl(remaining[0]?.url ?? null);
-        setPendingImageDelete(null);
-        if (!editorMode && selectedListingId) void blocklistListingImage(selectedListingId, removed);
+        const next = deletePostImage(attachments, removedPostImageUrls, removed);
+        removedPostImageUrlsRef.current = next.removedUrls;
+        setAttachments(next.attachments);
+        setRemovedPostImageUrls(next.removedUrls);
+        setPreviewImageUrl(next.previewImageUrl);
+        setPendingImageDelete(next.pendingImageDelete);
       }} />
       {/* Unified controlled-share cockpit for Facebook groups (merged selector + Time Bank queue) */}
       {!editorMode && hasBody && channel.id === 'facebook' && (
