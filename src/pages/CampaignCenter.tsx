@@ -3491,16 +3491,16 @@ const ConfirmDispatchDialog = ({
       if (useCloudPublishing) {
         const state = await getCloudSessionState();
         setCloudConnection(state);
-        if (!state.active) throw new Error('אין חיבור פייסבוק פעיל בענן. יש להתחבר מחדש.');
-        if (!groupIds.length) throw new Error('בחרו לפחות קבוצה אחת לפרסום בדפדפן הענן.');
+        if (!state.active) throw new Error('אין חיבור פייסבוק פעיל. יש להתחבר מחדש.');
+        if (!groupIds.length) throw new Error('בחרו לפחות קבוצה אחת לפרסום.');
         const { data, error } = await supabase.functions.invoke('meta-publish', { body: {
           post: safeUtf8(body).trim(), channels: ['facebook'], runner: 'cloud',
           workspace_owner_id: ownerScope, group_ids: groupIds, publish_to_page: false,
           campaign_name: `${brandName} · ${channel.label}`, media_urls: mediaUrls,
           scheduled_at: scheduledAt, listing_id: listingId, first_comment: firstComment || null,
         } });
-        if (error || data?.error || data?.success === false) throw new Error(data?.message || error?.message || 'שמירת הפרסום בענן נכשלה');
-        toast.success(`${data.group_count ?? data.group_results?.length ?? groupIds.length} קבוצות נוספו לתור הפרסום בענן`);
+        if (error || data?.error || data?.success === false) throw new Error(data?.message || error?.message || 'שמירת הפרסום נכשלה');
+        toast.success(`${data.group_count ?? data.group_results?.length ?? groupIds.length} קבוצות נוספו לתור הפרסום`);
         onConfirmed();
         onClose();
         return;
@@ -3941,12 +3941,12 @@ const ConfirmDispatchDialog = ({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="text-right text-sm font-semibold text-foreground">{useCloudPublishing ? 'פרסום בדפדפן הענן' : 'פרסום בעמוד / פרופיל'}</div>
+          <div className="text-right text-sm font-semibold text-foreground">{useCloudPublishing ? 'פרסום לקבוצות בפייסבוק' : 'פרסום בעמוד / פרופיל'}</div>
           <div className="rounded-xl border border-border bg-background p-3 space-y-3">
             {useCloudPublishing ? (
               <div className="flex items-center gap-2 text-sm text-foreground">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
-                <span>פייסבוק מחובר באמצעות GoLogin · פרסום לקבוצות בענן</span>
+                <span>פייסבוק מחובר · פרסום לקבוצות בפייסבוק</span>
               </div>
             ) : pagesLoading || (channel.id === 'facebook' && !cloudConnection) ? (
               <div className="text-right text-xs text-muted-foreground py-2">טוען עמודים מחוברים…</div>
