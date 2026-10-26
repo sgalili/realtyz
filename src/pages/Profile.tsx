@@ -104,7 +104,7 @@ function ProfileFieldRow({
       className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm"
     >
       <Icon className={cn('h-4 w-4 shrink-0', iconClass ?? 'text-primary')} />
-      <span className="text-xs font-semibold text-muted-foreground shrink-0">{label}:</span>
+      <span className="text-sm font-semibold text-muted-foreground shrink-0">{label}:</span>
       <div className="flex-1 min-w-0">
         {editing ? (
           children ?? (
@@ -115,7 +115,7 @@ function ProfileFieldRow({
               onChange={(e) => onChange(e.target.value)}
               onBlur={onToggleEdit}
               placeholder={placeholder}
-              className={cn('h-8 px-2 text-sm', inputDir === 'ltr' ? 'text-left' : 'text-right')}
+              className={cn('h-8 px-2 !text-base font-bold placeholder:font-normal', inputDir === 'ltr' ? 'text-left' : 'text-right')}
             />
           )
         ) : (
@@ -124,7 +124,7 @@ function ProfileFieldRow({
             onClick={onToggleEdit}
             dir={inputDir}
             className={cn(
-              'w-full truncate rounded px-1 py-0.5 text-sm font-medium hover:bg-muted/50',
+              'w-full truncate rounded px-1 py-0.5 text-base font-bold hover:bg-muted/50',
               inputDir === 'ltr' ? 'text-left' : 'text-right',
               !value && 'text-muted-foreground/60',
             )}
@@ -349,14 +349,14 @@ function PersonalTab() {
               onChange={(e) => setFullName(e.target.value)}
               onBlur={() => setEdit('fullName')}
               placeholder="הזן שם מלא"
-              className="text-center text-base font-bold max-w-xs"
+              className="text-center !text-lg font-bold max-w-xs"
             />
           ) : (
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setEdit('fullName')}
-                className="text-base font-bold hover:text-primary"
+                className="text-lg font-bold hover:text-primary"
               >
                 {fullName || 'הזן שם מלא'}
               </button>
@@ -389,7 +389,7 @@ function PersonalTab() {
           inputDir="rtl"
           placeholder="בחר עיר"
         >
-          <IsraeliCityPicker value={city} onChange={(v) => { setCity(v); setEdit('city'); }} placeholder="בחר עיר" />
+          <IsraeliCityPicker value={city} onChange={(v) => { setCity(v); setEdit('city'); }} placeholder="בחר עיר" className="text-base" itemClassName="text-base" />
         </ProfileFieldRow>
 
         <ProfileFieldRow
@@ -403,10 +403,10 @@ function PersonalTab() {
           placeholder={language.command('בחר מגדר')}
         >
           <Select value={gender || undefined} onValueChange={(v) => { setGender(v); setEdit('gender'); }}>
-            <SelectTrigger dir="rtl" className="h-8 text-right text-sm"><SelectValue placeholder={language.command('בחר מגדר')} /></SelectTrigger>
+            <SelectTrigger dir="rtl" className="h-8 text-right text-base"><SelectValue placeholder={language.command('בחר מגדר')} /></SelectTrigger>
             <SelectContent dir="rtl">
-              <SelectItem value="male" className="text-right">גבר</SelectItem>
-              <SelectItem value="female" className="text-right">אישה</SelectItem>
+              <SelectItem value="male" className="text-right text-base">גבר</SelectItem>
+              <SelectItem value="female" className="text-right text-base">אישה</SelectItem>
             </SelectContent>
           </Select>
         </ProfileFieldRow>
@@ -418,11 +418,11 @@ function PersonalTab() {
 
       <div className="profile-sticky-actions sticky bottom-0 z-20 flex items-center gap-3 rounded-b-xl border-t border-border bg-card px-4 pb-4 pt-3">
         {user && <DeleteAccountButton />}
-        <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10">
+        <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="flex-1 text-base border-destructive/30 text-destructive hover:bg-destructive/10">
           <LogOut className="h-4 w-4" />
           התנתקות
         </Button>
-        <Button onClick={save} disabled={showBrokerFields && isOwnProfile && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1">שמירת הפרופיל</Button>
+        <Button onClick={save} disabled={showBrokerFields && isOwnProfile && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1 text-base">שמירת הפרופיל</Button>
       </div>
 
     </Card>
@@ -430,6 +430,7 @@ function PersonalTab() {
 }
 
 function WorkspaceTab() {
+  const queryClient = useQueryClient();
   const identity = useAccountIdentity();
   const company = ['יזם', 'קבלן'].includes(identity.label);
   const { user } = useAuth();
@@ -577,6 +578,8 @@ function WorkspaceTab() {
       }
       try { window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({ agency_name: agencyName, service_areas: serviceAreas })); } catch {}
       await refreshBrand();
+      window.dispatchEvent(new Event('realtyz:profile-saved'));
+      void queryClient.invalidateQueries({ queryKey: ['service_areas', ownerId] });
       toast.success('פרטי המשרד נשמרו ושותפו לכל חברי המשרד');
     } catch (err: any) {
       toast.error(err?.message || 'שמירה נכשלה');
@@ -587,7 +590,7 @@ function WorkspaceTab() {
 
   return (
     <Card>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pb-24">
         {pendingLogo && pendingLogo.ownerId === ownerId && (
           <ImageCropDialog file={pendingLogo.file} aspect={pendingLogo.kind === 'square' ? 1 : 16 / 7} title={pendingLogo.kind === 'square' ? 'חיתוך לוגו ריבוע' : 'חיתוך לוגו מלבן'} onCancel={() => setPendingLogo(null)} onConfirm={uploadCroppedLogo} />
         )}
@@ -598,38 +601,38 @@ function WorkspaceTab() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-lg border bg-card/40 p-3 text-right">
-            <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="mb-1.5 flex items-center gap-2 text-sm text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" />
               <span>{company ? 'שם החברה' : ['מפרסם', 'פרטי', 'שותף'].includes(identity.label) ? 'שם לתצוגה (לא חובה)' : 'שם המשרד'}</span>
             </div>
-            <Input dir="rtl" value={agencyName} disabled={loading} onChange={(e) => setAgencyName(e.target.value)} className="h-9 text-right text-sm font-semibold" />
+            <Input dir="rtl" value={agencyName} disabled={loading} onChange={(e) => setAgencyName(e.target.value)} className="h-9 text-right text-base font-bold" />
           </div>
 
           <div className="rounded-lg border bg-card/40 p-3 text-right">
-            <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="mb-1.5 flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" />
               <span>אזורי שירות</span>
             </div>
             <div className="space-y-2">
               <IsraeliCityPicker
                 value=""
-                onChange={(value) => {
-                  if (!serviceAreaRows.some((row) => row.value === value)) {
-                    setServiceAreaRows([...serviceAreaRows.filter((row) => row.value), newRow(value)]);
-                  }
-                }}
-                placeholder="הוסף עיר / אזור"
+                onChange={() => {}}
+                selectedValues={serviceAreaRows.map(row => row.value).filter(Boolean)}
+                onSelectionChange={values => setServiceAreaRows(values.map(value => newRow(value)))}
+                firstOptions={['כל הארץ']}
+                placeholder="אזורי שירות"
+                className="text-base"
+                itemClassName="text-base"
               />
               <div className="flex min-h-9 flex-wrap gap-1.5">
                 {serviceAreaRows.filter((row) => row.value).map((row) => (
-                  <span key={row.id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
+                  <span key={row.id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm font-medium text-foreground">
                     {row.value}
                     <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive" onClick={() => setServiceAreaRows(serviceAreaRows.filter((item) => item.id !== row.id))} aria-label={`הסר ${row.value}`}>
                       <X className="h-3 w-3" />
                     </Button>
                   </span>
                 ))}
-                {!serviceAreaRows.some((row) => row.value) && <span className="py-1 text-xs text-muted-foreground">לא נבחרו אזורי שירות</span>}
               </div>
             </div>
           </div>
@@ -640,9 +643,11 @@ function WorkspaceTab() {
             <Input id={`office-${key}`} type={key === 'public_email' ? 'email' : 'text'} dir={key === 'public_email' || key === 'brokerage_license' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={loading} onChange={(event) => setOfficeDetails((previous) => ({ ...previous, [key]: event.target.value }))} />
           </div>)}
         </div>}
-        <Button onClick={save} size="lg" className="w-full" disabled={saving || loading}>
+        <div className="fixed bottom-[var(--app-footer-space)] left-1/2 z-30 w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 border-t border-border bg-background p-3 lg:w-[var(--app-content-width)]">
+        <Button onClick={save} size="lg" className="w-full text-[17px]" disabled={saving || loading}>
           {saving ? 'שומר…' : 'שמירת פרטי המשרד'}
         </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -742,7 +747,7 @@ export default function Profile() {
   };
 
   return (
-    <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
+    <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4 [&_input]:text-lg md:[&_input]:text-base [&_input]:font-bold [&_input]:placeholder:font-normal [&_textarea]:text-lg md:[&_textarea]:text-base">
       <Dialog open={brainPrompt} onOpenChange={setBrainPrompt}>
         <DialogContent dir="rtl" className="max-w-lg">
           <DialogHeader>
@@ -775,11 +780,11 @@ export default function Profile() {
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <TabsList className={`grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px]`}>
-          <TabsTrigger value="personal">פרופיל</TabsTrigger>
-          <TabsTrigger value="workspace">{officeLabel}</TabsTrigger>
-          <TabsTrigger value="aibrain">מח AI</TabsTrigger>
-          <TabsTrigger value="connections">חיבורים</TabsTrigger>
-          {isAgency && <TabsTrigger value="managers">מנהלים</TabsTrigger>}
+          <TabsTrigger className="text-base" value="personal">פרופיל</TabsTrigger>
+          <TabsTrigger className="text-base" value="workspace">{officeLabel}</TabsTrigger>
+          <TabsTrigger className="text-base" value="aibrain">מח AI</TabsTrigger>
+          <TabsTrigger className="text-base" value="connections">חיבורים</TabsTrigger>
+          {isAgency && <TabsTrigger className="text-base" value="managers">מנהלים</TabsTrigger>}
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           <PersonalTab key={activeWorkspaceId ?? user?.id ?? 'profile'} />

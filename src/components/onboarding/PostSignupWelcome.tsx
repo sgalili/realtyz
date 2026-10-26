@@ -16,6 +16,7 @@ import { LandingContent } from '@/pages/Landing';
 import { celebrateSignup } from '@/lib/rewardFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { fmtCredits } from '@/lib/credits';
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
 
 const BENEFITS: Record<SignupRole, { title: string; items: [string, string][] }> = {
   property_seeker: { title: 'ברוכים הבאים ל-TORAFF!', items: [['🏠', 'כל הנכסים במקום אחד'], ['📣', 'פרסום נכס בחינם'], ['🤖', 'ריטה עונה בשבילכם 24/7'], ['🤝', 'פרופיל מלא = יותר אמון']] },
@@ -30,6 +31,7 @@ const TONES = ['bg-primary/10', 'bg-success/10', 'bg-warning/10', 'bg-accent'];
 /** One merged post-signup welcome: benefits, partner terms (when needed) and profile CTA. */
 export function PostSignupWelcome() {
   const { user } = useAuth();
+  const language = usePersonalLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const consent = usePartnerConsent();
@@ -127,7 +129,7 @@ export function PostSignupWelcome() {
           </div>
         )}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <p className="relative text-center text-lg leading-relaxed">השלימו פרטים אישיים ופרטי משרד או חברה, כדי לבנות אמון הדדי ברשת.</p>
+        <p className="relative text-center text-lg leading-relaxed">{language.text({ male: 'השלם פרטים אישיים ופרטי משרד או חברה, כדי לבנות אמון הדדי ברשת.', female: 'השלימי פרטים אישיים ופרטי משרד או חברה, כדי לבנות אמון הדדי ברשת.', neutral: 'השלימו פרטים אישיים ופרטי משרד או חברה, כדי לבנות אמון הדדי ברשת.' })}</p>
         <div className="flex flex-wrap gap-2">
           <Button size="lg" className="flex-1 text-lg" disabled={(needsTerms && !agreed) || isAcceptingTerms} onClick={() => void complete()}>
             {isAcceptingTerms && <Loader2 className="h-4 w-4 animate-spin" />}השלמת פרופיל ✨

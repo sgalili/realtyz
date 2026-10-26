@@ -84,17 +84,18 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     <Button type="button" variant="ghost" size="icon" aria-label="סגירה" className="absolute left-4 top-4 h-10 w-10" onClick={() => navigate('/auth')}><X className="h-8 w-8" /></Button>
     <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" disabled={busy} onClick={() => { if (selected && !licenseSuspended) setSelected(null); else navigate('/auth'); }}><ArrowRight className="h-8 w-8" /></Button>
     <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
-    <h1 className="mb-8 mt-[100px] shrink-0 text-center text-[17px] !font-bold">{selected ? currentLabels[selected] : wording('מה סוג המשתמש שלך?', 'מה סוג המשתמשת שלך?', 'מה סוג החשבון שלך?')}</h1>
+    <h1 className="mb-8 mt-[100px] shrink-0 text-center text-[17px] !font-bold">{selected ? wording('השלם פרטים אישיים', 'השלימי פרטים אישיים', 'השלימו פרטים אישיים') : wording('מה סוג המשתמש שלך?', 'מה סוג המשתמשת שלך?', 'מה סוג החשבון שלך?')}</h1>
     {licenseSuspended && <div role="alert" className="mb-4 w-full max-w-lg border border-destructive p-3 text-destructive">{INVALID_BROKER_LICENSE}</div>}
     {!selected && <div role="group" aria-label="סוג משתמש" className="grid w-full max-w-lg grid-cols-2 gap-3">{signupTypes.map(type => <Button key={type} type="button" variant="outline" className="h-16 whitespace-normal text-lg font-bold" disabled={busy || (licenseSuspended && type !== 'broker')} onClick={() => { setSelected(type); setDetails({}); }}>{currentLabels[type]}</Button>)}</div>}
     {selected && <form onSubmit={submit} className="w-full max-w-lg space-y-3">
       {signupTypeFields[selected].map(([key, label]) => {
         const value = details[key] ?? '';
         const change = (next: string) => setDetails(previous => ({ ...previous, [key]: next }));
-        if (key === 'property_area' || key === 'search_area') return <IsraeliCityPicker key={key} value={value} onChange={change} placeholder={label} className={fieldClass} />;
-        if (key === 'deal_type' || key === 'property_type') {
-          const options = key === 'deal_type' ? [['sale', 'למכירה'], ['rent', 'להשכרה']] : propertyTypes.map(type => [type, type]);
-          return <Select key={key} value={value} onValueChange={change}><SelectTrigger aria-label={label} className={`${fieldClass} data-[placeholder]:font-normal data-[placeholder]:text-muted-foreground focus:ring-0 focus:ring-offset-0`}><SelectValue placeholder={label} /></SelectTrigger><SelectContent>{options.map(([option, text]) => <SelectItem key={option} value={option}>{text}</SelectItem>)}</SelectContent></Select>;
+        if (key === 'property_area' || key === 'search_area') return <IsraeliCityPicker key={key} value={value} onChange={change} placeholder={label} className={fieldClass} itemClassName="text-xl" />;
+        if (key === 'deal_type') return <div key={key} role="group" aria-label={label} className="grid grid-cols-2 gap-3">{[['sale', 'למכירה'], ['rent', 'להשכרה']].map(([option, text]) => <Button key={option} type="button" variant={value === option ? 'default' : 'outline'} aria-pressed={value === option} className="h-12 text-xl font-bold" onClick={() => change(option)}>{text}</Button>)}</div>;
+        if (key === 'property_type') {
+          const options = propertyTypes.map(type => [type, type]);
+          return <Select key={key} value={value} onValueChange={change}><SelectTrigger aria-label={label} className={`${fieldClass} data-[placeholder]:font-normal data-[placeholder]:text-muted-foreground focus:ring-0 focus:ring-offset-0`}><SelectValue placeholder={label} /></SelectTrigger><SelectContent>{options.map(([option, text]) => <SelectItem key={option} value={option} className="text-xl">{text}</SelectItem>)}</SelectContent></Select>;
         }
         if (key === 'main_project') return <div key={key} className="space-y-2"><label htmlFor="signup-developer-url" className="block font-normal">ייבוא פרוייקטים</label><p className="text-sm font-normal">{wording('הדבק כאן קישור לעמוד החברה שלך ב יד2:', 'הדביקי כאן קישור לעמוד החברה שלך ב יד2:')}</p><Input id="signup-developer-url" type="url" aria-label="קישור לעמוד החברה ביד2" placeholder="https://www.yad2.co.il/yad1/developers/1000000" className={`${fieldClass} text-base`} dir="ltr" maxLength={200} value={value} onChange={e => change(e.target.value)} /></div>;
         return <Input key={key} aria-label={label} placeholder={label} maxLength={200} type={key === 'budget' ? 'number' : 'text'} min={key === 'budget' ? 1 : undefined} className={fieldClass} value={value} onChange={e => change(e.target.value)} />;

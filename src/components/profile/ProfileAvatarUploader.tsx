@@ -10,7 +10,7 @@ const ONE_YEAR = 60 * 60 * 24 * 365;
 
 function GenderAvatar({ gender }: { gender: 'male' | 'female' | null }) {
   return (
-    <svg viewBox="0 0 96 96" className="h-full w-full text-muted-foreground/40" fill="currentColor" aria-hidden="true">
+    <svg viewBox="12 12 72 72" className="!h-full !w-full text-muted-foreground/40" fill="currentColor" aria-hidden="true">
       {gender === 'female' ? (
         <>
           <path d="M48 14c-15 0-24 11-24 26 0 12-3 20-8 26 8 3 18 4 32 4s24-1 32-4c-5-6-8-14-8-26 0-15-9-26-24-26z" opacity="0.55" />
@@ -139,9 +139,9 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
   };
 
   return (
-    <div className="rounded-lg border bg-card/40 p-3 text-right">
+    <div className="py-3 text-right">
       {pendingFile && <ImageCropDialog file={pendingFile} aspect={1} title="חיתוך תמונת פרופיל" onCancel={() => setPendingFile(null)} onConfirm={uploadAvatar} />}
-      <div className="flex flex-col items-center gap-2">
+      <div className="relative mx-auto h-24 w-24">
         <Button
           type="button"
           variant="ghost"
@@ -157,10 +157,8 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
           ) : (
             <GenderAvatar gender={gender} />
           )}
-          <span className="absolute bottom-1.5 right-2 flex h-7 w-7 items-center justify-center rounded-full border bg-background/90 text-primary shadow-sm">
-            <Camera className="h-4 w-4" aria-hidden="true" />
-          </span>
         </Button>
+        <Button type="button" variant="outline" size="icon" onClick={onPick} disabled={busy} aria-label="העלאת תמונת פרופיל" title="העלאת תמונת פרופיל" className="absolute -bottom-2 -right-3 h-8 w-8 rounded-full bg-background text-primary"><Camera className="h-4 w-4" /></Button>
         <input
           ref={inputRef}
           type="file"
@@ -169,19 +167,19 @@ export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profi
           onChange={onFile}
           disabled={busy}
         />
-        <p className="text-xs text-muted-foreground">{busy ? 'מעלה תמונה...' : null}</p>
-        <div className="flex justify-center">
+        <div>
           {avatarUrl && (
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={onRemove}
               disabled={busy}
-              className="gap-1.5 text-destructive hover:bg-destructive/10"
+              aria-label="מחיקת תמונת פרופיל"
+              title="מחיקת תמונת פרופיל"
+              className="absolute -bottom-2 -left-3 h-8 w-8 rounded-full border bg-background text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              הסר תמונה
             </Button>
           )}
         </div>
