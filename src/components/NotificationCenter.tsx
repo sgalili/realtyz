@@ -363,7 +363,7 @@ export default function NotificationCenter() {
           aria-label="מרכז התראות"
           className={`relative h-9 w-9 p-0 ${badgeCount > 0 ? 'text-destructive hover:bg-destructive/10 hover:text-destructive' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
         >
-          <Bell className="h-[18.4px] w-[18.4px]" />
+          <Bell className="!h-[18.4px] !w-[18.4px]" />
           {badgeCount > 0 && (
             <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
               {badgeCount > 9 ? '9+' : badgeCount}

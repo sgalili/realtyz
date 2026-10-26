@@ -3,6 +3,9 @@ import { tableRoyalties } from './tableRoyalties';
 const types = { form: true, whatsapp: false, phone: true, closing: false };
 const amounts = { tier1: 100, tier2: 0, tier3: 200, tier4: 10000 };
 describe('table royalty visibility', () => {
+  it('never converts missing or redacted amounts into zero', () => {
+    expect(tableRoyalties({}, {}, true, false).prices).toEqual({ form: undefined, whatsapp: undefined, phone: undefined, closing: undefined });
+  });
   it('guests always see the closing trophy without any prices', () => {
     expect(tableRoyalties(types, { ...amounts, tier4: 0 }, false, false)).toEqual({ types: { form: true, whatsapp: true, phone: true, closing: true }, prices: undefined });
   });
