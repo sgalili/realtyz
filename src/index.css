@@ -1980,3 +1980,18 @@ html.activity-drawer-open main[aria-label="רשימת נכסים"] {
 .hide-x-scrollbar { scrollbar-width: none; }
 .hide-x-scrollbar::-webkit-scrollbar:horizontal { height: 0; }
 .hide-x-scrollbar::-webkit-scrollbar { height: 0; }
+
+/* Megaphone = the app's publish/marketing mark, so it always reads logo red.
+   Unlayered !important is deliberate: the @layer utilities shims above repaint any
+   text-orange/text-sky/text-red icon navy, and per-screen classes (sidebar iconColor,
+   text-primary, text-orange-500) would otherwise win. Inside a solid-filled control
+   the icon keeps that control's own foreground so dark publish buttons stay legible. */
+svg.lucide-megaphone {
+  color: hsl(var(--brand-red)) !important;
+  stroke: hsl(var(--brand-red)) !important;
+}
+:is(.bg-primary, .bg-destructive, .bg-secondary, .bg-muted, [class*="bg-[hsl(217"]) svg.lucide-megaphone {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
