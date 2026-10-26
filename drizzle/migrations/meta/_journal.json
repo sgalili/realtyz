@@ -596,6 +596,13 @@
       "when": 1792940289670,
       "tag": "0084_allow_exact_account_purge_of_reward_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1792987208465,
+      "tag": "0085_sms_signup_profile_details",
+      "breakpoints": true
     }
   ]
 }
