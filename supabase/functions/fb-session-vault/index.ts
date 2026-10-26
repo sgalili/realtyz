@@ -183,17 +183,35 @@ Deno.serve(async (req) => {
     const { data: row } = await admin.from("fb_cloud_sessions")
       .select("remote_profile_id").eq("workspace_owner_id", owner).maybeSingle();
     let profileId = row?.remote_profile_id as string | undefined;
+    const createProfile = async () => {
+      const r = await fetch("https://api.gologin.com/browser/quick", {
+        method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${String(owner).slice(0, 8)}` }),
+      });
+      if (!r.ok) throw new Error(`profile_${r.status}`);
+      const id = (await r.json())?.id;
+      if (!id) throw new Error("profile_missing");
+      return id as string;
+    };
+    const launch = (id: string) => fetch(`https://api.gologin.com/browser/${id}/web`, { method: "POST", headers: h });
     try {
-      if (!profileId) {
-        const r = await fetch("https://api.gologin.com/browser/quick", {
-          method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${String(owner).slice(0, 8)}` }),
-        });
-        if (!r.ok) throw new Error(`profile_${r.status}`);
-        profileId = (await r.json())?.id;
-        if (!profileId) throw new Error("profile_missing");
+      if (!profileId) profileId = await createProfile();
+      let w = await launch(profileId);
+      // A stored profile may be stale (deleted / from another GoLogin account): recreate once.
+      if ((w.status === 403 || w.status === 404) && row?.remote_profile_id) {
+        profileId = await createProfile();
+        w = await launch(profileId);
       }
-      const w = await fetch(`https://api.gologin.com/browser/${profileId}/web`, { method: "POST", headers: h });
-      if (!w.ok) throw new Error(`web_${w.status}`);
+      if (!w.ok) {
+        const detail = (await w.text().catch(() => "")).slice(0, 300);
+        console.error("gologin web launch failed", w.status, detail);
+        if (w.status === 401 || w.status === 403) {
+          return json({
+            error: "remote_forbidden",
+            message: "חשבון הדפדפן בענן אינו מאפשר פתיחת דפדפן מרוחק (נדרש מפתח תקף ומנוי הכולל Cloud Browser)",
+          }, 200);
+        }
+        throw new Error(`web_${w.status}`);
+      }
       const url = (await w.json())?.remoteOrbitaUrl;
       if (!url || !String(url).startsWith("https://")) throw new Error("no_url");
       await admin.from("fb_cloud_sessions").upsert({
@@ -201,7 +219,8 @@ Deno.serve(async (req) => {
       }, { onConflict: "workspace_owner_id" });
       return json({ success: true, url });
     } catch (e) {
-      return json({ error: "remote_failed", message: `פתיחת הדפדפן בענן נכשלה (${(e as Error).message})` }, 502);
+      console.error("gologin remote_login error", (e as Error).message);
+      return json({ error: "remote_failed", message: `פתיחת הדפדפן בענן נכשלה (${(e as Error).message})` }, 200);
     }
   }
 
