@@ -2645,10 +2645,6 @@ const InlineComposer = ({
                     key={att.url || att.name || i}
                     data-thumbnail-index={i}
                     className={cn('relative shrink-0 rounded-sm transition-transform motion-reduce:transition-none', isCover && 'z-10', thumbnailTarget === i && 'ring-2 ring-primary')}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; }}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                    onDrop={(e) => { e.preventDefault(); reorder(Number(e.dataTransfer.getData('text/plain')), i); }}
                     title={isCover ? 'תמונה ראשית — גרור תמונה לכאן כדי להחליף' : 'גרור לשינוי סדר'}
                   >
                     {isImage ? (
