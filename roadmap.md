@@ -4,7 +4,8 @@
 - [x] Reuse server Graph managed-Page discovery and authorized selection under campaign header; OAuth return opens existing Page picker, name/photo refresh on return.
 - [x] Bound full group scan including hung initial/status requests to 60 seconds; cancel on discovery close/workspace change, preserve structured server failures.
 - [x] Center group headings with official Facebook brand icon and clean manual-link placeholders; 18 focused tests and build OK.
-- [ ] Live Graph Page selection and successful group scan await an authorized managed Page and functioning Facebook session in the selected workspace.
+- [x] Signed-in real group scan stops at 60 seconds, displays timeout reason and re-enables search; centered header/placeholder verified. No post published.
+- [ ] Live Graph selection awaits renewed Page authorization (server reports no saved user token). Successful scanning awaits the external worker returning results; current jobs remain processing without callback despite active session.
 
 ## Final post footer and composer alignment
 - [x] Verified existing +3px modal scale (21px heading, opposite-side actions) and two-credit confirmation regression tests without adding another increase or making a new charge.
