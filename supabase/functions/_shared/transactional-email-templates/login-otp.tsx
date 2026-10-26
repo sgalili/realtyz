@@ -4,21 +4,23 @@ import {
   Body, Container, Head, Heading, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
+import { genderText, profileGender } from '../personalLanguage.ts'
 
 const SITE_NAME = 'TORAFF'
 
 interface LoginOtpProps {
   code?: string
+  gender?: unknown
 }
 
-const LoginOtpEmail = ({ code = '0000' }: LoginOtpProps) => (
+const LoginOtpEmail = ({ code = '0000', gender }: LoginOtpProps) => (
   <Html lang="he" dir="rtl">
     <Head />
     <Preview>{`קוד הכניסה שלך ל-${SITE_NAME}: ${code}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>קוד כניסה ל-{SITE_NAME}</Heading>
-        <Text style={text}>הזן את הקוד הבא במסך הכניסה כדי להמשיך:</Text>
+        <Text style={text}>{genderText(profileGender(gender), { male: 'הזן את הקוד הבא במסך הכניסה כדי להמשיך:', female: 'הזיני את הקוד הבא במסך הכניסה כדי להמשיך:', neutral: 'אפשר להזין את הקוד הבא במסך הכניסה כדי להמשיך:' })}</Text>
         <Section style={codeBox}>
           <Text style={codeText} dir="ltr">{code}</Text>
         </Section>

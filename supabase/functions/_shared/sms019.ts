@@ -10,6 +10,7 @@
 // together with the username in the XML envelope. Legacy password rows keep
 // working (password element) until they are migrated.
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { profileGenderByAddress, personalizeMessage } from './personalLanguage.ts';
 
 export type Sms019Config = {
   username: string;
@@ -152,6 +153,10 @@ export async function sendSms019(
 ): Promise<{ ok: boolean; provider?: string; message_id?: string | null; error?: string; scope?: string }> {
   const local = toLocalIL(phone);
   if (!local) return { ok: false, error: "מספר טלפון לא תקין" };
+  if (body.includes('{{gender:')) {
+    const gender = await profileGenderByAddress(admin, 'phone', local);
+    body = personalizeMessage(body, gender);
+  }
 
   const cfg = await resolveSms019Config(admin, workspaceOwnerId ?? null);
   if (!cfg) return { ok: false, error: "019 SMS לא מוגדר" };

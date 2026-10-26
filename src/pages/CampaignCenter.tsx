@@ -50,6 +50,7 @@ import { syncWorkspacePagePosts } from '@/lib/extensionPageSync';
 import { deletePostImage } from '@/lib/postImageDeletion';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
+import { usePersonalLanguage, personalGenderKey, profileGender } from '@/i18n/personalLanguage';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useIsRitaWorkspace } from '@/hooks/useIsRitaWorkspace';
 import { GROUP_POST_TOPICS, groupPostTopic, groupPostTopicInstructions } from '@/lib/groupPostTopics';
@@ -66,7 +67,7 @@ import {
   deleteCloudQueueForPosts,
 } from '@/lib/extensionGroupBridge';
 
-import { toast } from 'sonner';
+import { toast } from '@/i18n/personalToast';
 import { isGenerationStopped, stopAllGeneration, resumeGeneration, subscribeGenerationGate, registerGeneration, releaseGeneration } from '@/lib/generationGate';
 import { loadSchedulePrefs, saveSchedulePrefs, DEFAULT_SCHEDULE_PREFS, type SchedulePrefs } from '@/lib/schedulePrefs';
 import { loadCampaignGroups, saveCampaignGroups, subscribeCampaignGroups } from '@/lib/campaignGroups';
@@ -6870,10 +6871,6 @@ const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string; gender
 type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null; voice_gender?: Gender | null };
 
 // Hebrew gender helpers — render verbs/adjectives in the correct grammatical
-// gender of the addressee (the broker). Defaults to neutral male-form when
-// gender is unknown so we never silently address a male user as female.
-const heVerb = (g: Gender | null | undefined, male: string, female: string) =>
-  g === 'female' ? female : male;
 
 
 const VoiceLeadPickerDialog = ({
@@ -6891,7 +6888,8 @@ const VoiceLeadPickerDialog = ({
   const [dialing, setDialing] = useState(false);
 
   // Broker (caller) gender — used to address the user in correct Hebrew grammar.
-  const [userGender, setUserGender] = useState<Gender | null>(null);
+  const { gender: userGender } = usePersonalLanguage();
+  const personalLanguageCache = useQueryClient();
 
   // Property promotion picker — optional focus listing for the call.
   const [voiceListings, setVoiceListings] = useState<{ id: string; title: string; city: string | null; asking_price: number | null; deal_type: string | null }[]>([]);
@@ -6938,20 +6936,17 @@ const VoiceLeadPickerDialog = ({
     hasLoadedRef.current = true;
     (async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      const [{ data: leadRows }, { data: listingRows }, { data: profile }] = await Promise.all([
+      const [{ data: leadRows }, { data: listingRows }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city, deal_type, preferences')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
         supabase.from('listings').select('id, property_title, city, asking_price, deal_type, status')
           .eq('status', 'live').order('created_at', { ascending: false }).limit(200),
-        user ? supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null } as any),
         loadClonedVoices(),
       ]);
       setLeads(((leadRows as any[]) ?? []).map(mapVoiceLead));
       setVoiceListings(((listingRows as any[]) ?? []).map((l) => ({
         id: l.id, title: l.property_title || 'נכס ללא כותרת', city: l.city ?? null, asking_price: l.asking_price ?? null, deal_type: l.deal_type ?? null,
       })));
-      setUserGender(((profile as any)?.gender ?? null) as Gender | null);
       setLoading(false);
 
     })();
@@ -7062,13 +7057,16 @@ const VoiceLeadPickerDialog = ({
                   { v: 'male' as const, label: 'גבר' },
                   { v: 'female' as const, label: 'אישה' },
                 ]).map((o) => (
-                  <button
+                  <Button
                     key={o.v}
                     type="button"
                     onClick={async () => {
-                      setUserGender(o.v);
                       const { data: { user } } = await supabase.auth.getUser();
-                      if (user) await supabase.from('profiles').update({ gender: o.v }).eq('id', user.id);
+                      if (!user) return;
+                      const { data, error } = await supabase.from('profiles').update({ gender: o.v }).eq('id', user.id).select('gender').single();
+                      if (error) { toast.error('שמירת ההעדפה נכשלה'); return; }
+                      personalLanguageCache.setQueryData(personalGenderKey(user.id), profileGender(data.gender));
+                      window.dispatchEvent(new Event('toraff:gender-saved'));
                     }}
                     className={cn(
                       'rounded-md border px-2 py-0.5 text-[11px] font-semibold transition',
@@ -7078,7 +7076,7 @@ const VoiceLeadPickerDialog = ({
                     )}
                   >
                     {o.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -7245,7 +7243,7 @@ const VoiceLeadPickerDialog = ({
                       className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
                     />
                     <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                      אם {heVerb(userGender, 'תשאיר', 'תשאירי')} ריק, המערכת {heVerb(userGender, 'תשתמש', 'תשתמש')} באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם הליד.
+                      ללא הנחיות נוספות, המערכת תשתמש באסטרטגיה הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם הליד.
                     </p>
                   </div>
 

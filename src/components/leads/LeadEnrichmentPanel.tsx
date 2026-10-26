@@ -269,8 +269,8 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
             >
               <SelectTrigger className="h-8 text-sm font-semibold text-slate-900"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="male">זכר</SelectItem>
-                <SelectItem value="female">נקבה</SelectItem>
+                <SelectItem value="male">גבר</SelectItem>
+                <SelectItem value="female">אישה</SelectItem>
               </SelectContent>
             </Select>
           </div>

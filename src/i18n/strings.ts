@@ -1,6 +1,7 @@
 // Locale-aware micro-strings for loading/status UI in the campaigns feed.
 // Reads `kalpiz_locale` from localStorage; defaults to Hebrew (he).
 // Hebrew sales terminology: ליד/לידים for leads, פנייה/פניות for inquiries.
+import { personalCommand } from './personalLanguage';
 
 export type Locale = "he" | "en";
 
@@ -54,5 +55,5 @@ const DICT: Dict = {
 export const t = (key: keyof typeof DICT, vars: Record<string, string | number> = {}): string => {
   const entry = DICT[key];
   const raw = entry ? entry[getLocale()] : String(key);
-  return raw.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ""));
+  return personalCommand(raw).replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ""));
 };

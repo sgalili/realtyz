@@ -433,8 +433,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="auto">זיהוי אוטומטי לפי השם</SelectItem>
-                <SelectItem value="male">זכר</SelectItem>
-                <SelectItem value="female">נקבה</SelectItem>
+                <SelectItem value="male">גבר</SelectItem>
+                <SelectItem value="female">אישה</SelectItem>
               </SelectContent>
             </Select>
             <p className="mt-1 text-[11px] text-muted-foreground">

@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { usePersonalLanguage, localizeControlNode } from '@/i18n/personalLanguage';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -65,13 +66,14 @@ DialogFooter.displayName = "DialogFooter";
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
+>(({ className, ...props }, ref) => {
+  const { gender } = usePersonalLanguage();
+  return <DialogPrimitive.Title
     ref={ref}
     className={cn("text-lg font-semibold leading-none tracking-tight", className)}
     {...props}
-  />
-));
+  >{localizeControlNode(props.children, gender)}</DialogPrimitive.Title>;
+});
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
 const DialogDescription = React.forwardRef<

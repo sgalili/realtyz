@@ -3,6 +3,7 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { usePersonalLanguage, localizeControlNode } from '@/i18n/personalLanguage';
 
 const Select = (props: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>) => (
   <SelectPrimitive.Root dir="rtl" {...props} />
@@ -10,7 +11,10 @@ const Select = (props: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Roo
 
 const SelectGroup = SelectPrimitive.Group;
 
-const SelectValue = SelectPrimitive.Value;
+const SelectValue = React.forwardRef<React.ElementRef<typeof SelectPrimitive.Value>, React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>>((props, ref) => {
+  const { gender } = usePersonalLanguage();
+  return <SelectPrimitive.Value {...props} ref={ref} placeholder={localizeControlNode(props.placeholder, gender)} />;
+});
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,

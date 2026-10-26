@@ -17,6 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 import { channelsForEvent, notificationIsQuiet, allowsNotificationOverride } from "../_shared/notificationPreferences.ts";
 import { sendSms019 } from "../_shared/sms019.ts";
+import { recipientProfileGender, genderText } from '../_shared/personalLanguage.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -160,13 +161,14 @@ Deno.serve(async (req) => {
         }
       }
     }
+    const recipientGender = await recipientProfileGender(admin, userId);
     const title = TITLE_BY_EVENT[body.event_type];
     const text = [
       title,
       `👤 איש קשר: ${lead}`,
       ...(propertyLabel ? [`🏠 נכס: ${propertyLabel}`] : []),
       ...(body.detail ? [`📝 פרטים: ${body.detail.slice(0, 400).replace(/\n+/g, " ")}`] : []),
-      `🔗 פתיחה במערכת: ${deepLink}`,
+      genderText(recipientGender, { male: `🔗 פתח את הפרטים במערכת: ${deepLink}`, female: `🔗 פתחי את הפרטים במערכת: ${deepLink}`, neutral: `🔗 פתיחה במערכת: ${deepLink}` }),
     ].join("\n");
 
     // Persist notification row first

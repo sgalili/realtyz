@@ -1,9 +1,11 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
+    const { command } = usePersonalLanguage();
     return (
       <input
         type={type}
@@ -13,6 +15,8 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         )}
         ref={ref}
         {...props}
+        placeholder={command(props.placeholder)}
+        aria-label={command(props['aria-label'])}
       />
     );
   },
