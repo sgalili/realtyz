@@ -15,7 +15,6 @@ import {
   Building2, ImageIcon, LogOut, X,
 } from 'lucide-react';
 import { toast } from '@/i18n/personalToast';
-import { PersonalGenderSetting } from '@/components/profile/PersonalGenderSetting';
 import { useAuth } from '@/hooks/useAuth';
 import { personalGenderKey, profileGender, usePersonalLanguage } from '@/i18n/personalLanguage';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -339,8 +338,7 @@ function PersonalTab() {
         <CardTitle className="text-right"></CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pb-3">
-        {!isOwnProfile && <PersonalGenderSetting />}
-        <ProfileAvatarUploader profileOwnerId={profileOwnerId} />
+        <ProfileAvatarUploader profileOwnerId={profileOwnerId} gender={gender === 'female' ? 'female' : gender === 'male' ? 'male' : null} />
 
         <div className="flex flex-col items-center gap-1 pb-1">
           {editing.fullName ? (

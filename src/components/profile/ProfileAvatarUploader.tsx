@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Camera, Trash2, User as UserIcon } from 'lucide-react';
+import { Camera, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ImageCropDialog } from '@/components/profile/ImageCropDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +8,27 @@ import { useAuth } from '@/hooks/useAuth';
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-export function ProfileAvatarUploader({ profileOwnerId }: { profileOwnerId: string | null }) {
+function GenderAvatar({ gender }: { gender: 'male' | 'female' | null }) {
+  return (
+    <svg viewBox="0 0 96 96" className="h-full w-full text-muted-foreground/40" fill="currentColor" aria-hidden="true">
+      {gender === 'female' ? (
+        <>
+          <path d="M48 14c-15 0-24 11-24 26 0 12-3 20-8 26 8 3 18 4 32 4s24-1 32-4c-5-6-8-14-8-26 0-15-9-26-24-26z" opacity="0.55" />
+          <circle cx="48" cy="40" r="15" />
+          <path d="M18 96c2-17 15-28 30-28s28 11 30 28z" />
+        </>
+      ) : (
+        <>
+          <circle cx="48" cy="38" r="17" />
+          <path d="M31 33c0-12 8-19 17-19s17 7 17 19c-4-5-10-7-17-7s-13 2-17 7z" opacity="0.55" />
+          <path d="M14 96c2-18 16-30 34-30s32 12 34 30z" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+export function ProfileAvatarUploader({ profileOwnerId, gender = null }: { profileOwnerId: string | null; gender?: 'male' | 'female' | null }) {
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const meta = ((user?.user_metadata ?? {}) as Record<string, any>);
@@ -135,7 +155,7 @@ export function ProfileAvatarUploader({ profileOwnerId }: { profileOwnerId: stri
           {avatarUrl ? (
             <img src={avatarUrl} alt="תמונת פרופיל" className="h-full w-full object-cover" />
           ) : (
-            <UserIcon className="h-8 w-8 text-muted-foreground/50" />
+            <GenderAvatar gender={gender} />
           )}
           <span className="absolute bottom-1.5 right-2 flex h-7 w-7 items-center justify-center rounded-full border bg-background/90 text-primary shadow-sm">
             <Camera className="h-4 w-4" aria-hidden="true" />
