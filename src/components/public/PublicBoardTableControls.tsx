@@ -11,7 +11,7 @@ import type { PublicCard } from '@/pages/PublicListingsBoard';
 
 export const BOARD_COLUMNS = [
   { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' },
-  { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תמלוגים' },
+  { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תגמולים' },
   { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
 ] as const;
 export type BoardColumnId = typeof BOARD_COLUMNS[number]['id'];
@@ -33,7 +33,7 @@ function read(key: string): Preferences {
     const order = upgradeBoardColumnOrder(Array.isArray(saved.order) ? [...new Set<BoardColumnId>(saved.order.filter(validId))] : []);
     BOARD_COLUMNS.forEach(c => { if (!order.includes(c.id)) order.push(c.id); });
     const hidden: BoardColumnId[] = Array.isArray(saved.hidden) ? [...new Set<BoardColumnId>(saved.hidden.filter(validId))] : [];
-    return { order, hidden: hidden.length < order.length ? hidden : [], sort: validId(saved.sort?.id) ? { id: saved.sort.id, descending: saved.sort.descending === true } : null };
+    return { order, hidden: hidden.length < order.length ? hidden : [], sort: validId(saved.sort?.id) && saved.sort.id !== 'commissions' ? { id: saved.sort.id, descending: saved.sort.descending === true } : null };
   } catch { return defaults(); }
 }
 function sortValue(card: PublicCard, id: BoardColumnId): string | number | null {
@@ -67,7 +67,7 @@ export function usePublicBoardColumns<T = PublicCard>(identity: string, rows: T[
   }, [rows, prefs.sort, configuration]);
   return {
     visible, sorted, definitions, sort: prefs.sort,
-    toggleSort: (id: BoardColumnId) => update({ ...prefs, sort: { id, descending: prefs.sort?.id === id ? !prefs.sort.descending : false } }),
+    toggleSort: (id: BoardColumnId) => { if (id !== 'commissions') update({ ...prefs, sort: { id, descending: prefs.sort?.id === id ? !prefs.sort.descending : false } }); },
     reorder: ({ active, over }: DragEndEvent) => {
       if (!over || active.id === over.id || !validId(active.id) || !validId(over.id)) return;
       update({ ...prefs, order: arrayMove(prefs.order, prefs.order.indexOf(active.id), prefs.order.indexOf(over.id)) });
@@ -92,9 +92,9 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
   const location = useLocation();
   return <th ref={setNodeRef} data-column={id} aria-sort={sorted ? controls.sort?.descending ? 'descending' : 'ascending' : 'none'} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group/column px-2 pb-0 pt-2 text-right font-semibold ${isDragging ? 'relative z-10 bg-muted opacity-80' : ''} ${id === 'price' ? 'max-sm:sticky max-sm:left-0 max-sm:z-[4] max-sm:bg-card' : ''}`}>
     <div className="flex items-center gap-0.5">
-      <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-auto min-h-7 gap-1 !whitespace-normal px-0 py-0.5 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
+      {id === 'commissions' ? <span className="text-xs font-semibold">{label}</span> : <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-auto min-h-7 gap-1 !whitespace-normal px-0 py-0.5 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
         <span className="whitespace-normal text-start leading-tight">{label}</span>{sorted && (controls.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
-      </Button>
+      </Button>}
       {id === 'commissions' && <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" aria-label="מה אומרים הצבעים?"><HelpCircle className="h-3.5 w-3.5" /></Button></PopoverTrigger><PopoverContent align="start" className="w-64 space-y-2 text-right text-sm font-normal leading-relaxed">
         <p className="font-bold">מה אומרים הצבעים?</p>
         <p>כל אייקון הוא דרך להרוויח מהנכס. ככל שהצבע חם יותר, התגמול שהמפרסם מציע גבוה יותר.</p>

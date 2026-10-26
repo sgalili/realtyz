@@ -8,7 +8,7 @@ import { ArrowRight, X } from 'lucide-react';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clearPendingSignupRole } from '@/lib/signupRole';
-import { israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
+import { formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -65,27 +65,27 @@ const Auth = () => {
   return <div dir="rtl" className="relative flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pb-14 text-foreground">
     <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute left-4 top-4 z-20 h-10 w-10 bg-transparent p-1 hover:bg-transparent" onClick={() => navigate('/')}><X className="h-8 w-8" /></Button>
     {codeSent && <Button type="button" variant="ghost" size="icon" aria-label="חזרה להתחברות" className="absolute right-4 top-4 h-10 w-10" onClick={() => { setCodeSent(false); setOtp(''); }}><ArrowRight className="h-8 w-8" /></Button>}
-    <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[50px]">
+    <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[40px]">
       <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
-      <h1 className="mb-8 mt-6 text-center text-xl font-normal">{codeSent ? 'הזינו את הקוד שקיבלתם ב-SMS' : signup ? <>להרשמה מהירה <strong>בחינם:</strong></> : 'כניסה לחשבון'}</h1>
+      <h1 className="mb-8 mt-[50px] text-center text-xl font-normal">{codeSent ? 'הזינו את הקוד שקיבלתם ב-SMS' : signup ? <>להרשמה מהירה <strong>בחינם:</strong></> : 'כניסה לחשבון'}</h1>
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
           <InputOTP maxLength={4} value={otp} onChange={value => { setOtp(value); if (value.length === 4) void verify(value); }} containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
-            <InputOTPGroup className="gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-4xl font-bold text-primary" />)}</InputOTPGroup>
+            <InputOTPGroup className="flex-row-reverse gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary" />)}</InputOTPGroup>
           </InputOTP>
           <Button type="button" className="w-full" disabled={loading || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
           <Button type="button" variant="link" disabled={loading || resendSeconds > 0} onClick={() => void sendCode()}>{resendSeconds > 0 ? `שליחה חוזרת בעוד ${resendSeconds}` : 'שלחו לי קוד שוב'}</Button>
         </div> : <form onSubmit={sendCode} className="space-y-3">
           {signup && <div className="grid grid-cols-2 gap-3">
-            <Input aria-label="שם פרטי" placeholder="שם פרטי" autoComplete="given-name" maxLength={80} className="h-12 min-w-0 text-lg" value={firstName} onChange={e => setFirstName(e.target.value)} />
-            <Input aria-label="שם משפחה" placeholder="שם משפחה" autoComplete="family-name" maxLength={80} className="h-12 min-w-0 text-lg" value={lastName} onChange={e => setLastName(e.target.value)} />
+            <Input aria-label="שם פרטי" placeholder="שם פרטי" autoComplete="given-name" maxLength={80} className="h-12 min-w-0 text-xl font-bold" value={firstName} onChange={e => setFirstName(e.target.value)} />
+            <Input aria-label="שם משפחה" placeholder="שם משפחה" autoComplete="family-name" maxLength={80} className="h-12 min-w-0 text-xl font-bold" value={lastName} onChange={e => setLastName(e.target.value)} />
           </div>}
           <div className={signup ? 'grid grid-cols-[minmax(0,1fr)_auto] gap-3' : ''}>
-            <Input type="tel" inputMode="tel" autoComplete="tel" aria-label="מספר טלפון נייד" placeholder="מספר טלפון נייד" maxLength={22} className="h-12 min-w-0 text-lg" dir={phone ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(e.target.value)} />
-            {signup && <div role="group" aria-label="מגדר" className="flex gap-1">{[['male', 'זכר'], ['female', 'נקבה']].map(([value, label]) => <Button key={value} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 px-3 text-base" onClick={() => setGender(value)}>{label}</Button>)}</div>}
+            <Input type="tel" inputMode="tel" autoComplete="tel" aria-label="מספר טלפון נייד" placeholder="מספר טלפון נייד" maxLength={11} className="h-12 min-w-0 text-xl font-bold" dir={phone ? 'ltr' : 'rtl'} value={phone} onChange={e => setPhone(formatAuthMobile(e.target.value))} />
+            {signup && <div role="group" aria-label="מגדר" className="flex gap-1">{[['male', 'זכר'], ['female', 'נקבה']].map(([value, label]) => <Button key={value} type="button" variant={gender === value ? 'default' : 'outline'} aria-pressed={gender === value} className="h-12 px-3 text-lg font-bold" onClick={() => setGender(value)}>{label}</Button>)}</div>}
           </div>
-          {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-lg">{loading ? 'שולח...' : 'שלחו לי קוד ב-SMS'}</Button>}
-          <div className="pt-4 text-center"><Button type="button" variant="link" className="text-sm text-muted-foreground" onClick={() => { setSignup(value => !value); setOtp(''); }}>{signup ? 'יש לי חשבון' : 'פתח חשבון חדש'}</Button></div>
+          {ready && <Button type="submit" disabled={loading} className="h-12 w-full text-xl font-bold">{loading ? 'שולח...' : 'שלחו לי קוד ב-SMS'}</Button>}
+          <div className="pt-4 text-center"><Button type="button" variant="link" className="text-base text-muted-foreground underline decoration-dotted underline-offset-4" onClick={() => { setSignup(value => !value); setOtp(''); }}>{signup ? 'יש לי חשבון' : 'פתח חשבון חדש'}</Button></div>
         </form>}
       </div>
     </div>

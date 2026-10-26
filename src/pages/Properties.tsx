@@ -1706,7 +1706,7 @@ export function ResultTable({
               </th>
             ) : null}
             {headerCell("תמונה", "w-14")}
-            {showCommissionColumn ? headerCell("עמלות") : null}
+            {showCommissionColumn ? headerCell("תגמולים") : null}
 
             {headerCell("רחוב")}
             {/* Internal-only: house & apartment numbers never leave the workspace. */}

@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { smsSignupSchema, signupDetailsValid, israeliMobile, signupTypes } from './smsSignup';
+import { smsSignupSchema, signupDetailsValid, israeliMobile, signupTypes, formatAuthMobile } from './smsSignup';
 describe('SMS signup rules', () => {
+  it('limits auth mobile entry to ten digits with a hyphen after digit three', () => {
+    expect(formatAuthMobile('054123456789')).toBe('054-1234567');
+    expect(formatAuthMobile('054-1234567')).toBe('054-1234567');
+    expect(formatAuthMobile('05')).toBe('05');
+  });
   const valid = { firstName: 'שי', lastName: 'גלילי', gender: 'male', phone: '+972541234567' };
   it('requires two letters only in each separate name', () => {
     expect(smsSignupSchema.safeParse(valid).success).toBe(true);

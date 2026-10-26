@@ -14,11 +14,11 @@ export function FacebookPageSelector() {
   const { data: selected } = useMetaPageBinding();
   const refresh = useRefreshMetaPageBinding();
   const [saving, setSaving] = useState(false);
-  const { data: pages = [], refetch, isFetching } = useQuery<Page[]>({
+  const { data: pages = [], refetch, isFetching, error: pagesError } = useQuery<Page[]>({
     queryKey: ['managed-facebook-pages', owner], enabled: !!owner, retry: false, staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'list_pages' } });
-      if (error || data?.error) return [];
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'list_pages', owner_id: owner } });
+      if (error || data?.error || data?.ok === false) throw new Error(data?.error || 'לא ניתן לטעון את עמודי הפייסבוק. יש לחדש את החיבור.');
       return Array.isArray(data?.pages) ? data.pages : [];
     },
   });
@@ -28,9 +28,10 @@ export function FacebookPageSelector() {
     return () => window.removeEventListener('focus', reload);
   }, [refetch, refresh]);
   const choose = async (pageId: string) => {
+    if (!owner || saving) return;
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'select_page', page_id: pageId } });
+      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'select_page', page_id: pageId, owner_id: owner } });
       if (error || data?.error || data?.ok === false) throw new Error(data?.error || error?.message || 'בחירת העמוד נכשלה');
       refresh();
     } catch (e) { toast.error(e instanceof Error ? e.message : 'בחירת העמוד נכשלה'); }
@@ -42,5 +43,6 @@ export function FacebookPageSelector() {
       <SelectTrigger className="w-full sm:w-64" aria-label="בחירת עמוד פייסבוק"><SelectValue placeholder="בחירת עמוד פייסבוק" /></SelectTrigger>
       <SelectContent>{pages.map(page => <SelectItem key={page.id} value={page.id}><span className="flex items-center gap-2">{page.picture && <img src={page.picture} alt="" className="h-6 w-6 rounded-full object-cover" referrerPolicy="no-referrer" />}{page.name || page.id}</span></SelectItem>)}</SelectContent>
     </Select> : <Button variant="link" asChild><a href="/profile?tab=connections&fb=choose">חיבור עמוד עסקי</a></Button>}
+    {pagesError && <span role="alert" className="w-full text-xs text-destructive">{pagesError.message}</span>}
   </div>;
 }

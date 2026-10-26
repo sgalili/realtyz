@@ -1,5 +1,13 @@
 # Roadmap
 
+## Platform alignment October 26
+- [x] Auth spacing, bold larger fields, ten-digit formatted mobile and reversed OTP boxes; keep real server OTP verification, no universal bypass.
+- [x] Guest table share reuses image-card dialog; social publication opens matching tailored dialog; public landing opens synchronously without prompts; edge-align table settings.
+- [x] Standardize visible rewards to תגמולים and block reward sorting in public/shared tables while retaining reorder.
+- [x] Contain global footer and enlarge legal links; selected Page requests explicitly scope to authorized workspace and surface discovery errors.
+- [x] Verified guest/signed-in publication dialogs, matching guest share, direct landing tab and 320/411px plus desktop footer; 23 focused tests pass and preview build OK.
+- [ ] Real Facebook Page selection and successful group results await renewed Graph authorization and external scan-worker results.
+
 ## Facebook Page selection and bounded group scanning
 - [x] Reuse server Graph managed-Page discovery and authorized selection under campaign header; OAuth return opens existing Page picker, name/photo refresh on return.
 - [x] Bound full group scan including hung initial/status requests to 60 seconds; cancel on discovery close/workspace change, preserve structured server failures.
