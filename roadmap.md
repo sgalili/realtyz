@@ -1,5 +1,9 @@
 # Roadmap
 
+## Dialog readability and extra draft approval
+- [ ] Increase modal/pop-up typography by 3px and place Cancel/Submit on one row at opposite ends.
+- [ ] Fix confirmed two-credit draft renewal, preserving successful-only idempotent billing; test and verify live generation.
+
 ## Bright Data audit and optimization
 - [x] Add Super Admin report with feature/API/cache breakdowns, recorded app credits, provider costs kept distinct, daily activity and export; signed-in report verified.
 - [x] Instrument REST/browser calls; shared atomic non-sliding caches for developer/sections/status reads, deduplicated bounded developer batches; preserve daily item claims and scheduled slots and report failed scheduled responses truthfully.
