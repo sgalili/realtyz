@@ -847,10 +847,9 @@ export const IvrBroadcastPanel = () => {
             </div>
           )}
         </div>
-      </DialogContent>
       <AlertDialog open={!!review} onOpenChange={(value) => { if (!value) setReview(null); }}>
         <AlertDialogContent dir="rtl"><AlertDialogHeader>
-          <AlertDialogTitle>אישור הפצת IVR</AlertDialogTitle>
+          <AlertDialogTitle>אישור הפצת הודעה טלפונית מוקלטת</AlertDialogTitle>
           <AlertDialogDescription>
             <span className="flex items-center gap-2"><CampaignServiceIcon channel="ivr" />{audienceCount} נמענים · {price ? `${formatCampaignCredits(price.credits)} ל${price.unit}` : 'המחירון אינו זמין'}</span>
             <span className="block mt-2">משך ההקלטה: <span dir="ltr">{formatIvrDuration(review?.seconds)}</span></span>
@@ -866,6 +865,6 @@ export const IvrBroadcastPanel = () => {
           setAgentVoiceId(v.voice_id);
         }}
       />
-    </Dialog>
+    </div>
   );
 };
