@@ -176,21 +176,6 @@ const PARTNER_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-/**
- * Private property owner navigation: only their own listings, the leads
- * interested in them, the per-stage reward settings and Rita. No broker CRM,
- * no recruitment, no affiliate management.
- */
-const OWNER_NAV_ITEMS: NavItem[] = [
-  {
-    title: 'הנכסים שלי',
-    url: '/owner/properties',
-    icon: Home,
-    iconColor: '!text-[hsl(var(--nav-properties))]', // amber-700
-    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
-  },
-];
-
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
   const { state, isMobile, setOpen, setOpenMobile } = useSidebar();
 
@@ -221,7 +206,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS.filter(item => item.url !== '/affiliate-network');
     const invite = NAV_ITEMS.filter((item) => item.url === '/referral');
     if (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') return invite;
-    if (isPropertyOwnerOnly) return [...OWNER_NAV_ITEMS, ...invite];
+    if (isPropertyOwnerOnly) return invite; // owner properties live inside My Ads
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.

@@ -98,7 +98,6 @@ const PartnerChats = lazy(() => import("./pages/partner/PartnerChats"));
 const PartnerContacts = lazy(() => import("./pages/partner/PartnerContacts"));
 const PartnerNetwork = lazy(() => import("./pages/PartnerNetwork"));
 const PublicListingsBoard = lazy(() => import("./pages/PublicListingsBoard"));
-const OwnerProperties = lazy(() => import("./pages/owner/OwnerProperties"));
 const Developers = lazy(() => import("./pages/Developers"));
 const Wallet = lazy(() => import("./pages/Wallet"));
 const DeveloperDashboard = lazy(() => import("./pages/DeveloperDashboard"));
@@ -237,7 +236,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     const allowed = OWNER_ALLOWED_PATHS.some(
       (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
     );
-    if (!allowed) return <Navigate to="/owner/properties" replace />;
+    if (!allowed) return <Navigate to="/my-ads" replace />;
   }
 
   if (!roleLoading && (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') && !(isPartnerMode && isAffiliate)) {
@@ -444,7 +443,7 @@ const App = () => (
                <Route path="/affiliate" element={<Navigate to="/affiliate-network" replace />} />
               <Route path="/affiliate-network" element={<Navigate to="/" replace />} />
               <Route path="/affiliate-pricing" element={<Navigate to="/wallet" replace />} />
-              <Route path="/owner/properties" element={<ProtectedRoute><OwnerProperties /></ProtectedRoute>} />
+              <Route path="/owner/properties" element={<Navigate to="/my-ads" replace />} />
               <Route path="/wallet" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Wallet /></Suspense></ProtectedRoute>} />
               <Route path="/developer-dashboard" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><DeveloperDashboard /></Suspense></ProtectedRoute>} />
               <Route path="/developers" element={<ProtectedRoute allowGuestDemo><Suspense fallback={<PageLoader />}><Developers /></Suspense></ProtectedRoute>} />
