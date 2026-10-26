@@ -13,12 +13,9 @@
 
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -286,18 +283,31 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const scoped = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+  const { data: { user } } = await scoped.auth.getUser();
+  if (!user) return json({ error: 'unauthorized' }, 401);
 
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* optional */ }
 
   const listingId = clean(body.listing_id);
   let pageUrl = clean(body.url);
+  if (!listingId || !/^[a-f0-9-]{36}$/i.test(listingId)) return json({ error: 'invalid_listing' }, 400);
+  const { data: authorized } = await scoped.from('listings').select('source_url,address,city,workspace_owner_id').eq('id', listingId).maybeSingle();
+  if (!authorized) return json({ error: 'forbidden' }, 403);
+  const { data: allowed } = await scoped.rpc('ws_current_access', { _ws: authorized.workspace_owner_id });
+  if (!allowed) return json({ error: 'forbidden' }, 403);
+  pageUrl = clean(authorized.source_url);
 
   if (!pageUrl && listingId) {
     const { data } = await admin.from("listings").select("source_url").eq("id", listingId).maybeSingle();
     pageUrl = clean(data?.source_url);
   }
-  if (!pageUrl || !/yad2\.co\.il/.test(pageUrl)) return json({ error: "missing_yad2_url" }, 400);
+  try { const u = new URL(pageUrl ?? ''); if (u.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/i.test(u.hostname) || u.username || u.password) throw new Error(); } catch { return json({ error: 'invalid_yad2_url' }, 400); }
+  if (!pageUrl) return json({ error: 'missing_yad2_url' }, 400);
+  const target = pageUrl;
+  try {
+  const serialized = await cachedScrapingText(`sections_${authorized.workspace_owner_id}`, target, 86400, async () => {
 
   let propertyAddress = clean(body.property_address);
   if (!propertyAddress && listingId) {
@@ -319,13 +329,17 @@ Deno.serve(async (req) => {
       Deno.env.get("BRIGHTDATA_ZONE") ?? "reatyz_yad2";
     if (!token) return "BRIGHTDATA_API_TOKEN לא מוגדר";
     try {
+      const result = await trackScraping('yad2_sections', 'rest', target, async () => {
       const res = await fetch("https://api.brightdata.com/request", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ zone, url: pageUrl, format: "raw" }),
       });
       const html = await res.text();
-      if (!res.ok) return `Bright Data REST ${res.status}: ${html.slice(0, 200)}`;
+      return { status: res.status, html };
+      }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.html).length }));
+      const html = result.html;
+      if (result.status >= 400) return `Bright Data REST ${result.status}`;
       const scripts = html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi);
       for (const m of scripts) {
         const t = (m[1] ?? "").trim();
@@ -344,7 +358,7 @@ Deno.serve(async (req) => {
   let browser: any = null;
   let browserError: string | null = null;
   try {
-    browser = await puppeteer.connect({ browserWSEndpoint: ws });
+    browser = await trackScraping('yad2_sections', 'browser_session', target, () => puppeteer.connect({ browserWSEndpoint: ws }));
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 2400 });
 
@@ -360,7 +374,7 @@ Deno.serve(async (req) => {
       } catch { /* ignore non-JSON / detached responses */ }
     });
 
-    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await trackScraping('yad2_sections', 'browser_navigation', target, () => page.goto(target, { waitUntil: 'domcontentloaded', timeout: 90_000 }), (r: any) => ({ status: r?.status?.() }));
     // Every secondary section is lazy: walk down the page so their XHRs fire.
     // Yad2 does client-side navigations mid-scroll, which destroys the
     // execution context — swallow those and keep whatever XHRs already landed.
@@ -414,7 +428,7 @@ Deno.serve(async (req) => {
 
   if (browserError) {
     // 200 + empty sections so the UI shows an explanation instead of a blank screen.
-    return json({ ok: false, error: browserError, deals: [], prices: [], schools: [], listings: [] }, 200);
+    throw new Error('sections_provider_failed');
   }
 
 
@@ -457,13 +471,13 @@ Deno.serve(async (req) => {
       .select("source_metadata, price_history")
       .eq("id", listingId)
       .maybeSingle();
-    const meta = isRecord(row?.source_metadata) ? row!.source_metadata as Record<string, unknown> : {};
+    const meta = isRecord(row?.source_metadata) ? row.source_metadata as Record<string, unknown> : {};
     const patch: Record<string, unknown> = {
       source_metadata: { ...meta, yad2_sections: sections },
     };
     // The valuation series doubles as the canonical price history when the
     // listing does not have one yet.
-    const existingHistory = Array.isArray(row?.price_history) ? row!.price_history as unknown[] : [];
+    const existingHistory = Array.isArray(row?.price_history) ? row.price_history as unknown[] : [];
     if (!existingHistory.length && sections.valuation_history.length > 1) {
       patch.price_history = sections.valuation_history;
     }
@@ -471,7 +485,7 @@ Deno.serve(async (req) => {
     if (error) console.error("[yad2-page-sections] save failed", error);
   }
 
-  return json({
+  return JSON.stringify({
     success: true,
     url: pageUrl,
     payloads_seen: payloads.length,
@@ -482,4 +496,7 @@ Deno.serve(async (req) => {
     },
     sections,
   });
+  });
+  return json(JSON.parse(serialized));
+  } catch { return json({ ok: false, error: 'sections_unavailable', detail: 'לא ניתן לרענן כרגע; הפרטים השמורים נשארים זמינים.' }); }
 });

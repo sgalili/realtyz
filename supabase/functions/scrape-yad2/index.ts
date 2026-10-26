@@ -16,6 +16,7 @@ import { cleanSqm } from "../_shared/measures.ts";
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { createClient } from "npm:@supabase/supabase-js@2.45.0";
 import { parseHebrewAddress } from "../_shared/addressParse.ts";
+import { trackScraping } from '../_shared/scrapingAudit.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,7 +124,7 @@ Deno.serve(async (req) => {
   let browser: any = null;
   try {
     console.log(`[scrape-yad2] connecting to Bright Data Scraping Browser…`);
-    browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+    browser = await trackScraping('legacy_yad2', 'browser_session', urls[0], () => puppeteer.connect({ browserWSEndpoint: wsEndpoint }));
 
     for (const searchUrl of urls) {
       const dealType = detectDealType(searchUrl);
@@ -133,7 +134,7 @@ Deno.serve(async (req) => {
         await page.setViewport({ width: 1440, height: 2400 });
         // NOTE: Bright Data Scraping Browser forbids header overrides.
         console.log(`[scrape-yad2] navigating → ${searchUrl}`);
-        await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
+        await trackScraping('legacy_yad2', 'browser_navigation', searchUrl, () => page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 }), (r: any) => ({ status: r?.status?.() }));
         // Yad2 renders feed after hydration; wait for any feed item link.
         await page.waitForSelector('a[href*="/item/"], [data-testid="feed-item"], article', {
           timeout: 45_000,
