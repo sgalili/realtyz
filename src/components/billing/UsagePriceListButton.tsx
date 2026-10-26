@@ -2,11 +2,20 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { agorotToCredits, fmtCredits } from '@/lib/credits';
+import { ACTION_META, agorotToCredits, fmtCreditsShort } from '@/lib/credits';
+import { BrandLogo } from '@/components/social/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type PriceRow = { action_key: string; label_he: string; unit_he: string; price_agorot: number };
+
+/** ניסוח ספציפי לשורות המחירון — עוקף את הטקסט הנשמר ב-action_pricing לתצוגה בלבד. */
+const ROW_OVERRIDES: Record<string, { label?: string; unit?: string }> = {
+  whatsapp_marketing: { unit: 'לחלון הודעות של 24 שעות' },
+  sms: { unit: 'להודעה עד 210 תווים' },
+  ai_heavy: { label: 'ניתוח נכס וחילוץ נתונים חכם ב-AI' },
+  social_post: { label: 'יצירה ופרסום פוסט Facebook / Instagram', unit: '(עד שלוש גרסאות)' },
+};
 
 export function UsagePriceListButton() {
   const [open, setOpen] = useState(false);
@@ -34,12 +43,29 @@ export function UsagePriceListButton() {
           {isLoading ? <div className="flex justify-center p-6" role="status" aria-label="טוען מחירון"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
             : isError ? <div className="space-y-3"><p className="text-sm text-destructive">לא ניתן לטעון את המחירון</p><Button variant="outline" onClick={() => void refetch()}>ניסיון נוסף</Button></div>
             : data.length === 0 ? <p className="text-sm text-muted-foreground">המחירון אינו זמין כרגע</p>
-            : <dl className="divide-y divide-border">{data.map((row) => (
-              <div key={row.action_key} className="flex items-center justify-between gap-4 py-3">
-                <dt className="min-w-0 text-sm font-medium">{row.label_he}<span className="block text-xs font-normal text-muted-foreground">ל{row.unit_he}</span></dt>
-                <dd className="shrink-0 text-sm font-bold">{fmtCredits(agorotToCredits(Number(row.price_agorot)))}</dd>
-              </div>
-            ))}</dl>}
+            : <dl className="divide-y divide-border">{data.map((row) => {
+              const meta = ACTION_META[row.action_key];
+              const Icon = meta?.icon;
+              const override = ROW_OVERRIDES[row.action_key];
+              const label = override?.label ?? row.label_he;
+              const unit = override?.unit ?? `ל${row.unit_he}`;
+              return (
+                <div key={row.action_key} className="flex items-center gap-3 py-3">
+                  {Icon && (
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${meta.tone}`} aria-hidden="true">
+                      {row.action_key === 'social_post'
+                        ? <BrandLogo platform="facebook" className="h-4 w-4" />
+                        : <Icon className="h-4 w-4" />}
+                    </span>
+                  )}
+                  <dt className="min-w-0 flex-1 text-base font-medium">
+                    {label}
+                    <span className="block text-sm font-normal text-muted-foreground">{unit}</span>
+                  </dt>
+                  <dd className="shrink-0 text-base font-bold tabular-nums">{fmtCreditsShort(agorotToCredits(Number(row.price_agorot)))}</dd>
+                </div>
+              );
+            })}</dl>}
         </DialogContent>
       </Dialog>
     </>
