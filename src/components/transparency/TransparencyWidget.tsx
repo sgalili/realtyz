@@ -14,7 +14,7 @@ const n = (v: unknown) => Number(v ?? 0).toLocaleString('he-IL');
 export type TransparencyFilter = { side: 'advertiser' | 'partner'; key: 'active_listings' | 'promoted_listings' | 'leads_30d' | 'approved' | 'disputed' | 'rejected' | 'wallet' };
 
 function Stat({ label, value, icon: Icon, iconClass, tone, active, onClick }: { label: string; value: string; icon: LucideIcon; iconClass?: string; tone?: 'destructive'; active?: boolean; onClick?: () => void }) {
-  const content = <><Icon className={`h-7 w-7 shrink-0 ${iconClass ?? 'text-muted-foreground'}`} aria-hidden="true" /><span className="text-[13px] font-normal leading-5 text-muted-foreground">{label}</span><span dir="rtl" className={`block max-w-full text-center whitespace-normal break-words text-[22px] font-semibold leading-7 tabular-nums ${tone === 'destructive' ? 'text-destructive' : 'text-foreground'}`}>{value}</span></>;
+  const content = <><Icon className={`!h-7 !w-7 shrink-0 ${iconClass ?? 'text-muted-foreground'}`} aria-hidden="true" /><span className="text-[13px] font-normal leading-5 text-muted-foreground">{label}</span><span dir="rtl" className={`block max-w-full text-center whitespace-normal break-words text-[22px] font-semibold leading-7 tabular-nums ${tone === 'destructive' ? 'text-destructive' : 'text-foreground'}`}>{value}</span></>;
   const className = `flex h-auto min-h-[88px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-md px-4 py-3 text-center whitespace-normal ${active ? 'bg-accent ring-1 ring-inset ring-border' : ''}`;
   return onClick ? <Button type="button" variant="ghost" onClick={onClick} aria-pressed={!!active} className={className}>{content}</Button> : <div className={className}>{content}</div>;
 }
