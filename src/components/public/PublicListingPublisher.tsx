@@ -239,8 +239,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     if (!open || resumeDraft || restoredScope.current === draftScope) return;
     let cancelled = false;
     void (async () => {
-      let draft = await readPublicListingDraft(draftScope).catch(() => null);
-      if (!draft && draftScope !== 'visitor') draft = await readPublicListingDraft('visitor').catch(() => null);
+      // Restore ONLY the draft of this exact user+workspace scope — never a
+      // visitor draft or another office's draft.
+      const draft = await readPublicListingDraft(draftScope).catch(() => null);
       if (cancelled) return;
       if (draft) {
         setFields(draft); setFiles(draft.files ?? []); setVideos(draft.videos ?? []);
