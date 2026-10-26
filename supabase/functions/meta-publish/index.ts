@@ -1,5 +1,6 @@
 import { tailorGroupTexts, ensureUniqueTexts, rotateMedia } from "../_shared/groupTailor.ts";
 import { dedupePostMedia } from '../_shared/postMediaIdentity.ts';
+import { campaignPublishRoute } from '../_shared/campaignPublishRoute.ts';
 // meta-publish — direct Meta Graph API publishing for Facebook Pages and
 // Instagram Business accounts.
 //
@@ -535,7 +536,7 @@ Deno.serve(async (req) => {
     const firstComment = ensureMandatoryComment(body?.first_comment, typeof body?.link === "string" ? body.link : null);
     // "פרסם גם בעמוד הפייסבוק העסקי" — checked by default. When the caller
     // explicitly sends false, only the selected groups are published to.
-    const publishToPage = body?.publish_to_page === undefined || body?.publish_to_page === null
+    let publishToPage = body?.publish_to_page === undefined || body?.publish_to_page === null
       ? true
       : body.publish_to_page !== false;
     const requestedGroupIds: string[] = (Array.isArray(body?.group_ids) ? body.group_ids : [])
@@ -559,6 +560,26 @@ Deno.serve(async (req) => {
         throw new Error('לא ניתן לבדוק את הקבוצות החסומות כרגע. נסה שוב.');
       }
     })();
+
+    const { data: cloudSession } = await db.from('fb_cloud_sessions')
+      .select('status,expires_at,last_error,cookies_encrypted')
+      .eq('workspace_owner_id', ownerId).maybeSingle();
+    const cloudActive = cloudSession?.status === 'active' && !cloudSession.last_error &&
+      !!cloudSession.cookies_encrypted && !!Deno.env.get('FB_SESSION_ENC_KEY') &&
+      (!cloudSession.expires_at || new Date(cloudSession.expires_at).getTime() > Date.now());
+    const route = campaignPublishRoute({ channels, groupCount: groupIds.length, publishToPage,
+      hasPage: !!page, cloudActive, cloudRequested: body?.runner === 'cloud' });
+    publishToPage = route.publishToPage;
+    if (route.error) return json({ success: false, error: route.error, message:
+      route.error === 'no_targets' ? 'בחרו לפחות קבוצה אחת לפרסום בדפדפן הענן.' :
+      route.error === 'cloud_not_connected' ? 'אין חיבור פייסבוק פעיל בענן. יש להתחבר מחדש.' :
+      'פרסום בעמוד או באינסטגרם דורש חיבור עמוד עם הרשאת פרסום. לפרסום בענן בחרו קבוצות.' }, 200);
+    if (route.runner === 'cloud' && (!Deno.env.get('CLOUD_BROWSER_WORKER_URL') || !Deno.env.get('CLOUD_WORKER_SHARED_SECRET'))) {
+      return json({ success: false, error: 'cloud_worker_unavailable', message: 'שירות הפרסום בענן אינו זמין כרגע.' }, 200);
+    }
+    // Validation-only probe never stages jobs or contacts Facebook to publish.
+    if (body?.action === 'validate') return json({ success: true, runner: route.runner,
+      cloud_connected: cloudActive, publish_to_page: publishToPage, group_count: groupIds.length });
 
     if (!text && media.length === 0) {
       return json({ success: false, error: "empty_post", message: "אין תוכן לפרסום" }, 200);
@@ -639,6 +660,7 @@ Deno.serve(async (req) => {
           workspace_owner_id: ownerId,
           created_by: ownerId,
           activity_type: "fb_group_post",
+          runner: route.runner,
           target_ref: gid,
           target_label: gid,
           scheduled_for: nowIso,
@@ -656,7 +678,7 @@ Deno.serve(async (req) => {
             first_comment: groupFirstComment,
             campaign_name: campaignName,
             listing_id: body?.listing_id ?? null,
-            published_via: "browser_extension",
+            published_via: route.runner === 'cloud' ? 'cloud_browser' : 'browser_extension',
           },
         };
       });
@@ -674,8 +696,8 @@ Deno.serve(async (req) => {
           groupResults.push({
             group_id: String(row.target_ref),
             ok: true,
-            code: "queued_for_extension",
-            reason: "ממתין לפרסום דרך תוסף הדפדפן של TORAFF",
+            code: route.runner === 'cloud' ? 'queued_for_cloud' : 'queued_for_extension',
+            reason: route.runner === 'cloud' ? 'ממתין לפרסום בדפדפן הענן' : 'ממתין לפרסום',
             queue_id: row.id,
             post_id: null,
           });
@@ -768,7 +790,7 @@ Deno.serve(async (req) => {
     // A workspace with groups selected must never be blocked just because no
     // Page token could be resolved — that used to leave every group post stuck
     // in a red "failed" state without a single publish attempt.
-    if (!page && groupIds.length === 0) {
+    if (!page && publishToPage) {
       // No Page token could be resolved from the workspace, workspace members,
       // the social connection, or the platform Meta credentials. Report the
       // real cause (missing/expired Meta token) instead of a generic
@@ -912,15 +934,16 @@ Deno.serve(async (req) => {
         campaign_name: campaignName,
         channel: ch,
         message_body: text,
-        status: succeeded ? "sent" : "failed",
-        sent_at: succeeded ? new Date().toISOString() : null,
+        workspace_owner_id: ownerId,
+        status: match ? "sent" : groupOk > 0 ? "publishing" : "failed",
+        sent_at: match ? new Date().toISOString() : null,
         media_urls: media,
         first_comment: firstComment || null,
         failure_reason: succeeded ? null : (fail?.message ?? groupResults.find((r: any) => r?.reason)?.reason ?? null),
         provider_message_id: match?.id ?? null,
         group_ids: groupIds,
         provider_response: {
-          provider: "meta_graph",
+          provider: route.runner === 'cloud' ? 'cloud_browser' : 'meta_graph',
           page_id: page?.pageId ?? null,
           media_urls: media,
           first_comment: firstComment || null,
@@ -980,6 +1003,8 @@ Deno.serve(async (req) => {
 
     return json({
       success: failures.length === 0 || groupOk > 0,
+      runner: route.runner,
+      queued: groupOk > 0,
       group_published: groupOk,
       verified: true,
       published_channels: pendingChannels,

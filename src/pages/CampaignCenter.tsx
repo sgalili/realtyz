@@ -1,6 +1,7 @@
 import { canRestorePropertyDraft, propertyCampaignSelection } from '@/lib/campaignPropertyContext';
 import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 import { selectedCampaignChannels } from '@/lib/campaignCreationChannel';
+import { getCloudSessionState, type CloudSessionState } from '@/lib/cloudSession';
 import SmsBlastSimulator from '@/pages/SmsBlastSimulator';
 import { CampaignChannelPicker, DISTRIBUTION_CHANNELS, type DistributionChannel } from '@/components/campaigns/CampaignChannelPicker';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
@@ -3322,6 +3323,15 @@ const ConfirmDispatchDialog = ({
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
+  const [cloudConnection, setCloudConnection] = useState<CloudSessionState | null>(null);
+  useEffect(() => {
+    let live = true;
+    setCloudConnection(null);
+    if (open && channel?.id === 'facebook' && workspaceOwnerId) {
+      void getCloudSessionState().then(state => { if (live) setCloudConnection(state); });
+    }
+    return () => { live = false; };
+  }, [open, channel?.id, workspaceOwnerId]);
   // Groups are editable right here in the confirmation step: clicking the count
   // opens the picker so targets can be added / removed before broadcasting.
   const [groupIds, setGroupIds] = useState<string[]>(groupIdsProp);
@@ -3435,6 +3445,7 @@ const ConfirmDispatchDialog = ({
           .from('social_connections')
           .select('*')
           .eq('platform', channel.id)
+          .eq('workspace_owner_id', workspaceOwnerId ?? '')
           .order('updated_at', { ascending: false });
         let rows = ((data || []) as any[])
           .filter((r) => r?.is_connected !== false)
@@ -3475,7 +3486,7 @@ const ConfirmDispatchDialog = ({
         setPagesLoading(false);
       }
     })();
-  }, [open, channel, user]);
+  }, [open, channel, user, workspaceOwnerId]);
 
   if (!channel) return null;
 
@@ -3494,6 +3505,8 @@ const ConfirmDispatchDialog = ({
     return out;
   };
   const publishTargets = dedupePages(selectedPages.length > 0 ? selectedPages : pages.slice(0, 1));
+  const useCloudPublishing = channel.id === 'facebook' && cloudConnection?.active === true &&
+    (publishToPage === false || publishTargets.length === 0);
   const selectedPage = publishTargets[0] || null;
   const profileLabel = selectedPage
     ? `${selectedPage.name}${selectedPage.username ? ` · @${selectedPage.username}` : ''}`
@@ -3510,6 +3523,23 @@ const ConfirmDispatchDialog = ({
     const ownerScope = workspaceOwnerId ?? user.id;
     setIsBroadcasting(true);
     try {
+      if (useCloudPublishing) {
+        const state = await getCloudSessionState();
+        setCloudConnection(state);
+        if (!state.active) throw new Error('אין חיבור פייסבוק פעיל בענן. יש להתחבר מחדש.');
+        if (!groupIds.length) throw new Error('בחרו לפחות קבוצה אחת לפרסום בדפדפן הענן.');
+        const { data, error } = await supabase.functions.invoke('meta-publish', { body: {
+          post: safeUtf8(body).trim(), channels: ['facebook'], runner: 'cloud',
+          workspace_owner_id: ownerScope, group_ids: groupIds, publish_to_page: false,
+          campaign_name: `${brandName} · ${channel.label}`, media_urls: mediaUrls,
+          scheduled_at: scheduledAt, listing_id: listingId, first_comment: firstComment || null,
+        } });
+        if (error || data?.error || data?.success === false) throw new Error(data?.message || error?.message || 'שמירת הפרסום בענן נכשלה');
+        toast.success(`${data.group_count ?? data.group_results?.length ?? groupIds.length} קבוצות נוספו לתור הפרסום בענן`);
+        onConfirmed();
+        onClose();
+        return;
+      }
       // WhatsApp CTA is OPT-IN via the "הוסף קישור לוואטסאפ" checkbox. When
       // checked, the composer has ALREADY inlined a rotating first-person opener
       // ("דברו איתי…") + a real WA link (branded shortlink or wa.me fallback)
@@ -3946,9 +3976,14 @@ const ConfirmDispatchDialog = ({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="text-right text-sm font-semibold text-foreground">פרסום בעמוד / פרופיל</div>
+          <div className="text-right text-sm font-semibold text-foreground">{useCloudPublishing ? 'פרסום בדפדפן הענן' : 'פרסום בעמוד / פרופיל'}</div>
           <div className="rounded-xl border border-border bg-background p-3 space-y-3">
-            {pagesLoading ? (
+            {useCloudPublishing ? (
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <span>פייסבוק מחובר באמצעות GoLogin · פרסום לקבוצות בענן</span>
+              </div>
+            ) : pagesLoading || (channel.id === 'facebook' && !cloudConnection) ? (
               <div className="text-right text-xs text-muted-foreground py-2">טוען עמודים מחוברים…</div>
             ) : pages.length === 0 ? (
               <div className="text-right text-xs text-muted-foreground py-2">
@@ -3964,7 +3999,7 @@ const ConfirmDispatchDialog = ({
                 ))}
               </div>
             )}
-            {publishTargets.length === 0 && (
+            {!useCloudPublishing && publishTargets.length === 0 && (
               <div className="flex items-center justify-end gap-3 px-1">
                 <div className="text-right">
                   <div className="text-sm font-bold text-foreground">{selectedPage?.name || brandName}</div>
@@ -4005,7 +4040,7 @@ const ConfirmDispatchDialog = ({
             </div>
             <div className="rounded-lg bg-background p-2">
               <div className="text-[11px] text-muted-foreground">יעדי עמוד / פרופיל</div>
-              <div className="text-lg font-bold tabular-nums text-foreground">{publishTargets.length || 1}</div>
+              <div className="text-lg font-bold tabular-nums text-foreground">{useCloudPublishing ? 0 : publishTargets.length}</div>
             </div>
             <div className="rounded-lg bg-background p-2">
               <div className="text-[11px] text-muted-foreground">תמונות בקמפיין</div>
@@ -4055,8 +4090,7 @@ const ConfirmDispatchDialog = ({
         <DialogFooter dir="ltr" className="!justify-between gap-2 sm:gap-2 !flex-row">
           <Button
             type="button"
-            disabled={isBroadcasting}
-            className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]"
+            disabled={isBroadcasting || pagesLoading || (channel.id === 'facebook' && !cloudConnection)}
             onClick={async (e) => {
               e.preventDefault();
               e.stopPropagation();
