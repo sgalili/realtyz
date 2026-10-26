@@ -1809,10 +1809,13 @@ const InlineComposer = ({
   };
   const listingAutoGenRef = useRef<string | null>(null);
 
+  const generateInFlightRef = useRef(false);
   const handleGenerate = async (opts?: { rotateTemplate?: boolean }) => {
+    if (generateInFlightRef.current) return;
     if (isGenerationStopped()) { toast.info('יצירת התוכן עצורה. לחץ "המשך יצירה" כדי להפעיל מחדש.'); return; }
     // Registered so the emergency stop can abort this request mid-flight.
     const ctrl = registerGeneration();
+    generateInFlightRef.current = true;
     setGenerating(true);
     const context = { listingId: selectedListingId, workspace: workspaceOwnerId };
     try {

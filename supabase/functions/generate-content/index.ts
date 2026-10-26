@@ -145,7 +145,7 @@ serve(async (req) => {
         _request: requestId, _platform: socialPlatform, _target: selectedListingId ? String(selectedListingId) : 'workspace-post', _confirm: confirmDraftCharge === true,
       });
       if (error) throw error;
-      if (reservation?.confirmation_required || reservation?.error) return new Response(JSON.stringify(reservation), { status: reservation.confirmation_required ? 409 : 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (reservation?.confirmation_required || reservation?.error) return new Response(JSON.stringify(reservation), { status: reservation.confirmation_required || reservation.error === 'generation_in_progress' ? 409 : 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       if (reservation?.cached) return new Response(JSON.stringify({ content: anonymousSocialText(reservation.content, await socialPrivacyIdentities(admin, workspaceOwnerId, selectedListingId)) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       reservedDraft = requestId;
     }
