@@ -30,7 +30,7 @@ export function RewardIcons({ levels, types, prices, zeroTypes, closingPercent =
       // Icon and price share one level color: closing uses its server level, lead types their price level.
       const level = key === 'closing' ? closingLevel : prices?.[key] != null ? leadPriceLevel(key as 'form', Number(prices[key])) : levels?.[key as 'form'] ?? null;
       const zero = zeroTypes ? zeroTypes[key] === true : prices?.[key] === 0;
-      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: closingLevelColor(level) } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? user && <span className="text-xs font-semibold">ללא עמלה</span> : prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
+      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: closingLevelColor(level) } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? <span className="text-xs font-semibold">ללא עמלה</span> : prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
     })}</span>
   </span>;
 }
@@ -40,7 +40,7 @@ export function CommissionTierBadges({ tiers, compact: _compact = false, level4L
   const { user } = useAuth();
   const { isSuperAdmin, roles } = useUserRole();
   const showAll = !user || isSuperAdmin || roles.some(role => ['managing_broker', 'lead_agent', 'agent'].includes(role));
-  return <RewardIcons zeroTypes={{ form: tiers.tier1 === 0, whatsapp: tiers.tier2 === 0, phone: tiers.tier3 === 0, closing: level4Unlocked && tiers.tier4 === 0 }} types={{ form: !closingOnly && (showAll || tiers.tier1 > 0), whatsapp: !closingOnly && (showAll || tiers.tier2 > 0), phone: !closingOnly && (showAll || tiers.tier3 > 0), closing: !level4Locked }} />;
+  return <RewardIcons zeroTypes={{ form: tiers.tier1 === 0, whatsapp: tiers.tier2 === 0, phone: tiers.tier3 === 0, closing: level4Unlocked && tiers.tier4 === 0 }} types={{ form: !closingOnly, whatsapp: !closingOnly, phone: !closingOnly, closing: !level4Locked }} />;
 }
 
 export function GuestTierIcons({ types = {} }: { types?: RewardTypes }) {

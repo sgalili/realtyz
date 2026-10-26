@@ -91,8 +91,8 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
 
   const workspaceInfo = (
     <div className="min-w-0 flex-1 text-right">
-              <div className="truncate text-[11px] font-bold text-slate-900">{card.title}</div>
-              <div className="truncate text-[8px] text-slate-500">{card.subtitle || '\u00a0'}</div>
+              <div className="truncate text-[8px] font-bold text-foreground">{card.title}</div>
+              <div className="truncate text-[5px] text-muted-foreground">{card.subtitle || '\u00a0'}</div>
     </div>
   );
 

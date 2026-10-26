@@ -326,7 +326,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     }}
                     title="הגדרות"
                     aria-label="הגדרות"
-                    className="h-9 w-full min-w-0 gap-1 px-1 text-[9px] font-semibold"
+                    className="h-9 w-full min-w-0 gap-1 px-1 text-[6px] font-semibold"
                   >
                     <Settings className="h-4 w-4 text-[hsl(var(--nav-settings))]" />
                     הגדרות
@@ -340,11 +340,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     closeSidebar();
                   }}
                   title="הדרכה" aria-label="הדרכה"
-                  className="h-9 w-full min-w-0 gap-1 px-1 text-[9px] font-semibold">
+                  className="h-9 w-full min-w-0 gap-1 px-1 text-[6px] font-semibold">
                   <HelpCircle className="h-4 w-4 text-[hsl(var(--nav-help))]" />הדרכה
                 </Button>
 
-                {identity.canSwitch && <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-[31px] [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1" />}
+                {identity.canSwitch && <AppModeSwitcher keepSidebarOpen className="w-full min-w-0 [&>button]:h-[31px] [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1 [&>button]:!text-[6px]" />}
               </div>
 
             </SidebarGroupContent>

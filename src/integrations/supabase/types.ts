@@ -7038,6 +7038,48 @@ export type Database = {
           },
         ]
       }
+      signup_bonus_grants: {
+        Row: {
+          created_at: string
+          credits: number
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits: number
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      signup_bonus_settings: {
+        Row: {
+          bonus_credits: number
+          id: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bonus_credits?: number
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bonus_credits?: number
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       social_connections: {
         Row: {
           connected_at: string | null
@@ -9104,10 +9146,20 @@ export type Database = {
           views: number
         }[]
       }
+      get_my_new_earnings: {
+        Args: { _since: string }
+        Returns: {
+          amount_ils: number
+          created_at: string
+          id: string
+          type: string
+        }[]
+      }
       get_my_partner_referrals: { Args: never; Returns: Json }
       get_my_partner_submissions: { Args: never; Returns: Json }
       get_my_referral_code: { Args: never; Returns: string }
       get_my_referral_stats: { Args: never; Returns: Json }
+      get_my_signup_bonus: { Args: never; Returns: Json }
       get_my_subscription_status: { Args: never; Returns: Json }
       get_my_wallet: { Args: never; Returns: Json }
       get_my_wallet_ledger: { Args: { _limit?: number }; Returns: Json }
@@ -9140,6 +9192,7 @@ export type Database = {
       }
       get_scraping_usage_report: { Args: { _days?: number }; Returns: Json }
       get_sidebar_counts: { Args: { _ws: string }; Returns: Json }
+      get_signup_bonus_settings: { Args: never; Returns: number }
       get_system_status: {
         Args: never
         Returns: {
@@ -9479,6 +9532,10 @@ export type Database = {
       set_referral_leftover_discount: {
         Args: { _referral_id: string; _type: string; _value: number }
         Returns: Json
+      }
+      set_signup_bonus_settings: {
+        Args: { _credits: number }
+        Returns: undefined
       }
       set_workspace_email_alias: { Args: { p_alias: string }; Returns: string }
       set_workspace_email_provider: {
