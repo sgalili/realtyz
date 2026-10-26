@@ -85,15 +85,6 @@ function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactEleme
     className: cn(p.className, "group/column", isDragging && "relative z-10 bg-muted opacity-80"),
     children: !label ? p.children : (
       <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
-        {canSort ? <Button variant="ghost"
-          type="button"
-          onClick={(e) => { p.onClick?.(e); if (!e.defaultPrevented) ctx.toggleSort(index); }}
-          className="inline-flex h-auto items-center gap-1 p-0 font-[inherit] text-[inherit] hover:bg-transparent"
-          aria-label={`מיון לפי ${label}`}
-        >
-          {p.children}
-          {active && (ctx.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
-        </Button> : <span>{p.children}</span>}
         {ctx.canArrange && (
           <button
             type="button"
@@ -106,6 +97,15 @@ function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactEleme
             <GripVertical className="h-3 w-3" />
           </button>
         )}
+        {canSort ? <Button variant="ghost"
+          type="button"
+          onClick={(e) => { p.onClick?.(e); if (!e.defaultPrevented) ctx.toggleSort(index); }}
+          className="inline-flex h-auto items-center gap-1 p-0 font-[inherit] text-[inherit] hover:bg-transparent"
+          aria-label={`מיון לפי ${label}`}
+        >
+          {p.children}
+          {active && (ctx.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
+        </Button> : <span>{p.children}</span>}
       </span>
     ),
   });
