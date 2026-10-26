@@ -1,10 +1,11 @@
 # Roadmap
 
 ## SMS-only registration and intro
-- [ ] Update final intro signup/swipe exit and outlined header login action.
-- [ ] Replace auth UI with validated split names, gender and mobile; SMS OTP only.
-- [ ] Persist profile details and collect five post-OTP user types with essential fields, preserving license and consent checks.
-- [ ] Run focused rules tests and verify mobile/desktop flows.
+- [x] Update final intro signup/swipe exit and outlined header login action.
+- [x] Replace auth UI with validated split names, gender and mobile; SMS OTP only, no master-code path.
+- [x] Persist profile details through verified-phone RPC and collect five post-OTP user types with essential fields, preserving license and consent checks.
+- [x] 36 focused tests pass; mobile/desktop registration and login, final intro CTA, 50px logo and server rejection checks verified; build OK.
+- [ ] Real SMS delivery and new-account OTP-to-role completion require a recipient-controlled phone and received code; no SMS sent or test account created.
 
 ## Platform publishing and privacy updates
 - [x] Add shared server-record identity redaction to generation and Graph/cloud publication; shared landing reuses canonical original advertiser projection; generated short links use toraff.co.il.
