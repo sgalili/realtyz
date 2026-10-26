@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, Columns3, GripVertical } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Button } from './button';
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { HorizontalTableScroll } from "./horizontal-table-scroll";
@@ -19,6 +20,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
  * ------------------------------------------------------------------ */
 
 type Prefs = { order: number[]; hidden: number[]; sort: { index: number; descending: boolean } | null };
+export const rewardColumnSortable = (label: string) => !/תגמולים|תמלוגים/.test(label);
 
 function nodeText(node: React.ReactNode): string {
   if (node === null || node === undefined || typeof node === "boolean") return "";
@@ -74,23 +76,24 @@ function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactEleme
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(index), disabled: !ctx.canArrange || !label });
   const p = cell.props;
   const active = ctx.sort?.index === index;
+  const canSort = rewardColumnSortable(label) && p['data-sortable'] !== false;
   return React.cloneElement(cell, {
     ref: setNodeRef,
     "data-column-index": index,
-    "aria-sort": label ? (active ? (ctx.sort!.descending ? "descending" : "ascending") : "none") : undefined,
+    "aria-sort": label && canSort ? (active ? (ctx.sort?.descending ? "descending" : "ascending") : "none") : undefined,
     style: { ...p.style, transform: CSS.Transform.toString(transform), transition },
     className: cn(p.className, "group/column", isDragging && "relative z-10 bg-muted opacity-80"),
     children: !label ? p.children : (
       <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
-        <button
+        {canSort ? <Button variant="ghost"
           type="button"
           onClick={(e) => { p.onClick?.(e); if (!e.defaultPrevented) ctx.toggleSort(index); }}
-          className="inline-flex items-center gap-1 font-[inherit] text-[inherit]"
+          className="inline-flex h-auto items-center gap-1 p-0 font-[inherit] text-[inherit] hover:bg-transparent"
           aria-label={`מיון לפי ${label}`}
         >
           {p.children}
-          {active && (ctx.sort!.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
-        </button>
+          {active && (ctx.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
+        </Button> : <span>{p.children}</span>}
         {ctx.canArrange && (
           <button
             type="button"
@@ -143,12 +146,13 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
     const order = canArrange ? prefs.order : defaults(n).order;
     const hidden = canArrange ? prefs.hidden : [];
     const visible = order.filter((i) => !hidden.includes(i));
-    const sort = prefs.sort && labels[prefs.sort.index] ? prefs.sort : null;
+    const canSortColumn = (index: number) => !!labels[index] && rewardColumnSortable(labels[index]) && headCells[index]?.props['data-sortable'] !== false;
+    const sort = prefs.sort && canSortColumn(prefs.sort.index) ? prefs.sort : null;
 
     const ctx: HeaderCtx = {
       sort,
       canArrange,
-      toggleSort: (i) => update({ ...prefs, sort: sort?.index === i ? { index: i, descending: !sort.descending } : { index: i, descending: false } }),
+      toggleSort: (i) => { if (canSortColumn(i)) update({ ...prefs, sort: sort?.index === i ? { index: i, descending: !sort.descending } : { index: i, descending: false } }); },
     };
 
     const arrangeRow = (row: React.ReactElement<any>): React.ReactElement => {

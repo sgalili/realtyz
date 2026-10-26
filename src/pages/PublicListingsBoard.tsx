@@ -144,8 +144,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     if (!user?.id) { setGuestDialog(true); return; }
     await saveFavorite(card.id);
   };
-  // Guests tapping any row action button (share / publish / open page / favorite /
-  // drag) get a free-registration popup instead of the action itself.
+  // Only protected favorite/reordering actions require registration.
   const [guestDialog, setGuestDialog] = useState(false);
   const blockGuests = (e: ReactMouseEvent | ReactPointerEvent) => {
     if (user) return;
@@ -355,7 +354,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                   <tr>
                     {visibleColumns.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
                     <th className="px-2 pt-2 text-start font-medium">מפרסם</th>
-                    <th className="w-10 px-2 pb-0 pt-2"><BoardColumnMenu controls={columns} /></th>
+                    <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
                   </tr>
 
                 </thead>
@@ -394,12 +393,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
                         <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
-                        <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1" onClickCapture={blockGuests} onPointerDownCapture={blockGuests}>
-                          <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage />
+                        <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
+                          {user ? <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage /> : <PropertyContactActions listingId={card.id} title={title} compact shareOnly shareUrl={publicUrl(propertyPath)} shareButtonClassName="h-8 w-8 border-0 bg-transparent shadow-none" />}
                           <BoardPublishButton result={cardResult(card)} />
-                          <BoardOpenPageButton result={cardResult(card)} />
+                          <BoardOpenPageButton result={cardResult(card)} publicPath={propertyPath} />
                           <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); void toggleFavorite(card); }} aria-label={favIds.has(card.id) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={favIds.has(card.id)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favIds.has(card.id) && 'fill-current')} /></Button>
-                          <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={moveRowDrag} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; setDragGhost(null); }}><GripVertical className="h-4 w-4" /></Button>
+                          <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { if (!user) { blockGuests(event); return; } event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={moveRowDrag} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; setDragGhost(null); }}><GripVertical className="h-4 w-4" /></Button>
                         </div>
                          </td>
                       </tr>,

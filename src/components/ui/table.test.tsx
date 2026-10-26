@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from './table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, rewardColumnSortable } from './table';
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'table-user' } }) }));
 vi.mock('@/hooks/useWorkspace', () => ({ useWorkspace: () => ({ activeWorkspaceId: 'table-workspace' }) }));
 vi.mock('./dropdown-menu', () => ({
@@ -13,6 +13,11 @@ vi.mock('./dropdown-menu', () => ({
 }));
 afterEach(() => { cleanup(); localStorage.clear(); });
 describe('shared column controls', () => {
+  it('blocks both reward terminology variants while retaining price sorting', () => {
+    expect(rewardColumnSortable('תגמולים')).toBe(false);
+    expect(rewardColumnSortable('תמלוגים')).toBe(false);
+    expect(rewardColumnSortable('מחיר')).toBe(true);
+  });
   it('shows grips without hovering and resets only order to system defaults', () => {
     const key = `table-columns:v1:table-user:table-workspace:${window.location.pathname}:שם|מחיר|עיר`;
     localStorage.setItem(key, JSON.stringify({ order: [2, 1, 0], hidden: [1], sort: { index: 2, descending: true } }));
