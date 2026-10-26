@@ -69,7 +69,7 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
   return 'other';
 }
 
-export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, gallery }: { idOrSlug: string; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; gallery?: ReactNode }) {
+export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, gallery, hideRewards = false }: { idOrSlug: string; hideRewards?: boolean; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; gallery?: ReactNode }) {
   const { user } = useAuth();
   const { activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const navigate = useNavigate();
@@ -206,7 +206,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
             </Button>
           </div>
         )}
-        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} trailing={listing.id ? <PropertyCommissionIcons listingId={listing.id} raw={raw} /> : undefined} />
+        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} trailing={listing.id && !hideRewards ? <PropertyCommissionIcons listingId={listing.id} raw={raw} /> : undefined} />
         {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">

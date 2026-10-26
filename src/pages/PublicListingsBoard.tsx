@@ -349,9 +349,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
-            <HorizontalTableScroll ref={tableWrapRef} aria-label="טבלת נכסים" className="board-head-sticky flex-1 rounded-lg border bg-card">
+            <HorizontalTableScroll ref={tableWrapRef} aria-label="טבלת נכסים" className={cn("board-head-sticky flex-1 rounded-lg border bg-card", !/^(localhost|127\.0\.0\.1)$|id-preview--|lovableproject\.com$/.test(window.location.hostname) && "hide-x-scrollbar")}>
               <table data-column-managed="true" className="w-max min-w-full text-sm">
-                <thead className="bg-muted/40 text-xs text-muted-foreground">
+                <thead className="bg-muted/40 text-[14px] text-muted-foreground">
                   <tr>
                     {visibleColumns.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
                     <th className="px-2 pt-2 text-start font-medium">מפרסם</th>
@@ -408,7 +408,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
-                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} />}
+                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards />}
                               <PropertyContactActions listingId={card.id} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} compact formAsButton showShare={false} />
                             </div>
                           </div>
