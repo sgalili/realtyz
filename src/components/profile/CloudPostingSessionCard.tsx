@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { FacebookCloudConnectGate } from '@/components/social/FacebookCloudConnectGate';
 import { GroupDiscoveryDialog } from '@/components/social/GroupDiscoveryDialog';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Cloud, ShieldCheck, Trash2 } from 'lucide-react';
+import { ShieldCheck, Trash2 } from 'lucide-react';
+import { FacebookGroupsIcon } from '@/components/icons/FacebookGroupsIcon';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -72,7 +73,7 @@ function CloudPostingSessionContent() {
     setSaving(true);
     try {
       await call('clear');
-      toast.success('החיבור לענן נמחק');
+      toast.success('החיבור נמחק');
       await refresh();
     } catch (e) {
       toast.error((e as Error).message || 'המחיקה נכשלה');
@@ -86,7 +87,7 @@ function CloudPostingSessionContent() {
     session?.status === 'active' && !expiredAt && !session?.last_error ? 'active'
     : session?.status === 'connecting' ? 'connecting' : 'reauth';
   const STATE = {
-    active: { label: 'פעיל בענן', cls: 'bg-success text-success-foreground' },
+    active: { label: 'פעיל', cls: 'bg-success text-success-foreground' },
     connecting: { label: 'מתחבר', cls: 'bg-warning text-warning-foreground' },
     reauth: { label: 'נדרש חידוש התחברות לפייסבוק', cls: 'bg-destructive text-destructive-foreground' },
   }[state];
@@ -97,8 +98,8 @@ function CloudPostingSessionContent() {
     <Card dir="rtl">
       <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Cloud className={`h-4 w-4 ${state === 'active' ? 'text-success' : 'text-muted-foreground'}`} />
-          אוטומציית ענן (24/7)
+          <FacebookGroupsIcon className="h-4 w-4" />
+          אוטומציית פרסום (24/7)
         </CardTitle>
         <Badge className={loading ? '' : STATE.cls} variant="secondary">
           {loading ? 'טוען…' : STATE.label}
@@ -106,20 +107,20 @@ function CloudPostingSessionContent() {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          שמירת חיבור הפייסבוק שלך בצורה מוצפנת מאפשרת לשרת לחפש קבוצות, לסנכרן ולפרסם
+          שמירת חיבור הפייסבוק שלך בצורה מוצפנת מאפשרת לחפש קבוצות, לסנכרן ולפרסם
           בזמנים שקבעת — גם כשהמחשב סגור. הנתונים מוצפנים ואינם מוצגים
           שוב אחרי השמירה, ומשותפים לכל חברי סביבת העבודה.
         </p>
 
         {state === 'active' && !workerReady && (
           <p className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
-            החיבור נשמר. הקמפיינים ימתינו בתור עד שהשרת שמבצע את הפרסום בענן יופעל.
+            החיבור נשמר. הקמפיינים ימתינו בתור עד שהפרסום יופעל.
           </p>
         )}
 
         {summary && (
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-md border p-2"><div className="text-lg font-bold">{summary.sent_today}</div><div className="text-xs text-muted-foreground">נשלחו היום מהענן</div></div>
+            <div className="rounded-md border p-2"><div className="text-lg font-bold">{summary.sent_today}</div><div className="text-xs text-muted-foreground">נשלחו היום</div></div>
             <div className="rounded-md border p-2"><div className="text-lg font-bold">{summary.pending}</div><div className="text-xs text-muted-foreground">ממתינים בתור</div></div>
             <div className="rounded-md border p-2"><div className="text-lg font-bold">{summary.active_pool}/{summary.pool_cap}</div><div className="text-xs text-muted-foreground">קבוצות פעילות</div></div>
           </div>
@@ -133,7 +134,7 @@ function CloudPostingSessionContent() {
             </span>
           </div>
           {runs.length === 0 ? (
-            <div className="text-muted-foreground">אין עדיין קמפיינים שטופלו בענן עבור סביבת העבודה</div>
+            <div className="text-muted-foreground">אין עדיין קמפיינים שטופלו עבור סביבת העבודה</div>
           ) : runs.map((r, i) => (
             <div key={i} className="flex justify-between text-muted-foreground">
               <span>{new Date(r.ran_at).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
