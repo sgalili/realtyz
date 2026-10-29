@@ -3111,6 +3111,33 @@ export type Database = {
         }
         Relationships: []
       }
+      fb_account_post_attempts: {
+        Row: {
+          attempted_at: string
+          error: string | null
+          id: string
+          job_id: string
+          outcome: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          attempted_at?: string
+          error?: string | null
+          id?: string
+          job_id: string
+          outcome?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          attempted_at?: string
+          error?: string | null
+          id?: string
+          job_id?: string
+          outcome?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       fb_cloud_sessions: {
         Row: {
           cookies_encrypted: string | null
@@ -8859,6 +8886,10 @@ export type Database = {
       fb_prepare_cloud_group_post: { Args: { _job: string }; Returns: boolean }
       fb_rebalance_all_group_pools: { Args: never; Returns: undefined }
       fb_rebalance_group_pool: { Args: { _owner: string }; Returns: number }
+      fb_record_post_attempt_outcome: {
+        Args: { _error: string; _job: string; _ok: boolean }
+        Returns: undefined
+      }
       finish_market_scrape_run: {
         Args: {
           _error?: string
