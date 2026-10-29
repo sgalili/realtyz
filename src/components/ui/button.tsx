@@ -17,6 +17,9 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        inquiryForm: "inquiry-silver text-destructive hover:text-destructive",
+        inquiryWhatsapp: "inquiry-silver text-lead-whatsapp hover:text-lead-whatsapp",
+        inquiryPhone: "inquiry-silver text-lead-phone hover:text-lead-phone",
         /* Legacy aliases kept so existing pages keep compiling */
         gold: "bg-primary text-primary-foreground hover:bg-primary/90",
         navy: "bg-primary text-primary-foreground hover:bg-primary/90",

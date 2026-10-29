@@ -1,14 +1,13 @@
-import { JoinPartnerDialog } from '@/components/affiliate/JoinPartnerDialog';
 import { useState } from 'react';
-import { ChevronLeft, ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
+import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RitaAvatar } from '@/components/RitaAvatar';
 import WhatsAppIcon from '@/components/properties/WhatsAppIcon';
 import { officialWaLink, openWhatsAppContactPicker } from '@/lib/officialWa';
 import { openExternal } from '@/lib/openExternal';
@@ -40,8 +39,6 @@ export default function PropertyContactActions({
   showShare = true,
   shareOnly = false,
   shareButtonClassName,
-  formAsButton = false,
-  singleRow = false,
 }: {
   listingId: string;
   title: string;
@@ -53,7 +50,7 @@ export default function PropertyContactActions({
   showShare?: boolean;
   shareOnly?: boolean;
   shareButtonClassName?: string;
-  /** Homepage cards: render the digital-lead form behind a "השאירו פרטים" button instead of inline. */
+  /** Legacy presentation props; all inquiry forms now use the same bottom sheet. */
   formAsButton?: boolean;
   singleRow?: boolean;
 }) {
@@ -62,11 +59,7 @@ export default function PropertyContactActions({
   // configured conversation can collect it itself.
   const showWhatsapp = !shareOnly && settings.whatsapp === true;
   const showPhone = !shareOnly && settings.phone === true;
-  const showDigital = !shareOnly && settings.digital === true && (formAsButton || (!showWhatsapp && !showPhone));
-  const [formOpen, setFormOpen] = useState(false);
-  // In cards the lead form expands above the action row; push the WhatsApp and
-  // phone buttons down so they never sit next to the form's send button.
-  const formExpanded = showDigital && formAsButton && formOpen;
+  const showDigital = !shareOnly && settings.digital === true;
   const [mode, setMode] = useState<'digital' | 'phone' | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -125,7 +118,7 @@ export default function PropertyContactActions({
   };
 
   const submit = async (verification?: { id: string; answers: Record<string, string> }) => {
-    if ((!mode && !name.trim()) || phone.replace(/\D/g, '').length < 9) {
+    if ((mode !== 'phone' && !name.trim()) || phone.replace(/\D/g, '').length < 9) {
       toast.error(mode === 'phone' ? 'יש למלא מספר טלפון תקין' : 'יש למלא שם מלא ומספר טלפון תקין');
       return;
     }
@@ -160,58 +153,17 @@ export default function PropertyContactActions({
       return;
     }
     toast.success(callback ? 'תודה, נחזור אליכם טלפונית בהקדם' : 'הפרטים נשלחו בהצלחה');
-    setMode(null); setFormOpen(false); setName(''); setPhone(''); setAnswers({});
+    setMode(null); setName(''); setPhone(''); setAnswers({});
   };
 
   return (
     <>
-      <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={cn(shareOnly ? 'inline-flex shrink-0' : compact ? 'grid w-full grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap' : 'sticky bottom-3 z-10 grid grid-cols-2 items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur sm:flex sm:flex-wrap', !shareOnly && '[&>button]:h-auto [&>button]:min-h-12 [&>button]:min-w-0 [&>button]:gap-1 [&>button]:whitespace-normal [&>button]:px-2 [&>button]:py-2 [&>button]:text-[22px] sm:[&>button]:text-base [&>button>svg]:shrink-0 [&>button[aria-label="שיתוף נכס"]]:order-5 sm:[&>button[aria-label="שיתוף נכס"]]:order-none', singleRow && 'sm:[&>button:not([aria-label="שיתוף נכס"])]:basis-0')}>
-        {showDigital && formAsButton && (
-          <Button variant="outline" className="order-1 min-w-[8rem] flex-1 text-base sm:order-none" aria-expanded={formOpen} onClick={() => { setFormOpen((open) => !open); setInquiryStarted(true); }}>
-            <ClipboardList className="h-4 w-4" />
-            השאירו פרטים
-          </Button>
-        )}
-        {showDigital && (!formAsButton || formOpen) && (
-          <form className="order-3 col-span-2 flex w-full flex-wrap items-end gap-2 sm:order-none" onFocusCapture={() => setInquiryStarted(true)} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-            <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
-            <div className="min-w-[7rem] flex-1"><Label htmlFor={`phone-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`phone-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, "").replace(/^972/, "0").slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>
-            {extraFields.map((f) => {
-              const v = answers[f.id];
-              const id = `ff-${listingId}-${f.id}`;
-              const chip = (label: string, on: boolean, onClick: () => void) => (
-                <button key={label} type="button" onClick={onClick} className={`rounded-full border px-3 py-1 text-xs ${on ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}>{label}</button>
-              );
-              return (
-                <div key={f.id} className="w-full space-y-1">
-                  <Label htmlFor={id}>{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
-                  {f.type === 'text' && <Input id={id} maxLength={300} value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value)} />}
-                  {f.type === 'number' && <Input id={id} inputMode="decimal" value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value.replace(/[^\d.]/g, ''))} />}
-                  {f.type === 'date' && <Input id={id} type="date" value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value)} />}
-                  {f.type === 'yesno' && <div className="flex gap-2">{['כן', 'לא'].map((o) => chip(o, v === o, () => setAnswer(f.id, o)))}</div>}
-                  {f.type === 'single' && <div className="flex flex-wrap gap-2">{(f.options ?? []).map((o) => chip(o, v === o, () => setAnswer(f.id, o)))}</div>}
-                  {f.type === 'multi' && <div className="flex flex-wrap gap-2">{(f.options ?? []).map((o) => { const arr = Array.isArray(v) ? v : []; return chip(o, arr.includes(o), () => setAnswer(f.id, arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o])); })}</div>}
-                </div>
-              );
-            })}
-            <Button type="submit" size={extraFields.length ? 'default' : 'icon'} className={extraFields.length ? 'w-full' : undefined} aria-label="שליחת פרטים" disabled={sending || !name.trim() || phone.replace(/\D/g, '').length < 9}>{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : extraFields.length ? 'שליחת פרטים' : <ChevronLeft className="h-4 w-4" />}</Button>
-          </form>
-        )}
-        {showWhatsapp && (
-          <Button className={cn('order-2 min-w-[9rem] flex-1 bg-social-whatsapp text-success-foreground hover:bg-social-whatsapp/90 text-base sm:order-none', formExpanded && 'mt-[30px]')} onClick={openRita}>
-            <>
-              {/* RTL: Rita's picture sits before the label, WA logo on the opposite (left) side. */}
-              <RitaAvatar className="h-6 w-6 border-0 ring-0" />
-              בואו נדבר
-              <WhatsAppIcon className="h-5 w-5" />
-            </>
-          </Button>
-        )}
-        {showPhone && (
-          <Button variant="outline" className={cn('order-4 min-w-[8rem] flex-1 text-base sm:order-none', !showShare && showDigital && showWhatsapp && 'col-span-2', formExpanded && 'mt-[30px]')} onClick={() => setMode('phone')}>
-            <Phone className="h-4 w-4" />חייגו אליי
-          </Button>
-        )}
+      <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={cn(shareOnly ? 'inline-flex shrink-0' : 'flex w-full flex-wrap items-center gap-1.5', !compact && !shareOnly && 'sticky bottom-3 z-10 bg-card/95 py-2 backdrop-blur')}>
+        {!shareOnly && <div data-inquiry-actions className="flex w-full min-w-0 items-center gap-1.5">
+          {showDigital && <Button variant="inquiryForm" className="property-inquiry-action" onClick={() => { setMode('digital'); setInquiryStarted(true); }}><ClipboardList /><span>השארת פרטים</span></Button>}
+          {showWhatsapp && <Button variant="inquiryWhatsapp" className="property-inquiry-action" onClick={openRita}><WhatsAppIcon /><span>ווטסאפ</span></Button>}
+          {showPhone && <Button variant="inquiryPhone" className="property-inquiry-action" onClick={() => { setMode('phone'); setInquiryStarted(true); }}><Phone /><span>שיחת טלפון</span></Button>}
+        </div>}
         {showShare && !user && (
           <Button variant="outline" size={compact ? 'icon' : 'default'} className={cn(shareButtonClassName || (compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'), !shareOnly && 'order-5 sm:order-none')} aria-label="שיתוף נכס" title="שיתוף נכס" onClick={() => setJoinOpen(true)}>
             <Share2 className="h-4 w-4" />{compact ? null : 'שיתוף'}
@@ -237,17 +189,55 @@ export default function PropertyContactActions({
         {!shareOnly && inquiryStarted && mode === null && <div className="order-last col-span-2 w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
       </div>
       <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
-      <JoinPartnerDialog open={joinOpen} onOpenChange={setJoinOpen} />
-      <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
-        <DialogContent dir="rtl" className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="text-right">חזרה טלפונית</DialogTitle></DialogHeader>
-          <BrokerageCommissionDisclosure audience={audience} />
-          <div className="space-y-3">
-            <div><Label>טלפון *</Label><Input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
+      <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
+        <DialogContent dir="rtl" aria-describedby={undefined} className="sm:max-w-md" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+          <DialogHeader><DialogTitle className="text-center">שיתוף נכס</DialogTitle></DialogHeader>
+          <p className="break-words text-center text-muted-foreground">{title}</p>
+          <div className="flex items-center justify-center gap-3">
+            <Button variant="outline" aria-label="שיתוף בווטסאפ" title="שיתוף בווטסאפ" onClick={() => void share('whatsapp')}><WhatsAppIcon />ווטסאפ</Button>
+            <Button variant="outline" aria-label="שיתוף באימייל" title="שיתוף באימייל" onClick={() => void share('email')}><Mail />אימייל</Button>
+            <Button variant="outline" aria-label="העתקת קישור" title="העתקת קישור" onClick={() => void share('copy')}><Copy />העתקה</Button>
           </div>
-          <DialogFooter className="flex-row items-center justify-between sm:justify-between"><Button variant="outline" onClick={() => setMode(null)}>ביטול</Button><Button disabled={sending} onClick={() => void submit()}>{sending && <Loader2 className="h-4 w-4 animate-spin" />}חייגו אליי</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <Drawer open={mode !== null} onOpenChange={(open) => !open && setMode(null)} shouldScaleBackground={false}>
+        <DrawerContent dir="rtl" aria-describedby={undefined} className="mx-auto max-h-[85dvh] w-[calc(100%-30px)] max-w-lg overflow-y-auto rounded-t-lg" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+          <DrawerHeader><DrawerTitle className="text-center">{mode === 'phone' ? 'שיחת טלפון' : 'השארת פרטים'}</DrawerTitle></DrawerHeader>
+          <div className="px-4 pb-3"><BrokerageCommissionDisclosure audience={audience} /></div>
+        {mode === 'digital' && (
+          <form id={`property-inquiry-${listingId}`} className="space-y-3 px-4" onFocusCapture={() => setInquiryStarted(true)} onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+            <div className="min-w-[7rem] flex-1"><Label htmlFor={`name-${listingId}`}>שם מלא <span className="text-destructive">*</span></Label><Input id={`name-${listingId}`} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
+            <div className="min-w-[7rem] flex-1"><Label htmlFor={`phone-${listingId}`}>מספר טלפון <span className="text-destructive">*</span></Label><Input id={`phone-${listingId}`} type="tel" dir="ltr" autoComplete="tel" required value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, "").replace(/^972/, "0").slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>
+            {extraFields.map((f) => {
+              const v = answers[f.id];
+              const id = `ff-${listingId}-${f.id}`;
+              const chip = (label: string, on: boolean, onClick: () => void) => (
+                <Button key={label} type="button" variant={on ? 'default' : 'outline'} aria-pressed={on} onClick={onClick} className="px-3 py-1 text-sm">{label}</Button>
+              );
+              return (
+                <div key={f.id} className="w-full space-y-1">
+                  <Label htmlFor={id}>{f.label}{f.required && <span className="text-destructive"> *</span>}</Label>
+                  {f.type === 'text' && <Input id={id} maxLength={300} value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value)} />}
+                  {f.type === 'number' && <Input id={id} inputMode="decimal" value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value.replace(/[^\d.]/g, ''))} />}
+                  {f.type === 'date' && <Input id={id} type="date" value={(v as string) ?? ''} onChange={(e) => setAnswer(f.id, e.target.value)} />}
+                  {f.type === 'yesno' && <div className="flex gap-2">{['כן', 'לא'].map((o) => chip(o, v === o, () => setAnswer(f.id, o)))}</div>}
+                  {f.type === 'single' && <div className="flex flex-wrap gap-2">{(f.options ?? []).map((o) => chip(o, v === o, () => setAnswer(f.id, o)))}</div>}
+                  {f.type === 'multi' && <div className="flex flex-wrap gap-2">{(f.options ?? []).map((o) => { const arr = Array.isArray(v) ? v : []; return chip(o, arr.includes(o), () => setAnswer(f.id, arr.includes(o) ? arr.filter((x) => x !== o) : [...arr, o])); })}</div>}
+                </div>
+              );
+            })}
+
+          </form>
+        )}
+          {mode === 'phone' && <div className="space-y-3 px-4"><Label htmlFor={`callback-${listingId}`}>מספר טלפון *</Label><Input id={`callback-${listingId}`} type="tel" dir="ltr" autoComplete="tel" value={phone} maxLength={11} onChange={(event) => { const d = event.target.value.replace(/\D/g, '').replace(/^972/, '0').slice(0, 10); setPhone(d.length > 3 ? `${d.slice(0, 3)}-${d.slice(3)}` : d); }} /></div>}
+          <DrawerFooter>
+            <Button variant="outline" disabled={sending} onClick={() => setMode(null)}>ביטול</Button>
+            <Button variant="destructive" className={mode === 'phone' ? 'bg-lead-phone text-primary-foreground hover:bg-lead-phone/90' : undefined} type={mode === 'digital' ? 'submit' : 'button'} form={mode === 'digital' ? `property-inquiry-${listingId}` : undefined} disabled={sending || phone.replace(/\D/g, '').length < 9 || (mode === 'digital' && !name.trim())} onClick={mode === 'phone' ? () => void submit() : undefined}>
+              {sending && <Loader2 className="h-4 w-4 animate-spin" />}{mode === 'phone' ? 'חייגו אליי' : 'שליחת פרטים'}
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }

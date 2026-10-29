@@ -138,6 +138,9 @@
     --welcome-green-gradient: linear-gradient(135deg, hsl(var(--welcome-green-light)), hsl(var(--welcome-green-deep)));
 
     --brand-silver: 210 14% 94%;
+    --inquiry-silver-top: 210 17% 99%;
+    --inquiry-silver-bottom: 210 12% 91%;
+    --inquiry-silver-gradient: linear-gradient(180deg, hsl(var(--inquiry-silver-top)), hsl(var(--inquiry-silver-bottom)));
     --brand-cream: 210 30% 98%;
     --brand-hero: var(--brand-navy);
     --header-bg: 213 73% 16%;
@@ -221,6 +224,33 @@
 }
 
 @layer components {
+  .inquiry-silver {
+    background: var(--inquiry-silver-gradient);
+    border: 1px solid hsl(var(--border));
+  }
+  .property-inquiry-action.inquiry-silver {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 44px;
+    padding-inline: 4px;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .property-inquiry-action.inquiry-silver svg { width: 16px; height: 16px; }
+  @media (max-width: 360px) {
+    .property-inquiry-action.inquiry-silver { font-size: 11px; gap: 2px; padding-inline: 2px; }
+    .property-inquiry-action.inquiry-silver svg { width: 14px; height: 14px; }
+  }
+  .property-card-grid { display: grid; gap: 16px; }
+  @media (min-width: 640px) {
+    .property-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto auto 1fr; }
+    .property-card-grid > article { display: grid; grid-template-rows: subgrid; grid-row: span 3; gap: 0; }
+  }
+  @media (min-width: 1280px) {
+    .property-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
   .lead-no-fee { color: hsl(var(--lead-no-fee)); }
   /* Compatibility shims so legacy classes don't break old pages
      until the sweep replaces them. They render as flat clean cards. */

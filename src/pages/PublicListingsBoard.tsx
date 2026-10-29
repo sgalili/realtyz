@@ -40,6 +40,8 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
+import { visibleToListingAudience } from '@/lib/listingAudience';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -82,6 +84,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const marketplace = useAffiliateMarketplace();
+  const { level4Unlocked } = useAffiliateLicense();
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>(() => boardCache.get<PublicCard>() ?? []);
@@ -270,11 +273,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     return () => window.removeEventListener(WELCOME_REOPEN_EVENT, reopen);
   }, []);
   const filtered = useMemo(() => cards.filter((card) => {
+    if (!visibleToListingAudience(card.reward_types, !!user, level4Unlocked)) return false;
     if (deal !== 'all' && card.deal_type !== deal) return false;
     if (query.trim() && ![card.title, card.street, card.city, card.neighborhood].some(value => value?.toLowerCase().includes(query.trim().toLowerCase()))) return false;
     const row = marketplace.data?.find(item => item.listing_id === card.id);
     return matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter) && matchesLeadFilter(leadTierAmounts(row as unknown as Record<string, unknown>), leadFilter);
-  }), [cards, propFilter, query, deal, marketplace.data, leadFilter]);
+  }), [cards, propFilter, query, deal, marketplace.data, leadFilter, user, level4Unlocked]);
   // Custom row order chosen with the drag handle, saved per user/workspace on this device.
   const rowOrderKey = `public-board-row-order:v1:${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`;
   const [rowOrder, setRowOrder] = useState<string[]>([]);
@@ -344,7 +348,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain pb-0 pt-[19px]', embedded ? 'px-0' : 'px-[15px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
           grid ? (
-          <div className={cn(grid ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : '')}>
+          <div className="property-card-grid">
             {filtered.slice(0, visibleCount).map(card => <StandardPropertyCard key={card.id} card={card} signedIn={!!user} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} />)}
           </div>
           ) : (
