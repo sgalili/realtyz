@@ -249,5 +249,14 @@ export async function attachAffiliateReferral(
 
 /** Strips the `[ref:...]` tag so it never reaches the AI prompt or the inbox text. */
 export function stripRefTag(text: string | null | undefined): string {
-  return String(text ?? "").replace(/[[【(]\s*ref\s*[:=]\s*[A-Za-z0-9_-]{4,64}\s*[\]】)]?/gi, "").replace(/\s{2,}/g, " ").trim();
+  return String(text ?? "").replace(/[[【(]\s*ref\s*[:=]\s*[A-Za-z0-9_-]{4,64}\s*[\]】)]?/gi, "").replace(/\[\s*src\s*:\s*[a-z_]{2,20}\s*\]/gi, "").replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * Campaign source marker `[src:fb]` appended by the /r/<slug> redirect when a
+ * Facebook campaign short link (utm_source=facebook) opens WhatsApp.
+ */
+export function extractSourceTag(text: string | null | undefined): string | null {
+  const m = String(text ?? "").match(/\[\s*src\s*:\s*([a-z_]{2,20})\s*\]/i);
+  return m?.[1]?.toLowerCase() ?? null;
 }

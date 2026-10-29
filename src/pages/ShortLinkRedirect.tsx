@@ -74,7 +74,11 @@ export default function ShortLinkRedirect() {
 
   useEffect(() => {
     if (!target) return;
-    const parsed = parseWhatsApp(target);
+    const raw = parseWhatsApp(target);
+    // Facebook campaign links (utm_source=facebook) tag the WhatsApp opener so
+    // the resulting lead is counted under "קמפיין פייסבוק".
+    const fromFb = new URLSearchParams(window.location.search).get("utm_source") === "facebook";
+    const parsed = raw && fromFb ? { ...raw, text: `${raw.text ?? ""}\n[src:fb]`.trim() } : raw;
     if (!parsed) {
       window.location.replace(target);
       return;
