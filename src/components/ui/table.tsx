@@ -177,8 +177,8 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
           headDone = true;
           const rows = elementsOf(el.props.children);
           const first = rows[0];
-          const managed = visible.map((i) => (
-            <ManagedHeaderCell key={`col-${i}`} cell={headCells[i]} index={i} label={labels[i]} ctx={ctx} />
+          const managed = visible.map((i, pos) => (
+            <ManagedHeaderCell key={`col-${i}`} cell={headCells[i]} index={i} label={labels[i]} ctx={ctx} first={pos === 0} />
           ));
           return React.cloneElement(el, {}, [React.cloneElement(first, { key: first.key ?? "head" }, managed), ...rows.slice(1).map(arrangeRow)]);
         }
