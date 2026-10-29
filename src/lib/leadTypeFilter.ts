@@ -20,9 +20,22 @@ export type LeadFilterState = {
   types: LeadTypeKey[];
   min: number | null;
   max: number | null;
+  prices?: Partial<Record<LeadTypeKey, number>>;
 };
 
 export const EMPTY_LEAD_FILTER: LeadFilterState = { types: [], min: null, max: null };
+
+/** Keep each tier's chosen threshold while only filtering the selected tier. */
+export function selectLeadFilterType(state: LeadFilterState, key: LeadTypeKey): LeadFilterState {
+  const previous = state.types[0];
+  const prices = { ...state.prices, ...(previous ? { [previous]: state.min ?? 0 } : {}) };
+  return { ...state, types: [key], min: prices[key] || null, max: null, prices };
+}
+
+export function setLeadFilterMinimum(state: LeadFilterState, key: LeadTypeKey, amount: number): LeadFilterState {
+  const value = Number.isFinite(amount) && amount > 0 ? amount : 0;
+  return { ...state, types: [key], min: value || null, max: null, prices: { ...state.prices, [key]: value } };
+}
 
 export function leadFilterActiveCount(state: LeadFilterState): number {
   return state.types.length + (state.min != null ? 1 : 0) + (state.max != null ? 1 : 0);

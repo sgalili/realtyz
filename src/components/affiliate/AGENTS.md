@@ -1,4 +1,5 @@
 # Affiliate pricing
+- Advanced reward filters retain per-tier thresholds in the existing account/workspace-scoped filter state and apply only the radio-selected tier; slider labels remain independent of potential estimates. Why: preserve chosen values without creating unscoped UI caches.
 - Property pricing information uses distinct lead cards and a desktop max-w-2xl dialog; the publisher pricing-only editor shares the same bounded presentation without changing wizard or authorization flows. Why: consistent readable pricing across guest and authorized views.
 - Closing-split disclosures reuse ClosingSplitNote and existing reward-rate helpers; public closing notes mount only inside existing server-authorized pricing gates. Why: consistent gross/net explanations without changing payouts or visibility.
 - The unlicensed-partner closing-commission sentence is shared only from UnlicensedPartnerCommissionNote and mounts as a quiet footnote in the master pricing window and both legal pages, never as a banner or a per-page copy. Why: one legal wording without drift.

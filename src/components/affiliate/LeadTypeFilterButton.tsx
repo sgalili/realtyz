@@ -13,6 +13,9 @@ import { useEffect, useState } from 'react';
 import { ClipboardList, Phone, Filter, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { closingLevelClass, LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
+import { partnerPotential } from '@/lib/partnerPotential';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,6 +34,8 @@ import {
   leadFilterActiveCount,
   propertyFilterActiveCount,
   selectFilterCity,
+  selectLeadFilterType,
+  setLeadFilterMinimum,
   FILTER_FEATURES,
   type LeadFilterState,
   type LeadTypeKey,
@@ -183,22 +188,15 @@ export default function LeadTypeFilterButton({
   const property = propertyState ?? null;
   const active = leadFilterActiveCount(state) + (property ? propertyFilterActiveCount(property) : 0);
 
-  const toggle = (key: LeadTypeKey) => {
-    const types = state.types.includes(key)
-      ? state.types.filter((value) => value !== key)
-      : [...state.types, key];
-    onChange({ ...state, types });
-  };
-
   const BOUND_KEY = { tier1: 'form', tier2: 'whatsapp', tier3: 'phone', tier4: 'closing' } as const;
   const activeType: LeadTypeKey = leadTypes.find((key) => state.types.includes(key)) ?? leadTypes[0];
   const sliderTier = activeType === 'tier1' ? 'form' : activeType === 'tier2' ? 'whatsapp' : 'phone';
   const liveBound = bounds.data?.[BOUND_KEY[activeType]];
-  const sliderRange = liveBound?.min != null && liveBound?.max != null && Number(liveBound.max) > Number(liveBound.min)
+  const sliderRange = liveBound?.min != null && liveBound?.max != null && Number(liveBound.max) >= Number(liveBound.min)
     ? { min: Number(liveBound.min), max: Number(liveBound.max) } : undefined;
   // Opening the filter selects the first lead type by default.
   useEffect(() => {
-    if (open && showLeadFilters && !state.types.length) onChange({ ...state, types: [leadTypes[0]] });
+    if (open && showLeadFilters && state.types.length !== 1) onChange(selectLeadFilterType(state, activeType));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, showLeadFilters]);
 
@@ -225,25 +223,30 @@ export default function LeadTypeFilterButton({
       <div className="flex items-center justify-start gap-1">
         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="סגירת סינון" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
         <h2 className="text-[17px] font-semibold leading-none">חיפוש מתקדם</h2>
-        {active ? <Button type="button" size="sm" variant="ghost" className="ms-auto h-7 px-2 text-[15px]" onClick={reset}>ניקוי סינון</Button> : null}
+        {active ? <Button type="button" size="sm" variant="ghost" className="ms-auto h-7 px-2 text-[12px]" onClick={reset}>ניקוי סינון</Button> : null}
       </div>
         {showLeadFilters ? (<>
           <SectionTitle>תגמולים לפי סוג פנייה</SectionTitle>
-          <div className="space-y-1.5">
+          <RadioGroup aria-label="תגמולים לפי סוג פנייה" value={state.types[0] ?? ''} onValueChange={key => onChange(selectLeadFilterType(state, key as LeadTypeKey))} className="gap-1.5" dir="rtl">
             {leadTypes.map((key) => {
               const Icon = ICONS[key];
+              const amount = state.types.includes(key) ? state.min ?? 0 : state.prices?.[key] ?? 0;
+              const tier = key === 'tier1' ? 'form' : key === 'tier2' ? 'whatsapp' : 'phone';
+              const bound = bounds.data?.[BOUND_KEY[key]];
+              const range = bound?.min != null && bound?.max != null ? { min: Number(bound.min), max: Number(bound.max) } : LEAD_PRICE_RANGES[tier];
+              const color = amount > 0 ? closingLevelClass(partnerPotential((amount - range.min) / Math.max(1, range.max - range.min)).level) : 'text-muted-foreground';
               return (
-                <label key={key} className="flex cursor-pointer items-center gap-2 text-[15px] font-medium">
-                  <Checkbox checked={state.types.includes(key)} onCheckedChange={() => toggle(key)} />
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  {FILTER_LEAD_LABELS[key]}
+                <label key={key} className="flex cursor-pointer items-start gap-2 text-[15px] font-medium">
+                  <RadioGroupItem value={key} aria-label={FILTER_LEAD_LABELS[key]} className="mt-1 shrink-0" />
+                  <Icon className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
+                  <span className="min-w-0"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <bdi className={`block text-[15px] font-semibold ${color}`}>₪{amount.toLocaleString('he-IL')}</bdi>}</span>
                 </label>
               );
             })}
-          </div>
+          </RadioGroup>
           <div className="space-y-1">
             
-            <LeadPriceSlider hidePotential range={sliderRange} key={activeType} tier={sliderTier} label="שווי ליד מינימלי" value={String(state.min ?? 0)} onChange={(value) => { const n = Number(value) || 0; onChange({ ...state, min: n > 0 ? n : null, max: null }); }} />
+            <LeadPriceSlider hidePotential range={sliderRange} key={activeType} tier={sliderTier} label="שווי ליד מינימלי" value={String(state.min ?? 0)} onChange={(value) => onChange(setLeadFilterMinimum(state, activeType, Number(value)))} />
           </div>
         </>) : null}
 
