@@ -9614,6 +9614,7 @@ export type Database = {
         Args: { _error?: string; _job: string }
         Returns: undefined
       }
+      remove_my_broker_license: { Args: never; Returns: Json }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       resume_group_posting: {
         Args: { _campaign_log_id: string }
