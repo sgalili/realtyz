@@ -14,7 +14,8 @@ import {
   Plus, Trash2, Pencil, Mail, Phone, MessageCircle, MapPin, User as UserIcon,
   Building2, ImageIcon, LogOut, X,
 } from 'lucide-react';
-import { Trash2, BadgeCheck } from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/i18n/personalToast';
 import { useAuth } from '@/hooks/useAuth';
