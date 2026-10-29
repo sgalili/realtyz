@@ -135,6 +135,7 @@ import {
 
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { safeUtf8 } from '@/lib/utf8Text';
+import DailyPostingLimitNotice from '@/components/campaigns/DailyPostingLimitNotice';
 import {
   hebrewOnlyParts, hebrewPropertyType, sanitizeFloor, sanitizeRooms, sanitizeSqm,
   floorsInBuildingFromSqm,
@@ -2897,6 +2898,7 @@ const InlineComposer = ({
             <DialogTitle className="flex items-center justify-center gap-2 text-center"><BrandIcon name="facebook" className="h-6 w-6 text-social-facebook" />קבוצות לפרסום</DialogTitle>
           </DialogHeader>
           <div className="min-w-0 max-w-full space-y-3">
+            <DailyPostingLimitNotice />
             <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
             <label className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 cursor-pointer">
               <Checkbox checked={groupTextVariation} onCheckedChange={(v) => setGroupTextVariation(v === true)} />

@@ -3118,6 +3118,7 @@ export type Database = {
           id: string
           job_id: string
           outcome: string
+          page_id: string | null
           workspace_owner_id: string
         }
         Insert: {
@@ -3126,6 +3127,7 @@ export type Database = {
           id?: string
           job_id: string
           outcome?: string
+          page_id?: string | null
           workspace_owner_id: string
         }
         Update: {
@@ -3134,6 +3136,7 @@ export type Database = {
           id?: string
           job_id?: string
           outcome?: string
+          page_id?: string | null
           workspace_owner_id?: string
         }
         Relationships: []
@@ -8883,6 +8886,12 @@ export type Database = {
       }
       fb_group_key: { Args: { _value: string }; Returns: string }
       fb_group_rejection: { Args: { _reason: string }; Returns: boolean }
+      fb_job_page_id: {
+        Args: {
+          q: Database["public"]["Tables"]["campaign_activity_queue"]["Row"]
+        }
+        Returns: string
+      }
       fb_prepare_cloud_group_post: { Args: { _job: string }; Returns: boolean }
       fb_rebalance_all_group_pools: { Args: never; Returns: undefined }
       fb_rebalance_group_pool: { Args: { _owner: string }; Returns: number }
@@ -9188,6 +9197,7 @@ export type Database = {
               page_name: string
             }[]
           }
+      get_fb_posting_capacity: { Args: never; Returns: Json }
       get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
       get_group_posting_progress: {
         Args: { _campaign_log_ids: string[] }
@@ -9286,6 +9296,26 @@ export type Database = {
       get_property_referral_link: {
         Args: { _listing_id: string }
         Returns: string
+      }
+      get_publishing_history: {
+        Args: { _limit?: number; _offset?: number }
+        Returns: {
+          activity_type: string
+          comments_count: number
+          completed_at: string
+          created_at: string
+          id: string
+          last_error: string
+          likes_count: number
+          page_id: string
+          page_name: string
+          publication_status: string
+          scheduled_for: string
+          status: string
+          target_label: string
+          target_ref: string
+          total_count: number
+        }[]
       }
       get_scraping_usage_report: { Args: { _days?: number }; Returns: Json }
       get_sidebar_counts: { Args: { _ws: string }; Returns: Json }

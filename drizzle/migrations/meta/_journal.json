@@ -659,6 +659,13 @@
       "when": 1793278264116,
       "tag": "0093_fb_account_daily_post_cap",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1793281537263,
+      "tag": "0094_fb_per_page_post_capacity",
+      "breakpoints": true
     }
   ]
 }

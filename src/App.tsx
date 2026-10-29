@@ -39,6 +39,7 @@ import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
 const MyAds = lazy(() => import("./pages/MyAds"));
+const PublishingHistory = lazy(() => import("./pages/PublishingHistory"));
 const LeadCRM = lazy(() => import("./pages/LeadCRM"));
 const OmnichannelInbox = lazy(() => import("./pages/OmnichannelInbox"));
 const AIContentGenerator = lazy(() => import("./pages/AIContentGenerator"));
@@ -498,6 +499,7 @@ const App = () => (
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/shared-deals" element={<ProtectedRoute><SharedDeals /></ProtectedRoute>} />
               <Route path="/my-ads" element={<ProtectedRoute><MyAds /></ProtectedRoute>} />
+              <Route path="/activity-history" element={<ProtectedRoute><PublishingHistory /></ProtectedRoute>} />
               <Route path="/sign/:token" element={<Suspense fallback={<PageLoader />}><SignDocument /></Suspense>} />
               <Route path="/wallet" element={<Navigate to="/wallet" replace />} />
               <Route path="/pricing" element={<Navigate to="/wallet" replace />} />
