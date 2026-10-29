@@ -228,7 +228,7 @@ export default function LeadTypeFilterButton({
         {active ? <Button type="button" size="sm" variant="ghost" className="ms-auto h-7 px-2 text-[15px]" onClick={reset}>ניקוי סינון</Button> : null}
       </div>
         {showLeadFilters ? (<>
-          <SectionTitle>רווח לליד</SectionTitle>
+          <SectionTitle>תגמולים לפי סוג פנייה</SectionTitle>
           <div className="space-y-1.5">
             {leadTypes.map((key) => {
               const Icon = ICONS[key];
