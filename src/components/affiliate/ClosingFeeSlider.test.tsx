@@ -3,6 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 afterEach(cleanup);
 describe('closing fee interaction', () => {
+  it('enabling a zero-price publisher closing card opens it without assigning a fee', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider publisherCard zeroMin dualMode dealType="sale" price={2000000} value={0} onChange={change} />);
+    fireEvent.click(screen.getByRole('switch', { name: 'הפעלת עמלת סגירה' }));
+    expect(screen.getByRole('slider').getAttribute('aria-valuenow')).toBe('0');
+    expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('true');
+    expect(change).not.toHaveBeenCalled();
+  });
   it('allows a Super Admin editor to set a 5% sale fee beyond the standard range', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider unrestricted dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
