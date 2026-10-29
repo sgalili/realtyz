@@ -904,18 +904,6 @@ export default function Properties() {
         {/* Row 1 — [יד2][הנכסים שלי][להשכרה][למכירה] ⇢ [sort][select][count][view] */}
         <div data-testid="property-filter-row" className="mb-2 flex items-center justify-between gap-1">
         <div className="flex shrink-0 items-center gap-2.5">
-        <div role="group" aria-label="מקורות חיפוש" className="flex shrink-0 items-center gap-2.5">
-          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}>
-            <span className={`h-2 w-2 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
-            <span className="whitespace-nowrap">{sourceLabel(source)}</span>
-          </Button>)}
-        </div>
-        <div className="inline-flex shrink-0 items-center gap-2.5" role="group" aria-label="סוג עסקה">
-          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full bg-success ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
-        </div>
-        </div>
-        <div data-testid="property-tools-row" className="flex shrink-0 items-center gap-0">
-
             <Button
               type="button"
               variant="ghost"
@@ -929,6 +917,18 @@ export default function Properties() {
             >
               <SearchIcon className="h-4 w-4" />
             </Button>
+        <div role="group" aria-label="מקורות חיפוש" className="flex shrink-0 items-center gap-2.5">
+          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}>
+            <span className={`h-2 w-2 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
+            <span className="whitespace-nowrap">{sourceLabel(source)}</span>
+          </Button>)}
+        </div>
+        <div className="inline-flex shrink-0 items-center gap-2.5" role="group" aria-label="סוג עסקה">
+          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full bg-success ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
+        </div>
+        </div>
+        <div data-testid="property-tools-row" className="flex shrink-0 items-center gap-0">
+
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
