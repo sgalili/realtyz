@@ -31,6 +31,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { toast } from 'sonner';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 
 interface PlatformDef {
@@ -366,37 +367,12 @@ export function SocialConnectionsTab() {
   }, [refetch, queryClient]);
 
   const handleConnect = async (def: PlatformDef) => {
+    if (def.platform === 'facebook' || def.platform === 'instagram') { openFacebookConnection(); return; }
     if (!isSuperAdmin) {
       toast.error('רק בעל החשבון רשאי לנהל חיבורים');
       return;
     }
     const method = SocialAutomationService.methodFor(def.platform);
-
-    if (def.platform === 'facebook' || def.platform === 'instagram') {
-      setBusy(def.platform);
-      try {
-        const { data, error } = await supabase.functions.invoke('meta-page-connect', {
-          body: {
-            action: 'start',
-            redirect_uri: oauthRedirectUri(),
-            return_origin: oauthReturnOrigin(),
-          },
-        });
-        if (error) throw error;
-        const authUrl = String((data as any)?.auth_url ?? '');
-        if (!authUrl) throw new Error('לא התקבל קישור חיבור מ-Meta');
-        if (!openOAuthWindow(authUrl)) {
-          setBusy(null);
-          toast.error('הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב.');
-        }
-      } catch (error: any) {
-        setBusy(null);
-        toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
-          description: String(error?.message ?? 'החיבור לפייסבוק נכשל.'),
-        });
-      }
-      return;
-    }
 
     if (method === 'oauth' && !isDemoMode) {
       // Real OAuth path - require BYOK credentials.

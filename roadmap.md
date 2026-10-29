@@ -1,5 +1,11 @@
 # Roadmap
 
+## Facebook Page connection October 29
+- [x] Route Facebook connect/add-Page buttons into one in-app cloud connection window; remove unrelated settings and direct OAuth redirects.
+- [x] Reuse server list_pages/select_page authorization and retain existing bindings; no login when authorized Pages are available.
+- [x] Reuse the cloud browser tab and active session without group import for Page linking. Twelve focused tests passed; live signed-in window opened, simulated mobile additional-Page selection retained both Pages without OAuth; no runtime errors, build OK.
+- [ ] Complete real additional-Page linking/cloud-only new Page authorization: current workspace has no usable saved Page grant, and the cloud runner has no official Page authorization/token exchange capability. Cloud login alone cannot grant Page publishing permission; no real Page was linked.
+
 ## Property page access October 29
 - [x] Restrict technical Bright Data warnings to the signed-in Super Admin, independent of workspace.
 - [x] Share account-scoped verified-broker/developer checks across navigation and direct routes; retain My Ads with separately owner-authorized editing.

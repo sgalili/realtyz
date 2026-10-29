@@ -18,7 +18,7 @@ import { usePersonalLanguage } from '@/i18n/personalLanguage';
  * publishing screen. A "connect later" link lets the user skip straight to
  * publishing. No browser extension is involved.
  */
-export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDiscover, onStatusChange }: { alwaysVisible?: boolean; onSynced?: () => void; onDiscover?: () => void; onStatusChange?: (ready: boolean) => void }) {
+export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly = false, onSynced, onDiscover, onStatusChange }: { alwaysVisible?: boolean; connectionOnly?: boolean; onSynced?: () => void; onDiscover?: () => void; onStatusChange?: (ready: boolean) => void }) {
   const { text: personal } = usePersonalLanguage();
   const owner = useActiveWorkspaceOwnerId();
   const [open, setOpen] = useState(false);
@@ -53,6 +53,11 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
   const finish = async (run: number) => {
     if (generation.current !== run) return;
     stop(); setPhase('syncing'); setConnected(true); setErrorMessage('');
+    if (connectionOnly) {
+      onSynced?.(); onStatusChange?.(true);
+      setPhase('idle'); setOpen(false); setGuidanceOpen(false); setManualUrl('');
+      return;
+    }
     const abort = new AbortController(); controller.current = abort;
     try {
       const groups = await fetchGroupsViaCloud('', { syncMemberships: true, signal: abort.signal });
@@ -128,7 +133,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     // the current frame. If the direct open is blocked, reuse the placeholder
     // tab, and as a last resort offer a manual link the user can click.
     let tab: Window | null = null;
-    try { tab = window.open(cloudUrl, '_blank'); } catch { tab = null; }
+    try { if (placeholder && !placeholder.closed) { placeholder.location.href = cloudUrl; tab = placeholder; } else { tab = window.open(cloudUrl, '_blank'); } } catch { tab = null; }
     if (tab) { try { tab.opener = null; } catch { /* cross-origin */ } }
     if (tab && tab !== placeholder) placeholder?.close();
     if (!tab) {
@@ -156,7 +161,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, onSynced, onDi
     <Button type="button" disabled={phase === 'syncing' || !owner} onClick={() => { if (connected) void finish(generation.current); else setGuidanceOpen(true); }}
       className="h-12 w-full gap-2 bg-social-facebook text-base font-semibold text-social-foreground hover:bg-social-facebook/90">
       {phase !== 'idle' ? <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" /> : <Facebook className="h-[30px] w-[30px]" />}
-      {phase === 'waiting' ? 'ממתינים להשלמת החיבור…' : phase === 'syncing' ? 'מייבאים את הקבוצות…' : connected ? 'ייבוא הקבוצות שלי' : 'חיבור באמצעות פייסבוק'}
+      {phase === 'waiting' ? 'ממתינים להשלמת החיבור…' : phase === 'syncing' ? 'משלימים את החיבור…' : connected ? connectionOnly ? 'בדיקת החיבור השמור' : 'ייבוא הקבוצות שלי' : 'חיבור באמצעות פייסבוק'}
     </Button>
     {phase === 'waiting' && <p role="status" className="text-sm leading-relaxed text-muted-foreground">השלימו את הכניסה לפייסבוק בחלון שנפתח.</p>}
     {connected && <p className="flex items-center gap-1 text-sm text-success"><ShieldCheck className="h-4 w-4" />החיבור שמור ומוצפן</p>}

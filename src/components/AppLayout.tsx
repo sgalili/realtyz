@@ -51,6 +51,7 @@ import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 // DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
 import { FacebookConnectionBanner } from '@/components/social/FacebookConnectionBanner';
+import { FacebookConnectionDialog } from '@/components/social/FacebookConnectionDialog';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 
@@ -475,6 +476,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <KeepSidebarOpenAfterModeSwitch />
+      <FacebookConnectionDialog />
       {/* A negative wallet locks the app until the balance is topped up. */}
       <WalletLockGate />
       <div className="realtyz-app-shell h-[100dvh] max-h-[100dvh] overflow-hidden flex w-full bg-background">

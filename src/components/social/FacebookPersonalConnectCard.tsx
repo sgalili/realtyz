@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 import { useResetFacebookHealth } from '@/hooks/useFacebookHealth';
@@ -119,37 +119,6 @@ export const FacebookPersonalConnectCard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const connect = async (basic = false) => {
-    setConnecting(true);
-    try {
-      clearPendingOAuth();
-      // No client-side whitelist guard: the redirect_uri is pinned to the
-      // production callback that is already authorized in the Meta app.
-
-      const res = await callFbPersonal<any>({
-        action: 'start',
-        basic,
-        redirect_uri: oauthRedirectUri(),
-        return_origin: oauthReturnOrigin(),
-      });
-      const url = (res as any)?.auth_url;
-      if (!url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      // Popup / new tab: window.top.location is blocked by the preview iframe sandbox.
-      const authUrl = String(url);
-      setPendingAuthUrl(authUrl);
-      if (!openOAuthWindow(authUrl)) {
-        setConnecting(false);
-        toast.error('הדפדפן חסם את חלון ההתחברות', {
-          description: 'לחצו על "פתחו את דף האישור" כדי להמשיך בלשונית חדשה.',
-        });
-      }
-    } catch (e: any) {
-      setConnecting(false);
-      toast.error('לא ניתן לפתוח את חיבור פייסבוק', { description: String(e?.message ?? 'החיבור לפייסבוק נכשל.') });
-    }
-  };
-
-
   const disconnect = async () => {
     if (disconnecting) return;
     setDisconnecting(true);
@@ -239,7 +208,7 @@ export const FacebookPersonalConnectCard = () => {
               {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />} ניתוק
             </Button>
           ) : (
-            <Button size="sm" onClick={() => connect(false)} disabled={connecting} className="gap-1">
+            <Button size="sm" onClick={openFacebookConnection} disabled={connecting} className="gap-1">
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
               חיבור פרופיל פייסבוק
             </Button>
