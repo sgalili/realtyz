@@ -14,6 +14,9 @@ import {
   Plus, Trash2, Pencil, Mail, Phone, MessageCircle, MapPin, User as UserIcon,
   Building2, ImageIcon, LogOut, X,
 } from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/i18n/personalToast';
 import { useAuth } from '@/hooks/useAuth';
 import { personalGenderKey, profileGender, usePersonalLanguage } from '@/i18n/personalLanguage';
@@ -218,6 +221,9 @@ function PersonalTab() {
   const [gender, setGender] = useState<string>('');
   const [brokerLicense, setBrokerLicense] = useState<string>('');
   const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
+  const [storedLicense, setStoredLicense] = useState('');
+  const [removeLicenseOpen, setRemoveLicenseOpen] = useState(false);
+  const [removingLicense, setRemovingLicense] = useState(false);
   const [licenseSuspended, setLicenseSuspended] = useState(false);
   const showBrokerFields = identity.label === 'מתווך' || licenseSuspended;
   useEffect(() => {
@@ -238,7 +244,7 @@ function PersonalTab() {
     // Reset everything the moment the active workspace changes so nothing
     // from the previous tenant can linger on screen.
     setEmails([newRow('')]); setWhatsapps([newRow('')]); setPhones([newRow('')]);
-    setFullName(''); setCity(''); setGender(''); setBrokerLicense('');
+    setFullName(''); setCity(''); setGender(''); setBrokerLicense(''); setStoredLicense('');
     const meta = isOwnProfile ? (user.user_metadata ?? {}) as Record<string, any> : {};
     const contacts = isOwnProfile ? meta.profile_contacts ?? null : null;
     const userPhone = isOwnProfile ? ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString() : '';
@@ -281,10 +287,26 @@ function PersonalTab() {
         setCity(String(server.city ?? extra?.city ?? ''));
         setGender(profileGender(server.gender) ?? '');
         setBrokerLicense(String(server.broker_license_number ?? ''));
+        setStoredLicense(String(server.broker_license_number ?? '').trim());
       } catch { /* ignore */ }
       setHydratedFor(ownerId);
     })();
   }, [user, profileOwnerId, isOwnProfile, hydratedFor]);
+
+  const verifiedLicenseLocked = showBrokerFields && isOwnProfile && !licenseSuspended && !!storedLicense;
+  const removeLicense = async () => {
+    setRemovingLicense(true);
+    try {
+      const { error } = await supabase.rpc('remove_my_broker_license' as any);
+      if (error) throw error;
+      setStoredLicense(''); setBrokerLicense(''); setVerifiedBrokerLicense(null);
+      setRemoveLicenseOpen(false);
+      await queryClient.invalidateQueries();
+      toast.success('רישיון התיווך הוסר. החשבון חזר להרשאות משתמש רגיל.');
+    } catch (err: any) {
+      toast.error('הסרת הרישיון נכשלה: ' + (err?.message ?? 'שגיאה'));
+    } finally { setRemovingLicense(false); }
+  };
 
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
 
@@ -292,7 +314,7 @@ function PersonalTab() {
     const payload = { emails, whatsapps, phones, fullName, city };
     if (!profileOwnerId) return;
     try {
-      if (showBrokerFields && brokerLicense && isOwnProfile) await verifyBrokerLicense(brokerLicense, 'verify');
+      if (showBrokerFields && brokerLicense && isOwnProfile && !verifiedLicenseLocked) await verifyBrokerLicense(brokerLicense, 'verify');
       const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
       const { data: savedProfile, error: profErr } = await supabase
         .from('profiles')
@@ -302,7 +324,7 @@ function PersonalTab() {
           phone: primaryPhone,
           full_name: fullName || null,
           email: realEmail(emails[0]?.value) || null,
-          ...(showBrokerFields ? { broker_license_number: brokerLicense.trim() || null } : {}),
+          ...(showBrokerFields && !verifiedLicenseLocked ? { broker_license_number: brokerLicense.trim() || null } : {}),
         } as any)
         .eq('id', profileOwnerId).select('id,gender').single();
       if (profErr) throw profErr;
@@ -412,9 +434,38 @@ function PersonalTab() {
         </ProfileFieldRow>
 
         {showBrokerFields && isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
-        {showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
+        {verifiedLicenseLocked ? (
+          <div className="space-y-1.5">
+            <Label className="text-base">מספר רישיון תיווך</Label>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+              <BadgeCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <span className="flex-1 text-base font-medium tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">רישיון מאומת מול פנקס המתווכים. לא ניתן לערוך.</p>
+          </div>
+        ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
 
       </CardContent>
+
+      <AlertDialog open={removeLicenseOpen} onOpenChange={(o) => !removingLicense && setRemoveLicenseOpen(o)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>להסיר את רישיון התיווך?</AlertDialogTitle>
+            <AlertDialogDescription>
+              הסרת הרישיון תבטל מיד את סטטוס המתווך המאומת שלך. החשבון יחזור לתצוגה ולהרשאות של משתמש רגיל, כולל אובדן הגישה לעמלות סגירה ולכלי התיווך. כדי לחזור תצטרך לאמת רישיון מחדש.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row justify-between gap-2 sm:justify-between">
+            <AlertDialogCancel disabled={removingLicense}>ביטול</AlertDialogCancel>
+            <AlertDialogAction disabled={removingLicense} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={(e) => { e.preventDefault(); void removeLicense(); }}>
+              {removingLicense ? 'מסיר…' : 'הסרת הרישיון'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="profile-sticky-actions sticky bottom-0 z-20 flex items-center gap-3 rounded-b-xl border-t border-border bg-card px-4 pb-4 pt-3">
         {user && <DeleteAccountButton />}
@@ -422,7 +473,7 @@ function PersonalTab() {
           <LogOut className="h-4 w-4" />
           התנתקות
         </Button>
-        <Button onClick={save} disabled={showBrokerFields && isOwnProfile && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1 text-base">שמירת הפרופיל</Button>
+        <Button onClick={save} disabled={showBrokerFields && isOwnProfile && !verifiedLicenseLocked && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1 text-base">שמירת הפרופיל</Button>
       </div>
 
     </Card>
