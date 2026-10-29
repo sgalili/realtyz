@@ -92,7 +92,7 @@ function ManagedHeaderCell({ cell, index, label, ctx, first }: { cell: React.Rea
             {...listeners}
             aria-label={`הזזת עמודת ${label}`}
             title={`הזזת עמודת ${label}`}
-            className={cn("inline-flex h-6 w-4 touch-none items-center justify-center text-muted-foreground", !first && "absolute start-[-22px]")}
+            className={cn("inline-flex h-6 w-4 touch-none items-center justify-center text-muted-foreground", !first && "absolute start-[-16px]")}
           >
             <GripVertical className="h-3 w-3" />
           </button>
