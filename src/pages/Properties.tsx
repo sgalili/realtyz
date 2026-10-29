@@ -33,7 +33,7 @@ import {
   ArrowRight, Loader2, Search as SearchIcon, Filter,
    ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon, ChevronDown,
    RefreshCw, Handshake, Pencil, Trash2,
-, Send } from 'lucide-react';
+  Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
