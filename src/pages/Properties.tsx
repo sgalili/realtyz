@@ -902,7 +902,7 @@ export default function Properties() {
 
 
 
-        {/* Row 1 — [יד2][הנכסים שלי][להשכרה][למכירה] ⇢ [sort][select][count][view] */}
+        {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
         <div data-testid="property-filter-row" className="mb-2 flex items-center gap-1">
         <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <Button
