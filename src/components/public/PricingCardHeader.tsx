@@ -12,6 +12,6 @@ export function PricingCardHeader({ icon, price, title, help, controls }: {
     <span className="row-span-2 flex h-[49px] w-[49px] items-center justify-start">{icon}</span>
     <div className="flex min-h-9 min-w-0 items-center">{price}</div>
     <div className="flex h-9 items-center gap-2">{controls}</div>
-    <div className="col-span-2 col-start-2 min-w-0 text-base font-bold leading-snug [&>button]:inline [&>button]:align-middle">{title}<span className="ms-1 inline-flex align-middle">{help}</span></div>
+    <div className="col-span-2 col-start-2 min-w-0 text-base font-bold leading-snug [&>button]:contents">{title}<span className="ms-1 inline-flex align-middle">{help}</span></div>
   </div>;
 }

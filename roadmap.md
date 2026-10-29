@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Publisher pricing card alignment October 29
-- [ ] Unify closing and lead card headers, icon strokes and edges; place titles/help below prices.
-- [ ] Verify expanded/collapsed controls and zero defaults with focused tests and live views.
+- [x] Unify closing and lead card headers, icon strokes and edges; place titles/help below prices.
+- [x] Verify expanded/collapsed controls and zero defaults: 14 focused tests passed; mobile/desktop cards and closing edit to 1% checked without publication.
 
 ## Platform-wide document October 29
 - [x] Two-column intermediate grids, shared-row photo alignment and existing bounded footer; 320/446/768/1280px checked.
