@@ -1069,10 +1069,17 @@
   }
 
   .auth-footer-links a {
-    font-size: calc(0.68rem + 2px);
+    font-size: calc(0.68rem + 1px);
     font-weight: 400;
     color: hsl(var(--muted-foreground));
     transition: color 160ms ease;
+  }
+
+  .auth-footer-links a + a::before {
+    content: "|";
+    margin-inline: 4px;
+    color: hsl(var(--muted-foreground) / 0.5);
+    font-weight: 300;
   }
 
   .auth-footer-links a:hover {
@@ -1088,7 +1095,7 @@
   @media (min-width: 768px) {
     .auth-page-footer { padding-inline: 15px; }
     .auth-footer-legal { gap: 16px; }
-    .auth-footer-links { gap: 1.75rem; }
+    .auth-footer-links { gap: 0.75rem; }
   }
 
   .auth-gold-button {
