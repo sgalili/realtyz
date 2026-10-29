@@ -1,5 +1,5 @@
 import { createOpenAI } from "npm:@ai-sdk/openai@4";
-import { streamText, type ModelMessage } from "npm:ai@7";
+import { streamText, Output, jsonSchema, type ModelMessage } from "npm:ai@7";
 
 import {
   createLovableAiGatewayRunIdFetch,
@@ -27,6 +27,8 @@ export function createResponsesCall(
     ...(instructions ? { instructions } : {}),
     messages,
     abortSignal: request.signal,
+    maxRetries: 0,
+    output: Output.object({ schema: jsonSchema<{ licenseNumber: string | null; fullName: string | null; isCertificate: boolean }>({ type: 'object', properties: { licenseNumber: { type: ['string', 'null'] }, fullName: { type: ['string', 'null'] }, isCertificate: { type: 'boolean' } }, required: ['licenseNumber', 'fullName', 'isCertificate'], additionalProperties: false }) }),
     providerOptions: {
       openai: {
         store: false,
