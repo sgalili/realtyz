@@ -68,6 +68,8 @@ export type PublicListing = {
   /** Canonical WhatsApp click-to-chat opener for this exact property. */
   premsg: string;
   contactOptions: ContactOptions;
+  /** Validated direct URL to the original Yad2 ad (Yad2-imported listings only). */
+  yad2AdUrl: string | null;
 };
 
 const DETAIL_LABELS: Record<string, string> = {
@@ -227,6 +229,7 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
     addressForMap: addressMapQuery(row ?? {}),
     premsg: ritaPropertyPremsg(row ?? {}),
     contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : null,
+    yad2AdUrl: typeof row?.yad2_ad_url === 'string' && /^https:/i.test(row.yad2_ad_url) ? row.yad2_ad_url : null,
   };
 }
 
@@ -515,6 +518,13 @@ function PublicListingContent() {
 
             {/* Share lives inside the contact row below, next to WhatsApp / call / form. */}
             {data.id && <PropertyContactActions listingId={data.id} title={data.title} dealType={data.dealType} premsg={data.premsg} options={data.contactOptions} compact formAsButton singleRow shareUrl={shareUrl} />}
+
+            {/* Small source link for Yad2-imported ads — fits the existing spacing without growing the page. */}
+            {data.yad2AdUrl && (
+              <p className="-mb-1 text-center text-[11px] leading-none">
+                <a href={data.yad2AdUrl} target="_blank" rel="noopener noreferrer" title="צפייה במודעה המקורית ביד2" className="text-muted-foreground hover:underline">המודעה המקורית ביד2</a>
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

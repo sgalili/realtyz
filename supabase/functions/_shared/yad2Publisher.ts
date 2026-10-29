@@ -14,6 +14,22 @@ export function publisherImageUrl(value: unknown): string | null {
   } catch { return null; }
 }
 
+/** The imported ad's own Yad2 item URL — the only source field allowed on the public landing page. */
+export function publicYad2AdUrl(source: unknown, meta: unknown): string | null {
+  const m = meta && typeof meta === 'object' ? (meta as Record<string, unknown>) : {};
+  for (const value of [m.url, m.source_url, m.ad_url, m.link]) {
+    if (typeof value !== 'string' || !/^https?:\/\//i.test(value.trim())) continue;
+    try {
+      const url = new URL(value.trim());
+      if (url.protocol !== 'https:' || url.username || url.password) continue;
+      if (!/(^|\.)yad2\.co\.il$/.test(url.hostname)) continue;
+      if (!/\/item\/[a-z0-9_-]+/i.test(url.pathname)) continue;
+      return url.href;
+    } catch { continue; }
+  }
+  return null;
+}
+
 export function licenseNumber(value: unknown): string | null {
   const text = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
   return /^[1-9]\d{0,7}$/.test(text) ? text : null;
