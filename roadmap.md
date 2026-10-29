@@ -1,5 +1,11 @@
 # Roadmap
 
+## Account personalization and activity October 29
+- [ ] Correct personal Rita identity without changing authorized workspace data context.
+- [ ] Hide broker-only partner/private navigation and simplify their dashboard/activity; preserve broker My Properties and reuse public-safe sharing inventory.
+- [ ] Close Facebook Page menu on every action and resolve settings/groups loading stalls.
+- [ ] Run focused rule tests and signed-in screen checks.
+
 ## Facebook Page connection October 29
 - [x] Route Facebook connect/add-Page buttons into one in-app cloud connection window; remove unrelated settings and direct OAuth redirects.
 - [x] Reuse server list_pages/select_page authorization and retain existing bindings; no login when authorized Pages are available.
