@@ -13,7 +13,7 @@ import LeadPricingDialog from '@/components/affiliate/LeadPricingDialog';
 import { RewardIcons, type RewardTypes } from '@/components/affiliate/CommissionTierBadges';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { tableRoyalties } from '@/lib/tableRoyalties';
+import { tableRoyalties, rewardZeroTypes } from '@/lib/tableRoyalties';
 
 export type CommissionEditScope = 'edit' | 'admin-only' | 'none';
 
@@ -85,9 +85,9 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     phone: source?.affiliate_tier3_amount == null ? undefined : tiers.tier3 > 0,
     closing: source?.affiliate_tier4_amount == null && dcc?.value == null ? undefined : rawTier4 > 0,
   };
-  // Guests: the closing trophy always shows in its level color (no price, no
-  // heading); the three lead-type icons are always gray.
-  const zeroTypes = (!user ? { form: true, whatsapp: true, phone: true, closing: false } : Object.fromEntries(Object.entries(types).map(([key, active]) => [key, active === false]))) as RewardTypes;
+  // Gray only when that lead type has no value (0 or unassigned); a set price
+  // always renders in its active color, for guests and signed-in users alike.
+  const zeroTypes = rewardZeroTypes(types);
   // Missing/redacted values must not become numeric zero through Number(... ?? 0).
   const display = tableRoyalties(types, { ...tiers,
     tier1: source?.affiliate_tier1_amount == null && !listing ? undefined : tiers.tier1,
