@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { BadgeCheck, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -16,14 +17,20 @@ const FAILURES: Record<string, string> = {
   invalid_official_license: 'מספר הרישיון אינו מופיע בפנקס המתווכים המורשים.',
 };
 
-/** Non-broker upgrade: registry match + certificate match, then a server-side role grant. */
-export function UpgradeToBrokerButton({ onUpgraded }: { onUpgraded?: (license: string) => void }) {
+/** Non-broker upgrade request: registry + certificate match, then manual Super Admin approval. */
+export function UpgradeToBrokerButton() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [license, setLicense] = useState('');
   const [verified, setVerified] = useState<string | null>(null);
   const [certificateLicense, setCertificateLicense] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const { user } = useAuth();
+  const { data: pending } = useQuery({ queryKey: ['broker-upgrade-request', user?.id], enabled: !!user, queryFn: async () => {
+    const { data } = await (supabase as any).from('broker_upgrade_requests').select('id').eq('user_id', user!.id).eq('status', 'pending').maybeSingle();
+    return !!data;
+  } });
   const onCertificate = useCallback((r: { matched: boolean; licenseNumber?: string } | null) => setCertificateLicense(r?.matched ? r.licenseNumber ?? null : null), []);
   const ready = !!verified && verified === license && certificateLicense === license;
 
@@ -32,23 +39,21 @@ export function UpgradeToBrokerButton({ onUpgraded }: { onUpgraded?: (license: s
     setBusy(true);
     try {
       await verifyBrokerLicense(license, 'verify');
-      const { error } = await supabase.rpc('upgrade_to_verified_broker' as any);
+      const { error } = await supabase.rpc('submit_broker_upgrade_request' as any);
       if (error) throw new Error(Object.entries(FAILURES).find(([k]) => error.message.includes(k))?.[1] ?? 'השדרוג לא הושלם. נסו שוב.');
-      await queryClient.invalidateQueries();
-      window.dispatchEvent(new Event('realtyz:profile-saved'));
-      toast.success('החשבון שודרג למתווך מורשה מאומת.');
-      onUpgraded?.(license);
-      setOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] });
+      setSubmitted(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'השדרוג לא הושלם.');
     } finally { setBusy(false); }
   };
 
+  if (pending) return <div role="status" className="rounded-md border border-border bg-muted/40 p-3 text-base">בקשת השדרוג למתווך מורשה ממתינה לאישור מנהל.</div>;
   return <>
     <Button type="button" size="lg" className="w-full gap-2 text-base" onClick={() => setOpen(true)}>
       <BadgeCheck className="h-5 w-5" aria-hidden />שדרג למתווך מורשה
     </Button>
-    <Dialog open={open} onOpenChange={(o) => !busy && setOpen(o)}>
+    <Dialog open={open} onOpenChange={(o) => { if (busy) return; setOpen(o); if (!o && submitted) void queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] }); }}>
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-md overflow-y-auto text-right">
         <DialogHeader className="text-right">
           <DialogTitle className="text-right text-xl">שדרוג למתווך מורשה</DialogTitle>
@@ -71,9 +76,12 @@ export function UpgradeToBrokerButton({ onUpgraded }: { onUpgraded?: (license: s
           {verified === license && !!license && <BrokerCertificateCheck onResult={onCertificate} />}
           {certificateLicense && certificateLicense !== license && <p role="alert" className="text-sm text-destructive">מספר הרישיון בתעודה שונה מהמספר שהוזן.</p>}
         </div>
-        <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
-          {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}אימות ושדרוג החשבון
-        </Button>
+        {submitted ? <div role="status" className="space-y-1 rounded-md border border-success bg-success/10 p-3 text-base">
+          <p className="font-semibold text-success">הבקשה נשלחה בהצלחה</p>
+          <p>הבקשה ממתינה לאישור מנהל. נעדכן אותך כשהחשבון ישודרג למתווך מורשה.</p>
+        </div> : <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
+          {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}שליחת הבקשה לאישור
+        </Button>}
       </DialogContent>
     </Dialog>
   </>;
