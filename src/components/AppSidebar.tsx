@@ -1,3 +1,4 @@
+import { History } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 import { APP_TOUR_EVENT } from '@/lib/appWalkthrough';
@@ -351,6 +352,18 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                       activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200">
                       <MyAdsIcon className="h-4 w-4 shrink-0 text-primary" />
                       {!collapsed && <span className="text-sm font-medium">המודעות שלי</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {user && (
+                <SidebarMenuItem key="activity-history">
+                  <SidebarMenuButton asChild isActive={location.pathname.startsWith('/activity-history')}>
+                    <NavLink to="/activity-history" onClick={handleNavClick}
+                      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all"
+                      activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200">
+                      <History className="h-4 w-4 shrink-0 text-primary" />
+                      {!collapsed && <span className="text-sm font-medium">היסטוריית פעילות</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

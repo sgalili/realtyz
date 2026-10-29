@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import DailyPostingLimitNotice, { useFbPostingCapacity } from '@/components/campaigns/DailyPostingLimitNotice';
 
@@ -21,7 +22,7 @@ const fmt = (d: string | null) => (d ? new Date(d).toLocaleString('he-IL', { dat
 export default function PublishingHistory() {
   const { user } = useAuth();
   const [page, setPage] = useState(0);
-  const ws = typeof window !== 'undefined' ? window.localStorage.getItem('activeWorkspaceId') : null;
+  const { activeWorkspaceId: ws } = useWorkspace();
   const { data: cap } = useFbPostingCapacity();
   const { data, isLoading } = useQuery({
     queryKey: ['publishing-history', user?.id, ws, page],

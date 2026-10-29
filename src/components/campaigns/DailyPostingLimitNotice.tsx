@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { ShieldCheck, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { summarizeCapacity, type FbPostingCapacity } from '@/lib/fbPostingCapacity';
 
 export function useFbPostingCapacity() {
   const { user } = useAuth();
-  const ws = typeof window !== 'undefined' ? window.localStorage.getItem('activeWorkspaceId') : null;
+  const { activeWorkspaceId: ws } = useWorkspace();
   return useQuery({
     queryKey: ['fb-posting-capacity', user?.id, ws],
     enabled: !!user,
