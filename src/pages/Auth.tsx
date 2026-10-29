@@ -11,7 +11,7 @@ import { clearPendingSignupRole } from '@/lib/signupRole';
 import { formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
 
 // Gray, unbolded placeholder; black bold typed text; no border/ring on focus.
-const fieldClass = 'h-12 min-w-0 text-xl font-bold text-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0';
+const fieldClass = 'h-12 min-w-0 text-lg font-bold text-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0';
 
 const Auth = () => {
   const navigate = useNavigate();
