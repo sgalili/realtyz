@@ -46,9 +46,9 @@ const ICONS: Record<LeadTypeKey, typeof ClipboardList> = {
 
 // Option names mirror the "add new ad" step-8 reward labels.
 const FILTER_LEAD_LABELS: Record<LeadTypeKey, string> = {
-  tier1: 'פנייה דרך השארת פרטים בטופס בעמוד נחיתה',
-  tier2: 'פנייה לאחר סינון בשיחת ווטסאפ עם ריטה AI',
-  tier3: 'פנייה לאחר סינון בשיחת טלפון עם ריטה AI',
+  tier1: 'פנייה דרך טופס בעמוד נחיתה',
+  tier2: 'פנייה לאחר סינון בווטסאפ עם ריטה AI',
+  tier3: 'פנייה לאחר סינון בטלפון עם ריטה AI',
   tier4: 'עמלת תיווך עבור סגירת עסקה',
 };
 
