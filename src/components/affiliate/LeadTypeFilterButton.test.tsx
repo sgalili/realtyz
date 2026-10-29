@@ -61,7 +61,7 @@ describe('role-based advanced filter fields', () => {
     expect(screen.getByText('פנייה לאחר סינון בשיחת ווטסאפ עם ריטה AI')).toBeInTheDocument();
     expect(screen.getByText('פנייה לאחר סינון בשיחת טלפון עם ריטה AI')).toBeInTheDocument();
     expect(screen.queryByText('עמלת תיווך עבור סגירת עסקה')).not.toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'שווי הליד מינימום' })).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'אזור' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'שכונה' })).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe('role-based advanced filter fields', () => {
     setRole('developer');
     renderFilter();
     expect(screen.queryByText('רווח לליד')).not.toBeInTheDocument();
-    expect(screen.queryByRole('spinbutton', { name: 'שווי הליד מינימום' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).not.toBeInTheDocument();
     expect(screen.getByText('פרטי הנכס')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'קומה מינימום' })).toBeInTheDocument();
   });
