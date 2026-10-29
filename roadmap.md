@@ -1,5 +1,9 @@
 # Roadmap
 
+## Publisher pricing card alignment October 29
+- [ ] Unify closing and lead card headers, icon strokes and edges; place titles/help below prices.
+- [ ] Verify expanded/collapsed controls and zero defaults with focused tests and live views.
+
 ## Platform-wide document October 29
 - [x] Two-column intermediate grids, shared-row photo alignment and existing bounded footer; 320/446/768/1280px checked.
 - [x] Explicit closing-only audience predicate reused on board, account ads/activity and favorites; preserves guest browsing and unknown/redacted rewards. Signed-in board shows 7 versus 8 guest cards.
