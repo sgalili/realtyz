@@ -919,14 +919,18 @@ export default function Properties() {
             </Button>
             {/* Counter pill — always visible right after the magnify: total records
                 by default, replaced by the selected count while selecting. */}
-            <span className="order-2 shrink-0 text-[12px] font-normal text-primary tabular-nums">
+            <Button type="button" variant="ghost"
+              className="order-2 h-8 shrink-0 rounded-none px-0 text-[12px] font-normal text-primary tabular-nums hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              aria-expanded={searchOpen} aria-controls="inventory-search-row"
+              title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
+              onClick={() => toggleSearchOpen(!searchOpen)}>
               {multiSelectMode && selectedListingIds.size > 0
                 ? `${selectedListingIds.size} נבחרו`
                 : (() => {
                     const total = totalListingsCount ?? sortedResults.length;
                     return `${total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total} נכסים`;
                   })()}
-            </span>
+            </Button>
         <div id="inventory-search-row" className="order-3 min-w-0 flex-1">
           <div className={`min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
