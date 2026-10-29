@@ -1,5 +1,10 @@
 # Roadmap
 
+## Shared property filters October 29
+- [ ] Reuse public filters in Properties, align below search over the options row, enable scrolling and preserve page position.
+- [ ] Placeholder-only fields, opposite icon-only close, exclusive nationwide selection, extra 5px below blue section.
+- [ ] Verify filtering rules and live open/close, scroll and layout.
+
 ## Partner navigation and properties spacing October 29
 - [x] Plain property count with נכסים and fixed 15px toolbar spacing; measured phone layout.
 - [x] Strict partner/private navigation and route presentation; personal tasks and existing partner transaction RPC view, with separately scoped private transactions.
