@@ -1331,7 +1331,7 @@ export default function PropertyDetail() {
   };
 
   return (
-    <div className="px-3 pb-3 pt-0 sm:px-6 sm:pb-6 space-y-6" dir="rtl">
+    <div className="px-3 pb-3 pt-[10px] sm:px-6 sm:pb-6 space-y-6" dir="rtl">
       {/* Background sync is NEVER blocking: the whole page stays interactive and
           a subtle corner pill reports honest progress (no fake 100%). */}
       {hydrating && <BackgroundSyncPill />}
