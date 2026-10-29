@@ -15,7 +15,6 @@
 - Cloud monitoring mounts only for authenticated super_admin roles and its read-only endpoint rechecks user_roles server-side; queue counts resolve and authorize the active workspace, while Railway heartbeat and scheduler ticks remain separate. Why: prevent operational data leaks and false readiness.
 - Wallet usage pricing is read-only and loaded from action_pricing on opening its hero dialog; reuse the admin query key without exposing editing controls. Why: display current configured costs consistently.
 - Profile/office uploads share fixed-aspect cropping; pending files clear on workspace switches. Completion notices re-read account fields on save; service areas reuse city/multi-select controls. Why: consistency.
-- Tours use authorized menus; never auto-mutate.
 - Future calls use workspace-authorized meetings RPCs and the existing tour-reminder tick, with atomic per-call claims and purpose-specific approved official WhatsApp templates; never create a second permanent timer. Why: tenant-safe scheduling without duplicate sends or unauthorized free-text reminders.
 - Public grid/details use safe publishers with server-gated PropertyCommissionIcons inside BrokerAttribution; image actions share favorites. Fee notices stay contextual. Why: owner identity and pricing privacy.
 - Property headings fit one address/price row; maps use photo markers, safe DOM popups and details-only selection with scroll-to-top. Why: avoid overlap and premature navigation.
@@ -24,16 +23,15 @@
 - Publisher numbering excludes setup; preserves keys and resolved addresses; ignores stale searches.
 - Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state, consistent counts.
 - Public publisher pricing and shared card-header rules: read src/components/public/AGENTS.md.
-- Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
+- Facebook auth/groups are mounted siblings, so Page state never interrupts groups.
 - Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
-- Peer expansions use exclusive motion groups.
 - Inquiry tiers need server-only workspace/listing identity and satisfactory screening; first turns/callbacks never qualify. Atomic upgrades charge only unpaid differences.
 - Tables share sort/reorder/hide; rewards never sort. HorizontalTableScroll owns both axes and movable wheel axes (RTL Shift-wheel too), preserves nested scrolling, collapses nested owners. Homepage stays bounded; prefs never store listings. Post-animation reveal scrolls only the table, anchoring property summaries below headings. Why: no hidden summaries.
 - Every successful app sign-in and completed signup lands on the global homepage; the layout only clears old pending login flags and never chooses a dashboard. OAuth authorization consent remains a separate flow. Why: all account types browse the same public-safe feed without bypassing role completion.
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe, served only by src/hooks/useListingFavorites.ts so hearts and the owner menu share one list. Why: one favorite state.
 - Yad2 checks exact workspace records before daily claims; cache reads keep edits and source timestamps (no sliding freshness). Cache/scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely needs verified workspace status. Counters use completed-search snapshots.
 - Yad2 keeps original publisher snapshots, source buckets and scoped DOM evidence; never null-overwrites or classifies from related ads; license needs evidence.
-- Group selection uses one checkbox per row, immutable deduplicated snapshots and no-op guards.
+- Group selection: one checkbox per row, immutable deduped snapshots, no-op guards; peer expansions use exclusive motion groups.
 - Media dedup uses host/path hashes; Yad2 reuses validated own public cache, not other hosts. Why: safe reuse.
 - Multi-select lists use the shared controls in src/components/ui/multi-select-controls.tsx so every page behaves the same.
 - Partner rewards freeze into immutable listing_reward_snapshots on pick; charges use the snapshot. Trust scores are server-computed (compute_trust_score), super_admin-overridable, audited.
@@ -64,3 +62,4 @@
 - Public publisher projections share classification-aware names from source evidence or server user_roles for manual ads; unknown identities stay private. Board eligibility still requires positive price, configured rewards and a non-generic publisher, filtering without deletion. Why: consistent attribution without exposing private people.
 - Rent displays always use "₪X / לחודש" via src/lib/propertyPrice.ts helpers. Why: consistent monthly pricing.
 - Broker upgrades auto-approve only on server registry+certificate+account-name match; else pending Super Admin review; all outcomes notify user and Super Admins.
+- Super Admin in another workspace: useUserRole returns owner roles plus super_admin; servers check the real caller. Why: no broker leakage.
