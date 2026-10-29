@@ -43,6 +43,7 @@ import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
 const RoleTransactions = lazy(() => import('./pages/RoleTransactions'));
+const SharingPool = lazy(() => import('./pages/SharingPool'));
 const MyAds = lazy(() => import("./pages/MyAds"));
 const PublishingHistory = lazy(() => import("./pages/PublishingHistory"));
 const LeadCRM = lazy(() => import("./pages/LeadCRM"));
@@ -166,7 +167,7 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/partner/contacts', '/partner/chats', '/partner/posts'];
+const AFFILIATE_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/sharing-pool', '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/partner/contacts', '/partner/chats', '/partner/posts'];
 
 /**
  * Private property owners are a separate product: only their own properties,
@@ -472,6 +473,7 @@ const App = () => (
 
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/command-center" element={<ProtectedRoute allowGuestDemo><CommandCenter /></ProtectedRoute>} />
+              <Route path="/sharing-pool" element={<PartnerOnlyRoute><ProtectedRoute><SharingPool /></ProtectedRoute></PartnerOnlyRoute>} />
               <Route path="/tasks" element={<Navigate to="/command-center" replace />} />
               <Route path="/crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />

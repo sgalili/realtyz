@@ -893,7 +893,7 @@ export default function Properties() {
 
   return (
     <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[15px] overflow-hidden px-3 pb-0 pt-[15px] sm:px-6' : 'px-3 sm:px-6 pt-[15px] space-y-[15px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
-      <header className="text-right">
+      <header className="hidden">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
 

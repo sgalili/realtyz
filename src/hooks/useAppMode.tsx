@@ -36,6 +36,7 @@ export const PARTNER_MODE_PATHS = [
   '/campaigns',
   '/inbox',
   '/communication',
+  '/sharing-pool',
 ];
 
 export function readAppMode(userId?: string): AppMode {
