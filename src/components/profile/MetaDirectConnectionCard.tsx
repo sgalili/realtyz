@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
+import { FacebookPageSelector } from '@/components/campaigns/FacebookPageSelector';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
 import { openExternal } from '@/lib/openExternal';
@@ -603,76 +604,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
 
 
-        {isConnected && (
-          <div className="space-y-2 rounded-xl border p-3">
-            <p className="text-[13px] font-semibold">{"\n"}</p>
-            {bindings.length > 1 && (
-              <p className="text-[12px] text-muted-foreground">בחרו את עמוד ברירת המחדל לפרסום, או נתקו כל עמוד בנפרד.</p>
-            )}
-            <div className="space-y-1.5">
-              {bindings.map((b) => (
-                <div
-                  key={b.id}
-                  className={`flex w-full items-center gap-2 rounded-lg border p-2 text-right transition ${
-                    b.isDefault ? 'border-emerald-300 bg-emerald-50/60' : 'hover:bg-muted/50'
-                  }`}
-                >
-                  {b.picture ? (
-                    <img src={b.picture} alt={b.name ?? b.id} className="h-8 w-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                      <Facebook className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => (b.isDefault ? undefined : void makeDefault(b.id))}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-right"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{b.name || b.id}</span>
-                    {/* The default-page control only matters with 2+ pages. */}
-                    {bindings.length > 1 &&
-                      (settingDefaultId === b.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : b.isDefault ? (
-                        <Badge className="border-0 bg-transparent text-[11px]" style={{ color: 'hsl(220 9% 32%)' }}>
-                          ברירת מחדל
-                        </Badge>
-                      ) : (
-                        <span className="text-[11px]" style={{ color: 'hsl(220 9% 46%)' }}>
-                          הגדר כברירת מחדל
-                        </span>
-                      ))}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`נתק את העמוד ${b.name || b.id}`}
-                    title="נתק עמוד זה"
-                    disabled={!!removingPageId}
-                    onClick={() => void disconnectOnePage(b.id, b.name)}
-                    className="shrink-0 rounded-md p-1 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-                  >
-                    {removingPageId === b.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />}
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex min-w-0 items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="min-w-0 flex-1 gap-2 text-[12px]"
-              onClick={() => (connecting ? cancelConnecting() : openFacebookConnection())}
-            >
-              {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
-              {connecting ? 'בטל' : 'חבר חשבון או עמוד נוסף'}
-            </Button>
-            {manualTokenButton}
-            </div>
-            {manualTokenSection}
-          </div>
-        )}
+        {isConnected && <div className="space-y-2"><FacebookPageSelector />{manualTokenButton}{manualTokenSection}</div>}
 
         {!isConnected && (
           <div className="rounded-xl border border-dashed p-3 space-y-2">
