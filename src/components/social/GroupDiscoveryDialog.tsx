@@ -20,7 +20,14 @@ import {
   type DiscoveredGroup, type JoinStatus,
 } from "@/lib/extensionGroupDiscovery";
 
+const KEYWORDS = ["תל אביב", "ירושלים", "חיפה", "רמת גן", "ראשון לציון", "דירות", "בתים", "מסחרי", "למכירה", "להשכרה", "קונים", "מוכרים"];
+
+/** Ranks groups by how many chosen keywords appear in the group's name. */
+export const keywordScore = (name: string, words: string[]) =>
+  words.reduce((n, w) => n + (name.includes(w) ? 1 : 0), 0);
+
 const SORTS = [
+  { id: "relevance", label: "התאמה" },
   { id: "popularity", label: "פופולריות" },
   { id: "members", label: "חברים" },
   { id: "activity", label: "פעילות" },
@@ -78,6 +85,12 @@ export function GroupDiscoveryDialog({
   const [results, setResults] = useState<DiscoveredGroup[]>([]);
   const [searched, setSearched] = useState(false);
   const [sortBy, setSortBy] = useState<(typeof SORTS)[number]["id"]>("popularity");
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const toggleKeyword = (w: string) => setKeywords((prev) => {
+    const next = prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w];
+    if (next.length) setQuery(next.join(" "));
+    return next;
+  });
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<Record<string, JoinStatus | "queued" | "joining" | "saved">>({});
   const [joining, setJoining] = useState(false);
@@ -140,8 +153,13 @@ export function GroupDiscoveryDialog({
   };
 
   const visible = useMemo(
-    () => sortDiscovered(results.filter((g) => !blockedIds?.has(g.group_id)), sortBy),
-    [results, blockedIds, sortBy],
+    () => {
+      const base = results.filter((g) => !blockedIds?.has(g.group_id));
+      if (sortBy !== "relevance") return sortDiscovered(base, sortBy);
+      const words = keywords.length ? keywords : query.trim().split(/\s+/).filter(Boolean);
+      return sortDiscovered(base, "popularity").sort((a, b) => keywordScore(b.group_name ?? "", words) - keywordScore(a.group_name ?? "", words));
+    },
+    [results, blockedIds, sortBy, keywords, query],
   );
   const selectable = visible.filter((g) => !knownIds?.has(g.group_id));
   const allPicked = selectable.length > 0 && selectable.every((g) => picked.has(g.group_id));
@@ -249,7 +267,8 @@ export function GroupDiscoveryDialog({
                 <Loader2 className="h-4 w-4 animate-spin" /> בודק את חיבור הפייסבוק…
               </div>
             ) : cloud?.active ? (
-              <form className="flex min-w-0 gap-2" onSubmit={(e) => { e.preventDefault(); void runCloudSearch(); }}>
+<div className="space-y-2">
+                            <form className="flex min-w-0 gap-2" onSubmit={(e) => { e.preventDefault(); void runCloudSearch(); }}>
                 <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="חיפוש קבוצות לפי נושא"
                   className="min-w-0 flex-1 text-[15px]" disabled={busy} aria-label="מילות חיפוש" />
                 <Button type="submit" disabled={busy || !query.trim()} className="shrink-0 gap-1">
@@ -257,6 +276,15 @@ export function GroupDiscoveryDialog({
                   חיפוש בפייסבוק
                 </Button>
               </form>
+              <div className="flex flex-wrap gap-1.5" aria-label="מילות מפתח">
+                {KEYWORDS.map((w) => (
+                  <button key={w} type="button" disabled={busy} onClick={() => toggleKeyword(w)} aria-pressed={keywords.includes(w)}
+                    className={cn("rounded-full border px-2.5 py-1 text-[13px]", keywords.includes(w) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:bg-muted")}>
+                    {w}
+                  </button>
+                ))}
+              </div>
+              </div>
             ) : (
               <FacebookCloudConnectGate key={workspaceOwnerId} alwaysVisible onSynced={() => { void getCloudSessionState().then(setCloud); onJoined?.(); }} onDiscover={() => document.querySelector<HTMLInputElement>('input[aria-label="שם הקבוצה"]')?.focus()} />
             )}

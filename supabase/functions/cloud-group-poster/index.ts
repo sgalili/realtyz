@@ -61,6 +61,7 @@ Deno.serve(async (req) => {
       })
       .eq("id", jobId).eq("runner", "cloud").eq("status", "processing");
     if (error) return json({ error: error.message }, 500);
+    await admin.rpc("fb_record_post_attempt_outcome", { _job: jobId, _ok: ok, _error: ok ? null : String(body?.error ?? "failed") });
     return json({ success: true });
   }
 
@@ -175,6 +176,7 @@ Deno.serve(async (req) => {
       if (!res.ok) throw new Error(`worker_http_${res.status}`);
       results.push({ id: row.id, status: "dispatched" });
     } catch (e) {
+      await admin.rpc("fb_record_post_attempt_outcome", { _job: row.id, _ok: false, _error: String((e as Error).message) });
       const attempts = (row.cloud_attempts ?? 0) + 1;
       const giveUp = attempts >= MAX_ATTEMPTS;
       await admin

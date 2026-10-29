@@ -21,6 +21,7 @@
 - **FB groups (HARD)**: group posts ONLY via the Chrome extension (`enqueueExtensionPosts` → localStorage rzPostQueue, or `fb_group_post` queue rows). Never Graph `/feed` for groups; `fb-group-publish` deleted.
 
 ## Memories
+- [Facebook cloud pacing](mem://features/fb-cloud-pacing) — 35 attempts/day/account incl. failures, 3-7 min gap, approval-based joins/replies.
 - [Compact campaign editing](mem://features/campaign-ui-cleanup) — No expanded group pills/title field; configured comment links checked and selection layout stable.
 - [Campaign card handling](mem://features/campaign-card-handling) — Inline series below cards, far-edge repost, accurate status icons, single-line shortened names and comment warnings.
 - [Rita group post topics](mem://features/rita-group-post-topics) — Six group-engagement topics replace property promotion only in Rita's workspace and drive AI generation.

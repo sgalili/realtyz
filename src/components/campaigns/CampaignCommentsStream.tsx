@@ -9,7 +9,7 @@ import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronDown, ChevronUp, RefreshCw, Send, Sparkles, MessageSquare, CornerDownLeft, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, Send, Sparkles, MessageSquare, CornerDownLeft, Trash2, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -1264,6 +1264,33 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
     </div>
   );
 
+  const [quickSendingId, setQuickSendingId] = useState<string | null>(null);
+  /** One-tap send of Rita's saved public draft. The user's tap is the approval. */
+  const quickSend = async (r: EngagementRow) => {
+    const text = r.ai_reply_text?.trim();
+    if (!text || !r.external_id || quickSendingId) return;
+    setQuickSendingId(r.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("meta-comments-sync", {
+        body: { action: "reply", user_id: commentOwnerId, comment_id: r.external_id, text, mode: "hitl" },
+      });
+      if (error) throw error;
+      if ((data as any)?.halt === true || (data as any)?.rate_limited === true) {
+        toast.error("מערכת הסנכרון בהפסקה זמנית להגנת החשבון");
+        return;
+      }
+      if ((data as any)?.success === false || (data as any)?.error) {
+        throw new Error((data as any).message || (data as any).error || "פרסום נכשל");
+      }
+      toast.success("התשובה של Rita נשלחה");
+      void load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "פרסום נכשל");
+    } finally {
+      setQuickSendingId(null);
+    }
+  };
+
   const openQuickDm = (r: EngagementRow) => {
     setSendPublic(false);
     setSendDm(true);
@@ -1285,6 +1312,8 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
           row={node}
           onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
           onQuickDm={openQuickDm}
+          onQuickSend={quickSend}
+          quickSending={quickSendingId === node.id}
           expanded={replyOpen?.id === node.id}
           editor={replyOpen?.id === node.id ? renderEditor(node) : null}
           onRegenerate={regenerateInline}
@@ -1400,6 +1429,8 @@ function CommentBubble({
   row,
   onToggleEditor,
   onQuickDm,
+  onQuickSend,
+  quickSending,
   expanded,
   editor,
   onRegenerate,
@@ -1417,6 +1448,8 @@ function CommentBubble({
   row: EngagementRow;
   onToggleEditor: (r: EngagementRow) => void;
   onQuickDm?: (r: EngagementRow) => void;
+  onQuickSend?: (r: EngagementRow) => void;
+  quickSending?: boolean;
   expanded: boolean;
   editor?: React.ReactNode;
   onRegenerate?: (r: EngagementRow) => void;
@@ -1551,6 +1584,15 @@ function CommentBubble({
               </span>
             </div>
           )}
+        {onQuickSend && !isReply && !alreadyReplied && (replyCount ?? 0) === 0 && row.ai_reply_text?.trim() && row.external_id && !expanded && (
+          <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2">
+            <RitaAvatar className="h-5 w-5 shrink-0 border-0 ring-0" />
+            <p className="flex-1 whitespace-pre-wrap break-words text-[13px] text-foreground">{row.ai_reply_text}</p>
+            <Button type="button" size="sm" className="shrink-0" disabled={quickSending} onClick={() => onQuickSend(row)}>
+              {quickSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "שליחה"}
+            </Button>
+          </div>
+        )}
         <div className="flex items-center gap-3 flex-wrap">
           <button
             type="button"
