@@ -12,6 +12,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { validateFutureCall } from '@/lib/callSchedule';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAppMode } from '@/hooks/useAppMode';
+import { activityAudience } from '@/lib/activityAudience';
+import PersonalTasks from '@/components/tasks/PersonalTasks';
 
 import CallSummaryDialog from '@/components/tasks/CallSummaryDialog';
 import { invalidateLiveData } from '@/lib/liveSync';
@@ -161,6 +165,13 @@ function IconAction({
 }
 
 export default function CommandCenter() {
+  const { roles, loading } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  if (loading) return null;
+  return activityAudience(roles, isPartnerMode) === 'professional' ? <ProfessionalCommandCenter /> : <PersonalTasks />;
+}
+
+function ProfessionalCommandCenter() {
   // Property card links only appear in workspaces that manage properties.
   const { listingsEnabled, isRitaWorkspace } = useWorkspaceFeatures();
   const access = usePropertyPageAccess();

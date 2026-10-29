@@ -29,6 +29,14 @@ export const PARTNER_MODE_PATHS = [
   '/partner/posts',
   '/partner/chats',
   '/partner/contacts',
+  '/command-center',
+  '/tasks',
+  '/deal-room',
+  '/activity-history',
+  '/campaigns',
+  '/inbox',
+  '/communication',
+  '/sharing-pool',
 ];
 
 export function readAppMode(userId?: string): AppMode {
