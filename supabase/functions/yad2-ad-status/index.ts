@@ -14,7 +14,11 @@
 // 'unknown' means we could not verify; the UI keeps the button hidden unless
 // the ad is verified 'live'.
 
-import puppeteer from 'npm:puppeteer-core@22.15.0';
+// puppeteer-core is loaded lazily inside the handler: its Node http transport
+// probes ClientRequest.options.createConnection at module-evaluation time,
+// which Deno does not implement — a top-level import intermittently kills the
+// boot with a 503 BOOT_ERROR before the handler ever runs.
+type PuppeteerModule = typeof import('npm:puppeteer-core@22.15.0');
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
