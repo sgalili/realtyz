@@ -908,7 +908,7 @@ export default function Properties() {
               type="button"
               variant="ghost"
               size="icon"
-              className="order-1 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              className="order-1 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               aria-label={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               aria-expanded={searchOpen}
