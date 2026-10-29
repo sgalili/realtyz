@@ -8634,6 +8634,7 @@ export type Database = {
         }
         Returns: Json
       }
+      broker_name_tokens: { Args: { _n: string }; Returns: string[] }
       bulk_update_leads: {
         Args: {
           lead_ids: string[]
@@ -9566,6 +9567,10 @@ export type Database = {
           source_queue: string
         }
         Returns: number
+      }
+      notify_broker_upgrade: {
+        Args: { _id: string; _status: string; _uid: string }
+        Returns: undefined
       }
       official_broker_name: {
         Args: { _license: string; _uid: string }
