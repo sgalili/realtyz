@@ -1,3 +1,4 @@
+import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { Table } from '@/components/ui/table';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
@@ -102,7 +103,7 @@ function AdActions({ row: r, owned, title }: { row: Row; owned: boolean; title: 
   const result = { key: r.listing_id, localId: r.listing_id, source: 'mine', title: r.title ?? title, address: r.address ?? null, city: r.city ?? null, price: Number(r.asking_price) || null, listing_type: r.deal_type === 'rent' ? 'rent' : 'sale', photos: r.image_url ? [r.image_url] : [] } as any;
   const copyPartnerLink = async () => {
     try {
-      await navigator.clipboard.writeText(await personalPropertyLink(r.listing_id));
+      await navigator.clipboard.writeText(withShareUtm(await personalPropertyLink(r.listing_id), 'copy'));
       toast.success('הקישור האישי הועתק');
     } catch { toast.error('לא ניתן להעתיק קישור אישי לנכס זה'); }
   };
@@ -171,7 +172,7 @@ function ActivityProperties() {
   const ids = [...selected];
   const toggle = (id: string) => setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const share = async () => {
-    const links = owned.filter(r => selected.has(r.listing_id)).map(r => publicUrl(`/p/${r.slug || r.listing_id}`)).join('\n');
+    const links = owned.filter(r => selected.has(r.listing_id)).map(r => withShareUtm(publicUrl(`/p/${r.slug || r.listing_id}`), 'copy')).join('\n');
     try { if (navigator.share) await navigator.share({ text: links }); else { await navigator.clipboard.writeText(links); toast.success('הקישורים הועתקו'); } } catch { /* cancelled */ }
   };
   const sharingPartners = owned.reduce((total, r) => total + Number(r.affiliates || 0), 0);

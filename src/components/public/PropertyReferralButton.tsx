@@ -1,3 +1,4 @@
+import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { useState } from 'react';
 import { Link2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,7 +15,7 @@ export default function PropertyReferralButton({ listingId }: { listingId: strin
   const copy = async () => {
     setBusy(true);
     try {
-      await navigator.clipboard.writeText(await personalPropertyLink(listingId));
+      await navigator.clipboard.writeText(withShareUtm(await personalPropertyLink(listingId), 'copy'));
       toast.success('הקישור האישי הועתק');
     } catch { toast.error('לא ניתן להעתיק קישור אישי לנכס זה'); }
     finally { setBusy(false); }

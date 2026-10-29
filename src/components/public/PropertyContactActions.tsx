@@ -1,3 +1,4 @@
+import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
@@ -94,7 +95,8 @@ export default function PropertyContactActions({
 
   const share = async (channel: 'whatsapp' | 'sms' | 'email' | 'copy' | 'native') => {
     try {
-      const url = user ? await personalPropertyLink(listingId) : shareDetails().url;
+      const rawUrl = user ? await personalPropertyLink(listingId) : shareDetails().url;
+      const url = channel === 'native' ? rawUrl : withShareUtm(rawUrl, channel);
       const text = `${title}\n${url}`;
       if (!url) return;
       if (channel === 'native' && navigator.share) {

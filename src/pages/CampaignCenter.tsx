@@ -1,3 +1,4 @@
+import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { canRestorePropertyDraft, propertyCampaignSelection } from '@/lib/campaignPropertyContext';
 import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 import { reorderItems } from '@/lib/reorderItems';
@@ -1892,7 +1893,7 @@ const InlineComposer = ({
     try {
       const { data } = await supabase.functions.invoke('shortlink-create', { body: { long_url: longUrl } });
       const slug = (data as any)?.slug;
-      if (slug) return `https://toraff.co.il/r/${slug}`;
+      if (slug) return withShareUtm(`https://toraff.co.il/r/${slug}`, 'facebook');
     } catch { /* fall back to the native deep link */ }
     return nativeWaLink(phone, intro);
   };
@@ -2130,7 +2131,7 @@ const InlineComposer = ({
             body: { property_id: selectedListingId },
           });
           const slug = (slugRes as any)?.slug;
-          if (slug) url = `https://toraff.co.il/r/${slug}`;
+          if (slug) url = withShareUtm(`https://toraff.co.il/r/${slug}`, 'facebook');
         } else {
           // Platform (SaaS) post: brand the official WABA chat link too.
           url = await mintOfficialWaShortLink();

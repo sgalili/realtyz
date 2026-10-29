@@ -1,3 +1,4 @@
+import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link2 } from 'lucide-react';
@@ -18,7 +19,7 @@ export function CopyListingLinkButton({ listingId }: { listingId: string }) {
     <Button size="icon" variant="ghost" className="h-8 w-8" title="העתקת קישור" aria-label="העתקת קישור"
       onClick={async (e) => {
         e.stopPropagation();
-        try { await navigator.clipboard.writeText(publicUrl(`/p/${encodeURIComponent(listingId)}`)); toast.success('הקישור הועתק'); }
+        try { await navigator.clipboard.writeText(withShareUtm(publicUrl(`/p/${encodeURIComponent(listingId)}`), 'copy')); toast.success('הקישור הועתק'); }
         catch { toast.error('העתקת הקישור נכשלה'); }
       }}>
       <Link2 className="h-4 w-4" />
