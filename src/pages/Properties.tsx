@@ -33,7 +33,7 @@ import {
   ArrowRight, Loader2, Search as SearchIcon, Filter,
    ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon, ChevronDown,
    RefreshCw, Handshake, Pencil, Trash2,
-} from 'lucide-react';
+  Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
@@ -892,7 +892,7 @@ export default function Properties() {
 
 
   return (
-    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-hidden p-3 pt-0 sm:gap-6 sm:p-6 sm:pt-0' : 'p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
+    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-hidden p-3 py-0 sm:gap-6 sm:p-6 sm:py-0' : 'p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
@@ -903,12 +903,12 @@ export default function Properties() {
 
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
-        <div data-testid="property-filter-row" className="mb-2 flex flex-wrap items-center gap-1">
+        <div data-testid="property-filter-row" className="mb-2 flex flex-nowrap items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="order-1 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              className="order-1 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               aria-label={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               aria-expanded={searchOpen}
@@ -917,10 +917,10 @@ export default function Properties() {
             >
               <SearchIcon className="h-4 w-4" />
             </Button>
-        <div id="inventory-search-row" className="grid order-2 min-w-0 flex-1 basis-full sm:basis-auto transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none" style={{ gridTemplateRows: searchOpen ? '1fr' : '0fr' }}>
-          <div className="min-h-0 overflow-hidden">
+        <div id="inventory-search-row" className="order-2 min-w-0 flex-1">
+          <div className={`min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
-          <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+          <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background">
             <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
             {yad2Status?.tone === 'busy' && <Button
               type="button"
@@ -988,7 +988,7 @@ export default function Properties() {
                    if (e.key === 'Enter') { e.preventDefault(); setSuggestionsOpen(false); if (suggestionIndex >= 0 && suggestions[suggestionIndex]) { void handleSelect(suggestions[suggestionIndex]); } else { void submitQuery(); } }
                   if (e.key === 'Backspace' && !q && filterChips.length) filterChips[filterChips.length - 1].clear();
                 }}
-                placeholder={yad2Status?.tone === 'busy' ? 'סורק פרטים…' : filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים או הדבקת קישור יד2'}
+                placeholder={yad2Status?.tone === 'busy' ? 'סורק פרטים…' : filterChips.length ? 'הוסף מילות חיפוש…' : 'חיפוש נכסים'}
                 aria-label="חיפוש נכסים"
                 className="h-7 min-w-0 flex-1 bg-transparent text-right text-sm outline-none placeholder:text-muted-foreground"
                 dir="rtl"
@@ -1004,7 +1004,7 @@ export default function Properties() {
                 onClick={() => { setSuggestionsOpen(false); void submitQuery(); }}
                 className="h-7 w-7 shrink-0 rounded-md text-muted-foreground hover:bg-transparent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
               >
-                <SearchIcon className="h-4 w-4" />
+                <Send className="h-4 w-4 -scale-x-100" />
               </Button>
 
              </div>
