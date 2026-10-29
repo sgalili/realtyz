@@ -892,7 +892,7 @@ export default function Properties() {
 
 
   return (
-    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[15px] overflow-hidden px-3 pb-0 !pt-[15px] sm:px-6' : 'px-3 sm:px-6 !pt-[15px] space-y-[15px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
+    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[15px]' : 'px-0 !pt-[15px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
       <header className="hidden">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
@@ -915,7 +915,7 @@ export default function Properties() {
               aria-controls="inventory-search-row"
               onClick={() => toggleSearchOpen(!searchOpen)}
             >
-              <SearchIcon className="h-4 w-4" />
+              <SearchIcon className="h-[19px] w-[19px]" />
             </Button>
             {/* Counter pill — always visible right after the magnify: total records
                 by default, replaced by the selected count while selecting. */}
@@ -1120,7 +1120,7 @@ export default function Properties() {
         </div>
           </div>
         </div>
-        <div data-testid="property-tools-row" className="order-4 flex shrink-0 items-center gap-0">
+        <div data-testid="property-tools-row" className="order-4 mt-[5px] flex shrink-0 items-center justify-end gap-0">
 
 
             <DropdownMenu>
