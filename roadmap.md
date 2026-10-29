@@ -1,5 +1,8 @@
 # Roadmap
 
+## Broker certificate verification October 29
+- [ ] Add certificate upload, OCR and exact registry matching; confirm identity-proof requirement before automatic privileged broker status.
+
 ## Signup and profile controls October 26
 - [x] Two deal buttons, gender-aware details title, aligned city/property menus and visible last Other option.
 - [x] Larger profile text, full-circle avatar with outside camera/trash, live completion notice and fixed office save.
