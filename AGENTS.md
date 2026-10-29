@@ -15,7 +15,6 @@
 - Cloud monitoring mounts only for authenticated super_admin roles and its read-only endpoint rechecks user_roles server-side; queue counts resolve and authorize the active workspace, while Railway heartbeat and scheduler ticks remain separate. Why: prevent operational data leaks and false readiness.
 - Wallet usage pricing is read-only and loaded from action_pricing on opening its hero dialog; reuse the admin query key without exposing editing controls. Why: display current configured costs consistently.
 - Profile/office uploads share fixed-aspect cropping; pending files clear on workspace switches. Completion notices re-read account fields on save; service areas reuse city/multi-select controls. Why: consistency.
-- Tours use authorized menus; never auto-mutate.
 - Future calls use workspace-authorized meetings RPCs and the existing tour-reminder tick, with atomic per-call claims and purpose-specific approved official WhatsApp templates; never create a second permanent timer. Why: tenant-safe scheduling without duplicate sends or unauthorized free-text reminders.
 - Public grid/details use safe publishers with server-gated PropertyCommissionIcons inside BrokerAttribution; image actions share favorites. Fee notices stay contextual. Why: owner identity and pricing privacy.
 - Property headings fit one address/price row; maps use photo markers, safe DOM popups and details-only selection with scroll-to-top. Why: avoid overlap and premature navigation.
@@ -64,4 +63,4 @@
 - Public publisher projections share classification-aware names from source evidence or server user_roles for manual ads; unknown identities stay private. Board eligibility still requires positive price, configured rewards and a non-generic publisher, filtering without deletion. Why: consistent attribution without exposing private people.
 - Rent displays always use "₪X / לחודש" via src/lib/propertyPrice.ts helpers. Why: consistent monthly pricing.
 - Broker upgrades auto-approve only on server registry+certificate+account-name match; else pending Super Admin review; all outcomes notify user and Super Admins.
-- A Super Admin inside another user's workspace gets that owner's roles from useUserRole (only the super_admin flag is kept for admin overlays); server RPCs still check the real caller. Why: see exactly what the owner sees without broker leakage.
+- Super Admin in another workspace: useUserRole returns owner roles plus super_admin; servers check the real caller. Why: no broker leakage.
