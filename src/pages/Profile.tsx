@@ -363,7 +363,15 @@ function PersonalTab() {
         <ProfileAvatarUploader profileOwnerId={profileOwnerId} gender={gender === 'female' ? 'female' : gender === 'male' ? 'male' : null} />
 
         <div className="flex flex-col items-center gap-1 pb-1">
-          {editing.fullName ? (
+          {verifiedLicenseLocked ? (
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="inline-flex items-center gap-1.5 text-lg font-bold" aria-label="שם מלא לפי פנקס המתווכים">
+                <BadgeCheck className="h-4 w-4 text-primary" aria-hidden />
+                {fullName}
+              </span>
+              <span className="text-sm text-muted-foreground">השם נלקח מפנקס המתווכים הרשמי ואינו ניתן לעריכה</span>
+            </div>
+          ) : editing.fullName ? (
             <Input
               autoFocus
               dir="rtl"

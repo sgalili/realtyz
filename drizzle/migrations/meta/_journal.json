@@ -680,6 +680,13 @@
       "when": 1793297333775,
       "tag": "0096_remove_my_broker_license",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1793297476489,
+      "tag": "0097_lock_broker_official_name",
+      "breakpoints": true
     }
   ]
 }
