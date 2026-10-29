@@ -915,7 +915,7 @@ export default function Properties() {
               aria-controls="inventory-search-row"
               onClick={() => toggleSearchOpen(!searchOpen)}
             >
-              <SearchIcon className="h-[19px] w-[19px]" />
+              <SearchIcon className="!h-[19px] !w-[19px]" />
             </Button>
             {/* Counter pill — always visible right after the magnify: total records
                 by default, replaced by the selected count while selecting. */}
