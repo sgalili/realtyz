@@ -1,3 +1,4 @@
+import BrokerageTermsContent from './BrokerageTermsContent';
 import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConfirmation';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
@@ -767,7 +768,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             </div>
           )}
           {step === 0 && importSlide && (
-            <div className="space-y-4">
+            <div className="flex min-h-[55dvh] flex-col justify-center space-y-4">
               <div className="space-y-2 pt-1">
                   <p className="text-center text-[19px] font-semibold text-muted-foreground">ייבוא מודעה מיד 2</p>
                   {(
@@ -902,14 +903,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             <div className="space-y-3">
               {fields.publisherType === 'broker' && !isBroker && <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />}
                <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
-                <div><Input aria-label="מספר ווטסאפ *" placeholder="מספר ווטסאפ *" id="publisher-whatsapp" inputMode="tel" dir="ltr" className="text-right" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
-                <div><Input aria-label="אימייל" placeholder="אימייל" id="publisher-email" type="email" dir="ltr" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
+                <div><Input aria-label="מספר ווטסאפ *" placeholder="מספר ווטסאפ *" id="publisher-whatsapp" inputMode="tel" dir="ltr" className="text-right placeholder:[direction:rtl]" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
+                <div><Input aria-label="אימייל" placeholder="אימייל" id="publisher-email" type="email" dir="ltr" className="text-right placeholder:text-right placeholder:[direction:rtl]" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
             </div>
           )}
 
           {step === 8 && (
             <div className="pricing-editor space-y-3">
-              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><span className="flex items-center justify-self-center gap-[5px]"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-20 w-auto min-w-[9rem] px-3 text-center text-4xl font-bold placeholder:text-lg md:text-5xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span>{LEAD_TYPES.some(({ key }) => Number(fields[`commission${key}`]) > 0) ? <Button type="button" variant="ghost" size="icon" className="h-12 w-12 shrink-0 justify-self-end text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-[33px] w-[33px] transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button> : <span />}</div>
+              <div dir="rtl" className="mb-[25px] flex items-center gap-2"><span className="flex min-w-0 items-center gap-[5px] whitespace-nowrap"><label htmlFor="wizard-price" className="text-base font-semibold text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות:' : 'מחיר הנכס:'}</label><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-auto w-auto min-w-[4ch] max-w-[12ch] px-1 py-0 text-center text-3xl font-bold leading-tight placeholder:text-base md:text-4xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span>{LEAD_TYPES.some(({ key }) => Number(fields[`commission${key}`]) > 0) ? <Button type="button" variant="ghost" size="icon" className="ms-auto h-12 w-12 shrink-0 text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-[33px] w-[33px] transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button> : <span />}</div>
               <div className="space-y-4 text-base">
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
@@ -935,7 +936,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                           {key === 'Phone' && 'הפונה משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI (ריטה) מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
                         </p>
                       </LeadTypeHelp>
-                    </span><span className="ms-auto flex items-center gap-2">{!expanded && active && <Button type="button" variant="ghost" className="h-9 px-2 text-lg font-bold closing-tone" aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={active} onCheckedChange={(next) => { set(`commission${key}`, next ? String(LEAD_PRICE_RANGES[tier].min) : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-4 w-4 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></span></div>
+                    </span><span className="ms-auto flex items-center gap-2">{!expanded && <Button type="button" variant="ghost" className={cn('h-9 gap-1 px-2 text-lg font-bold', active ? 'closing-tone' : 'text-sm font-medium text-muted-foreground')} aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}>{active ? <><span className="text-sm font-medium text-muted-foreground">ההצעה שלך:</span><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></> : gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'}</Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={active} onCheckedChange={(next) => { set(`commission${key}`, next ? String(LEAD_PRICE_RANGES[tier].min) : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></span></div>
                     {active && expanded && <div className="space-y-2">
                     <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
@@ -1044,12 +1045,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             </Accordion>
           ) : renderStep(step)}
           {!pricingOnly && (reviewMode || isLast) && (
-            <>
+            <div className="flex flex-col gap-[6px]">
               <label htmlFor="publisher-marketing-consent" className="flex items-start gap-2 text-sm">
                 <Checkbox id="publisher-marketing-consent" className="rounded-none" checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', checked === true)} />
                 אני מסכים/ה לקבל פניות ועדכונים שיווקיים
               </label>
-              <div className="-mt-[5px] flex items-start gap-2 text-sm">
+              <div className="flex items-start gap-2 text-sm">
                 <Checkbox id="commission-terms" className="rounded-none" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', checked === true)} />
                 <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
                 <Dialog>
@@ -1073,11 +1074,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </DialogContent>
                 </Dialog></span>
               </div>
-            <div className="-mt-[5px] flex items-start gap-2 text-xs leading-snug">
+            <div className="flex items-start gap-2 text-xs leading-snug">
               <Checkbox id="publication-consent" aria-label="אישור התנאים והרשאת הפרסום" checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', checked === true)} className="mt-0.5 rounded-none" />
               <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline decoration-2 underline-offset-4">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
             </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -1100,9 +1101,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       </DialogContent>
       <ImageDeleteConfirmation open={pendingFileDelete !== null} onOpenChange={open => { if (!open) setPendingFileDelete(null); }} onConfirm={() => { setFiles(current => current.filter(file => file !== pendingFileDelete)); setVideos(current => current.filter(file => file !== pendingFileDelete)); setPendingFileDelete(null); }} />
       <Dialog open={legalSection !== null} onOpenChange={value => { if (!value) setLegalSection(null); }}>
-        <DialogContent dir="rtl" className="grid h-[100dvh] w-screen max-w-none grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-none p-4 sm:max-w-3xl" onOpenAutoFocus={event => { event.preventDefault(); if (legalSection === 'brokerage') requestAnimationFrame(() => document.querySelector('[data-publisher-legal] #brokerage-commissions')?.scrollIntoView({ block: 'start' })); }}>
+        <DialogContent dir="rtl" className="grid h-[100dvh] w-screen max-w-none grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-none p-4 sm:max-w-3xl" onOpenAutoFocus={event => { event.preventDefault(); if (false) requestAnimationFrame(() => document.querySelector('[data-publisher-legal] #brokerage-commissions')?.scrollIntoView({ block: 'start' })); }}>
           <DialogHeader className="px-8"><DialogTitle>{legalSection === 'brokerage' ? 'תנאי התיווך' : 'התקנון'}</DialogTitle></DialogHeader>
-          <div data-publisher-legal className="min-h-0 overflow-y-auto"><Terms embedded /></div>
+          <div data-publisher-legal className="min-h-0 overflow-y-auto">{legalSection === 'brokerage' ? <BrokerageTermsContent /> : <Terms embedded />}</div>
         </DialogContent>
       </Dialog>
       <AlertDialog open={marketingInfoOpen} onOpenChange={setMarketingInfoOpen}>
