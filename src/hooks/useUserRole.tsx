@@ -1,3 +1,4 @@
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,8 @@ export function useUserRole() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: roles = [], isLoading, isFetched, isError, refetch } = useQuery({
+  const { activeWorkspaceId, loading: wsLoading } = useWorkspace();
+  const { data: ownRoles = [], isLoading, isFetched, isError, refetch } = useQuery({
     queryKey: userRolesQueryKey(user?.id),
     enabled: !!user?.id,
     queryFn: async () => {
@@ -47,8 +49,24 @@ export function useUserRole() {
     }
   }, [user?.id, queryClient]);
 
-  const isSuperAdmin = roles.includes('super_admin');
-  const isAdmin = roles.includes('admin') || isSuperAdmin;
+  const isSuperAdmin = ownRoles.includes('super_admin');
+  // A Super Admin inside another user's workspace sees that owner's role
+  // context; only the super_admin flag survives for admin overlays.
+  const viewingOther = isSuperAdmin && !!user?.id && !!activeWorkspaceId && activeWorkspaceId !== user.id && !wsLoading;
+  const ownerRolesQuery = useQuery({
+    queryKey: ['workspace-owner-roles', activeWorkspaceId],
+    enabled: viewingOther,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as CallableFunction)('get_workspace_owner_roles', { _owner: activeWorkspaceId }) as { data: string[] | null; error: unknown };
+      if (error) throw error;
+      return (data ?? []) as AppRole[];
+    },
+    staleTime: 60_000,
+  });
+  const roles: AppRole[] = viewingOther
+    ? [...(ownerRolesQuery.data ?? []).filter(r => r !== 'super_admin' && r !== 'admin'), 'super_admin']
+    : ownRoles;
+  const isAdmin = viewingOther ? false : roles.includes('admin') || isSuperAdmin;
   const isModerator = roles.includes('moderator') || isAdmin;
 
   // --- Real-estate team roles ---
@@ -125,8 +143,8 @@ export function useUserRole() {
     canAccessBilling,
     canInviteTeam,
     canAssignLeads,
-    loading: isLoading,
-    fetched: isFetched,
+    loading: isLoading || (viewingOther && ownerRolesQuery.isLoading),
+    fetched: isFetched && (!viewingOther || ownerRolesQuery.isFetched),
     error: isError,
     refetch,
   };
