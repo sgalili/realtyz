@@ -357,7 +357,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-[14px] text-muted-foreground">
                   <tr>
-                    {visibleColumns.map((id, pos) => <BoardColumnHeader key={id} id={id} controls={columns} first={pos === 0} />)}
+                    {visibleColumns.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}
                     <th className="px-2 pt-2 text-start font-medium">מפרסם</th>
                     <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
                   </tr>
