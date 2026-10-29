@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -39,6 +39,8 @@ export default function PropertyContactActions({
   showShare = true,
   shareOnly = false,
   shareButtonClassName,
+  className,
+  style,
 }: {
   listingId: string;
   title: string;
@@ -50,6 +52,8 @@ export default function PropertyContactActions({
   showShare?: boolean;
   shareOnly?: boolean;
   shareButtonClassName?: string;
+  className?: string;
+  style?: CSSProperties;
   /** Legacy presentation props; all inquiry forms now use the same bottom sheet. */
   formAsButton?: boolean;
   singleRow?: boolean;
@@ -158,7 +162,7 @@ export default function PropertyContactActions({
 
   return (
     <>
-      <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} className={cn(shareOnly ? 'inline-flex shrink-0' : 'flex w-full flex-wrap items-center gap-1.5', !compact && !shareOnly && 'sticky bottom-3 z-10 bg-card/95 py-2 backdrop-blur')}>
+      <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} style={style} className={cn(shareOnly ? 'inline-flex shrink-0' : 'flex w-full flex-wrap items-center gap-1.5', !compact && !shareOnly && 'sticky bottom-5 right-0 z-10 rounded-md bg-card/95 py-2 backdrop-blur', className)}>
         {!shareOnly && <div data-inquiry-actions className="flex w-full min-w-0 items-center gap-1.5">
           {showDigital && <Button variant="inquiryForm" className="property-inquiry-action" onClick={() => { setMode('digital'); setInquiryStarted(true); }}><ClipboardList /><span>השארת פרטים</span></Button>}
           {showWhatsapp && <Button variant="inquiryWhatsapp" className="property-inquiry-action" onClick={openRita}><WhatsAppIcon /><span>ווטסאפ</span></Button>}
