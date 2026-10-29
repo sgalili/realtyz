@@ -30,6 +30,7 @@ import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { resolveAgentIdentity, buildMasterAgentPrompt } from "../_shared/masterAgentPrompt.ts";
 import { ritaWorkflowDirective } from "../_shared/ritaWorkflow.ts";
 import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
+import { accountPersonalization } from "../_shared/accountPersonalization.ts";
 import { maskMessages } from "../_shared/pii.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
 
@@ -800,14 +801,17 @@ serve(async (req) => {
     const requestBearer = requestAuthHeader.replace(/^Bearer\s+/i, "").trim();
     const isServiceRequest = requestBearer === supabaseKey;
     let currentOwnerId: string | null = workspace_owner_id ? String(workspace_owner_id) : null;
-    if (!currentOwnerId && requestAuthHeader.startsWith("Bearer ")) {
+    if (!lead_id && !isServiceRequest && requestAuthHeader.startsWith("Bearer ")) {
       try {
         const authClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
           global: { headers: { Authorization: requestAuthHeader } },
         });
         const { data: uRes } = await authClient.auth.getUser();
-        currentOwnerId = uRes?.user?.id ?? null;
-      } catch { /* service calls and public invocations may not map to a user */ }
+        if (!uRes?.user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+        const { data: authorizedOwner, error: workspaceError } = await authClient.rpc('current_workspace_owner');
+        if (workspaceError || !authorizedOwner) return new Response(JSON.stringify({ error: 'Workspace unavailable' }), { status: 403, headers: corsHeaders });
+        currentOwnerId = authorizedOwner;
+      } catch { return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders }); }
     }
     // Lead-facing turns (post-tour follow-up replies, inbound SMS/WhatsApp) may
     // arrive without an explicit workspace. Derive it from the contact so the
@@ -1080,6 +1084,11 @@ serve(async (req) => {
     });
     const isInternalDashboard = !lead_id && identity.mode === "internal";
     const wsPersona = await fetchWorkspacePersona(supabase as any, currentOwnerId);
+    let personalDirective = '';
+    if (!lead_id && identity.userId && !identity.isService) {
+      const { data: personalProfile } = await supabase.from('profiles').select('full_name, gender').eq('id', identity.userId).maybeSingle();
+      personalDirective = '\n\n' + accountPersonalization(personalProfile, identity.roles);
+    }
     // The mode preference only changes wording; verified roles and the server
     // license check remain the authority for sensitive closing information.
     let canViewClosing = false;
@@ -1093,7 +1102,7 @@ serve(async (req) => {
       owner: { name: wsPersona.name, agency: wsPersona.agency },
       personaBrief: wsPersona.brief,
       domain: wsPersona.domain,
-    }) + (lead_id ? '' : '\n\n' + ritaWorkflowDirective(identity.roles, body?.ui_mode, canViewClosing));
+    }) + personalDirective + (lead_id ? '' : '\n\n' + ritaWorkflowDirective(identity.roles, body?.ui_mode, canViewClosing));
     console.log("agent identity:", identity.mode, "-", identity.reason);
 
     // A property-search turn is deterministic: execute it before asking the

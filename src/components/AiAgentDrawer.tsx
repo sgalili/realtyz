@@ -1,7 +1,8 @@
 import { Table } from '@/components/ui/table';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
 import { invalidateLiveData } from '@/lib/liveSync';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -222,6 +223,11 @@ export default function AiAgentDrawer() {
   const { connected: homelyConnected } = useHomelyConnection();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { gender } = usePersonalLanguage();
+  const personalProfile = useQuery({ queryKey: ['app-header-user-profile', user?.id], enabled: !!user,
+    queryFn: async () => { if (!user) return null; const { data, error } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(); if (error) throw error; return data; },
+  });
+  const firstName = personalProfile.data?.full_name?.trim().split(/\s+/)[0] ?? '';
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -646,7 +652,7 @@ ${shareUrl}
             {messages.length === 0 && <div className="space-y-4 py-3">
               <div className="flex items-center gap-3">
                 <RitaAvatar className="h-12 w-12 shrink-0" />
-                <p className="text-xl font-semibold">היי, אני ריטה</p>
+                <p className="text-xl font-semibold">{firstName ? `היי ${firstName}, אני ריטה` : 'היי, אני ריטה'}</p>
               </div>
               {!rolesLoading && !rolesError && <div className="flex flex-wrap gap-2" aria-label="שאלות לריטה">
                 {RITA_PROMPTS[workflow].map(({ label, prompt }) => <Button
@@ -970,7 +976,7 @@ ${shareUrl}
               autoFocus
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
+              placeholder={isListening ? 'האזנה…' : researchMode ? 'מה נבדוק באזור שמעניין אותך?' : workflow === 'partner' ? 'איזה נכס נשתף היום?' : workflow === 'private' ? 'איך אוכל לעזור לך היום?' : gender === 'female' ? 'מה תרצי לבדוק היום?' : gender === 'male' ? 'מה תרצה לבדוק היום?' : 'מה נבדוק היום?'}
               className="min-h-20 text-[18px]"
               disabled={isLoading}
             />

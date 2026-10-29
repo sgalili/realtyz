@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ChevronDown, Mail, MessageSquare, Phone, Settings2 } from 'lucide-react';
 import { WorkspaceMailboxCard, useWorkspaceMailbox } from '@/components/profile/WorkspaceMailboxCard';
 import { BrandIcon } from '@/components/BrandIcon';
@@ -163,6 +164,7 @@ function ConnectionSection({
 
 export function ConnectionsTab() {
   const { activeWorkspaceId } = useWorkspace();
+  const location = useLocation();
   // Returning from the full-page Facebook OAuth redirect: open the Meta section
   // so its card mounts and can surface the success/error state immediately.
   const [openId, setOpenId] = useState<string | null>(() => {
@@ -178,6 +180,10 @@ export function ConnectionsTab() {
       return null;
     }
   });
+  useEffect(() => {
+    const target = new URLSearchParams(location.search).get('connect');
+    if (target === 'facebook-groups') setOpenId('facebook-groups');
+  }, [location.search]);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [activeGroups, setActiveGroups] = useState<{ owner: string | null; count: number } | null>(null);
@@ -657,7 +663,7 @@ export function ConnectionsTab() {
     <div dir="rtl" className="space-y-3 text-right">
       {sections.map((s) => (
         <ConnectionSection
-          key={s.id}
+          key={`${activeWorkspaceId}:${s.id}`}
           title={s.title}
           titleAside={s.titleAside}
           titleLead={s.titleLead}

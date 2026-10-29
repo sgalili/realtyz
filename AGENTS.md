@@ -52,6 +52,7 @@
 
 - Master office branding is a public-safe trigger projection from the designated workspace with realtime sync; inheritance never changes avatars or source advertiser attribution. Why: identity consistency without tenant leaks.
 - Personal invite bonuses are account-scoped and atomic on evidence-verified first-deal approval, never signup or subscription. Why: prevent fake and duplicate rewards.
+- Internal Rita separates signed-in account identity from JWT-authorized workspace data; drawer state remounts on account/workspace switches. Activity reuses My Ads or the shared redacted board. Facebook calls are bounded and group refreshes cannot overlap. Why: prevent borrowed identity, stale tenant state and endless loading.
 <!-- LOVABLE:END -->
 
 - Affiliate pricing rules: see src/components/affiliate/AGENTS.md.

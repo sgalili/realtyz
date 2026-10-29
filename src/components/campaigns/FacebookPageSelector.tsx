@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Check, ChevronDown, Facebook, Loader2, Plus, Trash2, Users } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
 import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
+import { callMetaPageConnect } from '@/lib/facebookPageConnect';
 import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -41,8 +41,7 @@ export function FacebookPageSelector() {
   const { data: pages = [], refetch, isFetching, error: pagesError } = useQuery<Page[]>({
     queryKey: ['managed-facebook-pages', owner], enabled: !!owner, retry: false, staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'list_pages', owner_id: owner } });
-      if (error || data?.error || data?.ok === false) throw new Error(data?.error || 'לא ניתן לטעון את עמודי הפייסבוק. יש לחדש את החיבור.');
+      const data = await callMetaPageConnect({ action: 'list_pages', owner_id: owner });
       return Array.isArray(data?.pages) ? data.pages : [];
     },
   });
@@ -55,11 +54,11 @@ export function FacebookPageSelector() {
   const current = pages.find((p) => p.id === selected?.pageId) ?? null;
 
   const choose = async (pageId: string) => {
+    setOpen(false);
     if (!owner || saving || pageId === selected?.pageId) { setOpen(false); return; }
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'select_page', page_id: pageId, owner_id: owner } });
-      if (error || data?.error || data?.ok === false) throw new Error(data?.error || error?.message || 'בחירת העמוד נכשלה');
+      await callMetaPageConnect({ action: 'select_page', page_id: pageId, owner_id: owner });
       refresh();
       setOpen(false);
     } catch (e) { toast.error(e instanceof Error ? e.message : 'בחירת העמוד נכשלה'); }
@@ -70,8 +69,7 @@ export function FacebookPageSelector() {
     if (!removing || removingBusy) return;
     setRemovingBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'disconnect_page', page_id: removing.id } });
-      if (error || data?.error || data?.ok === false) throw new Error(data?.error || error?.message || 'ניתוק העמוד נכשל');
+      await callMetaPageConnect({ action: 'disconnect_page', page_id: removing.id, owner_id: owner });
       purgeCachedPostsForPage(removing.id);
       refresh(); refreshHealth(); void refetch();
       toast.success('העמוד נותק');
@@ -101,28 +99,28 @@ export function FacebookPageSelector() {
               const isSelected = page.id === selected?.pageId;
               return (
                 <div key={page.id} className={`flex items-center gap-1 rounded-md px-1 ${isSelected ? 'bg-muted' : 'hover:bg-muted/60'}`}>
-                  <button type="button" onClick={() => void choose(page.id)} className="flex min-w-0 flex-1 items-center gap-2 py-2 text-right">
+                  <Button variant="ghost" type="button" onClick={() => void choose(page.id)} className="h-auto min-w-0 flex-1 justify-start gap-2 px-1 py-2 text-right">
                     <Avatar page={page} />
                     <span className="min-w-0 flex-1 truncate">{page.name || page.id}</span>
                     {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
-                  </button>
-                  <button type="button" onClick={manageGroups} aria-label={`ניהול קבוצות עבור ${page.name || page.id}`} title="ניהול קבוצות"
+                  </Button>
+                  <Button variant="ghost" size="icon" type="button" onClick={manageGroups} aria-label={`ניהול קבוצות עבור ${page.name || page.id}`} title="ניהול קבוצות"
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground">
                     <Users className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => { setOpen(false); setRemoving(page); }} aria-label={`נתק את העמוד ${page.name || page.id}`} title="נתק עמוד"
+                  </Button>
+                  <Button variant="ghost" size="icon" type="button" onClick={() => { setOpen(false); setRemoving(page); }} aria-label={`נתק את העמוד ${page.name || page.id}`} title="נתק עמוד"
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               );
             })}
             {pages.length === 0 && !isFetching && <p className="px-2 py-2 text-muted-foreground">אין עמודים מחוברים</p>}
           </div>
           <div className="mt-1 border-t pt-1">
-            <button type="button" onClick={addPage} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-right text-primary hover:bg-muted/60">
+            <Button variant="ghost" type="button" onClick={addPage} className="h-auto w-full justify-start gap-2 rounded-md px-2 py-2 text-right text-primary hover:bg-muted/60">
               <Plus className="h-4 w-4" />הוספת עמוד נוסף
-            </button>
+            </Button>
           </div>
         </PopoverContent>
       </Popover>

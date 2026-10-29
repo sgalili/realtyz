@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Maximize2, Trash2, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { useAuth } from '@/hooks/useAuth';
-import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import {
@@ -23,11 +22,18 @@ type MiniMsg = { role: string; content: string };
  */
 export function SidebarRitaChat() {
   const { user } = useAuth();
+  const cache = useQueryClient();
   const [messages, setMessages] = useState<MiniMsg[]>([]);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
   const [collapsed, setCollapsed] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const refresh = () => { void cache.invalidateQueries({ queryKey: ['app-header-user-profile', user?.id] }); };
+    window.addEventListener('realtyz:profile-saved', refresh);
+    return () => window.removeEventListener('realtyz:profile-saved', refresh);
+  }, [user?.id, cache]);
 
   // The greeting addresses the signed-in person by their own first name.
   const { data: profile } = useQuery({
@@ -57,7 +63,12 @@ export function SidebarRitaChat() {
   }, []);
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }); }, [messages, loading, collapsed]);
 
-  const fullName = (profile?.full_name?.trim() || friendlyUserDisplayName(user, '')).trim();
+  useEffect(() => {
+    setMessages([]); setText(''); setLoading(false);
+    window.dispatchEvent(new Event('rita:state-request'));
+  }, [user?.id]);
+
+  const fullName = (profile?.full_name?.trim() || '').trim();
   const firstName = fullName.split(/\s+/).filter(Boolean)[0] ?? '';
   const placeholder = firstName
     ? `היי ${firstName}, איך אני יכולה לעזור?`

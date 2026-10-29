@@ -15,6 +15,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { fbGroupUrlFrom } from '@/lib/fbGroupUrl';
 import { useGroupQueueLive } from '@/hooks/useGroupQueueLive';
 import { cleanGroupName, memberCountFromText } from '@/lib/fbGroupText';
+import { boundedRequest } from '@/lib/boundedRequest';
 
 type GroupTarget = { id: string; groupId: string; name: string; icon: string | null; url: string | null; members: number | null; selected: boolean; blocked?: boolean; blockedReason?: string | null; joinStatus: JoinState; pool?: string; cooldownUntil?: string | null; waitingReason?: string | null; cloudState?: string; requirements?: string[]; answers?: Record<string,string>; rulesAccepted?: boolean };
 type JoinState = 'joined' | 'pending' | 'not_joined';
@@ -80,6 +81,8 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
   const scopeRef = useRef(workspaceOwnerId);
   scopeRef.current = workspaceOwnerId;
   const requestRef = useRef(0);
+  const loadingScopeRef = useRef<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   // Never keep another workspace's groups in local storage.
   useEffect(() => {
@@ -94,16 +97,18 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
 
   const load = useCallback(async () => {
     if (!workspaceOwnerId) { setLoading(false); return; }
+    if (loadingScopeRef.current === workspaceOwnerId) return;
+    loadingScopeRef.current = workspaceOwnerId;
     const request = ++requestRef.current;
     try {
       // Release expired 24h cooldowns and refill the active pool before reading.
-      try { await (supabase as any).rpc('fb_rebalance_group_pool', { _owner: workspaceOwnerId }); } catch { /* read anyway */ }
-      const { data, error } = await (supabase as any)
+      try { await boundedRequest((supabase as any).rpc('fb_rebalance_group_pool', { _owner: workspaceOwnerId }), 4000); } catch { /* read anyway */ }
+      const { data, error } = await boundedRequest<any>((supabase as any)
         .from('fb_user_groups')
         .select('id, group_id, group_name, group_icon, group_url, member_count, is_selected, page_id, is_blocked, blocked_reason, join_status, pool_status, cooldown_until, waiting_reason, cloud_join_state, membership_requirements, membership_answers, rules_accepted')
         // Workspace-scoped so shared Facebook groups are identical for every member.
         .eq('workspace_owner_id', workspaceOwnerId)
-        .order('group_name', { ascending: true });
+        .order('group_name', { ascending: true }));
       if (scopeRef.current !== workspaceOwnerId || request !== requestRef.current) return;
       if (error) throw error;
        // The authorized workspace owns the group directory, independently of
@@ -128,9 +133,11 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
         cloudState: r.cloud_join_state, requirements: r.membership_requirements ?? [], answers: r.membership_answers ?? {}, rulesAccepted: r.rules_accepted,
       }); });
       setGroups(nextGroups);
+      setLoadError(false);
     } catch (error) {
-      if (scopeRef.current === workspaceOwnerId) toast.error('טעינת הקבוצות נכשלה');
+      if (scopeRef.current === workspaceOwnerId && request === requestRef.current) setLoadError(true);
     } finally {
+      if (loadingScopeRef.current === workspaceOwnerId) loadingScopeRef.current = null;
       if (scopeRef.current === workspaceOwnerId && request === requestRef.current) setLoading(false);
     }
   }, [workspaceOwnerId]);
@@ -283,6 +290,7 @@ export function FacebookTargetsCard({ className, actions, onActiveCount }: { cla
         </div>
       ) : (
         <div className="space-y-1.5">
+          {loadError && <p role="alert" className="text-sm text-muted-foreground">לא ניתן לטעון את הקבוצות כרגע <Button variant="link" onClick={() => void load()}>ניסיון נוסף</Button></p>}
           {/* Multi-select toggle leads the tab row (RTL: right of the tabs). */}
           <div className="flex min-w-0 items-center gap-2">
             {(tab === 'not_joined' ? notJoinedGroups.length > 0 : tab === 'active' && groups.length > 0) && (

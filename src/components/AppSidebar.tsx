@@ -210,7 +210,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     const invite = NAV_ITEMS.filter((item) => item.url === '/referral');
     // A broker-owned active workspace shows the broker menu even when the
     // viewer's own account is private/owner-only (identity follows the owner).
-    const brokerWorkspace = identity.label === 'מתווך';
+    const brokerWorkspace = access.properties;
     if (!brokerWorkspace && (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי')) return invite;
     if (!brokerWorkspace && isPropertyOwnerOnly) return invite; // owner properties live inside My Ads
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
@@ -224,7 +224,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     return NAV_ITEMS.filter((item) => {
       if (item.url === '/developers') return isDeveloper;
       if (item.url === '/properties') return features.listingsEnabled && access.properties;
-      if (item.url === '/deal-room') return features.dealsEnabled;
+      if (item.url === '/deal-room') return features.dealsEnabled && access.properties;
       if (item.url === '/affiliate-network') return false;
       return true;
     });
