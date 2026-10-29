@@ -978,7 +978,7 @@ export default function Properties() {
               aria-controls="inventory-search-row"
               onClick={() => toggleSearchOpen(!searchOpen)}
             >
-              <span className="relative inline-flex h-[19px] w-[19px]"><SearchIcon className={`absolute inset-0 !h-[19px] !w-[19px] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "opacity-0 scale-50 rotate-90" : "opacity-100 scale-100 rotate-0"}`} /><X className={`absolute inset-0 !h-[19px] !w-[19px] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 -rotate-90"}`} /></span>
+              <span className="relative inline-flex h-[19px] w-[19px]"><SearchIcon className={`absolute inset-0 !h-[19px] !w-[19px] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "opacity-0 scale-50 rotate-90" : "opacity-100 scale-100 rotate-0"}`} /><span aria-hidden className={`absolute inset-0 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}><SearchIcon className="absolute inset-0 !h-[19px] !w-[19px]" /><X className="absolute -end-1 -top-1 !h-[10px] !w-[10px] rounded-full bg-background" strokeWidth={3} /></span></span>
             </Button>
             {/* Counter pill — always visible right after the magnify: total records
                 by default, replaced by the selected count while selecting. */}
@@ -1185,13 +1185,13 @@ export default function Properties() {
             <div className={`mb-2 mt-1 flex items-center justify-between gap-2 ps-9 transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${searchOpen ? "translate-y-0" : "-translate-y-2"}`}>
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
         <div role="group" aria-label="מקורות חיפוש" className="flex shrink-0 items-center gap-2.5">
-          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}>
-            {activeSources.includes(source) ? <X aria-hidden className="!h-2.5 !w-2.5 shrink-0" strokeWidth={3} /> : <Check aria-hidden className="!h-2.5 !w-2.5 shrink-0" strokeWidth={3} />}
+          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-semibold text-foreground' : 'text-muted-foreground/40'}`}>
+            {activeSources.includes(source) ? <X aria-hidden className="!h-2.5 !w-2.5 shrink-0" strokeWidth={3} /> : <Check aria-hidden className="!h-2.5 !w-2.5 shrink-0 text-foreground" strokeWidth={3} />}
             <span className="whitespace-nowrap">{sourceLabel(source)}</span>
           </Button>)}
         </div>
         <div className="inline-flex shrink-0 items-center gap-2.5" role="group" aria-label="סוג עסקה">
-          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full ${t === 'rent' ? 'bg-sale' : 'bg-success'} ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
+          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/40'}`}><span className={`h-2 w-2 rounded-full ${t === 'rent' ? 'bg-sale' : 'bg-success'} ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
         </div>
           </div>
               {searchOpen && renderToolsRow("property-tools-row")}
