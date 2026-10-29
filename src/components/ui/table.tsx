@@ -72,7 +72,7 @@ type HeaderCtx = {
   canArrange: boolean;
 };
 
-function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactElement<any>; index: number; label: string; ctx: HeaderCtx }) {
+function ManagedHeaderCell({ cell, index, label, ctx, first }: { cell: React.ReactElement<any>; index: number; label: string; ctx: HeaderCtx; first: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(index), disabled: !ctx.canArrange || !label });
   const p = cell.props;
   const active = ctx.sort?.index === index;
@@ -84,7 +84,7 @@ function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactEleme
     style: { ...p.style, transform: CSS.Transform.toString(transform), transition },
     className: cn(p.className, "group/column", isDragging && "relative z-10 bg-muted opacity-80"),
     children: !label ? p.children : (
-      <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+      <span className="relative inline-flex items-center gap-0.5 whitespace-nowrap">
         {ctx.canArrange && (
           <button
             type="button"
@@ -92,7 +92,7 @@ function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactEleme
             {...listeners}
             aria-label={`הזזת עמודת ${label}`}
             title={`הזזת עמודת ${label}`}
-            className="inline-flex h-6 w-4 touch-none items-center justify-center text-muted-foreground"
+            className={cn("inline-flex h-6 w-4 touch-none items-center justify-center text-muted-foreground", !first && "absolute start-[-16px]")}
           >
             <GripVertical className="h-3 w-3" />
           </button>
@@ -177,8 +177,8 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
           headDone = true;
           const rows = elementsOf(el.props.children);
           const first = rows[0];
-          const managed = visible.map((i) => (
-            <ManagedHeaderCell key={`col-${i}`} cell={headCells[i]} index={i} label={labels[i]} ctx={ctx} />
+          const managed = visible.map((i, pos) => (
+            <ManagedHeaderCell key={`col-${i}`} cell={headCells[i]} index={i} label={labels[i]} ctx={ctx} first={pos === 0} />
           ));
           return React.cloneElement(el, {}, [React.cloneElement(first, { key: first.key ?? "head" }, managed), ...rows.slice(1).map(arrangeRow)]);
         }
