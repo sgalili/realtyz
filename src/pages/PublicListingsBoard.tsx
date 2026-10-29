@@ -353,7 +353,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
-            <HorizontalTableScroll ref={tableWrapRef} aria-label="טבלת נכסים" className={cn("board-head-sticky flex-1 rounded-lg border bg-card", !/^(localhost|127\.0\.0\.1)$|id-preview--|lovableproject\.com$/.test(window.location.hostname) && "hide-x-scrollbar")}>
+            <HorizontalTableScroll ref={tableWrapRef} aria-label="טבלת נכסים" className={cn("board-head-sticky flex-1 rounded-lg border bg-card", /^(localhost|127\.0\.0\.1)$|id-preview--|lovableproject\.com$|lovable\.dev$/.test(window.location.hostname) ? "show-x-scrollbar" : "hide-x-scrollbar")}>
               <table data-column-managed="true" className="w-max min-w-full text-sm">
                 <thead className="bg-muted/40 text-[14px] text-muted-foreground">
                   <tr>
