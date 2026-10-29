@@ -997,7 +997,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { pendingAuthPublish.current = null; authThenConfirm.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
         <DialogHeader><DialogTitle className="text-right">אימות מספר הטלפון</DialogTitle></DialogHeader>
-        <WhatsAppOtpVerify allowSms defaultPhone={fields.contactWhatsapp} description="נשלח אליך קוד בן 4 ספרות ב-SMS. לאחר האימות החשבון ייפתח ותוכל/י לאשר ולפרסם את המודעה." onVerified={async (result) => {
+        <WhatsAppOtpVerify smsOnly title="אימות ב-SMS" onEmailFallback={() => { setOtpOpen(false); pendingAuthPublish.current = null; authThenConfirm.current = false; setOpen(false); navigate('/auth', { state: { tab: 'signup', returnTo: window.location.pathname } }); }} defaultPhone={fields.contactWhatsapp} description="נשלח אליך קוד בן 4 ספרות ב-SMS. לאחר האימות החשבון ייפתח ותוכל/י לאשר ולפרסם את המודעה." onVerified={async (result) => {
           const { error } = result.session ? await supabase.auth.setSession(result.session) : result.token_hash ? await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' }) : { error: new Error('missing session') };
           if (error) { pendingAuthPublish.current = null; toast.error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); return; }
           setOtpOpen(false);

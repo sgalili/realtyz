@@ -29,6 +29,9 @@ type Props = {
   onVerified?: (result: { phone: string; token_hash?: string; session?: { access_token: string; refresh_token: string } }) => void;
   /** Also offer sending the code by SMS. */
   allowSms?: boolean;
+  /** SMS only; WhatsApp/email appear only after "לא קיבלתי קוד". */
+  smsOnly?: boolean;
+  onEmailFallback?: () => void;
 };
 
 const RESEND_SECONDS = 45;
@@ -47,7 +50,10 @@ export function WhatsAppOtpVerify({
   description = 'נשלח קוד בן 4 ספרות מהמספר הרשמי שלנו בוואטסאפ.',
   onVerified,
   allowSms = false,
+  smsOnly = false,
+  onEmailFallback,
 }: Props) {
+  const [fallbackOpen, setFallbackOpen] = useState(false);
   const [phone, setPhone] = useState(defaultPhone);
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
@@ -150,11 +156,11 @@ export function WhatsAppOtpVerify({
       <div className="flex flex-wrap gap-2">
         {!sent ? (
           <>
-          <Button size="sm" disabled={busy} onClick={() => void send('whatsapp')} className="gap-2">
+          {smsOnly ? <Button size="sm" disabled={busy} onClick={() => void send('sms')} className="gap-2">{busy && <Loader2 className="h-4 w-4 animate-spin" />}שלח קוד ב-SMS</Button> : <Button size="sm" disabled={busy} onClick={() => void send('whatsapp')} className="gap-2">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
             שלח קוד בוואטסאפ
-          </Button>
-          {allowSms && <Button size="sm" variant="outline" disabled={busy} onClick={() => void send('sms')}>שלח קוד ב-SMS</Button>}
+          </Button>}
+          {allowSms && !smsOnly && <Button size="sm" variant="outline" disabled={busy} onClick={() => void send('sms')}>שלח קוד ב-SMS</Button>}
           </>
         ) : (
           <>
@@ -168,6 +174,15 @@ export function WhatsAppOtpVerify({
           </>
         )}
       </div>
+      {smsOnly && sent && (fallbackOpen ? (
+        <div className="space-y-2 rounded-md border p-3">
+          <p className="text-xs text-muted-foreground">אפשר להירשם גם בדרך אחרת:</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" disabled={busy} className="gap-2" onClick={() => void send('whatsapp')}><MessageCircle className="h-4 w-4 text-green-600" />קוד בוואטסאפ</Button>
+            {onEmailFallback && <Button size="sm" variant="outline" disabled={busy} onClick={onEmailFallback}>הרשמה באימייל</Button>}
+          </div>
+        </div>
+      ) : <button type="button" className="text-xs font-semibold text-primary underline underline-offset-4" onClick={() => setFallbackOpen(true)}>לא קיבלתי קוד</button>)}
     </div>
   );
 }
