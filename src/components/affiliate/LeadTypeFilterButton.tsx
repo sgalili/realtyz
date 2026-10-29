@@ -27,7 +27,6 @@ import { useUserRole } from '@/hooks/useUserRole';
 import {
   EMPTY_LEAD_FILTER,
   EMPTY_PROPERTY_FILTER,
-  LEAD_TYPE_LABELS,
   LEAD_TYPE_ORDER,
   leadFilterActiveCount,
   propertyFilterActiveCount,
@@ -43,6 +42,14 @@ const ICONS: Record<LeadTypeKey, typeof ClipboardList> = {
   tier2: WhatsAppIcon as typeof ClipboardList,
   tier3: Phone,
   tier4: Trophy,
+};
+
+// Option names mirror the "add new ad" step-8 reward labels.
+const FILTER_LEAD_LABELS: Record<LeadTypeKey, string> = {
+  tier1: 'פנייה דרך השארת פרטים בטופס בעמוד נחיתה',
+  tier2: 'פנייה לאחר סינון בשיחת ווטסאפ עם ריטה AI',
+  tier3: 'פנייה לאחר סינון בשיחת טלפון עם ריטה AI',
+  tier4: 'עמלת תיווך עבור סגירת עסקה',
 };
 
 /** Compact section heading for visual hierarchy inside the popover. */
@@ -209,7 +216,7 @@ export default function LeadTypeFilterButton({
   const trigger = (
     <Button type="button" variant="ghost" size="icon" aria-label="סינון מתקדם" title="סינון מתקדם" aria-expanded={open}
       onClick={inline ? () => setOpen(!open) : undefined}
-      className={`relative h-7 w-7 shrink-0 text-muted-foreground ${active ? 'bg-primary text-primary-foreground' : ''} ${className}`}>
+      className={`relative h-7 w-7 shrink-0 text-muted-foreground ${open ? 'bg-primary text-primary-foreground' : ''} ${className}`}>
       <Filter className="h-4 w-4" />
     </Button>
   );
@@ -221,7 +228,7 @@ export default function LeadTypeFilterButton({
         {active ? <Button type="button" size="sm" variant="ghost" className="ms-auto h-7 px-2 text-[15px]" onClick={reset}>ניקוי סינון</Button> : null}
       </div>
         {showLeadFilters ? (<>
-          <SectionTitle>סוג הליד</SectionTitle>
+          <SectionTitle>רווח לליד</SectionTitle>
           <div className="space-y-1.5">
             {leadTypes.map((key) => {
               const Icon = ICONS[key];
@@ -229,7 +236,7 @@ export default function LeadTypeFilterButton({
                 <label key={key} className="flex cursor-pointer items-center gap-2 text-[15px] font-medium">
                   <Checkbox checked={state.types.includes(key)} onCheckedChange={() => toggle(key)} />
                   <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  {LEAD_TYPE_LABELS[key]}
+                  {FILTER_LEAD_LABELS[key]}
                 </label>
               );
             })}
