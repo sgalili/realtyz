@@ -12,6 +12,9 @@ const roleFlags = vi.hoisted(() => ({
 }));
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
+vi.mock('@/hooks/usePropertyPageAccess', () => ({
+  usePropertyPageAccess: () => ({ properties: true, projects: false }),
+}));
 vi.mock('@/hooks/useUserRole', () => ({
   useUserRole: () => ({
     isAffiliate: roleFlags.isAffiliate,
