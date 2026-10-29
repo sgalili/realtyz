@@ -456,9 +456,9 @@ export default function Properties() {
 
       // Searches are scoped to the workspace territory by default. Only when
       // the user explicitly types/picks another city do we leave the zone.
-      const searchCities: string[] = effectiveCity ? [effectiveCity] : DEFAULT_CITIES;
-      const perCity = new Map<string, UnifiedResult[]>();
-      const perCityStatus = new Map<string, Record<string, SourceInfo>>();
+      const searchCities: Array<string | undefined> = advancedFilter.selectedCities?.length ? advancedFilter.selectedCities : effectiveCity ? [effectiveCity] : [undefined];
+      const perCity = new Map<string | undefined, UnifiedResult[]>();
+      const perCityStatus = new Map<string | undefined, Record<string, SourceInfo>>();
       const paint = () => {
         const seen = new Set<string>();
         const merged: UnifiedResult[] = [];
@@ -531,7 +531,7 @@ export default function Properties() {
         setSearchProgress(null);
       }
     }
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, activeSources, homelyConnected, activeWorkspaceId]);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, activeSources, homelyConnected, activeWorkspaceId, advancedFilter]);
 
   // Warm the textual content of the first visible rows in the background, so
   // opening a property card renders its full text instantly instead of
@@ -747,7 +747,7 @@ export default function Properties() {
   }, [deleteListings, deleteTargetIds, selectedListingIds.size]);
 
   const cityOptions = useMemo(() => {
-    const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
+    const cities = new Set<string>((CITY_OPTIONS as readonly string[]).filter(city => city !== 'כל הערים'));
     results.forEach((r) => { if (r.city) cities.add(r.city); });
     return Array.from(cities);
   }, [results]);
