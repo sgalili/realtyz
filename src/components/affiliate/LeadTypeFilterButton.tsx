@@ -163,7 +163,7 @@ export default function LeadTypeFilterButton({
 
   // Lead filters: partners and brokers only. Deal-closing (tier4) is visible
   // to registered brokers; partners see the first three tiers only.
-  const showLeadFilters = !hideLeadFilters && kind === 'broker';
+  const showLeadFilters = !hideLeadFilters && (kind === 'partner' || kind === 'broker' || isTeamMember);
   const leadTypes = kind === 'broker' ? LEAD_TYPE_ORDER : LEAD_TYPE_ORDER.filter((key) => key !== 'tier4');
 
   // Property/market fields per role — minimal for partners and private users.
