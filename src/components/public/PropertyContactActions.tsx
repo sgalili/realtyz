@@ -192,7 +192,6 @@ export default function PropertyContactActions({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {!shareOnly && inquiryStarted && mode === null && <div className="order-last col-span-2 w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
       </div>
       <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
       <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
