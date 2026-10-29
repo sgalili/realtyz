@@ -1078,7 +1078,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
               </div>
             <div className="flex items-start gap-2 text-xs leading-snug">
               <Checkbox id="publication-consent" aria-label="אישור התנאים והרשאת הפרסום" checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', checked === true)} className="mt-0.5 rounded-none" />
-              <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline decoration-2 underline-offset-4">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
+              <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline decoration-2 underline-offset-4">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
             </div>
             </div>
           )}
