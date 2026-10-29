@@ -16,7 +16,6 @@ import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/le
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
 import { PriceInput } from "@/components/ui/price-input";
 import { LeadPriceSlider } from './LeadPriceSlider';
-import { Switch } from '@/components/ui/switch';
 import { SortablePhotoGrid } from './SortablePhotoGrid';
 import { PropertyAmenitiesFields } from './PropertyAmenitiesFields';
 import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propertyFormOptions';
@@ -916,15 +915,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   const price = Number(fields[`commission${key}`]) || 0;
                   const active = price > 0;
                   const expanded = openLeads[key] ?? false;
-                  const enabled = String(fields[`commission${key}`] ?? '') !== '';
                   const qList = key === 'Form' ? [] : ((((fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] as string[] | undefined)?.length ? (fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] : defaultQuestions(fields.dealType)) as string[]);
                   const extraCost = (key === 'Form' ? cleanFormFields(fields.formFields).length : Math.max(qList.filter(q => q.trim()).length - 3, 0)) * EXTRA_QUESTION_COST;
                   const toggle = () => setOpenLeads((next) => ({ ...next, [key]: !expanded }));
                   return (
                   <Card key={key} className="closing-fee space-y-2 rounded-2xl p-4" data-level={leadPriceLevel(tier, price)}>
                     <PricingCardHeader
-                      icon={(() => { const iconClass = cn("!h-[48.6px] !w-[48.6px] shrink-0", active ? 'closing-tone' : 'pricing-icon-disabled'); return key === 'Form' ? <LeadFormIcon className={iconClass} strokeWidth={1} aria-hidden /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className={iconClass} strokeWidth={1} /> : <LeadPhoneIcon className={iconClass} strokeWidth={1} aria-hidden />; })()}
-                      price={expanded ? <LeadPriceSlider display="price" tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} /> : <CollapsedOffer active={active} amount={leadPriceLabel(price + extraCost)} placeholder={gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'} label={`עריכת עמלה עבור ${label}`} onClick={toggle} />}
+                      icon={(() => { const iconClass = cn("!h-[24.3px] !w-[24.3px] shrink-0", active ? 'closing-tone' : 'pricing-icon-disabled'); return key === 'Form' ? <LeadFormIcon className={iconClass} strokeWidth={1} aria-hidden /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className={iconClass} strokeWidth={1} /> : <LeadPhoneIcon className={iconClass} strokeWidth={1} aria-hidden />; })()}
+                      price={expanded ? null : <CollapsedOffer active={active} amount={leadPriceLabel(price + extraCost)} label={`עריכת עמלה עבור ${label}`} onClick={toggle} />}
                       title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>{label}</Button>}
                       help={<>
                       <LeadTypeHelp label={label}>
@@ -936,10 +934,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                       </LeadTypeHelp>
 
                       </>}
-                      controls={<><Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={enabled} onCheckedChange={(next) => { set(`commission${key}`, next ? '0' : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></>}
+                      controls={<><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></>}
                     />
                     {expanded && <div className="space-y-2">
-                    <LeadPriceSlider display="slider" tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
+                    <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
                     <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-[18px] md:text-[18px] placeholder:text-[14px] md:placeholder:text-[14px]" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
