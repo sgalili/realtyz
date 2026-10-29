@@ -708,6 +708,13 @@
       "when": 1793297887331,
       "tag": "0100_broker_upgrade_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1793302068355,
+      "tag": "0101_broker_upgrade_instant_on_name_match",
+      "breakpoints": true
     }
   ]
 }
