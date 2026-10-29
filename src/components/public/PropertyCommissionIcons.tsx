@@ -58,11 +58,14 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   });
   const { data: property } = useQuery({
     queryKey: ['public-commission-pricing', listingId, user?.id, activeWorkspaceId, level4Unlocked],
-    enabled: networkOpen !== false && (!user || !workspaceLoading),
+    // Owned rows already have authorized data; skip the public lookup (private ads 404, and per-row bursts hit rate limits).
+    enabled: networkOpen !== false && (!user || !workspaceLoading) && !(table && (owned.isLoading || owned.data)),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(listingId)}`, { method: 'GET' });
-      if (error) throw error;
-      return data?.property as Record<string, unknown> | undefined;
+      if (error) return null;
+      return (data?.property as Record<string, unknown> | undefined) ?? null;
     },
   });
   if (networkOpen === false && (user || !table)) return null;

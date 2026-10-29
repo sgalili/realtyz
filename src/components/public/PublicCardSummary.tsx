@@ -16,6 +16,7 @@ export function PublicCardPublisher({ card }: { card: PublicCard }) {
     queryKey: ['public-listing-expanded', card.slug || card.id, user?.id, activeWorkspaceId],
     enabled: !user || !loading,
     staleTime: 5 * 60 * 1000,
+    retry: false,
     queryFn: async () => {
       const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(card.slug || card.id)}`, { method: 'GET' });
       if (error || !payload?.property) return null;
@@ -33,6 +34,7 @@ export default function PublicCardSummary({ card, price, showBroker = true, show
     queryKey: ['public-listing-expanded', card.slug || card.id, user?.id, activeWorkspaceId],
     enabled: !user || !loading,
     staleTime: 5 * 60 * 1000,
+    retry: false,
     queryFn: async () => {
       const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(card.slug || card.id)}`, { method: 'GET' });
       if (error || !payload?.property) return null;
