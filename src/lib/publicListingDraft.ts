@@ -48,6 +48,8 @@ export type PublicListingDraftFields = {
   commissionPhone?: string;
   commissionDeal?: string;
   commissionDealType?: 'percent' | 'fixed';
+  /** False until the publisher manually sets the closing fee; undefined for saved/existing ads. */
+  closingConfirmed?: boolean;
   limitForm?: string;
   limitWhatsapp?: string;
   limitPhone?: string;
@@ -101,6 +103,7 @@ export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
   commissionPhone: '',
   commissionDeal: '',
   commissionDealType: 'percent',
+  closingConfirmed: false,
   limitForm: '',
   limitWhatsapp: '',
   limitPhone: '',
