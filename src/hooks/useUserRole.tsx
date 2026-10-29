@@ -85,7 +85,7 @@ export function useUserRole() {
   // True only when `affiliate` is the user's ONLY role. Affiliate-only accounts
   // are external marketers: every broker tool, CRM screen and office setting is
   // hidden from them and they are routed to the affiliate portal instead.
-  const isAffiliateOnly = isAffiliateOnlyAccount(roles);
+  const isAffiliateOnly = isAffiliateOnlyAccount(roles.filter(r => r !== 'super_admin'));
 
   // Private property owners are NOT brokers and NOT affiliates: they only get
   // their own listings, the leads interested in them, the reward settings and
