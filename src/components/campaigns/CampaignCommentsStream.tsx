@@ -9,7 +9,7 @@ import { safeChannel, removeChannelSafe } from '@/lib/safeRealtime';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronDown, ChevronUp, RefreshCw, Send, Sparkles, MessageSquare, CornerDownLeft, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, Send, Sparkles, MessageSquare, CornerDownLeft, Trash2, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
