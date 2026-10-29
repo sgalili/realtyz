@@ -21,7 +21,7 @@ import { PropertyAmenitiesFields } from './PropertyAmenitiesFields';
 import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propertyFormOptions';
 import { commitPricingEdit, pricingEditWorkspace } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
-import { leadPriceLevel } from '@/lib/leadPriceRanges';
+import { leadPriceLevel, closingLevelClass, closingRewardLevel } from '@/lib/leadPriceRanges';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
@@ -30,7 +30,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Info, LayoutGrid, Loader2, Pencil, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Info, LayoutGrid, Loader2, Pencil, Trophy, X } from 'lucide-react';
 import { ClipboardList as LeadFormIcon, Phone as LeadPhoneIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -1032,10 +1032,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                {STEP_TITLES.map((title, i) => i === 0 ? null : (
                 <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
                   <AccordionTrigger className="items-start gap-3 px-4 text-start hover:no-underline [&>svg]:mt-0.5">
-                    <span className="flex min-w-0 flex-1 items-start gap-3">
+                    <span className="flex min-w-0 flex-1 flex-col gap-1"><span className="flex min-w-0 items-start gap-3">
                       <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i} מתוך 8`}>{i}</span>
-                      <span className={cn("min-w-0 flex-1", expandedStep === `step-${i}` && "font-bold")}>{title}{i === 8 && expandedStep !== 'step-8' && Number(fields.price) > 0 && <span className="mt-2 block space-y-1" aria-live="polite"><span className={cn('block text-xl font-bold', 'text-foreground')}>{formatRentalPrice(fields.price, fields.dealType)}</span><span className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">{LEAD_TYPES.filter(({ key }) => Number(fields[`commission${key}`]) > 0).map(({ key, tier }) => <span key={key}>{tier === 'form' ? 'טופס' : tier === 'whatsapp' ? 'ווטסאפ' : 'טלפון'}: {Number(fields[`commission${key}`]) > 0 ? fmtILS(Number(fields[`commission${key}`])) : 'ללא עמלה'}</span>)}<span>סגירה: {fields.commissionDealType === 'fixed' ? fmtILS(Number(fields.commissionDeal)) : `${Number(fields.commissionDeal) || 0}%`}</span></span></span>}</span>
+                      <span className={cn("min-w-0 flex-1", expandedStep === `step-${i}` && "font-bold")}>{title}</span>
                       <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : <>חסרים פרטים<span className="text-destructive"> *</span></>}</span>
+                    </span>
+                    {i === 8 && expandedStep !== 'step-8' && Number(fields.price) > 0 && <span className="flex flex-wrap items-center gap-x-2 gap-y-1" aria-live="polite"><span className="text-lg font-bold text-foreground">{formatRentalPrice(fields.price, fields.dealType)}</span><span className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs font-normal">{LEAD_TYPES.filter(({ key }) => Number(fields[`commission${key}`]) > 0).map(({ key, tier, label }) => { const amount = Number(fields[`commission${key}`]); return <span key={key} className={cn('flex items-center gap-0.5', closingLevelClass(leadPriceLevel(tier, amount)) ?? 'text-muted-foreground')} title={`${label}: ${fmtILS(amount)}`}><span aria-hidden="true">{key === 'Form' ? <LeadFormIcon className="h-3.5 w-3.5" strokeWidth={1} /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className="h-3.5 w-3.5" strokeWidth={1} /> : <LeadPhoneIcon className="h-3.5 w-3.5" strokeWidth={1} />}</span><span className="sr-only">{label}: </span><span dir="ltr">{fmtILS(amount)}</span></span>; })}<span className={cn('flex items-center gap-0.5', closingLevelClass(closingRewardLevel(fields.commissionDeal, fields.commissionDealType, fields.dealType, Number(fields.price))) ?? 'text-muted-foreground')} title={`סגירה: ${fields.commissionDealType === 'fixed' ? fmtILS(Number(fields.commissionDeal)) : `${Number(fields.commissionDeal) || 0}%`}`}><Trophy className="h-3.5 w-3.5" strokeWidth={1} aria-hidden="true" /><span className="sr-only">סגירה: </span><span dir="ltr">{fields.commissionDealType === 'fixed' ? fmtILS(Number(fields.commissionDeal)) : `${Number(fields.commissionDeal) || 0}%`}</span></span></span></span>}
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="px-4">{renderStep(i)}</AccordionContent>
