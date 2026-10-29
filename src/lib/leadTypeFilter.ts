@@ -68,6 +68,7 @@ export type PropertyFilterState = {
   propertyType: string;
   city: string;
   neighborhood: string;
+  selectedCities?: string[];
   roomsMin: number | null;
   roomsMax: number | null;
   priceMin: number | null;
@@ -97,7 +98,7 @@ export function propertyFilterActiveCount(state: PropertyFilterState): number {
   let count = 0;
   if (state.dealType !== 'all') count += 1;
   if (state.propertyType !== 'all') count += 1;
-  if (state.city !== 'all') count += 1;
+  if (state.city && state.city !== 'all') count += state.selectedCities?.length || 1;
   if (state.neighborhood !== 'all') count += 1;
   for (const key of ['roomsMin', 'roomsMax', 'priceMin', 'priceMax', 'sizeMin', 'sizeMax', 'floorMin', 'floorMax'] as const) {
     if (state[key] != null) count += 1;
@@ -132,11 +133,24 @@ export function matchesPropertyFilter(row: Record<string, unknown>, state: Prope
   };
   if (state.dealType !== 'all' && text(row, 'deal_type', 'listing_type') !== state.dealType) return false;
   if (state.propertyType !== 'all' && text(row, 'property_type') !== state.propertyType) return false;
-  if (state.city !== 'all' && text(row, 'city') !== state.city) return false;
+  if (state.city && state.city !== 'all') {
+    const cities = state.selectedCities?.length ? state.selectedCities : [state.city];
+    if (!cities.includes(text(row, 'city'))) return false;
+  }
   if (state.neighborhood !== 'all' && text(row, 'neighborhood') !== state.neighborhood) return false;
   if (!inRange(numeric(row, 'rooms'), state.roomsMin, state.roomsMax)) return false;
   if (!inRange(numeric(row, 'asking_price', 'price'), state.priceMin, state.priceMax)) return false;
   if (!inRange(numeric(row, 'sqm', 'size_sqm'), state.sizeMin, state.sizeMax)) return false;
   if (!inRange(numeric(row, 'floor'), state.floorMin, state.floorMax)) return false;
   return true;
+}
+
+/** Nationwide replaces city selections and blocks additions until explicitly cleared. */
+export function selectFilterCity(state: PropertyFilterState, value: string): PropertyFilterState {
+  if (value === 'all') return { ...state, city: 'all', selectedCities: [], neighborhood: 'all' };
+  if (value === 'choose') return { ...state, city: '', selectedCities: [], neighborhood: 'all' };
+  if (state.city === 'all') return state;
+  const current = state.selectedCities ?? (state.city ? [state.city] : []);
+  const selectedCities = current.includes(value) ? current.filter(city => city !== value) : [...current, value];
+  return { ...state, city: selectedCities[0] ?? '', selectedCities, neighborhood: 'all' };
 }

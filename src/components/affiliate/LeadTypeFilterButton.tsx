@@ -9,11 +9,11 @@
 //   · יזם / קבלן       — market/property filters only.
 //   · קונה/מוכר פרטי   — compact market filters only.
 //   · guest            — property filters only, never lead filters.
-import { ClipboardList, Phone, Filter, Trophy } from 'lucide-react';
+import { useState } from 'react';
+import { ClipboardList, Phone, Filter, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
@@ -27,6 +27,7 @@ import {
   LEAD_TYPE_ORDER,
   leadFilterActiveCount,
   propertyFilterActiveCount,
+  selectFilterCity,
   type LeadFilterState,
   type LeadTypeKey,
   type PropertyFilterState,
@@ -63,13 +64,13 @@ function RangeRow({
   const parse = (raw: string): number | null => (raw.trim() === '' ? null : Number(raw));
   return (
     <div className="space-y-1">
-      <Label className="text-[11px] text-muted-foreground">{label}{suffix ? ` (${suffix})` : ''}</Label>
+      
       <div className="grid grid-cols-2 gap-2">
         <Input
           type="number"
           step={step}
           dir="ltr"
-          placeholder="מ־"
+          aria-label={`${label} מינימום`} placeholder={`${label}${suffix ? ` (${suffix})` : ''} מ־`}
           className="h-9"
           value={min ?? ''}
           onChange={(event) => onChange({ min: parse(event.target.value), max })}
@@ -78,7 +79,7 @@ function RangeRow({
           type="number"
           step={step}
           dir="ltr"
-          placeholder="עד"
+          aria-label={`${label} מקסימום`} placeholder={`${label}${suffix ? ` (${suffix})` : ''} עד`}
           className="h-9"
           value={max ?? ''}
           onChange={(event) => onChange({ min, max: parse(event.target.value) })}
@@ -105,6 +106,9 @@ export default function LeadTypeFilterButton({
   propertyTypes = [],
   hideLeadFilters = false,
   className = '',
+  inline = false,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   state: LeadFilterState;
   onChange: (next: LeadFilterState) => void;
@@ -116,7 +120,13 @@ export default function LeadTypeFilterButton({
   propertyTypes?: string[];
   hideLeadFilters?: boolean;
   className?: string;
+  inline?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen ?? localOpen;
+  const setOpen = (next: boolean) => { setLocalOpen(next); onOpenChange?.(next); };
   const { user } = useAuth();
   const { isAffiliate, isTeamMember, isDeveloper, isPropertyOwner, isPropertySeeker } = useUserRole();
 
@@ -172,19 +182,18 @@ export default function LeadTypeFilterButton({
 
   const show = (field: PropertyField) => !!property && fields.includes(field);
 
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="סינון מתקדם"
-          title="סינון מתקדם"
-          className={`relative grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${active ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : ''} ${className}`}
-        >
-          <Filter className="h-4 w-4" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="max-h-[70vh] w-80 space-y-3 overflow-y-auto p-3" dir="rtl">
+  const trigger = (
+    <Button type="button" variant="ghost" size="icon" aria-label="סינון מתקדם" title="סינון מתקדם" aria-expanded={open}
+      onClick={inline ? () => setOpen(!open) : undefined}
+      className={`relative h-7 w-7 shrink-0 text-muted-foreground ${active ? 'bg-primary text-primary-foreground' : ''} ${className}`}>
+      <Filter className="h-4 w-4" />
+    </Button>
+  );
+  const content = (
+    <>
+      <div className="flex justify-end">
+        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="סגירת סינון" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
+      </div>
         {showLeadFilters ? (<>
           <SectionTitle>סוג הליד</SectionTitle>
           <div className="space-y-1.5">
@@ -200,10 +209,10 @@ export default function LeadTypeFilterButton({
             })}
           </div>
           <div className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">שווי הליד (₪)</Label>
+            
             <div className="grid grid-cols-2 gap-2">
-              <Input type="number" min={0} dir="ltr" placeholder="מ־" className="h-9" value={state.min ?? ''} onChange={(event) => setBound('min', event.target.value)} />
-              <Input type="number" min={0} dir="ltr" placeholder="עד" className="h-9" value={state.max ?? ''} onChange={(event) => setBound('max', event.target.value)} />
+              <Input type="number" min={0} dir="ltr" aria-label="שווי הליד מינימום" placeholder="שווי הליד (₪) מ־" className="h-9" value={state.min ?? ''} onChange={(event) => setBound('min', event.target.value)} />
+              <Input type="number" min={0} dir="ltr" aria-label="שווי הליד מקסימום" placeholder="שווי הליד (₪) עד" className="h-9" value={state.max ?? ''} onChange={(event) => setBound('max', event.target.value)} />
             </div>
           </div>
         </>) : null}
@@ -215,11 +224,10 @@ export default function LeadTypeFilterButton({
             <div className="space-y-2">
               {show('dealType') ? (
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">סוג עסקה</Label>
                   <Select value={property.dealType} onValueChange={(value) => patch({ dealType: value as PropertyFilterState['dealType'] })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="סוג עסקה" className="h-9"><SelectValue placeholder="סוג עסקה" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">הכל</SelectItem>
+                      <SelectItem value="all">סוג עסקה</SelectItem>
                       <SelectItem value="sale">למכירה</SelectItem>
                       <SelectItem value="rent">להשכרה</SelectItem>
                     </SelectContent>
@@ -228,11 +236,10 @@ export default function LeadTypeFilterButton({
               ) : null}
               {show('propertyType') && propertyTypes.length ? (
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">סוג נכס</Label>
                   <Select value={property.propertyType} onValueChange={(value) => patch({ propertyType: value })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="סוג נכס" className="h-9"><SelectValue placeholder="סוג נכס" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">כל הסוגים</SelectItem>
+                      <SelectItem value="all">סוג נכס</SelectItem>
                       {propertyTypes.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -240,23 +247,21 @@ export default function LeadTypeFilterButton({
               ) : null}
               {show('city') && cities.length ? (
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">עיר</Label>
-                  <Select value={property.city} onValueChange={(value) => patch({ city: value, neighborhood: 'all' })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <Select value="" onValueChange={(value) => patch(selectFilterCity(property, value))}>
+                    <SelectTrigger aria-label="אזור" className="h-9"><span className="truncate">{property.city === 'all' ? 'כל הארץ' : property.selectedCities?.length ? property.selectedCities.join(', ') : property.city || 'אזור'}</span></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">כל הערים</SelectItem>
-                      {cities.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                      <SelectItem value="all">כל הארץ</SelectItem>
+                      {property.city === 'all' ? <SelectItem value="choose">בחירת ערים</SelectItem> : cities.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               ) : null}
               {show('neighborhood') && neighborhoods.length ? (
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">שכונה</Label>
                   <Select value={property.neighborhood} onValueChange={(value) => patch({ neighborhood: value })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="שכונה" className="h-9"><SelectValue placeholder="שכונה" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">כל השכונות</SelectItem>
+                      <SelectItem value="all">שכונה</SelectItem>
                       {neighborhoods.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -275,7 +280,9 @@ export default function LeadTypeFilterButton({
             ניקוי סינון
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+    </>
   );
+  if (inline) return <>{trigger}{open ? <div role="dialog" aria-label="סינון מתקדם" data-property-filter-panel dir="rtl" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }} className="absolute inset-x-0 top-full z-50 mt-1 max-h-[60dvh] space-y-3 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-top-2 motion-reduce:animate-none">{content}</div> : null}</>;
+  return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild>{trigger}</PopoverTrigger><PopoverContent align="start" onOpenAutoFocus={event => event.preventDefault()} onCloseAutoFocus={event => event.preventDefault()} className="max-h-[70dvh] w-80 space-y-3 overflow-y-auto overscroll-contain p-3" dir="rtl">{content}</PopoverContent></Popover>;
+
 }

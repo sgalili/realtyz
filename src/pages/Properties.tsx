@@ -25,7 +25,8 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem,
   DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -187,6 +188,17 @@ export default function Properties() {
   const { favoriteIds, toggleFavorite } = useListingFavorites();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
+  const [advancedFilter, setAdvancedFilter] = useState(EMPTY_PROPERTY_FILTER);
+  const updateAdvancedFilter = (next: PropertyFilterState) => {
+    setAdvancedFilter(next);
+    setListingType(next.dealType);
+    setCity(next.city === 'all' || !next.city ? 'כל הערים' : next.city);
+    setPropertyType(next.propertyType as PropertyType | 'all');
+    setRooms(next.roomsMin == null ? 'any' : String(next.roomsMin));
+    setMaxPrice(next.priceMax ?? PRICE_MAX);
+    setAreaMin(next.sizeMin == null ? '' : String(next.sizeMin));
+  };
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
@@ -218,6 +230,9 @@ export default function Properties() {
     setRooms(c?.rooms ?? 'any');
     setMaxPrice(c?.maxPrice ?? PRICE_MAX);
     setAreaMin(c?.areaMin ?? '');
+    setAdvancedFilter(EMPTY_PROPERTY_FILTER);
+    setLeadFilter(EMPTY_LEAD_FILTER);
+    setFiltersOpen(false);
     setResults(c?.results ?? []);
     setHasSearched(c?.hasSearched ?? false);
   }, [cacheScope]);
@@ -405,7 +420,7 @@ export default function Properties() {
         listingType !== 'all' ? listingType : (parsed.listing_type ?? 'all');
       const effectivePropertyType = propertyType !== 'all' ? propertyType : (parsed.property_type ?? 'all');
       const effectiveMaxPrice = maxPrice < PRICE_MAX ? maxPrice : (parsed.max_price ?? undefined);
-      const effectiveMinPrice = parsed.min_price ?? undefined;
+      const effectiveMinPrice = advancedFilter.priceMin ?? parsed.min_price ?? undefined;
       const wantedAmenities = parsed.amenities;
 
       const filters: SearchFilters = {
@@ -413,7 +428,7 @@ export default function Properties() {
         q: (parsed.keywords || query.trim()) || undefined,
         sources: activeSources,
         city: effectiveCity ?? undefined,
-        neighborhood: parsed.neighborhood ?? undefined,
+        neighborhood: advancedFilter.neighborhood !== 'all' ? advancedFilter.neighborhood : parsed.neighborhood ?? undefined,
         min_price: effectiveMinPrice,
         max_price: effectiveMaxPrice,
         rooms: effectiveRooms ?? undefined,
@@ -583,7 +598,8 @@ export default function Properties() {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const toggleSearchOpen = (open: boolean) => {
     setSearchOpen(open);
-    if (open) window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    if (!open) setFiltersOpen(false);
+    if (open) window.requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
   };
   const inventorySuggestions = useInventorySuggestions(q, activeWorkspaceId);
   const suggestions = inventorySuggestions.data ?? [];
@@ -745,12 +761,12 @@ export default function Properties() {
     const bySource = sourceFilter
       ? results_.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
       : results_;
-    const base = bySource;
+    const base = bySource.filter(row => matchesPropertyFilter({ ...row.raw, ...row }, advancedFilter) && matchesLeadFilter(leadTierAmounts(row.raw), leadFilter));
     if (listingType === 'all') return base;
     const narrowed = base.filter((r) => r.listing_type === listingType);
     // Never let a toggle blank the table — keep the wider pool instead.
     return narrowed;
-  }, [results, listingType, sourceFilter, activeSources, homelyConnected]);
+  }, [results, listingType, sourceFilter, activeSources, homelyConnected, advancedFilter, leadFilter]);
 
 
   const sortedResults = useMemo(() => {
@@ -938,13 +954,13 @@ export default function Properties() {
   );
 
   return (
-    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[20px]' : 'px-0 !pt-[20px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
+    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[25px]' : 'px-0 !pt-[25px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
       <header className="hidden">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
 
       {/* Compact unified control bar */}
-      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="!mt-0 shrink-0">
+      <div className="!mt-0 shrink-0">
 
 
 
@@ -995,17 +1011,7 @@ export default function Properties() {
               <span>בטל</span>
             </Button>}
 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  aria-label="סינון מתקדם"
-                  title="סינון מתקדם"
-                  className={`inline-flex shrink-0 items-center justify-center h-7 w-7 rounded-md transition-colors ${filtersOpen || filterChips.length ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-                >
-                  <Filter className="h-4 w-4" />
-                </Button>
-              </CollapsibleTrigger>
+              <LeadTypeFilterButton inline open={filtersOpen} onOpenChange={setFiltersOpen} state={leadFilter} onChange={setLeadFilter} propertyState={advancedFilter} onPropertyChange={updateAdvancedFilter} cities={cityOptions} neighborhoods={Array.from(new Set(results.map(row => row.neighborhood).filter((value): value is string => !!value)))} propertyTypes={Array.from(new Set(results.map(row => row.property_type).filter((value): value is string => !!value)))} />
 
               {yad2Status?.tone !== 'busy' && filterChips.map((chip) => (
                 <span
@@ -1196,93 +1202,7 @@ export default function Properties() {
 
 
 
-        <CollapsibleContent>
-          <Card className="p-4 sm:p-5 mt-3">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm font-semibold">סינון מתקדם</div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setFiltersOpen(false)}
-                className="h-8 gap-1.5 text-xs"
-                aria-label="סגור סינון"
-                title="סגור סינון"
-              >
-                <ChevronUp className="h-3.5 w-3.5" />
-                סגור
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-
-
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-2 lg:col-span-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold">מחיר מקסימלי</Label>
-                  <span className="text-xs text-muted-foreground">עד {formatPrice(maxPrice)}</span>
-                </div>
-                <Slider dir="rtl" min={PRICE_MIN} max={PRICE_MAX} step={PRICE_STEP} value={[maxPrice]} onValueChange={(v) => setMaxPrice(v[0] ?? PRICE_MAX)} />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">אזור</Label>
-                <Select value={city} onValueChange={setCity}>
-                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="כל הערים">כל הערים</SelectItem>
-                    {isConfigured && <SelectItem value="__my_zones__">כל אזורי ההתמחות שלי</SelectItem>}
-                    {(isConfigured ? coveredCities : cityOptions).map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">סוג נכס</Label>
-                <Select value={propertyType} onValueChange={(v) => setPropertyType(v as PropertyType | 'all')}>
-                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PROPERTY_TYPE_LABELS_HE).map(([k, label]) => (
-                      <SelectItem key={k} value={k}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">חדרים (לפחות)</Label>
-                <Select value={rooms} onValueChange={setRooms}>
-                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">כל מספר</SelectItem>
-                    {[2, 3, 4, 5, 6].map((n) => (
-                      <SelectItem key={n} value={String(n)}>{n}+ חדרים</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">שטח מינימלי (מ"ר)</Label>
-                <Input type="number" inputMode="numeric" value={areaMin} onChange={(e) => setAreaMin(e.target.value)} className="h-10" />
-              </div>
-
-              <div className="flex items-end gap-2">
-                <Button variant="outline" size="sm" className="h-10 flex-1" onClick={() => {
-                  setCity('כל הערים'); setPropertyType('all'); setRooms('any'); setMaxPrice(PRICE_MAX); setAreaMin('');
-                }}>איפוס</Button>
-                <Button size="sm" className="h-10 flex-1" onClick={() => { setFiltersOpen(false); runSearch(); }} disabled={searching}>
-                  החל
-                </Button>
-
-              </div>
-            </div>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
+      </div>
 
       {/* Results */}
       <div className={viewMode === 'table' ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : 'contents'}>
