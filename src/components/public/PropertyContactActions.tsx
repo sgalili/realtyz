@@ -75,6 +75,7 @@ export default function PropertyContactActions({
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const setAnswer = (id: string, value: string | string[]) => setAnswers((a) => ({ ...a, [id]: value }));
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [joinOpen, setJoinOpen] = useState(false);
   const [challenge, setChallenge] = useState<InquiryChallenge | null>(null);
   const ref = propertyInquiryRef();
