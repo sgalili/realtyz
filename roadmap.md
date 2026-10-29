@@ -1,5 +1,10 @@
 # Roadmap
 
+## Property page access October 29
+- [ ] Restrict technical Bright Data warnings to the signed-in Super Admin.
+- [ ] Share verified-broker/developer access checks across navigation and direct property/project routes; preserve My Ads.
+- [ ] Test access rules and verify the live signed-in flow.
+
 ## Publisher card corrections October 29
 - [x] Remove switches; center expanded prices only above sliders; halve icons and move help to top-left.
 - [x] Exact gray zero-offer text; discrete zero then min-to-max scale verified across all four sliders; 29 tests passed.
