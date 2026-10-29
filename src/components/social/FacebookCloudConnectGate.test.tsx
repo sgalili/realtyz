@@ -59,6 +59,18 @@ describe('Facebook cloud connection', () => {
     expect(mocks.invoke).not.toHaveBeenCalled();
   });
 
+  it('reuses an active cloud session for Page connection without opening login or importing groups', async () => {
+    mocks.state.mockResolvedValue({ active: true });
+    const onSynced = vi.fn();
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    render(<FacebookCloudConnectGate alwaysVisible connectionOnly onSynced={onSynced} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'בדיקת החיבור השמור' }));
+    await waitFor(() => expect(onSynced).toHaveBeenCalledOnce());
+    expect(mocks.invoke).not.toHaveBeenCalled();
+    expect(mocks.sync).not.toHaveBeenCalled();
+    expect(open).not.toHaveBeenCalled();
+  });
+
   it('does not import memberships when remote login fails', async () => {
     vi.spyOn(window, 'open').mockReturnValue({ opener: null, close: vi.fn(), location: { href: '' } } as unknown as Window);
     mocks.invoke.mockResolvedValue({ data: { error: 'worker_unavailable', message: 'החיבור אינו זמין' } });
