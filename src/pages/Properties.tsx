@@ -904,7 +904,7 @@ export default function Properties() {
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
         <div data-testid="property-filter-row" className="mb-2 flex items-center gap-1">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
             <Button
               type="button"
               variant="ghost"
@@ -918,7 +918,7 @@ export default function Properties() {
             >
               <SearchIcon className="h-4 w-4" />
             </Button>
-        <div id="inventory-search-row" className="grid min-w-0 flex-1 transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none" style={{ gridTemplateRows: searchOpen ? '1fr' : '0fr' }}>
+        <div id="inventory-search-row" className="grid min-w-0 flex-1 max-sm:basis-full transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none" style={{ gridTemplateRows: searchOpen ? '1fr' : '0fr' }}>
           <div className="min-h-0 overflow-hidden">
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
