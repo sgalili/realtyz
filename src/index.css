@@ -228,7 +228,7 @@
     background: var(--inquiry-silver-gradient);
     border: 1px solid hsl(var(--border));
   }
-  .property-inquiry-action {
+  .property-inquiry-action.inquiry-silver {
     flex: 1 1 0;
     min-width: 0;
     height: 44px;
@@ -238,10 +238,10 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  .property-inquiry-action svg { width: 16px; height: 16px; }
+  .property-inquiry-action.inquiry-silver svg { width: 16px; height: 16px; }
   @media (max-width: 360px) {
-    .property-inquiry-action { font-size: 12px; gap: 3px; }
-    .property-inquiry-action svg { width: 14px; height: 14px; }
+    .property-inquiry-action.inquiry-silver { font-size: 12px; gap: 3px; }
+    .property-inquiry-action.inquiry-silver svg { width: 14px; height: 14px; }
   }
   .property-card-grid { display: grid; gap: 16px; }
   @media (min-width: 640px) {
