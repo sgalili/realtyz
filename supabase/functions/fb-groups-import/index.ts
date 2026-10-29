@@ -150,8 +150,9 @@ Deno.serve(async (req) => {
             if (error) { lastError = error; continue; }
             for (const g of rows) {
               const id = String(g?.id ?? "").trim();
-              if (!id || byId.has(id)) continue;
-              byId.set(id, {
+              const key = `${pageIds.has(node) ? node : ''}:${id}`;
+              if (!id || byId.has(key)) continue;
+              byId.set(key, {
                 workspace_owner_id: ws,
                 group_id: id,
                 group_name: String(g?.name ?? id).trim() || id,
@@ -181,7 +182,7 @@ Deno.serve(async (req) => {
     if (groups.length > 0) {
       const { error: upErr } = await admin
         .from("fb_user_groups")
-        .upsert(groups, { onConflict: "workspace_owner_id,group_id" });
+        .upsert(groups, { onConflict: "workspace_owner_id,page_scope,group_id" });
       if (upErr) {
         console.error("[fb-groups-import] upsert failed", upErr);
         return json({ groups, imported: groups.length, error: upErr.message }, 200);
