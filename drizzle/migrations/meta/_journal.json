@@ -666,6 +666,13 @@
       "when": 1793281537263,
       "tag": "0094_fb_per_page_post_capacity",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1793281708106,
+      "tag": "0095_fb_groups_per_page",
+      "breakpoints": true
     }
   ]
 }
