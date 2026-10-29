@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
-import { BrokerCertificateCheck } from '@/components/auth/BrokerCertificateCheck';
+import { Input } from '@/components/ui/input';
+import { CERTIFICATE_MAX_BYTES, CERTIFICATE_MIME_TYPES } from '../../../supabase/functions/_shared/brokerCertificate';
 import { BROKER_COURSE_URL, BROKER_EXAM_REGISTRATION_URL } from '@/components/affiliate/BrokerClosingInfo';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { toast } from '@/i18n/personalToast';
@@ -22,10 +23,7 @@ export function UpgradeToBrokerButton() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [license, setLicense] = useState('');
-  const [verified, setVerified] = useState<string | null>(null);
-  const [certificateLicense, setCertificateLicense] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const { user } = useAuth();
   const { data: account } = useQuery({ queryKey: ['broker-upgrade-request', user?.id, 'profile-status'], enabled: !!user?.id, queryFn: async () => {
     if (!user?.id) return null;
@@ -47,18 +45,24 @@ export function UpgradeToBrokerButton() {
     if (!open) setLicense(account?.license ?? '');
   }, [account?.license, open]);
   const pending = account?.pending === true;
-  const onCertificate = useCallback((r: { matched: boolean; licenseNumber?: string } | null) => setCertificateLicense(r?.matched ? r.licenseNumber ?? null : null), []);
-  const ready = !!verified && verified === license && certificateLicense === license;
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<'approved' | 'pending' | null>(null);
+  const ready = !!license && !!file;
 
   const submit = async () => {
-    if (!ready || busy || pending) return;
+    if (!ready || busy || pending || !file) return;
     setBusy(true);
     try {
       await verifyBrokerLicense(license, 'verify');
-      const { error } = await supabase.rpc('submit_broker_upgrade_request' as any);
+      const body = new FormData(); body.set('certificate', file);
+      const { data: cert, error: certError } = await supabase.functions.invoke('check-broker-certificate', { body });
+      if (certError || !cert?.matched || cert.licenseNumber !== license) throw new Error('לא ניתן לאמת את הרישיון. בדקו את המספר ואת התמונה ונסו שוב.');
+      const { data, error } = await supabase.rpc('submit_broker_upgrade_request' as any);
       if (error) throw new Error(Object.entries(FAILURES).find(([k]) => error.message.includes(k))?.[1] ?? 'השדרוג לא הושלם. נסו שוב.');
+      const status = (data as { status?: string } | null)?.status === 'approved' ? 'approved' : 'pending';
+      setResult(status);
       await queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] });
-      setSubmitted(true);
+      if (status === 'approved') await queryClient.invalidateQueries();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'השדרוג לא הושלם.');
     } finally { setBusy(false); }
@@ -69,13 +73,13 @@ export function UpgradeToBrokerButton() {
     <section aria-label="שדרוג וסטטוס רישיון תיווך" className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3" dir="rtl">
       {account?.license && <div className="flex flex-wrap items-center justify-between gap-2 text-base">
         <span>מספר רישיון תיווך: <b dir="ltr">{account.license}</b></span>
-        <span role="status" className="text-sm text-muted-foreground">{pending ? 'ממתינה לאישור מנהל' : account.rejected ? 'הרישיון נדחה — ניתן להגיש מחדש' : 'הרישיון הוזן — השדרוג טרם אושר'}</span>
+        <span role="status" className="text-sm text-muted-foreground">{pending ? 'בבדיקה' : account.rejected ? 'הרישיון נדחה — ניתן להגיש מחדש' : 'הרישיון הוזן — השדרוג טרם אושר'}</span>
       </div>}
     <Button type="button" size="lg" className="w-full gap-2 text-base" onClick={() => setOpen(true)}>
       <BadgeCheck className="h-5 w-5" aria-hidden />שדרג למתווך מורשה
     </Button>
     </section>
-    <Dialog open={open} onOpenChange={(o) => { if (busy) return; setOpen(o); if (!o && submitted) void queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] }); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (busy) return; setOpen(o); if (!o && result) void queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] }); }}>
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-md overflow-y-auto text-right">
         <DialogHeader className="text-right">
           <DialogTitle className="text-right text-xl">שדרוג למתווך מורשה</DialogTitle>
@@ -94,18 +98,22 @@ export function UpgradeToBrokerButton() {
         </div>
         {pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
           <p>מספר רישיון תיווך: <b dir="ltr">{account?.license}</b></p>
-          <p>הבקשה והמסמכים נשלחו לבדיקה וממתינים לאישור מנהל. הרשאות התיווך יינתנו רק לאחר האישור.</p>
+          <p>הבקשה בבדיקה. נעדכן אותך בהמשך.</p>
         </div> : <div className="space-y-2 border-t border-border pt-3">
           <p className="text-base font-semibold">כבר קיבלת רישיון?</p>
-          <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={setVerified} />
-          {verified === license && !!license && <BrokerCertificateCheck onResult={onCertificate} />}
-          {certificateLicense && certificateLicense !== license && <p role="alert" className="text-sm text-destructive">מספר הרישיון בתעודה שונה מהמספר שהוזן.</p>}
+          <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={() => {}} />
+          <label htmlFor="broker-certificate-image" className="block text-base">צילום תעודת הרישיון</label>
+          <Input id="broker-certificate-image" type="file" accept={CERTIFICATE_MIME_TYPES.join(',')} disabled={busy} className="h-auto text-base" onChange={event => {
+            const next = event.target.files?.[0] ?? null;
+            if (next && (!CERTIFICATE_MIME_TYPES.includes(next.type) || next.size === 0 || next.size > CERTIFICATE_MAX_BYTES)) { event.target.value = ''; setFile(null); toast.error('יש להעלות תמונת JPG, PNG או WEBP בגודל עד 5MB'); return; }
+            setFile(next);
+          }} />
         </div>}
-        {submitted ? <div role="status" className="space-y-1 rounded-md border border-success bg-success/10 p-3 text-base">
-          <p className="font-semibold text-success">הבקשה נשלחה בהצלחה</p>
-          <p>הבקשה ממתינה לאישור מנהל. נעדכן אותך כשהחשבון ישודרג למתווך מורשה.</p>
+        {result ? <div role="status" className="space-y-1 rounded-md border border-success bg-success/10 p-3 text-base">
+          <p className="font-semibold text-success">{result === 'approved' ? 'החשבון שודרג למתווך מורשה' : 'הבקשה התקבלה'}</p>
+          {result === 'pending' && <p>נעדכן אותך כשהבדיקה תסתיים.</p>}
         </div> : !pending && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
-          {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}שליחת הבקשה לאישור
+          {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}שדרוג החשבון
         </Button>}
       </DialogContent>
     </Dialog>
