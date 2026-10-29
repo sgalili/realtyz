@@ -21,7 +21,7 @@ import { PropertyAmenitiesFields } from './PropertyAmenitiesFields';
 import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propertyFormOptions';
 import { commitPricingEdit, pricingEditWorkspace } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
-import { leadPriceLevel } from '@/lib/leadPriceRanges';
+import { leadPriceLevel, closingLevelClass, closingRewardLevel } from '@/lib/leadPriceRanges';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
@@ -30,7 +30,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Info, LayoutGrid, Loader2, Pencil, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Info, LayoutGrid, Loader2, Pencil, Trophy, X } from 'lucide-react';
 import { ClipboardList as LeadFormIcon, Phone as LeadPhoneIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
