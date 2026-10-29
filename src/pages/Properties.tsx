@@ -903,13 +903,12 @@ export default function Properties() {
 
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
-        <div data-testid="property-filter-row" className="mb-2 flex items-center gap-1">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+        <div data-testid="property-filter-row" className="mb-2 flex flex-wrap items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              className="order-1 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
               aria-label={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               aria-expanded={searchOpen}
@@ -918,7 +917,7 @@ export default function Properties() {
             >
               <SearchIcon className="h-4 w-4" />
             </Button>
-        <div id="inventory-search-row" className="grid min-w-0 flex-1 max-sm:basis-full transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none" style={{ gridTemplateRows: searchOpen ? '1fr' : '0fr' }}>
+        <div id="inventory-search-row" className="grid order-2 min-w-0 flex-1 basis-full sm:basis-auto transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none" style={{ gridTemplateRows: searchOpen ? '1fr' : '0fr' }}>
           <div className="min-h-0 overflow-hidden">
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
@@ -1107,8 +1106,7 @@ export default function Properties() {
         </div>
           </div>
         </div>
-        </div>
-        <div data-testid="property-tools-row" className="flex shrink-0 items-center gap-0">
+        <div data-testid="property-tools-row" className="order-3 flex shrink-0 items-center gap-0">
 
 
             <DropdownMenu>
