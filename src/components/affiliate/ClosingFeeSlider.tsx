@@ -24,12 +24,16 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   open?: boolean;
   onOpenChange?: (next: boolean) => void;
   unrestricted?: boolean;
+  /** Publisher offers start at 0; the tier minimum is never auto-applied. */
+  zeroMin?: boolean;
 }) {
   const range = closingFeeRange(dealType, price);
   // Rentals are always priced in ₪, sales always in % (0.2%-2%).
   const outType: 'fixed' | 'percent' = dualMode ? (range.rent ? 'fixed' : 'percent') : valueType;
-  const rawPercent = valueType === 'fixed' && price > 0 ? value / price * 100 : valueType === 'percent' ? value : range.min;
-  const percent = unrestricted ? Math.max(0, rawPercent) : clampClosingPercent(rawPercent, dealType);
+  const rawPercent = valueType === 'fixed' && price > 0 ? value / price * 100 : valueType === 'percent' ? value : zeroMin ? 0 : range.min;
+  const clampPercent = (next: number) => zeroMin ? Math.min(range.max, Math.max(0, next)) : unrestricted ? Math.max(0, next) : clampClosingPercent(next, dealType);
+  const percent = clampPercent(rawPercent);
+
   const progress = Math.max(0, Math.min(1, (percent - range.min) / (range.max - range.min)));
   const level = Math.min(3, Math.floor(progress * 4));
   const [editing, setEditing] = useState(false);
@@ -42,7 +46,8 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const [draft, setDraft] = useState('');
   const amount = closingFeeAmount(percent, range.price);
   const displayAmount = dualMode ? outType === 'fixed' : range.rent && range.price > 0;
-  const minimum = displayAmount && dualMode ? range.price * range.min / 100 : range.min;
+  const minimum = zeroMin ? 0 : displayAmount && dualMode ? range.price * range.min / 100 : range.min;
+
   const maximum = displayAmount && dualMode ? range.price * range.max / 100 : range.max;
   const exactAmount = range.price * percent / 100;
   const money = (n: number) => fmtILS(Math.round(n));
