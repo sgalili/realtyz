@@ -68,6 +68,8 @@ export type PublicListing = {
   /** Canonical WhatsApp click-to-chat opener for this exact property. */
   premsg: string;
   contactOptions: ContactOptions;
+  /** Validated direct URL to the original Yad2 ad (Yad2-imported listings only). */
+  yad2AdUrl: string | null;
 };
 
 const DETAIL_LABELS: Record<string, string> = {

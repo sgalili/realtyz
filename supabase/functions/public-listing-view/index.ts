@@ -126,6 +126,9 @@ Deno.serve(async (req) => {
         safe.features = { publisher_type: 'developer', property_type: f.property_type, amenity_labels: Array.isArray(f.amenity_labels) ? f.amenity_labels.map(maskContactText) : [], developer_unit_details: publicDeveloperDetails(f.developer_unit_details), specifications: publicDeveloperDetails({ specifications: f.specifications }).specifications };
       }
       const cleaned = cleanPayload(safe) as Record<string, any>;
+      // Single whitelisted field: the imported ad's own Yad2 URL for the landing-page source link.
+      const yad2AdUrl = publicYad2AdUrl(row.source, row.source_metadata);
+      if (yad2AdUrl) cleaned.yad2_ad_url = yad2AdUrl;
       cleaned.contact_options = toPublicCard(row).contact_options;
       // Keep stable app identifiers for map selection and lead-gate actions.
       // They are used only as data attributes, never rendered as public text.
