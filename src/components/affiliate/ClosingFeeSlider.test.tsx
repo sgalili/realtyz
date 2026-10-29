@@ -3,6 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 afterEach(cleanup);
 describe('closing fee interaction', () => {
+  it.each([['sale', 2000000, 0.2, 'percent'], ['rent', 10000, 1000, 'fixed']] as const)('%s closing slider jumps from zero to its configured minimum', (dealType, price, minimum, mode) => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider publisherCard zeroMin dualMode dealType={dealType} price={price} value={0} onChange={vi.fn()} onValueChange={change} />);
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' });
+    expect(change).toHaveBeenCalledWith(minimum, mode);
+  });
   it('enabling a zero-price publisher closing card opens it without assigning a fee', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider publisherCard zeroMin dualMode dealType="sale" price={2000000} value={0} onChange={change} />);

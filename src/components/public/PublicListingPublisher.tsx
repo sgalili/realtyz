@@ -1,6 +1,7 @@
 import BrokerageTermsContent from './BrokerageTermsContent';
 import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConfirmation';
 import { PricingCardHeader } from './PricingCardHeader';
+import { CollapsedOffer } from './CollapsedOffer';
 import { PublisherWhatsAppIcon } from './PublisherWhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
@@ -922,8 +923,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   return (
                   <Card key={key} className="closing-fee space-y-2 rounded-2xl p-4" data-level={leadPriceLevel(tier, price)}>
                     <PricingCardHeader
-                      icon={(() => { const iconClass = cn("!h-[48.6px] !w-[48.6px] shrink-0 closing-tone", !active && "!text-muted-foreground"); const stroke = expanded ? 2 : 1; return key === 'Form' ? <LeadFormIcon className={iconClass} strokeWidth={stroke} aria-hidden /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className={iconClass} strokeWidth={stroke} /> : <LeadPhoneIcon className={iconClass} strokeWidth={stroke} aria-hidden />; })()}
-                      price={expanded ? <LeadPriceSlider display="price" tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} /> : <Button type="button" variant="ghost" className={cn('h-auto min-h-9 min-w-0 flex-wrap justify-start gap-1 whitespace-normal p-0 text-start text-lg font-bold', active ? 'closing-tone' : 'text-sm font-medium text-muted-foreground')} aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}>{active ? <><span className="text-sm font-medium text-muted-foreground">ההצעה שלך:</span><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></> : gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'}</Button>}
+                      icon={(() => { const iconClass = cn("!h-[48.6px] !w-[48.6px] shrink-0", active ? 'closing-tone' : 'pricing-icon-disabled'); return key === 'Form' ? <LeadFormIcon className={iconClass} strokeWidth={1} aria-hidden /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className={iconClass} strokeWidth={1} /> : <LeadPhoneIcon className={iconClass} strokeWidth={1} aria-hidden />; })()}
+                      price={expanded ? <LeadPriceSlider display="price" tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} /> : <CollapsedOffer active={active} amount={leadPriceLabel(price + extraCost)} placeholder={gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'} label={`עריכת עמלה עבור ${label}`} onClick={toggle} />}
                       title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>{label}</Button>}
                       help={<>
                       <LeadTypeHelp label={label}>

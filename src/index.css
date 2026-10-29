@@ -1879,6 +1879,7 @@ header > [data-radix-popper-content-wrapper]:has(.home-activity-drawer) { positi
 .closing-fee[data-level="2"] { --closing-current: var(--closing-high); }
 .closing-fee[data-level="3"] { --closing-current: var(--closing-max); }
 .closing-tone { color: hsl(var(--closing-current)); transition: color .25s; }
+.pricing-editor .pricing-icon-disabled { color: hsl(var(--muted-foreground) / 0.5) !important; }
 .closing-level-0 { color: hsl(var(--closing-low)); }
 .closing-level-1 { color: hsl(var(--closing-medium)); }
 .closing-level-2 { color: hsl(var(--closing-high)); }
