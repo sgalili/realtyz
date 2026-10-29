@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
       .select("id")
       .maybeSingle();
     if (error) return json({ error: error.message }, 500);
+    if (data) await admin.rpc("fb_record_post_attempt_outcome", { _job: body.job_id, _ok: ok, _error: ok ? null : (body.error ?? "failed") });
     return json({ success: true, updated: !!data });
   }
 
