@@ -353,6 +353,8 @@ function ListingsRoute({ children }: { children: React.ReactNode }) {
 
 function ProjectsRoute({ children }: { children: React.ReactNode }) {
   const access = usePropertyPageAccess();
+  const { isPartnerMode } = useAppMode();
+  if (isPartnerMode) return <Navigate to="/public-listings" replace />;
   if (access.loading) return <PageLoader />;
   if (!access.projects) return <Navigate to="/my-ads" replace />;
   return <>{children}</>;

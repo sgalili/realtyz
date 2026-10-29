@@ -8,7 +8,9 @@ export default function PersonalTransactions() {
   const query = useQuery({ queryKey: ['personal-transactions', user?.id, owner], enabled: !!user && !!owner,
     queryFn: async () => {
       if (!user || !owner) return [];
-      const { data, error } = await supabase.from('leads').select('id,full_name,lead_stage,status').eq('workspace_owner_id', owner).eq('user_id', user.id).order('created_at', { ascending: false }).limit(100);
+      let request = supabase.from('leads').select('id,full_name,lead_stage,status').eq('workspace_owner_id', owner);
+      if (owner !== user.id) request = request.eq('assigned_to', user.id);
+      const { data, error } = await request.in('lead_stage', ['tour_scheduled', 'negotiation', 'contract', 'closed']).order('created_at', { ascending: false }).limit(100);
       if (error) throw error; return data ?? [];
     },
   });

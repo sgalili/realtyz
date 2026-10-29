@@ -355,8 +355,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {user && (
-                <SidebarMenuItem key="partner-pool" hidden={audience !== 'partner'}>
+              {user && audience === 'partner' && (
+                <SidebarMenuItem key="partner-pool">
                   <SidebarMenuButton asChild><NavLink to="/sharing-pool" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Home className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">נכסים פתוחים לשיתוף</span>}</NavLink></SidebarMenuButton>
                 </SidebarMenuItem>
               )}
