@@ -72,7 +72,7 @@ type HeaderCtx = {
   canArrange: boolean;
 };
 
-function ManagedHeaderCell({ cell, index, label, ctx, first }: { cell: React.ReactElement<any>; index: number; label: string; ctx: HeaderCtx; first: boolean }) {
+function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactElement<any>; index: number; label: string; ctx: HeaderCtx }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(index), disabled: !ctx.canArrange || !label });
   const p = cell.props;
   const active = ctx.sort?.index === index;
@@ -84,19 +84,7 @@ function ManagedHeaderCell({ cell, index, label, ctx, first }: { cell: React.Rea
     style: { ...p.style, transform: CSS.Transform.toString(transform), transition },
     className: cn(p.className, "group/column", isDragging && "relative z-10 bg-muted opacity-80"),
     children: !label ? p.children : (
-      <span className="relative inline-flex items-center gap-0.5 whitespace-nowrap">
-        {ctx.canArrange && (
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            aria-label={`הזזת עמודת ${label}`}
-            title={`הזזת עמודת ${label}`}
-            className={cn("inline-flex h-6 w-4 touch-none items-center justify-center text-muted-foreground", !first && "absolute start-[-16px]")}
-          >
-            <GripVertical className="h-3 w-3" />
-          </button>
-        )}
+      <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
         {canSort ? <Button variant="ghost"
           type="button"
           onClick={(e) => { p.onClick?.(e); if (!e.defaultPrevented) ctx.toggleSort(index); }}
@@ -106,6 +94,18 @@ function ManagedHeaderCell({ cell, index, label, ctx, first }: { cell: React.Rea
           {p.children}
           {active && (ctx.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
         </Button> : <span>{p.children}</span>}
+        {ctx.canArrange && (
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            aria-label={`הזזת עמודת ${label}`}
+            title={`הזזת עמודת ${label}`}
+            className="inline-flex h-6 w-5 touch-none items-center justify-center text-muted-foreground"
+          >
+            <GripVertical className="h-3 w-3" />
+          </button>
+        )}
       </span>
     ),
   });
