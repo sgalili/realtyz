@@ -1,5 +1,13 @@
 # Roadmap
 
+## Platform-wide document October 29
+- [ ] Two-column intermediate grids, aligned property photos and bounded footer.
+- [ ] Hide explicit closing-only properties from signed-in unverified audiences without treating redacted fees as zero.
+- [ ] Single-row silver contact actions, no Rita photo, red/green/blue controls and bottom-sheet forms.
+- [ ] Audit existing Facebook Page selection/scanning, sharing/publication/reward sorting, auth layout, OCR document check, legal notices and rotating final footer; preserve working flows.
+- [ ] Focused regression tests and live desktop/mobile verification.
+- [ ] Certificate-based identity upgrade and universal OTP code are excluded: neither safely proves account ownership.
+
 ## Broker certificate verification October 29
 - [x] Add certificate upload, OCR and exact registry matching as a document-only check; no certificate-based role or verified-status upgrade. Deployed; 21 focused tests pass, authenticated non-certificate rejection verified through the live endpoint and upload control; build OK.
 - [ ] Verify a successful match with a genuine broker certificate and the full new-account signup screen; requires an authorized certificate and new-account session. Existing-account isolated upload control was tested without changing roles.
