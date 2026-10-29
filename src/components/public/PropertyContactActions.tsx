@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -74,6 +75,7 @@ export default function PropertyContactActions({
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const setAnswer = (id: string, value: string | string[]) => setAnswers((a) => ({ ...a, [id]: value }));
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [joinOpen, setJoinOpen] = useState(false);
   const [challenge, setChallenge] = useState<InquiryChallenge | null>(null);
   const ref = propertyInquiryRef();
@@ -195,13 +197,24 @@ export default function PropertyContactActions({
       <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
       <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
         <DialogContent dir="rtl" aria-describedby={undefined} className="sm:max-w-md" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
-          <DialogHeader><DialogTitle className="text-center">שיתוף נכס</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-center text-xl">מנגנון העמלות בשיתוף נכסים 💸</DialogTitle></DialogHeader>
           <p className="break-words text-center text-muted-foreground">{title}</p>
-          <div className="flex items-center justify-center gap-3">
-            <Button variant="outline" aria-label="שיתוף בווטסאפ" title="שיתוף בווטסאפ" onClick={() => void share('whatsapp')}><WhatsAppIcon />ווטסאפ</Button>
-            <Button variant="outline" aria-label="שיתוף באימייל" title="שיתוף באימייל" onClick={() => void share('email')}><Mail />אימייל</Button>
-            <Button variant="outline" aria-label="העתקת קישור" title="העתקת קישור" onClick={() => void share('copy')}><Copy />העתקה</Button>
+          <div className="space-y-2.5 rounded-lg bg-muted/40 p-4 text-base leading-relaxed">
+            <p>🔗 משתמשים רשומים משתפים נכסים עם חברים ומתעניינים בלחיצה אחת.</p>
+            <p>🏠 כשמתעניין שנרשם דרך הקישור שלך יוצר קשר או סוגר עסקה, השיתוף נזקף לזכותך.</p>
+            <p>💰 על כל פעילות שמביא הקישור שלך ניתן לקבל תגמולים ועמלות — בהתאם לתגמולים שהמפרסם הגדיר לנכס.</p>
+            <p>✨ ההרשמה חינם ולוקחת פחות מדקה.</p>
           </div>
+          <Button
+            size="lg"
+            className="mt-1 w-full text-base font-bold"
+            onClick={() => {
+              setJoinOpen(false);
+              navigate('/auth', { state: { returnTo: window.location.pathname + window.location.search, tab: 'signup' } });
+            }}
+          >
+            הרשמה חינם והתחלת שיתוף 🚀
+          </Button>
         </DialogContent>
       </Dialog>
       <Drawer open={mode !== null} onOpenChange={(open) => !open && setMode(null)} shouldScaleBackground={false}>
