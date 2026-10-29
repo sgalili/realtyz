@@ -211,6 +211,7 @@ function PersonalTab() {
   const language = usePersonalLanguage();
   const queryClient = useQueryClient();
   const identity = useAccountIdentity();
+  const { isSuperAdmin } = useUserRole();
   const { activeWorkspaceId } = useWorkspace();
   const profileOwnerId = activeWorkspaceId ?? user?.id ?? null;
   const isOwnProfile = profileOwnerId === user?.id;
@@ -298,7 +299,9 @@ function PersonalTab() {
   const removeLicense = async () => {
     setRemovingLicense(true);
     try {
-      const { error } = await supabase.rpc('remove_my_broker_license' as any);
+      const { error } = isOwnProfile
+        ? await supabase.rpc('remove_my_broker_license' as any)
+        : await supabase.rpc('admin_remove_broker_license' as any, { _user_id: profileOwnerId });
       if (error) throw error;
       setStoredLicense(''); setBrokerLicense(''); setVerifiedBrokerLicense(null);
       setRemoveLicenseOpen(false);
