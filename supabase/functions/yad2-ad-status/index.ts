@@ -149,6 +149,10 @@ Deno.serve(async (req) => {
         Promise.race([p, new Promise<undefined>((r) => setTimeout(() => r(undefined), Math.max(0, ms)))]);
 
       const work = (async () => {
+        const puppeteer: PuppeteerModule['default'] | null = await import('npm:puppeteer-core@22.15.0')
+          .then((m) => m.default)
+          .catch((e) => { console.warn(`[yad2-ad-status] puppeteer load failed: ${(e as Error).message}`); return null; });
+        if (!puppeteer) return;
         const probeOne = async (u: string) => {
           if (remaining() < 15_000) return;
           try {
