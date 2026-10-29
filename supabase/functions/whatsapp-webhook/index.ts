@@ -40,6 +40,7 @@ import {
   attachAffiliateReferral,
   referralPropertyLabel,
   stripRefTag,
+  extractSourceTag,
   type InboundReferral,
 } from "../_shared/affiliateRef.ts";
 import { resolveWaSenderRole, type WaSenderRole } from "../_shared/waSenderRole.ts";
@@ -781,6 +782,8 @@ async function handleLeadInboxInbound(
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
   const shortLink = await resolveShortLinkListing(admin, inboundText);
   const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
+  // Facebook campaign short links mark the WhatsApp opener with [src:fb].
+  const fromFbCampaign = extractSourceTag(inboundText) === "fb";
   // Property shared to this exact phone from the share dialog / affiliate share.
   const sharedContext = await resolveSharedPropertyForPhone(admin, senderPhone);
   if (sharedContext) {
@@ -863,7 +866,7 @@ async function handleLeadInboxInbound(
 
 
   // Auto-create lead from short-link inbound when none exists yet.
-  if (!lead?.id && (shortLink || hasShortLinkSignature || referral || sharedContext)) {
+  if (!lead?.id && (shortLink || hasShortLinkSignature || referral || sharedContext || fromFbCampaign)) {
     const dealType = ((referral?.listing?.deal_type ?? shortLink?.deal_type ?? sharedContext?.deal_type) === "rent" ? "rent" : "sale");
     const category = dealType === "rent" ? "שוכר" : "קונה";
     let assignTo: string | null = referral?.broker_id ?? shortLink?.owner_id ?? sharedContext?.owner_id ?? null;
@@ -901,8 +904,8 @@ async function handleLeadInboxInbound(
             ? { workspace_owner_id: referral?.broker_id ?? sharedContext?.owner_id }
             : {}),
           preferences: {
-            source: "whatsapp",
-            shortlink_origin: shortLink ? "shortlink" : sharedContext ? "property_share" : null,
+            source: fromFbCampaign ? "shortlink" : "whatsapp",
+            shortlink_origin: fromFbCampaign ? "facebook_campaign" : shortLink ? "shortlink" : sharedContext ? "property_share" : null,
             category,
             listing_id: referral?.listing_id ?? shortLink?.listing_id ?? sharedContext?.listing_id ?? null,
             referral_code: referral?.tracking_code ?? refCode ?? null,
