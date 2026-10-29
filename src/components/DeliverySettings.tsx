@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ShieldCheck } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type DelayUnit = 'sec' | 'min' | 'hour' | 'day';
@@ -54,7 +55,7 @@ export function DeliverySettings({
       <div className="flex items-center justify-between rounded-md border border-border bg-card p-3">
         <div className="flex items-center gap-2">
           <div>
-            <Label className="text-sm font-semibold">הגדרות שליחה</Label>
+            <Label className="flex items-center gap-1.5 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-primary" />הגדרות שליחה</Label>
             {!compact && <p className="text-xs text-muted-foreground">הגבלת קצב, חלון זמן והשהייה אקראית להגנה מסימון כספאם.</p>}
           </div>
         </div>
