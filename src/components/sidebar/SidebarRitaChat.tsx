@@ -97,31 +97,33 @@ export function SidebarRitaChat() {
           >
             {collapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
           </button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                disabled={messages.length === 0}
-                aria-label="איפוס צ׳אט"
-                title="איפוס צ׳אט"
-                className={iconBtn}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent dir="rtl">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-[19px]">לאפס את הצ׳אט?</AlertDialogTitle>
-                <AlertDialogDescription className="text-[15px]">
-                  כל היסטוריית השיחה עם ריטה תימחק לצמיתות.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="sm:justify-between">
-                <AlertDialogCancel>ביטול</AlertDialogCancel>
-                <AlertDialogAction onClick={clearChat}>איפוס</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {/* The reset control only exists once there is a conversation to reset. */}
+          {messages.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="איפוס צ׳אט"
+                  title="איפוס צ׳אט"
+                  className={iconBtn}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent dir="rtl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-[19px]">לאפס את הצ׳אט?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-[15px]">
+                    כל היסטוריית השיחה עם ריטה תימחק לצמיתות.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="sm:justify-between">
+                  <AlertDialogCancel>ביטול</AlertDialogCancel>
+                  <AlertDialogAction onClick={clearChat}>איפוס</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
       {(messages.length > 0 || loading) && !collapsed && (
