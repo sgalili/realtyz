@@ -902,14 +902,13 @@ export default function Properties() {
 
 
 
-        {/* Row 1 — [יד2][הנכסים שלי][להשכרה][למכירה] ⇢ [sort][select][count][view] */}
-        <div data-testid="property-filter-row" className="mb-2 flex items-center justify-between gap-1">
-        <div className="flex shrink-0 items-center gap-2.5">
+        {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
+        <div data-testid="property-filter-row" className="mb-2 flex flex-wrap items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              className="order-1 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
               aria-label={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               aria-expanded={searchOpen}
@@ -918,74 +917,7 @@ export default function Properties() {
             >
               <SearchIcon className="h-4 w-4" />
             </Button>
-        <div role="group" aria-label="מקורות חיפוש" className="flex shrink-0 items-center gap-2.5">
-          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}>
-            <span className={`h-2 w-2 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
-            <span className="whitespace-nowrap">{sourceLabel(source)}</span>
-          </Button>)}
-        </div>
-        <div className="inline-flex shrink-0 items-center gap-2.5" role="group" aria-label="סוג עסקה">
-          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full bg-success ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
-        </div>
-        </div>
-        <div data-testid="property-tools-row" className="flex shrink-0 items-center gap-0">
-
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                   variant="ghost"
-                  size="sm"
-                   className="h-8 gap-1.5 border-0 bg-transparent text-xs shadow-none hover:bg-transparent hover:text-inherit"
-                  aria-label="מיון"
-                  title="מיון"
-                >
-                  <ArrowUpDown className="h-3.5 w-3.5" />
-                  
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
-                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
-                      {SORT_LABELS[key]}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
-
-            {/* Counter pill — always visible: total records by default,
-                replaced by the selected count while selecting. */}
-            <span className="ms-[5px] rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
-              {multiSelectMode && selectedListingIds.size > 0
-                ? `${selectedListingIds.size} נבחרו`
-                : (() => {
-                    const total = totalListingsCount ?? sortedResults.length;
-                    return total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total;
-                  })()}
-            </span>
-
-            {multiSelectMode && selectedListingIds.size > 0 ? (
-              <div className="flex items-center gap-2">
-                <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-            ) : null}
-
-            {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
-                between the results-count pill and the view toggle. */}
-          <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
-        </div>
-        </div>
-
-        {/* Row 2 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] — collapsed by default behind the tools-row magnify button. */}
-        <div id="inventory-search-row" className="grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none" style={{ gridTemplateRows: searchOpen ? '1fr' : '0fr' }}>
+        <div id="inventory-search-row" className="grid order-2 min-w-0 flex-1 basis-full sm:basis-auto transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none" style={{ gridTemplateRows: searchOpen ? '1fr' : '0fr' }}>
           <div className="min-h-0 overflow-hidden">
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
@@ -1174,6 +1106,77 @@ export default function Properties() {
         </div>
           </div>
         </div>
+        <div data-testid="property-tools-row" className="order-3 flex shrink-0 items-center gap-0">
+
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                   variant="ghost"
+                  size="sm"
+                   className="h-8 gap-1.5 border-0 bg-transparent text-xs shadow-none hover:bg-transparent hover:text-inherit"
+                  aria-label="מיון"
+                  title="מיון"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
+                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
+                      {SORT_LABELS[key]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
+
+            {/* Counter pill — always visible: total records by default,
+                replaced by the selected count while selecting. */}
+            <span className="ms-[5px] rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
+              {multiSelectMode && selectedListingIds.size > 0
+                ? `${selectedListingIds.size} נבחרו`
+                : (() => {
+                    const total = totalListingsCount ?? sortedResults.length;
+                    return total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total;
+                  })()}
+            </span>
+
+            {multiSelectMode && selectedListingIds.size > 0 ? (
+              <div className="flex items-center gap-2">
+                <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            ) : null}
+
+            {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
+                between the results-count pill and the view toggle. */}
+          <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
+        </div>
+        </div>
+
+        {/* The source and deal toggles sit below the field and appear only while search is open. */}
+        {searchOpen && (
+          <div className="mb-2 flex flex-wrap items-center gap-2.5">
+        <div role="group" aria-label="מקורות חיפוש" className="flex shrink-0 items-center gap-2.5">
+          {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}>
+            <span className={`h-2 w-2 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
+            <span className="whitespace-nowrap">{sourceLabel(source)}</span>
+          </Button>)}
+        </div>
+        <div className="inline-flex shrink-0 items-center gap-2.5" role="group" aria-label="סוג עסקה">
+          {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full bg-success ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
+        </div>
+          </div>
+        )}
+
 
 
 
