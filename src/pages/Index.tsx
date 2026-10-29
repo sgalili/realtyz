@@ -28,6 +28,11 @@ import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAppMode } from '@/hooks/useAppMode';
+import { activityAudience } from '@/lib/activityAudience';
+import MyAds from '@/pages/MyAds';
+import PartnerActivityProperties from '@/components/public/PartnerActivityProperties';
 
 
 /* ────────────────────────────────────────────────────────────────────
@@ -615,6 +620,11 @@ function KpiCard({
  */
 const Dashboard = () => {
   const { isRitaWorkspace } = useWorkspaceFeatures();
+  const { roles, loading } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  if (loading) return <p role="status" className="py-8 text-center">טוען פעילות…</p>;
+  const audience = activityAudience(roles, isPartnerMode);
+  if (audience !== 'professional') return <div dir="rtl" className="space-y-3"><h1 className="text-xl font-semibold">הפעילות שלי</h1>{audience === 'partner' ? <PartnerActivityProperties /> : <MyAds activityOnly />}</div>;
   return isRitaWorkspace ? <RecruitmentDashboard /> : <RealEstateDashboard />;
 };
 

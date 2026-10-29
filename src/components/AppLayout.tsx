@@ -518,7 +518,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <DemoSidebarPeek />
             </div>
           </main>
-          <AiAgentDrawer />
+          <AiAgentDrawer key={`${user?.id}:${activeWorkspaceId}`} />
           <QuickActionDrawer />
           <TutorialHost />
           <GlobalAppTour />
