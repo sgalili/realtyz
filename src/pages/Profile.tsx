@@ -447,18 +447,30 @@ function PersonalTab() {
 
         {showBrokerFields && isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
         {verifiedLicenseLocked ? (
-          <div className="space-y-1.5">
-            <Label className="text-base">מספר רישיון תיווך</Label>
-            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
-              <BadgeCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-              <span className="flex-1 text-base font-medium tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+          <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+            <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span className="shrink-0 text-sm font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
             </div>
-            <p className="text-sm text-muted-foreground">רישיון מאומת מול פנקס המתווכים. לא ניתן לערוך.</p>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
           </div>
-        ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
+        ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : (
+          <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+            <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span className="shrink-0 text-sm font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך">{brokerLicense || '—'}</span>
+            </div>
+            {isSuperAdmin && !!brokerLicense && (
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
 
       </CardContent>
 
