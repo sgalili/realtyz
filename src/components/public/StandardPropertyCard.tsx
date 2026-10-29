@@ -19,15 +19,15 @@ function PhotoCarousel({ photos, alt, card, onFavorite, isMine = false, isFav = 
   return (
     <div>
       <div data-property-image-toolbar className="flex min-h-10 items-center gap-1 px-2" onClick={(event) => event.stopPropagation()}>
-        {photos.length > 1 && <><Button type="button" size="icon" variant="ghost" aria-label="תמונה קודמת" onClick={() => move(-1)} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button><span className="text-xs font-semibold tabular-nums">{index + 1}/{photos.length}</span><Button type="button" size="icon" variant="ghost" aria-label="תמונה הבאה" onClick={() => move(1)} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button></>}
-        <div className="ms-auto flex items-center gap-1">
-          <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={isFav} className="h-9 w-9 text-destructive"><Heart className={cn('h-5 w-5', isFav && 'fill-current')} /></Button>
-          <PropertyContactActions listingId={card.id} title={alt} compact shareOnly shareButtonClassName="h-9 w-9 border-0 bg-transparent shadow-none" />
-        </div>
+        {photos.length > 1 && <><Button type="button" size="icon" variant="ghost" aria-label="תמונה קודמת" onClick={() => move(-1)} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" aria-label="תמונה הבאה" onClick={() => move(1)} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button></>}
       </div>
       <div className="relative h-48 overflow-hidden bg-muted [touch-action:pan-y]" onTouchStart={(event) => { const touch = event.touches[0]; if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY }; swiped.current = false; }} onTouchEnd={(event) => { const start = touchStart.current; const touch = event.changedTouches[0]; touchStart.current = null; if (!start || !touch || photos.length < 2) return; const dx = touch.clientX - start.x; if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(touch.clientY - start.y)) { swiped.current = true; move(dx > 0 ? 1 : -1); } }} onClickCapture={(event) => { if (swiped.current) { event.preventDefault(); event.stopPropagation(); swiped.current = false; } }}>
         {photos.length ? <img src={photos[index]} alt={alt} loading="lazy" draggable={false} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">אין תמונות</div>}
-        {isMine && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-background/80 px-1.5 py-0.5 text-xs font-semibold text-success" onClick={(event) => event.stopPropagation()}><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />שלי</span>}
+        <div className="absolute left-2 top-2 z-10 rounded-full bg-white/70 p-0.5" onClick={(event) => event.stopPropagation()}>
+          <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={isFav} className="h-9 w-9 text-destructive"><Heart className={cn('h-5 w-5', isFav && 'fill-current')} /></Button>
+        </div>
+        {photos.length > 1 && <span className="absolute right-2 top-2 z-10 rounded-full bg-white/70 px-2 py-1 text-xs font-semibold tabular-nums text-foreground" onClick={(event) => event.stopPropagation()}>{index + 1}/{photos.length}</span>}
+        {isMine && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-background/80 px-1.5 py-0.5 text-xs font-semibold text-success" onClick={(event) => event.stopPropagation()}><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />שלי</span>}
       </div>
     </div>
   );
@@ -61,8 +61,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
                        options={card.contact_options}
                        compact
                        formAsButton
-                        shareUrl={publicUrl(propertyPath)}
-                        showShare={false}
+                         shareUrl={publicUrl(propertyPath)}
                      />
                    </div>
                 </div>
