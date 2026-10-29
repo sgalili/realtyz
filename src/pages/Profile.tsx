@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { useUserRole } from '@/hooks/useUserRole';
+import { UpgradeToBrokerButton } from '@/components/profile/UpgradeToBrokerButton';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
@@ -455,6 +456,7 @@ function PersonalTab() {
             <p className="text-sm text-muted-foreground">רישיון מאומת מול פנקס המתווכים. לא ניתן לערוך.</p>
           </div>
         ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
+        {isOwnProfile && !showBrokerFields && <UpgradeToBrokerButton onUpgraded={(l) => { setStoredLicense(l); setBrokerLicense(l); }} />}
 
       </CardContent>
 
