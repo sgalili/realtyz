@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, useSortable, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { SortableContext, useSortable, rectSortingStrategy, rectSwappingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,7 +14,7 @@ function Tile({ photo, primary, onMakePrimary, showPrimary }: { photo: SortableP
       className={cn('relative aspect-video cursor-grab touch-none select-none overflow-hidden rounded-md border bg-muted active:cursor-grabbing', primary && 'ring-2 ring-primary', isDragging && 'z-10 opacity-80 shadow-lg')}>
       {photo.content}
       {showPrimary && <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); if (!primary) onMakePrimary(); }}
-        aria-label={primary ? 'תמונה ראשית' : 'הגדרה כתמונה ראשית'} title={primary ? 'תמונה ראשית' : 'הגדרה כתמונה ראשית'}
+        aria-label={primary ? 'קובץ ראשי' : 'הגדרה כקובץ ראשי'} title={primary ? 'קובץ ראשי' : 'הגדרה כקובץ ראשי'}
         className={cn('absolute start-1 top-1 flex h-7 items-center gap-1 rounded-full bg-background/85 px-2 text-[11px] font-semibold', primary ? 'text-primary' : 'text-muted-foreground')}>
         <Star className={cn('h-3.5 w-3.5', primary && 'fill-current')} />{primary && 'ראשית'}
       </button>}
@@ -24,7 +24,7 @@ function Tile({ photo, primary, onMakePrimary, showPrimary }: { photo: SortableP
 }
 
 /** Drag tiles to reorder; the first tile is the primary photo. */
-export function SortablePhotoGrid({ photos, onMove, className, showPrimary = true }: { photos: SortablePhoto[]; onMove: (from: number, to: number) => void; className?: string; showPrimary?: boolean }) {
+export function SortablePhotoGrid({ photos, onMove, className, showPrimary = true, swap = false }: { photos: SortablePhoto[]; onMove: (from: number, to: number) => void; className?: string; showPrimary?: boolean; swap?: boolean }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const end = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
@@ -33,11 +33,11 @@ export function SortablePhotoGrid({ photos, onMove, className, showPrimary = tru
   };
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={end}>
-      <SortableContext items={photos.map(p => p.id)} strategy={rectSortingStrategy}>
+      <SortableContext items={photos.map(p => p.id)} strategy={swap ? rectSwappingStrategy : rectSortingStrategy}>
         <div className={cn('grid grid-cols-2 gap-2 sm:grid-cols-3', className)}>
           {photos.map((photo, i) => <Tile key={photo.id} photo={photo} primary={i === 0} onMakePrimary={() => onMove(i, 0)} showPrimary={showPrimary} />)}
         </div>
-        {showPrimary && photos.length > 1 && <p className="mt-1 text-xs text-muted-foreground">גררו תמונה לשינוי הסדר · לחיצה על הכוכב קובעת תמונה ראשית</p>}
+        {showPrimary && photos.length > 1 && <p className="mt-1 text-xs text-muted-foreground">גררו קובץ על קובץ אחר כדי להחליף ביניהם · לחיצה על הכוכב קובעת תמונה ראשית</p>}
       </SortableContext>
     </DndContext>
   );
