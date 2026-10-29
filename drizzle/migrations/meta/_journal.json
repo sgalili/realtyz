@@ -687,6 +687,13 @@
       "when": 1793297476489,
       "tag": "0097_lock_broker_official_name",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1793297635811,
+      "tag": "0098_upgrade_to_verified_broker",
+      "breakpoints": true
     }
   ]
 }

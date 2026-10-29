@@ -9752,6 +9752,7 @@ export type Database = {
         Returns: undefined
       }
       unban_user: { Args: { _note: string; _user: string }; Returns: Json }
+      upgrade_to_verified_broker: { Args: never; Returns: Json }
       upsert_lead_by_social: {
         Args: {
           _email?: string
