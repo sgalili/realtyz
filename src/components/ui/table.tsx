@@ -232,7 +232,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
                   <Columns3 className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" collisionPadding={8} className="max-h-[min(70vh,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto overscroll-contain">
                 {prefs.order.filter((i) => labels[i]).map((i) => (
                   <DropdownMenuCheckboxItem
                     key={i}

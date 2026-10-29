@@ -111,7 +111,7 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
   </th>;
 }
 export function BoardColumnMenu({ controls }: { controls: BoardColumnControls }) {
-  return <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="התאמת עמודות" title="התאמת עמודות"><Columns3 className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+  return <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="התאמת עמודות" title="התאמת עמודות"><Columns3 className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" collisionPadding={8} className="max-h-[min(70vh,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto overscroll-contain">
     {controls.definitions.map(c => <DropdownMenuCheckboxItem key={c.id} checked={controls.visible.includes(c.id)} disabled={controls.visible.length === 1 && controls.visible.includes(c.id)} onSelect={e => e.preventDefault()} onCheckedChange={() => controls.toggleVisible(c.id)}>{c.label}</DropdownMenuCheckboxItem>)}
     <DropdownMenuSeparator /><DropdownMenuItem onSelect={controls.resetOrder}>איפוס סדר עמודות</DropdownMenuItem>
   </DropdownMenuContent></DropdownMenu>;
