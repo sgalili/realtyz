@@ -60,7 +60,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     const parsed = Number(draft.replace(/,/g, ''));
     if (draft.trim() && Number.isFinite(parsed) && parsed >= 0) {
       const next = displayAmount && range.price > 0 ? parsed / range.price * 100 : parsed;
-      changePercent(unrestricted ? next : clampClosingPercent(next, dealType));
+      changePercent(clampPercent(next));
     }
     setEditing(false);
   };
@@ -75,7 +75,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     </div>
     <div dir="ltr" className="space-y-2 px-2">
       <Slider dir="ltr" aria-label="עמלת סגירה" min={minimum} max={maximum} disabled={dualMode && displayAmount && range.price <= 0} step={dualMode && displayAmount ? 0.01 : range.step} value={[dualMode && displayAmount ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(dualMode && displayAmount && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
-      <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{displayAmount ? money(dualMode ? minimum : closingFeeAmount(range.min, range.price)) : `${range.min}%`}</span><span>{displayAmount ? money(dualMode ? maximum : closingFeeAmount(range.max, range.price)) : `${range.max}%`}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>
+      <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{displayAmount ? money(dualMode ? minimum : closingFeeAmount(zeroMin ? 0 : range.min, range.price)) : `${zeroMin ? 0 : range.min}%`}</span><span>{displayAmount ? money(dualMode ? maximum : closingFeeAmount(range.max, range.price)) : `${range.max}%`}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>
     </div>
     <div className="space-y-2 text-center">
       <p className="text-sm font-semibold" aria-live="polite">פוטנציאל שיתוף: כ־{1 + Math.round(progress * 99)} שותפים</p>
