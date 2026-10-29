@@ -1309,6 +1309,48 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_upgrade_requests: {
+        Row: {
+          certificate_check_id: string | null
+          certificate_name: string | null
+          created_at: string
+          id: string
+          license_number: string
+          registry_holder_name: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          certificate_check_id?: string | null
+          certificate_name?: string | null
+          created_at?: string
+          id?: string
+          license_number: string
+          registry_holder_name?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          certificate_check_id?: string | null
+          certificate_name?: string | null
+          created_at?: string
+          id?: string
+          license_number?: string
+          registry_holder_name?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       budget_limits: {
         Row: {
           created_at: string
@@ -9628,6 +9670,10 @@ export type Database = {
         Args: { _approve: boolean; _reason?: string; _user_id: string }
         Returns: Json
       }
+      review_broker_upgrade_request: {
+        Args: { _approve: boolean; _id: string; _note?: string }
+        Returns: Json
+      }
       review_lead_dispute: { Args: { _id: string }; Returns: Json }
       run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
@@ -9690,6 +9736,7 @@ export type Database = {
         Args: { _holder_name?: string; _license_number: string }
         Returns: Json
       }
+      submit_broker_upgrade_request: { Args: never; Returns: Json }
       submit_edited_group_repost: {
         Args: {
           _jobs: Json
