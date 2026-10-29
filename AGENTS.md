@@ -23,7 +23,7 @@
 - Drafts retain scoped errors and post-only exclusions, never deleting source photos. Explicit publish; celebration owns canvas/audio. Cached reward sounds follow account-only new ledger earnings, never workspace balances or historical grants.
 - Publisher numbering excludes setup; preserves keys and resolved addresses; ignores stale searches.
 - Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state and consistent counts without tenant drift or duplicate legal content.
-- Public publisher pricing rules: read src/components/public/AGENTS.md before changes.
+- Public publisher pricing and shared card-header rules: read src/components/public/AGENTS.md.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
 - Peer expansions use exclusive motion groups.
