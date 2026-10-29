@@ -80,7 +80,16 @@ export default function ShortLinkRedirect() {
     const fromFb = new URLSearchParams(window.location.search).get("utm_source") === "facebook";
     const parsed = raw && fromFb ? { ...raw, text: `${raw.text ?? ""}\n[src:fb]`.trim() } : raw;
     if (!parsed) {
-      window.location.replace(target);
+      let dest = target;
+      try {
+        const u = new URL(target);
+        const here = new URLSearchParams(window.location.search);
+        if (/(?:^|\.)(?:toraff|realtyz)\.co\.il$/i.test(u.hostname)) {
+          for (const k of ["utm_source", "utm_medium"]) { const v = here.get(k); if (v && !u.searchParams.has(k)) u.searchParams.set(k, v); }
+          dest = u.toString();
+        }
+      } catch { /* keep target */ }
+      window.location.replace(dest);
       return;
     }
     const query = `phone=${parsed.phone}${parsed.text ? `&text=${encodeURIComponent(parsed.text)}` : ""}`;
