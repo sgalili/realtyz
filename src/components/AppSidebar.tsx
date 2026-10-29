@@ -29,6 +29,7 @@ import { SidebarWalletIndicator } from '@/components/billing/SidebarWalletIndica
 import { useUserRole } from '@/hooks/useUserRole';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { accountIdentity } from '@/lib/accountMode';
+import { activityAudience } from '@/lib/activityAudience';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
 import { supabase } from '@/integrations/supabase/client';
@@ -204,9 +205,14 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const features = useWorkspaceFeatures();
   const access = usePropertyPageAccess();
   const affiliateOnlyNav = isAffiliateOnly || isPartnerMode;
+  const audience = activityAudience(roles, isPartnerMode);
   const navItems = useMemo(() => {
     if (roleLoading || roleError) return [];
-    if (affiliateOnlyNav) return PARTNER_NAV_ITEMS.filter(item => item.url !== '/affiliate-network');
+    if (audience !== 'professional') {
+      const personal = NAV_ITEMS.filter(item => ['/command-center', '/deal-room', '/referral'].includes(item.url));
+      const communications = audience === 'partner' ? PARTNER_NAV_ITEMS.filter(item => ['/posts', '/partner/chats'].includes(item.url)) : NAV_ITEMS.filter(item => ['/campaigns', '/inbox'].includes(item.url));
+      return [...personal, ...communications];
+    }
     const invite = NAV_ITEMS.filter((item) => item.url === '/referral');
     // A broker-owned active workspace shows the broker menu even when the
     // viewer's own account is private/owner-only (identity follows the owner).
@@ -228,10 +234,10 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       if (item.url === '/affiliate-network') return false;
       return true;
     });
-  }, [features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label]);
+  }, [audience, features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label]);
 
   const countFor = (url: string): number | undefined => {
-    if (!counts) return undefined;
+    if (!counts || audience !== 'professional') return undefined;
     switch (url) {
       case '/command-center': return counts.tasks;
       case '/lead-crm': return counts.leads;
@@ -349,6 +355,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {user && (
+                <SidebarMenuItem key="partner-pool" hidden={audience !== 'partner'}>
+                  <SidebarMenuButton asChild><NavLink to="/sharing-pool" onClick={handleNavClick} className="flex items-center gap-3 px-3 py-2.5"><Home className="h-4 w-4 text-primary" />{!collapsed && <span className="text-sm font-medium">נכסים פתוחים לשיתוף</span>}</NavLink></SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {user && (
                 <SidebarMenuItem key="my-ads">
                   <SidebarMenuButton asChild isActive={location.pathname.startsWith('/my-ads')}>

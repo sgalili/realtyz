@@ -35,11 +35,14 @@ import { useCreditWallet } from '@/hooks/useSubscription';
 import RoleChoiceStep from '@/components/auth/RoleChoiceStep';
 import { useAppMode, isPartnerModePath } from '@/hooks/useAppMode';
 import { accountIdentity } from '@/lib/accountMode';
+import { activityAudience } from '@/lib/activityAudience';
+import { rolePageAllowed, PERSONAL_PATHS } from '@/lib/roleNavigation';
 import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
+const RoleTransactions = lazy(() => import('./pages/RoleTransactions'));
 const MyAds = lazy(() => import("./pages/MyAds"));
 const PublishingHistory = lazy(() => import("./pages/PublishingHistory"));
 const LeadCRM = lazy(() => import("./pages/LeadCRM"));
@@ -163,16 +166,16 @@ function PageLoader() {
  * app (CRM, properties, posts, office settings) belongs to brokers and is
  * redirected away, so an affiliate never sees broker tooling.
  */
-const AFFILIATE_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/referral', '/profile', '/posts', '/partner/contacts', '/partner/chats', '/partner/posts'];
+const AFFILIATE_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/affiliate', '/affiliates', '/affiliate-pricing', '/affiliate-network', '/partner/contacts', '/partner/chats', '/partner/posts'];
 
 /**
  * Private property owners are a separate product: only their own properties,
  * the leads interested in them, the reward settings and Rita. Broker CRM,
  * recruitment and affiliate management are unreachable, not just hidden.
  */
-export const OWNER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita', '/profile', '/referral'];
+export const OWNER_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS, '/owner/properties', '/owner/leads', '/owner/rewards', '/owner/rita'];
 const WALLET_LOCK_ALLOWED = ['/', '/wallet', '/profile', '/public-listings', '/billing', '/referral'];
-const SEEKER_ALLOWED_PATHS = ['/', '/wallet','/public-listings', '/profile', '/referral'];
+const SEEKER_ALLOWED_PATHS = ['/', ...PERSONAL_PATHS];
 const DEVELOPER_ALLOWED_PATHS = ['/', '/wallet', '/public-listings', '/my-ads', '/profile', '/developer-dashboard', '/command-center', '/campaigns', '/lead-crm', '/inbox', '/affiliate-network', '/affiliate', '/referral', '/partner/contacts', '/partner/chats', '/posts'];
 
 function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
@@ -230,6 +233,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
 
 
   // Affiliate-only accounts are locked to the affiliate portal.
+  const audience = activityAudience(roles, isPartnerMode);
+  if (!rolePageAllowed(audience, location.pathname)) return <Navigate to="/public-listings" replace />;
   if (!roleLoading && isAffiliateOnly) {
     const allowed = AFFILIATE_ALLOWED_PATHS.some(
       (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
@@ -337,6 +342,8 @@ function WorkspaceScope({ children }: { children: React.ReactNode }) {
 function ListingsRoute({ children }: { children: React.ReactNode }) {
   const { listingsEnabled } = useWorkspaceFeatures();
   const access = usePropertyPageAccess();
+  const { isPartnerMode } = useAppMode();
+  if (isPartnerMode) return <Navigate to="/public-listings" replace />;
   if (access.loading) return <PageLoader />;
   if (!access.properties) return <Navigate to="/my-ads" replace />;
   if (!listingsEnabled) return <Navigate to="/lead-crm" replace />;
@@ -374,6 +381,9 @@ function MyAdEditRoute() {
 
 function DealsRoute({ children }: { children: React.ReactNode }) {
   const { dealsEnabled } = useWorkspaceFeatures();
+  const { roles } = useUserRole();
+  const { isPartnerMode } = useAppMode();
+  if (activityAudience(roles, isPartnerMode) !== 'professional') return <>{children}</>;
   if (!dealsEnabled) return <Navigate to="/lead-crm" replace />;
   return <>{children}</>;
 }
@@ -469,7 +479,7 @@ const App = () => (
               <Route path="/lead-crm/:leadId" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/communication" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
-              <Route path="/deal-room" element={<DealsRoute><ProtectedRoute allowGuestDemo><DealRoom /></ProtectedRoute></DealsRoute>} />
+              <Route path="/deal-room" element={<DealsRoute><ProtectedRoute allowGuestDemo><RoleTransactions /></ProtectedRoute></DealsRoute>} />
               <Route path="/properties" element={<ListingsRoute><ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute></ListingsRoute>} />
               <Route path="/properties-hub" element={<ListingsRoute><ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute></ListingsRoute>} />
               <Route path="/properties/:id" element={<ListingsRoute><ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute></ListingsRoute>} />
