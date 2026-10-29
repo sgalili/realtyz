@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/pages/PublicListingPage';
 import PropertyReferralButton from './PropertyReferralButton';
+import { useListingAudience } from '@/hooks/useListingAudience';
 
 type Favorite = { listing_id: string; property: { slug?: string; property_title?: string; address?: string; city?: string; image_url?: string; media_photos?: string[]; asking_price?: number; deal_type?: string } | null };
 
@@ -51,10 +52,12 @@ export default function MyFavoriteAds() {
     } catch { toast.error('ההסרה נכשלה, נסו שוב'); }
     finally { setRemoving(current => { const next = new Set(current); next.delete(id); return next; }); }
   };
-  if (favorites.isLoading) return <div className="flex justify-center py-10"><Loader2 aria-label="טעינת מועדפים" className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  const audience = useListingAudience((favorites.data ?? []).map(row => row.listing_id));
+  const visibleFavorites = favorites.data?.filter(row => audience.isVisible(row.listing_id));
+  if (favorites.isLoading || audience.isLoading) return <div className="flex justify-center py-10"><Loader2 aria-label="טעינת מועדפים" className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (favorites.isError) return <div role="alert">לא ניתן לטעון את המועדפים <Button variant="link" onClick={() => void favorites.refetch()}>ניסיון נוסף</Button></div>;
-  if (!favorites.data?.length) return <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות במועדפים.</p>;
-  return <div className="space-y-3">{favorites.data.map(({ listing_id, property }) => {
+  if (!visibleFavorites?.length) return <p className="py-10 text-center text-muted-foreground">עדיין אין מודעות במועדפים.</p>;
+  return <div className="space-y-3">{visibleFavorites.map(({ listing_id, property }) => {
     const title = property ? [property.address, property.city].filter(Boolean).join(', ') || property.property_title || 'נכס' : 'המודעה אינה זמינה עוד';
     const photo = property?.image_url || property?.media_photos?.[0];
     return <article key={listing_id} data-favorite-ad={listing_id} className="flex min-w-0 items-center gap-3 rounded-lg border bg-card p-3">

@@ -34,6 +34,7 @@ import PublicAdHeading from '@/components/public/PublicAdHeading';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { toast } from 'sonner';
+import { useListingAudience } from '@/hooks/useListingAudience';
 
 type Row = {
   listing_id: string; relation: 'owned' | 'promoting'; title: string | null; city: string | null; address: string | null;
@@ -162,8 +163,9 @@ function ActivityProperties() {
     refetchInterval: 120_000, refetchOnWindowFocus: false, staleTime: 60_000,
     queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
   });
-  const owned = (ads.data ?? []).filter(row => row.relation === 'owned');
-  if (ads.isLoading) return <p role="status" className="py-8 text-center text-muted-foreground">טוען נכסים…</p>;
+  const audience = useListingAudience((ads.data ?? []).map(row => row.listing_id));
+  const owned = (ads.data ?? []).filter(row => row.relation === 'owned' && audience.isVisible(row.listing_id));
+  if (ads.isLoading || audience.isLoading) return <p role="status" className="py-8 text-center text-muted-foreground">טוען נכסים…</p>;
   if (ads.isError) return <div role="alert" className="py-8 text-center">לא ניתן לטעון את הנכסים <Button variant="link" onClick={() => void ads.refetch()}>ניסיון נוסף</Button></div>;
   if (!owned.length) return <p className="py-8 text-center text-muted-foreground">עדיין אין נכסים שפרסמתם בלוח.</p>;
   const ids = [...selected];
@@ -248,7 +250,9 @@ function MyAdsPage() {
   });
   const onTFilter = (f: TransparencyFilter | null) => { if (f?.key === 'wallet') { navigate('/wallet'); return; } setTFilter(f); };
   const listingFilter = tFilter?.key === 'active_listings' || tFilter?.key === 'promoted_listings';
-  const visible = !listingFilter ? data : tFilter!.key === 'promoted_listings' ? data.filter(r => r.relation === 'promoting') : data.filter(r => r.relation === 'owned' && sharedIds?.has(r.listing_id));
+  const audience = useListingAudience(data.map(row => row.listing_id));
+  const audienceRows = data.filter(row => audience.isVisible(row.listing_id));
+  const visible = !listingFilter ? audienceRows : tFilter?.key === 'promoted_listings' ? audienceRows.filter(r => r.relation === 'promoting') : audienceRows.filter(r => r.relation === 'owned' && sharedIds?.has(r.listing_id));
   const { data: favCount = 0 } = useQuery({
     queryKey: ['my-fav-ads-count', user?.id], enabled: !!user?.id,
     queryFn: async () => { const { count, error } = await supabase.from('listing_favorites').select('listing_id', { count: 'exact', head: true }).eq('user_id', user!.id); if (error) throw error; return count ?? 0; },

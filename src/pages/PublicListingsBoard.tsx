@@ -40,6 +40,8 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
+import { visibleToListingAudience } from '@/lib/listingAudience';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -82,6 +84,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const marketplace = useAffiliateMarketplace();
+  const { level4Unlocked } = useAffiliateLicense();
   const goToAuth = () =>
     navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>(() => boardCache.get<PublicCard>() ?? []);
@@ -270,11 +273,12 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     return () => window.removeEventListener(WELCOME_REOPEN_EVENT, reopen);
   }, []);
   const filtered = useMemo(() => cards.filter((card) => {
+    if (!visibleToListingAudience(card.reward_types, !!user, level4Unlocked)) return false;
     if (deal !== 'all' && card.deal_type !== deal) return false;
     if (query.trim() && ![card.title, card.street, card.city, card.neighborhood].some(value => value?.toLowerCase().includes(query.trim().toLowerCase()))) return false;
     const row = marketplace.data?.find(item => item.listing_id === card.id);
     return matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter) && matchesLeadFilter(leadTierAmounts(row as unknown as Record<string, unknown>), leadFilter);
-  }), [cards, propFilter, query, deal, marketplace.data, leadFilter]);
+  }), [cards, propFilter, query, deal, marketplace.data, leadFilter, user, level4Unlocked]);
   // Custom row order chosen with the drag handle, saved per user/workspace on this device.
   const rowOrderKey = `public-board-row-order:v1:${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`;
   const [rowOrder, setRowOrder] = useState<string[]>([]);
