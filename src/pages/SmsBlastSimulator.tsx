@@ -16,6 +16,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { VoiceComposer, type VoicePayload } from '@/components/VoiceComposer';
 import { supabase } from '@/integrations/supabase/client';
+import { audienceFromIdentity, extractWhatsAppNumbers, personalizationTagsFor } from '@/lib/waTemplateCatalog';
+import { useAccountIdentity } from '@/hooks/useAccountIdentity';
+import { useUserRole } from '@/hooks/useUserRole';
 import { WaTemplatePicker, type WaTemplateSelection } from '@/components/whatsapp/WaTemplatePicker';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -159,6 +162,13 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const { limitsEnabled } = useWorkspaceFeatures();
   const blockDemoAction = useDemoGuard();
   const trial = useTrialStatus();
+  const accountIdentityInfo = useAccountIdentity();
+  const { roles: viewerRoles } = useUserRole();
+  const templateAudience = audienceFromIdentity(accountIdentityInfo.label, viewerRoles.includes('super_admin') || viewerRoles.includes('admin'));
+  const personalizationTags = personalizationTagsFor(templateAudience);
+  const [recipientMode, setRecipientMode] = useState<'contacts' | 'file' | 'paste' | ''>('');
+  const [pasteText, setPasteText] = useState('');
+  const [pastedNumbers, setPastedNumbers] = useState<string[]>([]);
   const { isDemoMode } = useDemoMode();
   const navigate = useNavigate();
   const location = useLocation();
@@ -474,7 +484,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const [voicePayload, setVoicePayload] = useState<VoicePayload | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [testPhone, setTestPhone] = useState('');
-  const [dripEnabled, setDripEnabled] = useState(false);
+  const [dripEnabled, setDripEnabled] = useState(true);
   const [dailyLimit, setDailyLimit] = useState(500);
   const [sendWindowStart, setSendWindowStart] = useState('09:00');
   const [sendWindowEnd, setSendWindowEnd] = useState('20:00');
@@ -805,7 +815,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
       return;
     }
     // Trial restriction: block real broadcasts when trial expired
-    if (trial.isTrialExpired) {
+    if (false) {
       toast.error('ההפצה אינה זמינה כרגע בחשבון זה', {
         duration: 8000,
         action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/wallet') },
@@ -898,15 +908,19 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
       const insufficientBalance = limitsEnabled && balance > 0 && estimatedCredits > balance * 1000;
 
       // 3) Pull real recipients from leads table
-      const { data: voterRows, error: voterErr } = await supabase
-        .from('leads')
-        .select('id, full_name, phone_number, city, email')
-        .eq('is_demo', false)
-        .order('created_at', { ascending: false })
-        .limit(Math.min(totalRecipients, 5000));
-      if (voterErr) throw voterErr;
-
-      const voters = voterRows ?? [];
+      let voters: Array<{ id: string | null; full_name: string | null; phone_number: string | null; city: string | null; email: string | null }>;
+      if (recipientSource === 'paste') {
+        voters = pastedNumbers.map((phone) => ({ id: null, full_name: null, phone_number: phone, city: null, email: null }));
+      } else {
+        const { data: voterRows, error: voterErr } = await supabase
+          .from('leads')
+          .select('id, full_name, phone_number, city, email')
+          .eq('is_demo', false)
+          .order('created_at', { ascending: false })
+          .limit(Math.min(totalRecipients, 5000));
+        if (voterErr) throw voterErr;
+        voters = voterRows ?? [];
+      }
       if (voters.length === 0) {
         setPhase('compose');
         toast.error('הרשימה ריקה - ייבאו רשימת מתפקדים לפני שיגור.');
@@ -1441,7 +1455,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base text-center">בחירת נמענים</CardTitle>
+                <CardTitle className="text-base text-center">למי שולחים?</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -1453,28 +1467,51 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                       className="hidden"
                       onChange={handleListFileUpload}
                     />
-                    <div className="mb-3 grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setVoterPickerOpen(true)}
-                      >
-                        <Users className="ml-1 h-3.5 w-3.5" />
-                        בחירה מהמערכת
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => listFileInputRef.current?.click()}
-                      >
-                        <FileSpreadsheet className="ml-1 h-3.5 w-3.5 text-[#107C41]" />
-                        העלאת רשימה
-                      </Button>
-                    </div>
+                    <Select
+                      value={recipientMode || undefined}
+                      onValueChange={(v) => {
+                        const mode = v as 'contacts' | 'file' | 'paste';
+                        setRecipientMode(mode);
+                        if (mode === 'contacts') setVoterPickerOpen(true);
+                        if (mode === 'file') listFileInputRef.current?.click();
+                      }}
+                    >
+                      <SelectTrigger className="mb-3" dir="rtl"><SelectValue placeholder="בחרו נמענים" /></SelectTrigger>
+                      <SelectContent dir="rtl">
+                        <SelectItem value="contacts"><span className="inline-flex items-center gap-2"><Users className="h-3.5 w-3.5" />אנשי הקשר שלי</span></SelectItem>
+                        <SelectItem value="file"><span className="inline-flex items-center gap-2"><FileSpreadsheet className="h-3.5 w-3.5" />העלאת רשימה</span></SelectItem>
+                        <SelectItem value="paste"><span className="inline-flex items-center gap-2"><FileText className="h-3.5 w-3.5" />הדבקת מספרים</span></SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {recipientMode === 'paste' && (
+                      <div className="mb-3 space-y-2">
+                        <Textarea
+                          value={pasteText}
+                          onChange={(e) => setPasteText(e.target.value)}
+                          rows={4}
+                          dir="rtl"
+                          placeholder="הדביקו כאן טקסט חופשי עם מספרי וואטסאפ"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            const numbers = extractWhatsAppNumbers(pasteText);
+                            if (numbers.length === 0) { toast.error('לא נמצאו מספרי וואטסאפ תקינים'); return; }
+                            setPastedNumbers(numbers);
+                            setPasteText(numbers.map(formatPhoneDisplay).join('\n'));
+                            setTotalRecipients(numbers.length);
+                            setRecipientSource('paste');
+                            setListFileName(null);
+                            toast.success(`נמצאו ${numbers.length.toLocaleString('he-IL')} מספרים תקינים`);
+                          }}
+                        >
+                          ניקוי וחילוץ מספרים
+                        </Button>
+                      </div>
+                    )}
                     {totalRecipients > 0 && (listFileName || recipientSource) && (
                       <div className="mt-2 rounded-md border border-border/60 bg-muted/30 px-3 py-3 text-center" dir="rtl">
                         <div className="text-2xl font-bold text-primary tabular-nums">
@@ -1483,7 +1520,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         <div className="mt-0.5 text-xs text-muted-foreground">
                           {listFileName
                             ? 'נמענים תקפים מהרשימה שהועלתה'
-                            : 'נמענים שנבחרו במערכת'}
+                            : recipientSource === 'paste' ? 'מספרים תקינים מההדבקה' : 'נמענים שנבחרו במערכת'}
                         </div>
                         {listFileName && (
                           <div className="mt-2 truncate text-xs text-muted-foreground/80" title={listFileName}>
@@ -1506,11 +1543,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                 {selectedChannels.includes('whatsapp') && (
                   <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
-                    <p className="text-xs text-blue-800">
-                      Meta חוסמת הודעות חופשיות ביוזמת העסק. השיגור יתבצע בתבנית מאושרת, ונמענים שביקשו הסרה
-                      (Opt-out) יידלגו אוטומטית.
-                    </p>
-                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} campaignOnly />
+                    <p className="text-sm font-semibold text-foreground">בחר תבנית הזמנה לשיחת וואטסאפ לאיש קשר חדש</p>
+                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} campaignOnly audience={templateAudience} />
                   </div>
                 )}
 
@@ -1518,10 +1552,12 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                   <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder="תוכן ההודעה" />
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-foreground">תגיות התאמה אישית</span>
-                      {PERSONALIZATION_TAGS.map((tag) => (
-                        <Button key={tag} type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => insertTag(tag)}>{tag}</Button>
-                      ))}
+                      <Select value="" onValueChange={(tag) => insertTag(tag)}>
+                        <SelectTrigger className="h-8 w-auto gap-2 text-xs" dir="rtl"><SelectValue placeholder="תגיות התאמה אישית" /></SelectTrigger>
+                        <SelectContent dir="rtl">
+                          {personalizationTags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <span dir="ltr">{messageBody.length}/1000</span>
                   </div>
@@ -1728,7 +1764,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                   </Card>
                 )}
 
-                <DeliverySettings enabled={dripEnabled} onEnabledChange={setDripEnabled} dailyLimit={dailyLimit} onDailyLimitChange={setDailyLimit} windowStart={sendWindowStart} onWindowStartChange={setSendWindowStart} windowEnd={sendWindowEnd} onWindowEndChange={setSendWindowEnd} delayMin={delayMin} onDelayMinChange={setDelayMin} delayMax={delayMax} onDelayMaxChange={setDelayMax} testPhone={testPhone} onTestPhoneChange={setTestPhone} onTestSend={handleTestSend} />
+                <DeliverySettings enabled={dripEnabled} onEnabledChange={setDripEnabled} dailyLimit={dailyLimit} onDailyLimitChange={setDailyLimit} windowStart={sendWindowStart} onWindowStartChange={setSendWindowStart} windowEnd={sendWindowEnd} onWindowEndChange={setSendWindowEnd} delayMin={delayMin} onDelayMinChange={setDelayMin} delayMax={delayMax} onDelayMaxChange={setDelayMax} />
 
                 <div className="flex flex-col gap-3 rounded-md border border-primary/15 bg-card p-3 shadow-lg">
                   <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2">
@@ -1757,7 +1793,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                   <div className="mb-[6px] flex flex-col items-center gap-1.5 [&_button_svg]:scale-[1.3]">
                     {(() => {
                       const hasConnectedSelected = selectedChannels.some((c) => connectedChannels[c]);
-                      const trialBlocked = trial.isTrialExpired;
+                      const trialBlocked = false;
                       const disabled = (selectedChannels.includes('whatsapp') && !waTemplate) || broadcastCost.hasPending || !blastName.trim() || !messageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
                       return (
                         <>
