@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { ShieldCheck, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,8 +39,8 @@ export default function DailyPostingLimitNotice({ always = false }: { always?: b
         כדי לשמור על החשבון שלך בטוח, כל דף עסקי מפרסם עד {data!.per_page_limit} פוסטים ביום, עם רווח של כמה דקות בין פוסט לפוסט. כל הדפים יחד מוגבלים ל־{data!.account_limit} ביום. הפוסטים הנותרים ימשיכו אוטומטית מחר בבוקר.
       </p>
       {s.canAddPage && (
-        <Button asChild size="sm" className="gap-1">
-          <Link to="/settings/connections"><Plus className="h-4 w-4" />חבר דף פייסבוק עסקי נוסף</Link>
+        <Button size="sm" className="gap-1" onClick={openFacebookConnection}>
+          <Plus className="h-4 w-4" />חבר דף פייסבוק עסקי נוסף
         </Button>
       )}
     </div>

@@ -5,6 +5,7 @@ import { useFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { startMetaPageConnect } from '@/lib/facebookPageConnect';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 
 export function InstagramConnectGate({ onStatusChange }: { onStatusChange: (ready: boolean) => void }) {
   const owner = useActiveWorkspaceOwnerId();
@@ -17,7 +18,7 @@ export function InstagramConnectGate({ onStatusChange }: { onStatusChange: (read
   useEffect(() => { onStatusChange(connected || skipped); }, [connected, skipped, owner, onStatusChange]);
   const connect = async () => {
     setBusy(true); setError('');
-    try { const url = await startMetaPageConnect(); if (!openOAuthWindow(url)) setError('אפשרו פתיחת חלון חדש ונסו שוב.'); }
+    try { openFacebookConnection(); }
     catch (e) { setError(e instanceof Error ? e.message : 'החיבור לא הושלם'); }
     finally { setBusy(false); }
   };

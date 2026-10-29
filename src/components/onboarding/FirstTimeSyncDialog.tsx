@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Check, ChevronLeft, Loader2, Megaphone, Sparkles, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { readPostSignupWelcome } from '@/lib/signupRole';
 import {
@@ -80,6 +81,7 @@ export function FirstTimeSyncDialog() {
   };
 
   const connectFacebook = async () => {
+    openFacebookConnection(); return;
     setBusy('facebook');
     try {
       const { data, error } = await supabase.functions.invoke('meta-page-connect', {

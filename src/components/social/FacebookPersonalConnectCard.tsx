@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { Facebook, Loader2, CheckCircle2, Unlink, AlertTriangle } from 'lucide-react';
 import { clearPendingOAuth, oauthRedirectUri, oauthReturnOrigin, takePendingOAuth } from '@/lib/oauthRedirect';
 import { useResetFacebookHealth } from '@/hooks/useFacebookHealth';
@@ -239,7 +240,7 @@ export const FacebookPersonalConnectCard = () => {
               {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink className="h-4 w-4" />} ניתוק
             </Button>
           ) : (
-            <Button size="sm" onClick={() => connect(false)} disabled={connecting} className="gap-1">
+            <Button size="sm" onClick={openFacebookConnection} disabled={connecting} className="gap-1">
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Facebook className="h-4 w-4" />}
               חיבור פרופיל פייסבוק
             </Button>

@@ -31,6 +31,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { toast } from 'sonner';
 import { openOAuthWindow } from '@/lib/openOAuthWindow';
+import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 
 interface PlatformDef {
@@ -366,6 +367,7 @@ export function SocialConnectionsTab() {
   }, [refetch, queryClient]);
 
   const handleConnect = async (def: PlatformDef) => {
+    if (def.platform === 'facebook') { openFacebookConnection(); return; }
     if (!isSuperAdmin) {
       toast.error('רק בעל החשבון רשאי לנהל חיבורים');
       return;

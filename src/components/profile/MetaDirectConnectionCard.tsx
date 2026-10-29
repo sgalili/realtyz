@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { openOAuthWindow, getActiveOAuthPopup } from '@/lib/openOAuthWindow';
+import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
 import { openExternal } from '@/lib/openExternal';
@@ -253,11 +254,11 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
         // the review-free basic scopes instead of dead-ending the connection.
         if (e?.payload?.retry_basic) {
           try {
-            const url = await startMetaPageConnect({ scopeTier: 'basic' });
+            openFacebookConnection();
             toast.message('מבקשים הרשאות בסיסיות מפייסבוק', {
               description: 'אשרו שוב את החיבור כדי להשלים את ההתחברות.',
             });
-            if (openOAuthWindow(url)) return;
+            return;
           } catch {
             /* fall through to the manual path below */
           }
@@ -749,7 +750,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
               variant="outline"
               size="sm"
               className="min-w-0 flex-1 gap-2 text-[12px]"
-              onClick={() => (connecting ? cancelConnecting() : void connect())}
+              onClick={() => (connecting ? cancelConnecting() : openFacebookConnection())}
             >
               {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />}
               {connecting ? 'בטל' : 'חבר חשבון או עמוד נוסף'}
@@ -767,7 +768,7 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
                 reserved for an active connection. */}
             <div className="flex min-w-0 items-center gap-2">
             <Button
-              onClick={() => (connecting ? cancelConnecting() : void connect())}
+              onClick={() => (connecting ? cancelConnecting() : openFacebookConnection())}
               title={connecting ? 'לחיצה מבטלת את ניסיון ההתחברות' : undefined}
               className="min-w-0 flex-1 gap-2"
             >
