@@ -1120,7 +1120,7 @@ export default function Properties() {
         </div>
           </div>
         </div>
-        <div data-testid="property-tools-row" className="order-4 flex shrink-0 items-center justify-end gap-0">
+        <div data-testid="property-tools-row" className="order-4 flex shrink-0 items-center justify-end gap-0" style={{ marginInlineEnd: "-5px" }}>
 
 
             <DropdownMenu>
