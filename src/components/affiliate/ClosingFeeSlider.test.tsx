@@ -72,4 +72,12 @@ describe('closing fee interaction', () => {
     expect(screen.getByText('₪2,667')).toBeTruthy();
     expect(screen.queryByText(/2,666\.5/)).toBeNull();
   });
+  it('publisher closing fees start at zero with no automatic minimum', () => {
+    render(<ClosingFeeSlider zeroMin dualMode dealType="sale" price={2000000} value={0} valueType="percent" onChange={vi.fn()} onValueChange={vi.fn()} />);
+    const slider = screen.getByRole('slider');
+    expect(slider.getAttribute('aria-valuemin')).toBe('0');
+    expect(slider.getAttribute('aria-valuenow')).toBe('0');
+    expect(screen.getAllByText('0%').length).toBeGreaterThan(0);
+  });
+
 });
