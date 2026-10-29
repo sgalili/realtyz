@@ -206,8 +206,11 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     if (roleLoading || roleError) return [];
     if (affiliateOnlyNav) return PARTNER_NAV_ITEMS.filter(item => item.url !== '/affiliate-network');
     const invite = NAV_ITEMS.filter((item) => item.url === '/referral');
-    if (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי') return invite;
-    if (isPropertyOwnerOnly) return invite; // owner properties live inside My Ads
+    // A broker-owned active workspace shows the broker menu even when the
+    // viewer's own account is private/owner-only (identity follows the owner).
+    const brokerWorkspace = identity.label === 'מתווך';
+    if (!brokerWorkspace && (isPropertySeekerOnly || accountIdentity(roles).label === 'פרטי')) return invite;
+    if (!brokerWorkspace && isPropertyOwnerOnly) return invite; // owner properties live inside My Ads
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.

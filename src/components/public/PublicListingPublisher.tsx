@@ -46,6 +46,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useWorkspaceOwnerRoles } from '@/hooks/useWorkspaceFeatures';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
@@ -157,7 +158,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       return data;
     },
   });
-  const isBroker = Boolean(user && activeWorkspace && (isSuperAdmin || ['managing_broker', 'lead_agent', 'agent', 'junior_agent'].includes(activeWorkspace.role) || (activeWorkspace.is_self && isAgent)));
+  const ownerRoles = useWorkspaceOwnerRoles();
+  const isBroker = Boolean(user && activeWorkspace && (isSuperAdmin || ownerRoles.some((r) => ['managing_broker', 'lead_agent', 'agent', 'junior_agent'].includes(r)) || ['managing_broker', 'lead_agent', 'agent', 'junior_agent'].includes(activeWorkspace.role) || (activeWorkspace.is_self && isAgent)));
   const publisherName = publisherProfile?.full_name || user?.user_metadata?.full_name || '';
   const publisherPhone = publisherProfile?.phone || user?.phone || '';
   const navigate = useNavigate();
