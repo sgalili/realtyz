@@ -229,6 +229,7 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
     addressForMap: addressMapQuery(row ?? {}),
     premsg: ritaPropertyPremsg(row ?? {}),
     contactOptions: row?.contact_options && typeof row.contact_options === 'object' ? row.contact_options : null,
+    yad2AdUrl: typeof row?.yad2_ad_url === 'string' && /^https:/i.test(row.yad2_ad_url) ? row.yad2_ad_url : null,
   };
 }
 
