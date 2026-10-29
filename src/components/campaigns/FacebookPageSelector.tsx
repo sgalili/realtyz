@@ -99,28 +99,28 @@ export function FacebookPageSelector() {
               const isSelected = page.id === selected?.pageId;
               return (
                 <div key={page.id} className={`flex items-center gap-1 rounded-md px-1 ${isSelected ? 'bg-muted' : 'hover:bg-muted/60'}`}>
-                  <button type="button" onClick={() => void choose(page.id)} className="flex min-w-0 flex-1 items-center gap-2 py-2 text-right">
+                  <Button variant="ghost" type="button" onClick={() => void choose(page.id)} className="h-auto min-w-0 flex-1 justify-start gap-2 px-1 py-2 text-right">
                     <Avatar page={page} />
                     <span className="min-w-0 flex-1 truncate">{page.name || page.id}</span>
                     {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
-                  </button>
-                  <button type="button" onClick={manageGroups} aria-label={`ניהול קבוצות עבור ${page.name || page.id}`} title="ניהול קבוצות"
+                  </Button>
+                  <Button variant="ghost" size="icon" type="button" onClick={manageGroups} aria-label={`ניהול קבוצות עבור ${page.name || page.id}`} title="ניהול קבוצות"
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground">
                     <Users className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => { setOpen(false); setRemoving(page); }} aria-label={`נתק את העמוד ${page.name || page.id}`} title="נתק עמוד"
+                  </Button>
+                  <Button variant="ghost" size="icon" type="button" onClick={() => { setOpen(false); setRemoving(page); }} aria-label={`נתק את העמוד ${page.name || page.id}`} title="נתק עמוד"
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               );
             })}
             {pages.length === 0 && !isFetching && <p className="px-2 py-2 text-muted-foreground">אין עמודים מחוברים</p>}
           </div>
           <div className="mt-1 border-t pt-1">
-            <button type="button" onClick={addPage} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-right text-primary hover:bg-muted/60">
+            <Button variant="ghost" type="button" onClick={addPage} className="h-auto w-full justify-start gap-2 rounded-md px-2 py-2 text-right text-primary hover:bg-muted/60">
               <Plus className="h-4 w-4" />הוספת עמוד נוסף
-            </button>
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
