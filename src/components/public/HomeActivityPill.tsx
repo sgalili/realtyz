@@ -17,10 +17,11 @@ import { useAppMode } from '@/hooks/useAppMode';
 import { cn } from '@/lib/utils';
 import { activityAudience } from '@/lib/activityAudience';
 import PartnerActivityProperties from './PartnerActivityProperties';
+import PrivateActivityInquiries from './PrivateActivityInquiries';
 
 const MyAds = lazy(() => import('@/pages/MyAds'));
 const LeadCRM = lazy(() => import('@/pages/LeadCRM'));
-const MyFavoriteAds = lazy(() => import('@/components/public/MyFavoriteAds'));
+
 
 /** Header icon (next to the notification bell) that opens the personal activity drawer. */
 export default function HomeActivityPill() {
@@ -76,9 +77,9 @@ export default function HomeActivityPill() {
         <div data-activity-scroll className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain border-t px-2 sm:px-3">
           <Suspense fallback={<p role="status" className="py-8 text-center text-sm text-muted-foreground">טוען פעילות…</p>}>
             <TabsContent value="properties" className="mt-0 min-w-0">{partnerView ? <PartnerActivityProperties key={`${user.id}:${owner}`} /> : <MyAds key={`${user.id}:${owner}`} activityOnly />}</TabsContent>
-            <TabsContent value="leads" className="min-w-0">{partnerView || privateView ? <div className="divide-y">{submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הלידים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען לידים…</p> : submissions.data.length ? submissions.data.map(row => <div key={row.id} className="space-y-1 py-3 text-sm"><p className="font-semibold break-words">{row.lead_name}</p><p className="break-words text-muted-foreground">{row.listing?.property_title}</p></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין לידים בשיווק</p>}</div> : <LeadCRM key={`${user.id}:${owner}`} activityOnly />}</TabsContent>
+            <TabsContent value="leads" className="min-w-0">{privateView ? <PrivateActivityInquiries /> : partnerView ? <div className="divide-y">{submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הלידים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען לידים…</p> : submissions.data.length ? submissions.data.map(row => <div key={row.id} className="space-y-1 py-3 text-sm"><p className="font-semibold break-words">{row.lead_name}</p><p className="break-words text-muted-foreground">{row.listing?.property_title}</p></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין לידים בשיווק</p>}</div> : <LeadCRM key={`${user.id}:${owner}`} activityOnly />}</TabsContent>
             <TabsContent value="earnings">
-              {privateView ? <MyFavoriteAds /> : <div className="divide-y">
+              {privateView ? <PartnerActivityProperties favoritesOnly /> : <div className="divide-y">
                 {submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הרווחים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען רווחים…</p> : submissions.data.length ? submissions.data.filter(row => Number(row.earned_amount ?? 0) > 0).map(row => <div key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.listing?.property_title || row.lead_name}</span><bdi className="shrink-0">{fmtILS(Number(row.earned_amount ?? 0))}</bdi></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין רווחים</p>}
               </div>}
             </TabsContent>
