@@ -408,7 +408,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                             </div>
                           </div>
                           </AnimatedExpansion>
-                          {open && <PropertyContactActions listingId={card.id} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} formAsButton showShare={false} className="mx-3 mb-1 lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
+                          {open && <PropertyContactActions listingId={card.id} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} formAsButton compact className="mx-3 mb-1 lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
                         </td>
                       </tr>,
                     ];

@@ -11,8 +11,6 @@ import {
 } from 'lucide-react';
 import { normalizeListing } from '@/pages/PublicListingPage';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
-import PropertyContactActions from './PropertyContactActions';
-import { publicUrl } from '@/lib/publicUrl';
 import PropertyCommissionIcons from './PropertyCommissionIcons';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAuth } from '@/hooks/useAuth';
