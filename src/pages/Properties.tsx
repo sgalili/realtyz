@@ -189,7 +189,7 @@ export default function Properties() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
-  const [advancedFilter, setAdvancedFilter] = useState(EMPTY_PROPERTY_FILTER);
+  const [advancedFilter, setAdvancedFilter] = useState<PropertyFilterState>(() => ({ ...EMPTY_PROPERTY_FILTER, dealType: cached?.listingType ?? 'all', city: cached?.city && cached.city !== 'כל הערים' ? cached.city : 'all', propertyType: cached?.propertyType ?? 'all', roomsMin: cached?.rooms && cached.rooms !== 'any' ? Number(cached.rooms) : null, priceMax: cached?.maxPrice && cached.maxPrice < PRICE_MAX ? cached.maxPrice : null, sizeMin: cached?.areaMin ? Number(cached.areaMin) : null }));
   const updateAdvancedFilter = (next: PropertyFilterState) => {
     setAdvancedFilter(next);
     setListingType(next.dealType);
@@ -395,7 +395,7 @@ export default function Properties() {
   // Monotonic token — bumping it aborts the in-flight search: late partials
   // and the final payload are ignored, so whatever was already painted stays.
   const searchTokenRef = useRef(0);
-  useEffect(() => { searchTokenRef.current++; setSearching(false); setSearchProgress(null); setCompletedResults(null); }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, activeSources]);
+  useEffect(() => { searchTokenRef.current++; setSearching(false); setSearchProgress(null); setCompletedResults(null); }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, activeSources, advancedFilter, leadFilter]);
   useEffect(() => () => { searchTokenRef.current++; }, []);
 
   const runSearch = useCallback(async (override?: string) => {
@@ -960,7 +960,7 @@ export default function Properties() {
       </header>
 
       {/* Compact unified control bar */}
-      <div className="!mt-0 shrink-0">
+      <div className="relative z-40 !mt-0 shrink-0">
 
 
 
