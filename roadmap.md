@@ -1,5 +1,10 @@
 # Roadmap
 
+## Facebook Page connection October 29
+- [ ] Route Facebook connect/add-Page buttons into one in-app cloud connection window.
+- [ ] Reuse saved authorization to discover and link additional Pages without a new login; retain existing bindings.
+- [ ] Simplify mobile cloud login and verify Page selection/cancellation/workspace isolation.
+
 ## Property page access October 29
 - [x] Restrict technical Bright Data warnings to the signed-in Super Admin, independent of workspace.
 - [x] Share account-scoped verified-broker/developer checks across navigation and direct routes; retain My Ads with separately owner-authorized editing.
