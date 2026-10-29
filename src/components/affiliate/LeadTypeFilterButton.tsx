@@ -169,10 +169,6 @@ export default function LeadTypeFilterButton({
   };
 
   const sliderTier = state.types.includes('tier3') || !state.types.length ? 'phone' : state.types.includes('tier2') ? 'whatsapp' : 'form';
-  const setBound = (field: 'min' | 'max', raw: string) => {
-    const trimmed = raw.trim();
-    onChange({ ...state, [field]: trimmed === '' ? null : Math.max(0, Number(trimmed) || 0) });
-  };
 
   const patch = (next: Partial<PropertyFilterState>) => {
     if (property && onPropertyChange) onPropertyChange({ ...property, ...next });
