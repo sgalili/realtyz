@@ -694,6 +694,13 @@
       "when": 1793297635811,
       "tag": "0098_upgrade_to_verified_broker",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1793297655214,
+      "tag": "0099_fix_upgrade_broker_audit",
+      "breakpoints": true
     }
   ]
 }
