@@ -1,6 +1,7 @@
 import BrokerageTermsContent from './BrokerageTermsContent';
 import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConfirmation';
-import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
+import { PricingCardHeader } from './PricingCardHeader';
+import { PublisherWhatsAppIcon } from './PublisherWhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
 import { pricingCardComplete } from '@/lib/pricingCardSummary';
@@ -920,11 +921,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   const toggle = () => setOpenLeads((next) => ({ ...next, [key]: !expanded }));
                   return (
                   <Card key={key} className="closing-fee space-y-2 rounded-2xl p-4" data-level={leadPriceLevel(tier, price)}>
-                    <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex min-w-0 flex-1 basis-56 items-center gap-1 self-center font-medium">
-                      <Button type="button" variant="ghost" className="h-auto justify-start gap-3 whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>
-                        {(() => { const iconClass = cn("!h-[48.6px] !w-[48.6px] shrink-0 closing-tone", !active && "!text-muted-foreground"); const stroke = expanded ? 2 : 1; return key === 'Form' ? <LeadFormIcon className={iconClass} strokeWidth={stroke} aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className={iconClass} /> : <LeadPhoneIcon className={iconClass} strokeWidth={stroke} aria-hidden />; })()}
-                        {label}
-                      </Button>
+                    <PricingCardHeader
+                      icon={(() => { const iconClass = cn("!h-[48.6px] !w-[48.6px] shrink-0 closing-tone", !active && "!text-muted-foreground"); const stroke = expanded ? 2 : 1; return key === 'Form' ? <LeadFormIcon className={iconClass} strokeWidth={stroke} aria-hidden /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className={iconClass} strokeWidth={stroke} /> : <LeadPhoneIcon className={iconClass} strokeWidth={stroke} aria-hidden />; })()}
+                      price={expanded ? <LeadPriceSlider display="price" tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} /> : <Button type="button" variant="ghost" className={cn('h-auto min-h-9 min-w-0 flex-wrap justify-start gap-1 whitespace-normal p-0 text-start text-lg font-bold', active ? 'closing-tone' : 'text-sm font-medium text-muted-foreground')} aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}>{active ? <><span className="text-sm font-medium text-muted-foreground">ההצעה שלך:</span><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></> : gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'}</Button>}
+                      title={<Button type="button" variant="ghost" className="h-auto min-w-0 justify-start whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>{label}</Button>}
+                      help={<>
                       <LeadTypeHelp label={label}>
                         <p>
                           {key === 'Form' && 'הפונה משאיר פרטים בטופס (שם מלא ומספר טלפון). המפרסם יכול להוסיף שדות מותאמים אישית לטופס לפי הצורך.'}
@@ -932,9 +933,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                           {key === 'Phone' && 'הפונה משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI (ריטה) מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
                         </p>
                       </LeadTypeHelp>
-                    </span><span className="ms-auto flex items-center gap-2">{!expanded && <Button type="button" variant="ghost" className={cn('h-9 gap-1 px-2 text-lg font-bold', active ? 'closing-tone' : 'text-sm font-medium text-muted-foreground')} aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}>{active ? <><span className="text-sm font-medium text-muted-foreground">ההצעה שלך:</span><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></> : gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'}</Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={enabled} onCheckedChange={(next) => { set(`commission${key}`, next ? '0' : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></span></div>
+
+                      </>}
+                      controls={<><Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={enabled} onCheckedChange={(next) => { set(`commission${key}`, next ? '0' : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></>}
+                    />
                     {expanded && <div className="space-y-2">
-                    <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
+                    <LeadPriceSlider display="slider" tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
                     <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-[18px] md:text-[18px] placeholder:text-[14px] md:placeholder:text-[14px]" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
@@ -961,7 +965,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   );
                 })}
               </div>
-              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode zeroMin unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
+              <ClosingFeeSlider publisherCard className="pricing-closing-card rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm" dualMode zeroMin unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
