@@ -1180,7 +1180,7 @@ export default function Properties() {
 
         {/* The source and deal toggles sit below the field and appear only while search is open. */}
         {/* Search-open row: options aligned to the field edge, tools at row end. */}
-        <div aria-hidden={!searchOpen} className={`grid transition-[grid-template-rows,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${searchOpen ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}>
+        <div aria-hidden={!searchOpen || filtersOpen} className={`${filtersOpen ? 'invisible pointer-events-none' : ''} grid transition-[grid-template-rows,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${searchOpen ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}>
           <div className="min-h-0 overflow-hidden">
             <div className={`mb-2 mt-1 flex items-center justify-between gap-2 ps-9 transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${searchOpen ? "translate-y-0" : "-translate-y-2"}`}>
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
