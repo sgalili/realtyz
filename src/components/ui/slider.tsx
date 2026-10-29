@@ -20,7 +20,7 @@ const Slider = React.forwardRef<
       <SliderPrimitive.Range className="absolute h-full bg-primary" />
     </SliderPrimitive.Track>
     {Array.from({ length: thumbCount }, (_, index) => (
-      <SliderPrimitive.Thumb key={index} aria-label={props['aria-label']} className="block h-4 w-4 rounded-full border-0 bg-primary ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
+      <SliderPrimitive.Thumb key={index} aria-label={props['aria-label']} aria-valuetext={props['aria-valuetext']} className="block h-4 w-4 rounded-full border-0 bg-primary ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" />
     ))}
   </SliderPrimitive.Root>
   );

@@ -1,5 +1,9 @@
 # Roadmap
 
+## Publisher card corrections October 29
+- [x] Remove switches; center expanded prices only above sliders; halve icons and move help to top-left.
+- [x] Exact gray zero-offer text; discrete zero then min-to-max scale verified across all four sliders; 29 tests passed.
+
 ## Publisher threshold sliders October 29
 - [x] Apply zero-or-minimum thresholds to four sliders; live first movement and back-to-zero transitions verified, plus sale/rental threshold tests.
 - [x] Match collapsed offers and keep thin, gray-at-zero icons in both states; mobile/desktop views and all four zero-icon colors/strokes verified.
