@@ -5,6 +5,7 @@ import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'rea
 import { returnState } from "@/lib/returnNav";
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
 import StandardPropertyCard from '@/components/public/StandardPropertyCard';
+import ManagedBoardTable from '@/components/properties/ManagedBoardTable';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
@@ -1266,7 +1267,7 @@ export default function Properties() {
       </Collapsible>
 
       {/* Results */}
-      <HorizontalTableScroll className={viewMode === 'table' ? 'listing-results-scroll board-head-sticky flex-1' : 'contents'}>
+      <div className={viewMode === 'table' ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : 'contents'}>
       <ErrorBoundary source="Properties.Results">
         {searching && sortedResults.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1284,17 +1285,15 @@ export default function Properties() {
           <>
             {viewMode === 'table' ? (
 
-              <ResultTable
+              <ManagedBoardTable
                 results={pagedResults}
-                importingKey={importingKey}
-                onSelect={handleSelect}
-                onCampaign={goToCampaign}
-                quickPromotion={(row) => row.localId ? <QuickPublicPromotion ids={[row.localId]} compact onPublished={markPublished} /> : null}
+                toCard={managedCard}
                 selectionMode={multiSelectMode}
-                 selectedIds={selectedListingIds}
-                allSelectableIds={sortedResults.map((r) => r.localId).filter((id): id is string => !!id)}
+                selectedIds={selectedListingIds}
                 onToggleSelected={toggleSelectedListing}
-                onDelete={(result) => result.localId && setDeleteTargetIds([result.localId])}
+                favoriteIds={favoriteIds}
+                onFavorite={(id) => void toggleFavorite(id)}
+                quickPromotion={(row) => row.localId ? <QuickPublicPromotion ids={[row.localId]} compact onPublished={markPublished} /> : null}
               />
             ) : (
               <div className="property-card-grid">
@@ -1328,7 +1327,7 @@ export default function Properties() {
           </>
         )}
       </ErrorBoundary>
-      </HorizontalTableScroll>
+      </div>
 
 
       <AddPropertyDialog
