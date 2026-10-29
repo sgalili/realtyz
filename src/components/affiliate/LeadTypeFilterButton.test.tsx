@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LeadTypeFilterButton from './LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
 
@@ -34,7 +35,9 @@ function setRole(role: 'partner' | 'broker' | 'developer' | 'private') {
 }
 
 function renderFilter() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
+    <QueryClientProvider client={client}>
     <LeadTypeFilterButton
       state={EMPTY_LEAD_FILTER}
       onChange={() => {}}
@@ -43,7 +46,8 @@ function renderFilter() {
       cities={['תל אביב']}
       neighborhoods={['פלורנטין']}
       propertyTypes={['דירה']}
-    />,
+    />
+    </QueryClientProvider>,
   );
   fireEvent.click(screen.getByRole('button', { name: 'סינון מתקדם' }));
 }
