@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -53,7 +53,7 @@ export default function PropertyContactActions({
   shareOnly?: boolean;
   shareButtonClassName?: string;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   /** Legacy presentation props; all inquiry forms now use the same bottom sheet. */
   formAsButton?: boolean;
   singleRow?: boolean;
