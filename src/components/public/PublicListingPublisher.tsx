@@ -38,6 +38,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
 import { ClosingFeeSlider } from '@/components/affiliate/ClosingFeeSlider';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -141,6 +143,7 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
 
 export function PublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '', pricingOnly = false, adminOnlyEdit = false }: { pricingOnly?: boolean; adminOnlyEdit?: boolean; label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
   const { user, loading: authLoading } = useAuth();
+  const { gender } = usePersonalLanguage();
   const { activeWorkspaceId, activeWorkspace, setActiveWorkspace, refresh: refreshWorkspaces } = useWorkspace();
   const { isPropertyOwner, isAgent, isSuperAdmin, isDeveloper, loading: rolesLoading, fetched: rolesFetched, error: rolesError, refetch: refetchRoles } = useUserRole();
   const { data: publisherProfile } = useQuery({
