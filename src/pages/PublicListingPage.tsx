@@ -518,6 +518,13 @@ function PublicListingContent() {
 
             {/* Share lives inside the contact row below, next to WhatsApp / call / form. */}
             {data.id && <PropertyContactActions listingId={data.id} title={data.title} dealType={data.dealType} premsg={data.premsg} options={data.contactOptions} compact formAsButton singleRow shareUrl={shareUrl} />}
+
+            {/* Small source link for Yad2-imported ads — fits the existing spacing without growing the page. */}
+            {data.yad2AdUrl && (
+              <div className="border-t pt-2 text-center">
+                <a href={data.yad2AdUrl} target="_blank" rel="noopener noreferrer" title="צפייה במודעה המקורית ביד2" className="text-[11px] text-muted-foreground hover:underline">המודעה המקורית ביד2</a>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
