@@ -33,16 +33,22 @@ function PhotoCarousel({ photos, alt, card, onFavorite, isMine = false, isFav = 
   );
 }
 
-export default function StandardPropertyCard({ card, signedIn = false, isMine = false, isFav = false, onFavorite, actions, summary }: {
+export default function StandardPropertyCard({ card, signedIn = false, isMine = false, isFav = false, onFavorite, actions, summary, onOpen, showContact = true, showOwnerMenu = true }: {
   card: PublicCard; signedIn?: boolean; isMine?: boolean; isFav?: boolean;
   onFavorite: () => void; actions?: ReactNode; summary?: ReactNode;
+  /** Management views open their own detail page instead of the public one. */
+  onOpen?: () => void;
+  /** Contact buttons need a saved listing so inquiries reach its owner's Rita. */
+  showContact?: boolean;
+  showOwnerMenu?: boolean;
 }) {
   const navigate = useNavigate();
   const title = publicAdTitle(card);
   const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
+  const open = () => (onOpen ? onOpen() : navigate(propertyPath));
   const price = typeof card.price === 'number' && card.price > 0 ? `₪${card.price.toLocaleString('he-IL')}` : 'מחיר לא צוין';
-  return <article role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={() => navigate(propertyPath)} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(propertyPath); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <div className="p-3"><div className="flex items-start gap-1"><div className="min-w-0 flex-1">{summary ?? <PublicCardSummary card={card} price={price} />}</div>{signedIn ? <div className="-me-2 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div></div>
+  return <article role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={open} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <div className="p-3"><div className="flex items-start gap-1"><div className="min-w-0 flex-1">{summary ?? <PublicCardSummary card={card} price={price} />}</div>{signedIn && showOwnerMenu ? <div className="-me-2 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div></div>
                 <PhotoCarousel card={card} photos={card.photos} alt={title} onFavorite={() => onFavorite()} isMine={isMine} isFav={isFav} />
                 <div className="flex flex-1 flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -53,7 +59,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
                   {publicAdDescription(card.description, card.title) && <p className="line-clamp-3 text-xs text-muted-foreground">{publicAdDescription(card.description, card.title)}</p>}
                    <div data-card-contact-actions className="mt-auto pt-1">
                      {actions}
-                     <PropertyContactActions
+                     {showContact && <PropertyContactActions
                        listingId={card.id}
                        dealType={card.deal_type}
                        title={title}
@@ -62,7 +68,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
                        compact
                        formAsButton
                          shareUrl={publicUrl(propertyPath)}
-                     />
+                     />}
                    </div>
                 </div>
               </article>;

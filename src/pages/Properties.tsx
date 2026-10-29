@@ -4,6 +4,9 @@ import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { returnState } from "@/lib/returnNav";
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
+import StandardPropertyCard from '@/components/public/StandardPropertyCard';
+import type { PublicCard } from '@/pages/PublicListingsBoard';
+import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -180,6 +183,7 @@ export default function Properties() {
   const [maxPrice, setMaxPrice] = useState<number>(cached?.maxPrice ?? PRICE_MAX);
   const [areaMin, setAreaMin] = useState<string>(cached?.areaMin ?? '');
 
+  const { favoriteIds, toggleFavorite } = useListingFavorites();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
@@ -1293,19 +1297,24 @@ export default function Properties() {
                 onDelete={(result) => result.localId && setDeleteTargetIds([result.localId])}
               />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="property-card-grid">
                 {pagedResults.map((r) => (
-                  <ResultCard
+                  <StandardPropertyCard
                     key={r.key}
-                    result={r}
-                    importing={importingKey === r.key}
-                    onSelect={() => handleSelect(r)}
-                    onCampaign={() => goToCampaign(r)}
-                    quickPromotion={r.localId ? <QuickPublicPromotion ids={[r.localId]} compact onPublished={markPublished} /> : null}
-                    selectionMode={multiSelectMode}
-                    selected={Boolean(r.localId && selectedListingIds.has(r.localId))}
-                    onToggleSelected={r.localId ? () => toggleSelectedListing(r.localId as string) : undefined}
-                    onDelete={r.localId ? () => setDeleteTargetIds([r.localId as string]) : undefined}
+                    card={managedCard(r)}
+                    signedIn
+                    isMine={!!r.localId}
+                    isFav={!!r.localId && favoriteIds.has(r.localId)}
+                    onFavorite={() => { if (r.localId) void toggleFavorite(r.localId); }}
+                    onOpen={() => (multiSelectMode && r.localId ? toggleSelectedListing(r.localId) : handleSelect(r))}
+                    showContact={!!r.localId}
+                    showOwnerMenu={!!r.localId}
+                    actions={(multiSelectMode && r.localId) || r.localId ? (
+                      <div className="mb-2 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                        {multiSelectMode && r.localId ? <Checkbox checked={selectedListingIds.has(r.localId)} onCheckedChange={() => toggleSelectedListing(r.localId as string)} aria-label="בחירת נכס" /> : <span />}
+                        {r.localId ? <QuickPublicPromotion ids={[r.localId]} compact onPublished={markPublished} /> : null}
+                      </div>
+                    ) : null}
                   />
                 ))}
               </div>
@@ -1629,6 +1638,15 @@ function Yad2AdButton({ url }: { url: string }) {
   );
 }
 
+
+// Maps an inventory row onto the homepage card shape so both pages share one card.
+function managedCard(r: UnifiedResult): PublicCard {
+  return {
+    id: r.localId ?? r.key, slug: null, title: r.title, city: r.city, neighborhood: r.neighborhood ?? null,
+    street: r.address ?? '', deal_type: r.listing_type, rooms: r.rooms, sqm: r.size_sqm, floor: r.floor ?? null,
+    total_floors: null, price: r.price, description: r.description ?? null, photos: r.photos ?? [], contact_options: null,
+  };
+}
 
 export function ResultTable({
   results,
