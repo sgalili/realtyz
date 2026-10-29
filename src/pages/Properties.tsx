@@ -573,6 +573,13 @@ export default function Properties() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
   const pendingHistoryQuery = useRef<string | null>(null);
+  // The search row starts collapsed; the tools-row magnify button expands it smoothly.
+  const [searchOpen, setSearchOpen] = useState<boolean>(() => !!q.trim());
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const toggleSearchOpen = (open: boolean) => {
+    setSearchOpen(open);
+    if (open) window.requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
   const inventorySuggestions = useInventorySuggestions(q, activeWorkspaceId);
   const suggestions = inventorySuggestions.data ?? [];
   useEffect(() => { setSuggestionIndex(-1); }, [q]);
@@ -904,6 +911,20 @@ export default function Properties() {
         </div>
         </div>
         <div data-testid="property-tools-row" className="flex shrink-0 items-center gap-0">
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
+              title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
+              aria-expanded={searchOpen}
+              aria-controls="inventory-search-row"
+              onClick={() => toggleSearchOpen(!searchOpen)}
+            >
+              <SearchIcon className="h-4 w-4" />
+            </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
