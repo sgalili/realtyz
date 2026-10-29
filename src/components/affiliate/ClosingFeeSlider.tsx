@@ -11,6 +11,9 @@ import { BrokerTestLinks } from './BrokerClosingInfo';
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
 import { PricingCardHeader } from '@/components/public/PricingCardHeader';
+import { CollapsedOffer } from '@/components/public/CollapsedOffer';
+import { usePersonalLanguage } from '@/i18n/personalLanguage';
+import { thresholdOffer } from '@/lib/offerThreshold';
 
 export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange, unrestricted = false, zeroMin = false, publisherCard = false }: {
   className?: string;
@@ -29,6 +32,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   zeroMin?: boolean;
   publisherCard?: boolean;
 }) {
+  const { gender } = usePersonalLanguage();
   const range = closingFeeRange(dealType, price);
   // Rentals are always priced in ₪, sales always in % (0.2%-2%).
   const outType: 'fixed' | 'percent' = dualMode ? (range.rent ? 'fixed' : 'percent') : valueType;
@@ -63,15 +67,15 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     const parsed = Number(draft.replace(/,/g, ''));
     if (draft.trim() && Number.isFinite(parsed) && parsed >= 0) {
       const next = displayAmount && range.price > 0 ? parsed / range.price * 100 : parsed;
-      changePercent(clampPercent(next));
+      changePercent(zeroMin && !unrestricted ? thresholdOffer(next, range.min, range.max) : clampPercent(next));
     }
     setEditing(false);
   };
   const priceControl = editing ? <Input autoFocus aria-label="עריכת עמלת סגירה" inputMode="decimal" dir="ltr" className="h-8 w-24 text-center text-xl font-bold" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') setEditing(false); }} /> : <Button type="button" variant="ghost" className="h-9 px-0 text-[24px] font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); }}>{selectedLabel}</Button>;
   return <section className={cn("closing-fee", publisherCard ? "space-y-2" : "space-y-4 pt-4", className)} data-level={level}>
     {publisherCard ? <PricingCardHeader
-      icon={<Trophy className={cn("!h-[48.6px] !w-[48.6px] shrink-0 closing-tone", value <= 0 && "!text-muted-foreground")} strokeWidth={open ? 2 : 1} />}
-      price={priceControl}
+      icon={<Trophy className={cn("!h-[48.6px] !w-[48.6px] shrink-0", value > 0 ? 'closing-tone' : 'pricing-icon-disabled')} strokeWidth={1} />}
+      price={open ? priceControl : <CollapsedOffer active={value > 0} amount={selectedLabel} placeholder={gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'} label="עריכת עמלת סגירה" onClick={() => setOpen(true)} />}
       title={<Button type="button" variant="ghost" className="h-auto min-w-0 whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={open} onClick={() => setOpen(!open)}>עמלת סגירה *</Button>}
       help={<Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 p-0" aria-label="הסבר עמלת סגירת עסקה"><CircleHelp className="h-4 w-4 text-muted-foreground" /></Button></PopoverTrigger><PopoverContent dir="rtl" align="end" className="w-80"><div className="space-y-2"><p className="text-sm font-semibold">כך מתחלקת עמלת הסגירה</p><ClosingSplitNote gross={displayAmount ? (dualMode ? exactAmount : amount) : percent} valueType={displayAmount ? 'fixed' : 'percent'} registration /><p className="text-xs leading-relaxed text-muted-foreground">התגמול משולם רק לאחר סגירת העסקה בפועל, ורק למתווכים/שותפים בעלי רישיון תיווך מאומת. אין התחייבות לסגירה.</p><BrokerTestLinks /></div></PopoverContent></Popover>}
       controls={<><Switch checked={value > 0 || enabledAtZero} aria-label="הפעלת עמלת סגירה" onCheckedChange={next => { setEnabledAtZero(next); if (next) setOpen(true); else changePercent(0); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={open ? 'כווץ את עמלת התיווך' : 'הרחב את עמלת התיווך'} aria-expanded={open} onClick={() => setOpen(!open)}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', open && 'rotate-180')} /></Button></>}
@@ -86,7 +90,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
       <p className="text-xs text-muted-foreground">{dualMode ? (range.price > 0 ? (displayAmount ? (range.rent ? '' : `${Number(percent.toFixed(2))}%`) : money(exactAmount)) : 'מחיר הנכס טרם הוזן') : range.rent ? '' : `ממחיר המכירה${range.price > 0 ? ` · ₪${amount.toLocaleString('he-IL')}` : ''}`}</p>
     </div>
     <div dir="ltr" className={cn("space-y-2", !publisherCard && "px-2")}>
-      <Slider dir="ltr" aria-label="עמלת סגירה" min={minimum} max={maximum} disabled={dualMode && displayAmount && range.price <= 0} step={dualMode && displayAmount ? 0.01 : range.step} value={[dualMode && displayAmount ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(dualMode && displayAmount && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
+      <Slider dir="ltr" aria-label="עמלת סגירה" min={minimum} max={maximum} disabled={dualMode && displayAmount && range.price <= 0} step={dualMode && displayAmount ? 0.01 : range.step} value={[dualMode && displayAmount ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) { const nextPercent = dualMode && displayAmount && range.price > 0 ? next / range.price * 100 : next; changePercent(zeroMin ? thresholdOffer(nextPercent, range.min, range.max, percent) : nextPercent); } }} className="closing-slider h-6" />
       <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{displayAmount ? money(dualMode ? minimum : closingFeeAmount(zeroMin ? 0 : range.min, range.price)) : `${zeroMin ? 0 : range.min}%`}</span><span>{displayAmount ? money(dualMode ? maximum : closingFeeAmount(range.max, range.price)) : `${range.max}%`}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>
     </div>
     <div className="space-y-2 text-center">
