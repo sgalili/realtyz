@@ -1787,12 +1787,10 @@
 .closing-fee { --closing-current: var(--closing-low); }
 
 .pricing-editor { font-size: 16px; line-height: 1.5; }
+/* The property-price row stays on one line: the label never breaks, the price
+   field sizes to its content and only the free row space is stretched. */
 .pricing-editor #wizard-price { min-width: 0; max-width: 100%; }
-.pricing-editor > div:first-child { grid-template-columns: minmax(0,1fr) auto; }
-.pricing-editor > div:first-child > span:first-child { grid-column: 1 / -1; }
-.pricing-editor > div:first-child > span:nth-child(2) { min-width: 0; width: 100%; }
-.pricing-editor #wizard-price { width: 100%; }
-.pricing-editor > div:first-child > span { white-space: normal; }
+
 .pricing-editor .text-xs { font-size: 14px; }
 .pricing-editor .pricing-closing-card #closing-fee-body { margin-top: 8px; }
 .pricing-editor .pricing-closing-card #closing-fee-body > div { margin-top: 8px; }
