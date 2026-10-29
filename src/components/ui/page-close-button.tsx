@@ -22,7 +22,7 @@ export function PageCloseButton() {
       type="button"
       aria-label="סגירה וחזרה לדף הקודם"
       onClick={close}
-      className="fixed right-4 top-4 z-50 grid h-10 w-10 place-items-center rounded-full border border-border bg-background/90 text-foreground shadow-sm backdrop-blur transition-opacity hover:opacity-70"
+      className="fixed left-4 top-4 z-50 grid h-10 w-10 place-items-center bg-transparent text-foreground transition-opacity hover:opacity-70"
     >
       <X className="h-6 w-6" />
     </button>

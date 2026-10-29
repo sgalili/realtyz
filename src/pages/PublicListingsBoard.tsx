@@ -333,7 +333,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                {!user && <Button variant="ghost" size="icon" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="h-[25px] w-[25px] max-h-[25px] shrink-0 self-center border-0 bg-transparent p-0 text-primary hover:bg-transparent"><UserPlus className="!h-[25px] !w-[25px] max-h-[25px]" strokeWidth={1.75} /></Button>}
+                {!user && <button type="button" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="-translate-y-[6px] flex shrink-0 flex-col items-center self-center border-0 bg-transparent p-0 leading-none text-primary"><UserPlus className="h-[25px] w-[25px]" strokeWidth={1.75} /><span className="mt-0.5 text-[10px] font-medium leading-none">הרשמה/כניסה</span></button>}
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
