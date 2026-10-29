@@ -75,7 +75,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   useEffect(() => { void (supabase as any).rpc('track_listing_view', { _id_or_slug: idOrSlug }); }, [idOrSlug]);
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['public-listing-expanded', idOrSlug, user?.id, activeWorkspaceId],
-    enabled: !user || !workspaceLoading,
+    enabled: (!user || !workspaceLoading) && !idOrSlug.includes(':'),
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(idOrSlug)}`, { method: 'GET' });
