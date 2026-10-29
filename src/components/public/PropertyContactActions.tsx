@@ -165,7 +165,7 @@ export default function PropertyContactActions({
   return (
     <>
       <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} style={style} className={cn(shareOnly ? 'inline-flex shrink-0' : 'flex w-full flex-wrap items-center gap-1.5', !compact && !shareOnly && 'sticky bottom-5 right-0 z-10 rounded-md bg-card/95 py-2 backdrop-blur', className)}>
-        {!shareOnly && <div data-inquiry-actions className="flex w-full min-w-0 items-center gap-1.5">
+        {!shareOnly && <div data-inquiry-actions className="mt-1 flex w-full min-w-0 items-center gap-1.5">
           {showDigital && <Button variant="inquiryForm" className="property-inquiry-action" onClick={() => { setMode('digital'); setInquiryStarted(true); }}><ClipboardList /><span>השארת פרטים</span></Button>}
           {showWhatsapp && <Button variant="inquiryWhatsapp" className="property-inquiry-action" onClick={openRita}><WhatsAppIcon /><span>ווטסאפ</span></Button>}
           {showPhone && <Button variant="inquiryPhone" className="property-inquiry-action" onClick={() => { setMode('phone'); setInquiryStarted(true); }}><Phone /><span>שיחת טלפון</span></Button>}
