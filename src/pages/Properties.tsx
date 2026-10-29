@@ -202,6 +202,7 @@ export default function Properties() {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
+  const { data: filterLeadConfigs } = useAffiliateConfigs(results.flatMap(row => row.localId ? [row.localId] : []));
   const [sourceStatus, setSourceStatus] = useState<Record<string, SourceInfo>>({});
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
@@ -761,12 +762,12 @@ export default function Properties() {
     const bySource = sourceFilter
       ? results_.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
       : results_;
-    const base = bySource.filter(row => matchesPropertyFilter({ ...row.raw, ...row }, advancedFilter) && matchesLeadFilter(leadTierAmounts(row.raw), leadFilter));
+    const base = bySource.filter(row => matchesPropertyFilter(row as unknown as Record<string, unknown>, advancedFilter) && matchesLeadFilter(leadTierAmounts(row.localId ? { ...row.raw, ...filterLeadConfigs?.get(row.localId) } : row.raw), leadFilter));
     if (listingType === 'all') return base;
     const narrowed = base.filter((r) => r.listing_type === listingType);
     // Never let a toggle blank the table — keep the wider pool instead.
     return narrowed;
-  }, [results, listingType, sourceFilter, activeSources, homelyConnected, advancedFilter, leadFilter]);
+  }, [results, listingType, sourceFilter, activeSources, homelyConnected, advancedFilter, leadFilter, filterLeadConfigs]);
 
 
   const sortedResults = useMemo(() => {
@@ -795,7 +796,7 @@ export default function Properties() {
   // into view, so a deep Yad2 directory pull never freezes the page.
   const PAGE_SIZE = 10;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [results, sortBy, listingType, viewMode]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [results, sortBy, listingType, viewMode, advancedFilter, leadFilter]);
   const pagedResults = useMemo(() => sortedResults.slice(0, visibleCount), [sortedResults, visibleCount]);
   const hasMore = visibleCount < sortedResults.length;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
