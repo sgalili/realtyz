@@ -58,7 +58,7 @@ export default function HomeActivityPill() {
   const n = (v: number | undefined) => v === undefined ? '' : ` (${v.toLocaleString('he-IL')})`;
   const tabs = [
     { id: 'properties', label: partnerView ? 'נכסים פתוחים לשיתוף' : `הנכסים שלי${n(ads.data?.filter(r => r.relation === 'owned').length)}` },
-    { id: 'leads', label: privateView ? `הפניות שלי${n(submissions.data?.length)}` : `לידים בשיווק${n(partnerView ? submissions.data?.length : leadCount.data)}` },
+    { id: 'leads', label: privateView ? 'הפניות שלי' : `לידים בשיווק${n(partnerView ? submissions.data?.length : leadCount.data)}` },
     { id: 'earnings', label: privateView ? 'מועדפים' : `רווחים${n(submissions.data?.filter(r => Number(r.earned_amount ?? 0) > 0).length)}` },
   ];
   return <Popover open={open} onOpenChange={setOpen}>
