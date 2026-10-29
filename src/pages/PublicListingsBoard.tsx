@@ -358,7 +358,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 <thead className="bg-muted/40 text-[14px] text-muted-foreground">
                   <tr>
                     {visibleColumns.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}
-                    <th className="px-2 pt-2 text-start font-medium">מפרסם</th>
                     <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
                   </tr>
 
@@ -388,9 +387,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : id === 'commissions' ? <PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types, closing_level: card.closing_level, reward_levels: (card as { reward_levels?: unknown }).reward_levels }} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
+                          : id === 'publisher' ? <div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div>
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
-                        <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
                         <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
                           {user ? <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage /> : <PropertyContactActions listingId={card.id} title={title} compact shareOnly shareUrl={publicUrl(propertyPath)} shareButtonClassName="h-8 w-8 border-0 bg-transparent shadow-none" />}
                           <BoardPublishButton result={cardResult(card)} />

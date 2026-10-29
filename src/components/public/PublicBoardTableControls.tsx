@@ -13,6 +13,7 @@ export const BOARD_COLUMNS = [
   { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' },
   { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תגמולים' },
   { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
+  { id: 'publisher', label: 'מפרסם' },
 ] as const;
 export type BoardColumnId = typeof BOARD_COLUMNS[number]['id'];
 type Preferences = { order: BoardColumnId[]; hidden: BoardColumnId[]; sort: { id: BoardColumnId; descending: boolean } | null };
@@ -41,6 +42,7 @@ function sortValue(card: PublicCard, id: BoardColumnId): string | number | null 
     case 'photo': return card.photos?.length || 0;
     case 'address': return [card.street, card.neighborhood, card.city].filter(Boolean).join(', ') || null;
     case 'commissions': return null;
+    case 'publisher': { const a = (card as { attribution?: { office_name?: string | null; broker_name?: string | null } }).attribution; return a?.office_name || a?.broker_name || null; }
     default: return card[id];
   }
 }
