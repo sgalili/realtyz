@@ -1,10 +1,10 @@
-import { JoinPartnerDialog } from '@/components/affiliate/JoinPartnerDialog';
 import { useState } from 'react';
 import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -118,7 +118,7 @@ export default function PropertyContactActions({
   };
 
   const submit = async (verification?: { id: string; answers: Record<string, string> }) => {
-    if ((!mode && !name.trim()) || phone.replace(/\D/g, '').length < 9) {
+    if ((mode !== 'phone' && !name.trim()) || phone.replace(/\D/g, '').length < 9) {
       toast.error(mode === 'phone' ? 'יש למלא מספר טלפון תקין' : 'יש למלא שם מלא ומספר טלפון תקין');
       return;
     }
@@ -189,7 +189,17 @@ export default function PropertyContactActions({
         {!shareOnly && inquiryStarted && mode === null && <div className="order-last col-span-2 w-full"><BrokerageCommissionDisclosure audience={audience} /></div>}
       </div>
       <InquiryVerificationDialog challenge={challenge} sending={sending} onClose={() => setChallenge(null)} onSubmit={(verification) => void submit(verification)} />
-      <JoinPartnerDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      <Dialog open={joinOpen} onOpenChange={setJoinOpen}>
+        <DialogContent dir="rtl" aria-describedby={undefined} className="sm:max-w-md" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+          <DialogHeader><DialogTitle className="text-center">שיתוף נכס</DialogTitle></DialogHeader>
+          <p className="break-words text-center text-muted-foreground">{title}</p>
+          <div className="flex items-center justify-center gap-3">
+            <Button variant="outline" aria-label="שיתוף בווטסאפ" title="שיתוף בווטסאפ" onClick={() => void share('whatsapp')}><WhatsAppIcon />ווטסאפ</Button>
+            <Button variant="outline" aria-label="שיתוף באימייל" title="שיתוף באימייל" onClick={() => void share('email')}><Mail />אימייל</Button>
+            <Button variant="outline" aria-label="העתקת קישור" title="העתקת קישור" onClick={() => void share('copy')}><Copy />העתקה</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Drawer open={mode !== null} onOpenChange={(open) => !open && setMode(null)} shouldScaleBackground={false}>
         <DrawerContent dir="rtl" aria-describedby={undefined} className="mx-auto max-h-[85dvh] w-[calc(100%-30px)] max-w-lg overflow-y-auto rounded-t-lg" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
           <DrawerHeader><DrawerTitle className="text-center">{mode === 'phone' ? 'שיחת טלפון' : 'השארת פרטים'}</DrawerTitle></DrawerHeader>

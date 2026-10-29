@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'test-workspace' }));
 vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data: null }) }));
+vi.mock('@/i18n/personalLanguage', () => ({ usePersonalLanguage: () => ({ gender: 'male', command: (value: string) => value }), localizeControlNode: (node: unknown) => node }));
 const mocks = vi.hoisted(() => ({ open: vi.fn() }));
 vi.mock('@/lib/openExternal', () => ({ openExternal: mocks.open }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
