@@ -61,8 +61,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
                        options={card.contact_options}
                        compact
                        formAsButton
-                        shareUrl={publicUrl(propertyPath)}
-                        showShare={false}
+                         shareUrl={publicUrl(propertyPath)}
                      />
                    </div>
                 </div>
