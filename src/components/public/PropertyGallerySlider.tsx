@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Heart, ImageOff } from 'lucide-react';
+import { Heart, ImageOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ImageSequenceDialog } from '@/components/properties/ImageSequenceDialog';
