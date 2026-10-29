@@ -1,12 +1,13 @@
 # Roadmap
 
 ## Platform-wide document October 29
-- [ ] Two-column intermediate grids, aligned property photos and bounded footer.
-- [ ] Hide explicit closing-only properties from signed-in unverified audiences without treating redacted fees as zero.
-- [ ] Single-row silver contact actions, no Rita photo, red/green/blue controls and bottom-sheet forms.
-- [ ] Audit existing Facebook Page selection/scanning, sharing/publication/reward sorting, auth layout, OCR document check, legal notices and rotating final footer; preserve working flows.
-- [ ] Focused regression tests and live desktop/mobile verification.
-- [ ] Certificate-based identity upgrade and universal OTP code are excluded: neither safely proves account ownership.
+- [x] Two-column intermediate grids, shared-row photo alignment and existing bounded footer; 320/446/768/1280px checked.
+- [x] Explicit closing-only audience predicate reused on board, account ads/activity and favorites; preserves guest browsing and unknown/redacted rewards. Signed-in board shows 7 versus 8 guest cards.
+- [x] Single-row silver contact actions, no Rita photo, red/green/blue controls and bottom-sheet forms; no text overflow at checked widths. Guest card/table sharing opens the same property-share dialog.
+- [x] Audited existing server Page selection, bounded cancellable scans, social publishing/direct-window actions, unsortable תגמולים, certificate document matching, legal notices and rotating final footer; preserved. Restored exact auth logo spacing.
+- [x] 54 focused tests passed; live guest/signed-in lists, mobile sheets, share dialog and aligned photos verified; build OK. Inquiry requests tested with mocked gate only, no real lead/callback created.
+- [x] Certificate-based identity upgrade and universal OTP code excluded: neither safely proves account ownership.
+- [ ] External checks remain blocked: genuine certificate/new-account completion, renewed Facebook authorization, successful scan-worker results and explicitly approved real post readback (see existing sections below).
 
 ## Broker certificate verification October 29
 - [x] Add certificate upload, OCR and exact registry matching as a document-only check; no certificate-based role or verified-status upgrade. Deployed; 21 focused tests pass, authenticated non-certificate rejection verified through the live endpoint and upload control; build OK.

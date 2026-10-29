@@ -1252,13 +1252,13 @@ export default function Properties() {
       <HorizontalTableScroll className={viewMode === 'table' ? 'listing-results-scroll board-head-sticky flex-1' : 'contents'}>
       <ErrorBoundary source="Properties.Results">
         {searching && sortedResults.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-72 w-full rounded-lg" />
             ))}
           </div>
         ) : sortedResults.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <Skeleton key={i} className="h-72 w-full rounded-lg" />
             ))}
@@ -1280,7 +1280,7 @@ export default function Properties() {
                 onDelete={(result) => result.localId && setDeleteTargetIds([result.localId])}
               />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {pagedResults.map((r) => (
                   <ResultCard
                     key={r.key}
