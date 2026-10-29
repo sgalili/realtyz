@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Publisher threshold sliders October 29
-- [ ] Apply zero-or-minimum thresholds to four sliders and verify positive/zero transitions.
-- [ ] Match collapsed offers and keep thin, gray-at-zero icons in both states; verify live.
+- [x] Apply zero-or-minimum thresholds to four sliders; live first movement and back-to-zero transitions verified, plus sale/rental threshold tests.
+- [x] Match collapsed offers and keep thin, gray-at-zero icons in both states; mobile/desktop views and all four zero-icon colors/strokes verified.
 
 ## Publisher pricing card alignment October 29
 - [x] Unify closing and lead card headers, icon strokes and edges; place titles/help below prices.

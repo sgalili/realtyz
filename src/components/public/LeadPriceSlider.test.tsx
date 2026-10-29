@@ -9,6 +9,13 @@ function Harness({ tier }: { tier: LeadPriceKey }) {
   return <><LeadPriceSlider tier={tier} label="פנייה" value={value} onChange={setValue} /><output data-testid="saved">{value}</output></>;
 }
 describe('publisher lead prices', () => {
+  it.each([['form', 40], ['whatsapp', 50], ['phone', 80]] as const)('%s jumps to its minimum on the first slider movement and back to zero', (tier, min) => {
+    render(<Harness tier={tier} />);
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' });
+    expect(screen.getByTestId('saved').textContent).toBe(String(min));
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowLeft' });
+    expect(screen.getByTestId('saved').textContent).toBe('0');
+  });
   it('allows an enabled Super Admin editor to enter 500 beyond the form slider cap', () => {
     const change = vi.fn();
     render(<LeadPriceSlider tier="form" label="פנייה" value="100" unrestricted onChange={change} />);
