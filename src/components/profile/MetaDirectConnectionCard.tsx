@@ -604,7 +604,17 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
 
 
 
-        {isConnected && <div className="space-y-2"><FacebookPageSelector />{manualTokenButton}{manualTokenSection}</div>}
+        {isConnected && (
+          <div className="space-y-2">
+            <div className="flex min-w-0 items-start gap-2">
+              <div className="min-w-0 flex-1 [&>div]:mt-0 [&>div>button]:w-full">
+                <FacebookPageSelector />
+              </div>
+              {manualTokenButton}
+            </div>
+            {manualTokenSection}
+          </div>
+        )}
 
         {!isConnected && (
           <div className="rounded-xl border border-dashed p-3 space-y-2">
