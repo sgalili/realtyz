@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Shared property filters October 29
-- [ ] Reuse public filters in Properties, align below search over the options row, enable scrolling and preserve page position.
-- [ ] Placeholder-only fields, opposite icon-only close, exclusive nationwide selection, extra 5px below blue section.
-- [ ] Verify filtering rules and live open/close, scroll and layout.
+- [x] Reuse public filters in Properties, align below search over the hidden options row, enable scrolling and preserve page position.
+- [x] Placeholder-only fields, opposite icon-only close, exclusive nationwide selection, extra 5px below blue section.
+- [x] Seven tests passed; live signed-in phone layout has matching 368px widths, internal scrolling, working price filter/reset/close and unchanged page position; no runtime errors, build OK.
 
 ## Partner navigation and properties spacing October 29
 - [x] Plain property count with נכסים and fixed 15px toolbar spacing; measured phone layout.
