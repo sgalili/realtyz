@@ -715,6 +715,13 @@
       "when": 1793302068355,
       "tag": "0101_broker_upgrade_instant_on_name_match",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1793305451357,
+      "tag": "0102_admin_remove_broker_license",
+      "breakpoints": true
     }
   ]
 }
