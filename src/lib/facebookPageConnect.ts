@@ -9,6 +9,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
+import { boundedRequest } from '@/lib/boundedRequest';
 
 /** Provider key used by the OAuth popup bridge for page-binding logins. */
 export const FACEBOOK_PAGE_PROVIDER = 'facebook_page';
@@ -40,7 +41,7 @@ export class MetaPageConnectError extends Error {
 
 /** Calls the meta-page-connect edge function and unwraps its JSON error body. */
 export async function callMetaPageConnect<T = any>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('meta-page-connect', { body });
+  const { data, error } = await boundedRequest(supabase.functions.invoke('meta-page-connect', { body }));
   if (error) {
     // Non-2xx responses hide the JSON body behind error.context — read it so the
     // user sees the real reason instead of "non-2xx status code".

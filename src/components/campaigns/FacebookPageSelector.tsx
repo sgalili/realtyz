@@ -8,6 +8,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
 import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
+import { callMetaPageConnect } from '@/lib/facebookPageConnect';
 import { purgeCachedPostsForPage } from '@/lib/campaignFeedCache';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -41,8 +42,7 @@ export function FacebookPageSelector() {
   const { data: pages = [], refetch, isFetching, error: pagesError } = useQuery<Page[]>({
     queryKey: ['managed-facebook-pages', owner], enabled: !!owner, retry: false, staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'list_pages', owner_id: owner } });
-      if (error || data?.error || data?.ok === false) throw new Error(data?.error || 'לא ניתן לטעון את עמודי הפייסבוק. יש לחדש את החיבור.');
+      const data = await callMetaPageConnect({ action: 'list_pages', owner_id: owner });
       return Array.isArray(data?.pages) ? data.pages : [];
     },
   });
@@ -55,11 +55,11 @@ export function FacebookPageSelector() {
   const current = pages.find((p) => p.id === selected?.pageId) ?? null;
 
   const choose = async (pageId: string) => {
+    setOpen(false);
     if (!owner || saving || pageId === selected?.pageId) { setOpen(false); return; }
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'select_page', page_id: pageId, owner_id: owner } });
-      if (error || data?.error || data?.ok === false) throw new Error(data?.error || error?.message || 'בחירת העמוד נכשלה');
+      await callMetaPageConnect({ action: 'select_page', page_id: pageId, owner_id: owner });
       refresh();
       setOpen(false);
     } catch (e) { toast.error(e instanceof Error ? e.message : 'בחירת העמוד נכשלה'); }
@@ -70,8 +70,7 @@ export function FacebookPageSelector() {
     if (!removing || removingBusy) return;
     setRemovingBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', { body: { action: 'disconnect_page', page_id: removing.id } });
-      if (error || data?.error || data?.ok === false) throw new Error(data?.error || error?.message || 'ניתוק העמוד נכשל');
+      await callMetaPageConnect({ action: 'disconnect_page', page_id: removing.id, owner_id: owner });
       purgeCachedPostsForPage(removing.id);
       refresh(); refreshHealth(); void refetch();
       toast.success('העמוד נותק');
