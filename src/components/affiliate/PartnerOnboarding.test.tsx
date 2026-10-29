@@ -19,12 +19,12 @@ describe('partner consent sequence', () => {
   it('requires terms checkbox and successful server agreement before remembering dismissal', async () => {
     mocks.accept.mockResolvedValue(undefined);
     const done = setup();
-    expect(screen.getByRole('button', { name: 'אשר והסכם' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^א(?:שר|ישור) והסכם$/ })).toBeDisabled();
     agree();
     fireEvent.click(screen.getByRole('checkbox', { name: 'אל תציג לי שוב' }));
     expect(done).not.toHaveBeenCalled();
     expect(mocks.accept).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'אשר והסכם' }));
+    fireEvent.click(screen.getByRole('button', { name: /^א(?:שר|ישור) והסכם$/ }));
     await waitFor(() => expect(done).toHaveBeenCalledOnce());
     expect(localStorage.getItem('realtyz-partner-intro-dismissed-test')).toBe('true');
   });
@@ -32,7 +32,7 @@ describe('partner consent sequence', () => {
     mocks.accept.mockRejectedValue(new Error('failed'));
     const done = setup(); agree();
     fireEvent.click(screen.getByRole('checkbox', { name: 'אל תציג לי שוב' }));
-    fireEvent.click(screen.getByRole('button', { name: 'אשר והסכם' }));
+    fireEvent.click(screen.getByRole('button', { name: /^א(?:שר|ישור) והסכם$/ }));
     await screen.findByRole('alert');
     expect(done).not.toHaveBeenCalled();
     expect(localStorage.getItem('realtyz-partner-intro-dismissed-test')).toBeNull();

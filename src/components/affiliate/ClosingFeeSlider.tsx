@@ -11,24 +11,29 @@ import { BrokerTestLinks } from './BrokerClosingInfo';
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
 
-export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange, unrestricted = false }: {
+export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange, unrestricted = false, zeroMin = false }: {
   className?: string;
   dealType: string | null | undefined;
   price: number;
   value: number;
   valueType?: 'fixed' | 'percent';
+
   onChange: (percent: number) => void;
   dualMode?: boolean;
   onValueChange?: (value: number, mode: 'fixed' | 'percent') => void;
   open?: boolean;
   onOpenChange?: (next: boolean) => void;
   unrestricted?: boolean;
+  /** Publisher offers start at 0; the tier minimum is never auto-applied. */
+  zeroMin?: boolean;
 }) {
   const range = closingFeeRange(dealType, price);
   // Rentals are always priced in ₪, sales always in % (0.2%-2%).
   const outType: 'fixed' | 'percent' = dualMode ? (range.rent ? 'fixed' : 'percent') : valueType;
-  const rawPercent = valueType === 'fixed' && price > 0 ? value / price * 100 : valueType === 'percent' ? value : range.min;
-  const percent = unrestricted ? Math.max(0, rawPercent) : clampClosingPercent(rawPercent, dealType);
+  const rawPercent = valueType === 'fixed' && price > 0 ? value / price * 100 : valueType === 'percent' ? value : zeroMin ? 0 : range.min;
+  const clampPercent = (next: number) => zeroMin ? Math.min(range.max, Math.max(0, next)) : unrestricted ? Math.max(0, next) : clampClosingPercent(next, dealType);
+  const percent = clampPercent(rawPercent);
+
   const progress = Math.max(0, Math.min(1, (percent - range.min) / (range.max - range.min)));
   const level = Math.min(3, Math.floor(progress * 4));
   const [editing, setEditing] = useState(false);
@@ -41,7 +46,8 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const [draft, setDraft] = useState('');
   const amount = closingFeeAmount(percent, range.price);
   const displayAmount = dualMode ? outType === 'fixed' : range.rent && range.price > 0;
-  const minimum = displayAmount && dualMode ? range.price * range.min / 100 : range.min;
+  const minimum = zeroMin ? 0 : displayAmount && dualMode ? range.price * range.min / 100 : range.min;
+
   const maximum = displayAmount && dualMode ? range.price * range.max / 100 : range.max;
   const exactAmount = range.price * percent / 100;
   const money = (n: number) => fmtILS(Math.round(n));
@@ -54,7 +60,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     const parsed = Number(draft.replace(/,/g, ''));
     if (draft.trim() && Number.isFinite(parsed) && parsed >= 0) {
       const next = displayAmount && range.price > 0 ? parsed / range.price * 100 : parsed;
-      changePercent(unrestricted ? next : clampClosingPercent(next, dealType));
+      changePercent(clampPercent(next));
     }
     setEditing(false);
   };
@@ -69,7 +75,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     </div>
     <div dir="ltr" className="space-y-2 px-2">
       <Slider dir="ltr" aria-label="עמלת סגירה" min={minimum} max={maximum} disabled={dualMode && displayAmount && range.price <= 0} step={dualMode && displayAmount ? 0.01 : range.step} value={[dualMode && displayAmount ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(dualMode && displayAmount && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
-      <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{displayAmount ? money(dualMode ? minimum : closingFeeAmount(range.min, range.price)) : `${range.min}%`}</span><span>{displayAmount ? money(dualMode ? maximum : closingFeeAmount(range.max, range.price)) : `${range.max}%`}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>
+      <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{displayAmount ? money(dualMode ? minimum : closingFeeAmount(zeroMin ? 0 : range.min, range.price)) : `${zeroMin ? 0 : range.min}%`}</span><span>{displayAmount ? money(dualMode ? maximum : closingFeeAmount(range.max, range.price)) : `${range.max}%`}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>
     </div>
     <div className="space-y-2 text-center">
       <p className="text-sm font-semibold" aria-live="polite">פוטנציאל שיתוף: כ־{1 + Math.round(progress * 99)} שותפים</p>
