@@ -169,6 +169,7 @@ export function ConnectionsTab() {
     try {
       const params = new URLSearchParams(window.location.search);
       const target = params.get('connect');
+      if (target === 'facebook-groups') return 'facebook-groups';
       if (params.has('fb') || target === 'facebook') return 'facebook';
       if (target === 'whatsapp-meta' || target === 'whatsapp') return 'whatsapp';
       if (params.has('google') || target === 'google') return 'google';
