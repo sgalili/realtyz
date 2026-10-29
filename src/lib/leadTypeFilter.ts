@@ -77,7 +77,65 @@ export type PropertyFilterState = {
   sizeMax: number | null;
   floorMin: number | null;
   floorMax: number | null;
+  /** Feature keys from FILTER_FEATURES; every selected feature must be present. */
+  features?: string[];
 };
+
+/** Property features offered in the post-ad flow and imported listings. */
+export const FILTER_FEATURES: Array<{ key: string; label: string; keys: string[]; text: RegExp }> = [
+  { key: 'elevator', label: 'מעלית', keys: ['elevator', 'elevator_count', 'includeElevator'], text: /מעלית/ },
+  { key: 'parking', label: 'חניה', keys: ['parking', 'parking_count', 'parking_spots', 'includeParking'], text: /חני/ },
+  { key: 'balcony', label: 'מרפסת', keys: ['balcony', 'balcony_types', 'includeBalcony'], text: /מרפס/ },
+  { key: 'safe_room', label: 'ממ״ד', keys: ['safe_room', 'shelter', 'includeSecurityRoom'], text: /ממ["״]?ד/ },
+  { key: 'shelter', label: 'מקלט', keys: ['includeFloorShelter', 'includeBuildingShelter'], text: /מקלט/ },
+  { key: 'storage', label: 'מחסן', keys: ['storage', 'warehouse', 'includeWarehouse'], text: /מחסן/ },
+  { key: 'ac', label: 'מיזוג אוויר', keys: ['ac', 'air_conditioning', 'includeAirconditioner', 'includeTornado'], text: /מיזוג|מזגן/ },
+  { key: 'solar', label: 'דוד שמש', keys: ['solar', 'solar_heater', 'includeBoiler'], text: /דוד שמש/ },
+  { key: 'furnished', label: 'מרוהט', keys: ['furnished', 'includeFurniture'], text: /מרוהט|ריהוט/ },
+  { key: 'bars', label: 'סורגים', keys: ['bars', 'includeBars'], text: /סורג/ },
+  { key: 'rav_bariach', label: 'דלת רב בריח', keys: ['includeRavBariach'], text: /רב.?בריח/ },
+  { key: 'accessible', label: 'גישה לנכים', keys: ['accessible', 'isHandicapped'], text: /נכים|נגיש/ },
+  { key: 'renovated', label: 'משופץ', keys: ['renovated', 'isRenovated'], text: /משופץ/ },
+  { key: 'kosher', label: 'מטבח כשר', keys: ['kosher_kitchen', 'isKitchenKosher'], text: /כשר/ },
+  { key: 'pets', label: 'מותר בעלי חיים', keys: ['pets', 'pets_allowed', 'isPetsAllowed'], text: /בעלי חיים|חיות/ },
+  { key: 'garden', label: 'גינה / חצר', keys: ['garden', 'yard', 'garden_sqm'], text: /גינ|חצר/ },
+  { key: 'open_view', label: 'נוף פתוח', keys: ['open_view'], text: /נוף/ },
+  { key: 'pillar', label: 'בניין על עמודים', keys: ['isPillarBuilding'], text: /עמודים/ },
+  { key: 'exclusive', label: 'בבלעדיות', keys: ['isAssetExclusive'], text: /בלעדי/ },
+];
+
+const truthyFeature = (value: unknown): boolean => {
+  if (value == null || value === false) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'number') return value > 0;
+  if (typeof value === 'string') { const v = value.trim(); return !!v && v !== '0' && v !== 'false' && !/^(ללא|אין)/.test(v); }
+  return value === true;
+};
+
+/** True when the row (or its nested features/raw bags) carries the feature. */
+export function rowHasFeature(row: Record<string, unknown>, featureKey: string): boolean {
+  const def = FILTER_FEATURES.find(f => f.key === featureKey);
+  if (!def) return true;
+  const bags: Record<string, unknown>[] = [row];
+  const raw = row.raw as Record<string, unknown> | undefined;
+  if (raw && typeof raw === 'object') bags.push(raw);
+  for (const bag of [...bags]) {
+    const f = bag.features;
+    if (f && typeof f === 'object' && !Array.isArray(f)) {
+      bags.push(f as Record<string, unknown>);
+      const sd = (f as Record<string, unknown>).source_details;
+      if (sd && typeof sd === 'object') bags.push(sd as Record<string, unknown>);
+    }
+  }
+  for (const bag of bags) {
+    if (def.keys.some(key => truthyFeature(bag[key]))) return true;
+    for (const listKey of ['features', 'amenity_labels', 'amenities', 'feature_labels']) {
+      const list = bag[listKey];
+      if (Array.isArray(list) && list.some(item => typeof item === 'string' && def.text.test(item))) return true;
+    }
+  }
+  return false;
+}
 
 export const EMPTY_PROPERTY_FILTER: PropertyFilterState = {
   dealType: 'all',
@@ -103,7 +161,7 @@ export function propertyFilterActiveCount(state: PropertyFilterState): number {
   for (const key of ['roomsMin', 'roomsMax', 'priceMin', 'priceMax', 'sizeMin', 'sizeMax', 'floorMin', 'floorMax'] as const) {
     if (state[key] != null) count += 1;
   }
-  return count;
+  return count + (state.features?.length ?? 0);
 }
 
 function numeric(row: Record<string, unknown>, ...keys: string[]): number | null {
@@ -142,6 +200,7 @@ export function matchesPropertyFilter(row: Record<string, unknown>, state: Prope
   if (!inRange(numeric(row, 'asking_price', 'price'), state.priceMin, state.priceMax)) return false;
   if (!inRange(numeric(row, 'sqm', 'size_sqm'), state.sizeMin, state.sizeMax)) return false;
   if (!inRange(numeric(row, 'floor'), state.floorMin, state.floorMax)) return false;
+  if (state.features?.length && !state.features.every(key => rowHasFeature(row, key))) return false;
   return true;
 }
 

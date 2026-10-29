@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { LeadPriceSlider } from '@/components/public/LeadPriceSlider';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -28,6 +29,7 @@ import {
   leadFilterActiveCount,
   propertyFilterActiveCount,
   selectFilterCity,
+  FILTER_FEATURES,
   type LeadFilterState,
   type LeadTypeKey,
   type PropertyFilterState,
@@ -69,7 +71,7 @@ function RangeRow({
         <Input
           type="number"
           step={step}
-          dir="ltr"
+          dir={min == null ? 'rtl' : 'ltr'}
           aria-label={`${label} מינימום`} placeholder={`${label}${suffix ? ` (${suffix})` : ''} מ־`}
           className="h-9"
           value={min ?? ''}
@@ -78,7 +80,7 @@ function RangeRow({
         <Input
           type="number"
           step={step}
-          dir="ltr"
+          dir={max == null ? 'rtl' : 'ltr'}
           aria-label={`${label} מקסימום`} placeholder={`${label}${suffix ? ` (${suffix})` : ''} עד`}
           className="h-9"
           value={max ?? ''}
@@ -166,10 +168,7 @@ export default function LeadTypeFilterButton({
     onChange({ ...state, types });
   };
 
-  const setBound = (field: 'min' | 'max', raw: string) => {
-    const trimmed = raw.trim();
-    onChange({ ...state, [field]: trimmed === '' ? null : Math.max(0, Number(trimmed) || 0) });
-  };
+  const sliderTier = state.types.includes('tier3') || !state.types.length ? 'phone' : state.types.includes('tier2') ? 'whatsapp' : 'form';
 
   const patch = (next: Partial<PropertyFilterState>) => {
     if (property && onPropertyChange) onPropertyChange({ ...property, ...next });
@@ -191,8 +190,9 @@ export default function LeadTypeFilterButton({
   );
   const content = (
     <>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-start gap-1">
         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="סגירת סינון" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
+        <h2 className="text-[15px] font-semibold leading-none">חיפוש מתקדם</h2>
       </div>
         {showLeadFilters ? (<>
           <SectionTitle>סוג הליד</SectionTitle>
@@ -210,10 +210,7 @@ export default function LeadTypeFilterButton({
           </div>
           <div className="space-y-1">
             
-            <div className="grid grid-cols-2 gap-2">
-              <Input type="number" min={0} dir="ltr" aria-label="שווי הליד מינימום" placeholder="שווי הליד (₪) מ־" className="h-9" value={state.min ?? ''} onChange={(event) => setBound('min', event.target.value)} />
-              <Input type="number" min={0} dir="ltr" aria-label="שווי הליד מקסימום" placeholder="שווי הליד (₪) עד" className="h-9" value={state.max ?? ''} onChange={(event) => setBound('max', event.target.value)} />
-            </div>
+            <LeadPriceSlider tier={sliderTier} label="שווי ליד מינימלי" value={String(state.min ?? 0)} onChange={(value) => { const n = Number(value) || 0; onChange({ ...state, min: n > 0 ? n : null, max: null }); }} />
           </div>
         </>) : null}
 
@@ -221,7 +218,7 @@ export default function LeadTypeFilterButton({
           <>
             {showLeadFilters ? <Separator /> : null}
             <SectionTitle>פרטי הנכס</SectionTitle>
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
               {show('dealType') ? (
                 <div className="space-y-1">
                   <Select value={property.dealType} onValueChange={(value) => patch({ dealType: value as PropertyFilterState['dealType'] })}>
@@ -267,10 +264,20 @@ export default function LeadTypeFilterButton({
                   </Select>
                 </div>
               ) : null}
-              {show('price') ? <RangeRow label="מחיר" suffix="₪" min={property.priceMin} max={property.priceMax} step={1000} onChange={({ min, max }) => patch({ priceMin: min, priceMax: max })} /> : null}
-              {show('rooms') ? <RangeRow label="חדרים" min={property.roomsMin} max={property.roomsMax} step={0.5} onChange={({ min, max }) => patch({ roomsMin: min, roomsMax: max })} /> : null}
-              {show('size') ? <RangeRow label="שטח" suffix='מ"ר' min={property.sizeMin} max={property.sizeMax} step={5} onChange={({ min, max }) => patch({ sizeMin: min, sizeMax: max })} /> : null}
-              {show('floor') ? <RangeRow label="קומה" min={property.floorMin} max={property.floorMax} onChange={({ min, max }) => patch({ floorMin: min, floorMax: max })} /> : null}
+              {show('price') ? <div className="col-span-2"><RangeRow label="מחיר" suffix="₪" min={property.priceMin} max={property.priceMax} step={1000} onChange={({ min, max }) => patch({ priceMin: min, priceMax: max })} /></div> : null}
+              {show('rooms') ? <div className="col-span-2"><RangeRow label="חדרים" min={property.roomsMin} max={property.roomsMax} step={0.5} onChange={({ min, max }) => patch({ roomsMin: min, roomsMax: max })} /></div> : null}
+              {show('size') ? <div className="col-span-2"><RangeRow label="שטח" suffix='מ"ר' min={property.sizeMin} max={property.sizeMax} step={5} onChange={({ min, max }) => patch({ sizeMin: min, sizeMax: max })} /></div> : null}
+              {show('floor') ? <div className="col-span-2"><RangeRow label="קומה" min={property.floorMin} max={property.floorMax} onChange={({ min, max }) => patch({ floorMin: min, floorMax: max })} /></div> : null}
+            </div>
+            <SectionTitle>מאפיינים</SectionTitle>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+              {FILTER_FEATURES.map(feature => {
+                const checked = property.features?.includes(feature.key) ?? false;
+                return <label key={feature.key} className="flex cursor-pointer items-center gap-2 text-[13px]">
+                  <Checkbox checked={checked} onCheckedChange={() => patch({ features: checked ? (property.features ?? []).filter(k => k !== feature.key) : [...(property.features ?? []), feature.key] })} />
+                  <span className="truncate">{feature.label}</span>
+                </label>;
+              })}
             </div>
           </>
         ) : null}
