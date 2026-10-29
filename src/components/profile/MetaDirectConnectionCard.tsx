@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { openOAuthWindow, getActiveOAuthPopup } from '@/lib/openOAuthWindow';
 import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { requestExtensionGroups } from '@/lib/extensionGroupBridge';
@@ -25,7 +24,6 @@ import { forgetConnected } from '@/lib/connectionStatusCache';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import {
   callMetaPageConnect as callPageConnect,
-  startMetaPageConnect,
 } from '@/lib/facebookPageConnect';
 
 
@@ -358,91 +356,6 @@ export const MetaDirectConnectionCard = forwardRef<HTMLDivElement, { onStatus?: 
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const connect = async () => {
-    const attemptId = connectAttemptRef.current + 1;
-    connectAttemptRef.current = attemptId;
-    disconnectedRef.current = false;
-    expectedStateRef.current = null;
-    exchangingRef.current = false;
-    setConnecting(true);
-    try {
-      clearPendingOAuth();
-      // Shared start path — identical function, scopes and DB upsert as the
-      // /campaigns banner.
-      const authUrl = await startMetaPageConnect();
-      // The user may have pressed "בטל חיבור" while the request was pending.
-      // Ignore that stale result instead of reopening OAuth and reviving state.
-      if (connectAttemptRef.current !== attemptId) return;
-      // Open in a popup / new tab. Assigning window.top.location throws a
-      // sandbox permission error inside the preview iframe.
-      const opened = openOAuthWindow(authUrl);
-      if (!opened) {
-        finishConnecting();
-        toast.error('הדפדפן חסם את חלון ההתחברות', {
-          description: 'אפשרו חלונות קופצים עבור האתר ונסו שוב.',
-        });
-        return;
-      }
-      // If the user closes the OAuth popup without finishing, the spinner must
-      // reset — otherwise the button stays stuck on the loading state forever.
-      const popupWatch = window.setInterval(() => {
-        if (connectAttemptRef.current !== attemptId) {
-          window.clearInterval(popupWatch);
-          return;
-        }
-        const popup = getActiveOAuthPopup();
-        if (!popup || popup.closed) {
-          window.clearInterval(popupWatch);
-          if (connectAttemptRef.current === attemptId) {
-            cancelConnecting();
-            // ROOT CAUSE FIX: the callback runs on realtyz.co.il, so its
-            // postMessage to this (possibly different-origin) window is dropped
-            // and the popup just closes. Never reset silently: ask the server
-            // what actually happened and surface it.
-            void (async () => {
-              try {
-                const st = await callPageConnect<PageStatus>({ action: 'status' }).catch(() => null);
-                if ((st as any)?.connected) {
-                  toast.success('עמוד הפייסבוק חובר');
-                  refreshBinding();
-                  refreshHealth();
-                  void probe(false).catch(() => undefined);
-                  return;
-                }
-                const list = await callPageConnect<{ pages?: { id: string; name: string | null; picture?: string | null }[] }>({
-                  action: 'list_pages',
-                }).catch((err: any) => {
-                  throw err;
-                });
-                if (list?.pages?.length) {
-                  setPageOptions(list.pages);
-                  toast.message('בחר את עמוד הפרסום', { description: 'יש בחשבון יותר מעמוד אחד. בחר עמוד מהרשימה.' });
-                  return;
-                }
-                toast.error('החיבור לפייסבוק לא הושלם', {
-                  description: 'חלון ההתחברות נסגר לפני שפייסבוק אישר עמוד. נסה שוב ובחר עמוד בחלון האישור.',
-                });
-              } catch (err: any) {
-                toast.error('החיבור לפייסבוק נכשל', { description: String(err?.message ?? err) });
-              }
-            })();
-          }
-        }
-      }, 1000);
-    } catch (e: any) {
-      if (connectAttemptRef.current !== attemptId) return;
-      finishConnecting();
-      setLoading(false);
-
-      setManualOpen(true);
-      toast.error('לא ניתן לפתוח את חיבור פייסבוק', {
-        description: `${String(e?.message ?? 'החיבור לפייסבוק נכשל.')} ניתן לחבר את העמוד ידנית באמצעות Page Access Token.`,
-      });
-    }
-  };
-
-
 
   const disconnect = async () => {
     if (disconnecting) return;

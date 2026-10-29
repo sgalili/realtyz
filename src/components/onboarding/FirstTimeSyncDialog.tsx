@@ -5,9 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Check, ChevronLeft, Loader2, Megaphone, Sparkles, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
-import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
 import { readPostSignupWelcome } from '@/lib/signupRole';
 import {
   buildGoogleAllAuthUrl,
@@ -80,22 +78,7 @@ export function FirstTimeSyncDialog() {
     window.location.assign(url);
   };
 
-  const connectFacebook = async () => {
-    openFacebookConnection(); return;
-    setBusy('facebook');
-    try {
-      const { data, error } = await supabase.functions.invoke('meta-page-connect', {
-        body: { action: 'start', redirect_uri: oauthRedirectUri(), return_origin: oauthReturnOrigin() },
-      });
-      if (error || !(data as { auth_url?: string } | null)?.auth_url) throw new Error('לא הוחזרה כתובת אימות מפייסבוק');
-      const opened = openOAuthWindow(String((data as { auth_url: string }).auth_url));
-      if (!opened) toast.error('הדפדפן חסם את חלון ההתחברות', { description: 'אפשרו חלונות קופצים ונסו שוב.' });
-    } catch (error) {
-      toast.error('חיבור פייסבוק נכשל', { description: error instanceof Error ? error.message : 'נסו שוב מעמוד הפרופיל.' });
-    } finally {
-      setBusy(null);
-    }
-  };
+  const connectFacebook = () => { openFacebookConnection(); };
 
   const saveSettings = async () => {
     setBusy('save');

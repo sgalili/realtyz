@@ -9,9 +9,6 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
 
-import { META_APP_ID } from '@/lib/metaApp';
-import { oauthRedirectUri, oauthReturnOrigin } from '@/lib/oauthRedirect';
-import { openOAuthWindow } from '@/lib/openOAuthWindow';
 import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -83,22 +80,7 @@ function buildSteps(mode: TourMode, listingsEnabled: boolean, needsProfile: bool
 
 const LOCAL_KEY = 'realtyz-product-tour-done';
 
-const FB_SCOPES = 'public_profile,pages_show_list,pages_manage_posts,pages_read_engagement';
-
-/** Opens Facebook Login immediately (no server round-trip, no error page). */
-function startFacebookLogin() {
-  openFacebookConnection(); return;
-  const state = `facebook_page:${crypto.randomUUID()}:${btoa(encodeURIComponent(oauthReturnOrigin()))}`;
-  const params = new URLSearchParams({
-    client_id: META_APP_ID,
-    redirect_uri: oauthRedirectUri(),
-    response_type: 'code',
-    scope: FB_SCOPES,
-    state,
-    auth_type: 'rerequest',
-  });
-  openOAuthWindow(`https://www.facebook.com/v26.0/dialog/oauth?${params}`);
-}
+function startFacebookLogin() { openFacebookConnection(); }
 
 export function ProductTour() {
   const { user } = useAuth();
