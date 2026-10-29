@@ -240,7 +240,7 @@
   }
   .property-inquiry-action.inquiry-silver svg { width: 16px; height: 16px; }
   @media (max-width: 360px) {
-    .property-inquiry-action.inquiry-silver { font-size: 12px; gap: 3px; }
+    .property-inquiry-action.inquiry-silver { font-size: 11px; gap: 2px; padding-inline: 2px; }
     .property-inquiry-action.inquiry-silver svg { width: 14px; height: 14px; }
   }
   .property-card-grid { display: grid; gap: 16px; }
