@@ -7,8 +7,8 @@ export function AppFooter() {
       <div className="auth-footer-legal">
         <span className="auth-footer-copyright"><span dir="ltr">© 2026 TORAFF</span> · כל הזכויות שמורות</span>
         <div className="auth-footer-links">
-          <Link to="/privacy-policy">מדיניות פרטיות</Link>
-          <Link to="/terms">תנאי שימוש</Link>
+          <Link to="/terms">תנאים</Link>
+          <Link to="/privacy-policy">פרטיות</Link>
           <Link to="/commission-mechanism">מנגנון העמלות</Link>
         </div>
       </div>

@@ -333,7 +333,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                {!user && <Button variant="ghost" size="icon" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="h-[25px] w-[25px] max-h-[25px] shrink-0 self-center border-0 bg-transparent p-0 text-primary hover:bg-transparent"><UserPlus className="!h-[25px] !w-[25px] max-h-[25px]" strokeWidth={1.75} /></Button>}
+                {!user && <button type="button" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="-translate-y-[6px] flex shrink-0 flex-col items-center self-center border-0 bg-transparent p-0 leading-none text-primary"><UserPlus className="h-[25px] w-[25px]" strokeWidth={1.75} /><span className="mt-0.5 text-[10px] font-medium leading-none">הרשמה/כניסה</span></button>}
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
@@ -358,7 +358,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 <thead className="bg-muted/40 text-[14px] text-muted-foreground">
                   <tr>
                     {visibleColumns.map((id) => <BoardColumnHeader key={id} id={id} controls={columns} />)}
-                    <th className="px-2 pt-2 text-start font-medium">מפרסם</th>
                     <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
                   </tr>
 
@@ -388,9 +387,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : id === 'commissions' ? <PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types, closing_level: card.closing_level, reward_levels: (card as { reward_levels?: unknown }).reward_levels }} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
+                          : id === 'publisher' ? <div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div>
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
-                        <td className="p-2"><div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div></td>
                         <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
                           {user ? <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage /> : <PropertyContactActions listingId={card.id} title={title} compact shareOnly shareUrl={publicUrl(propertyPath)} shareButtonClassName="h-8 w-8 border-0 bg-transparent shadow-none" />}
                           <BoardPublishButton result={cardResult(card)} />
@@ -401,7 +400,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                          </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
-                        <td colSpan={visibleColumns.length + 2} className="p-0">
+                        <td colSpan={visibleColumns.length + 1} className="p-0">
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
