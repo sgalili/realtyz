@@ -573,6 +573,13 @@ export default function Properties() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
   const pendingHistoryQuery = useRef<string | null>(null);
+  // The search row starts collapsed; the tools-row magnify button expands it smoothly.
+  const [searchOpen, setSearchOpen] = useState<boolean>(() => !!q.trim());
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const toggleSearchOpen = (open: boolean) => {
+    setSearchOpen(open);
+    if (open) window.requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
   const inventorySuggestions = useInventorySuggestions(q, activeWorkspaceId);
   const suggestions = inventorySuggestions.data ?? [];
   useEffect(() => { setSuggestionIndex(-1); }, [q]);
@@ -905,6 +912,20 @@ export default function Properties() {
         </div>
         <div data-testid="property-tools-row" className="flex shrink-0 items-center gap-0">
 
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
+              title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
+              aria-expanded={searchOpen}
+              aria-controls="inventory-search-row"
+              onClick={() => toggleSearchOpen(!searchOpen)}
+            >
+              <SearchIcon className="h-4 w-4" />
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -958,7 +979,9 @@ export default function Properties() {
         </div>
         </div>
 
-        {/* Row 2 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] */}
+        {/* Row 2 — search field: [multi-select checkbox] [filter icon] [active filter words] [text] [go] — collapsed by default behind the tools-row magnify button. */}
+        <div id="inventory-search-row" className="grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none" style={{ gridTemplateRows: searchOpen ? '1fr' : '0fr' }}>
+          <div className="min-h-0 overflow-hidden">
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
@@ -1005,6 +1028,7 @@ export default function Properties() {
               ))}
 
               <input
+                ref={searchInputRef}
                 value={yad2Status?.tone === 'busy' ? '' : q}
                 readOnly={yad2Status?.tone === 'busy'}
                 onFocus={() => setSuggestionsOpen(true)}
@@ -1142,10 +1166,8 @@ export default function Properties() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-
-
-
-
+        </div>
+          </div>
         </div>
 
 
