@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LeadTypeFilterButton from './LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER } from '@/lib/leadTypeFilter';
 
@@ -12,6 +13,9 @@ const roleFlags = vi.hoisted(() => ({
 }));
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
+vi.mock('@/hooks/usePropertyPageAccess', () => ({
+  usePropertyPageAccess: () => ({ properties: true, projects: false }),
+}));
 vi.mock('@/hooks/useUserRole', () => ({
   useUserRole: () => ({
     isAffiliate: roleFlags.isAffiliate,
@@ -31,7 +35,9 @@ function setRole(role: 'partner' | 'broker' | 'developer' | 'private') {
 }
 
 function renderFilter() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
+    <QueryClientProvider client={client}>
     <LeadTypeFilterButton
       state={EMPTY_LEAD_FILTER}
       onChange={() => {}}
@@ -40,7 +46,8 @@ function renderFilter() {
       cities={['תל אביב']}
       neighborhoods={['פלורנטין']}
       propertyTypes={['דירה']}
-    />,
+    />
+    </QueryClientProvider>,
   );
   fireEvent.click(screen.getByRole('button', { name: 'סינון מתקדם' }));
 }
@@ -49,12 +56,12 @@ describe('role-based advanced filter fields', () => {
   it('partner sees lead types 1-3, lead value and only the minimal property fields', () => {
     setRole('partner');
     renderFilter();
-    expect(screen.getByText('סוג הליד')).toBeInTheDocument();
-    expect(screen.getByText('שדות מטופס בעמוד נחיתה')).toBeInTheDocument();
-    expect(screen.getByText('סינון בווטסאפ')).toBeInTheDocument();
-    expect(screen.getByText('שיחת טלפון')).toBeInTheDocument();
-    expect(screen.queryByText('סגירת עסקה')).not.toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'שווי הליד מינימום' })).toBeInTheDocument();
+    expect(screen.getByText('רווח לליד')).toBeInTheDocument();
+    expect(screen.getByText('פנייה דרך השארת פרטים בטופס בעמוד נחיתה')).toBeInTheDocument();
+    expect(screen.getByText('פנייה לאחר סינון בשיחת ווטסאפ עם ריטה AI')).toBeInTheDocument();
+    expect(screen.getByText('פנייה לאחר סינון בשיחת טלפון עם ריטה AI')).toBeInTheDocument();
+    expect(screen.queryByText('עמלת תיווך עבור סגירת עסקה')).not.toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'אזור' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'שכונה' })).toBeInTheDocument();
@@ -68,7 +75,7 @@ describe('role-based advanced filter fields', () => {
   it('broker sees the deal-closing tier and the full property set', () => {
     setRole('broker');
     renderFilter();
-    expect(screen.getByText('סגירת עסקה')).toBeInTheDocument();
+    expect(screen.getByText('עמלת תיווך עבור סגירת עסקה')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'חדרים מינימום' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'שטח מינימום' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'קומה מינימום' })).toBeInTheDocument();
@@ -77,8 +84,8 @@ describe('role-based advanced filter fields', () => {
   it('developer sees only market/property filters, never lead filters', () => {
     setRole('developer');
     renderFilter();
-    expect(screen.queryByText('סוג הליד')).not.toBeInTheDocument();
-    expect(screen.queryByRole('spinbutton', { name: 'שווי הליד מינימום' })).not.toBeInTheDocument();
+    expect(screen.queryByText('רווח לליד')).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).not.toBeInTheDocument();
     expect(screen.getByText('פרטי הנכס')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'קומה מינימום' })).toBeInTheDocument();
   });
@@ -86,7 +93,7 @@ describe('role-based advanced filter fields', () => {
   it('private user sees a compact market set without lead filters', () => {
     setRole('private');
     renderFilter();
-    expect(screen.queryByText('סוג הליד')).not.toBeInTheDocument();
+    expect(screen.queryByText('רווח לליד')).not.toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'חדרים מינימום' })).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
