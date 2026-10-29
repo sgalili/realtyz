@@ -891,6 +891,52 @@ export default function Properties() {
   }, [city, propertyType, rooms, maxPrice, areaMin]);
 
 
+  const renderToolsRow = (testId: string) => (
+    <div data-testid={testId} className="flex shrink-0 items-center justify-end gap-0" style={{ marginInlineEnd: "-5px" }}>
+
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                   variant="ghost"
+                  size="sm"
+                   className="h-8 gap-1.5 border-0 bg-transparent text-xs shadow-none hover:bg-transparent hover:text-inherit"
+                  aria-label="מיון"
+                  title="מיון"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
+                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
+                      {SORT_LABELS[key]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
+
+            {multiSelectMode && selectedListingIds.size > 0 ? (
+              <div className="flex items-center gap-2">
+                <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            ) : null}
+
+            {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
+                between the results-count pill and the view toggle. */}
+          <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
+    </div>
+  );
+
   return (
     <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[20px]' : 'px-0 !pt-[20px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
       <header className="hidden">
@@ -915,12 +961,12 @@ export default function Properties() {
               aria-controls="inventory-search-row"
               onClick={() => toggleSearchOpen(!searchOpen)}
             >
-              <SearchIcon className="!h-[19px] !w-[19px]" />
+              <span className="relative inline-flex h-[19px] w-[19px]"><SearchIcon className={`absolute inset-0 !h-[19px] !w-[19px] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "opacity-0 scale-50 rotate-90" : "opacity-100 scale-100 rotate-0"}`} /><X className={`absolute inset-0 !h-[19px] !w-[19px] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 -rotate-90"}`} /></span>
             </Button>
             {/* Counter pill — always visible right after the magnify: total records
                 by default, replaced by the selected count while selecting. */}
             <Button type="button" variant="ghost"
-              className="order-2 h-8 shrink-0 rounded-none px-0 text-[12px] font-normal text-primary tabular-nums hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              className={`order-2 h-8 shrink-0 overflow-hidden rounded-none px-0 text-[12px] font-normal text-primary tabular-nums hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 transition-[opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "pointer-events-none max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`} tabIndex={searchOpen ? -1 : undefined}
               aria-expanded={searchOpen} aria-controls="inventory-search-row"
               title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               onClick={() => toggleSearchOpen(!searchOpen)}>
@@ -1120,54 +1166,17 @@ export default function Properties() {
         </div>
           </div>
         </div>
-        <div data-testid="property-tools-row" className="order-4 flex shrink-0 items-center justify-end gap-0" style={{ marginInlineEnd: "-5px" }}>
-
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                   variant="ghost"
-                  size="sm"
-                   className="h-8 gap-1.5 border-0 bg-transparent text-xs shadow-none hover:bg-transparent hover:text-inherit"
-                  aria-label="מיון"
-                  title="מיון"
-                >
-                  <ArrowUpDown className="h-3.5 w-3.5" />
-                  
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
-                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
-                      {SORT_LABELS[key]}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
-
-            {multiSelectMode && selectedListingIds.size > 0 ? (
-              <div className="flex items-center gap-2">
-                <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-            ) : null}
-
-            {/* Transaction type: הכל / להשכרה / למכירה — same toolbar row,
-                between the results-count pill and the view toggle. */}
-          <ViewModeSwitch isGrid={viewMode === 'grid'} onToggle={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')} />
+        <div className={`order-4 shrink-0 transition-[opacity,transform] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "pointer-events-none w-0 overflow-hidden opacity-0 translate-y-3" : "opacity-100 translate-y-0"}`}>
+          {!searchOpen && renderToolsRow("property-tools-row")}
         </div>
         </div>
 
         {/* The source and deal toggles sit below the field and appear only while search is open. */}
-        {searchOpen && (
-          <div className="mb-2 flex flex-wrap items-center gap-2.5">
+        {/* Search-open row: options aligned to the field edge, tools at row end. */}
+        <div aria-hidden={!searchOpen} className={`grid transition-[grid-template-rows,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${searchOpen ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}>
+          <div className="min-h-0 overflow-hidden">
+            <div className={`mb-2 mt-1 flex items-center justify-between gap-2 ps-9 transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${searchOpen ? "translate-y-0" : "-translate-y-2"}`}>
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
         <div role="group" aria-label="מקורות חיפוש" className="flex shrink-0 items-center gap-2.5">
           {availableSources.map(source => <Button key={source} variant="ghost" size="sm" aria-label={sourceLabel(source)} title={sourceLabel(source)} aria-pressed={activeSources.includes(source)} onClick={() => toggleSource(source)} className={`h-8 shrink-0 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit ${activeSources.includes(source) ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}>
             <span className={`h-2 w-2 shrink-0 rounded-full ${sourceDotClass(source)} ${activeSources.includes(source) ? 'opacity-100' : 'opacity-30'}`} />
@@ -1178,7 +1187,10 @@ export default function Properties() {
           {(['rent', 'sale'] as const).map(t => { const active = listingType === 'all' || listingType === t; return <Button key={t} size="sm" variant="ghost" onClick={() => setListingType(current => current === 'all' ? (t === 'rent' ? 'sale' : 'rent') : current === t ? current : 'all')} aria-pressed={active} className={`h-8 gap-1 px-0 text-xs hover:bg-transparent hover:text-inherit focus-visible:bg-transparent ${active ? 'font-semibold text-foreground' : 'text-muted-foreground/60'}`}><span className={`h-2 w-2 rounded-full bg-success ${active ? 'opacity-100' : 'opacity-30'}`} />{LISTING_TYPE_LABELS_HE[t]}</Button>; })}
         </div>
           </div>
-        )}
+              {searchOpen && renderToolsRow("property-tools-row")}
+            </div>
+          </div>
+        </div>
 
 
 
