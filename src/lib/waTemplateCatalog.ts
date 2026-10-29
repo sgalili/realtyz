@@ -54,9 +54,8 @@ export function audienceFromIdentity(label: string, isAdmin: boolean): WaTemplat
 
 /** Personalization tags offered in the message editor, per audience. */
 export function personalizationTagsFor(audience: WaTemplateAudience): string[] {
-  if (audience === 'broker' || audience === 'admin') return ['[שם_פרטי]', '[עיר]', '[נכס]'];
-  if (audience === 'developer') return ['[שם_פרטי]', '[עיר]', '[פרויקט]'];
-  if (audience === 'owner') return ['[שם_פרטי]', '[נכס]'];
+  if (audience === 'broker' || audience === 'admin' || audience === 'developer') return ['[שם_פרטי]', '[עיר]', '[נכס]'];
+    if (audience === 'owner') return ['[שם_פרטי]', '[נכס]'];
   return ['[שם_פרטי]'];
 }
 

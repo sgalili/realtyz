@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { dedupeTemplates, rebrandTemplateText, templatesForAudience, waTemplateLabel, type WaTemplateAudience } from '@/lib/waTemplateCatalog';
 import { useMetaWaTemplates, renderTemplateBody, templateVariableKeys, type MetaWaTemplate } from '@/hooks/useMetaWaTemplates';
 
 export type WaTemplateSelection = {
@@ -19,6 +20,8 @@ type Props = {
   showTokenHint?: boolean;
   /** Only campaign-relevant marketing templates; never system/OTP/reminder templates. */
   campaignOnly?: boolean;
+  /** When set, only templates relevant to this user type are offered. */
+  audience?: WaTemplateAudience;
 };
 
 const SYSTEM_TEMPLATE = /(otp|verif|auth|code|login|reminder|tour|meeting|call|invite|wallet|payment|receipt|dispute|lead_alert|notification)/i;
@@ -27,11 +30,15 @@ const SYSTEM_TEMPLATE = /(otp|verif|auth|code|login|reminder|tour|meeting|call|i
  * Picker for APPROVED Meta templates. Meta blocks free-form business-initiated
  * messages outside the 24h window, so every proactive send goes through here.
  */
-export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campaignOnly = false }: Props) => {
+export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campaignOnly = false, audience }: Props) => {
   const { data: allTemplates, isLoading, error } = useMetaWaTemplates();
-  const templates = useMemo(() => campaignOnly
-    ? allTemplates?.filter((t) => (t.category ?? '').toUpperCase() === 'MARKETING' && !SYSTEM_TEMPLATE.test(t.name))
-    : allTemplates, [allTemplates, campaignOnly]);
+  const templates = useMemo(() => {
+    if (!allTemplates) return allTemplates;
+    const base = campaignOnly
+      ? allTemplates.filter((t) => (t.category ?? '').toUpperCase() === 'MARKETING' && !SYSTEM_TEMPLATE.test(t.name))
+      : allTemplates;
+    return audience ? templatesForAudience(base, audience) : dedupeTemplates(base);
+  }, [allTemplates, campaignOnly, audience]);
 
   const selected: MetaWaTemplate | undefined = useMemo(
     () => templates?.find((t) => t.name === value?.name && t.language === value?.language),
@@ -90,7 +97,7 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campai
           <SelectContent>
             {templates.map((t) => (
               <SelectItem key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>
-                {t.name} ({t.language})
+                {waTemplateLabel(t.name)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -123,7 +130,7 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campai
 
       {selected && (
         <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 whitespace-pre-wrap">
-          {renderTemplateBody(selected.body_text, value?.body_params ?? [])}
+          {rebrandTemplateText(renderTemplateBody(selected.body_text, value?.body_params ?? []))}
         </div>
       )}
     </div>
