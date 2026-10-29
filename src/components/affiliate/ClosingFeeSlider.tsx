@@ -11,12 +11,13 @@ import { BrokerTestLinks } from './BrokerClosingInfo';
 import { fmtILS } from '@/lib/formatCurrency';
 import { cn } from '@/lib/utils';
 
-export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange, unrestricted = false }: {
+export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange, unrestricted = false, zeroMin = false }: {
   className?: string;
   dealType: string | null | undefined;
   price: number;
   value: number;
   valueType?: 'fixed' | 'percent';
+
   onChange: (percent: number) => void;
   dualMode?: boolean;
   onValueChange?: (value: number, mode: 'fixed' | 'percent') => void;
