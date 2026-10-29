@@ -185,14 +185,9 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&hl=iw&z=16&output=embed`;
 
   const overlay = listing.id ? (
-    <>
-      {listing.id && (
-        <Button type="button" variant="secondary" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(); }} aria-pressed={favorite} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" className="h-9 w-9 border-0 bg-transparent shadow-none hover:bg-muted">
-          <Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} />
-        </Button>
-      )}
-      {listing.id && <div className="[&_button]:border-0 [&_button]:bg-transparent [&_button]:shadow-none"><PropertyContactActions listingId={listing.id} title={listing.title} shareUrl={publicUrl(`/p/${encodeURIComponent(listing.slug || listing.id)}`)} compact shareOnly /></div>}
-    </>
+    <Button type="button" variant="secondary" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(); }} aria-pressed={favorite} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" className="h-9 w-9 border-0 bg-transparent shadow-none hover:bg-muted">
+      <Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} />
+    </Button>
   ) : null;
   const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode }>, { overlay }) : gallery;
 
