@@ -86,7 +86,7 @@ export function SidebarRitaChat() {
         <button type="button" onClick={openFull} aria-label="פתיחת ריטה במסך מלא" title="מסך מלא" className={iconBtn}>
           <Maximize2 className="h-3.5 w-3.5" />
         </button>
-        <div className="flex items-center gap-0.5">
+        <div className="flex flex-row-reverse items-center gap-0.5">
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
