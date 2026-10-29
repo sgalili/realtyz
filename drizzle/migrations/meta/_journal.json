@@ -729,6 +729,13 @@
       "when": 1793316303106,
       "tag": "0103_public_lead_price_bounds",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1793317530497,
+      "tag": "0104_public_lead_price_bounds_v2",
+      "breakpoints": true
     }
   ]
 }

@@ -9,7 +9,7 @@
 //   · יזם / קבלן       — market/property filters only.
 //   · קונה/מוכר פרטי   — compact market filters only.
 //   · guest            — property filters only, never lead filters.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ClipboardList, Phone, Filter, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -137,8 +137,8 @@ export default function LeadTypeFilterButton({
 
   const verifiedBroker = usePropertyPageAccess().properties;
   const bounds = useQuery({
-    queryKey: ['public-lead-price-bounds', user?.id],
-    enabled: !!user && verifiedBroker && open,
+    queryKey: ['public-lead-price-bounds', user?.id, verifiedBroker],
+    enabled: !!user && open,
     staleTime: 5 * 60_000,
     retry: false,
     queryFn: async () => {
@@ -183,7 +183,17 @@ export default function LeadTypeFilterButton({
     onChange({ ...state, types });
   };
 
-  const sliderTier = state.types.includes('tier3') || !state.types.length ? 'phone' : state.types.includes('tier2') ? 'whatsapp' : 'form';
+  const BOUND_KEY = { tier1: 'form', tier2: 'whatsapp', tier3: 'phone', tier4: 'closing' } as const;
+  const activeType: LeadTypeKey = leadTypes.find((key) => state.types.includes(key)) ?? leadTypes[0];
+  const sliderTier = activeType === 'tier1' ? 'form' : activeType === 'tier2' ? 'whatsapp' : 'phone';
+  const liveBound = bounds.data?.[BOUND_KEY[activeType]];
+  const sliderRange = liveBound?.min != null && liveBound?.max != null && Number(liveBound.max) > Number(liveBound.min)
+    ? { min: Number(liveBound.min), max: Number(liveBound.max) } : undefined;
+  // Opening the filter selects the first lead type by default.
+  useEffect(() => {
+    if (open && showLeadFilters && !state.types.length) onChange({ ...state, types: [leadTypes[0]] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, showLeadFilters]);
 
   const patch = (next: Partial<PropertyFilterState>) => {
     if (property && onPropertyChange) onPropertyChange({ ...property, ...next });
@@ -226,7 +236,7 @@ export default function LeadTypeFilterButton({
           </div>
           <div className="space-y-1">
             
-            <LeadPriceSlider hidePotential range={(() => { const b = bounds.data?.[sliderTier]; return b?.min != null && b?.max != null ? { min: Number(b.min), max: Number(b.max) } : undefined; })()} tier={sliderTier} label="שווי ליד מינימלי" value={String(state.min ?? 0)} onChange={(value) => { const n = Number(value) || 0; onChange({ ...state, min: n > 0 ? n : null, max: null }); }} />
+            <LeadPriceSlider hidePotential range={sliderRange} key={activeType} tier={sliderTier} label="שווי ליד מינימלי" value={String(state.min ?? 0)} onChange={(value) => { const n = Number(value) || 0; onChange({ ...state, min: n > 0 ? n : null, max: null }); }} />
           </div>
         </>) : null}
 
