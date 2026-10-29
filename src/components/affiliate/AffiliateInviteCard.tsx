@@ -1,3 +1,4 @@
+import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy, Handshake, Link2, Mail, Wallet, RefreshCw } from 'lucide-react';
@@ -40,7 +41,7 @@ export function AffiliateInviteCard() {
   const copy = async () => {
     if (!link) return;
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(withShareUtm(link, 'copy'));
       toast.success('קישור ההזמנה הועתק');
     } catch {
       toast.error('לא ניתן להעתיק כרגע. נסו שוב.');
@@ -92,8 +93,8 @@ export function AffiliateInviteCard() {
         <div className="mx-auto w-full max-w-2xl px-2 pt-3 pb-[7px] sm:px-6">
           <div className="grid grid-cols-3 gap-3">
             <Button className="gap-2 px-2" size="lg" disabled={!link} onClick={() => void copy()} aria-label="העתק קישור אישי"><Copy className="h-5 w-5 shrink-0" /><span className="truncate">העתק קישור</span></Button>
-            <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><FaWhatsapp className="h-5 w-5 shrink-0 text-social-whatsapp" />וואטסאפ</Button>
-            <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־TORAFF · בונוס כפול')}&body=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 shrink-0 text-social-email" />אימייל</Button>
+            <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(tagShareText(message, 'whatsapp'))}`, '_blank', 'noopener,noreferrer')}><FaWhatsapp className="h-5 w-5 shrink-0 text-social-whatsapp" />וואטסאפ</Button>
+            <Button variant="outline" className="gap-2 px-2" disabled={!link} onClick={() => window.open(`mailto:?subject=${encodeURIComponent('הזמנה ל־TORAFF · בונוס כפול')}&body=${encodeURIComponent(tagShareText(message, 'email'))}`, '_blank', 'noopener,noreferrer')}><Mail className="h-5 w-5 shrink-0 text-social-email" />אימייל</Button>
           </div>
         </div>
       </div>

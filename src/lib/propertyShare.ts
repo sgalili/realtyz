@@ -1,6 +1,7 @@
 // Shared property-sharing helpers. Mints a public share token via the
 // `create-property-share` edge function and builds the WhatsApp/SMS message
 // that carries the secure landing-page link.
+import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { supabase } from '@/integrations/supabase/client';
 import { formatListingTitle } from '@/lib/formatListingTitle';
 import type { UnifiedResult } from '@/lib/propertySearch';
@@ -192,7 +193,7 @@ export async function shareProperties(
   const email = String(recipient?.email ?? '').trim().toLowerCase();
   const minted: Array<{ r: UnifiedResult; url: string }> = [];
   for (const r of results) {
-    minted.push({ r, url: await mintShareUrlForResult(r, phone) });
+    minted.push({ r, url: withShareUtm(await mintShareUrlForResult(r, phone), mode) });
   }
 
   const recipientName = String(recipient?.name ?? '').trim() || null;

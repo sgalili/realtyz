@@ -1,3 +1,4 @@
+import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { Copy, ExternalLink, Loader2, Mail, MessageSquare, MoreHorizontal, Pencil, RefreshCw, Repeat2, Share2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -18,7 +19,7 @@ export function PostActionsMenu({ postUrl, onRefresh, onEdit, onRepost, onDelete
   const openPost = () => { if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); };
   const copyUrl = async () => {
     if (!postUrl) return;
-    try { await navigator.clipboard.writeText(postUrl); toast.success('קישור הקמפיין הועתק'); }
+    try { await navigator.clipboard.writeText(withShareUtm(postUrl, 'copy')); toast.success('קישור הקמפיין הועתק'); }
     catch { toast.error('לא ניתן להעתיק את הקישור'); }
   };
   return (
@@ -39,9 +40,9 @@ export function PostActionsMenu({ postUrl, onRefresh, onEdit, onRepost, onDelete
           <DropdownMenuSub>
             <DropdownMenuSubTrigger disabled={!postUrl} className="gap-2"><Share2 className="h-4 w-4" /> שיתוף הקמפיין</DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              <DropdownMenuItem className="gap-2" onSelect={() => { if (postUrl) openWhatsAppContactPicker(postUrl); }}><BrandIcon name="whatsapp" className="h-4 w-4" /> WhatsApp</DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" onSelect={() => { if (postUrl) window.location.href = `sms:?body=${encodeURIComponent(postUrl)}`; }}><MessageSquare className="h-4 w-4" /> SMS</DropdownMenuItem>
-              <DropdownMenuItem className="gap-2" onSelect={() => { if (postUrl) window.location.href = `mailto:?body=${encodeURIComponent(postUrl)}`; }}><Mail className="h-4 w-4" /> דוא״ל</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => { if (postUrl) openWhatsAppContactPicker(withShareUtm(postUrl, 'whatsapp')); }}><BrandIcon name="whatsapp" className="h-4 w-4" /> WhatsApp</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => { if (postUrl) window.location.href = `sms:?body=${encodeURIComponent(withShareUtm(postUrl, 'sms'))}`; }}><MessageSquare className="h-4 w-4" /> SMS</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => { if (postUrl) window.location.href = `mailto:?body=${encodeURIComponent(withShareUtm(postUrl, 'email'))}`; }}><Mail className="h-4 w-4" /> דוא״ל</DropdownMenuItem>
               <DropdownMenuItem className="gap-2" onSelect={() => { void copyUrl(); }}><Copy className="h-4 w-4" /> העתקת קישור</DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
