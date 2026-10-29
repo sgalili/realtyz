@@ -892,18 +892,18 @@ export default function Properties() {
 
 
   return (
-    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-4 overflow-hidden p-3 py-0 sm:gap-6 sm:p-6 sm:py-0' : 'p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
+    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[15px] overflow-hidden px-3 pb-0 pt-[15px] sm:px-6' : 'px-3 sm:px-6 pt-[15px] space-y-[15px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
 
       {/* Compact unified control bar */}
-      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="!mt-3">
+      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="!mt-0 shrink-0">
 
 
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
-        <div data-testid="property-filter-row" className="mb-2 flex flex-nowrap items-center gap-1">
+        <div data-testid="property-filter-row" className="flex flex-nowrap items-center gap-1">
             <Button
               type="button"
               variant="ghost"
@@ -919,12 +919,12 @@ export default function Properties() {
             </Button>
             {/* Counter pill — always visible right after the magnify: total records
                 by default, replaced by the selected count while selecting. */}
-            <span className="order-2 shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
+            <span className="order-2 shrink-0 text-[12px] font-normal text-primary tabular-nums">
               {multiSelectMode && selectedListingIds.size > 0
                 ? `${selectedListingIds.size} נבחרו`
                 : (() => {
                     const total = totalListingsCount ?? sortedResults.length;
-                    return total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total;
+                    return `${total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total} נכסים`;
                   })()}
             </span>
         <div id="inventory-search-row" className="order-3 min-w-0 flex-1">

@@ -1,5 +1,10 @@
 # Roadmap
 
+## Partner navigation and properties spacing October 29
+- [ ] Plain property count with נכסים and fixed 15px toolbar spacing.
+- [ ] Strict partner/private navigation and route presentation; role-filtered tasks and transactions.
+- [ ] Focused tests and signed-in checks.
+
 ## Account personalization and activity October 29
 - [x] Correct personal Rita identity without changing authorized workspace data context.
 - [x] Hide broker-only partner/private navigation and simplify their dashboard/activity; preserve broker My Properties and reuse public-safe sharing inventory.
