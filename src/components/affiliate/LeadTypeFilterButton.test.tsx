@@ -54,33 +54,33 @@ describe('role-based advanced filter fields', () => {
     expect(screen.getByText('סינון בווטסאפ')).toBeInTheDocument();
     expect(screen.getByText('שיחת טלפון')).toBeInTheDocument();
     expect(screen.queryByText('סגירת עסקה')).not.toBeInTheDocument();
-    expect(screen.getByText('שווי הליד (₪)')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'שווי הליד מינימום' })).toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
-    expect(screen.getByText('עיר')).toBeInTheDocument();
-    expect(screen.getByText('שכונה')).toBeInTheDocument();
-    expect(screen.getByText(/^מחיר \(₪\)$/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'אזור' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'שכונה' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'מחיר מינימום' })).toBeInTheDocument();
     // Minimal set: no rooms/size/floor for partners.
-    expect(screen.queryByText('חדרים')).not.toBeInTheDocument();
-    expect(screen.queryByText(/^שטח/)).not.toBeInTheDocument();
-    expect(screen.queryByText('קומה')).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'חדרים מינימום' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'קומה מינימום' })).not.toBeInTheDocument();
   });
 
   it('broker sees the deal-closing tier and the full property set', () => {
     setRole('broker');
     renderFilter();
     expect(screen.getByText('סגירת עסקה')).toBeInTheDocument();
-    expect(screen.getByText('חדרים')).toBeInTheDocument();
-    expect(screen.getByText(/^שטח/)).toBeInTheDocument();
-    expect(screen.getByText('קומה')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'חדרים מינימום' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'שטח מינימום' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'קומה מינימום' })).toBeInTheDocument();
   });
 
   it('developer sees only market/property filters, never lead filters', () => {
     setRole('developer');
     renderFilter();
     expect(screen.queryByText('סוג הליד')).not.toBeInTheDocument();
-    expect(screen.queryByText('שווי הליד (₪)')).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'שווי הליד מינימום' })).not.toBeInTheDocument();
     expect(screen.getByText('פרטי הנכס')).toBeInTheDocument();
-    expect(screen.getByText('קומה')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'קומה מינימום' })).toBeInTheDocument();
   });
 
   it('private user sees a compact market set without lead filters', () => {
@@ -88,8 +88,8 @@ describe('role-based advanced filter fields', () => {
     renderFilter();
     expect(screen.queryByText('סוג הליד')).not.toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
-    expect(screen.getByText('חדרים')).toBeInTheDocument();
-    expect(screen.queryByText(/^שטח/)).not.toBeInTheDocument();
-    expect(screen.queryByText('קומה')).not.toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'חדרים מינימום' })).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'קומה מינימום' })).not.toBeInTheDocument();
   });
 });

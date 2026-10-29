@@ -25,7 +25,8 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem,
   DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -187,9 +188,21 @@ export default function Properties() {
   const { favoriteIds, toggleFavorite } = useListingFavorites();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
+  const [advancedFilter, setAdvancedFilter] = useState<PropertyFilterState>(() => ({ ...EMPTY_PROPERTY_FILTER, dealType: cached?.listingType ?? 'all', city: cached?.city && cached.city !== 'כל הערים' ? cached.city : 'all', propertyType: cached?.propertyType ?? 'all', roomsMin: cached?.rooms && cached.rooms !== 'any' ? Number(cached.rooms) : null, priceMax: cached?.maxPrice && cached.maxPrice < PRICE_MAX ? cached.maxPrice : null, sizeMin: cached?.areaMin ? Number(cached.areaMin) : null }));
+  const updateAdvancedFilter = (next: PropertyFilterState) => {
+    setAdvancedFilter(next);
+    setListingType(next.dealType);
+    setCity(next.city === 'all' || !next.city ? 'כל הערים' : next.city);
+    setPropertyType(next.propertyType as PropertyType | 'all');
+    setRooms(next.roomsMin == null ? 'any' : String(next.roomsMin));
+    setMaxPrice(next.priceMax ?? PRICE_MAX);
+    setAreaMin(next.sizeMin == null ? '' : String(next.sizeMin));
+  };
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
+  const { data: filterLeadConfigs } = useAffiliateConfigs(results.flatMap(row => row.localId ? [row.localId] : []));
   const [sourceStatus, setSourceStatus] = useState<Record<string, SourceInfo>>({});
   // Active source filter from the breakdown popup (null = all sources).
   const [sourceFilter, setSourceFilter] = useState<PropertySource | null>(null);
@@ -218,6 +231,9 @@ export default function Properties() {
     setRooms(c?.rooms ?? 'any');
     setMaxPrice(c?.maxPrice ?? PRICE_MAX);
     setAreaMin(c?.areaMin ?? '');
+    setAdvancedFilter(EMPTY_PROPERTY_FILTER);
+    setLeadFilter(EMPTY_LEAD_FILTER);
+    setFiltersOpen(false);
     setResults(c?.results ?? []);
     setHasSearched(c?.hasSearched ?? false);
   }, [cacheScope]);
@@ -380,7 +396,7 @@ export default function Properties() {
   // Monotonic token — bumping it aborts the in-flight search: late partials
   // and the final payload are ignored, so whatever was already painted stays.
   const searchTokenRef = useRef(0);
-  useEffect(() => { searchTokenRef.current++; setSearching(false); setSearchProgress(null); setCompletedResults(null); }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, activeSources]);
+  useEffect(() => { searchTokenRef.current++; setSearching(false); setSearchProgress(null); setCompletedResults(null); }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, activeSources, advancedFilter, leadFilter]);
   useEffect(() => () => { searchTokenRef.current++; }, []);
 
   const runSearch = useCallback(async (override?: string) => {
@@ -405,7 +421,7 @@ export default function Properties() {
         listingType !== 'all' ? listingType : (parsed.listing_type ?? 'all');
       const effectivePropertyType = propertyType !== 'all' ? propertyType : (parsed.property_type ?? 'all');
       const effectiveMaxPrice = maxPrice < PRICE_MAX ? maxPrice : (parsed.max_price ?? undefined);
-      const effectiveMinPrice = parsed.min_price ?? undefined;
+      const effectiveMinPrice = advancedFilter.priceMin ?? parsed.min_price ?? undefined;
       const wantedAmenities = parsed.amenities;
 
       const filters: SearchFilters = {
@@ -413,7 +429,7 @@ export default function Properties() {
         q: (parsed.keywords || query.trim()) || undefined,
         sources: activeSources,
         city: effectiveCity ?? undefined,
-        neighborhood: parsed.neighborhood ?? undefined,
+        neighborhood: advancedFilter.neighborhood !== 'all' ? advancedFilter.neighborhood : parsed.neighborhood ?? undefined,
         min_price: effectiveMinPrice,
         max_price: effectiveMaxPrice,
         rooms: effectiveRooms ?? undefined,
@@ -441,9 +457,9 @@ export default function Properties() {
 
       // Searches are scoped to the workspace territory by default. Only when
       // the user explicitly types/picks another city do we leave the zone.
-      const searchCities: string[] = effectiveCity ? [effectiveCity] : DEFAULT_CITIES;
-      const perCity = new Map<string, UnifiedResult[]>();
-      const perCityStatus = new Map<string, Record<string, SourceInfo>>();
+      const searchCities: Array<string | undefined> = advancedFilter.selectedCities?.length ? advancedFilter.selectedCities : effectiveCity ? [effectiveCity] : [undefined];
+      const perCity = new Map<string | undefined, UnifiedResult[]>();
+      const perCityStatus = new Map<string | undefined, Record<string, SourceInfo>>();
       const paint = () => {
         const seen = new Set<string>();
         const merged: UnifiedResult[] = [];
@@ -516,7 +532,7 @@ export default function Properties() {
         setSearchProgress(null);
       }
     }
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, activeSources, homelyConnected, activeWorkspaceId]);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool, activeSources, homelyConnected, activeWorkspaceId, advancedFilter]);
 
   // Warm the textual content of the first visible rows in the background, so
   // opening a property card renders its full text instantly instead of
@@ -583,7 +599,8 @@ export default function Properties() {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const toggleSearchOpen = (open: boolean) => {
     setSearchOpen(open);
-    if (open) window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    if (!open) setFiltersOpen(false);
+    if (open) window.requestAnimationFrame(() => searchInputRef.current?.focus({ preventScroll: true }));
   };
   const inventorySuggestions = useInventorySuggestions(q, activeWorkspaceId);
   const suggestions = inventorySuggestions.data ?? [];
@@ -731,7 +748,7 @@ export default function Properties() {
   }, [deleteListings, deleteTargetIds, selectedListingIds.size]);
 
   const cityOptions = useMemo(() => {
-    const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
+    const cities = new Set<string>((CITY_OPTIONS as readonly string[]).filter(city => city !== 'כל הערים'));
     results.forEach((r) => { if (r.city) cities.add(r.city); });
     return Array.from(cities);
   }, [results]);
@@ -745,12 +762,12 @@ export default function Properties() {
     const bySource = sourceFilter
       ? results_.filter((r) => (r.sources ?? [r.source]).includes(sourceFilter))
       : results_;
-    const base = bySource;
+    const base = bySource.filter(row => matchesPropertyFilter(row as unknown as Record<string, unknown>, advancedFilter) && matchesLeadFilter(leadTierAmounts(row.localId ? { ...row.raw, ...filterLeadConfigs?.get(row.localId) } : row.raw), leadFilter));
     if (listingType === 'all') return base;
     const narrowed = base.filter((r) => r.listing_type === listingType);
     // Never let a toggle blank the table — keep the wider pool instead.
     return narrowed;
-  }, [results, listingType, sourceFilter, activeSources, homelyConnected]);
+  }, [results, listingType, sourceFilter, activeSources, homelyConnected, advancedFilter, leadFilter, filterLeadConfigs]);
 
 
   const sortedResults = useMemo(() => {
@@ -779,7 +796,7 @@ export default function Properties() {
   // into view, so a deep Yad2 directory pull never freezes the page.
   const PAGE_SIZE = 10;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [results, sortBy, listingType, viewMode]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [results, sortBy, listingType, viewMode, advancedFilter, leadFilter]);
   const pagedResults = useMemo(() => sortedResults.slice(0, visibleCount), [sortedResults, visibleCount]);
   const hasMore = visibleCount < sortedResults.length;
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -938,13 +955,13 @@ export default function Properties() {
   );
 
   return (
-    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[20px]' : 'px-0 !pt-[20px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
+    <div className={viewMode === 'table' ? 'listing-table-page flex h-full min-h-0 w-full min-w-0 flex-col gap-[11px] overflow-hidden px-0 pb-0 !pt-[25px]' : 'px-0 !pt-[25px] space-y-[11px] w-full max-w-full overflow-x-hidden min-w-0'} dir="rtl">
       <header className="hidden">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
 
       {/* Compact unified control bar */}
-      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="!mt-0 shrink-0">
+      <div className="relative z-40 !mt-0 shrink-0">
 
 
 
@@ -978,7 +995,7 @@ export default function Properties() {
                   })()}
             </Button>
         <div id="inventory-search-row" className="order-3 min-w-0 flex-1">
-          <div className={`min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>
+          <div className={`relative z-50 min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background">
             <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
@@ -995,17 +1012,7 @@ export default function Properties() {
               <span>בטל</span>
             </Button>}
 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  aria-label="סינון מתקדם"
-                  title="סינון מתקדם"
-                  className={`inline-flex shrink-0 items-center justify-center h-7 w-7 rounded-md transition-colors ${filtersOpen || filterChips.length ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-                >
-                  <Filter className="h-4 w-4" />
-                </Button>
-              </CollapsibleTrigger>
+              <LeadTypeFilterButton inline open={filtersOpen} onOpenChange={setFiltersOpen} state={leadFilter} onChange={setLeadFilter} propertyState={advancedFilter} onPropertyChange={updateAdvancedFilter} cities={cityOptions} neighborhoods={Array.from(new Set(results.map(row => row.neighborhood).filter((value): value is string => !!value)))} propertyTypes={Array.from(new Set(results.map(row => row.property_type).filter((value): value is string => !!value)))} />
 
               {yad2Status?.tone !== 'busy' && filterChips.map((chip) => (
                 <span
@@ -1173,7 +1180,7 @@ export default function Properties() {
 
         {/* The source and deal toggles sit below the field and appear only while search is open. */}
         {/* Search-open row: options aligned to the field edge, tools at row end. */}
-        <div aria-hidden={!searchOpen} className={`grid transition-[grid-template-rows,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${searchOpen ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}>
+        <div aria-hidden={!searchOpen || filtersOpen} className={`${filtersOpen ? 'invisible pointer-events-none' : ''} grid transition-[grid-template-rows,opacity] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${searchOpen ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"}`}>
           <div className="min-h-0 overflow-hidden">
             <div className={`mb-2 mt-1 flex items-center justify-between gap-2 ps-9 transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${searchOpen ? "translate-y-0" : "-translate-y-2"}`}>
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
@@ -1196,93 +1203,7 @@ export default function Properties() {
 
 
 
-        <CollapsibleContent>
-          <Card className="p-4 sm:p-5 mt-3">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm font-semibold">סינון מתקדם</div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setFiltersOpen(false)}
-                className="h-8 gap-1.5 text-xs"
-                aria-label="סגור סינון"
-                title="סגור סינון"
-              >
-                <ChevronUp className="h-3.5 w-3.5" />
-                סגור
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-
-
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-2 lg:col-span-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold">מחיר מקסימלי</Label>
-                  <span className="text-xs text-muted-foreground">עד {formatPrice(maxPrice)}</span>
-                </div>
-                <Slider dir="rtl" min={PRICE_MIN} max={PRICE_MAX} step={PRICE_STEP} value={[maxPrice]} onValueChange={(v) => setMaxPrice(v[0] ?? PRICE_MAX)} />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">אזור</Label>
-                <Select value={city} onValueChange={setCity}>
-                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="כל הערים">כל הערים</SelectItem>
-                    {isConfigured && <SelectItem value="__my_zones__">כל אזורי ההתמחות שלי</SelectItem>}
-                    {(isConfigured ? coveredCities : cityOptions).map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">סוג נכס</Label>
-                <Select value={propertyType} onValueChange={(v) => setPropertyType(v as PropertyType | 'all')}>
-                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PROPERTY_TYPE_LABELS_HE).map(([k, label]) => (
-                      <SelectItem key={k} value={k}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">חדרים (לפחות)</Label>
-                <Select value={rooms} onValueChange={setRooms}>
-                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">כל מספר</SelectItem>
-                    {[2, 3, 4, 5, 6].map((n) => (
-                      <SelectItem key={n} value={String(n)}>{n}+ חדרים</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold">שטח מינימלי (מ"ר)</Label>
-                <Input type="number" inputMode="numeric" value={areaMin} onChange={(e) => setAreaMin(e.target.value)} className="h-10" />
-              </div>
-
-              <div className="flex items-end gap-2">
-                <Button variant="outline" size="sm" className="h-10 flex-1" onClick={() => {
-                  setCity('כל הערים'); setPropertyType('all'); setRooms('any'); setMaxPrice(PRICE_MAX); setAreaMin('');
-                }}>איפוס</Button>
-                <Button size="sm" className="h-10 flex-1" onClick={() => { setFiltersOpen(false); runSearch(); }} disabled={searching}>
-                  החל
-                </Button>
-
-              </div>
-            </div>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
+      </div>
 
       {/* Results */}
       <div className={viewMode === 'table' ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : 'contents'}>
