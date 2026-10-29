@@ -456,7 +456,6 @@ function PersonalTab() {
             <p className="text-sm text-muted-foreground">רישיון מאומת מול פנקס המתווכים. לא ניתן לערוך.</p>
           </div>
         ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
-        {isOwnProfile && !showBrokerFields && <UpgradeToBrokerButton />}
 
       </CardContent>
 
@@ -838,6 +837,7 @@ export default function Profile() {
       <div className="mb-3">
         <CompleteProfileBanner force={params.get('welcome') === 'developer'} />
       </div>
+      <UpgradeToBrokerButton key={user?.id ?? 'broker-upgrade'} />
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <TabsList className={`grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px]`}>
