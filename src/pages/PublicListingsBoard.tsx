@@ -400,7 +400,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                          </td>
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
-                        <td colSpan={visibleColumns.length + 2} className="p-0">
+                        <td colSpan={visibleColumns.length + 1} className="p-0">
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
