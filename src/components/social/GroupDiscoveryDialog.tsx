@@ -138,7 +138,7 @@ export function GroupDiscoveryDialog({
         is_selected: true,
         imported_at: now,
         updated_at: now,
-      }, { onConflict: "workspace_owner_id,group_id" });
+      }, { onConflict: "workspace_owner_id,page_scope,group_id" });
       if (error) {
         toast.error(/group_limit_reached/.test(error.message) ? "המכסה מלאה: 100 פעילות ו־200 בהמתנה" : "הוספת הקבוצה נכשלה", { description: /group_limit_reached/.test(error.message) ? undefined : error.message });
         return;
@@ -226,7 +226,7 @@ export function GroupDiscoveryDialog({
       is_selected: true,
       imported_at: now,
       updated_at: now,
-    }, { onConflict: "workspace_owner_id,group_id" });
+    }, { onConflict: "workspace_owner_id,page_scope,group_id" });
     if (error && /group_limit_reached/.test(error.message)) {
       toast.error("המכסה מלאה: 100 פעילות ו־200 בהמתנה");
       return false;

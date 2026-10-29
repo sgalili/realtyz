@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import LeadsHistory from '@/components/campaigns/LeadsHistory';
 import DailyPostingLimitNotice, { useFbPostingCapacity } from '@/components/campaigns/DailyPostingLimitNotice';
 
 type Row = {
@@ -38,6 +40,13 @@ export default function PublishingHistory() {
   return (
     <div dir="rtl" className="mx-auto w-full max-w-5xl space-y-4 p-4">
       <h1 className="text-xl font-bold text-foreground">היסטוריית פעילות ולידים</h1>
+      <Tabs defaultValue="posts" dir="rtl">
+      <TabsList>
+        <TabsTrigger value="posts">פוסטים שפורסמו</TabsTrigger>
+        <TabsTrigger value="leads">לידים שהתקבלו</TabsTrigger>
+      </TabsList>
+      <TabsContent value="leads"><LeadsHistory /></TabsContent>
+      <TabsContent value="posts" className="space-y-4">
       <DailyPostingLimitNotice always />
       {!!cap?.pages.length && (
         <div className="flex flex-wrap gap-2">
@@ -80,6 +89,8 @@ export default function PublishingHistory() {
           <Button variant="outline" size="sm" disabled={(page + 1) * PAGE >= total} onClick={() => setPage((p) => p + 1)}>הבא</Button>
         </div>
       )}
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }

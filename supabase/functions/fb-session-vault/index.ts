@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
         const name = String(group?.group_name ?? "").trim().slice(0, 200);
         if (!/^[A-Za-z0-9._-]+$/.test(id) || !name || group?.is_member !== true) continue;
         const groupId = `fb:${id}`;
-        const { data: existing } = await admin.from("fb_user_groups").select("id,is_blocked").eq("workspace_owner_id", fetchJob.workspace_owner_id).eq("group_id", groupId).maybeSingle();
+        const { data: existing } = await admin.from("fb_user_groups").select("id,is_blocked").eq("workspace_owner_id", fetchJob.workspace_owner_id).eq("group_id", groupId).is("page_id", null).maybeSingle();
         if (existing?.is_blocked) continue;
         const values = { group_name: name, group_url: `https://www.facebook.com/groups/${id}`, join_status: "joined", cloud_join_state: "joined", cloud_checked_at: new Date().toISOString() };
         const { error } = existing

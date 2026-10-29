@@ -3572,6 +3572,7 @@ export type Database = {
           membership_answers: Json
           membership_requirements: Json
           page_id: string | null
+          page_scope: string | null
           pool_status: string
           privacy: string | null
           rules_accepted: boolean
@@ -3603,6 +3604,7 @@ export type Database = {
           membership_answers?: Json
           membership_requirements?: Json
           page_id?: string | null
+          page_scope?: string | null
           pool_status?: string
           privacy?: string | null
           rules_accepted?: boolean
@@ -3634,6 +3636,7 @@ export type Database = {
           membership_answers?: Json
           membership_requirements?: Json
           page_id?: string | null
+          page_scope?: string | null
           pool_status?: string
           privacy?: string | null
           rules_accepted?: boolean
