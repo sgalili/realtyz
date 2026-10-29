@@ -645,6 +645,13 @@
       "when": 1793003495885,
       "tag": "0091_invite_bonus_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1793238773639,
+      "tag": "0092_broker_certificate_document_checks",
+      "breakpoints": true
     }
   ]
 }

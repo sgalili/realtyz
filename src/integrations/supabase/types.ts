@@ -1134,6 +1134,47 @@ export type Database = {
           },
         ]
       }
+      broker_certificate_checks: {
+        Row: {
+          certificate_name: string | null
+          created_at: string
+          id: string
+          license_number: string | null
+          registry_name: string | null
+          safe_message: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          certificate_name?: string | null
+          created_at?: string
+          id?: string
+          license_number?: string | null
+          registry_name?: string | null
+          safe_message?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          certificate_name?: string | null
+          created_at?: string
+          id?: string
+          license_number?: string | null
+          registry_name?: string | null
+          safe_message?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_certificate_checks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_license_verifications: {
         Row: {
           license_number: string
