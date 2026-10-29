@@ -1142,10 +1142,8 @@ export default function Properties() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-
-
-
-
+        </div>
+          </div>
         </div>
 
 
