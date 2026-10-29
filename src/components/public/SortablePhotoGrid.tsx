@@ -37,7 +37,7 @@ export function SortablePhotoGrid({ photos, onMove, className }: { photos: Sorta
         <div className={cn('grid grid-cols-2 gap-2 sm:grid-cols-3', className)}>
           {photos.map((photo, i) => <Tile key={photo.id} photo={photo} primary={i === 0} onMakePrimary={() => onMove(i, 0)} />)}
         </div>
-      </SortablePhotoGrid.Hint />
+        {photos.length > 1 && <p className="mt-1 text-xs text-muted-foreground">גררו תמונה לשינוי הסדר · לחיצה על הכוכב קובעת תמונה ראשית</p>}
       </SortableContext>
     </DndContext>
   );
