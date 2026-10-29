@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Maximize2, Trash2, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { RitaAvatar } from '@/components/RitaAvatar';
@@ -7,20 +7,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 type MiniMsg = { role: string; content: string };
 
 /**
- * Rita's mini chat at the bottom of the sidebar: one thin-bordered row holding
+ * Rita's mini chat at the bottom of the sidebar: a compact control row
+ * (clear, collapse/expand and full view) above one thin-bordered row holding
  * her photo, the question field and the send arrow, separated from the menu
  * above by a single hairline. Tapping Rita's photo opens the same conversation
- * full screen, so no extra expand control is needed in the row.
+ * full screen as well.
  */
 export function SidebarRitaChat() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<MiniMsg[]>([]);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState('');
+  const [collapsed, setCollapsed] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   // The greeting addresses the signed-in person by their own first name.
@@ -49,7 +55,7 @@ export function SidebarRitaChat() {
     window.dispatchEvent(new Event('rita:state-request'));
     return () => window.removeEventListener('rita:state', onState);
   }, []);
-  useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }); }, [messages, loading]);
+  useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }); }, [messages, loading, collapsed]);
 
   const fullName = (profile?.full_name?.trim() || friendlyUserDisplayName(user, '')).trim();
   const firstName = fullName.split(/\s+/).filter(Boolean)[0] ?? '';
@@ -59,6 +65,12 @@ export function SidebarRitaChat() {
 
   const openFull = () => window.dispatchEvent(new CustomEvent('open-ai-drawer', { detail: { expanded: true } }));
 
+  const clearChat = () => {
+    setMessages([]);
+    setCollapsed(false);
+    window.dispatchEvent(new CustomEvent('rita:clear'));
+  };
+
   const send = () => {
     const t = text.trim();
     if (!t || loading) return;
@@ -66,9 +78,53 @@ export function SidebarRitaChat() {
     setText('');
   };
 
+  const iconBtn = 'rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent';
+
   return (
     <div dir="rtl" className="px-2 pb-2 pt-1.5">
-      {(messages.length > 0 || loading) && (
+      <div className="flex items-center justify-between px-0.5 pb-1">
+        <button type="button" onClick={openFull} aria-label="פתיחת ריטה במסך מלא" title="מסך מלא" className={iconBtn}>
+          <Maximize2 className="h-3.5 w-3.5" />
+        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            disabled={messages.length === 0 && !loading}
+            aria-label={collapsed ? 'הרחבת צ׳אט' : 'צמצום צ׳אט'}
+            title={collapsed ? 'הרחבה' : 'צמצום'}
+            className={iconBtn}
+          >
+            {collapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
+          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                disabled={messages.length === 0}
+                aria-label="איפוס צ׳אט"
+                title="איפוס צ׳אט"
+                className={iconBtn}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-[19px]">לאפס את הצ׳אט?</AlertDialogTitle>
+                <AlertDialogDescription className="text-[15px]">
+                  כל היסטוריית השיחה עם ריטה תימחק לצמיתות.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="sm:justify-between">
+                <AlertDialogCancel>ביטול</AlertDialogCancel>
+                <AlertDialogAction onClick={clearChat}>איפוס</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+      {(messages.length > 0 || loading) && !collapsed && (
         <div ref={listRef} className="max-h-40 space-y-1.5 overflow-y-auto px-1 pb-2 text-xs">
           {messages.map((m, i) => (
             <p key={i} className={cn('line-clamp-4 whitespace-pre-wrap break-words rounded-2xl px-3 py-1.5', m.role === 'user' ? 'ms-6 bg-muted text-foreground' : 'text-foreground')}>{m.content}</p>
