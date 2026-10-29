@@ -287,8 +287,6 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
       <aside className="min-w-0 space-y-5 [@container(min-width:900px)]:sticky [@container(min-width:900px)]:top-4 [@container(min-width:900px)]:self-start">
       {mapQuery && (
         <section>
-          <h3 className="mb-1 text-xs font-bold text-muted-foreground">מיקום</h3>
-          {listing.location && <p className="mb-2 text-sm font-medium text-foreground">{listing.location}</p>}
           <div className="relative overflow-hidden rounded-xl border">
             <iframe title="מפת הנכס" src={embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-56 w-full border-0" />
             <div className="absolute left-2 top-2 flex flex-col gap-1">
@@ -300,6 +298,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
               </a>
             </div>
           </div>
+          {listing.location && <p className="mt-2 text-sm font-medium text-foreground">{listing.location}</p>}
         </section>
       )}
 
