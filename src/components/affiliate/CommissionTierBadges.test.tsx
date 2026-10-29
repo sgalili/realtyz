@@ -1,6 +1,7 @@
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import CommissionTierBadges, { RewardIcons } from './CommissionTierBadges';
+import { rewardZeroTypes } from '@/lib/tableRoyalties';
 
 const access = vi.hoisted(() => ({ allowed: false, guest: false, roles: [] as string[], admin: false }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: access.guest ? null : { id: 'viewer' } }) }));
@@ -90,6 +91,19 @@ describe('commission visibility', () => {
     // Without a known level the trophy still shows the gold closing tone, never gray.
     render(<RewardIcons types={{ closing: true }} label={null} />);
     expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('text-lead-closing');
+  });
+  it('grays the restricted closing trophy only when no closing fee is set', () => {
+    render(<RewardIcons types={{ closing: true }} zeroTypes={{ closing: true }} label={null} />);
+    expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('lead-no-fee');
+    cleanup();
+    render(<RewardIcons types={{ closing: true }} zeroTypes={{ closing: false }} closingLevel={2} label={null} />);
+    expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('closing-level-2');
+  });
+  it('never forces a priced lead icon gray for a guest', () => {
+    access.guest = true;
+    const { container } = render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={rewardZeroTypes({ form: true, whatsapp: false, phone: false, closing: true })} levels={{ form: 2 }} label={null} />);
+    expect(container.querySelector('span[title="שדות מטופס בעמוד נחיתה"].lead-no-fee')).toBeNull();
+    expect(container.querySelector('span[title="סינון בווטסאפ"].lead-no-fee')).toBeTruthy();
   });
   it('closing prices always render as whole amounts without decimals', () => {
     access.allowed = true;
