@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { PersonalLanguageProvider } from '@/i18n/personalLanguage';
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
 import { SocialDraftChargeDialog } from '@/components/campaigns/SocialDraftChargeDialog';
@@ -331,7 +332,17 @@ function WorkspaceScope({ children }: { children: React.ReactNode }) {
  */
 function ListingsRoute({ children }: { children: React.ReactNode }) {
   const { listingsEnabled } = useWorkspaceFeatures();
+  const access = usePropertyPageAccess();
+  if (access.loading) return <PageLoader />;
+  if (!access.properties) return <Navigate to="/my-ads" replace />;
   if (!listingsEnabled) return <Navigate to="/lead-crm" replace />;
+  return <>{children}</>;
+}
+
+function ProjectsRoute({ children }: { children: React.ReactNode }) {
+  const access = usePropertyPageAccess();
+  if (access.loading) return <PageLoader />;
+  if (!access.projects) return <Navigate to="/my-ads" replace />;
   return <>{children}</>;
 }
 
@@ -446,7 +457,7 @@ const App = () => (
               <Route path="/affiliate-pricing" element={<Navigate to="/wallet" replace />} />
               <Route path="/owner/properties" element={<Navigate to="/my-ads" replace />} />
               <Route path="/wallet" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Wallet /></Suspense></ProtectedRoute>} />
-              <Route path="/developer-dashboard" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><DeveloperDashboard /></Suspense></ProtectedRoute>} />
+              <Route path="/developer-dashboard" element={<ProjectsRoute><ProtectedRoute><Suspense fallback={<PageLoader />}><DeveloperDashboard /></Suspense></ProtectedRoute></ProjectsRoute>} />
               <Route path="/developers" element={<ProtectedRoute allowGuestDemo><Suspense fallback={<PageLoader />}><Developers /></Suspense></ProtectedRoute>} />
               <Route path="/owner/leads" element={<ProtectedRoute><OwnerLeads /></ProtectedRoute>} />
               <Route path="/owner/rewards" element={<ProtectedRoute><OwnerRewards /></ProtectedRoute>} />

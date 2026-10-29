@@ -27,6 +27,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { SidebarWalletIndicator } from '@/components/billing/SidebarWalletIndicator';
 import { useUserRole } from '@/hooks/useUserRole';
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { accountIdentity } from '@/lib/accountMode';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
@@ -201,6 +202,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   // In partner ("שותף") mode — or for an affiliate-only account — only the
   // affiliate screens are listed.
   const features = useWorkspaceFeatures();
+  const access = usePropertyPageAccess();
   const affiliateOnlyNav = isAffiliateOnly || isPartnerMode;
   const navItems = useMemo(() => {
     if (roleLoading || roleError) return [];
@@ -214,19 +216,19 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     // Developers get the shared ecosystem (tasks, posts, contacts, chats, partners)
     // but broker-only tools (Yad2 broker inventory, deal room, developer directory)
     // are swapped for their own project management dashboard.
-    if ((isDeveloper && !isSuperAdmin) || features.isDeveloperWorkspace) {
+    if (access.projects) {
       const base = NAV_ITEMS.filter((i) => !['/properties', '/deal-room', '/developers', '/dashboard', '/affiliate-network'].includes(i.url));
       const projects = NAV_ITEMS.find((i) => i.url === '/developers');
       return projects ? [{ ...projects, title: 'הפרויקטים שלנו', url: '/developer-dashboard' }, ...base] : base;
     }
     return NAV_ITEMS.filter((item) => {
       if (item.url === '/developers') return isDeveloper;
-      if (item.url === '/properties') return features.listingsEnabled;
+      if (item.url === '/properties') return features.listingsEnabled && access.properties;
       if (item.url === '/deal-room') return features.dealsEnabled;
       if (item.url === '/affiliate-network') return false;
       return true;
     });
-  }, [features, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError]);
+  }, [features, access.projects, access.properties, affiliateOnlyNav, roles, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, isSuperAdmin, roleLoading, roleError, identity.label]);
 
   const countFor = (url: string): number | undefined => {
     if (!counts) return undefined;
