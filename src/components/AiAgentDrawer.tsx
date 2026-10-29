@@ -592,6 +592,12 @@ ${shareUrl}
     window.addEventListener('rita:state-request', publish);
     return () => window.removeEventListener('rita:state-request', publish);
   }, [messages, isLoading]);
+  // Sidebar mini chat "clear" button resets this same conversation.
+  useEffect(() => {
+    const onClear = () => { void resetChat(); };
+    window.addEventListener('rita:clear', onClear);
+    return () => window.removeEventListener('rita:clear', onClear);
+  }, [resetChat]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
