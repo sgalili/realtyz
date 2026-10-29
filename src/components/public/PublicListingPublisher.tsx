@@ -18,8 +18,6 @@ import { Switch } from '@/components/ui/switch';
 import { SortablePhotoGrid } from './SortablePhotoGrid';
 import { PropertyAmenitiesFields } from './PropertyAmenitiesFields';
 import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propertyFormOptions';
-import { LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
-import { enableLeadPrice } from '@/lib/enableLeadPrice';
 import { commitPricingEdit, pricingEditWorkspace } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
 import { leadPriceLevel } from '@/lib/leadPriceRanges';
@@ -31,7 +29,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Info, Loader2, Pencil, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, Film, HelpCircle, ImagePlus, Info, LayoutGrid, Loader2, Pencil, X } from 'lucide-react';
 import { ClipboardList as LeadFormIcon, Phone as LeadPhoneIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -288,8 +286,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [questionsOpen, setQuestionsOpen] = useState<'questionsWhatsapp' | 'questionsPhone' | null>(null);
   const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const [openLeads, setOpenLeads] = useState<Record<string, boolean>>({});
-  const [closingOpen, setClosingOpen] = useState(true);
-  const allExpanded = LEAD_TYPES.every(({ key }) => openLeads[key] ?? ((Number(fields[`commission${key}`]) || 0) > 0)) && closingOpen;
+  const [closingOpen, setClosingOpen] = useState(false);
+  const allExpanded = LEAD_TYPES.every(({ key }) => openLeads[key] === true) && closingOpen;
   const toggleAllCards = () => {
     const next = !allExpanded;
     setOpenLeads(Object.fromEntries(LEAD_TYPES.map(({ key }) => [key, next])));
@@ -910,18 +908,16 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="pricing-editor space-y-3">
-              <div dir="rtl" className="mb-[25px] flex items-center gap-2"><span className="flex min-w-0 items-center gap-[5px] whitespace-nowrap"><label htmlFor="wizard-price" className="text-base font-semibold text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות:' : 'מחיר הנכס:'}</label><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-auto w-auto min-w-[4ch] max-w-[12ch] px-1 py-0 text-center text-3xl font-bold leading-tight placeholder:text-base md:text-4xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span>{LEAD_TYPES.some(({ key }) => Number(fields[`commission${key}`]) > 0) ? <Button type="button" variant="ghost" size="icon" className="ms-auto h-12 w-12 shrink-0 text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-[33px] w-[33px] transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button> : <span />}</div>
+              <div dir="rtl" className="mb-[25px] flex items-center gap-2"><span className="flex min-w-0 items-center gap-[5px] whitespace-nowrap"><label htmlFor="wizard-price" className="text-base font-semibold text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות:' : 'מחיר הנכס:'}</label><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-auto w-auto min-w-[4ch] max-w-[12ch] px-1 py-0 text-center text-3xl font-bold leading-tight placeholder:text-base md:text-4xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span><Button type="button" variant="ghost" size="icon" className="ms-auto h-12 w-12 shrink-0 text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><LayoutGrid className="h-[33px] w-[33px]" /></Button></div>
               <div className="space-y-4 text-base">
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
                   const active = price > 0;
-                  const expanded = openLeads[key] ?? active;
+                  const expanded = openLeads[key] ?? false;
+                  const enabled = String(fields[`commission${key}`] ?? '') !== '';
                   const qList = key === 'Form' ? [] : ((((fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] as string[] | undefined)?.length ? (fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] : defaultQuestions(fields.dealType)) as string[]);
                   const extraCost = (key === 'Form' ? cleanFormFields(fields.formFields).length : Math.max(qList.filter(q => q.trim()).length - 3, 0)) * EXTRA_QUESTION_COST;
-                  const toggle = () => {
-                    if (!active) set(`commission${key}`, enableLeadPrice(fields[`commission${key}`] || '', tier));
-                    setOpenLeads((next) => ({ ...next, [key]: !expanded }));
-                  };
+                  const toggle = () => setOpenLeads((next) => ({ ...next, [key]: !expanded }));
                   return (
                   <Card key={key} className="closing-fee space-y-2 rounded-2xl p-4" data-level={leadPriceLevel(tier, price)}>
                     <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex min-w-0 flex-1 basis-56 items-center gap-1 self-center font-medium">
@@ -936,8 +932,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                           {key === 'Phone' && 'הפונה משאיר מספר טלפון לחזרה, ומערכת הקול האוטומטית שלנו מבוססת AI (ריטה) מתקשרת אליו בחזרה ומנהלת את השיחה עם שאלות הסינון שהגדרת.'}
                         </p>
                       </LeadTypeHelp>
-                    </span><span className="ms-auto flex items-center gap-2">{!expanded && <Button type="button" variant="ghost" className={cn('h-9 gap-1 px-2 text-lg font-bold', active ? 'closing-tone' : 'text-sm font-medium text-muted-foreground')} aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}>{active ? <><span className="text-sm font-medium text-muted-foreground">ההצעה שלך:</span><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></> : gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'}</Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={active} onCheckedChange={(next) => { set(`commission${key}`, next ? String(LEAD_PRICE_RANGES[tier].min) : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></span></div>
-                    {active && expanded && <div className="space-y-2">
+                    </span><span className="ms-auto flex items-center gap-2">{!expanded && <Button type="button" variant="ghost" className={cn('h-9 gap-1 px-2 text-lg font-bold', active ? 'closing-tone' : 'text-sm font-medium text-muted-foreground')} aria-label={`עריכת עמלה עבור ${label}`} onClick={toggle}>{active ? <><span className="text-sm font-medium text-muted-foreground">ההצעה שלך:</span><span dir="ltr">{leadPriceLabel(price + extraCost)}</span></> : gender === 'female' ? 'הגדירי הצעה' : gender === 'male' ? 'הגדר הצעה' : 'הצעה/י מחיר לפנייה'}</Button>}<Switch aria-label={`הפעלת עמלה עבור ${label}`} checked={enabled} onCheckedChange={(next) => { set(`commission${key}`, next ? '0' : ''); setOpenLeads((current) => ({ ...current, [key]: next })); }} /><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></span></div>
+                    {expanded && <div className="space-y-2">
                     <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
                     <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-[18px] md:text-[18px] placeholder:text-[14px] md:placeholder:text-[14px]" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
@@ -965,7 +961,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   );
                 })}
               </div>
-              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
+              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode zeroMin unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
