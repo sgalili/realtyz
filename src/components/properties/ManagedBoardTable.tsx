@@ -17,7 +17,7 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import type { UnifiedResult } from '@/lib/propertySearch';
-import type { PublicCard } from '@/components/public/StandardPropertyCard';
+import type { PublicCard } from '@/pages/PublicListingsBoard';
 
 type Row = { card: PublicCard; result: UnifiedResult };
 
