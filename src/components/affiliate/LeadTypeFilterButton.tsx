@@ -20,6 +20,9 @@ import { Separator } from '@/components/ui/separator';
 import { LeadPriceSlider } from '@/components/public/LeadPriceSlider';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
   EMPTY_LEAD_FILTER,
@@ -44,7 +47,7 @@ const ICONS: Record<LeadTypeKey, typeof ClipboardList> = {
 
 /** Compact section heading for visual hierarchy inside the popover. */
 function SectionTitle({ children }: { children: string }) {
-  return <div className="text-[13px] font-semibold leading-none">{children}</div>;
+  return <div className="text-[15px] font-semibold leading-none">{children}</div>;
 }
 
 /** Two numeric bounds on one row. */
@@ -73,7 +76,7 @@ function RangeRow({
           step={step}
           dir={min == null ? 'rtl' : 'ltr'}
           aria-label={`${label} מינימום`} placeholder={`${label}${suffix ? ` (${suffix})` : ''} מ־`}
-          className="h-9"
+          className="h-9 text-[16px]"
           value={min ?? ''}
           onChange={(event) => onChange({ min: parse(event.target.value), max })}
         />
@@ -82,7 +85,7 @@ function RangeRow({
           step={step}
           dir={max == null ? 'rtl' : 'ltr'}
           aria-label={`${label} מקסימום`} placeholder={`${label}${suffix ? ` (${suffix})` : ''} עד`}
-          className="h-9"
+          className="h-9 text-[16px]"
           value={max ?? ''}
           onChange={(event) => onChange({ min, max: parse(event.target.value) })}
         />
@@ -132,11 +135,23 @@ export default function LeadTypeFilterButton({
   const { user } = useAuth();
   const { isAffiliate, isTeamMember, isDeveloper, isPropertyOwner, isPropertySeeker } = useUserRole();
 
+  const verifiedBroker = usePropertyPageAccess().properties;
+  const bounds = useQuery({
+    queryKey: ['public-lead-price-bounds', user?.id],
+    enabled: !!user && verifiedBroker && open,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)('get_public_lead_price_bounds');
+      if (error) throw error;
+      return data as Record<string, { min: number | null; max: number | null }>;
+    },
+  });
   // Resolve the active user kind. Brokers win over the affiliate flag because a
   // broker+partner account can close deals and needs the full toolset.
   const kind: 'broker' | 'partner' | 'developer' | 'private' | 'guest' = !user
     ? 'guest'
-    : isTeamMember
+    : isTeamMember && verifiedBroker
       ? 'broker'
       : isAffiliate
         ? 'partner'
@@ -148,7 +163,7 @@ export default function LeadTypeFilterButton({
 
   // Lead filters: partners and brokers only. Deal-closing (tier4) is visible
   // to registered brokers; partners see the first three tiers only.
-  const showLeadFilters = !hideLeadFilters && (kind === 'partner' || kind === 'broker');
+  const showLeadFilters = !hideLeadFilters && kind === 'broker';
   const leadTypes = kind === 'broker' ? LEAD_TYPE_ORDER : LEAD_TYPE_ORDER.filter((key) => key !== 'tier4');
 
   // Property/market fields per role — minimal for partners and private users.
@@ -192,7 +207,7 @@ export default function LeadTypeFilterButton({
     <>
       <div className="flex items-center justify-start gap-1">
         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="סגירת סינון" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
-        <h2 className="text-[15px] font-semibold leading-none">חיפוש מתקדם</h2>
+        <h2 className="text-[17px] font-semibold leading-none">חיפוש מתקדם</h2>
       </div>
         {showLeadFilters ? (<>
           <SectionTitle>סוג הליד</SectionTitle>
@@ -200,7 +215,7 @@ export default function LeadTypeFilterButton({
             {leadTypes.map((key) => {
               const Icon = ICONS[key];
               return (
-                <label key={key} className="flex cursor-pointer items-center gap-2 text-[13px] font-medium">
+                <label key={key} className="flex cursor-pointer items-center gap-2 text-[15px] font-medium">
                   <Checkbox checked={state.types.includes(key)} onCheckedChange={() => toggle(key)} />
                   <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                   {LEAD_TYPE_LABELS[key]}
@@ -210,7 +225,7 @@ export default function LeadTypeFilterButton({
           </div>
           <div className="space-y-1">
             
-            <LeadPriceSlider tier={sliderTier} label="שווי ליד מינימלי" value={String(state.min ?? 0)} onChange={(value) => { const n = Number(value) || 0; onChange({ ...state, min: n > 0 ? n : null, max: null }); }} />
+            <LeadPriceSlider hidePotential range={(() => { const b = bounds.data?.[sliderTier]; return b?.min != null && b?.max != null ? { min: Number(b.min), max: Number(b.max) } : undefined; })()} tier={sliderTier} label="שווי ליד מינימלי" value={String(state.min ?? 0)} onChange={(value) => { const n = Number(value) || 0; onChange({ ...state, min: n > 0 ? n : null, max: null }); }} />
           </div>
         </>) : null}
 
@@ -222,7 +237,7 @@ export default function LeadTypeFilterButton({
               {show('dealType') ? (
                 <div className="space-y-1">
                   <Select value={property.dealType} onValueChange={(value) => patch({ dealType: value as PropertyFilterState['dealType'] })}>
-                    <SelectTrigger aria-label="סוג עסקה" className="h-9"><SelectValue placeholder="סוג עסקה" /></SelectTrigger>
+                    <SelectTrigger aria-label="סוג עסקה" className="h-9 text-[16px]"><SelectValue placeholder="סוג עסקה" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">סוג עסקה</SelectItem>
                       <SelectItem value="sale">למכירה</SelectItem>
@@ -234,7 +249,7 @@ export default function LeadTypeFilterButton({
               {show('propertyType') && propertyTypes.length ? (
                 <div className="space-y-1">
                   <Select value={property.propertyType} onValueChange={(value) => patch({ propertyType: value })}>
-                    <SelectTrigger aria-label="סוג נכס" className="h-9"><SelectValue placeholder="סוג נכס" /></SelectTrigger>
+                    <SelectTrigger aria-label="סוג נכס" className="h-9 text-[16px]"><SelectValue placeholder="סוג נכס" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">סוג נכס</SelectItem>
                       {propertyTypes.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
@@ -245,7 +260,7 @@ export default function LeadTypeFilterButton({
               {show('city') && cities.length ? (
                 <div className="space-y-1">
                   <Select value="" onValueChange={(value) => patch(selectFilterCity(property, value))}>
-                    <SelectTrigger aria-label="אזור" className="h-9"><span className="truncate">{property.city === 'all' ? 'כל הארץ' : property.selectedCities?.length ? property.selectedCities.join(', ') : property.city || 'אזור'}</span></SelectTrigger>
+                    <SelectTrigger aria-label="אזור" className="h-9 text-[16px]"><span className="truncate">{property.city === 'all' ? 'כל הארץ' : property.selectedCities?.length ? property.selectedCities.join(', ') : property.city || 'אזור'}</span></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">כל הארץ</SelectItem>
                       {property.city === 'all' ? <SelectItem value="choose">בחירת ערים</SelectItem> : cities.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}
@@ -256,7 +271,7 @@ export default function LeadTypeFilterButton({
               {show('neighborhood') && neighborhoods.length ? (
                 <div className="space-y-1">
                   <Select value={property.neighborhood} onValueChange={(value) => patch({ neighborhood: value })}>
-                    <SelectTrigger aria-label="שכונה" className="h-9"><SelectValue placeholder="שכונה" /></SelectTrigger>
+                    <SelectTrigger aria-label="שכונה" className="h-9 text-[16px]"><SelectValue placeholder="שכונה" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">שכונה</SelectItem>
                       {neighborhoods.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
@@ -273,7 +288,7 @@ export default function LeadTypeFilterButton({
             <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
               {FILTER_FEATURES.map(feature => {
                 const checked = property.features?.includes(feature.key) ?? false;
-                return <label key={feature.key} className="flex cursor-pointer items-center gap-2 text-[13px]">
+                return <label key={feature.key} className="flex cursor-pointer items-center gap-2 text-[15px]">
                   <Checkbox checked={checked} onCheckedChange={() => patch({ features: checked ? (property.features ?? []).filter(k => k !== feature.key) : [...(property.features ?? []), feature.key] })} />
                   <span className="truncate">{feature.label}</span>
                 </label>;

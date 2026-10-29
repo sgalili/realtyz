@@ -722,6 +722,13 @@
       "when": 1793305451357,
       "tag": "0102_admin_remove_broker_license",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1793316303106,
+      "tag": "0103_public_lead_price_bounds",
+      "breakpoints": true
     }
   ]
 }

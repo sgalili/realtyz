@@ -9344,6 +9344,7 @@ export type Database = {
         Args: { _listing_id: string }
         Returns: string
       }
+      get_public_lead_price_bounds: { Args: never; Returns: Json }
       get_publishing_history: {
         Args: { _limit?: number; _offset?: number }
         Returns: {
