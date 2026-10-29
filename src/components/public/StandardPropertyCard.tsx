@@ -49,7 +49,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
   const price = typeof card.price === 'number' && card.price > 0 ? `₪${card.price.toLocaleString('he-IL')}` : 'מחיר לא צוין';
   return <article role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={open} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <div className="p-3"><div className="flex items-start gap-1"><div className="min-w-0 flex-1">{summary ?? <PublicCardSummary card={card} price={price} />}</div>{signedIn && showOwnerMenu ? <div className="-me-2 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div></div>
-                <PhotoCarousel card={card} photos={card.photos} alt={title} onFavorite={() => onFavorite()} isMine={isMine} isFav={isFav} />
+                <PhotoCarousel card={card} photos={card.photos} alt={title} onFavorite={() => onFavorite()} isMine={isMine} isFav={isFav} share={showContact ? <PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} /> : undefined} />
                 <div className="flex flex-1 flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     {!!card.rooms && <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5 text-primary" />{card.rooms} חדרים</span>}
@@ -67,7 +67,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
                        options={card.contact_options}
                        compact
                        formAsButton
-                         shareUrl={publicUrl(propertyPath)}
+                       showShare={false}
                      />}
                    </div>
                 </div>
