@@ -9,12 +9,12 @@ describe('closing fee interaction', () => {
     fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' });
     expect(change).toHaveBeenCalledWith(minimum, mode);
   });
-  it('enabling a zero-price publisher closing card opens it without assigning a fee', () => {
+  it('expanding a zero-price publisher closing card does not assign a fee', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider publisherCard zeroMin dualMode dealType="sale" price={2000000} value={0} onChange={change} />);
-    fireEvent.click(screen.getByRole('switch', { name: 'הפעלת עמלת סגירה' }));
+    fireEvent.click(screen.getByRole('button', { name: 'כווץ את עמלת התיווך' }));
+    fireEvent.click(screen.getByRole('button', { name: 'הרחב את עמלת התיווך' }));
     expect(screen.getByRole('slider').getAttribute('aria-valuenow')).toBe('0');
-    expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('true');
     expect(change).not.toHaveBeenCalled();
   });
   it('allows a Super Admin editor to set a 5% sale fee beyond the standard range', () => {
