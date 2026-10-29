@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanPayload } from "../_shared/cleanValues.ts";
 import { maskContactText, toPublicCard } from "../_shared/publicMask.ts";
-import { verifiedSourceLicense, licenseNumber } from "../_shared/yad2Publisher.ts";
+import { verifiedSourceLicense, licenseNumber, publicYad2AdUrl } from "../_shared/yad2Publisher.ts";
 import { publicDeveloperDetails } from '../_shared/publicDeveloperDetails.ts';
 import { publicPricing, boardPublisherName, publisherDisplayKind, privatePublisherAvatar } from '../_shared/publicListingVisibility.ts';
 
