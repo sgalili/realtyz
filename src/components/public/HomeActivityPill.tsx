@@ -15,9 +15,12 @@ import { fmtCompactCredits, ilsToCredits } from '@/lib/credits';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAppMode } from '@/hooks/useAppMode';
 import { cn } from '@/lib/utils';
+import { activityAudience } from '@/lib/activityAudience';
+import PartnerActivityProperties from './PartnerActivityProperties';
 
 const MyAds = lazy(() => import('@/pages/MyAds'));
 const LeadCRM = lazy(() => import('@/pages/LeadCRM'));
+const MyFavoriteAds = lazy(() => import('@/components/public/MyFavoriteAds'));
 
 /** Header icon (next to the notification bell) that opens the personal activity drawer. */
 export default function HomeActivityPill() {
@@ -25,15 +28,16 @@ export default function HomeActivityPill() {
   const navigate = useNavigate();
   const owner = useActiveWorkspaceOwnerId();
   const wallet = useCreditWallet();
-  const { isAffiliateOnly } = useUserRole();
+  const { roles, isAffiliateOnly } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const partnerView = isAffiliateOnly || isPartnerMode;
+  const privateView = activityAudience(roles, isPartnerMode) === 'private';
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState('properties');
   const triggerRef = useRef<HTMLButtonElement>(null);
   const headerAnchor = triggerRef.current?.closest('header') ?? undefined;
   const [everOpened, setEverOpened] = useState(false);
-  useEffect(() => { setOpen(false); setActivity('properties'); setEverOpened(false); }, [user?.id, owner]);
+  useEffect(() => { setOpen(false); setActivity('properties'); setEverOpened(false); }, [user?.id, owner, partnerView, privateView]);
   useEffect(() => { if (open) setEverOpened(true); document.documentElement.classList.toggle('activity-drawer-open', open); return () => document.documentElement.classList.remove('activity-drawer-open'); }, [open]);
   // Warm the tab code ahead of the first click so tabs open instantly.
   useEffect(() => { if (!user) return; const id = window.setTimeout(() => { void import('@/pages/MyAds'); void import('@/pages/LeadCRM'); }, 1500); return () => window.clearTimeout(id); }, [user]);
@@ -45,16 +49,16 @@ export default function HomeActivityPill() {
     staleTime: 10 * 60_000, gcTime: 60 * 60_000,
   });
   const leadCount = useQuery({
-    queryKey: ['activity-lead-count', user?.id, owner], enabled: !!user?.id && !!owner && !partnerView,
+    queryKey: ['activity-lead-count', user?.id, owner], enabled: !!user?.id && !!owner && !partnerView && !privateView,
     staleTime: 10 * 60_000, gcTime: 60 * 60_000,
     queryFn: async () => { if (!owner) return 0; const { count, error } = await supabase.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_owner_id', owner); if (error) throw error; return count ?? 0; },
   });
   if (!user) return null;
   const n = (v: number | undefined) => v === undefined ? '' : ` (${v.toLocaleString('he-IL')})`;
   const tabs = [
-    { id: 'properties', label: `הנכסים שלי${n(ads.data?.filter(r => r.relation === 'owned').length)}` },
-    { id: 'leads', label: `לידים בשיווק${n(partnerView ? submissions.data?.length : leadCount.data)}` },
-    { id: 'earnings', label: `רווחים${n(submissions.data?.filter(r => Number(r.earned_amount ?? 0) > 0).length)}` },
+    { id: 'properties', label: partnerView ? 'נכסים פתוחים לשיתוף' : `הנכסים שלי${n(ads.data?.filter(r => r.relation === 'owned').length)}` },
+    { id: 'leads', label: privateView ? `הפניות שלי${n(submissions.data?.length)}` : `לידים בשיווק${n(partnerView ? submissions.data?.length : leadCount.data)}` },
+    { id: 'earnings', label: privateView ? 'מועדפים' : `רווחים${n(submissions.data?.filter(r => Number(r.earned_amount ?? 0) > 0).length)}` },
   ];
   return <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger asChild><Button ref={triggerRef} variant="ghost" size="icon" onClick={(event) => { event.preventDefault(); setOpen(current => !current); }} className={cn('pointer-events-auto -ms-[5px] h-9 w-9 cursor-pointer shadow-none hover:bg-transparent focus-visible:ring-0 data-[state=open]:bg-transparent', open && 'text-destructive hover:text-destructive')} aria-label="הפעילות שלי" title="הפעילות שלי">
@@ -71,12 +75,12 @@ export default function HomeActivityPill() {
         </TabsList>
         <div data-activity-scroll className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain border-t px-2 sm:px-3">
           <Suspense fallback={<p role="status" className="py-8 text-center text-sm text-muted-foreground">טוען פעילות…</p>}>
-            <TabsContent forceMount value="properties" className="mt-0 min-w-0 data-[state=inactive]:hidden"><MyAds key={`${user.id}:${owner}`} activityOnly /></TabsContent>
-            <TabsContent forceMount value="leads" className="min-w-0 data-[state=inactive]:hidden">{partnerView ? <div className="divide-y">{submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הלידים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען לידים…</p> : submissions.data.length ? submissions.data.map(row => <div key={row.id} className="space-y-1 py-3 text-sm"><p className="font-semibold break-words">{row.lead_name}</p><p className="break-words text-muted-foreground">{row.listing?.property_title}</p></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין לידים בשיווק</p>}</div> : <LeadCRM key={`${user.id}:${owner}`} activityOnly />}</TabsContent>
+            <TabsContent value="properties" className="mt-0 min-w-0">{partnerView ? <PartnerActivityProperties key={`${user.id}:${owner}`} /> : <MyAds key={`${user.id}:${owner}`} activityOnly />}</TabsContent>
+            <TabsContent value="leads" className="min-w-0">{partnerView || privateView ? <div className="divide-y">{submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הלידים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען לידים…</p> : submissions.data.length ? submissions.data.map(row => <div key={row.id} className="space-y-1 py-3 text-sm"><p className="font-semibold break-words">{row.lead_name}</p><p className="break-words text-muted-foreground">{row.listing?.property_title}</p></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין לידים בשיווק</p>}</div> : <LeadCRM key={`${user.id}:${owner}`} activityOnly />}</TabsContent>
             <TabsContent value="earnings">
-              <div className="divide-y">
+              {privateView ? <MyFavoriteAds /> : <div className="divide-y">
                 {submissions.isError ? <p role="alert" className="py-8 text-center text-destructive">לא ניתן לטעון את הרווחים כרגע</p> : !submissions.isSuccess ? <p role="status" className="py-8 text-center">טוען רווחים…</p> : submissions.data.length ? submissions.data.filter(row => Number(row.earned_amount ?? 0) > 0).map(row => <div key={row.id} className="flex items-center justify-between gap-3 py-3 text-sm"><span className="min-w-0 break-words">{row.listing?.property_title || row.lead_name}</span><bdi className="shrink-0">{fmtILS(Number(row.earned_amount ?? 0))}</bdi></div>) : <p className="py-8 text-center text-muted-foreground">עדיין אין רווחים</p>}
-              </div>
+              </div>}
             </TabsContent>
           </Suspense>
         </div>

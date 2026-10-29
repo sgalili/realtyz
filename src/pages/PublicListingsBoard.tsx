@@ -5,6 +5,7 @@ import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
 import { boardCache } from '@/lib/boardCache';
+import { fetchPublicBoardFeed } from '@/lib/publicBoardFeed';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
 import { readPostSignupWelcome } from '@/lib/signupRole';
@@ -207,21 +208,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     const cached = boardCache.get();
     if (cached) { setCards(cached); setLoading(false); }
     else setLoading(true);
-    const all: PublicCard[] = [];
-    for (let offset = 0; ; offset += 60) {
-      const params = new URLSearchParams({ limit: '60', offset: String(offset) });
-      let result = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, { method: 'GET' });
-      if (result.error) { await new Promise(r => setTimeout(r, 800)); result = await supabase.functions.invoke(`public-listings-board?${params.toString()}`, { method: 'GET' }); }
-      const { data, error } = result;
-      // Background refresh failures keep the listings already shown, silently.
-      if (error) { if (!cached && !all.length) toast.error('לא ניתן לטעון את לוח הנכסים'); break; }
-      const rows = (data?.properties ?? []) as PublicCard[];
-      all.push(...rows);
-      if (data?.has_more !== true) break;
-    }
-    const fresh = [...new Map(all.map(card => [card.id, card])).values()];
-    if (all.length || !cached) { setCards(fresh); boardCache.set(fresh); }
-    setLoading(false);
+    try {
+      const fresh = await fetchPublicBoardFeed();
+      setCards(fresh); boardCache.set(fresh);
+    } catch { if (!cached) toast.error('לא ניתן לטעון את לוח הנכסים'); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { void load(); }, []);

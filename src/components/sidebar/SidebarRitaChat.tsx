@@ -57,7 +57,12 @@ export function SidebarRitaChat() {
   }, []);
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }); }, [messages, loading, collapsed]);
 
-  const fullName = (profile?.full_name?.trim() || friendlyUserDisplayName(user, '')).trim();
+  useEffect(() => {
+    setMessages([]); setText(''); setLoading(false);
+    window.dispatchEvent(new Event('rita:state-request'));
+  }, [user?.id]);
+
+  const fullName = (profile?.full_name?.trim() || '').trim();
   const firstName = fullName.split(/\s+/).filter(Boolean)[0] ?? '';
   const placeholder = firstName
     ? `היי ${firstName}, איך אני יכולה לעזור?`
