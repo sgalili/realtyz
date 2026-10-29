@@ -1116,7 +1116,7 @@ export default function Properties() {
         </div>
           </div>
         </div>
-        <div data-testid="property-tools-row" className="order-3 flex shrink-0 items-center gap-0">
+        <div data-testid="property-tools-row" className="order-4 flex shrink-0 items-center gap-0">
 
 
             <DropdownMenu>
@@ -1147,17 +1147,6 @@ export default function Properties() {
             </DropdownMenu>
 
             <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
-
-            {/* Counter pill — always visible: total records by default,
-                replaced by the selected count while selecting. */}
-            <span className="ms-[5px] rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
-              {multiSelectMode && selectedListingIds.size > 0
-                ? `${selectedListingIds.size} נבחרו`
-                : (() => {
-                    const total = totalListingsCount ?? sortedResults.length;
-                    return total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total;
-                  })()}
-            </span>
 
             {multiSelectMode && selectedListingIds.size > 0 ? (
               <div className="flex items-center gap-2">
