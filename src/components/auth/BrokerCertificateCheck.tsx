@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { CERTIFICATE_MAX_BYTES, CERTIFICATE_MIME_TYPES } from '../../../supabase/functions/_shared/brokerCertificate';
 
 type CheckResult = { matched: boolean; licenseNumber?: string; fullName?: string; message: string };
-export function BrokerCertificateCheck() {
+export function BrokerCertificateCheck({ onResult }: { onResult?: (result: CheckResult | null) => void } = {}) {
   const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [busy, setBusy] = useState(false);
   const request = useRef<AbortController | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  useEffect(() => { onResult?.(result); }, [result, onResult]);
   useEffect(() => () => request.current?.abort(), [user?.id]);
   const check = async () => {
     if (!file || busy) return;
