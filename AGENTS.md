@@ -23,7 +23,7 @@
 - Publisher numbering excludes setup; preserves keys and resolved addresses; ignores stale searches.
 - Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state, consistent counts.
 - Public publisher pricing and shared card-header rules: read src/components/public/AGENTS.md.
-- Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
+- Facebook auth/groups are mounted siblings, so Page state never interrupts groups.
 - Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
 - Inquiry tiers need server-only workspace/listing identity and satisfactory screening; first turns/callbacks never qualify. Atomic upgrades charge only unpaid differences.
 - Tables share sort/reorder/hide; rewards never sort. HorizontalTableScroll owns both axes and movable wheel axes (RTL Shift-wheel too), preserves nested scrolling, collapses nested owners. Homepage stays bounded; prefs never store listings. Post-animation reveal scrolls only the table, anchoring property summaries below headings. Why: no hidden summaries.
