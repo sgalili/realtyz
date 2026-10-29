@@ -59,7 +59,7 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const { data: property } = useQuery({
     queryKey: ['public-commission-pricing', listingId, user?.id, activeWorkspaceId, level4Unlocked],
     // Owned rows already have authorized data; skip the public lookup (private ads 404, and per-row bursts hit rate limits).
-    enabled: networkOpen !== false && (!user || !workspaceLoading) && !(table && (owned.isLoading || owned.data)),
+    enabled: !listingId.includes(':') && networkOpen !== false && (!user || !workspaceLoading) && !(table && (owned.isLoading || owned.data)),
     staleTime: 5 * 60 * 1000,
     retry: false,
     queryFn: async () => {

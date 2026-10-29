@@ -14,7 +14,7 @@ export function PublicCardPublisher({ card }: { card: PublicCard }) {
   const { activeWorkspaceId, loading } = useWorkspace();
   const { data } = useQuery({
     queryKey: ['public-listing-expanded', card.slug || card.id, user?.id, activeWorkspaceId],
-    enabled: !user || !loading,
+    enabled: (!user || !loading) && !String(card.slug || card.id).includes(':'),
     staleTime: 5 * 60 * 1000,
     retry: false,
     queryFn: async () => {
@@ -32,7 +32,7 @@ export default function PublicCardSummary({ card, price, showBroker = true, show
   const { activeWorkspaceId, loading } = useWorkspace();
   const { data } = useQuery({
     queryKey: ['public-listing-expanded', card.slug || card.id, user?.id, activeWorkspaceId],
-    enabled: !user || !loading,
+    enabled: (!user || !loading) && !String(card.slug || card.id).includes(':'),
     staleTime: 5 * 60 * 1000,
     retry: false,
     queryFn: async () => {
