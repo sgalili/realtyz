@@ -248,9 +248,6 @@
     .property-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto auto 1fr; }
     .property-card-grid > article { display: grid; grid-template-rows: subgrid; grid-row: span 3; gap: 0; }
   }
-  @media (min-width: 1280px) {
-    .property-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  }
   .lead-no-fee { color: hsl(var(--lead-no-fee)); }
   /* Compatibility shims so legacy classes don't break old pages
      until the sweep replaces them. They render as flat clean cards. */
@@ -2024,3 +2021,9 @@ svg.lucide-megaphone {
   stroke: currentColor !important;
 }
 
+
+/* Lovable preview only: always-visible horizontal table scrollbar. */
+.show-x-scrollbar { scrollbar-width: thin; }
+.show-x-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; -webkit-appearance: none; }
+.show-x-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.5); border-radius: 9999px; }
+.show-x-scrollbar::-webkit-scrollbar-track { background: hsl(var(--muted)); }
