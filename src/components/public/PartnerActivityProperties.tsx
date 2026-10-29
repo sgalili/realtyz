@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
-import { useListingAudience } from '@/hooks/useListingAudience';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
+import { visibleToListingAudience } from '@/lib/listingAudience';
 import { fetchPublicBoardFeed } from '@/lib/publicBoardFeed';
 import { Button } from '@/components/ui/button';
 import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
@@ -19,12 +20,12 @@ export default function PartnerActivityProperties({ favoritesOnly = false }: { f
   const { user } = useAuth();
   const owner = useActiveWorkspaceOwnerId();
   const feed = useQuery({ queryKey: ['partner-activity-board', user?.id, owner], queryFn: fetchPublicBoardFeed, retry: false, staleTime: 60_000 });
-  const audience = useListingAudience((feed.data ?? []).map(card => card.id));
+  const { level4Unlocked } = useAffiliateLicense();
   const favorites = useListingFavorites();
-  const cards = (feed.data ?? []).filter(card => (favoritesOnly ? favorites.favoriteIds.has(card.id) : card.affiliate_enabled === true) && audience.isVisible(card.id));
+  const cards = (feed.data ?? []).filter(card => (favoritesOnly ? favorites.favoriteIds.has(card.id) : card.affiliate_enabled === true) && visibleToListingAudience(card.reward_types, true, level4Unlocked));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
-  if (feed.isLoading || audience.isLoading) return <p role="status" className="py-8 text-center text-muted-foreground">טוען נכסים…</p>;
+  if (feed.isLoading) return <p role="status" className="py-8 text-center text-muted-foreground">טוען נכסים…</p>;
   if (feed.isError) return <div role="alert" className="py-8 text-center">לא ניתן לטעון נכסים כרגע <Button variant="link" onClick={() => void feed.refetch()}>ניסיון נוסף</Button></div>;
   const chosen = cards.filter(card => selected.has(card.id)).map(result);
   return <div className="space-y-3 py-2">
