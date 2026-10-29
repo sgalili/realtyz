@@ -184,7 +184,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   React.useEffect(() => {
     if (!user || roleApplied) return;
     let alive = true;
-    void applyPendingSignupRole().then((path) => {
+    // Never let a failed or hanging completion step block the app after OTP:
+    // errors and a bounded timeout still release the loader.
+    const timeout = new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 8000));
+    void Promise.race([applyPendingSignupRole().catch(() => null), timeout]).then((path) => {
       if (!alive) return;
       if (path) {
         void queryClient.invalidateQueries({ queryKey: ['user-roles', user.id] });
