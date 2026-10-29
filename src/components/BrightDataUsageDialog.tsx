@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { propertyPageAccess } from '@/lib/propertyPageAccess';
 /** Direct Bright Data top-up billing flow. */
 const TOPUP_URL = 'https://brightdata.com/cp/billing_flow?id=hl_2432c380&type=top_up';
 
@@ -69,8 +70,8 @@ export function BrightDataUsageDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const { user } = useAuth();
-  const { isSuperAdmin, loading: roleLoading, error: roleError } = useUserRole();
-  const authorized = !!user && isSuperAdmin && !roleLoading && !roleError;
+  const { roles, fetched, loading: roleLoading, error: roleError } = useUserRole();
+  const authorized = propertyPageAccess(roles, false, !!user && fetched && !roleLoading && !roleError).providerDiagnostics;
   const balanceQ = useQuery({
     queryKey: ['brightdata-balance-detail', user?.id],
     enabled: open && authorized,

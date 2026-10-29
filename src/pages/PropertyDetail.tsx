@@ -1398,7 +1398,7 @@ export default function PropertyDetail() {
                 toast.success('הנכס נמחק');
                 qc.invalidateQueries({ queryKey: ['listings'] });
                 qc.invalidateQueries({ queryKey: ['properties-search'] });
-                navigate('/properties');
+                navigate(detailState?.returnTo || (location.pathname.startsWith('/my-ads/') ? '/my-ads' : '/properties'));
               }}
               aria-label="מחיקת נכס"
               title="מחיקת נכס"

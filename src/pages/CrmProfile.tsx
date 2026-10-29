@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowRight, ExternalLink, Mail, Phone, User } from 'lucide-react';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 
 type Profile = {
   id: string;
@@ -19,6 +20,7 @@ type Profile = {
 };
 
 export default function CrmProfile() {
+  const access = usePropertyPageAccess();
   const { id } = useParams<{ id: string }>();
 
   const { data: profile, isLoading } = useQuery({
@@ -60,7 +62,7 @@ export default function CrmProfile() {
   if (!profile) {
     return (
       <div className="p-6 max-w-3xl mx-auto" dir="rtl">
-        <Link to="/properties" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+        <Link to={access.properties ? '/properties' : '/my-ads'} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
           <ArrowRight className="h-4 w-4" /> חזרה
         </Link>
         <p className="mt-6 text-muted-foreground">פרופיל לא נמצא.</p>
@@ -72,8 +74,8 @@ export default function CrmProfile() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6" dir="rtl">
-      <Link to="/properties" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-        <ArrowRight className="h-4 w-4" /> חזרה לנכסים
+      <Link to={access.properties ? '/properties' : '/my-ads'} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+        <ArrowRight className="h-4 w-4" /> {access.properties ? 'חזרה לנכסים' : 'המודעות שלי'}
       </Link>
 
       <Card className="p-6">
@@ -132,9 +134,9 @@ export default function CrmProfile() {
           <ul className="space-y-2">
             {listings.map((l) => (
               <li key={l.id}>
-                <Link to={`/properties/${l.id}`} className="text-sm text-primary hover:underline">
+                {access.properties ? <Link to={`/properties/${l.id}`} className="text-sm text-primary hover:underline">
                   {l.property_title || l.address || l.city || 'נכס'}
-                </Link>
+                </Link> : <span className="text-sm">{l.property_title || l.address || l.city || 'נכס'}</span>}
               </li>
             ))}
           </ul>

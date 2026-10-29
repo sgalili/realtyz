@@ -117,7 +117,7 @@ function AdActions({ row: r, owned, title }: { row: Row; owned: boolean; title: 
         <DropdownMenuItem className="gap-2 text-sm" onSelect={() => void copyPartnerLink()}><Link2 className="h-4 w-4" /> העתקת קישור שותף אישי</DropdownMenuItem>
         <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${r.listing_id}&listing=${r.listing_id}`)}><Megaphone className="h-4 w-4" /> יצירת קמפיין</DropdownMenuItem>
         <DropdownMenuItem className="gap-2 text-sm" onSelect={() => window.open(url, '_blank', 'noopener,noreferrer')}><ExternalLink className="h-4 w-4" /> פתיחה בחלון חדש</DropdownMenuItem>
-        {owned && <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/properties/${r.listing_id}`)}><Pencil className="h-4 w-4" /> עריכת הנכס</DropdownMenuItem>}
+        {owned && <DropdownMenuItem className="gap-2 text-sm" onSelect={() => navigate(`/my-ads/${r.listing_id}/edit`, { state: { returnTo: '/my-ads' } })}><Pencil className="h-4 w-4" /> עריכת הנכס</DropdownMenuItem>}
       </DropdownMenuContent>
     </DropdownMenu>
     <PropertyShareMenu results={[result]} iconOnly variant="ghost" hideTrigger open={shareOpen} onOpenChange={setShareOpen} />

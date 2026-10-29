@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { QueryClient, QueryClientProvider, useQueryClient, useQuery } from "@tanstack/react-query";
+import { BrowserRouter, Route, Routes, Navigate, useLocation, useParams } from "react-router-dom";
+import { supabase } from '@/integrations/supabase/client';
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -346,6 +347,28 @@ function ProjectsRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** My Ads editing stays separate from the broker inventory and fails closed under RLS. */
+function MyAdEditRoute() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  const { activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
+  const listing = useQuery({
+    queryKey: ['my-ad-edit-access', user?.id, activeWorkspaceId, id],
+    enabled: !!user && !!id && !!activeWorkspaceId && !workspaceLoading,
+    retry: false,
+    queryFn: async () => {
+      if (!id || !user || !activeWorkspaceId) return false;
+      const { data, error } = await supabase.from('listings').select('id')
+        .eq('id', id).eq('workspace_owner_id', activeWorkspaceId).eq('user_id', user.id).maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+  });
+  if (workspaceLoading || listing.isLoading) return <PageLoader />;
+  if (listing.isError || listing.data !== true) return <Navigate to="/my-ads" replace />;
+  return <PropertyDetail />;
+}
+
 function DealsRoute({ children }: { children: React.ReactNode }) {
   const { dealsEnabled } = useWorkspaceFeatures();
   if (!dealsEnabled) return <Navigate to="/lead-crm" replace />;
@@ -456,6 +479,7 @@ const App = () => (
               <Route path="/affiliate-network" element={<Navigate to="/" replace />} />
               <Route path="/affiliate-pricing" element={<Navigate to="/wallet" replace />} />
               <Route path="/owner/properties" element={<Navigate to="/my-ads" replace />} />
+              <Route path="/my-ads/:id/edit" element={<ProtectedRoute><MyAdEditRoute /></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><Wallet /></Suspense></ProtectedRoute>} />
               <Route path="/developer-dashboard" element={<ProjectsRoute><ProtectedRoute><Suspense fallback={<PageLoader />}><DeveloperDashboard /></Suspense></ProtectedRoute></ProjectsRoute>} />
               <Route path="/developers" element={<ProtectedRoute allowGuestDemo><Suspense fallback={<PageLoader />}><Developers /></Suspense></ProtectedRoute>} />

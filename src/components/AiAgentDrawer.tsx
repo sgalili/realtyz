@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useAppMode } from '@/hooks/useAppMode';
 import { RITA_PROMPTS, ritaWorkflow } from '@/lib/ritaPrompts';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
@@ -217,6 +218,7 @@ function useVoiceInput(onResult: (text: string) => void) {
 }
 
 export default function AiAgentDrawer() {
+  const access = usePropertyPageAccess();
   const { connected: homelyConnected } = useHomelyConnection();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -814,7 +816,7 @@ ${shareUrl}
                           : '—';
                         const isLocal = /^[0-9a-f-]{36}$/i.test(r.id);
                         const openDetails = () => {
-                          if (isLocal) {
+                          if (isLocal && access.properties) {
                             setOpen(false);
                             navigate(`/properties/${r.id}`);
                           } else if (r.source_url) {

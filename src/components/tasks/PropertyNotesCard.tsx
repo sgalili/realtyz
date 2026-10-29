@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Building2, ChevronLeft, Pencil, StickyNote, Trash2 } from 'lucide-react';
@@ -22,6 +23,7 @@ import {
 } from '@/hooks/usePropertyNotes';
 
 export function PropertyNotesCard() {
+  const access = usePropertyPageAccess();
   const { data: notes = [], isLoading } = usePropertyNotes();
   const qc = useQueryClient();
   const [editing, setEditing] = useState<PropertyNote | null>(null);
@@ -93,13 +95,13 @@ export function PropertyNotesCard() {
                   </span>
                 )}
                 <div className="min-w-0 flex-1 space-y-1">
-                  <Link
+                  {access.properties ? <Link
                     to={`/properties/${n.listingId}`}
                     className="inline-flex items-center gap-1 text-base font-semibold hover:underline"
                   >
                     {n.listingLabel ?? 'נכס'}
                     <ChevronLeft className="h-4 w-4" />
-                  </Link>
+                  </Link> : <span className="text-base font-semibold">{n.listingLabel ?? 'נכס'}</span>}
                   <p className="w-full whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
                     <span className="font-bold">{propertyNoteKindLabel(n.kind)}: </span>
                     {n.content}

@@ -285,7 +285,7 @@ export function PageHero() {
   const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
   const isMyAdsPage = location.pathname.startsWith("/my-ads");
   const myListingsPath = "/my-ads";
-  const { isSuperAdmin, isAffiliate, isTeamMember, isPropertyOwner } = useUserRole();
+  const { isAffiliate, isTeamMember, isPropertyOwner } = useUserRole();
   const { activeWorkspaceId } = useWorkspace();
   const { data: ownerAds = [] } = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId],
