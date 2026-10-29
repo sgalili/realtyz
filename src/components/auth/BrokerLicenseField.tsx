@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { brokerLicenseSchema, brokerLicenseDigits, verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 import { ClosingSplitNote } from '@/components/affiliate/ClosingSplitNote';
 import { BrokerTestLinks } from '@/components/affiliate/BrokerClosingInfo';
+import { BrokerCertificateCheck } from './BrokerCertificateCheck';
 
 export function BrokerLicenseField({ value, onChange, onVerified, compact = false, signup = false }: { value: string; onChange: (value: string) => void; onVerified: (value: string | null) => void; compact?: boolean; signup?: boolean }) {
   const [status, setStatus] = useState<'idle' | 'checking' | 'valid' | 'error'>('idle');
@@ -35,5 +36,6 @@ export function BrokerLicenseField({ value, onChange, onVerified, compact = fals
       {status === 'error' && <span role="alert" className="text-destructive">{message}</span>}
     </div>
     {!signup && <><ClosingSplitNote registration /><BrokerTestLinks /></>}
+    {signup && <BrokerCertificateCheck />}
   </div>;
 }
