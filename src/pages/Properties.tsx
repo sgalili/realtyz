@@ -994,7 +994,7 @@ export default function Properties() {
                   })()}
             </Button>
         <div id="inventory-search-row" className="order-3 min-w-0 flex-1">
-          <div className={`min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>
+          <div className={`relative z-50 min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background">
             <div className="flex min-h-10 w-full items-center gap-2 p-1.5">
