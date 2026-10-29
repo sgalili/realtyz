@@ -917,7 +917,17 @@ export default function Properties() {
             >
               <SearchIcon className="h-4 w-4" />
             </Button>
-        <div id="inventory-search-row" className="order-2 min-w-0 flex-1">
+            {/* Counter pill — always visible right after the magnify: total records
+                by default, replaced by the selected count while selecting. */}
+            <span className="order-2 shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">
+              {multiSelectMode && selectedListingIds.size > 0
+                ? `${selectedListingIds.size} נבחרו`
+                : (() => {
+                    const total = totalListingsCount ?? sortedResults.length;
+                    return total > 999 ? `${(total / 1000).toFixed(2).replace(/\.?0+$/, '')}k` : total;
+                  })()}
+            </span>
+        <div id="inventory-search-row" className="order-3 min-w-0 flex-1">
           <div className={`min-w-0 origin-right transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none ${searchOpen ? 'opacity-100 scale-x-100' : 'pointer-events-none invisible opacity-0 scale-x-0'}`} aria-hidden={!searchOpen}>
         <div className="flex min-w-0 items-start gap-2" dir="rtl">
           <div className="relative min-w-0 flex-1 rounded-md border border-input bg-background">
