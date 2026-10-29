@@ -25,14 +25,13 @@
 - Public publisher pricing and shared card-header rules: read src/components/public/AGENTS.md.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
-- Peer expansions use exclusive motion groups.
 - Inquiry tiers need server-only workspace/listing identity and satisfactory screening; first turns/callbacks never qualify. Atomic upgrades charge only unpaid differences.
 - Tables share sort/reorder/hide; rewards never sort. HorizontalTableScroll owns both axes and movable wheel axes (RTL Shift-wheel too), preserves nested scrolling, collapses nested owners. Homepage stays bounded; prefs never store listings. Post-animation reveal scrolls only the table, anchoring property summaries below headings. Why: no hidden summaries.
 - Every successful app sign-in and completed signup lands on the global homepage; the layout only clears old pending login flags and never chooses a dashboard. OAuth authorization consent remains a separate flow. Why: all account types browse the same public-safe feed without bypassing role completion.
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe, served only by src/hooks/useListingFavorites.ts so hearts and the owner menu share one list. Why: one favorite state.
 - Yad2 checks exact workspace records before daily claims; cache reads keep edits and source timestamps (no sliding freshness). Cache/scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely needs verified workspace status. Counters use completed-search snapshots.
 - Yad2 keeps original publisher snapshots, source buckets and scoped DOM evidence; never null-overwrites or classifies from related ads; license needs evidence.
-- Group selection uses one checkbox per row, immutable deduplicated snapshots and no-op guards.
+- Group selection: one checkbox per row, immutable deduped snapshots, no-op guards; peer expansions use exclusive motion groups.
 - Media dedup uses host/path hashes; Yad2 reuses validated own public cache, not other hosts. Why: safe reuse.
 - Multi-select lists use the shared controls in src/components/ui/multi-select-controls.tsx so every page behaves the same.
 - Partner rewards freeze into immutable listing_reward_snapshots on pick; charges use the snapshot. Trust scores are server-computed (compute_trust_score), super_admin-overridable, audited.
