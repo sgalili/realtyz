@@ -9525,6 +9525,10 @@ export type Database = {
         }
         Returns: number
       }
+      official_broker_name: {
+        Args: { _license: string; _uid: string }
+        Returns: string
+      }
       official_license_exists: { Args: { _number: string }; Returns: boolean }
       open_lead_dispute: {
         Args: { _charge_id: string; _details?: string; _reason: string }
