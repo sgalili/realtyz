@@ -14,7 +14,7 @@
 - Auth uses server OTP and auth.uid signup RPCs, never a bypass; company maps to developer. PersonalLanguage reads auth user's profiles.gender, not workspace/metadata; recipient copy shares explicit gender variants, never guessing names or editing approved text. Why: isolation.
 - Cloud monitoring mounts only for authenticated super_admin roles and its read-only endpoint rechecks user_roles server-side; queue counts resolve and authorize the active workspace, while Railway heartbeat and scheduler ticks remain separate. Why: prevent operational data leaks and false readiness.
 - Wallet usage pricing is read-only and loaded from action_pricing on opening its hero dialog; reuse the admin query key without exposing editing controls. Why: display current configured costs consistently.
-- Profile/office uploads share fixed-aspect cropping; pending files clear on workspace switches. Completion notices re-read account fields on save; service areas reuse city/multi-select controls. Why: consistent framing, truthful notices and tenant-safe saving.
+- Profile/office uploads share fixed-aspect cropping; pending files clear on workspace switches. Completion notices re-read account fields on save; service areas reuse city/multi-select controls. Why: consistency.
 - Tours use authorized menus; never auto-mutate.
 - Future calls use workspace-authorized meetings RPCs and the existing tour-reminder tick, with atomic per-call claims and purpose-specific approved official WhatsApp templates; never create a second permanent timer. Why: tenant-safe scheduling without duplicate sends or unauthorized free-text reminders.
 - Public grid/details use safe publishers with server-gated PropertyCommissionIcons inside BrokerAttribution; image actions share favorites. Fee notices stay contextual. Why: owner identity and pricing privacy.
@@ -22,7 +22,7 @@
 - Campaign targets use authorized rows or public-view facts, override unrelated drafts and discard stale responses; project refs stay out of UUID fields. Why: exact, isolated actions.
 - Drafts retain scoped errors and post-only exclusions, never deleting source photos. Explicit publish; celebration owns canvas/audio. Cached reward sounds follow account-only new ledger earnings, never workspace balances or historical grants.
 - Publisher numbering excludes setup; preserves keys and resolved addresses; ignores stale searches.
-- Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state and consistent counts without tenant drift or duplicate legal content.
+- Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state, consistent counts.
 - Public publisher pricing and shared card-header rules: read src/components/public/AGENTS.md.
 - Facebook auth/groups are mounted siblings, so Page state cannot interrupt groups/joining.
 - Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
