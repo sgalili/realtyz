@@ -1,5 +1,10 @@
 # Roadmap
 
+## Property page access October 29
+- [x] Restrict technical Bright Data warnings to the signed-in Super Admin, independent of workspace.
+- [x] Share account-scoped verified-broker/developer checks across navigation and direct routes; retain My Ads with separately owner-authorized editing.
+- [x] 30 focused tests passed; live verified-broker inventory and My Ads loaded, non-developer project access redirected, simulated owner-role route/navigation denial checked; no runtime errors, build OK. No real developer or Super Admin session was available for their positive-path checks.
+
 ## Publisher card corrections October 29
 - [x] Remove switches; center expanded prices only above sliders; halve icons and move help to top-left.
 - [x] Exact gray zero-offer text; discrete zero then min-to-max scale verified across all four sliders; 29 tests passed.

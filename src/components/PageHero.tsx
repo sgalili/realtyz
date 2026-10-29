@@ -28,6 +28,7 @@ import { useAffiliatePreferences } from "@/hooks/useAffiliate";
 import { useAppMode } from "@/hooks/useAppMode";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
 import { RealtyzWave } from "@/components/RealtyzWave";
@@ -275,14 +276,6 @@ function resolvePageTitle(pathname: string): string {
   return ROUTE_TITLES.find((r) => r.match.test(pathname))?.title ?? "";
 }
 
-/** Only super admins and the official platform owners see the wallet balance. */
-const BALANCE_OWNER_EMAILS = [
-  "sgalili@gmail.com",
-  "udi@udiman.com",
-  "udi.vitman@gmail.com",
-  "udivitman@gmail.com",
-];
-
 export function PageHero() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -292,7 +285,7 @@ export function PageHero() {
   const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
   const isMyAdsPage = location.pathname.startsWith("/my-ads");
   const myListingsPath = "/my-ads";
-  const { isSuperAdmin, isAffiliate, isTeamMember, isPropertyOwner } = useUserRole();
+  const { isAffiliate, isTeamMember, isPropertyOwner } = useUserRole();
   const { activeWorkspaceId } = useWorkspace();
   const { data: ownerAds = [] } = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId],
@@ -302,7 +295,8 @@ export function PageHero() {
   const canSeeMyAds = isAffiliate || isTeamMember || (isPropertyOwner && ownerAds.length > 0);
   const { preferences: affiliatePrefs } = useAffiliatePreferences();
   const automationAnyOn = Boolean(affiliatePrefs.rita_auto_mode || affiliatePrefs.auto_funnel_enabled);
-  const canSeeBalance = isSuperAdmin || BALANCE_OWNER_EMAILS.includes((user?.email ?? "").toLowerCase());
+  const access = usePropertyPageAccess();
+  const canSeeBalance = access.providerDiagnostics;
   const title = resolvePageTitle(location.pathname);
   const isPostsPage = location.pathname.startsWith("/campaigns") || location.pathname.startsWith("/posts");
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
@@ -465,8 +459,8 @@ export function PageHero() {
               <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
             </Button>
           )}
-          {location.pathname === "/properties" && <PropertiesHeroAddButton />}
-          {location.pathname === "/developer-dashboard" && (
+          {access.properties && location.pathname === "/properties" && <PropertiesHeroAddButton />}
+          {access.projects && location.pathname === "/developer-dashboard" && (
             <Button size="icon" variant="ghost" aria-label="הוספת פרויקט" title="הוספת פרויקט"
               className="h-9 w-9 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
               onClick={() => window.dispatchEvent(new Event('developer-projects:add'))}>

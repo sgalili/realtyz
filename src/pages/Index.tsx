@@ -25,6 +25,7 @@ import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
 import { MatchProgressCard } from '@/components/dashboard/MatchProgressCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { RecruitmentDashboard } from '@/components/dashboard/RecruitmentDashboard';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 
@@ -58,6 +59,7 @@ interface ActivityFeedItem {
 const RealEstateDashboard = () => {
   const navigate = useNavigate();
   const { listingsEnabled } = useWorkspaceFeatures();
+  const access = usePropertyPageAccess();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -300,7 +302,7 @@ const RealEstateDashboard = () => {
           value={activeListings ?? 0}
           loading={loadingListings}
           tooltip="כמות הנכסים שמשווקים כרגע ופורסמו לציבור."
-          to="/properties"
+          to={access.properties ? '/properties' : '/my-ads'}
         />
         <KpiCard
           icon={Flame}

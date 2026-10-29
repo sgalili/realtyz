@@ -6,6 +6,7 @@ import { NewDemoDialog } from '@/components/dashboard/NewDemoDialog';
 import { ContactAvatar } from '@/components/contacts/ContactAvatar';
 import { BrandIcon } from '@/components/BrandIcon';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -162,6 +163,7 @@ function IconAction({
 export default function CommandCenter() {
   // Property card links only appear in workspaces that manage properties.
   const { listingsEnabled, isRitaWorkspace } = useWorkspaceFeatures();
+  const access = usePropertyPageAccess();
   const visibleTabs = isRitaWorkspace ? RITA_TABS : DEFAULT_TABS;
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -319,7 +321,7 @@ export default function CommandCenter() {
                     <span dir="rtl" className={`mt-0.5 block whitespace-nowrap text-[13px] ${due.overdue ? 'font-semibold text-destructive' : due.today ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
                       {due.overdue ? `באיחור · ${due.text}` : due.text}
                     </span>
-                    {task.listingId && listingsEnabled && (
+                    {task.listingId && listingsEnabled && access.properties && (
                       <Button
                         type="button"
                         variant="ghost"

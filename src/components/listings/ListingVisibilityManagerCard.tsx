@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, Star } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
+import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { ListingVisibilityToggle } from '@/components/listings/ListingVisibilityToggle';
 import { Link } from 'react-router-dom';
@@ -32,6 +33,7 @@ export function ListingVisibilityManagerCard() {
   const qc = useQueryClient();
   const { isAdmin, isManagingBroker, isSuperAdmin } = useUserRole();
   const { settings } = usePlatformSettings();
+  const access = usePropertyPageAccess();
 
   const canSee = isAdmin || isManagingBroker || isSuperAdmin;
 
@@ -81,7 +83,7 @@ export function ListingVisibilityManagerCard() {
           </div>
         ) : !data || data.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-6">
-            אין נכסים פעילים עדיין. <Link to="/properties" className="text-primary underline">לקטלוג</Link>
+            אין נכסים פעילים עדיין. <Link to={access.properties ? '/properties' : '/my-ads'} className="text-primary underline">{access.properties ? 'לקטלוג' : 'המודעות שלי'}</Link>
           </p>
         ) : (
           <ul className="space-y-2">
