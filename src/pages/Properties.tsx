@@ -966,7 +966,7 @@ export default function Properties() {
             {/* Counter pill — always visible right after the magnify: total records
                 by default, replaced by the selected count while selecting. */}
             <Button type="button" variant="ghost"
-              className={`order-2 h-8 shrink-0 overflow-hidden rounded-none px-0 text-[12px] transition-[opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "pointer-events-none max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`} tabIndex={searchOpen ? -1 : undefined} data-x=" font-normal text-primary tabular-nums hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+              className={`order-2 h-8 shrink-0 overflow-hidden rounded-none px-0 text-[12px] font-normal text-primary tabular-nums hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 transition-[opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${searchOpen ? "pointer-events-none max-w-0 opacity-0" : "max-w-[120px] opacity-100"}`} tabIndex={searchOpen ? -1 : undefined}
               aria-expanded={searchOpen} aria-controls="inventory-search-row"
               title={searchOpen ? 'סגירת חיפוש' : 'פתיחת חיפוש'}
               onClick={() => toggleSearchOpen(!searchOpen)}>
