@@ -178,6 +178,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [importSlide, setImportSlide] = useState(false);
   const [whoSlide, setWhoSlide] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
+  const authThenConfirm = useRef(false);
   const pendingAuthPublish = useRef<{ fields: PublicListingDraftFields; files: File[]; videos: File[] } | null>(null);
   // Which sub-option of the minimalist create-ad screen is expanded.
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
@@ -232,6 +233,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       const name = pending.fields.contactName.trim();
       if (name) await supabase.rpc('complete_signup_profile' as any, { _full_name: name }).then(() => undefined, () => undefined);
       void supabase.functions.invoke('sync-owner-wa-avatar').catch(() => {});
+      if (authThenConfirm.current) { authThenConfirm.current = false; setConfirming(true); return; }
       publicationAudio.current = preparePublicationSound();
       await publish(pending.fields, pending.files, pending.videos);
     })();
@@ -598,6 +600,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     }
     if (!confirming) {
       if (!fields.marketingAccepted) { setMarketingInfoOpen(true); return; }
+      if (!user) {
+        // Guests register by SMS code right after the 8 steps, before approving and publishing.
+        try { await saveDraft(); } catch { /* the in-memory copy below is enough */ }
+        pendingAuthPublish.current = { fields, files, videos }; authThenConfirm.current = true; setOtpOpen(true); return;
+      }
       setConfirming(true); return;
     }
     if (user) publicationAudio.current = preparePublicationSound();
@@ -902,7 +909,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 8 && (
             <div className="pricing-editor space-y-3">
-              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><span className="flex items-center justify-self-center gap-[5px]"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-20 w-auto min-w-[9rem] px-3 text-center text-4xl font-bold placeholder:text-lg md:text-5xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span><Button type="button" variant="ghost" size="icon" className="h-12 w-12 shrink-0 justify-self-end text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-7 w-7 transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button></div>
+              <div dir="rtl" className="mb-[25px] grid grid-cols-[1fr_auto_1fr] items-center gap-2"><span className="justify-self-start text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'מחיר השכירות' : 'מחיר הנכס'}</span><span className="flex items-center justify-self-center gap-[5px]"><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className={cn('h-20 w-auto min-w-[9rem] px-3 text-center text-4xl font-bold placeholder:text-lg md:text-5xl [field-sizing:content]', fields.dealType === 'rent' ? 'text-sale' : 'text-success')} onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span>{LEAD_TYPES.some(({ key }) => Number(fields[`commission${key}`]) > 0) ? <Button type="button" variant="ghost" size="icon" className="h-12 w-12 shrink-0 justify-self-end text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><ChevronDown className={cn('h-[33px] w-[33px] transition-transform motion-reduce:transition-none', allExpanded && 'rotate-180')} /></Button> : <span />}</div>
               <div className="space-y-4 text-base">
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
@@ -918,7 +925,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   <Card key={key} className="closing-fee space-y-2 rounded-2xl p-4" data-level={leadPriceLevel(tier, price)}>
                     <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex min-w-0 flex-1 basis-56 items-center gap-1 self-center font-medium">
                       <Button type="button" variant="ghost" className="h-auto justify-start gap-3 whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={expanded} onClick={toggle}>
-                        {key === 'Form' ? <LeadFormIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden /> : <LeadPhoneIcon className="!h-[48.6px] !w-[48.6px] shrink-0 closing-tone" aria-hidden />}
+                        {(() => { const iconClass = cn("!h-[48.6px] !w-[48.6px] shrink-0 closing-tone", !active && "!text-muted-foreground"); const stroke = expanded ? 2 : 1; return key === 'Form' ? <LeadFormIcon className={iconClass} strokeWidth={stroke} aria-hidden /> : key === 'Whatsapp' ? <WhatsAppIcon className={iconClass} /> : <LeadPhoneIcon className={iconClass} strokeWidth={stroke} aria-hidden />; })()}
                         {label}
                       </Button>
                       <LeadTypeHelp label={label}>
@@ -957,7 +964,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   );
                 })}
               </div>
-              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); }} />
+              <ClosingFeeSlider className="pricing-closing-card rounded-2xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm" dualMode unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
@@ -987,10 +994,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   return (
     <>
     {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => { if (user && isAffiliateOnly) { setPublishAs(null); setAskPublishAs(true); } else setOpen(true); }} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
-    <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) pendingAuthPublish.current = null; setOtpOpen(value); }}>
+    <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { pendingAuthPublish.current = null; authThenConfirm.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
         <DialogHeader><DialogTitle className="text-right">אימות מספר הטלפון</DialogTitle></DialogHeader>
-        <WhatsAppOtpVerify allowSms defaultPhone={fields.contactWhatsapp} description="נשלח קוד בן 4 ספרות בוואטסאפ או ב-SMS. לאחר האימות החשבון ייפתח והמודעה תפורסם." onVerified={async (result) => {
+        <WhatsAppOtpVerify allowSms defaultPhone={fields.contactWhatsapp} description="נשלח אליך קוד בן 4 ספרות ב-SMS. לאחר האימות החשבון ייפתח ותוכל/י לאשר ולפרסם את המודעה." onVerified={async (result) => {
           const { error } = result.session ? await supabase.auth.setSession(result.session) : result.token_hash ? await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' }) : { error: new Error('missing session') };
           if (error) { pendingAuthPublish.current = null; toast.error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); return; }
           setOtpOpen(false);
@@ -1025,9 +1032,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                {STEP_TITLES.map((title, i) => i === 0 ? null : (
                 <AccordionItem key={title} value={`step-${i}`} className="rounded-md border bg-background">
                   <AccordionTrigger className="gap-3 px-4 text-start hover:no-underline">
-                    <span className="flex min-w-0 flex-1 items-center gap-3">
+                    <span className="flex min-w-0 flex-1 items-start gap-3">
                       <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-sm ${stepFilled(i) ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`} aria-label={`שלב ${i} מתוך 8`}>{i}</span>
-                      <span className={cn("min-w-0 flex-1", expandedStep === `step-${i}` && "font-bold")}>{title}{i === 8 && expandedStep !== 'step-8' && Number(fields.price) > 0 && <span className="mt-2 block space-y-1" aria-live="polite"><span className={cn('block text-xl font-bold', fields.dealType === 'rent' ? 'text-sale' : 'text-success')}>{formatRentalPrice(fields.price, fields.dealType)}</span><span className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">{LEAD_TYPES.map(({ key, tier }) => <span key={key}>{tier === 'form' ? 'טופס' : tier === 'whatsapp' ? 'ווטסאפ' : 'טלפון'}: {Number(fields[`commission${key}`]) > 0 ? fmtILS(Number(fields[`commission${key}`])) : 'ללא עמלה'}</span>)}<span>סגירה: {fields.commissionDealType === 'fixed' ? fmtILS(Number(fields.commissionDeal)) : `${Number(fields.commissionDeal) || 0}%`}</span></span></span>}</span>
+                      <span className={cn("min-w-0 flex-1", expandedStep === `step-${i}` && "font-bold")}>{title}{i === 8 && expandedStep !== 'step-8' && Number(fields.price) > 0 && <span className="mt-2 block space-y-1" aria-live="polite"><span className={cn('block text-xl font-bold', fields.dealType === 'rent' ? 'text-sale' : 'text-success')}>{formatRentalPrice(fields.price, fields.dealType)}</span><span className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">{LEAD_TYPES.filter(({ key }) => Number(fields[`commission${key}`]) > 0).map(({ key, tier }) => <span key={key}>{tier === 'form' ? 'טופס' : tier === 'whatsapp' ? 'ווטסאפ' : 'טלפון'}: {Number(fields[`commission${key}`]) > 0 ? fmtILS(Number(fields[`commission${key}`])) : 'ללא עמלה'}</span>)}<span>סגירה: {fields.commissionDealType === 'fixed' ? fmtILS(Number(fields.commissionDeal)) : `${Number(fields.commissionDeal) || 0}%`}</span></span></span>}</span>
                       <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : <>חסרים פרטים<span className="text-destructive"> *</span></>}</span>
                     </span>
                   </AccordionTrigger>
@@ -1042,7 +1049,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <Checkbox id="publisher-marketing-consent" className="rounded-none" checked={fields.marketingAccepted} onCheckedChange={(checked) => set('marketingAccepted', checked === true)} />
                 אני מסכים/ה לקבל פניות ועדכונים שיווקיים
               </label>
-              <div className="flex items-start gap-2 text-sm">
+              <div className="-mt-[5px] flex items-start gap-2 text-sm">
                 <Checkbox id="commission-terms" className="rounded-none" checked={Boolean(fields.commissionTermsAccepted)} onCheckedChange={(checked) => set('commissionTermsAccepted', checked === true)} />
                 <span><label htmlFor="commission-terms">קראתי והבנתי את </label>
                 <Dialog>
@@ -1066,7 +1073,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                   </DialogContent>
                 </Dialog></span>
               </div>
-            <div className="flex items-start gap-2 text-xs leading-snug">
+            <div className="-mt-[5px] flex items-start gap-2 text-xs leading-snug">
               <Checkbox id="publication-consent" aria-label="אישור התנאים והרשאת הפרסום" checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', checked === true)} className="mt-0.5 rounded-none" />
               <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline decoration-2 underline-offset-4">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
             </div>
