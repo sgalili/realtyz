@@ -85,14 +85,14 @@ export function BoardColumnDragArea({ controls, children }: { controls: BoardCol
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={controls.reorder}><SortableContext items={controls.visible} strategy={horizontalListSortingStrategy}>{children}</SortableContext></DndContext>;
 }
-export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; controls: BoardColumnControls }) {
+export function BoardColumnHeader({ id, controls, first = false }: { id: BoardColumnId; controls: BoardColumnControls; first?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const label = controls.definitions.find(c => c.id === id)?.label;
   const sorted = controls.sort?.id === id;
   const location = useLocation();
   return <th ref={setNodeRef} data-column={id} aria-sort={sorted ? controls.sort?.descending ? 'descending' : 'ascending' : 'none'} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group/column px-2 pb-0 pt-2 text-right font-semibold ${isDragging ? 'relative z-10 bg-muted opacity-80' : ''} ${id === 'price' ? 'max-sm:sticky max-sm:left-0 max-sm:z-[4] max-sm:bg-card' : ''}`}>
-    <div className="flex items-center gap-0.5">
-      <Button variant="ghost" size="icon" {...attributes} {...listeners} aria-label={`הזזת עמודת ${label}`} title={`הזזת עמודת ${label}`} className="h-7 w-5 shrink-0 touch-none text-muted-foreground"><GripVertical className="h-3 w-3" /></Button>
+    <div className="relative flex items-center gap-0.5">
+      <Button variant="ghost" size="icon" {...attributes} {...listeners} aria-label={`הזזת עמודת ${label}`} title={`הזזת עמודת ${label}`} className={`h-7 w-5 shrink-0 touch-none text-muted-foreground ${first ? '' : 'absolute start-[-22px]'}`}><GripVertical className="h-3 w-3" /></Button>
       {id === 'commissions' ? <span className="text-xs font-semibold">{label}</span> : <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-auto min-h-7 gap-1 !whitespace-normal px-0 py-0.5 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
         <span className="whitespace-normal text-start leading-tight">{label}</span>{sorted && (controls.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
       </Button>}
