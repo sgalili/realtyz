@@ -208,6 +208,7 @@ export default function LeadTypeFilterButton({
       <div className="flex items-center justify-start gap-1">
         <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="סגירת סינון" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
         <h2 className="text-[17px] font-semibold leading-none">חיפוש מתקדם</h2>
+        {active ? <Button type="button" size="sm" variant="ghost" className="ms-auto h-7 px-2 text-[15px]" onClick={reset}>ניקוי סינון</Button> : null}
       </div>
         {showLeadFilters ? (<>
           <SectionTitle>סוג הליד</SectionTitle>
@@ -297,11 +298,7 @@ export default function LeadTypeFilterButton({
           </>
         ) : null}
 
-        <div className="flex justify-start">
-          <Button type="button" size="sm" variant="ghost" onClick={reset} disabled={!active}>
-            ניקוי סינון
-          </Button>
-        </div>
+
     </>
   );
   if (inline) return <>{trigger}{open ? <div role="dialog" aria-label="סינון מתקדם" data-property-filter-panel dir="rtl" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }} className="absolute -inset-x-px top-full z-50 mt-1 max-h-[60dvh] space-y-3 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-top-2 motion-reduce:animate-none">{content}</div> : null}</>;
