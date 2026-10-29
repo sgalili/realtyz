@@ -814,14 +814,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
       toast.error('יש להתחבר לפני שיגור קמפיין');
       return;
     }
-    // Trial restriction: block real broadcasts when trial expired
-    if (false) {
-      toast.error('ההפצה אינה זמינה כרגע בחשבון זה', {
-        duration: 8000,
-        action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/wallet') },
-      });
-      return;
-    }
+    // Billing is credits-only: the server charges per message and rejects insufficient balance.
 
     // === DEMO MODE: keep the original simulation experience ===
     if (isDemoMode) {
@@ -1083,7 +1076,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
       toast.error('שגיאה בשיגור: ' + (err?.message ?? 'שגיאה לא ידועה'));
       setPhase('compose');
     }
-  }, [blastName, messageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired, waTemplate, connectedChannels.whatsapp]);
+  }, [blastName, messageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired, waTemplate, connectedChannels.whatsapp, recipientSource, pastedNumbers]);
 
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
@@ -1767,28 +1760,20 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                 <DeliverySettings enabled={dripEnabled} onEnabledChange={setDripEnabled} dailyLimit={dailyLimit} onDailyLimitChange={setDailyLimit} windowStart={sendWindowStart} onWindowStartChange={setSendWindowStart} windowEnd={sendWindowEnd} onWindowEndChange={setSendWindowEnd} delayMin={delayMin} onDelayMinChange={setDelayMin} delayMax={delayMax} onDelayMaxChange={setDelayMax} />
 
                 <div className="flex flex-col gap-3 rounded-md border border-primary/15 bg-card p-3 shadow-lg">
-                  <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-muted-foreground">עלות משוערת לקמפיין</span>
-                      <span className="text-base font-bold tabular-nums text-foreground">
-                        {formatCampaignCredits(broadcastCost.totalCredits)}
-                      </span>
+                  <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 text-sm">
+                    {broadcastCost.rows.map((r) => {
+                      const unitPrice = campaignServicePrice(r.channel, servicePrices);
+                      return (
+                        <div key={r.channel} className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 text-muted-foreground"><CampaignServiceIcon channel={r.channel} />{r.units.toLocaleString('he-IL')} הודעות</span>
+                          <span className="tabular-nums text-muted-foreground">{unitPrice ? `${formatCampaignCredits(unitPrice.credits)} להודעה` : 'בחישוב עלויות'}</span>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-1.5">
+                      <span className="font-medium text-foreground">עלות משוערת</span>
+                      <span className="font-bold tabular-nums text-foreground">{formatCampaignCredits(broadcastCost.totalCredits)}</span>
                     </div>
-                    {broadcastCost.rows.length > 0 && (
-                      <ul className="mt-1.5 space-y-0.5 text-[10.5px] text-muted-foreground">
-                        {broadcastCost.rows.map((r) => (
-                          <li key={r.channel} className="flex items-center justify-between gap-2">
-                            <span className="inline-flex items-center gap-1"><CampaignServiceIcon channel={r.channel} />{r.label} · {r.units.toLocaleString('he-IL')} {r.unitLabel}</span>
-                            <span className="tabular-nums">
-                              {r.pending ? <span className="italic text-amber-600 dark:text-amber-400">בחישוב עלויות</span> : formatCampaignCredits(r.subtotal)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {broadcastCost.hasPending && (
-                      <p className="mt-1 text-[10px] italic text-amber-600 dark:text-amber-400">* העלות תושלם לאחר טעינת המחירון ואורך ההקלטה.</p>
-                    )}
                   </div>
                   <div className="mb-[6px] flex flex-col items-center gap-1.5 [&_button_svg]:scale-[1.3]">
                     {(() => {
@@ -1799,7 +1784,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         <>
                           <Button size="lg" className="h-auto whitespace-normal text-center bg-primary text-primary-foreground hover:bg-primary-glow" onClick={() => setConfirmOpen(true)} disabled={disabled}>
                             <Send className="h-4 w-4 ml-1" />
-                            שליחה ל-{totalRecipients.toLocaleString('he-IL')} נמענים בעלות משוערת של {formatCampaignCredits(broadcastCost.totalCredits)}
+                            שליחה ל-{totalRecipients.toLocaleString('he-IL')} נמענים
                           </Button>
                           {trialBlocked && (
                             <p className="text-[11px] text-destructive">
