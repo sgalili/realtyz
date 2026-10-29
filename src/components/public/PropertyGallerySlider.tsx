@@ -43,9 +43,6 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
 
   return (
     <div className="min-w-0 space-y-2" onClick={(e) => e.stopPropagation()}>
-      <div data-property-image-toolbar className="flex min-h-10 flex-wrap items-center gap-1">
-        {photos.length > 1 && <><Button type="button" size="icon" variant="ghost" aria-label="תמונה קודמת" onClick={() => goTo(index - 1)} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button></>}
-      </div>
       <div className="group relative overflow-hidden rounded-lg bg-muted">
         <div ref={trackRef} dir="rtl" className="flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto scroll-smooth sm:aspect-[16/7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {photos.map((src, i) => (
