@@ -64,3 +64,4 @@
 - Public publisher projections share classification-aware names from source evidence or server user_roles for manual ads; unknown identities stay private. Board eligibility still requires positive price, configured rewards and a non-generic publisher, filtering without deletion. Why: consistent attribution without exposing private people.
 - Rent displays always use "₪X / לחודש" via src/lib/propertyPrice.ts helpers. Why: consistent monthly pricing.
 - Broker upgrades auto-approve only on server registry+certificate+account-name match; else pending Super Admin review; all outcomes notify user and Super Admins.
+- A Super Admin inside another user's workspace gets that owner's roles from useUserRole (only the super_admin flag is kept for admin overlays); server RPCs still check the real caller. Why: see exactly what the owner sees without broker leakage.
