@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, RadioTower, Flame, Crown, Gauge, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, AlertOctagon } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
+import { BrokerUpgradeRequestsCard } from '@/components/admin/BrokerUpgradeRequestsCard';
 import { SuperAdminCreateUserCard } from '@/components/admin/SuperAdminCreateUserCard';
 import { SuperAdminDeleteUsersCard } from '@/components/admin/SuperAdminDeleteUsersCard';
 import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
@@ -403,6 +404,7 @@ const SuperAdmin = () => {
         </TabsContent>
 
         <TabsContent value="users" className="mt-4 space-y-4">
+          <BrokerUpgradeRequestsCard />
           <SuperAdminCreateUserCard />
           <SuperAdminDeleteUsersCard />
           <DeletedAccountsArchive />

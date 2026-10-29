@@ -456,7 +456,7 @@ function PersonalTab() {
             <p className="text-sm text-muted-foreground">רישיון מאומת מול פנקס המתווכים. לא ניתן לערוך.</p>
           </div>
         ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : <Input aria-label="מספר רישיון תיווך" value={brokerLicense} readOnly dir="ltr" />)}
-        {isOwnProfile && !showBrokerFields && <UpgradeToBrokerButton onUpgraded={(l) => { setStoredLicense(l); setBrokerLicense(l); }} />}
+        {isOwnProfile && !showBrokerFields && <UpgradeToBrokerButton />}
 
       </CardContent>
 

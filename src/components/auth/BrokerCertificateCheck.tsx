@@ -35,7 +35,7 @@ export function BrokerCertificateCheck({ onResult }: { onResult?: (result: Check
   };
   return <div className="space-y-2 border-t border-border pt-3">
     <label htmlFor="broker-certificate-image" className="block text-base font-semibold">בדיקת תעודת רישיון מול המרשם</label>
-    <p className="text-sm text-muted-foreground">תמונת JPG, PNG או WEBP עד 5MB. התמונה אינה נשמרת. בדיקת התעודה אינה מעניקה מעמד מתווך מאומת.</p>
+    <p className="text-sm text-muted-foreground">תמונת JPG, PNG או WEBP עד 5MB. התמונה אינה נשמרת.</p>
     <Input ref={input} id="broker-certificate-image" type="file" accept={CERTIFICATE_MIME_TYPES.join(',')} disabled={busy} className="h-auto text-base" onChange={event => {
       const next = event.target.files?.[0]; setResult(null); setFile(null);
       if (!next) return;

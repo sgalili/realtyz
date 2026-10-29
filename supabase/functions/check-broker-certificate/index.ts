@@ -71,7 +71,7 @@ Deno.serve(async req => {
     const record = exactRegistryRecord(found.records, extracted.licenseNumber);
     const registryName = record ? String(record['שם המתווך']) : null;
     const matched = registryName !== null && certificateNameMatches(extracted.fullName, registryName);
-    const message = matched ? 'פרטי התעודה תואמים בדיוק לפנקס המתווכים. הבדיקה אינה מאמתת את זהות המעלה ואינה מעניקה הרשאות מתווך.' : record ? 'השם בתעודה אינו זהה לשם בפנקס המתווכים. יש לבדוק את התעודה ולהעלות צילום ברור.' : 'מספר הרישיון שבתעודה לא נמצא בפנקס המתווכים המורשים.';
+    const message = matched ? 'פרטי התעודה תואמים לפנקס המתווכים וקבצי האימות הועברו בצורה מאובטחת לבדיקה.' : record ? 'השם בתעודה אינו זהה לשם בפנקס המתווכים. יש לבדוק את התעודה ולהעלות צילום ברור.' : 'מספר הרישיון שבתעודה לא נמצא בפנקס המתווכים המורשים.';
     await save({ status: matched ? 'matched' : 'mismatch', license_number: extracted.licenseNumber, certificate_name: extracted.fullName, registry_name: registryName, safe_message: message });
     const response = await result.response;
     return reply({ matched, licenseNumber: extracted.licenseNumber, fullName: extracted.fullName, registryName, message }, matched ? 200 : 422, response.headers);
