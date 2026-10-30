@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, Plus, X, LogIn, Building2 } from 'lucide-react';
+import { Check, Plus, X, LogIn, Building2, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWorkspace, type Workspace } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
@@ -117,7 +117,8 @@ export function WorkspaceSelectorModal() {
             const active = activeWorkspaceId === w.workspace_owner_id;
             // A person's workspace is titled with their full name, not the
             // phone-number fallback the raw workspace row carries.
-            const card = resolveWorkspaceCardIdentity(w, undefined, null);
+             const card = resolveWorkspaceCardIdentity(w, undefined, null);
+             const rowImage = resolveWorkspaceCardImage(w);
             return (
               <button
                 key={w.workspace_owner_id}
