@@ -25,9 +25,9 @@ it('closes selection immediately even while saving stalls', async () => {
 it('disconnects only the chosen workspace Page even without a cloud profile', async () => {
   mocks.connected = false;
   mocks.call.mockImplementation(async input => input.action === 'bindings' ? { bindings: [{ id: 'two', name: 'Two', picture: null }] } : { ok: true });
-  mount(); fireEvent.click(screen.getByRole('button', { name: 'בחירת עמוד פייסבוק' }));
+  mount(); fireEvent.click(await screen.findByRole('button', { name: 'בחירת עמוד פייסבוק' }));
   fireEvent.click(await screen.findByRole('button', { name: 'נתק את העמוד Two' }));
-  fireEvent.click(screen.getByRole('button', { name: 'נתק', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: /^נתק$/ }));
   await waitFor(() => expect(mocks.purge).toHaveBeenCalledWith('two'));
   expect(mocks.call).toHaveBeenCalledWith({ action: 'disconnect_page', page_id: 'two', owner_id: 'workspace-a' });
   expect(mocks.call.mock.calls.some(([input]) => input.action === 'disconnect')).toBe(false);
