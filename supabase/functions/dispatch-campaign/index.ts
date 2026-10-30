@@ -154,8 +154,13 @@ async function sendWhatsAppTemplate(
   previewText: string,
 ): Promise<SendResult> {
   const params = template.body_params.map((v) => personalize(v, ctx));
+  const templateAdmin = createClient(routerCtx.supabaseUrl, routerCtx.serviceRoleKey);
+  const { data: cachedTemplate } = await templateAdmin.from('wa_message_templates')
+    .select('body_text').eq('owner_user_id', routerCtx.userId).eq('name', template.name)
+    .eq('language', template.language).eq('status', 'APPROVED').maybeSingle();
+  const keys = [...new Set(Array.from(String(cachedTemplate?.body_text ?? '').matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g), m => m[1].trim()))];
   const components = params.length > 0
-    ? [{ type: "body", parameters: params.map((text) => ({ type: "text", text })) }]
+    ? [{ type: "body", parameters: params.map((text, i) => ({ type: "text", text, ...(keys[i] && !/^\d+$/.test(keys[i]) ? { parameter_name: keys[i] } : {}) })) }]
     : [];
   try {
     const res = await fetch(`${routerCtx.supabaseUrl}/functions/v1/send-whatsapp`, {
