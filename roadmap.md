@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Publisher cards and optional consent October 30
-- [ ] Move view toggle, anchor expanded steps, unify closing offer/percentage and rename Rita cards.
-- [ ] Reorder declarations and preserve optional marketing decision and authentication; run focused tests and preview checks without publication.
+- [x] Move view toggle, anchor expanded steps, unify closing offer/percentage and rename Rita cards.
+- [x] Reorder declarations and preserve optional marketing decision and authentication; 46 focused tests passed. Signed-in mobile verified 1% sale, 0.2–2% bounds, collapsed/expanded percentage and decline-to-confirmation with consent unchecked and no runtime errors. No listing published.
 
 ## Step 8 closing and consent refinement October 30
 - [x] Closing first, required/zero styling, undefined sale 1% and rent 50%, matching percentage summaries.

@@ -577,7 +577,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     else setVideos((current) => update(current, 3));
   };
 
-  const submit = async (marketingReviewed = false) => {
+  const submit = async (marketingReviewed = false, marketingAccepted = fields.marketingAccepted) => {
     if (pricingOnly) {
       if (!user || !fields.listingId || (adminOnlyEdit && !adminUnlocked)) return;
       const targetWorkspace = pricingEditWorkspace(fields.importedListing ?? {}, user.id, activeWorkspaceId, isSuperAdmin);
@@ -630,11 +630,11 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       if (caps.some((c) => c != null && (!Number.isInteger(c) || c < 1 || c > 50))) { toast.error('מגבלה יומית חייבת להיות מספר שלם בין 1 ל-50'); return; }
     }
     if (!confirming) {
-      if (publisherMarketingDecision(fields.marketingAccepted, marketingReviewed) === 'explain') { setMarketingInfoOpen(true); return; }
+      if (publisherMarketingDecision(marketingAccepted, marketingReviewed) === 'explain') { setMarketingInfoOpen(true); return; }
       if (!user) {
         // Guests register by SMS code right after the 8 steps, before approving and publishing.
         try { await saveDraft(); } catch { /* the in-memory copy below is enough */ }
-        pendingAuthPublish.current = { fields, files, videos }; authThenConfirm.current = true; setOtpOpen(true); return;
+        pendingAuthPublish.current = { fields: { ...fields, marketingAccepted }, files, videos }; authThenConfirm.current = true; setOtpOpen(true); return;
       }
       setConfirming(true); return;
     }
@@ -1120,12 +1120,12 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           <AlertDialogHeader>
             <AlertDialogTitle>פניות ועדכונים על הפעילות שלך</AlertDialogTitle>
             <AlertDialogDescription className="text-right text-base leading-relaxed">
-              ההסכמה מאפשרת לריטה ול־TORAFF לעדכן אותך בתוכן שיווקי, הזדמנויות וכלים לקידום הנכס בווטסאפ, ב־SMS, במייל ובטלפון, בהתאם להרשאות ולהעדפות שלך. כך קל יותר להישאר מעודכנים ולמצות את אפשרויות הפרסום. אפשר להמשיך בלי להסכים; הטיפול בפניות לנכס והודעות השירות אינם תלויים בהסכמה הזו, והיא אינה אישור לשליחה בלתי מוגבלת בשמך.
+              רוצה לקבל מריטה ומ־TORAFF הזדמנויות וכלים לקידום הנכס בווטסאפ, ב־SMS, במייל ובטלפון? ההסכמה מאפשרת עדכונים בהתאם להעדפות ולהרשאות שלך, לא שליחה בלתי מוגבלת בשמך. אפשר להמשיך בלי להסכים; פניות לנכס והודעות שירות ימשיכו כרגיל.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row items-center justify-between gap-2 sm:justify-between">
             <Button type="button" variant="outline" className="h-auto whitespace-normal" onClick={() => { setMarketingInfoOpen(false); void submit(true); }}>המשך ללא הסכמה</Button>
-            <Button type="button" className="h-auto whitespace-normal" onClick={() => { set('marketingAccepted', true); setMarketingInfoOpen(false); void submit(true); }}>אני מסכים/ה, המשך</Button>
+            <Button type="button" className="h-auto whitespace-normal" onClick={() => { set('marketingAccepted', true); setMarketingInfoOpen(false); void submit(true, true); }}>אני מסכים/ה, המשך</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
