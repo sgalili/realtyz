@@ -4,16 +4,23 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FacebookConnectionDialog } from './FacebookConnectionDialog';
 import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
 
-const mocks = vi.hoisted(() => ({ owner: 'workspace-a', call: vi.fn() }));
+const mocks = vi.hoisted(() => ({ owner: 'workspace-a', call: vi.fn(), connected: true }));
+vi.mock('@/hooks/useCloudSession', () => ({ useCloudSessionConnected: () => mocks.connected }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => mocks.owner }));
 vi.mock('@/lib/facebookPageConnect', () => ({ callMetaPageConnect: mocks.call }));
 vi.mock('./FacebookCloudConnectGate', () => ({ FacebookCloudConnectGate: () => <div>cloud-connection</div> }));
 const mount = () => render(<QueryClientProvider client={new QueryClient()}><FacebookConnectionDialog /></QueryClientProvider>);
 beforeEach(() => {
-  mocks.owner = 'workspace-a'; mocks.call.mockReset();
+  mocks.owner = 'workspace-a'; mocks.connected = true; mocks.call.mockReset();
   mocks.call.mockImplementation(async body => body.action === 'list_pages' ? { pages: [{ id: 'first', name: 'Existing Page' }, { id: 'second', name: 'Additional Page' }] } : body.action === 'bindings' ? { bindings: [{ id: 'first' }] } : { ok: true });
 });
 afterEach(cleanup);
+it('requires cloud profile connection before any managed Page discovery', async () => {
+  mocks.connected = false;
+  mount(); act(openFacebookConnection);
+  await screen.findByText('cloud-connection');
+  expect(mocks.call).not.toHaveBeenCalled();
+});
 it('links an additional authorized Page without requesting a login or replacing existing bindings', async () => {
   mount(); act(openFacebookConnection);
   const second = await screen.findByRole('button', { name: 'Additional Page' });

@@ -7,11 +7,13 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { FACEBOOK_CONNECTION_OPEN } from '@/lib/facebookConnectionFlow';
 import { callMetaPageConnect } from '@/lib/facebookPageConnect';
 import { FacebookCloudConnectGate } from './FacebookCloudConnectGate';
+import { useCloudSessionConnected } from '@/hooks/useCloudSession';
 
 type Page = { id: string; name: string | null; picture: string | null };
 export function FacebookConnectionDialog() {
   const owner = useActiveWorkspaceOwnerId();
   const qc = useQueryClient();
+  const cloudConnected = useCloudSessionConnected();
   const [open, setOpen] = useState(false);
   const [pages, setPages] = useState<Page[]>([]);
   const [linked, setLinked] = useState<string[]>([]);
@@ -41,9 +43,9 @@ export function FacebookConnectionDialog() {
   }, [owner]);
   useEffect(() => {
     generation.current++; setPages([]); setLinked([]); setSaving(null); setNotice('');
-    if (open && owner) void load();
+    if (open && owner && cloudConnected) void load();
     return () => { generation.current++; };
-  }, [open, owner]);
+  }, [open, owner, cloudConnected]);
   const choose = async (page: Page) => {
     if (saving || !owner) return;
     const run = generation.current;
@@ -70,8 +72,8 @@ export function FacebookConnectionDialog() {
         </Button>)}
       </div>}
       {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
-      {!loading && pages.length === 0 && <FacebookCloudConnectGate alwaysVisible connectionOnly onSynced={() => void load()} />}
-      <Button variant="ghost" disabled={loading || !!saving} onClick={() => void load()} className="gap-2"><RefreshCw className="h-4 w-4" />רענון דפים</Button>
+      {!loading && (!cloudConnected || pages.length === 0) && <FacebookCloudConnectGate alwaysVisible connectionOnly onSynced={() => { window.dispatchEvent(new Event('realtyz:facebook-connection-changed')); if (cloudConnected) void load(); }} />}
+      {cloudConnected && <Button variant="ghost" disabled={loading || !!saving} onClick={() => void load()} className="gap-2"><RefreshCw className="h-4 w-4" />רענון דפים</Button>}
     </DialogContent>
   </Dialog>;
 }
