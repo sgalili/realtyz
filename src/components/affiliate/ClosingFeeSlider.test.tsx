@@ -13,11 +13,20 @@ describe('closing fee interaction', () => {
     fireEvent.blur(input);
     expect(change).toHaveBeenCalledWith(7200, 'fixed');
   });
-  it('an explicitly zero publisher commission stays zero without assigning the minimum', () => {
+  it('a new sale publisher commission defaults to 1 percent instead of zero', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider publisherCard dualMode dealType="sale" price={2000000} value={0} onChange={change} />);
-    expect(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }).textContent).toBe('₪0');
+    expect(screen.getByRole('slider').getAttribute('aria-valuenow')).toBe('1');
+    expect(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }).textContent).toBe('₪20,000');
     expect(change).not.toHaveBeenCalled();
+  });
+  it('a sale publisher cannot submit zero through percentage editing', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider publisherCard dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
+    fireEvent.click(screen.getByRole('button', { name: 'עריכת אחוז עמלת סגירה' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'עריכת אחוז עמלת סגירה' }), { target: { value: '0' } });
+    fireEvent.blur(screen.getByRole('textbox', { name: 'עריכת אחוז עמלת סגירה' }));
+    expect(change).toHaveBeenCalledWith(0.2, 'percent');
   });
   it('publisher sale slider has a true 0.2% minimum and 2% maximum without zero', () => {
     const change = vi.fn();
