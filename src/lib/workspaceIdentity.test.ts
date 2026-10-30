@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveWorkspaceCardIdentity, resolveWorkspaceIdentity } from './workspaceIdentity';
+import { resolveWorkspaceCardIdentity, resolveWorkspaceCardImage, resolveWorkspaceIdentity } from './workspaceIdentity';
 import type { Workspace } from '@/hooks/useWorkspace';
 
 describe('workspace identity privacy', () => {
