@@ -13,7 +13,7 @@ import Terms from '@/pages/Terms';
 import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { brokerInventoryChoices } from '@/lib/publisherEligibility';
-import { UpgradeToBrokerButton } from '@/components/profile/UpgradeToBrokerButton';
+import { workspacePublisherIdentity } from '@/lib/workspacePublisherIdentity';
 import { closingFeeAmount } from '@/lib/closingFee';
 import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
 import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
@@ -61,9 +61,7 @@ import {
   savePublicListingDraft,
   type PublicListingDraftFields,
 } from '@/lib/publicListingDraft';
-import { setPendingSignupRole } from '@/lib/signupRole';
 import { WhatsAppOtpVerify } from '@/components/auth/WhatsAppOtpVerify';
-import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutocomplete';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -150,23 +148,24 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
 export function PublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '', pricingOnly = false, adminOnlyEdit = false }: { pricingOnly?: boolean; adminOnlyEdit?: boolean; label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
   const { user, loading: authLoading } = useAuth();
   const { gender } = usePersonalLanguage();
-  const { activeWorkspaceId, activeWorkspace, setActiveWorkspace, refresh: refreshWorkspaces } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace, loading: workspaceLoading } = useWorkspace();
   const { isPropertyOwner, isAgent, isSuperAdmin, isDeveloper, loading: rolesLoading, fetched: rolesFetched, error: rolesError, refetch: refetchRoles } = useUserRole();
   const { data: publisherProfile } = useQuery({
     queryKey: ['publisher-profile', user?.id, activeWorkspaceId],
-    enabled: Boolean(user?.id && activeWorkspaceId),
+    enabled: Boolean(user?.id && activeWorkspaceId && !workspaceLoading),
     queryFn: async () => {
-      if (!user?.id) return null;
-      const { data, error } = await supabase.from('profiles').select('full_name, phone, broker_license_number').eq('id', user.id).maybeSingle();
+      if (!user?.id || !activeWorkspaceId) return null;
+      const { data, error } = await supabase.from('profiles').select('full_name, phone, email, broker_license_number').eq('id', activeWorkspaceId).maybeSingle();
       if (error) throw error;
-      return data;
+      return { ownerId: activeWorkspaceId, profile: data };
     },
   });
   const ownerRoles = useWorkspaceOwnerRoles();
   const { level4Unlocked } = useAffiliateLicense();
   const isBroker = Boolean(user && activeWorkspace && level4Unlocked && (ownerRoles.some((r) => ['managing_broker', 'lead_agent', 'agent'].includes(r)) || (activeWorkspace.is_self && isAgent)));
-  const publisherName = publisherProfile?.full_name || user?.user_metadata?.full_name || '';
-  const publisherPhone = publisherProfile?.phone || user?.phone || '';
+  const publisherIdentity = workspacePublisherIdentity(activeWorkspaceId, publisherProfile?.ownerId ?? null, publisherProfile?.profile);
+  const publisherName = publisherIdentity.name;
+  const publisherPhone = publisherIdentity.phone;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -179,13 +178,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [askPublishAs, setAskPublishAs] = useState(false);
   const [publishAs, setPublishAs] = useState<'owner' | 'broker' | null>(null);
   void publishAs;
-  const [brokerLicense, setBrokerLicense] = useState('');
-  const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [importSlide, setImportSlide] = useState(false);
   const [whoSlide, setWhoSlide] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
-  const [brokerGate, setBrokerGate] = useState(false);
   const authThenConfirm = useRef(false);
   const pendingAuthPublish = useRef<{ fields: PublicListingDraftFields; files: File[]; videos: File[] } | null>(null);
   // Which sub-option of the minimalist create-ad screen is expanded.
@@ -216,7 +212,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const publicationAudio = useRef<AudioContext | null>(null);
   const openedScope = useRef('');
   const draftScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'visitor';
-  const entryPending = authLoading || Boolean(user && (rolesLoading || !rolesFetched || rolesError));
+  const entryPending = authLoading || Boolean(user && (workspaceLoading || !activeWorkspaceId || !activeWorkspace || rolesLoading || !rolesFetched || rolesError));
   useEffect(() => {
     // Only an explicit open sends developers to project import; a recovered
     // draft just closes silently so the public board stays on screen.
@@ -228,6 +224,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   useEffect(() => {
     if (openedScope.current && openedScope.current !== draftScope && openedScope.current !== 'visitor') {
       setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setPublishError('');
+      setImported(null); setImportUrl(''); setImportOption(null); setStep(0); setReviewMode(false); setImportSlide(false); setWhoSlide(false);
+      setAskPublishAs(false); setPublishAs(null); setOtpOpen(false); setConfirming(false); setMediaOrder([]); setPendingFileDelete(null);
+      setLegalSection(null); setAddressResolved(false); setExpandedStep('step-0'); setResumed(false); setImportStage(''); setPublishStage('');
+      pendingAuthPublish.current = null; authThenConfirm.current = false; initializedPublisher.current = ''; restoredScope.current = ''; lastAutoImport.current = ''; 
     }
     openedScope.current = draftScope;
   }, [draftScope]);
@@ -265,7 +265,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         const started = Boolean(draft.reviewMode || (draft.wizardStep ?? draft.resumeStep ?? 0) > 0 || draft.dealType || draft.city || draft.importedListing);
         setStep(started ? 1 : 0); setReviewMode(started); setImportSlide(false); setImportOption(!started && draft.importUrl ? 'yad2' : null);
         setExpandedStep('');
-        if (draft.importedListing) setImported(draft.importedListing);
+        setImported(draft.importedListing ?? null);
       }
       restoredScope.current = draftScope;
     })();
@@ -283,14 +283,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     return () => window.clearTimeout(timer);
   }, [fields, files, videos, step, expandedStep, importUrl, reviewMode, importSlide, open, draftScope, publishing, importing]);
   useEffect(() => {
-    if (!open || !isBroker || pricingOnly) return;
+    if (!open || !user || workspaceLoading || !publisherProfile || pricingOnly) return;
     const identity = `${user?.id}:${activeWorkspaceId}`;
     const changedWorkspace = Boolean(initializedPublisher.current && initializedPublisher.current !== identity);
     const first = initializedPublisher.current !== identity;
     initializedPublisher.current = identity;
-    setFields(current => ({ ...current, publisherType: 'broker', contactName: changedWorkspace ? publisherName : current.contactName || publisherName, contactWhatsapp: changedWorkspace ? publisherPhone : current.contactWhatsapp || publisherPhone, marketingAccepted: first ? true : current.marketingAccepted }));
+    setFields(current => ({ ...current, publisherType: isBroker ? 'broker' : current.publisherType === 'broker' ? 'private' : current.publisherType, contactName: changedWorkspace ? publisherName : current.contactName || publisherName, contactWhatsapp: changedWorkspace ? publisherPhone : current.contactWhatsapp || publisherPhone, contactEmail: changedWorkspace ? publisherIdentity.email : current.contactEmail || publisherIdentity.email, marketingAccepted: first ? true : current.marketingAccepted }));
     
-  }, [open, isBroker, user?.id, activeWorkspaceId, publisherName, publisherPhone, step, reviewMode]);
+  }, [open, isBroker, user?.id, activeWorkspaceId, publisherName, publisherPhone, publisherIdentity.email, publisherProfile, workspaceLoading, step, reviewMode]);
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
@@ -325,7 +325,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const primaryPhoto = fields.importedListing?.photos?.find((url: unknown) => typeof url === 'string' && url.startsWith('https://')) || previews.find(({ file }) => file.type.startsWith('image/'))?.url;
 
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
-    if (!user?.id || publishing) return;
+    if (!user?.id || publishing || entryPending || !activeWorkspaceId) return;
     if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || !(Number(draftFields.commissionDeal) > 0)) {
       return;
     }
@@ -334,17 +334,17 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     try {
       setPublishStage('השלמת הרשאת מפרסם');
       // The account type follows what the poster picked: מתווך → broker, פרטי → private owner.
-       if (draftFields.publisherType === 'broker') {
+       if (draftFields.publisherType === 'broker' && activeWorkspaceId === user.id) {
         const { data: smsVerified, error: smsError } = await supabase.rpc('publisher_sms_verified');
         if (smsError || smsVerified !== true) throw new Error('יש להשלים אימות SMS לפני פרסום כמתווך');
         const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();
-       } else if (draftFields.publisherType === 'developer' && !isDeveloper) {
+       } else if (draftFields.publisherType === 'developer' && !isDeveloper && activeWorkspaceId === user.id) {
         // Roles are refreshed on the next visit so the open wizard is not redirected mid-publication.
         const { error } = await supabase.rpc('register_as_developer' as any, { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
-       } else if (draftFields.publisherType === 'private' && !isPropertyOwner) {
+       } else if (draftFields.publisherType === 'private' && !isPropertyOwner && activeWorkspaceId === user.id) {
         const { error } = await supabase.rpc('register_as_property_owner', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();
@@ -378,7 +378,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       const title = `${draftFields.propertyType.trim()} · ${draftFields.city.trim()}${draftFields.neighborhood.trim() ? ` · ${draftFields.neighborhood.trim()}` : ''}`;
       setPublishStage('שמירת פרטי הנכס');
       const payload = {
-         user_id: user.id, workspace_owner_id: activeWorkspaceId || user.id, owner_id: user.id,
+         user_id: user.id, workspace_owner_id: activeWorkspaceId, owner_id: user.id,
         slug: slugFor(user.id), property_title: title, description: draftFields.description.trim(), asking_price: toNum(draftFields.price) ?? 0,
         city: draftFields.city.trim(), neighborhood: draftFields.neighborhood.trim() || null, address,
         house_number: draftFields.houseNumber.trim() || null,
@@ -448,7 +448,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       // Rita welcome WhatsApp for first-time posters (once per user, best-effort).
       try {
         const welcomeKey = `rita-welcome-sent:${user.id}`;
-        const phone = (draftFields.contactWhatsapp || user.phone || '').replace(/\D/g, '');
+        const phone = (draftFields.contactWhatsapp || '').replace(/\D/g, '');
         if (phone.length >= 9 && !localStorage.getItem(welcomeKey)) {
           localStorage.setItem(welcomeKey, '1');
           const name = draftFields.contactName.trim() || 'שלום';
@@ -458,13 +458,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
             .then(({ error: waErr }) => { if (waErr) console.warn('welcome whatsapp failed', waErr); });
         }
       } catch { /* never block posting */ }
-      // First-time posters land inside their own signed-in workspace with the
-      // full app shell, instead of staying on the public board.
-      const targetWorkspace = activeWorkspaceId || user.id;
-      try {
-        await refreshWorkspaces();
-        await setActiveWorkspace(targetWorkspace);
-      } catch { /* workspace switch is best-effort; navigation still proceeds */ }
       // Celebrate first; redirect to the public listings board only after the
       // confetti (and its sound) have finished playing.
       window.setTimeout(() => {
@@ -516,14 +509,10 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   };
 
   const pickAndAdvance = async <K extends 'publisherType' | 'dealType' | 'propertyType'>(key: K, value: PublicListingDraftFields[K]) => {
+    if (key === 'publisherType' && value === 'broker' && !isBroker) return;
     const nextFields = { ...fields, [key]: value };
     setFields(nextFields);
     try { await saveDraft(nextFields); } catch { /* best effort */ }
-    if (key === 'publisherType' && value === 'broker') {
-      const { data: ownVerified } = user ? await supabase.rpc('partner_can_view_closing', { _user_id: user.id }) : { data: false };
-      const { data: smsVerified } = user ? await supabase.rpc('publisher_sms_verified') : { data: false };
-      if (ownVerified !== true || smsVerified !== true) { setBrokerGate(true); return; }
-    }
     if (reviewMode) {
       // Single-choice cards close and open the next card after a pick.
       const current = Number(expandedStep.replace('step-', ''));
@@ -537,10 +526,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       if (key === 'publisherType') { setWhoSlide(false); setImportSlide(true); return; }
       if (known) {
         setFields({ ...nextFields, publisherType: known });
-        if (known === 'broker') {
-          const { data: smsVerified } = await supabase.rpc('publisher_sms_verified');
-          if (smsVerified !== true) { setBrokerGate(true); return; }
-        }
         setImportSlide(true); return;
       }
       setWhoSlide(true);
@@ -717,7 +702,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       const houseNumber = m ? m[2] : '';
       const str = (v: unknown) => (v == null || v === '' ? '' : String(v));
       const base: PublicListingDraftFields = { ...EMPTY_PUBLIC_LISTING_DRAFT, publisherType: fields.publisherType, contactName: fields.contactName, contactWhatsapp: fields.contactWhatsapp, contactEmail: fields.contactEmail };
-      const next: PublicListingDraftFields = { ...base, importedListing: { ...src, source_url: sourceUrl }, city: src.city || base.city, address: addr || base.address, street: street || base.street, houseNumber: houseNumber || base.houseNumber, neighborhood: src.neighborhood || base.neighborhood, price: str(src.price) || base.price, propertyType: types[src.property_type] || src.property_type || base.propertyType || '', dealType: src.listing_type === 'rent' ? 'rent' : 'sale', rooms: str(src.rooms) || base.rooms, sqm: str(src.sqm) || base.sqm, floor: str(src.floor) || base.floor, totalFloors: str(src.total_floors) || base.totalFloors, description: src.description || base.description, elevator: Boolean(src.elevator), parking: Number(src.parking) > 0, contactWhatsapp: str(src.owner_phone) || base.contactWhatsapp, contactName: str(src.owner_name) || base.contactName || user.user_metadata?.full_name || '' };
+      const next: PublicListingDraftFields = { ...base, importedListing: { ...src, source_url: sourceUrl }, city: src.city || base.city, address: addr || base.address, street: street || base.street, houseNumber: houseNumber || base.houseNumber, neighborhood: src.neighborhood || base.neighborhood, price: str(src.price) || base.price, propertyType: types[src.property_type] || src.property_type || base.propertyType || '', dealType: src.listing_type === 'rent' ? 'rent' : 'sale', rooms: str(src.rooms) || base.rooms, sqm: str(src.sqm) || base.sqm, floor: str(src.floor) || base.floor, totalFloors: str(src.total_floors) || base.totalFloors, description: src.description || base.description, elevator: Boolean(src.elevator), parking: Number(src.parking) > 0, contactWhatsapp: str(src.owner_phone) || base.contactWhatsapp, contactName: str(src.owner_name) || base.contactName || publisherName };
       if (isBroker) { next.publisherType = 'broker'; next.contactName = fields.contactName || publisherName; next.contactWhatsapp = fields.contactWhatsapp || publisherPhone; }
       setFields(next); setFiles([]); setVideos([]);
       setStep(0);
@@ -782,7 +767,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                 <p className="text-center text-[19px] font-semibold text-muted-foreground">מי מפרסם?</p>
                 <div className="grid grid-cols-3 gap-2">
                   <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>בעל הנכס</Button>
-                  <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>
+                  {isBroker && <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>}
                   <Button type="button" className="h-auto px-2 py-4 text-base font-bold" variant={fields.publisherType === 'developer' ? 'default' : 'outline'} onClick={() => void pickAndAdvance('publisherType', 'developer')}>יזם</Button>
                 </div>
               </div>
@@ -919,8 +904,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
           {step === 7 && (
             <div className="space-y-3">
-              {fields.publisherType === 'broker' && (isBroker ? (publisherProfile?.broker_license_number ? <Input aria-label="מספר רישיון תיווך" id="publisher-license" value={publisherProfile.broker_license_number} readOnly disabled dir="ltr" className="text-right" /> : null) : <BrokerLicenseField bare value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />)}
-               <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" readOnly={fields.publisherType === 'broker' && isBroker} value={fields.publisherType === 'broker' && isBroker ? publisherName : fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
+               <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" readOnly={fields.publisherType === 'broker' && isBroker} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
                 <div><Input aria-label="מספר ווטסאפ *" placeholder="* מספר ווטסאפ" id="publisher-whatsapp" inputMode="tel" dir="ltr" className="text-right placeholder:[direction:rtl]" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
                 <div><Input aria-label="אימייל" placeholder="אימייל" id="publisher-email" type="email" dir="ltr" className="text-right placeholder:text-right placeholder:[direction:rtl]" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
             </div>
@@ -1012,11 +996,6 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   return (
     <>
-    <Dialog open={brokerGate && !user} onOpenChange={setBrokerGate}><DialogContent dir="rtl" className="sm:max-w-sm"><DialogHeader><DialogTitle>אימות רישיון תיווך</DialogTitle></DialogHeader><BrokerLicenseField bare value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /><WhatsAppOtpVerify smsOnly title="אימות ב-SMS" description="יש לאמת את הטלפון ולהשלים את בדיקת הרישיון לפני פרסום כמתווך." onVerified={async result => {
-      const { error } = result.token_hash ? await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' }) : { error: new Error('missing session') };
-      if (error) toast.error('הכניסה נכשלה. נסו שוב.');
-    }} /></DialogContent></Dialog>
-    {brokerGate && user && <UpgradeToBrokerButton key={user.id} publisher onApproved={() => { void (async () => { const { error } = await supabase.rpc('register_as_broker'); if (error) { toast.error('יש להשלים את בדיקת זהות המתווך'); return; } await queryClient.invalidateQueries({ queryKey: ['publisher-profile'] }); setBrokerGate(false); setWhoSlide(false); setImportSlide(true); void refetchRoles(); })(); }} />}
     {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => { if (user && isAffiliateOnly) { setPublishAs(null); setAskPublishAs(true); } else setOpen(true); }} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
     <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { pendingAuthPublish.current = null; authThenConfirm.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
@@ -1032,8 +1011,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       <DialogContent dir="rtl" className="sm:max-w-sm">
         <DialogHeader><DialogTitle className="text-right">בתור מי אתה מפרסם את הנכס?</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-2 pt-2">
-          {([['owner', 'בעל הנכס'], ['broker', 'מתווך']] as const).map(([value, text]) => (
-            <Button key={value} type="button" variant="outline" className="h-14 text-base font-bold" onClick={() => { setPublishAs(value); setAskPublishAs(false); setOpen(true); if (value === 'broker') void pickAndAdvance('publisherType', 'broker'); }}>{text}</Button>
+          {([['owner', 'בעל הנכס']] as const).map(([value, text]) => (
+            <Button key={value} type="button" variant="outline" className="h-14 text-base font-bold" onClick={() => { setPublishAs(value); setAskPublishAs(false); setOpen(true); setFields(current => ({ ...current, publisherType: 'private' })); }}>{text}</Button>
           ))}
         </div>
       </DialogContent>
