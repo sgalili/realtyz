@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 const ERR: Record<string, string> = { wrong_code: 'קוד שגוי', code_expired: 'הקוד פג תוקף, שלחו קוד חדש', send_failed: 'לא הצלחנו לשלוח קוד לוואטסאפ או לאימייל שלכם. נסו שוב מאוחר יותר.', rate_limited: 'המתינו דקה לפני שליחת קוד נוסף', super_admin_cannot_self_delete: 'לא ניתן למחוק חשבון מנהל על' };
 
 /** Icon-only permanent account deletion with WhatsApp + email code confirmation. */
-export function DeleteAccountButton() {
+export function DeleteAccountButton({ showLabel = false }: { showLabel?: boolean }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState('');
@@ -36,8 +36,9 @@ export function DeleteAccountButton() {
     catch (e) { toast.error((e as Error).message); setBusy(false); }
   };
   return <>
-    <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10" aria-label="מחיקת החשבון" title="מחיקת החשבון" onClick={() => { setOpen(true); setSent(false); setCode(''); setAcknowledged(false); setChannels([]); }}>
+    <Button type="button" variant="outline" size={showLabel ? 'lg' : 'icon'} className={`${showLabel ? 'w-full gap-2 text-base' : 'h-11 w-11 shrink-0'} border-destructive/30 text-destructive hover:bg-destructive/10`} aria-label={showLabel ? 'מחיקת חשבון' : 'מחיקת החשבון'} title="מחיקת החשבון" onClick={() => { setOpen(true); setSent(false); setCode(''); setAcknowledged(false); setChannels([]); }}>
       <Trash2 className="h-4 w-4" />
+      {showLabel && 'מחיקת חשבון'}
     </Button>
     <Dialog open={open} onOpenChange={(o) => { if (!busy) setOpen(o); }}>
       <DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-sm text-right">
