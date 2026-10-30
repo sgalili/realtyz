@@ -3,6 +3,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Link emphasis uses color/weight, never underlines, including hover states. */
+a, a *, [role="link"], button[class*="underline"], button[class*="underline"] * {
+  text-decoration-line: none !important;
+}
+.consent-link, .consent-link:hover, .consent-link:focus-visible {
+  color: hsl(var(--brand-navy)) !important;
+  text-decoration-line: none !important;
+}
+
 /* Field focus stays neutral even when a local utility requests a brand ring. */
 :root { --field-focus-border: 0 0% 68%; --field-focus-cue: 0 0% 42%; }
 .dark { --field-focus-border: 0 0% 45%; --field-focus-cue: 0 0% 72%; }

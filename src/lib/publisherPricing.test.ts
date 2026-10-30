@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { publisherClosingDefault, showPublisherRewards } from './publisherPricing';
+import { publisherClosingDefault, publisherClosingPercent, showPublisherRewards } from './publisherPricing';
 
 describe('publisher pricing', () => {
   it('hides rewards for empty prices and prices with four or fewer digits', () => {
@@ -12,7 +12,12 @@ describe('publisher pricing', () => {
   it('defaults a new sale closing fee to 1 percent', () => {
     expect(publisherClosingDefault('sale')).toBe(1);
   });
-  it('retains the rental minimum of 10 percent', () => {
-    expect(publisherClosingDefault('rent')).toBe(10);
+  it('defaults rent to 50 percent of the monthly price', () => {
+    expect(publisherClosingDefault('rent')).toBe(50);
+    expect(12000 * publisherClosingDefault('rent') / 100).toBe(6000);
+  });
+  it('derives the displayed percentage from a fixed closing amount', () => {
+    expect(publisherClosingPercent(6000, 'fixed', 12000)).toBe(50);
+    expect(publisherClosingPercent(1, 'percent', 2000000)).toBe(1);
   });
 });
