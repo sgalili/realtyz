@@ -94,7 +94,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
         <span role="status" className="text-sm text-muted-foreground">{pending ? 'בבדיקה' : account.rejected ? 'הרישיון נדחה — ניתן להגיש מחדש' : 'הרישיון הוזן — השדרוג טרם אושר'}</span>
       </div>}
     <Button type="button" size="lg" className="w-full gap-2 text-base" onClick={() => setOpen(true)}>
-      <BadgeCheck className="h-5 w-5" aria-hidden />שדרג למתווך מורשה
+      <BadgeCheck className="h-5 w-5" aria-hidden />בעלי רישיון תיווך מרוויחים יותר!
     </Button>
     </section>}
     <Dialog open={open} onOpenChange={(o) => { if (busy) return; setOpen(o); if (!o && result) void queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] }); }}>

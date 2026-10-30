@@ -28,7 +28,7 @@ afterEach(cleanup);
 it('allows an unverified account without a license to open verification', async () => {
   mount();
   await waitFor(() => expect(state.reads.length).toBe(4));
-  fireEvent.click(screen.getByRole('button', { name: 'שדרג למתווך מורשה' }));
+  fireEvent.click(screen.getByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' }));
   expect(screen.queryByRole('textbox', { name: 'מספר רישיון חדש' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'יש לי רישיון' }));
   expect(screen.getByRole('textbox', { name: 'מספר רישיון חדש' })).toBeInTheDocument();
@@ -39,25 +39,25 @@ it('allows an unverified account without a license to open verification', async 
 it('does not treat an entered license as verified status', async () => {
   state.license = '12345'; mount();
   await screen.findByText('12345');
-  expect(screen.getByRole('button', { name: 'שדרג למתווך מורשה' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' })).toBeEnabled();
 });
 it('keeps pending requests accessible without permitting duplicate submission', async () => {
   state.pending = true; state.license = '54321'; mount();
   await screen.findByText('54321');
-  fireEvent.click(screen.getByRole('button', { name: 'שדרג למתווך מורשה' }));
+  fireEvent.click(screen.getByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' }));
   expect(screen.queryByRole('textbox', { name: 'מספר רישיון חדש' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'שליחת הבקשה לאישור' })).toBeNull();
   expect(state.submissions).toBe(0);
 });
 it('hides upgrade only after active verification is confirmed by the server', async () => {
   state.verified = true; mount();
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'שדרג למתווך מורשה' })).toBeNull());
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' })).toBeNull());
 });
 it('checks the displayed workspace owner without offering submission as another person', async () => {
   mount('partner-only-owner');
   await waitFor(() => expect(state.reads.length).toBe(2));
   expect(state.reads).toEqual(['partner-only-owner', 'partner-only-owner']);
-  fireEvent.click(screen.getByRole('button', { name: 'שדרג למתווך מורשה' }));
+  fireEvent.click(screen.getByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' }));
   expect(screen.queryByRole('textbox', { name: 'מספר רישיון חדש' })).toBeNull();
   expect(state.submissions).toBe(0);
 });
