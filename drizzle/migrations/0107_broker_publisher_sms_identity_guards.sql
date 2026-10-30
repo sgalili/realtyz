@@ -1,0 +1,13 @@
+CREATE TABLE public.broker_sms_verifications (user_id uuid PRIMARY KEY, phone_number text NOT NULL, verified_at timestamptz NOT NULL DEFAULT now());
+GRANT ALL ON public.broker_sms_verifications TO service_role;
+ALTER TABLE public.broker_sms_verifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.whatsapp_login_otps ADD COLUMN delivery_channel text NOT NULL DEFAULT 'whatsapp';
+ALTER TABLE public.profiles ADD COLUMN locked_broker_name text;
+ALTER TABLE public.broker_license_verifications ADD COLUMN account_name_before_verification text;
+CREATE OR REPLACE FUNCTION public.publisher_sms_verified() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT EXISTS (SELECT 1 FROM public.broker_sms_verifications v JOIN auth.users u ON u.id=v.user_id WHERE v.user_id=auth.uid() AND v.phone_number=regexp_replace(u.phone,'[^0-9]','','g') AND u.phone_confirmed_at IS NOT NULL); $$;
+REVOKE ALL ON FUNCTION public.publisher_sms_verified() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.publisher_sms_verified() TO authenticated, service_role;
+CREATE OR REPLACE FUNCTION public.protect_locked_broker_name() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ BEGIN IF TG_OP='UPDATE' AND OLD.locked_broker_name IS NOT NULL THEN NEW.locked_broker_name:=OLD.locked_broker_name; NEW.full_name:=OLD.locked_broker_name; ELSIF NEW.locked_broker_name IS NOT NULL THEN IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'server_identity_required'; END IF; NEW.full_name:=NEW.locked_broker_name; END IF; RETURN NEW; END; $$;
+CREATE TRIGGER zz_protect_locked_broker_name BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.protect_locked_broker_name();
+CREATE OR REPLACE FUNCTION public.require_broker_publisher_verification() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE uid uuid:=auth.uid(); BEGIN IF auth.role()='service_role' THEN RETURN NEW; END IF; IF NEW.is_published AND NEW.features->>'publisher_type'='broker' AND (TG_OP='INSERT' OR NOT OLD.is_published OR NEW.features->>'publisher_type' IS DISTINCT FROM OLD.features->>'publisher_type') THEN IF uid IS NULL OR NOT public.publisher_sms_verified() THEN RAISE EXCEPTION 'broker_sms_verification_required'; END IF; IF NOT public.partner_can_view_closing(uid) OR NOT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id=uid AND role IN ('agent','lead_agent','managing_broker')) THEN RAISE EXCEPTION 'verified_broker_required'; END IF; END IF; RETURN NEW; END; $$;
+CREATE TRIGGER require_broker_publisher_verification BEFORE INSERT OR UPDATE ON public.listings FOR EACH ROW EXECUTE FUNCTION public.require_broker_publisher_verification();
