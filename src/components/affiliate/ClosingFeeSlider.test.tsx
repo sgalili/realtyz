@@ -3,6 +3,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 afterEach(cleanup);
 describe('closing fee interaction', () => {
+  it('publisher sale slider has a true 0.2% minimum and 2% maximum without zero', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider publisherCard dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
+    const slider = screen.getByRole('slider');
+    expect(slider.getAttribute('aria-valuemin')).toBe('0.2');
+    expect(slider.getAttribute('aria-valuemax')).toBe('2');
+    expect(slider.getAttribute('aria-valuenow')).toBe('1');
+    fireEvent.keyDown(slider, { key: 'Home' });
+    expect(change).toHaveBeenCalledWith(0.2, 'percent');
+  });
+  it('publisher percentage typing saves the percentage instead of treating it as ILS', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider publisherCard dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
+    fireEvent.click(screen.getByRole('button', { name: 'עריכת אחוז עמלת סגירה' }));
+    const input = screen.getByRole('textbox', { name: 'עריכת אחוז עמלת סגירה' });
+    fireEvent.change(input, { target: { value: '1.5' } });
+    fireEvent.blur(input);
+    expect(change).toHaveBeenCalledWith(1.5, 'percent');
+  });
   it.each([['sale', 2000000, 0.2, 'percent'], ['rent', 10000, 1000, 'fixed']] as const)('%s closing slider jumps from zero to its configured minimum', (dealType, price, minimum, mode) => {
     const change = vi.fn();
     render(<ClosingFeeSlider publisherCard zeroMin dualMode dealType={dealType} price={price} value={0} onChange={vi.fn()} onValueChange={change} />);
