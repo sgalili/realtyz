@@ -22,7 +22,7 @@ describe('closing fee interaction', () => {
     render(<ClosingFeeSlider unrestricted dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
     fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }));
     const input = screen.getByRole('textbox', { name: 'עריכת עמלת סגירה' });
-    fireEvent.change(input, { target: { value: '5' } });
+    fireEvent.change(input, { target: { value: '100000' } });
     fireEvent.blur(input);
     expect(change).toHaveBeenCalledWith(5, 'percent');
   });
@@ -48,7 +48,7 @@ describe('closing fee interaction', () => {
     render(<ClosingFeeSlider dualMode dealType="sale" price={2000000} value={20000} valueType="fixed" onChange={vi.fn()} onValueChange={change} />);
     fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }));
     const input = screen.getByRole('textbox', { name: 'עריכת עמלת סגירה' });
-    fireEvent.change(input, { target: { value: '5' } });
+    fireEvent.change(input, { target: { value: '100000' } });
     fireEvent.blur(input);
     expect(change).toHaveBeenCalledWith(2, 'percent');
     expect(screen.getByRole('slider').getAttribute('aria-valuemin')).toBe('0.2');
@@ -68,7 +68,7 @@ describe('closing fee interaction', () => {
     render(<ClosingFeeSlider dealType="sale" price={2000000} value={0.2} onChange={change} />);
     fireEvent.click(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }));
     const input = screen.getByRole('textbox', { name: 'עריכת עמלת סגירה' });
-    fireEvent.change(input, { target: { value: '3' } });
+    fireEvent.change(input, { target: { value: '60000' } });
     fireEvent.blur(input);
     expect(change).toHaveBeenCalledWith(2);
   });
@@ -91,7 +91,7 @@ describe('closing fee interaction', () => {
     const slider = screen.getByRole('slider');
     expect(slider.getAttribute('aria-valuemin')).toBe('0');
     expect(slider.getAttribute('aria-valuenow')).toBe('0');
-    expect(screen.getAllByText('0%').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('₪0').length).toBeGreaterThan(0);
   });
 
 });

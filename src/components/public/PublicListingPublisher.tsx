@@ -64,7 +64,6 @@ import {
 import { setPendingSignupRole } from '@/lib/signupRole';
 import { WhatsAppOtpVerify } from '@/components/auth/WhatsAppOtpVerify';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
-import { verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
 import AddressAutocomplete from '@/components/public/listing-wizard/AddressAutocomplete';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -174,7 +173,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   // Super Admin editing another user's ad opens read-only; the pencil unlocks editing.
   const [adminUnlocked, setAdminUnlocked] = useState(!adminOnlyEdit);
   const [legalSection, setLegalSection] = useState<'terms' | 'brokerage' | null>(null);
-  const { data: readyProperties, isLoading: readyPropertiesLoading, isError: readyPropertiesError } = useReadyBoardProperties(open && isBroker);
+  const { data: readyProperties } = useReadyBoardProperties(open && isBroker);
   // Pure partners must state who they publish as; other identities are never asked.
   const { isAffiliateOnly } = useUserRole();
   const [askPublishAs, setAskPublishAs] = useState(false);

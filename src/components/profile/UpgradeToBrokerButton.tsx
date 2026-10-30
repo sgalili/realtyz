@@ -76,6 +76,14 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
       toast.error(e instanceof Error ? e.message : 'השדרוג לא הושלם.');
     } finally { setBusy(false); }
   };
+  const continueVerified = async () => {
+    if (sms.data !== true || busy) return;
+    setBusy(true);
+    const { error } = await supabase.rpc('register_as_broker');
+    setBusy(false);
+    if (error) { toast.error('לא ניתן להשלים את אימות המתווך כרגע.'); return; }
+    onApproved?.();
+  };
 
   if (account?.verified && !publisher) return null;
   return <>
@@ -105,7 +113,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
           <Button asChild variant="outline" className="flex-1"><a href={BROKER_COURSE_URL} target="_blank" rel="noopener noreferrer">לקורס</a></Button>
           <Button asChild variant="outline" className="flex-1"><a href={BROKER_EXAM_REGISTRATION_URL} target="_blank" rel="noopener noreferrer">להרשמה למבחן הלאומי</a></Button>
         </div>}
-        {!isOwnProfile ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
+        {publisher && account?.verified ? <div className="space-y-3"><p>הרישיון מאומת. נדרש אימות SMS של החשבון לפני הפרסום.</p>{sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" onVerified={() => { void sms.refetch(); }} />}<Button disabled={sms.data !== true || busy} onClick={() => void continueVerified()}>המשך לפרסום</Button></div> : !isOwnProfile ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
           <p>מספר רישיון תיווך: <b dir="ltr">{account?.license}</b></p>
           <p>הבקשה בבדיקה. נעדכן אותך בהמשך.</p>
         </div> : <div className="space-y-2 border-t border-border pt-3">
