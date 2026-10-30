@@ -232,8 +232,8 @@ export default function LeadTypeFilterButton({
               return (
                 <div key={key}>
                 <Button type="button" variant="ghost" aria-label={FILTER_LEAD_LABELS[key]} aria-expanded={expandedType === key} onClick={() => setExpandedType(expandedType === key ? null : key)} className="h-auto w-full items-start justify-start gap-2 whitespace-normal px-0 py-1 text-right text-[15px] font-medium">
-                  <Icon className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
-                  <span className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-right text-[15px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
+                  <Icon key="icon" className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
+                  <span key="title" className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-right text-[15px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
                 </Button>
                 {expandedType === key && <div className="py-2 animate-in fade-in-0 motion-reduce:animate-none"><LeadPriceSlider hidePotential range={range} tier={tier} label={FILTER_LEAD_LABELS[key]} value={String(amount)} onChange={value => onChange(setLeadFilterMinimum(state, key, Number(value)))} /></div>}
                 </div>
