@@ -11,3 +11,4 @@
 - Permanent campaign deletion uses a workspace-authorized transaction for posts and queued jobs; native import excludes deletion markers to prevent deleted cards returning.
 - Post card actions use one shared top-left menu; published edits open the native post, reposts reuse the explicit workspace-scoped composer, and refreshes reuse the targeted comments/metrics pipeline. Why: avoid accidental duplicate publishing and bulk provider calls.
 - The Facebook Page chooser renders only after the cloud session vault proves an active workspace session (useCloudSessionState); until then the cloud connect gate owns the step. Why: never offer a page pick with no live cloud connection.
+- Header back controls share the title row itself, never the taller column that also holds the chooser below, so the control stays vertically centered on the title and service icon and never drops under them. Why: the chooser growing must not shift the header control.
