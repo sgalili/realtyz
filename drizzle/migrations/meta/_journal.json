@@ -764,6 +764,13 @@
       "when": 1793335569187,
       "tag": "0108_broker_registration_preserve_identity_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1793338594803,
+      "tag": "0109_scope_rita_history_workspace",
+      "breakpoints": true
     }
   ]
 }

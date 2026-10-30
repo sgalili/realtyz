@@ -1,5 +1,9 @@
 # Roadmap
 
+## Rita active-owner isolation October 30
+- [x] Bind greeting and assistant name/role/gender to the authorized owner; caller authorization remains separate. Scoped history excludes unknown legacy transcripts; ai-agent deployed.
+- [x] Remount all Rita surfaces on handoff and reject late events/responses; signed-in Shafi greeting, partner suggestions and live reply confirmed her exact name and affiliate role, without runtime errors. Real workspace switching was not exercised; regression tests cover handoffs.
+
 ## Office details and sticky tabs October 30
 - [x] Fixed-height opaque sticky profile tabs, verified at 411px and 1280px.
 - [x] Exclusive nationwide city selection; square-logo-only layout with inline name save and automatic logo/service-area saves; no outer card or global office save.

@@ -1,14 +1,13 @@
 import { Table } from '@/components/ui/table';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { usePersonalLanguage } from '@/i18n/personalLanguage';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRitaWorkspaceIdentity } from '@/hooks/useRitaWorkspaceIdentity';
 import { invalidateLiveData } from '@/lib/liveSync';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserRole } from '@/hooks/useUserRole';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useAppMode } from '@/hooks/useAppMode';
 import { RITA_PROMPTS, ritaWorkflow } from '@/lib/ritaPrompts';
@@ -219,20 +218,26 @@ function useVoiceInput(onResult: (text: string) => void) {
 }
 
 export default function AiAgentDrawer() {
+  const identity = useRitaWorkspaceIdentity();
+  return <ScopedAiAgentDrawer key={identity.scope} identity={identity} />;
+}
+
+function ScopedAiAgentDrawer({ identity }: { identity: ReturnType<typeof useRitaWorkspaceIdentity> }) {
   const access = usePropertyPageAccess();
   const { connected: homelyConnected } = useHomelyConnection();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { gender } = usePersonalLanguage();
-  const personalProfile = useQuery({ queryKey: ['app-header-user-profile', user?.id], enabled: !!user,
-    queryFn: async () => { if (!user) return null; const { data, error } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(); if (error) throw error; return data; },
-  });
-  const firstName = personalProfile.data?.full_name?.trim().split(/\s+/)[0] ?? '';
+  const { scope, ownerId, firstName, gender, roles, ready, error: rolesError } = identity;
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { roles, loading: rolesLoading, error: rolesError } = useUserRole();
+  const rolesLoading = !ready;
   const { isPartnerMode } = useAppMode();
   const workflow = ritaWorkflow(roles, isPartnerMode);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -264,6 +269,7 @@ export default function AiAgentDrawer() {
       }
       const reader = new FileReader();
       reader.onload = () => {
+        if (!mounted.current) return;
         const dataUrl = String(reader.result || '');
         if (!dataUrl) return;
         setPendingAttachments((prev) => [
@@ -276,15 +282,18 @@ export default function AiAgentDrawer() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  // Load full chat history for this user (permanent — never forgets).
+  // Only known-provenance turns from this account AND authorized workspace.
   useEffect(() => {
-    if (!user?.id || historyLoaded) return;
+    if (!user?.id || !ownerId || !ready || historyLoaded) return;
+    let cancelled = false;
     (async () => {
       const { data, error } = await supabase
         .from('ai_drawer_history')
         .select('role, content, payload, created_at')
         .eq('user_id', user.id)
+        .eq('workspace_owner_id', ownerId)
         .order('created_at', { ascending: true });
+      if (cancelled || !mounted.current) return;
       if (!error && data) {
         setMessages(data.map((r: any) => ({
           role: r.role,
@@ -294,19 +303,21 @@ export default function AiAgentDrawer() {
       }
       setHistoryLoaded(true);
     })();
-  }, [user?.id, historyLoaded]);
+    return () => { cancelled = true; };
+  }, [user?.id, ownerId, ready, historyLoaded]);
 
 
   const persistMessage = useCallback(async (m: Message) => {
-    if (!user?.id) return;
+    if (!user?.id || !ownerId || !mounted.current) return;
     const { role, content, ...rest } = m;
     await supabase.from('ai_drawer_history').insert([{
       user_id: user.id,
+      workspace_owner_id: ownerId,
       role,
       content,
       payload: rest as any,
     }]);
-  }, [user?.id]);
+  }, [user?.id, ownerId]);
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput(prev => (prev ? prev + ' ' + text : text));
@@ -323,8 +334,9 @@ export default function AiAgentDrawer() {
   }, [open, historyLoaded, isLoading]);
 
   const resetChat = useCallback(async () => {
-    if (!user?.id) return;
-    const { error } = await supabase.from('ai_drawer_history').delete().eq('user_id', user.id);
+    if (!user?.id || !ownerId) return;
+    const { error } = await supabase.from('ai_drawer_history').delete().eq('user_id', user.id).eq('workspace_owner_id', ownerId);
+    if (!mounted.current) return;
     if (error) {
       toast.error('איפוס הצ׳אט נכשל');
       return;
@@ -334,7 +346,7 @@ export default function AiAgentDrawer() {
     setPendingAttachments([]);
     toast.success('הצ׳אט אופס');
     window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
-  }, [user?.id]);
+  }, [user?.id, ownerId]);
 
   const focusComposer = useCallback(() => {
     window.requestAnimationFrame(() => document.getElementById('rita-chat-input')?.focus());
@@ -460,7 +472,7 @@ ${shareUrl}
 
   const sendMessage = async (text: string) => {
     const hasFiles = pendingAttachments.length > 0;
-    if ((!text.trim() && !hasFiles) || isLoading) return;
+    if ((!text.trim() && !hasFiles) || isLoading || !ready || !historyLoaded) return;
 
     const sentAttachments = pendingAttachments;
     const userMsg: Message = {
@@ -482,6 +494,7 @@ ${shareUrl}
       );
       let importNote = '';
       for (const f of jsonFiles) {
+        if (!mounted.current) return;
         try {
           const { data: imp, error: impErr } = await supabase.functions.invoke('crm-json-import', {
             body: { data_url: f.data_url },
@@ -498,6 +511,7 @@ ${shareUrl}
         }
       }
 
+      if (!mounted.current) return;
       const chatMessages = [...messages, userMsg].map(m => ({
         role: m.role,
         content: m.content,
@@ -515,6 +529,7 @@ ${shareUrl}
       const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: {
           messages: chatMessages,
+          expected_workspace_owner_id: ownerId,
           ui_mode: isPartnerMode ? 'partner' : 'core',
           attachments: sentAttachments
             .filter((a) => !jsonFiles.includes(a))
@@ -524,6 +539,7 @@ ${shareUrl}
       });
 
 
+      if (!mounted.current) return;
       if (error) {
         throw new Error(error.message || 'שגיאה בקריאה ל-AI');
       }
@@ -565,6 +581,7 @@ ${shareUrl}
       setMessages(prev => [...prev, assistantMsg]);
       persistMessage(assistantMsg);
     } catch (e) {
+      if (!mounted.current) return;
       console.error('AI Agent error:', e);
       const errMsg: Message = {
         role: 'assistant',
@@ -574,8 +591,10 @@ ${shareUrl}
       setMessages(prev => [...prev, errMsg]);
       persistMessage(errMsg);
     } finally {
-      setIsLoading(false);
-      focusComposer();
+      if (mounted.current) {
+        setIsLoading(false);
+        focusComposer();
+      }
     }
   };
 
@@ -585,27 +604,32 @@ ${shareUrl}
   sendRef.current = (text: string) => { void sendMessage(text); };
   useEffect(() => {
     const onSend = (event: Event) => {
-      const text = String((event as CustomEvent<{ text?: string }>).detail?.text ?? '').trim();
+      const detail = (event as CustomEvent<{ text?: string; scope?: string }>).detail;
+      if (!scope || detail?.scope !== scope) return;
+      const text = String(detail?.text ?? '').trim();
       if (text) sendRef.current(text);
     };
     window.addEventListener('rita:send', onSend);
     return () => window.removeEventListener('rita:send', onSend);
-  }, []);
+  }, [scope]);
   useEffect(() => {
     const publish = () => window.dispatchEvent(new CustomEvent('rita:state', { detail: {
+      scope,
       loading: isLoading,
       messages: messages.slice(-6).map((m) => ({ role: m.role, content: String(m.content ?? '') })),
     } }));
     publish();
     window.addEventListener('rita:state-request', publish);
     return () => window.removeEventListener('rita:state-request', publish);
-  }, [messages, isLoading]);
+  }, [messages, isLoading, scope]);
   // Sidebar mini chat "clear" button resets this same conversation.
   useEffect(() => {
-    const onClear = () => { void resetChat(); };
+    const onClear = (event: Event) => {
+      if (scope && (event as CustomEvent<{ scope?: string }>).detail?.scope === scope) void resetChat();
+    };
     window.addEventListener('rita:clear', onClear);
     return () => window.removeEventListener('rita:clear', onClear);
-  }, [resetChat]);
+  }, [resetChat, scope]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
