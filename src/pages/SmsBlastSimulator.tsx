@@ -1,4 +1,7 @@
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
+import { CampaignMessagePropertyPicker } from '@/components/campaigns/CampaignMessagePropertyPicker';
+import { campaignMessagePropertyLabel, sameCampaignMessageContext, type CampaignMessageProperty } from '@/lib/campaignMessageProperty';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { campaignServicePrice, campaignServiceEstimate, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { useCreditWallet } from '@/hooks/useSubscription';
@@ -149,12 +152,7 @@ function generateFakeLog(total: number, channels: ChannelId[]): SimLogEntry[] {
   }));
 }
 
-function personalize(message: string) {
-  return (message || 'שלום [שם_פרטי], רצינו לעדכן אותך על נכס חדש ב[עיר] שעשוי להתאים לך - [נכס].')
-    .replace(/\[שם_פרטי\]/g, 'דניאל')
-    .replace(/\[עיר\]/g, 'תל אביב')
-    .replace(/\[נכס\]/g, 'דירת 4 חדרים, רוטשילד');
-}
+function personalize(message: string) { return message; }
 
 export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onIvrOpen?: () => void; dedicatedChannel?: 'sms' | 'whatsapp' | 'email' } = {}) {
   const { user } = useAuth();
@@ -380,7 +378,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const [blastName, setBlastName] = useState('');
   // Bulk WhatsApp is business-initiated → Meta requires an approved template.
   const [waTemplate, setWaTemplate] = useState<WaTemplateSelection | null>(null);
-  const [messageBody, setMessageBody] = useState('שלום [שם_פרטי], יש לנו נכס חדש ב[עיר] שיכול להתאים לך: [נכס]. נשמח לספר עוד.');
+  const [messageBody, setMessageBody] = useState('');
   const [waTemplateBody, setWaTemplateBody] = useState('');
   // Per-channel message overrides — when set, overrides the master messageBody for that channel
   const [channelMessages, setChannelMessages] = useState<Partial<Record<ChannelId, string>>>({});
@@ -388,6 +386,38 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const setChannelText = useCallback((channel: ChannelId, value: string) => {
     setChannelMessages((prev) => ({ ...prev, [channel]: value }));
   }, []);
+  const workspaceId = useActiveWorkspaceOwnerId();
+  const [messageProperty, setMessageProperty] = useState<CampaignMessageProperty | null>(null);
+  const [generatingMessage, setGeneratingMessage] = useState(false);
+  const messageContext = useRef({ propertyId: null as string | null, workspaceId });
+  messageContext.current = { propertyId: messageProperty?.id ?? null, workspaceId };
+  const generationVersion = useRef(0);
+  const selectMessageProperty = useCallback((property: CampaignMessageProperty | null) => {
+    generationVersion.current++;
+    setGeneratingMessage(false); setMessageProperty(property); setMessageBody(''); setChannelMessages({});
+  }, []);
+  const generatePropertyMessage = async () => {
+    if (!messageProperty || generatingMessage || dedicatedChannel === 'whatsapp') return;
+    const context = { ...messageContext.current };
+    const version = ++generationVersion.current;
+    setGeneratingMessage(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-content', { body: {
+        topic: `הודעה על הנכס ${campaignMessagePropertyLabel(messageProperty)}`,
+        platform: dedicatedChannel ?? 'sms', selectedListingId: messageProperty.id, listingFocusOnly: true,
+        customInstructions: dedicatedChannel === 'sms' ? 'כתוב מסרון קצר בלבד, בלי כותרות, בלי דוגמאות מומצאות ובלי אימוג׳ים. השתמש רק בעובדות הנכס שנבחר.' : 'כתוב הודעת מייל עניינית על הנכס שנבחר בלבד, ללא עובדות או שמות נמענים מומצאים.',
+      } });
+      if (version !== generationVersion.current || !sameCampaignMessageContext(context, messageContext.current)) return;
+      if (error || data?.listing_unavailable) throw new Error('הנכס אינו זמין או שיצירת ההודעה נכשלה');
+      const text = String(data?.content ?? data?.text ?? '').trim();
+      if (!text) throw new Error('לא התקבלה הודעה');
+      setMessageBody(text.slice(0, 1000)); setChannelMessages({});
+    } catch {
+      if (version === generationVersion.current) toast.error('יצירת ההודעה נכשלה. נסו שוב.');
+    } finally {
+      if (version === generationVersion.current) setGeneratingMessage(false);
+    }
+  };
   // Message attachments (any file: image / video / pdf / xlsx / docx / audio etc.)
   type Attachment = { id: string; file: File; previewUrl?: string };
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -1476,6 +1506,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         <SelectItem value="paste"><span className="inline-flex items-center gap-2"><FileText className="h-3.5 w-3.5" />הדבקת מספרים</span></SelectItem>
                       </SelectContent>
                     </Select>
+                    <CampaignMessagePropertyPicker value={messageProperty} onChange={selectMessageProperty} />
+                    {messageProperty && dedicatedChannel !== 'whatsapp' && <Button type="button" variant="outline" className="mt-3 w-full gap-2" disabled={generatingMessage} onClick={() => void generatePropertyMessage()}><Sparkles className="h-4 w-4" />{generatingMessage ? 'יוצר הודעה…' : 'צור הודעה לנכס שנבחר'}</Button>}
                     {recipientMode === 'paste' && (
                       <div className="mb-3 space-y-2">
                         <Textarea
@@ -1536,7 +1568,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                 {selectedChannels.includes('whatsapp') && (
                   <div className="space-y-2">
-                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} onBodyChange={setWaTemplateBody} campaignOnly audience={templateAudience} />
+                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} onBodyChange={setWaTemplateBody} campaignOnly audience={templateAudience} property={messageProperty} />
                   </div>
                 )}
 
@@ -1682,10 +1714,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                             className="bg-background"
                             placeholder="הודעה ייעודית למסרון..."
                           />
-                          <div className="rounded-md border border-border bg-background p-3 font-mono text-sm leading-relaxed text-foreground" dir="rtl">
-                            {personalize(getChannelText('sms'))}
-                          </div>
-                          <p className="mt-2 text-xs text-muted-foreground">טקסט רגיל · {Math.ceil(personalize(getChannelText('sms')).length / 160) || 1} סגמנטים</p>
+                          {getChannelText('sms').trim() && <p className="mt-2 text-xs text-muted-foreground">טקסט רגיל · {Math.ceil(getChannelText('sms').length / 160) || 1} סגמנטים</p>}
                         </CardContent>
                       </Card>
                     )}
