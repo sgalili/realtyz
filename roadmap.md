@@ -1,5 +1,11 @@
 # Roadmap
 
+## Publisher fees and verification October 30
+- [ ] ILS-first closing/sale fee values and limits; center ad type and restrict inventory import choices.
+- [ ] Remove colored field/dropdown focus borders globally while keeping neutral keyboard focus.
+- [ ] Require SMS and official broker verification before broker publication; protect verified identity server-side.
+- [ ] Run focused tests and verify publication controls without publishing or changing real identities.
+
 ## Property-based service messages October 30
 - [x] Remove fabricated SMS sample content; add searchable property selection below recipients for SMS, WhatsApp and email, and relocate IVR's existing selector there.
 - [x] Reuse workspace-authorized/partner-safe inventory and selected-property generation; preserve Facebook/Instagram flows and approved WhatsApp templates.
