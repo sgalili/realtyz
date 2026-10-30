@@ -535,7 +535,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       // Smart skip: a signed-in user with a known role does not need to pick the role.
       const known = isBroker ? 'broker' : user && isPropertyOwner ? 'private' : null;
       if (key === 'publisherType') { setWhoSlide(false); setImportSlide(true); return; }
-      if (known) { setFields({ ...nextFields, publisherType: known }); setImportSlide(true); return; }
+      if (known) {
+        setFields({ ...nextFields, publisherType: known });
+        if (known === 'broker') {
+          const { data: smsVerified } = await supabase.rpc('publisher_sms_verified');
+          if (smsVerified !== true) { setBrokerGate(true); return; }
+        }
+        setImportSlide(true); return;
+      }
       setWhoSlide(true);
       return;
     }
@@ -1009,7 +1016,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
       const { error } = result.token_hash ? await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' }) : { error: new Error('missing session') };
       if (error) toast.error('הכניסה נכשלה. נסו שוב.');
     }} /></DialogContent></Dialog>
-    {brokerGate && user && <UpgradeToBrokerButton key={user.id} publisher onApproved={() => { setBrokerGate(false); setWhoSlide(false); setImportSlide(true); void refetchRoles(); }} />}
+    {brokerGate && user && <UpgradeToBrokerButton key={user.id} publisher onApproved={() => { void (async () => { const { error } = await supabase.rpc('register_as_broker'); if (error) { toast.error('יש להשלים את בדיקת זהות המתווך'); return; } await queryClient.invalidateQueries({ queryKey: ['publisher-profile'] }); setBrokerGate(false); setWhoSlide(false); setImportSlide(true); void refetchRoles(); })(); }} />}
     {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => { if (user && isAffiliateOnly) { setPublishAs(null); setAskPublishAs(true); } else setOpen(true); }} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
     <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { pendingAuthPublish.current = null; authThenConfirm.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
