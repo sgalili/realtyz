@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, ClipboardList, Phone, Filter, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { closingLevelClass, LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
 import { partnerPotential } from '@/lib/partnerPotential';
@@ -226,6 +227,21 @@ export default function LeadTypeFilterButton({
         <h2 className="text-[17px] font-semibold leading-none">חיפוש מתקדם</h2>
         {active ? <Button type="button" size="sm" variant="ghost" className="ms-auto h-7 px-2 text-[12px]" onClick={reset}>ניקוי סינון</Button> : null}
       </div>
+      {property && show('dealType') ? (
+        <div className="flex items-center gap-1" role="group" aria-label="סוג עסקה">
+          {(['sale', 'rent'] as const).map((value) => {
+            const on = property.dealType === 'all' || property.dealType === value;
+            return (
+              <Button key={value} type="button" variant="ghost" size="sm" aria-pressed={on}
+                onClick={() => patch({ dealType: property.dealType === value ? 'all' : value })}
+                className={cn('gap-1.5 whitespace-nowrap px-2 text-[14px] hover:bg-transparent', on ? 'text-foreground' : 'text-muted-foreground/60')}>
+                <span className={cn('h-2 w-2 shrink-0 rounded-full', value === 'sale' ? 'bg-success' : 'bg-sale', on ? 'opacity-100' : 'opacity-30')} />
+                {value === 'sale' ? 'למכירה' : 'להשכרה'}
+              </Button>
+            );
+          })}
+        </div>
+      ) : null}
         {showLeadFilters ? (<>
           <SectionTitle>תגמולים לפי סוג פנייה</SectionTitle>
           <div className="space-y-1.5" dir="rtl">
@@ -255,18 +271,6 @@ export default function LeadTypeFilterButton({
             {showLeadFilters ? <Separator /> : null}
             <SectionTitle>פרטי הנכס</SectionTitle>
             <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
-              {show('dealType') ? (
-                <div className="space-y-1">
-                  <Select value={property.dealType} onValueChange={(value) => patch({ dealType: value as PropertyFilterState['dealType'] })}>
-                    <SelectTrigger aria-label="סוג עסקה" className="h-9 text-[16px]"><SelectValue placeholder="סוג עסקה" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">סוג עסקה</SelectItem>
-                      <SelectItem value="sale">למכירה</SelectItem>
-                      <SelectItem value="rent">להשכרה</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
               {show('propertyType') ? (
                 <div className="space-y-1">
                   <Select value={property.propertyType} onValueChange={(value) => patch({ propertyType: value })}>
