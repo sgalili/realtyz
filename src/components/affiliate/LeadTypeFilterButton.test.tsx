@@ -63,7 +63,10 @@ describe('role-based advanced filter fields', () => {
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'פנייה דרך טופס בעמוד נחיתה' }));
     expect(screen.getByRole('slider')).toBeInTheDocument();
-    expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
+    const deal = screen.getByRole('group', { name: 'סוג עסקה' });
+    expect(deal).toBeInTheDocument();
+    // The deal toggle sits at the very top of the dialog, above the rewards section.
+    expect(deal.compareDocumentPosition(screen.getByText('תגמולים לפי סוג פנייה')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'אזור' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'שכונה' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'מחיר מינימום' })).toBeInTheDocument();
@@ -95,7 +98,7 @@ describe('role-based advanced filter fields', () => {
     setRole('private');
     renderFilter();
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
-    expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'סוג עסקה' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'חדרים' })).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'קומה מינימום' })).not.toBeInTheDocument();
