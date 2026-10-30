@@ -1,5 +1,10 @@
 # Roadmap
 
+## Property-based service messages October 30
+- [x] Remove fabricated SMS sample content; add searchable property selection below recipients for SMS, WhatsApp and email, and relocate IVR's existing selector there.
+- [x] Reuse workspace-authorized/partner-safe inventory and selected-property generation; preserve Facebook/Instagram flows and approved WhatsApp templates.
+- [x] Fifteen tests passed for template access, partner inventory, property variable binding, clearing and stale-response isolation; build OK. Signed-in mobile SMS selected a live property and generated content read back in the editor; WhatsApp and IVR menus are below recipients. No messages sent. Email interaction remains unavailable until a sender is configured; WhatsApp customization applies only to supported approved variables, not fixed template text.
+
 ## Service recipient presentation October 30
 - [x] Match recipient placement and typography across SMS, WhatsApp, email and IVR; service-specific bold placeholders, bold selections and inline WhatsApp template placeholder.
 - [x] SMS, IVR and WhatsApp signed-in mobile selection/readback verified: identical 17px/700 text, 362px width and top position; WhatsApp template typography matches. Twelve regression tests passed, build OK; no campaigns sent. Email retains its sender prerequisite; recipient interaction remains unverified because this workspace has no configured sender.

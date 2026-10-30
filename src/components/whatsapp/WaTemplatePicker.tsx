@@ -5,7 +5,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { dedupeTemplates, rebrandTemplateText, templatesForAudience, waTemplateLabel, type WaTemplateAudience } from '@/lib/waTemplateCatalog';
 import { useMetaWaTemplates, renderTemplateBody, templateVariableKeys, type MetaWaTemplate } from '@/hooks/useMetaWaTemplates';
-import { templateParamDefault } from '@/lib/waTemplatePersonalization';
+import { templateParamDefault, propertyTemplateParam } from '@/lib/waTemplatePersonalization';
+import type { CampaignMessageProperty } from '@/lib/campaignMessageProperty';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export type WaTemplateSelection = {
@@ -24,6 +25,7 @@ type Props = {
   /** When set, only templates relevant to this user type are offered. */
   audience?: WaTemplateAudience;
   onBodyChange?: (body: string) => void;
+  property?: CampaignMessageProperty | null;
 };
 
 const SYSTEM_TEMPLATE = /(otp|verif|auth|code|login|reminder|tour|meeting|call|invite|wallet|payment|receipt|dispute|lead_alert|notification)/i;
@@ -32,7 +34,7 @@ const SYSTEM_TEMPLATE = /(otp|verif|auth|code|login|reminder|tour|meeting|call|i
  * Picker for APPROVED Meta templates. Meta blocks free-form business-initiated
  * messages outside the 24h window, so every proactive send goes through here.
  */
-export const WaTemplatePicker = ({ value, onChange, campaignOnly = false, audience, onBodyChange }: Props) => {
+export const WaTemplatePicker = ({ value, onChange, campaignOnly = false, audience, onBodyChange, property }: Props) => {
   const ownerId = useActiveWorkspaceOwnerId();
   const { data: allTemplates, isLoading, error } = useMetaWaTemplates();
   const templates = useMemo(() => {
@@ -54,6 +56,11 @@ export const WaTemplatePicker = ({ value, onChange, campaignOnly = false, audien
   const preview = selected ? rebrandTemplateText(renderTemplateBody(selected.body_text, value?.body_params ?? [])) : '';
   useEffect(() => { onBodyChange?.(preview); }, [preview, onBodyChange]);
   useEffect(() => { onChange(null); }, [ownerId]);
+  useEffect(() => {
+    if (!value || !selected || property === undefined) return;
+    const params = selectedKeys.map((key, index) => propertyTemplateParam(key, property) ?? value.body_params[index] ?? '');
+    if (params.some((param, index) => param !== value.body_params[index])) onChange({ ...value, body_params: params });
+  }, [property, selected, selectedKeys, value, onChange]);
 
   // Auto-select the first approved template so the broker isn't blocked.
   useEffect(() => {

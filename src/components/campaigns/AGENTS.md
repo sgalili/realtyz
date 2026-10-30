@@ -1,4 +1,5 @@
 # Campaign rules
+- Service property pickers read paginated workspace inventory or the shared partner-safe feed, and generation binds the selected property/workspace with stale-response guards; WhatsApp fills only approved template variables. Why: one exact property without draft or tenant leaks.
 - Composer media order uses a shared immutable reorder helper with touch pointer handles; text auto-grows while retaining manual vertical resizing. Page header identity uses the effective workspace binding, not token health or cloud-profile identity. Why: mobile editing without tenant or provider confusion.
 - Campaign feed metadata uses one nonwrapping RTL row ordered platform, date, group target, repost and engagement; shrinkable names open full-name popovers, and inline bordered series retain per-target statuses inside their parent.
 - Multi-target campaign expansion derives one child per persisted target and reuses the feed card renderer with campaign/group keys; synthetic children never submit campaign-level actions.
