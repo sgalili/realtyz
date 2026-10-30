@@ -11,6 +11,7 @@ import { CERTIFICATE_MAX_BYTES, CERTIFICATE_MIME_TYPES } from '../../../supabase
 import { BROKER_COURSE_URL, BROKER_EXAM_REGISTRATION_URL } from '@/components/affiliate/BrokerClosingInfo';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { toast } from '@/i18n/personalToast';
+import { WhatsAppOtpVerify } from '@/components/auth/WhatsAppOtpVerify';
 
 const FAILURES: Record<string, string> = {
   registry_verification_required: 'יש לאמת את מספר הרישיון מול פנקס המתווכים.',
@@ -19,14 +20,19 @@ const FAILURES: Record<string, string> = {
 };
 
 /** Non-broker upgrade request: registry + certificate match, then manual Super Admin approval. */
-export function UpgradeToBrokerButton({ profileOwnerId }: { profileOwnerId?: string }) {
+export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApproved }: { profileOwnerId?: string; publisher?: boolean; onApproved?: () => void }) {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(publisher);
   const [license, setLicense] = useState('');
   const [busy, setBusy] = useState(false);
   const { user } = useAuth();
   const subjectId = profileOwnerId ?? user?.id;
   const isOwnProfile = subjectId === user?.id;
+  const sms = useQuery({ queryKey: ['publisher-sms', user?.id], enabled: open && !!user?.id, queryFn: async () => {
+    const { data, error } = await supabase.rpc('publisher_sms_verified');
+    if (error) throw error;
+    return data === true;
+  } });
   const { data: account } = useQuery({ queryKey: ['broker-upgrade-request', user?.id, subjectId, 'profile-status'], enabled: !!user?.id && !!subjectId, queryFn: async () => {
     if (!user?.id || !subjectId) return null;
     const [verification, profile, request, affiliate] = await Promise.all([
@@ -49,7 +55,7 @@ export function UpgradeToBrokerButton({ profileOwnerId }: { profileOwnerId?: str
   const pending = account?.pending === true;
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<'approved' | 'pending' | null>(null);
-  const ready = !!license && !!file;
+  const ready = !!license && !!file && sms.data === true;
 
   const submit = async () => {
     if (!isOwnProfile || !ready || busy || pending || !file) return;
@@ -65,12 +71,13 @@ export function UpgradeToBrokerButton({ profileOwnerId }: { profileOwnerId?: str
       setResult(status);
       await queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] });
       if (status === 'approved') await queryClient.invalidateQueries();
+      if (status === 'approved') onApproved?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'השדרוג לא הושלם.');
     } finally { setBusy(false); }
   };
 
-  if (account?.verified) return null;
+  if (account?.verified && !publisher) return null;
   return <>
     <section aria-label="שדרוג וסטטוס רישיון תיווך" className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3" dir="rtl">
       {account?.license && <div className="flex flex-wrap items-center justify-between gap-2 text-base">
@@ -89,21 +96,22 @@ export function UpgradeToBrokerButton({ profileOwnerId }: { profileOwnerId?: str
             מתווך מורשה מקבל גישה לעמלות סגירה ולכלי התיווך. כך מקבלים רישיון:
           </DialogDescription>
         </DialogHeader>
-        <ol className="list-decimal space-y-1 ps-5 text-base text-foreground">
+        {!publisher && <ol className="list-decimal space-y-1 ps-5 text-base text-foreground">
           <li>לומדים לקראת מבחן התיווך בקורס מקוון.</li>
           <li>נרשמים למבחן הלאומי של רשם המתווכים ועוברים אותו.</li>
           <li>מקבלים רישיון ומזינים כאן את מספרו ואת צילום התעודה.</li>
-        </ol>
-        <div className="flex items-center justify-between gap-2">
+        </ol>}
+        {!publisher && <div className="flex items-center justify-between gap-2">
           <Button asChild variant="outline" className="flex-1"><a href={BROKER_COURSE_URL} target="_blank" rel="noopener noreferrer">לקורס</a></Button>
           <Button asChild variant="outline" className="flex-1"><a href={BROKER_EXAM_REGISTRATION_URL} target="_blank" rel="noopener noreferrer">להרשמה למבחן הלאומי</a></Button>
-        </div>
+        </div>}
         {!isOwnProfile ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
           <p>מספר רישיון תיווך: <b dir="ltr">{account?.license}</b></p>
           <p>הבקשה בבדיקה. נעדכן אותך בהמשך.</p>
         </div> : <div className="space-y-2 border-t border-border pt-3">
           <p className="text-base font-semibold">כבר קיבלת רישיון?</p>
           <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={() => {}} />
+          {sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" description="נדרש אימות מספר הטלפון של החשבון לפני אימות הרישיון." onVerified={() => { void sms.refetch(); }} />}
           <label htmlFor="broker-certificate-image" className="block text-base">צילום תעודת הרישיון</label>
           <Input id="broker-certificate-image" type="file" accept={CERTIFICATE_MIME_TYPES.join(',')} disabled={busy} className="h-auto text-base" onChange={event => {
             const next = event.target.files?.[0] ?? null;
