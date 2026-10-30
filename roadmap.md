@@ -1,5 +1,9 @@
 # Roadmap
 
+## Inline profile saving October 30
+- [ ] Save only the confirmed profile field; pencil becomes check while editing, no global save.
+- [ ] Place exit and labeled account deletion below upgrade in normal flow with separator; verify tests and signed-in readback.
+
 ## Workspace publisher isolation and explicit upgrade October 30
 - [x] Bind publisher identity to active owner, remount wizard state on scope change, block stale workspace refreshes and hide unvalidated cached context; profile hydration cancels stale reads.
 - [x] Remove automatic broker prompts and contact-step license fields from standard publication; no broker choice for unverified workspace owners.
