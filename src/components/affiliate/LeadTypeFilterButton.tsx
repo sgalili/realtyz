@@ -10,7 +10,7 @@
 //   · קונה/מוכר פרטי   — compact market filters only.
 //   · guest            — property filters only, never lead filters.
 import { useEffect, useState } from 'react';
-import { ClipboardList, Phone, Filter, Trophy, X } from 'lucide-react';
+import { ChevronDown, ClipboardList, Phone, Filter, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { closingLevelClass, LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
