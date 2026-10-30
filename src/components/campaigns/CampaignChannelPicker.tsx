@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CampaignServiceIcon } from './CampaignServiceIcon';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
+import { useCloudSessionConnected } from '@/hooks/useCloudSession';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { FacebookPageSelector } from './FacebookPageSelector';
 import { SOCIAL_DRAFT_CREDITS } from '@/lib/socialDraftGeneration';
