@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, selectFilterCity, selectLeadFilterType, setLeadFilterMinimum } from './leadTypeFilter';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, selectFilterCity, selectLeadFilterType, setLeadFilterMinimum, leadFilterSliderRange } from './leadTypeFilter';
+
+describe('reward filter bounds', () => {
+  it('closing starts at 0 rather than the public 0.52 minimum', () => {
+    expect(leadFilterSliderRange('tier4', { min: 0.52, max: 37600 })).toEqual({ min: 0, max: 37600 });
+  });
+  it('other lead types retain their actual public minimum', () => {
+    expect(leadFilterSliderRange('tier1', { min: 60, max: 150 })).toEqual({ min: 60, max: 150 });
+  });
+});
 
 describe('single reward selection', () => {
   it('selects exactly one lead type', () => {

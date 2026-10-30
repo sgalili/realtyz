@@ -25,6 +25,14 @@ export type LeadFilterState = {
 
 export const EMPTY_LEAD_FILTER: LeadFilterState = { types: [], min: null, max: null };
 
+/** Closing search starts at zero; other tiers retain their public minimum. */
+export function leadFilterSliderRange(key: LeadTypeKey, bounds?: { min: number | null; max: number | null }) {
+  if (bounds?.min == null || bounds.max == null) return key === 'tier4' ? { min: 0, max: 250 } : undefined;
+  const min = key === 'tier4' ? 0 : Number(bounds.min);
+  const max = Number(bounds.max);
+  return Number.isFinite(min) && Number.isFinite(max) && max >= min ? { min, max } : undefined;
+}
+
 /** Keep each tier's chosen threshold while only filtering the selected tier. */
 export function selectLeadFilterType(state: LeadFilterState, key: LeadTypeKey): LeadFilterState {
   const previous = state.types[0];

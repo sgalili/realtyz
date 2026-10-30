@@ -36,6 +36,7 @@ import {
   selectFilterCity,
   selectLeadFilterType,
   setLeadFilterMinimum,
+  leadFilterSliderRange,
   FILTER_FEATURES,
   type LeadFilterState,
   type LeadTypeKey,
@@ -192,8 +193,7 @@ export default function LeadTypeFilterButton({
   const activeType: LeadTypeKey = leadTypes.find((key) => state.types.includes(key)) ?? leadTypes[0];
   const sliderTier = activeType === 'tier1' ? 'form' : activeType === 'tier2' ? 'whatsapp' : 'phone';
   const liveBound = bounds.data?.[BOUND_KEY[activeType]];
-  const sliderRange = liveBound?.min != null && liveBound?.max != null && Number(liveBound.max) >= Number(liveBound.min)
-    ? { min: Number(liveBound.min), max: Number(liveBound.max) } : undefined;
+  const sliderRange = leadFilterSliderRange(activeType, liveBound);
   // Opening the filter selects the first lead type by default.
   useEffect(() => {
     if (open && showLeadFilters && state.types.length !== 1) onChange(selectLeadFilterType(state, activeType));
@@ -233,13 +233,13 @@ export default function LeadTypeFilterButton({
               const amount = state.types.includes(key) ? state.min ?? 0 : state.prices?.[key] ?? 0;
               const tier = key === 'tier1' ? 'form' : key === 'tier2' ? 'whatsapp' : 'phone';
               const bound = bounds.data?.[BOUND_KEY[key]];
-              const range = bound?.min != null && bound?.max != null ? { min: Number(bound.min), max: Number(bound.max) } : LEAD_PRICE_RANGES[tier];
+              const range = leadFilterSliderRange(key, bound) ?? LEAD_PRICE_RANGES[tier];
               const color = amount > 0 ? closingLevelClass(partnerPotential((amount - range.min) / Math.max(1, range.max - range.min)).level) : 'text-muted-foreground';
               return (
                 <label key={key} className="flex cursor-pointer items-start gap-2 text-[15px] font-medium">
                   <RadioGroupItem value={key} aria-label={FILTER_LEAD_LABELS[key]} className="mt-1 shrink-0" />
                   <Icon className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
-                  <span className="min-w-0"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <bdi className={`block text-[15px] font-semibold ${color}`}>₪{amount.toLocaleString('he-IL')}</bdi>}</span>
+                  <span className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-left text-[15px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
                 </label>
               );
             })}
