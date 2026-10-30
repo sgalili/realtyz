@@ -252,7 +252,9 @@ export function matchesPropertyFilter(row: Record<string, unknown>, state: Prope
     if (selected.entryDate && read('entry_date', 'entryDate') !== selected.entryDate) return false;
     if (selected.balconyTypes?.length) {
       const actual = read('balcony_types', 'balconyTypes');
-      if (!Array.isArray(actual) || !selected.balconyTypes.some(type => actual.includes(type))) return false;
+      if (selected.balconyTypes.includes('ללא מרפסת')) {
+        if (!(Array.isArray(actual) && actual.length === 0) && read('balcony', 'includeBalcony') !== false) return false;
+      } else if (!Array.isArray(actual) || !selected.balconyTypes.some(type => actual.includes(type))) return false;
     }
   }
   return true;
