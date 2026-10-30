@@ -1,5 +1,10 @@
 # Roadmap
 
+## WhatsApp templates October 30
+- [ ] Restrict broker invitation template listing and sending to Rita's workspace.
+- [ ] Hide resolved variables and duplicate free-text editor; align counters and personalization toolbar.
+- [ ] Run focused restriction tests and verify signed-in composer without sending messages.
+
 ## Partner campaign picker October 30
 - [x] Use the shared public-safe available partner inventory instead of workspace-owned properties in partner context; preserve listing IDs and exclude closing-only offers for unverified partners.
 - [x] Ten focused tests passed including pagination and privacy. Signed-in partner workspace fetched five shared rows, showed four audience-eligible choices plus clear selection, and selected address/price/photos read back; build OK, no runtime errors. No campaign published.
