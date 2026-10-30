@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, selectFilterCity, selectLeadFilterType, setLeadFilterMinimum, leadFilterSliderRange } from './leadTypeFilter';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, selectFilterCity, setLeadFilterMinimum, leadFilterSliderRange } from './leadTypeFilter';
 
 describe('reward filter bounds', () => {
   it('closing starts at 0 rather than the public 0.52 minimum', () => {
@@ -10,21 +10,24 @@ describe('reward filter bounds', () => {
   });
 });
 
-describe('single reward selection', () => {
-  it('selects exactly one lead type', () => {
-    expect(selectLeadFilterType({ ...EMPTY_LEAD_FILTER, types: ['tier1', 'tier2'] }, 'tier3').types).toEqual(['tier3']);
-  });
-  it('restores a positive price when returning to its lead type', () => {
+describe('per-type reward thresholds', () => {
+  it('keeps each positive threshold active automatically', () => {
     const form = setLeadFilterMinimum(EMPTY_LEAD_FILTER, 'tier1', 75);
-    const phone = setLeadFilterMinimum(selectLeadFilterType(form, 'tier3'), 'tier3', 120);
-    expect(selectLeadFilterType(phone, 'tier1').min).toBe(75);
+    const phone = setLeadFilterMinimum(form, 'tier3', 120);
+    expect(phone.types).toEqual(['tier1', 'tier3']);
     expect(phone.prices?.tier1).toBe(75);
+    expect(phone.prices?.tier3).toBe(120);
+    expect(matchesLeadFilter({ tier1: 74, tier2: 200, tier3: 119, tier4: 0 }, phone)).toBe(false);
+    expect(matchesLeadFilter({ tier1: 75, tier2: 0, tier3: 0, tier4: 0 }, phone)).toBe(true);
+    expect(matchesLeadFilter({ tier1: 0, tier2: 0, tier3: 120, tier4: 0 }, phone)).toBe(true);
   });
   it('zero clears only the selected threshold', () => {
     const form = setLeadFilterMinimum(EMPTY_LEAD_FILTER, 'tier1', 75);
     const zero = setLeadFilterMinimum(form, 'tier1', 0);
     expect(zero.min).toBeNull();
     expect(zero.prices?.tier1).toBe(0);
+    expect(zero.types).toEqual([]);
+    expect(matchesLeadFilter({ tier1: 0, tier2: 0, tier3: 0, tier4: 0 }, zero)).toBe(true);
   });
 });
 

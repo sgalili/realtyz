@@ -56,11 +56,13 @@ describe('role-based advanced filter fields', () => {
   it('partner sees lead types 1-3, lead value and only the minimal property fields', () => {
     setRole('partner');
     renderFilter();
-    expect(screen.getByRole('radio', { name: 'פנייה דרך טופס בעמוד נחיתה' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'פנייה לאחר סינון בווטסאפ עם ריטה AI' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'פנייה לאחר סינון בטלפון עם ריטה AI' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'פנייה דרך טופס בעמוד נחיתה' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'פנייה לאחר סינון בווטסאפ עם ריטה AI' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'פנייה לאחר סינון בטלפון עם ריטה AI' })).toBeInTheDocument();
     expect(screen.queryByText('עמלת תיווך עבור סגירת עסקה')).not.toBeInTheDocument();
-    expect(screen.getByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'פנייה דרך טופס בעמוד נחיתה' }));
+    expect(screen.getByRole('slider')).toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'אזור' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'שכונה' })).toBeInTheDocument();
