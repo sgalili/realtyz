@@ -130,7 +130,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
         {result ? <div role="status" className="space-y-1 rounded-md border border-success bg-success/10 p-3 text-base">
           <p className="font-semibold text-success">{result === 'approved' ? 'החשבון שודרג למתווך מורשה' : 'הבקשה התקבלה'}</p>
           {result === 'pending' && <p>נעדכן אותך כשהבדיקה תסתיים.</p>}
-        </div> : isOwnProfile && !pending && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
+        </div> : isOwnProfile && !pending && !(publisher && account?.verified) && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
           {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}שדרוג החשבון
         </Button>}
       </DialogContent>

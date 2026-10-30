@@ -36,7 +36,7 @@ Deno.serve(async req => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (url && serviceKey) {
       const { data: testLicense } = await createClient(url, serviceKey).from('test_broker_licenses').select('user_id').eq('license_number', licenseNumber).maybeSingle();
-      if (testLicense && (action !== 'verify' || testLicense.user_id === userId)) return reply({ valid: true, source: 'test', updatedAt: new Date().toISOString() });
+      if (testLicense) return reply({ valid: false, error: 'official_license_required', message: INVALID_BROKER_LICENSE });
     }
     const metadataUrl = new URL('https://data.gov.il/api/3/action/package_show');
     metadataUrl.searchParams.set('id', BROKER_REGISTRY_DATASET);
