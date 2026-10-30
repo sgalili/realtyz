@@ -40,6 +40,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const progress = Math.max(0, Math.min(1, (percent - range.min) / (range.max - range.min)));
   const level = Math.min(3, Math.floor(progress * 4));
   const [editing, setEditing] = useState(false);
+  const [editingPercent, setEditingPercent] = useState(false);
   const [internalOpen, setInternalOpen] = useState(true);
   const open = openProp ?? internalOpen;
   const setOpen = (next: boolean | ((prev: boolean) => boolean)) => {
@@ -64,17 +65,18 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const commit = () => {
     const parsed = Number(draft.replace(/,/g, ''));
     if (draft.trim() && Number.isFinite(parsed) && parsed >= 0) {
-      const next = displayAmount && range.price > 0 ? parsed / range.price * 100 : parsed;
+      const next = !editingPercent && displayAmount && range.price > 0 ? parsed / range.price * 100 : parsed;
       changePercent(zeroMin && !unrestricted ? thresholdOffer(next, range.min, range.max) : clampPercent(next));
     }
     setEditing(false);
+    setEditingPercent(false);
   };
-  const priceControl = editing ? <Input autoFocus aria-label="עריכת עמלת סגירה" inputMode="decimal" dir="ltr" className="h-8 w-24 text-center text-xl font-bold" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') setEditing(false); }} /> : <Button type="button" variant="ghost" className="h-9 px-0 text-[24px] font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); }}>{selectedLabel}</Button>;
+  const priceControl = editing && !editingPercent ? <Input autoFocus aria-label="עריכת עמלת סגירה" inputMode="decimal" dir="ltr" className="h-8 w-24 text-center text-xl font-bold" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') setEditing(false); }} /> : <Button type="button" variant="ghost" className="h-9 px-0 text-[24px] font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); }}>{selectedLabel}</Button>;
   return <section className={cn("closing-fee", publisherCard ? "space-y-2" : "space-y-4 pt-4", className)} data-level={level}>
     {publisherCard ? <PricingCardHeader
       icon={<Trophy className={cn("!h-[29.3px] !w-[29.3px] shrink-0", value > 0 ? 'closing-tone' : 'pricing-icon-disabled')} strokeWidth={1} />}
       price={open ? null : <CollapsedOffer active={value > 0} amount={selectedLabel} label="עריכת עמלת סגירה" onClick={() => setOpen(true)} />}
-      title={<Button type="button" variant="ghost" className="h-auto min-w-0 whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={open} onClick={() => setOpen(!open)}>עמלת סגירה *</Button>}
+      title={<Button type="button" variant="ghost" className="h-auto min-w-0 whitespace-normal p-0 text-start text-base font-bold leading-snug hover:bg-transparent" aria-expanded={open} onClick={() => setOpen(!open)}>עמלת תיווך עבור סגירת עסקה</Button>}
       help={<Popover><PopoverTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 p-0" aria-label="הסבר עמלת סגירת עסקה"><CircleHelp className="h-4 w-4 text-muted-foreground" /></Button></PopoverTrigger><PopoverContent dir="rtl" align="end" className="w-80"><div className="space-y-2"><p className="text-sm font-semibold">כך מתחלקת עמלת הסגירה</p><ClosingSplitNote gross={displayAmount ? (dualMode ? exactAmount : amount) : percent} valueType={displayAmount ? 'fixed' : 'percent'} registration /><p className="text-xs leading-relaxed text-muted-foreground">התגמול משולם רק לאחר סגירת העסקה בפועל, ורק למתווכים/שותפים בעלי רישיון תיווך מאומת. אין התחייבות לסגירה.</p><BrokerTestLinks /></div></PopoverContent></Popover>}
       controls={<><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={open ? 'כווץ את עמלת התיווך' : 'הרחב את עמלת התיווך'} aria-expanded={open} onClick={() => setOpen(!open)}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', open && 'rotate-180')} /></Button></>}
     /> : <>
@@ -88,7 +90,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
       {!publisherCard && !displayAmount && <p className="text-xs text-muted-foreground">מחיר הנכס טרם הוזן</p>}
     </div>
     <div dir="ltr" className={cn("space-y-2", !publisherCard && "px-2")}>
-      {publisherCard && <div className="flex h-9 items-center justify-center gap-2">{priceControl}{!range.rent && displayAmount && <span className="text-xs font-normal text-muted-foreground">({Number(percent.toFixed(2))}%)</span>}</div>}
+      {publisherCard && <div className="flex h-9 items-center justify-center gap-2">{priceControl}{!range.rent && displayAmount && <>{editing && editingPercent ? <Input autoFocus aria-label="עריכת אחוז עמלת סגירה" inputMode="decimal" dir="ltr" className="h-8 w-20 text-center text-[13px]" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') { setEditing(false); setEditingPercent(false); } }} /> : <Button type="button" variant="ghost" aria-label="עריכת אחוז עמלת סגירה" className="h-8 px-1 text-[13px] font-normal text-muted-foreground" onClick={() => { setDraft(String(Number(percent.toFixed(2)))); setEditingPercent(true); setEditing(true); }}>({Number(percent.toFixed(2))}%)</Button>}</>}</div>}
       {!publisherCard && !range.rent && displayAmount && <p className="text-center text-xs text-muted-foreground">({Number(percent.toFixed(2))}%)</p>}
       <Slider dir="ltr" aria-label="עמלת סגירה" aria-valuetext={selectedLabel} min={zeroMin ? 0 : minimum} max={zeroMin ? scale.max : maximum} disabled={!displayAmount} step={zeroMin ? 1 : amountScale ? 0.01 : range.step} value={[zeroMin ? scale.position(percent) : amountScale ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(zeroMin ? scale.amount(next) : amountScale && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
       <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{money(closingFeeAmount(zeroMin ? 0 : range.min, range.price))}</span><span>{money(closingFeeAmount(range.max, range.price))}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>

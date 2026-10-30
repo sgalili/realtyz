@@ -6,7 +6,7 @@ import { PublisherWhatsAppIcon } from './PublisherWhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
 import { pricingCardComplete } from '@/lib/pricingCardSummary';
-import { formatRentalPrice } from '@/lib/propertyPrice';
+import { publisherClosingDefault, showPublisherRewards } from '@/lib/publisherPricing';
 import { fmtILS } from '@/lib/formatCurrency';
 import type { RewardTypes } from '@/components/affiliate/CommissionTierBadges';
 import Terms from '@/pages/Terms';
@@ -92,9 +92,9 @@ const STEP_TITLES = [
 ];
 
 const LEAD_TYPES = [
-  { key: 'Form', tier: 'form', label: 'פנייה דרך השארת פרטים בטופס בעמוד נחיתה' },
-  { key: 'Whatsapp', tier: 'whatsapp', label: 'פנייה לאחר סינון בשיחת ווטסאפ עם ריטה AI' },
-  { key: 'Phone', tier: 'phone', label: 'פנייה לאחר סינון בשיחת טלפון עם ריטה AI' },
+  { key: 'Form', tier: 'form', label: 'פנייה דרך טופס בעמוד נחיתה' },
+  { key: 'Whatsapp', tier: 'whatsapp', label: 'פנייה לאחר סינון בוואטסאפ עם ריטה AI' },
+  { key: 'Phone', tier: 'phone', label: 'פנייה לאחר סינון בטלפון עם ריטה AI' },
 ] as const;
 
 
@@ -308,6 +308,13 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const [openLeads, setOpenLeads] = useState<Record<string, boolean>>({});
   const [closingOpen, setClosingOpen] = useState(false);
+  const showRewards = showPublisherRewards(fields.price);
+  useEffect(() => {
+    if (!fields.dealType || fields.closingConfirmed !== false || fields.listingId || fields.commissionDealType === 'fixed') return;
+    const initial = String(publisherClosingDefault(fields.dealType));
+    if (fields.commissionDeal === initial || (fields.commissionDeal && !['1', '10'].includes(fields.commissionDeal))) return;
+    setFields(current => ({ ...current, commissionDeal: initial, commissionDealType: 'percent' }));
+  }, [fields.dealType, fields.commissionDeal, fields.closingConfirmed]);
   const allExpanded = LEAD_TYPES.every(({ key }) => openLeads[key] === true) && closingOpen;
   const toggleAllCards = () => {
     const next = !allExpanded;
@@ -922,7 +929,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
           {step === 8 && (
             <div className="pricing-editor space-y-3">
-              <div dir="rtl" className="mb-[25px] flex items-center gap-2"><span className="flex min-w-0 flex-1 items-center gap-[5px] whitespace-nowrap"><label htmlFor="wizard-price" className={cn("whitespace-nowrap font-semibold text-muted-foreground", fields.dealType === 'rent' ? 'text-xs' : 'text-base')}>{fields.dealType === 'rent' ? 'מחיר השכירות:' : 'מחיר הנכס:'}</label><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} className="h-auto w-auto min-w-0 max-w-full flex-1 px-0 py-0 text-center text-3xl font-bold leading-tight text-foreground placeholder:text-base md:text-4xl [field-sizing:content]" onChange={e => set('price', e.target.value)} /><span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span></span><Button type="button" variant="ghost" size="icon" className="ms-auto h-12 w-12 shrink-0 text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><LayoutGrid className="h-[33px] w-[33px]" /></Button></div>
+              <div dir="rtl" className="mb-[25px] flex items-center gap-2"><span className="flex min-w-0 flex-1 items-center gap-[5px] whitespace-nowrap"><label htmlFor="wizard-price" className={cn("whitespace-nowrap font-semibold text-muted-foreground", fields.dealType === 'rent' ? 'text-xs' : 'text-base')}>{fields.dealType === 'rent' ? '* מחיר השכירות:' : '* מחיר הנכס:'}</label><PriceInput id="wizard-price" aria-label={fields.dealType === 'rent' ? 'שכירות חודשית *' : 'מחיר מכירה *'} value={fields.price} placeholder="" autoFocus className="h-auto w-auto min-w-0 max-w-full flex-1 px-0 py-0 text-center text-3xl font-bold leading-tight text-foreground placeholder:text-base md:text-4xl [field-sizing:content]" onChange={e => set('price', e.target.value)} />{fields.price && <span aria-hidden="true" dir="rtl" className="whitespace-nowrap text-2xl font-bold text-muted-foreground sm:text-3xl">₪{fields.dealType === 'rent' && <span className="ms-1 text-xs font-normal">/ לחודש</span>}</span>}</span>{showRewards && <Button type="button" variant="ghost" size="icon" className="ms-auto h-12 w-12 shrink-0 text-muted-foreground" aria-label={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} title={allExpanded ? 'כווץ את כל כרטיסי התגמולים' : 'הרחב את כל כרטיסי התגמולים'} aria-expanded={allExpanded} onClick={toggleAllCards}><LayoutGrid className="h-[33px] w-[33px]" /></Button>}</div>
+              {showRewards && <>
+              <h3 className="text-base font-semibold">תגמולים לפי סוג פנייה</h3>
               <div className="space-y-4 text-base">
                 {LEAD_TYPES.map(({ key, tier, label }) => {
                   const price = Number(fields[`commission${key}`]) || 0;
@@ -977,7 +986,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                   );
                 })}
               </div>
-              <ClosingFeeSlider publisherCard className="pricing-closing-card rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm" dualMode zeroMin unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
+              <ClosingFeeSlider publisherCard className="pricing-closing-card rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm" dualMode unrestricted={pricingOnly && isSuperAdmin} open={closingOpen} onOpenChange={setClosingOpen} dealType={fields.dealType} price={Number(String(fields.price || '').replace(/[^\d.]/g, '')) || 0} value={Number(fields.commissionDeal) || 0} valueType={fields.commissionDealType} onValueChange={(value, mode) => { set('commissionDealType', mode); set('commissionDeal', String(value)); set('closingConfirmed', true); }} onChange={(percent) => { set('commissionDealType', 'percent'); set('commissionDeal', String(percent)); set('closingConfirmed', true); }} />
+              </>}
               <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
               <LeadQuestionsDialog
                 open={questionsOpen !== null}
@@ -1050,7 +1060,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                       <span className={cn("min-w-0 flex-1", expandedStep === `step-${i}` && "font-bold")}>{title}</span>
                       <span className={`shrink-0 text-xs ${stepFilled(i) ? 'text-success' : 'text-muted-foreground'}`}>{stepFilled(i) ? 'הושלם' : <>חסרים פרטים<span className="text-destructive"> *</span></>}</span>
                     </span>
-                    {i === 8 && expandedStep !== 'step-8' && Number(fields.price) > 0 && <span className="flex w-full flex-wrap items-center gap-x-2 gap-y-1" aria-live="polite"><span className="text-lg font-bold text-foreground"><span className="me-1 text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'שכירות לחודש:' : 'מחיר:'}</span>{formatRentalPrice(fields.price, fields.dealType)}</span><span className="ms-auto flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-normal">{LEAD_TYPES.filter(({ key }) => Number(fields[`commission${key}`]) > 0).map(({ key, tier, label }) => { const amount = Number(fields[`commission${key}`]); return <span key={key} className={cn('flex items-center gap-0.5', closingLevelClass(leadPriceLevel(tier, amount)) ?? 'text-muted-foreground')} title={`${label}: ${fmtILS(amount)}`}><span aria-hidden="true">{key === 'Form' ? <LeadFormIcon className="h-5 w-5" strokeWidth={1} /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className="h-5 w-5" strokeWidth={1} /> : <LeadPhoneIcon className="h-5 w-5" strokeWidth={1} />}</span><span className="sr-only">{label}: </span><span dir="ltr">{fmtILS(amount)}</span></span>; })}<span className={cn('flex items-center gap-0.5', closingLevelClass(closingRewardLevel(fields.commissionDeal, fields.commissionDealType, fields.dealType, Number(fields.price))) ?? 'text-muted-foreground')} title={`סגירה: ${fmtILS(fields.commissionDealType === 'fixed' ? Number(fields.commissionDeal) : closingFeeAmount(Number(fields.commissionDeal) || 0, Number(fields.price)))}`}><Trophy className="h-5 w-5" strokeWidth={1} aria-hidden="true" /><span className="sr-only">סגירה: </span><span dir="ltr">{fmtILS(fields.commissionDealType === 'fixed' ? Number(fields.commissionDeal) : closingFeeAmount(Number(fields.commissionDeal) || 0, Number(fields.price)))}</span></span></span></span>}
+                    {i === 8 && expandedStep !== 'step-8' && Number(fields.price) > 0 && <span className="flex w-full flex-col gap-2" aria-live="polite"><span className="text-lg font-bold text-foreground"><span className="me-1 text-xs font-medium text-muted-foreground">{fields.dealType === 'rent' ? 'שכירות לחודש:' : 'מחיר:'}</span>{fmtILS(Number(fields.price))}</span><span className="flex w-full flex-wrap items-center justify-between gap-x-1 gap-y-1 text-xs font-normal">{LEAD_TYPES.filter(({ key }) => Number(fields[`commission${key}`]) > 0).map(({ key, tier, label }) => { const amount = Number(fields[`commission${key}`]); return <span key={key} className={cn('flex items-center gap-0.5', closingLevelClass(leadPriceLevel(tier, amount)) ?? 'text-muted-foreground')} title={`${label}: ${fmtILS(amount)}`}><span aria-hidden="true">{key === 'Form' ? <LeadFormIcon className="h-5 w-5" strokeWidth={1} /> : key === 'Whatsapp' ? <PublisherWhatsAppIcon className="h-5 w-5" strokeWidth={1} /> : <LeadPhoneIcon className="h-5 w-5" strokeWidth={1} />}</span><span className="sr-only">{label}: </span><span dir="ltr">{fmtILS(amount)}</span></span>; })}<span className={cn('flex items-center gap-0.5', closingLevelClass(closingRewardLevel(fields.commissionDeal, fields.commissionDealType, fields.dealType, Number(fields.price))) ?? 'text-muted-foreground')} title={`סגירה: ${fmtILS(fields.commissionDealType === 'fixed' ? Number(fields.commissionDeal) : closingFeeAmount(Number(fields.commissionDeal) || 0, Number(fields.price)))}`}><Trophy className="h-5 w-5" strokeWidth={1} aria-hidden="true" /><span className="sr-only">סגירה: </span><span dir="ltr">{fmtILS(fields.commissionDealType === 'fixed' ? Number(fields.commissionDeal) : closingFeeAmount(Number(fields.commissionDeal) || 0, Number(fields.price)))}</span></span></span></span>}
                     </span>
                   </AccordionTrigger>
                   <AccordionContent className="px-4">{renderStep(i)}</AccordionContent>
