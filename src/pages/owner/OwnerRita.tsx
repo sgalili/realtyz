@@ -4,14 +4,23 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useRitaWorkspaceIdentity } from '@/hooks/useRitaWorkspaceIdentity';
 
 type Turn = { role: 'rita' | 'owner'; text: string };
 
 /** Private owner screen: a direct chat with Rita about their own properties. */
 export default function OwnerRita() {
-  const [turns, setTurns] = useState<Turn[]>([
-    { role: 'rita', text: 'היי, אני ריטה. אפשר לשאול אותי על הנכסים שלכם, על המתעניינים ועל התגמולים לשותפים.' },
-  ]);
+  const identity = useRitaWorkspaceIdentity();
+  return <ScopedOwnerRita key={identity.scope} identity={identity} />;
+}
+
+function ScopedOwnerRita({ identity }: { identity: ReturnType<typeof useRitaWorkspaceIdentity> }) {
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -22,26 +31,28 @@ export default function OwnerRita() {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || busy) return;
+    if (!text || busy || !identity.ready) return;
     setInput('');
     setTurns((t) => [...t, { role: 'owner', text }]);
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: {
+          expected_workspace_owner_id: identity.ownerId,
           messages: [
             ...turns.map((t) => ({ role: t.role === 'rita' ? 'assistant' : 'user', content: t.text })),
             { role: 'user', content: text },
           ],
         },
       });
+      if (!mounted.current) return;
       if (error) throw error;
       const reply = (data as any)?.content;
       setTurns((t) => [...t, { role: 'rita', text: reply ? String(reply) : 'לא הצלחתי לענות כרגע, ננסה שוב.' }]);
     } catch {
-      toast.error('ריטה אינה זמינה כרגע');
+      if (mounted.current) toast.error('ריטה אינה זמינה כרגע');
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
 
@@ -51,6 +62,7 @@ export default function OwnerRita() {
         <h1 className="text-xl font-bold text-foreground">צ׳אט עם ריטה</h1>
       </header>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain rounded-xl border bg-card p-3">
+        {turns.length === 0 && <p className="text-foreground">{identity.firstName ? `היי ${identity.firstName}, אני ריטה` : 'היי, אני ריטה'}</p>}
         {turns.map((t, i) => (
           <p
             key={i}
@@ -71,7 +83,7 @@ export default function OwnerRita() {
           onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
           placeholder="כתבו לריטה"
         />
-        <Button onClick={() => void send()} disabled={busy} aria-label="שליחה"><Send className="h-4 w-4" /></Button>
+        <Button onClick={() => void send()} disabled={busy || !identity.ready} aria-label="שליחה"><Send className="h-4 w-4" /></Button>
       </div>
     </div>
   );
