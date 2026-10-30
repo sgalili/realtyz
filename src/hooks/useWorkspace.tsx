@@ -11,6 +11,10 @@ export type Workspace = {
   role: string;
   workspace_name: string;
   workspace_logo_url: string | null;
+  /** Square office logo (white-label square, then the stored membership logo). */
+  workspace_logo_square_url?: string | null;
+  /** Rectangular (landscape) office logo. */
+  workspace_logo_landscape_url?: string | null;
   account_type: string | null;
   last_accessed_at: string | null;
   owner_full_name: string | null;

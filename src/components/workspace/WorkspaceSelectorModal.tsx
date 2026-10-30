@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, Plus, X, LogIn, Building2 } from 'lucide-react';
+import { Check, Plus, X, LogIn, Building2, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWorkspace, type Workspace } from '@/hooks/useWorkspace';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
-import { resolveWorkspaceCardIdentity } from '@/lib/workspaceIdentity';
+import { resolveWorkspaceCardIdentity, resolveWorkspaceCardImage } from '@/lib/workspaceIdentity';
 
 function initials(name?: string | null) {
   if (!name) return '?';
@@ -117,7 +117,8 @@ export function WorkspaceSelectorModal() {
             const active = activeWorkspaceId === w.workspace_owner_id;
             // A person's workspace is titled with their full name, not the
             // phone-number fallback the raw workspace row carries.
-            const card = resolveWorkspaceCardIdentity(w, undefined, null);
+             const card = resolveWorkspaceCardIdentity(w, undefined, null);
+             const rowImage = resolveWorkspaceCardImage(w);
             return (
               <button
                 key={w.workspace_owner_id}
@@ -137,14 +138,14 @@ export function WorkspaceSelectorModal() {
                   <div className="text-xs text-muted-foreground truncate">{roleLabel(w.role, w.is_self)}</div>
                 </div>
                 <Avatar className="h-10 w-10 shrink-0 border bg-background">
-                  {w.workspace_logo_url || w.owner_avatar_url ? (
+                  {rowImage.url ? (
                     <AvatarImage
-                      src={w.workspace_logo_url ?? w.owner_avatar_url ?? undefined}
-                      className={w.workspace_logo_url ? 'object-contain p-1' : 'object-cover'}
+                      src={rowImage.url}
+                      className={rowImage.isAvatar ? 'object-cover' : 'object-contain p-1'}
                     />
                   ) : (
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      <Building2 className="h-5 w-5" />
+                      {card.isOffice ? <Building2 className="h-5 w-5" /> : <User className="h-5 w-5" />}
                     </AvatarFallback>
                   )}
                 </Avatar>

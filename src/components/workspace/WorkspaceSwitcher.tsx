@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useUserRole } from '@/hooks/useUserRole';
-import { resolveWorkspaceCardIdentity, resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
+import { resolveWorkspaceCardIdentity, resolveWorkspaceCardImage, resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -85,9 +85,10 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   // when the workspace belongs to a single person — then their mobile below.
   const card = resolveWorkspaceCardIdentity(activeWorkspace, settings, masterBrand);
 
-  // Square workspace logo, shown on the side opposite the name + owner line.
-  // Only office logos are inherited; profile photos remain independent.
-  const squareLogo = resolveWorkspaceIdentity(activeWorkspace, settings ? { ...settings, landscape_logo_url: settings.logo_url ? null : settings.landscape_logo_url } : null, masterBrand ? { ...masterBrand, landscape_logo_url: masterBrand.logo_url ? null : masterBrand.landscape_logo_url } : null).logo;
+  // Account image, shown on the side opposite the name + owner line.
+  // Private people show their personal profile picture; companies show the
+  // square logo, then the rectangular logo, then the owner's photo.
+  const cardImage = resolveWorkspaceCardImage(activeWorkspace, settings);
 
   const profilePic = (
     <span
@@ -112,12 +113,15 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   );
 
   const workspaceLogoSquare = (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-background">
-      {squareLogo ? (
+    <span className={cn(
+      'flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-background',
+      cardImage.isAvatar && cardImage.url ? 'rounded-full' : 'rounded-md',
+    )}>
+      {cardImage.url ? (
         <img
-          src={squareLogo}
+          src={cardImage.url}
           alt={identity.name}
-          className="h-full w-full object-contain p-0.5"
+          className={cardImage.isAvatar ? 'h-full w-full object-cover' : 'h-full w-full object-contain p-0.5'}
           referrerPolicy="no-referrer"
         />
       ) : (
@@ -165,6 +169,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
               )}
               {visibleWorkspaces.map((w) => {
                 const workspaceCard = resolveWorkspaceCardIdentity(w, undefined, masterBrand);
+                const rowImage = resolveWorkspaceCardImage(w);
                 const label = workspaceCard.title;
                 const active = w.workspace_owner_id === activeWorkspaceId;
                 return (
@@ -178,9 +183,11 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     )}
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
-                      {workspaceCard.logo
-                        ? <img src={workspaceCard.logo} alt={label} className="h-full w-full object-contain p-0.5" />
-                        : <Building2 className="h-3.5 w-3.5 text-primary" />}
+                      {rowImage.url
+                        ? <img src={rowImage.url} alt={label} className={rowImage.isAvatar ? 'h-full w-full object-cover' : 'h-full w-full object-contain p-0.5'} />
+                        : workspaceCard.isOffice
+                          ? <Building2 className="h-3.5 w-3.5 text-primary" />
+                          : <User className="h-3.5 w-3.5 text-primary" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">
                       <span className="block truncate">{label}</span>

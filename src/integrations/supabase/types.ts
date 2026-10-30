@@ -9330,6 +9330,8 @@ export type Database = {
           owner_phone: string
           role: string
           user_id: string
+          workspace_logo_landscape_url: string
+          workspace_logo_square_url: string
           workspace_logo_url: string
           workspace_name: string
           workspace_owner_id: string

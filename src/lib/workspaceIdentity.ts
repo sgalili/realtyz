@@ -93,6 +93,35 @@ export function workspaceInitial(name: string) {
   return (name || DEFAULT_NAME).trim().slice(0, 1).toUpperCase();
 }
 
+export type WorkspaceCardImage = {
+  url: string | null;
+  /** True when the image is the owner's personal profile picture. */
+  isAvatar: boolean;
+};
+
+/**
+ * Account-card image rules (workspace switcher + picker):
+ * - A private person (property owner / buyer / renter / partner-only) always
+ *   shows their personal profile picture.
+ * - A company/office shows its square logo, then the rectangular (landscape)
+ *   logo, and only then the owner's personal profile picture.
+ */
+export function resolveWorkspaceCardImage(
+  workspace: Workspace | null | undefined,
+  brand?: BrandLike,
+): WorkspaceCardImage {
+  const avatar = norm(workspace?.owner_avatar_url) || null;
+  const brandName = norm(brand?.agency_name);
+  const isOffice = workspace?.is_office ?? (!!brandName && brandName !== DEFAULT_NAME);
+  if (!isOffice) return { url: avatar, isAvatar: true };
+  const square = officeLogoOnly(norm(workspace?.workspace_logo_square_url) || null, avatar ?? '');
+  const landscape = officeLogoOnly(norm(workspace?.workspace_logo_landscape_url) || null, avatar ?? '');
+  const merged = officeLogoOnly(norm(workspace?.workspace_logo_url) || null, avatar ?? '');
+  const logo = square || landscape || merged;
+  if (logo) return { url: logo, isAvatar: false };
+  return { url: avatar, isAvatar: true };
+}
+
 export type WorkspaceCardIdentity = {
   /** First line: the office/company name, or the person's full name. */
   title: string;
@@ -122,12 +151,13 @@ export function resolveWorkspaceCardIdentity(
   // The workspace list decides this server-side; a stale local cache that
   // predates the field falls back to "does this workspace carry a brand name".
   const isOffice = workspace?.is_office ?? (!!brandName && brandName !== DEFAULT_NAME);
+  const image = resolveWorkspaceCardImage(workspace, brand);
 
   if (isOffice) {
     return {
       title: identity.name,
       subtitle: person || phoneLine || email,
-      logo: identity.logo,
+      logo: image.url,
       isOffice: true,
       isTenant: identity.isTenant,
     };
@@ -136,7 +166,7 @@ export function resolveWorkspaceCardIdentity(
   return {
     title: person || identity.name,
     subtitle: phoneLine || (email && email !== person ? email : ''),
-    logo: identity.logo,
+    logo: image.url,
     isOffice: false,
     isTenant: identity.isTenant,
   };

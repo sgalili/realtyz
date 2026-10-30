@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveWorkspaceCardIdentity, resolveWorkspaceIdentity } from './workspaceIdentity';
+import { resolveWorkspaceCardIdentity, resolveWorkspaceCardImage, resolveWorkspaceIdentity } from './workspaceIdentity';
 import type { Workspace } from '@/hooks/useWorkspace';
 
 describe('workspace identity privacy', () => {
@@ -64,5 +64,54 @@ describe('workspace account card identity', () => {
   it('never shows an undefined mobile as a dash', () => {
     const noPhone = { ...person, owner_phone: undefined } as Workspace;
     expect(resolveWorkspaceCardIdentity(noPhone, null, null).subtitle).not.toBe('-');
+  });
+});
+
+describe('workspace account card image', () => {
+  const base = {
+    workspace_owner_id: 'c202de0e-0000-4000-8000-000000000002',
+    user_id: 'c202de0e-0000-4000-8000-000000000002',
+    role: 'user',
+    workspace_name: 'x',
+    workspace_logo_url: null,
+    workspace_logo_square_url: null,
+    workspace_logo_landscape_url: null,
+    account_type: null,
+    last_accessed_at: null,
+    owner_full_name: 'בעלים פרטי',
+    owner_email: null,
+    owner_avatar_url: 'https://cdn.example.com/avatars/person.jpg',
+    owner_phone: null,
+    is_office: false,
+    is_self: false,
+  } as Workspace;
+
+  it('shows the personal profile picture for a private person', () => {
+    const image = resolveWorkspaceCardImage(base);
+    expect(image).toEqual({ url: 'https://cdn.example.com/avatars/person.jpg', isAvatar: true });
+  });
+
+  it('prefers the square logo for a company', () => {
+    const company = {
+      ...base,
+      is_office: true,
+      workspace_logo_square_url: 'https://cdn.example.com/logos/square.png',
+      workspace_logo_landscape_url: 'https://cdn.example.com/logos/wide.png',
+    } as Workspace;
+    expect(resolveWorkspaceCardImage(company)).toEqual({ url: 'https://cdn.example.com/logos/square.png', isAvatar: false });
+  });
+
+  it('falls back to the rectangular logo when no square logo exists', () => {
+    const company = {
+      ...base,
+      is_office: true,
+      workspace_logo_landscape_url: 'https://cdn.example.com/logos/wide.png',
+    } as Workspace;
+    expect(resolveWorkspaceCardImage(company)).toEqual({ url: 'https://cdn.example.com/logos/wide.png', isAvatar: false });
+  });
+
+  it('falls back to the personal picture when a company has no logo at all', () => {
+    const company = { ...base, is_office: true } as Workspace;
+    expect(resolveWorkspaceCardImage(company)).toEqual({ url: 'https://cdn.example.com/avatars/person.jpg', isAvatar: true });
   });
 });
