@@ -21,6 +21,6 @@ it('removes nationwide selection when a custom area is added', () => {
   fireEvent.click(screen.getByRole('combobox'));
   fireEvent.click(screen.getByRole('button', { name: 'אחר (טקסט חופשי)' }));
   fireEvent.change(screen.getByRole('textbox', { name: 'עיר או אזור אחר' }), { target: { value: 'הגליל' } });
-  fireEvent.click(screen.getByRole('button', { name: 'הוסף' }));
+  fireEvent.keyDown(screen.getByRole('textbox', { name: 'עיר או אזור אחר' }), { key: 'Enter' });
   expect(change).toHaveBeenCalledWith(['הגליל']);
 });
