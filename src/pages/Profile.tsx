@@ -1,5 +1,5 @@
 import { DeleteAccountButton } from '@/components/profile/DeleteAccountButton';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { CompleteProfileBanner } from '@/components/profile/CompleteProfileBanner';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, Trash2, Pencil, Mail, Phone, MessageCircle, MapPin, User as UserIcon,
-  Building2, ImageIcon, LogOut, X,
+  Building2, ImageIcon, LogOut, X, Check,
 } from 'lucide-react';
 import { BadgeCheck } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,7 @@ import { UpgradeToBrokerButton } from '@/components/profile/UpgradeToBrokerButto
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
+import { profileFieldChange, type ProfileContacts, type ProfileSaveField } from '@/lib/profileFieldSave';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
@@ -82,6 +83,8 @@ function ProfileFieldRow({
   editing,
   onChange,
   onToggleEdit,
+  onSave,
+  saving = false,
   onDelete,
   onAdd,
   placeholder,
@@ -95,6 +98,8 @@ function ProfileFieldRow({
   editing: boolean;
   onChange: (v: string) => void;
   onToggleEdit: () => void;
+  onSave: () => Promise<boolean>;
+  saving?: boolean;
   onDelete?: () => void;
   onAdd?: () => void;
   placeholder?: string;
@@ -117,7 +122,7 @@ function ProfileFieldRow({
               dir={inputDir}
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              onBlur={onToggleEdit}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void onSave(); } }}
               placeholder={placeholder}
               className={cn('h-8 px-2 !text-base font-bold placeholder:font-normal', inputDir === 'ltr' ? 'text-left' : 'text-right')}
             />
@@ -138,8 +143,8 @@ function ProfileFieldRow({
         )}
       </div>
       <div className="flex items-center gap-0.5 shrink-0">
-        <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={onToggleEdit} aria-label="עריכה">
-          <Pencil className="h-3.5 w-3.5" />
+        <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" disabled={saving} onClick={() => { if (editing) void onSave(); else onToggleEdit(); }} aria-label={editing ? `שמירת ${label}` : `עריכת ${label}`}>
+          {editing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
         </Button>
         {onAdd && (
           <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={onAdd} aria-label="הוסף">
@@ -158,7 +163,7 @@ function ProfileFieldRow({
 
 /** Renders a stack of rows (array field) with KI styling. */
 function ProfileArrayRows({
-  rows, setRows, icon, label, placeholder, inputDir = 'ltr', formatter,
+  rows, setRows, icon, label, placeholder, inputDir = 'ltr', formatter, onSave, saving,
 }: {
   rows: Row[];
   setRows: (next: Row[]) => void;
@@ -167,6 +172,8 @@ function ProfileArrayRows({
   placeholder?: string;
   inputDir?: 'ltr' | 'rtl';
   formatter?: (v: string) => string;
+  onSave: (next: Row[]) => Promise<boolean>;
+  saving: boolean;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   return (
@@ -180,8 +187,10 @@ function ProfileArrayRows({
           editing={editingId === row.id}
           onChange={(v) => setRows(rows.map((r) => (r.id === row.id ? { ...r, value: v } : r)))}
           onToggleEdit={() => setEditingId((id) => (id === row.id ? null : row.id))}
-          onAdd={idx === rows.length - 1 ? () => setRows([...rows, newRow()]) : undefined}
-          onDelete={rows.length > 1 ? () => setRows(rows.filter((r) => r.id !== row.id)) : undefined}
+          saving={saving}
+          onSave={async () => { const ok = await onSave(rows); if (ok) setEditingId(null); return ok; }}
+          onAdd={idx === rows.length - 1 ? () => { const added = newRow(); setRows([...rows, added]); setEditingId(added.id); } : undefined}
+          onDelete={rows.length > 1 ? () => { const next = rows.filter((r) => r.id !== row.id); void onSave(next).then(ok => { if (ok) { setRows(next); setEditingId(null); } }); } : undefined}
           placeholder={placeholder}
           inputDir={inputDir}
         />
@@ -240,6 +249,11 @@ function PersonalTab() {
   }, [profileOwnerId]);
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+  const savedContacts = useRef<ProfileContacts>({ emails: [], whatsapps: [], phones: [], fullName: '', city: '' });
+  const savingRef = useRef(false);
+  const mounted = useRef(true);
+  const [savingField, setSavingField] = useState<ProfileSaveField | null>(null);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     if (!user || !profileOwnerId || hydratedFor === profileOwnerId) return;
@@ -285,9 +299,13 @@ function PersonalTab() {
         const extra = owns(local) ? local : owns(contacts) ? contacts : null;
         if (!extra && local) { try { window.localStorage.removeItem(profileStorageKey(ownerId)); } catch {} }
         const phone = String(server.phone ?? '') || userPhone;
-        setEmails(rowList(extra?.emails, [serverEmail].filter(Boolean)));
-        setWhatsapps(rowList(extra?.whatsapps, [phone].filter(Boolean)));
-        setPhones(rowList(extra?.phones, [phone].filter(Boolean)));
+        const loadedEmails = rowList(extra?.emails, [serverEmail].filter(Boolean));
+        const loadedWhatsapps = rowList(extra?.whatsapps, [phone].filter(Boolean));
+        const loadedPhones = rowList(extra?.phones, [phone].filter(Boolean));
+        savedContacts.current = { emails: loadedEmails, whatsapps: loadedWhatsapps, phones: loadedPhones, fullName: serverName, city: String(server.city ?? extra?.city ?? '') };
+        setEmails(loadedEmails);
+        setWhatsapps(loadedWhatsapps);
+        setPhones(loadedPhones);
         setFullName(serverName);
         setLockedBrokerName(String(server.locked_broker_name ?? ''));
         setCity(String(server.city ?? extra?.city ?? ''));
@@ -319,38 +337,48 @@ function PersonalTab() {
 
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
 
-  const save = async () => {
-    const payload = { emails, whatsapps, phones, fullName, city };
-    if (!profileOwnerId) return;
+  const saveField = async (field: ProfileSaveField, value: string | Row[]): Promise<boolean> => {
+    if (!profileOwnerId || hydratedFor !== profileOwnerId || savingRef.current) return false;
+    if (field === 'fullName' && verifiedLicenseLocked) return false;
+    savingRef.current = true;
+    setSavingField(field);
     try {
-      if (showBrokerFields && brokerLicense && isOwnProfile && !verifiedLicenseLocked) await verifyBrokerLicense(brokerLicense, 'verify');
-      const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
+      if (field === 'brokerLicense') {
+        if (!showBrokerFields || !isOwnProfile || verifiedLicenseLocked || verifiedBrokerLicense !== brokerLicense) return false;
+        if (brokerLicense) await verifyBrokerLicense(brokerLicense, 'verify');
+      }
+      if (field === 'emails') {
+        const rows = value as Row[];
+        if (rows.some(row => row.value.trim() && !realEmail(row.value))) throw new Error('כתובת הדוא״ל אינה תקינה');
+      }
+      const { contacts: payload, patch } = profileFieldChange(field, value, savedContacts.current);
       const { data: savedProfile, error: profErr } = await supabase
         .from('profiles')
-        .update({
-          city: city || null,
-          gender: profileGender(gender),
-          phone: primaryPhone,
-          full_name: fullName || null,
-          email: realEmail(emails[0]?.value) || null,
-          ...(showBrokerFields && !verifiedLicenseLocked ? { broker_license_number: brokerLicense.trim() || null } : {}),
-        } as any)
+        .update(patch as any)
         .eq('id', profileOwnerId).select('id,gender').single();
       if (profErr) throw profErr;
       if (!savedProfile || savedProfile.id !== profileOwnerId) throw new Error('הפרופיל לא נשמר');
-      if (isOwnProfile && user) queryClient.setQueryData(personalGenderKey(user.id), profileGender(savedProfile.gender));
+      if (!mounted.current) return false;
+      savedContacts.current = payload;
+      if (field === 'gender' && isOwnProfile && user) queryClient.setQueryData(personalGenderKey(user.id), profileGender(savedProfile.gender));
       try { window.localStorage.setItem(profileStorageKey(profileOwnerId), JSON.stringify(payload)); } catch {}
-      if (isOwnProfile) {
-        const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload, full_name: fullName } });
+      if (isOwnProfile && field in payload) {
+        const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload, ...(field === 'fullName' ? { full_name: payload.fullName } : {}) } });
         if (error) throw error;
       }
-      toast.success('הפרופיל נשמר');
+      if (!mounted.current) return false;
+      setEditing(e => ({ ...e, [field]: false }));
+      toast.success('השדה נשמר');
       void queryClient.invalidateQueries({ queryKey: ['app-header-user-profile'] });
-      setLicenseSuspended(false);
-      window.dispatchEvent(new Event('realtyz:license-verified'));
+      if (field === 'brokerLicense') window.dispatchEvent(new Event('realtyz:license-verified'));
       window.dispatchEvent(new Event('realtyz:profile-saved'));
+      return true;
     } catch (err: any) {
-      toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
+      if (mounted.current) toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
+      return false;
+    } finally {
+      savingRef.current = false;
+      if (mounted.current) setSavingField(null);
     }
 
   };
@@ -378,14 +406,14 @@ function PersonalTab() {
             <span className="min-w-0 flex-1 break-words text-base font-bold" aria-label="שם מלא לפי פנקס המתווכים">{fullName}</span>
           </div>
         ) : (
-          <ProfileFieldRow icon={UserIcon} label="שם מלא" value={fullName} editing={editing.fullName ?? false} onChange={setFullName} onToggleEdit={() => setEdit('fullName')} inputDir="rtl" placeholder="הזן שם מלא" />
+          <ProfileFieldRow icon={UserIcon} label="שם מלא" value={fullName} editing={editing.fullName ?? false} onChange={setFullName} onToggleEdit={() => setEdit('fullName')} onSave={() => saveField('fullName', fullName)} saving={savingField !== null} inputDir="rtl" placeholder="הזן שם מלא" />
         )}
         {verifiedLicenseLocked && <p className="text-sm text-muted-foreground">השם נלקח מפנקס המתווכים הרשמי ואינו ניתן לעריכה</p>}
 
 
-        <ProfileArrayRows rows={emails} setRows={setEmails} icon={Mail} label='דוא"ל' />
-        <ProfileArrayRows rows={whatsapps} setRows={setWhatsapps} icon={MessageCircle} label="וואטסאפ" formatter={formatIsraeliPhone} />
-        <ProfileArrayRows rows={phones} setRows={setPhones} icon={Phone} label="טלפון" formatter={formatIsraeliPhone} />
+        <ProfileArrayRows rows={emails} setRows={setEmails} icon={Mail} label='דוא"ל' onSave={rows => saveField('emails', rows)} saving={savingField !== null} />
+        <ProfileArrayRows rows={whatsapps} setRows={setWhatsapps} icon={MessageCircle} label="וואטסאפ" formatter={formatIsraeliPhone} onSave={rows => saveField('whatsapps', rows)} saving={savingField !== null} />
+        <ProfileArrayRows rows={phones} setRows={setPhones} icon={Phone} label="טלפון" formatter={formatIsraeliPhone} onSave={rows => saveField('phones', rows)} saving={savingField !== null} />
 
         <ProfileFieldRow
           icon={MapPin}
@@ -394,10 +422,12 @@ function PersonalTab() {
           editing={editing.city ?? false}
           onChange={setCity}
           onToggleEdit={() => setEdit('city')}
+          onSave={() => saveField('city', city)}
+          saving={savingField !== null}
           inputDir="rtl"
           placeholder="בחר עיר"
         >
-          <IsraeliCityPicker value={city} onChange={(v) => { setCity(v); setEdit('city'); }} placeholder="בחר עיר" className="text-base" itemClassName="text-base" />
+          <IsraeliCityPicker value={city} onChange={setCity} placeholder="בחר עיר" className="text-base" itemClassName="text-base" />
         </ProfileFieldRow>
 
         <ProfileFieldRow
@@ -407,10 +437,12 @@ function PersonalTab() {
           editing={editing.gender ?? false}
           onChange={setGender}
           onToggleEdit={() => setEdit('gender')}
+          onSave={() => saveField('gender', gender)}
+          saving={savingField !== null}
           inputDir="rtl"
           placeholder={language.command('בחר מגדר')}
         >
-          <Select value={gender || undefined} onValueChange={(v) => { setGender(v); setEdit('gender'); }}>
+          <Select value={gender || undefined} onValueChange={setGender}>
             <SelectTrigger dir="rtl" className="h-8 text-right text-base"><SelectValue placeholder={language.command('בחר מגדר')} /></SelectTrigger>
             <SelectContent dir="rtl">
               <SelectItem value="male" className="text-right text-base">גבר</SelectItem>
@@ -445,8 +477,15 @@ function PersonalTab() {
             )}
           </div>
         ))}
+        {showBrokerFields && isOwnProfile && !verifiedLicenseLocked && brokerLicense !== storedLicense && <Button type="button" variant="outline" size="icon" aria-label="שמירת רישיון תיווך" disabled={savingField !== null || verifiedBrokerLicense !== brokerLicense} onClick={() => void saveField('brokerLicense', brokerLicense)}><Check className="h-4 w-4" /></Button>}
 
         {profileOwnerId && <UpgradeToBrokerButton profileOwnerId={profileOwnerId} />}
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="w-full gap-2 text-base border-destructive/30 text-destructive hover:bg-destructive/10">
+            <LogOut className="h-4 w-4" />יציאה
+          </Button>
+          {user && <DeleteAccountButton showLabel />}
+        </div>
       </CardContent>
 
       <AlertDialog open={removeLicenseOpen} onOpenChange={(o) => !removingLicense && setRemoveLicenseOpen(o)}>
@@ -468,14 +507,6 @@ function PersonalTab() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="profile-sticky-actions sticky bottom-0 z-20 flex items-center gap-3 rounded-b-xl border-t border-border bg-card px-4 pb-4 pt-3">
-        {user && <DeleteAccountButton />}
-        <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="flex-1 text-base border-destructive/30 text-destructive hover:bg-destructive/10">
-          <LogOut className="h-4 w-4" />
-          התנתקות
-        </Button>
-        <Button onClick={save} disabled={showBrokerFields && isOwnProfile && !verifiedLicenseLocked && !!brokerLicense && verifiedBrokerLicense !== brokerLicense} size="lg" className="flex-1 text-base">שמירת הפרופיל</Button>
-      </div>
 
     </Card>
   );
