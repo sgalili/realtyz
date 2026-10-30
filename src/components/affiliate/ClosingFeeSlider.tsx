@@ -48,16 +48,17 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   };
   const [draft, setDraft] = useState('');
   const amount = closingFeeAmount(percent, range.price);
-  const displayAmount = dualMode ? outType === 'fixed' : range.rent && range.price > 0;
-  const minimum = zeroMin ? 0 : displayAmount && dualMode ? range.price * range.min / 100 : range.min;
+  const displayAmount = range.price > 0;
+  const amountScale = dualMode && outType === 'fixed';
+  const minimum = zeroMin ? 0 : amountScale ? range.price * range.min / 100 : range.min;
 
   const scale = offerScale(range.min, range.max, range.step);
-  const maximum = displayAmount && dualMode ? range.price * range.max / 100 : range.max;
+  const maximum = amountScale ? range.price * range.max / 100 : range.max;
   const exactAmount = range.price * percent / 100;
   const money = (n: number) => fmtILS(Math.round(n));
-  const selectedLabel = displayAmount ? money(dualMode ? exactAmount : amount) : `${Number(percent.toFixed(2))}%`;
+  const selectedLabel = money(exactAmount);
   const changePercent = (next: number) => {
-    if (dualMode && onValueChange) onValueChange(displayAmount ? Math.round(range.price * next / 100) : next, outType);
+    if (dualMode && onValueChange) onValueChange(outType === 'fixed' ? Math.round(range.price * next / 100) : next, outType);
     else onChange(next);
   };
   const commit = () => {
@@ -82,14 +83,15 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
     {open && <div id="closing-fee-body" className={publisherCard ? "space-y-2" : "space-y-4"}><div className="text-center">
       {!publisherCard && <div className="flex h-14 items-center justify-center" dir="ltr">
         {editing ? <Input autoFocus aria-label="עריכת עמלת סגירה" inputMode="decimal" dir="ltr" className="h-12 w-44 text-center text-3xl font-bold" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') setEditing(false); }} /> :
-          <Button type="button" variant="ghost" className="h-14 px-3 text-[42px] font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(displayAmount ? (dualMode ? exactAmount : amount) : percent)); setEditing(true); }}>{displayAmount ? money(dualMode ? exactAmount : amount) : `${Number(percent.toFixed(2))}%`}</Button>}
+          <Button type="button" variant="ghost" className="h-14 px-3 text-[42px] font-bold closing-tone" aria-label="עריכת עמלת סגירה" onClick={() => { setDraft(String(exactAmount)); setEditing(true); }}>{selectedLabel}</Button>}
       </div>}
-      {!publisherCard && <p className="text-xs text-muted-foreground">{dualMode ? (range.price > 0 ? (displayAmount ? (range.rent ? '' : `${Number(percent.toFixed(2))}%`) : money(exactAmount)) : 'מחיר הנכס טרם הוזן') : range.rent ? '' : `ממחיר המכירה${range.price > 0 ? ` · ₪${amount.toLocaleString('he-IL')}` : ''}`}</p>}
+      {!publisherCard && !displayAmount && <p className="text-xs text-muted-foreground">מחיר הנכס טרם הוזן</p>}
     </div>
     <div dir="ltr" className={cn("space-y-2", !publisherCard && "px-2")}>
-      {publisherCard && <div className="flex h-9 items-center justify-center">{priceControl}</div>}
-      <Slider dir="ltr" aria-label="עמלת סגירה" aria-valuetext={selectedLabel} min={zeroMin ? 0 : minimum} max={zeroMin ? scale.max : maximum} disabled={dualMode && displayAmount && range.price <= 0} step={zeroMin ? 1 : dualMode && displayAmount ? 0.01 : range.step} value={[zeroMin ? scale.position(percent) : dualMode && displayAmount ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(zeroMin ? scale.amount(next) : dualMode && displayAmount && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
-      <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{displayAmount ? money(dualMode ? minimum : closingFeeAmount(zeroMin ? 0 : range.min, range.price)) : `${zeroMin ? 0 : range.min}%`}</span><span>{displayAmount ? money(dualMode ? maximum : closingFeeAmount(range.max, range.price)) : `${range.max}%`}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>
+      {publisherCard && <div className="flex h-9 items-center justify-center gap-2">{priceControl}{!range.rent && displayAmount && <span className="text-xs font-normal text-muted-foreground">({Number(percent.toFixed(2))}%)</span>}</div>}
+      {!publisherCard && !range.rent && displayAmount && <p className="text-center text-xs text-muted-foreground">({Number(percent.toFixed(2))}%)</p>}
+      <Slider dir="ltr" aria-label="עמלת סגירה" aria-valuetext={selectedLabel} min={zeroMin ? 0 : minimum} max={zeroMin ? scale.max : maximum} disabled={!displayAmount} step={zeroMin ? 1 : amountScale ? 0.01 : range.step} value={[zeroMin ? scale.position(percent) : amountScale ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(zeroMin ? scale.amount(next) : amountScale && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
+      <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{money(closingFeeAmount(zeroMin ? 0 : range.min, range.price))}</span><span>{money(closingFeeAmount(range.max, range.price))}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>
     </div>
     <div className="space-y-2 text-center">
       <p className="text-sm font-semibold" aria-live="polite">פוטנציאל שיתוף: כ־{1 + Math.round(progress * 99)} שותפים</p>

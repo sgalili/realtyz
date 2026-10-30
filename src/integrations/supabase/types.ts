@@ -1177,6 +1177,7 @@ export type Database = {
       }
       broker_license_verifications: {
         Row: {
+          account_name_before_verification: string | null
           license_number: string
           registry_holder_name: string
           source_updated_at: string
@@ -1185,6 +1186,7 @@ export type Database = {
           verified_at: string
         }
         Insert: {
+          account_name_before_verification?: string | null
           license_number: string
           registry_holder_name: string
           source_updated_at: string
@@ -1193,6 +1195,7 @@ export type Database = {
           verified_at?: string
         }
         Update: {
+          account_name_before_verification?: string | null
           license_number?: string
           registry_holder_name?: string
           source_updated_at?: string
@@ -1306,6 +1309,24 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           suspended_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      broker_sms_verifications: {
+        Row: {
+          phone_number: string
+          user_id: string
+          verified_at: string
+        }
+        Insert: {
+          phone_number: string
+          user_id: string
+          verified_at?: string
+        }
+        Update: {
+          phone_number?: string
+          user_id?: string
+          verified_at?: string
         }
         Relationships: []
       }
@@ -6545,6 +6566,7 @@ export type Database = {
           is_suspended: boolean
           is_unlimited: boolean
           last_sign_in_at: string | null
+          locked_broker_name: string | null
           partner_terms_accepted_at: string | null
           partner_terms_version: string | null
           phone: string | null
@@ -6581,6 +6603,7 @@ export type Database = {
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
+          locked_broker_name?: string | null
           partner_terms_accepted_at?: string | null
           partner_terms_version?: string | null
           phone?: string | null
@@ -6617,6 +6640,7 @@ export type Database = {
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
+          locked_broker_name?: string | null
           partner_terms_accepted_at?: string | null
           partner_terms_version?: string | null
           phone?: string | null
@@ -8322,6 +8346,7 @@ export type Database = {
           code_hash: string
           consumed_at: string | null
           created_at: string
+          delivery_channel: string
           expires_at: string
           id: string
           phone_number: string
@@ -8331,6 +8356,7 @@ export type Database = {
           code_hash: string
           consumed_at?: string | null
           created_at?: string
+          delivery_channel?: string
           expires_at: string
           id?: string
           phone_number: string
@@ -8340,6 +8366,7 @@ export type Database = {
           code_hash?: string
           consumed_at?: string | null
           created_at?: string
+          delivery_channel?: string
           expires_at?: string
           id?: string
           phone_number?: string
@@ -9604,6 +9631,7 @@ export type Database = {
         Args: { _project: string; _unit_key?: string }
         Returns: Json
       }
+      publisher_sms_verified: { Args: never; Returns: boolean }
       purchase_leftover_lead: { Args: { _charge_id: string }; Returns: Json }
       queue_autopilot_messages: {
         Args: {

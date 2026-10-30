@@ -224,6 +224,7 @@ function PersonalTab() {
   const [brokerLicense, setBrokerLicense] = useState<string>('');
   const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [storedLicense, setStoredLicense] = useState('');
+  const [lockedBrokerName, setLockedBrokerName] = useState('');
   const [removeLicenseOpen, setRemoveLicenseOpen] = useState(false);
   const [removingLicense, setRemovingLicense] = useState(false);
   const [licenseSuspended, setLicenseSuspended] = useState(false);
@@ -246,7 +247,7 @@ function PersonalTab() {
     // Reset everything the moment the active workspace changes so nothing
     // from the previous tenant can linger on screen.
     setEmails([newRow('')]); setWhatsapps([newRow('')]); setPhones([newRow('')]);
-    setFullName(''); setCity(''); setGender(''); setBrokerLicense(''); setStoredLicense('');
+    setFullName(''); setCity(''); setGender(''); setBrokerLicense(''); setStoredLicense(''); setLockedBrokerName('');
     const meta = isOwnProfile ? (user.user_metadata ?? {}) as Record<string, any> : {};
     const contacts = isOwnProfile ? meta.profile_contacts ?? null : null;
     const userPhone = isOwnProfile ? ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString() : '';
@@ -259,7 +260,7 @@ function PersonalTab() {
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('id, email, full_name, phone, city, gender, broker_license_number')
+          .select('id, email, full_name, phone, city, gender, broker_license_number, locked_broker_name')
           .eq('id', ownerId)
           .maybeSingle();
         if ((data as any)?.id && (data as any).id !== ownerId) return;
@@ -286,6 +287,7 @@ function PersonalTab() {
         setWhatsapps(rowList(extra?.whatsapps, [phone].filter(Boolean)));
         setPhones(rowList(extra?.phones, [phone].filter(Boolean)));
         setFullName(serverName);
+        setLockedBrokerName(String(server.locked_broker_name ?? ''));
         setCity(String(server.city ?? extra?.city ?? ''));
         setGender(profileGender(server.gender) ?? '');
         setBrokerLicense(String(server.broker_license_number ?? ''));
@@ -295,7 +297,7 @@ function PersonalTab() {
     })();
   }, [user, profileOwnerId, isOwnProfile, hydratedFor]);
 
-  const verifiedLicenseLocked = showBrokerFields && isOwnProfile && !licenseSuspended && !!storedLicense;
+  const verifiedLicenseLocked = !!lockedBrokerName || (showBrokerFields && isOwnProfile && !licenseSuspended && !!storedLicense);
   const removeLicense = async () => {
     setRemovingLicense(true);
     try {

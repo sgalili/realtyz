@@ -1,5 +1,12 @@
 # Roadmap
 
+## Publisher fees and verification October 30
+- [x] ILS-first closing/sale fee values and limits; center ad type and restrict inventory import choices.
+- [x] Remove colored field/dropdown focus borders globally while keeping neutral keyboard focus.
+- [x] Require SMS and official broker verification before broker publication; protect verified identity server-side with pre-registry name and certificate checks preserved.
+- [x] 33 focused tests passed; signed-in mobile/desktop broker selection opens required SMS gate, no My Properties for the current non-broker role; neutral focused field verified. No codes sent, property published or real identity changed.
+- [ ] Genuine new broker OTP/certificate approval and successful publication readback require a recipient-controlled phone/code, authorized certificate and consent to publish. Positive verified-broker import UI remains unverified with the current non-broker role.
+
 ## Property-based service messages October 30
 - [x] Remove fabricated SMS sample content; add searchable property selection below recipients for SMS, WhatsApp and email, and relocate IVR's existing selector there.
 - [x] Reuse workspace-authorized/partner-safe inventory and selected-property generation; preserve Facebook/Instagram flows and approved WhatsApp templates.

@@ -9,6 +9,7 @@ vi.mock('@/components/auth/BrokerLicenseField', () => ({ BrokerLicenseField: () 
 vi.mock('@/components/auth/BrokerCertificateCheck', () => ({ BrokerCertificateCheck: () => null }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   rpc: async (name: string, args: { _user_id?: string }) => {
+    if (name === 'publisher_sms_verified') return { data: false, error: null };
     if (name === 'partner_can_view_closing') { state.reads.push(args._user_id ?? ''); return { data: state.verified, error: null }; }
     state.submissions++; return { data: null, error: null };
   },

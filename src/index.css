@@ -3,6 +3,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Field focus stays neutral even when a local utility requests a brand ring. */
+:root { --field-focus-border: 0 0% 68%; --field-focus-cue: 0 0% 42%; }
+.dark { --field-focus-border: 0 0% 45%; --field-focus-cue: 0 0% 72%; }
+:is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, [role="combobox"]):is(:focus, :focus-visible, :active, [data-state="open"]) {
+  border-color: hsl(var(--field-focus-border)) !important;
+  --tw-ring-color: hsl(var(--field-focus-cue)) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+:is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, [role="combobox"]):focus-visible {
+  outline: 1px solid hsl(var(--field-focus-cue)) !important;
+  outline-offset: 2px !important;
+}
+
 @keyframes collapsible-down {
   from { height: 0; opacity: 0; }
   to { height: var(--radix-collapsible-content-height); opacity: 1; }

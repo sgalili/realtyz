@@ -31,6 +31,7 @@ type Props = {
   allowSms?: boolean;
   /** SMS only; WhatsApp/email appear only after "לא קיבלתי קוד". */
   smsOnly?: boolean;
+  brokerVerification?: boolean;
   onEmailFallback?: () => void;
 };
 
@@ -47,10 +48,11 @@ export function WhatsAppOtpVerify({
   defaultPhone = '',
   lockPhone = false,
   title = 'אימות בוואטסאפ',
-  description = 'נשלח קוד בן 4 ספרות מהמספר הרשמי שלנו בוואטסאפ.',
+  description,
   onVerified,
   allowSms = false,
   smsOnly = false,
+  brokerVerification = false,
   onEmailFallback,
 }: Props) {
   const [fallbackOpen, setFallbackOpen] = useState(false);
@@ -99,7 +101,7 @@ export function WhatsAppOtpVerify({
     setBusy(true);
     setError(null);
     const { data, error: fnError } = await supabase.functions.invoke('whatsapp-auth', {
-      body: { action: 'verify', phone: normalized, code: code.replace(/\D/g, '') },
+      body: { action: brokerVerification ? 'broker_verify' : 'verify', phone: normalized, code: code.replace(/\D/g, '') },
     });
     setBusy(false);
     if (fnError || data?.error) {
@@ -117,7 +119,7 @@ export function WhatsAppOtpVerify({
           <MessageCircle className="h-4 w-4 text-green-600" />
           {title}
         </p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-muted-foreground">{description ?? (smsOnly ? 'נשלח קוד אימות בן 4 ספרות ב-SMS.' : 'נשלח קוד בן 4 ספרות מהמספר הרשמי שלנו בוואטסאפ.')}</p>
       </div>
 
       {error && (
@@ -127,7 +129,7 @@ export function WhatsAppOtpVerify({
       )}
 
       <div className="space-y-1">
-        <Label className="text-xs">מספר וואטסאפ</Label>
+        <Label className="text-xs">{smsOnly ? 'מספר טלפון' : 'מספר וואטסאפ'}</Label>
         <Input
           dir="ltr"
           inputMode="tel"
@@ -174,7 +176,7 @@ export function WhatsAppOtpVerify({
           </>
         )}
       </div>
-      {smsOnly && sent && (fallbackOpen ? (
+      {smsOnly && !brokerVerification && sent && (fallbackOpen ? (
         <div className="space-y-2 rounded-md border p-3">
           <p className="text-xs text-muted-foreground">אפשר להירשם גם בדרך אחרת:</p>
           <div className="flex flex-wrap gap-2">

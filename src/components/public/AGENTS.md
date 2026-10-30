@@ -3,3 +3,4 @@
 - Publisher lead-price controls reuse shared bounds/colors and potential estimates; disabled fees hide settings without clearing limits/questions. Closing dual-mode callbacks persist both value and unit without changing legacy editors. Why: avoid unintended charges or fee conversions.
 - Publisher lead and closing editors use PricingCardHeader for icon, price, title/help and control tracks; ClosingFeeSlider opts in without changing legacy editors. Why: shared alignment without changing other fee flows.
 - Publisher sliders share offerScale (discrete zero, then minimum-to-maximum steps) and thresholdOffer for manual values; collapsed offers share CollapsedOffer. Manual Super Admin overrides remain separate. Why: no dead zones or divergent layouts.
+- Publisher import choices use brokerInventoryChoices with workspace-owner broker roles, official eligibility and shared ready inventory; no Super Admin identity shortcut. Why: prevent non-broker property access.

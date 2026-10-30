@@ -420,6 +420,7 @@ Deno.serve(async (req) => {
         phone_number: phone,
         code_hash: codeHash,
         expires_at: expiresAt,
+        delivery_channel: 'sms',
       });
       if (insertError) throw insertError;
       console.info("whatsapp-auth SMS OTP delivered", { phone_last4: phone.slice(-4), scope: sms.scope ?? null });
@@ -584,13 +585,13 @@ Deno.serve(async (req) => {
       return json({ ...provisioned }, provisioned.ok ? 200 : 200);
     }
 
-    if (action === "verify") {
+    if (action === "verify" || action === "broker_verify") {
       const code = String(body.code ?? "").replace(/\D/g, "");
       if (!/^\d{4}$/.test(code)) return json({ error: "קוד אימות לא תקין" }, 400);
 
       // Fictional QA test series: fixed code, no OTP row needed. Real phone
       // numbers always go through the stored-code check below.
-      if (isTestSeriesPhone(phone) && code === TEST_OTP_CODE) {
+      if (action !== 'broker_verify' && isTestSeriesPhone(phone) && code === TEST_OTP_CODE) {
         const testPublishableKey = Deno.env.get('SUPABASE_ANON_KEY');
         if (!testPublishableKey) throw new Error('Phone authentication is not configured');
         const testClient = createClient(supabaseUrl, testPublishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -600,7 +601,7 @@ Deno.serve(async (req) => {
 
       const { data: otpRow, error: otpError } = await admin
         .from("whatsapp_login_otps")
-        .select("id, code_hash, attempts, expires_at, consumed_at")
+        .select("id, code_hash, attempts, expires_at, consumed_at, delivery_channel")
         .eq("phone_number", phone)
         .is("consumed_at", null)
         .gt("expires_at", new Date().toISOString())
@@ -617,12 +618,29 @@ Deno.serve(async (req) => {
         return json({ error: "קוד שגוי" }, 400);
       }
 
-      await admin.from("whatsapp_login_otps").update({ consumed_at: new Date().toISOString() }).eq("id", otpRow.id);
+      let brokerUserId: string | null = null;
+      if (action === 'broker_verify') {
+        const { data: auth, error: authError } = await admin.auth.getUser((req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, ''));
+        if (authError || !auth.user) return json({ error: 'יש להתחבר לחשבון האישי' }, 401);
+        const ownPhone = normalizeIsraeliPhone(auth.user.phone ?? '');
+        if (ownPhone && ownPhone !== phone) return json({ error: 'יש לאמת את מספר הטלפון של החשבון האישי' }, 403);
+        if (otpRow.delivery_channel !== 'sms') return json({ error: 'נדרש קוד שנשלח ב-SMS' }, 403);
+        brokerUserId = auth.user.id;
+      }
+      const { data: consumed, error: consumeError } = await admin.from("whatsapp_login_otps").update({ consumed_at: new Date().toISOString() }).eq("id", otpRow.id).is('consumed_at', null).select('id');
+      if (consumeError || !consumed?.length) return json({ error: 'הקוד כבר נוצל' }, 400);
+      if (brokerUserId) {
+        const { error: phoneError } = await admin.auth.admin.updateUserById(brokerUserId, { phone: `+${phone}`, phone_confirm: true });
+        if (phoneError) return json({ error: 'לא ניתן לשייך את הטלפון לחשבון זה' }, 403);
+        const { error: evidenceError } = await admin.from('broker_sms_verifications').upsert({ user_id: brokerUserId, phone_number: phone, verified_at: new Date().toISOString() });
+        if (evidenceError) throw evidenceError;
+        return json({ success: true, account_verified: true });
+      }
 
       const publishableKey = Deno.env.get('SUPABASE_ANON_KEY');
       if (!publishableKey) throw new Error('Phone authentication is not configured');
       const client = createClient(supabaseUrl, publishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
-      return json({ success: true, ...await verifiedPhoneSession(admin, client, phone, 'whatsapp_wba') });
+      return json({ success: true, ...await verifiedPhoneSession(admin, client, phone, otpRow.delivery_channel === 'sms' ? 'sms_019' : 'whatsapp_wba') });
     }
 
     return json({ error: "פעולה לא נתמכת" }, 400);
