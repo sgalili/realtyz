@@ -148,8 +148,12 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
 export function PublicListingPublisher(props: Parameters<typeof ScopedPublicListingPublisher>[0]) {
   const { user } = useAuth();
   const { activeWorkspaceId, loading } = useWorkspace();
-  const scope = `${user?.id ?? 'visitor'}:${activeWorkspaceId ?? 'pending'}`;
-  return <ScopedPublicListingPublisher key={scope} {...props} disabled={props.disabled || (!!user && loading)} />;
+  const handoff = useRef({ userId: user?.id ?? null, ownerId: activeWorkspaceId, key: 0 });
+  const previous = handoff.current;
+  if ((previous.userId && previous.userId !== user?.id) || (previous.ownerId && activeWorkspaceId && previous.ownerId !== activeWorkspaceId)) previous.key += 1;
+  previous.userId = user?.id ?? null;
+  if (activeWorkspaceId) previous.ownerId = activeWorkspaceId;
+  return <ScopedPublicListingPublisher key={previous.key} {...props} disabled={props.disabled || (!!user && loading)} />;
 }
 
 function ScopedPublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '', pricingOnly = false, adminOnlyEdit = false }: { pricingOnly?: boolean; adminOnlyEdit?: boolean; label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
@@ -218,7 +222,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const initializedPublisher = useRef('');
   const publicationAudio = useRef<AudioContext | null>(null);
   const openedScope = useRef('');
-  const draftScope = user?.id && activeWorkspaceId ? `${user.id}:${activeWorkspaceId}` : 'visitor';
+  const draftScope = user?.id ? `${user.id}:${activeWorkspaceId ?? 'pending'}` : 'visitor';
   const entryPending = authLoading || Boolean(user && (workspaceLoading || !activeWorkspaceId || !activeWorkspace || rolesLoading || !rolesFetched || rolesError));
   useEffect(() => {
     // Only an explicit open sends developers to project import; a recovered
@@ -242,7 +246,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   // First-time visitors verify their phone inside the wizard; the account is created and the ad published in one flow.
   useEffect(() => {
     const pending = pendingAuthPublish.current;
-    if (!user?.id || !pending || draftScope === 'visitor') return;
+    if (!user?.id || !activeWorkspaceId || workspaceLoading || !pending || draftScope === 'visitor') return;
     pendingAuthPublish.current = null;
     restoredScope.current = draftScope;
     setFields(pending.fields); setFiles(pending.files); setVideos(pending.videos);
@@ -255,7 +259,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       await publish(pending.fields, pending.files, pending.videos);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, draftScope]);
+  }, [user?.id, draftScope, workspaceLoading, activeWorkspaceId]);
   const saveDraft = (f = fields, images = files, clips = videos) => pricingOnly || restoredScope.current !== draftScope ? Promise.resolve() : savePublicListingDraft({ ...f, publicationError: f.publicationError || publishError, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step, importUrl, reviewMode, importSlide, expandedStep, wizardStep: step }, images, clips, draftScope);
   // Always restore the last saved draft (all slides, media, step) for this user/workspace when the wizard opens.
   useEffect(() => {
