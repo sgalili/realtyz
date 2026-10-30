@@ -676,18 +676,16 @@ function LogoBox({ title, url, disabled, aspect, onUpload, onRemove }: {
 }) {
   const inputId = useMemo(() => `logo-${aspect}-${crypto.randomUUID()}`, [aspect]);
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <label htmlFor={inputId} className="text-xs font-bold text-muted-foreground">{title}</label>
+    <div className="relative">
+      <label className={cn('relative flex cursor-pointer items-center justify-center overflow-hidden rounded-md border bg-background transition hover:bg-accent/40', aspect === 'square' ? 'aspect-square' : 'aspect-[16/7]', disabled && 'pointer-events-none opacity-60')} htmlFor={inputId}>
+        <span className="absolute right-2 top-2 z-10 rounded-sm bg-background/90 px-1 text-xs font-bold text-muted-foreground">{title}</span>
+        {url ? <img src={url} alt={title} className="h-full w-full object-contain" /> : <ImageIcon className="h-7 w-7 text-muted-foreground/50" />}
+      </label>
         {url && !disabled && (
-          <Button type="button" variant="ghost" size="icon" onClick={onRemove} className="h-6 w-6 text-destructive hover:bg-destructive/10" aria-label={`מחק ${title}`}>
+          <Button type="button" variant="ghost" size="icon" onClick={onRemove} className="absolute left-1 top-1 h-6 w-6 bg-background/90 text-destructive hover:bg-destructive/10" aria-label={`מחק ${title}`}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         )}
-      </div>
-      <label className={cn('flex cursor-pointer items-center justify-center overflow-hidden rounded-md border bg-background transition hover:bg-accent/40', aspect === 'square' ? 'aspect-square' : 'aspect-[16/7]', disabled && 'pointer-events-none opacity-60')} htmlFor={inputId}>
-        {url ? <img src={url} alt={title} className="h-full w-full object-contain" /> : <ImageIcon className="h-7 w-7 text-muted-foreground/50" />}
-      </label>
       <input id={inputId} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={onUpload} disabled={disabled} />
     </div>
   );
