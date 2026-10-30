@@ -9,6 +9,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { canUseWaTemplate } from '../_shared/waTemplateAccess.ts';
 
 const DEFAULT_API_VERSION = "v21.0";
 
@@ -62,16 +63,11 @@ Deno.serve(async (req) => {
   if (!userId) return json({ error: "Unauthorized" }, 401);
 
   try {
-    // Settings are shared workspace-wide → resolve the owner's row.
-    let ownerId = userId;
-    const { data: prof } = await admin
-      .from("profiles")
-      .select("active_workspace_owner_id, workspace_owner_id")
-      .eq("id", userId)
-      .maybeSingle();
-    const owner = ((prof as any)?.active_workspace_owner_id ??
-      (prof as any)?.workspace_owner_id) as string | null;
-    if (owner) ownerId = owner;
+    const scoped = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    });
+    const { data: ownerId, error: ownerError } = await scoped.rpc('current_workspace_owner');
+    if (ownerError || !ownerId) return json({ error: 'Workspace authorization required' }, 403);
 
     /**
      * Credential resolution, in order:
@@ -163,7 +159,7 @@ Deno.serve(async (req) => {
           has_header_variable: countVariables(String(headerComp?.text ?? "")) > 0,
         };
       })
-      .filter((t: TemplateOut) => t.name);
+      .filter((t: TemplateOut) => t.name && canUseWaTemplate(t.name, ownerId));
 
     const approved = templates.filter((t) => t.status.toUpperCase() === "APPROVED");
 

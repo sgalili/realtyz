@@ -1,11 +1,12 @@
 import { useEffect, useMemo } from 'react';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { dedupeTemplates, rebrandTemplateText, templatesForAudience, waTemplateLabel, type WaTemplateAudience } from '@/lib/waTemplateCatalog';
 import { useMetaWaTemplates, renderTemplateBody, templateVariableKeys, type MetaWaTemplate } from '@/hooks/useMetaWaTemplates';
+import { templateParamDefault } from '@/lib/waTemplatePersonalization';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export type WaTemplateSelection = {
   name: string;
@@ -22,6 +23,7 @@ type Props = {
   campaignOnly?: boolean;
   /** When set, only templates relevant to this user type are offered. */
   audience?: WaTemplateAudience;
+  onBodyChange?: (body: string) => void;
 };
 
 const SYSTEM_TEMPLATE = /(otp|verif|auth|code|login|reminder|tour|meeting|call|invite|wallet|payment|receipt|dispute|lead_alert|notification)/i;
@@ -30,7 +32,8 @@ const SYSTEM_TEMPLATE = /(otp|verif|auth|code|login|reminder|tour|meeting|call|i
  * Picker for APPROVED Meta templates. Meta blocks free-form business-initiated
  * messages outside the 24h window, so every proactive send goes through here.
  */
-export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campaignOnly = false, audience }: Props) => {
+export const WaTemplatePicker = ({ value, onChange, campaignOnly = false, audience, onBodyChange }: Props) => {
+  const ownerId = useActiveWorkspaceOwnerId();
   const { data: allTemplates, isLoading, error } = useMetaWaTemplates();
   const templates = useMemo(() => {
     if (!allTemplates) return allTemplates;
@@ -48,15 +51,18 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campai
   // Derive variable keys from the body text — the cached variable_count can be
   // stale (older syncs did not count named {{first_name}} placeholders).
   const selectedKeys = useMemo(() => templateVariableKeys(selected?.body_text ?? ''), [selected]);
+  const preview = selected ? rebrandTemplateText(renderTemplateBody(selected.body_text, value?.body_params ?? [])) : '';
+  useEffect(() => { onBodyChange?.(preview); }, [preview, onBodyChange]);
+  useEffect(() => { onChange(null); }, [ownerId]);
 
   // Auto-select the first approved template so the broker isn't blocked.
   useEffect(() => {
-    if (!value && templates && templates.length > 0) {
+    if ((!value || !selected) && templates && templates.length > 0) {
       const t = templates[0];
       const keys = templateVariableKeys(t.body_text);
-      onChange({ name: t.name, language: t.language, body_params: Array(keys.length).fill('') });
+      onChange({ name: t.name, language: t.language, body_params: keys.map(templateParamDefault) });
     }
-  }, [templates, value, onChange]);
+  }, [templates, value, selected, onChange]);
 
 
   if (isLoading) {
@@ -69,9 +75,9 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campai
 
   if (error || !templates || templates.length === 0) {
     return (
-      <Alert className="bg-blue-50 border-blue-200">
-        <AlertTriangle className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-900 text-sm">
+      <Alert className="bg-muted border-border">
+        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+        <AlertDescription className="text-foreground text-sm">
           לא נמצאו תבניות מאושרות ב-Meta. יש ליצור ולאשר תבנית הודעה ב-WhatsApp Manager לפני פתיחת שיחה יזומה
           או שיגור המוני.
         </AlertDescription>
@@ -88,10 +94,10 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campai
             const [name, language] = v.split('|');
             const t = templates.find((x) => x.name === name && x.language === language);
             const keys = templateVariableKeys(t?.body_text ?? '');
-            onChange({ name, language, body_params: Array(keys.length).fill('') });
+            onChange({ name, language, body_params: keys.map(templateParamDefault) });
           }}
         >
-          <SelectTrigger className="bg-blue-50 border-blue-200">
+          <SelectTrigger className="bg-background border-border">
             <SelectValue placeholder="בחר תבנית" />
           </SelectTrigger>
           <SelectContent>
@@ -106,31 +112,28 @@ export const WaTemplatePicker = ({ value, onChange, showTokenHint = true, campai
 
       {selected && selectedKeys.length > 0 && (
         <div className="space-y-2">
-          {selectedKeys.map((key, i) => (
+          {selectedKeys.map((key, i) => templateParamDefault(key) ? null : (
             <div key={key} className="space-y-1">
               <Input
-                className="bg-blue-50 border-blue-200"
+                className="bg-background border-border"
                 value={value?.body_params[i] ?? ''}
                 onChange={(e) => {
                   const params = [...(value?.body_params ?? [])];
                   params[i] = e.target.value;
                   onChange({ name: selected.name, language: selected.language, body_params: params });
                 }}
-                placeholder={`משתנה ${i + 1}`}
+                aria-label={`פרט להשלמה: ${key}`}
+                placeholder={`פרט להשלמה: ${key}`}
               />
             </div>
           ))}
-          {showTokenHint && (
-            <p className="text-[11px] text-muted-foreground">
-              ניתן להשתמש בתגיות אישיות: [שם_פרטי] · [עיר] · [נכס] — יוחלפו לכל נמען בנפרד.
-            </p>
-          )}
         </div>
       )}
 
       {selected && (
-        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 whitespace-pre-wrap">
-          {rebrandTemplateText(renderTemplateBody(selected.body_text, value?.body_params ?? []))}
+        <div className="relative rounded-md border border-border bg-background p-3 pb-8 text-sm text-foreground whitespace-pre-wrap" aria-label="תוכן התבנית שתישלח">
+          {preview}
+          <span className="absolute bottom-2 left-3 text-xs text-muted-foreground" dir="ltr">{preview.length}</span>
         </div>
       )}
     </div>

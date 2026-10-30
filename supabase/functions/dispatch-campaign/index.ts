@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveSms019Config, sendSms019 } from "../_shared/sms019.ts";
+import { canUseWaTemplate } from '../_shared/waTemplateAccess.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -584,6 +585,17 @@ Deno.serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
       if (member) ownerUserId = requestedOwnerId;
+    }
+    if (body.wa_template) {
+      const { data: activeOwner, error: workspaceError } = await supabase.rpc('current_workspace_owner');
+      if (workspaceError || !activeOwner || (requestedOwnerId && requestedOwnerId !== activeOwner)) {
+        return new Response(JSON.stringify({ error: 'Workspace authorization required' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      ownerUserId = activeOwner;
+      const template = parseWaTemplate(body.wa_template);
+      if (template && !canUseWaTemplate(template.name, ownerUserId)) {
+        return new Response(JSON.stringify({ error: 'התבנית זמינה רק בסביבת העבודה של ריטה' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     // Load provider configs (global, shared across all users) using service role

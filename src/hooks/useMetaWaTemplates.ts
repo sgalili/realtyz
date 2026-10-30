@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
+import { canUseWaTemplate } from '../../supabase/functions/_shared/waTemplateAccess';
 
 export type MetaWaTemplate = {
   name: string;
@@ -12,13 +14,15 @@ export type MetaWaTemplate = {
 };
 
 /** Cached (DB) approved templates — instant, zero Graph API calls. */
-async function readCachedTemplates(): Promise<MetaWaTemplate[]> {
-  const { data } = await supabase
+async function readCachedTemplates(ownerId: string): Promise<MetaWaTemplate[]> {
+  const { data, error } = await supabase
     .from('wa_message_templates')
     .select('name, language, category, status, body_text, variable_count, has_header_variable')
     .eq('status', 'APPROVED')
+    .eq('owner_user_id', ownerId)
     .order('name');
-  return (data ?? []) as MetaWaTemplate[];
+  if (error) throw error;
+  return ((data ?? []) as MetaWaTemplate[]).filter(t => canUseWaTemplate(t.name, ownerId));
 }
 
 /**
@@ -26,18 +30,20 @@ async function readCachedTemplates(): Promise<MetaWaTemplate[]> {
  * Reads the local cache first; only calls Meta when the cache is empty.
  */
 export function useMetaWaTemplates(enabled = true) {
+  const ownerId = useActiveWorkspaceOwnerId();
   return useQuery({
-    queryKey: ['meta-wa-templates'],
-    enabled,
+    queryKey: ['meta-wa-templates', ownerId],
+    enabled: enabled && !!ownerId,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<MetaWaTemplate[]> => {
-      const cached = await readCachedTemplates();
+      if (!ownerId) return [];
+      const cached = await readCachedTemplates(ownerId);
       if (cached.length > 0) return cached;
 
       const { data, error } = await supabase.functions.invoke('meta-wa-templates', { body: {} });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'שליפת התבניות נכשלה');
-      return (data.templates ?? []) as MetaWaTemplate[];
+      return ((data.templates ?? []) as MetaWaTemplate[]).filter(t => canUseWaTemplate(t.name, ownerId));
     },
   });
 }
