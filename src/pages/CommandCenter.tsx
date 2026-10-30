@@ -413,7 +413,7 @@ function ProfessionalCommandCenter() {
       />
 
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">משימות</h1>
+        <h1 className="text-2xl font-bold">מטלות</h1>
         <p className="text-sm text-muted-foreground">
           כל המעקבים, ההערות, השיחות והפרסומים שממתינים לך, לפי דחיפות ותאריך יעד.
         </p>

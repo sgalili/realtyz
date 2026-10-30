@@ -1,5 +1,11 @@
 # Roadmap
 
+## Personal profile and tasks October 30
+- [ ] Outline default avatar, matching full-name field and fixed profile tabs with 10px less top spacing.
+- [ ] Show unverified workspace profile upgrade without submitting another person's verification.
+- [ ] Personal task creation, editing, completion, schedules and empty-state add controls without tours; rename page מטלות.
+- [ ] Run focused tests and signed-in profile/task save-readback checks.
+
 ## Publisher-style filters October 30
 - [x] Share publisher room, floor, amenity, condition and entry menus; preserve reward sections and role visibility.
 - [x] Match selected options against saved listing facts; 20 focused tests and signed-in menu selection/readback passed.
