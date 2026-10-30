@@ -56,10 +56,9 @@ describe('role-based advanced filter fields', () => {
   it('partner sees lead types 1-3, lead value and only the minimal property fields', () => {
     setRole('partner');
     renderFilter();
-    expect(screen.getByText('רווח לליד')).toBeInTheDocument();
-    expect(screen.getByText('פנייה דרך השארת פרטים בטופס בעמוד נחיתה')).toBeInTheDocument();
-    expect(screen.getByText('פנייה לאחר סינון בשיחת ווטסאפ עם ריטה AI')).toBeInTheDocument();
-    expect(screen.getByText('פנייה לאחר סינון בשיחת טלפון עם ריטה AI')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'פנייה דרך טופס בעמוד נחיתה' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'פנייה לאחר סינון בווטסאפ עם ריטה AI' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'פנייה לאחר סינון בטלפון עם ריטה AI' })).toBeInTheDocument();
     expect(screen.queryByText('עמלת תיווך עבור סגירת עסקה')).not.toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
@@ -84,7 +83,7 @@ describe('role-based advanced filter fields', () => {
   it('developer sees only market/property filters, never lead filters', () => {
     setRole('developer');
     renderFilter();
-    expect(screen.queryByText('רווח לליד')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(screen.queryByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).not.toBeInTheDocument();
     expect(screen.getByText('פרטי הנכס')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'קומה מינימום' })).toBeInTheDocument();
@@ -93,7 +92,7 @@ describe('role-based advanced filter fields', () => {
   it('private user sees a compact market set without lead filters', () => {
     setRole('private');
     renderFilter();
-    expect(screen.queryByText('רווח לליד')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'חדרים מינימום' })).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();

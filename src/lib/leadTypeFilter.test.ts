@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_PROPERTY_FILTER, matchesPropertyFilter, selectFilterCity } from './leadTypeFilter';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, selectFilterCity, selectLeadFilterType, setLeadFilterMinimum } from './leadTypeFilter';
+
+describe('single reward selection', () => {
+  it('selects exactly one lead type', () => {
+    expect(selectLeadFilterType({ ...EMPTY_LEAD_FILTER, types: ['tier1', 'tier2'] }, 'tier3').types).toEqual(['tier3']);
+  });
+  it('restores a positive price when returning to its lead type', () => {
+    const form = setLeadFilterMinimum(EMPTY_LEAD_FILTER, 'tier1', 75);
+    const phone = setLeadFilterMinimum(selectLeadFilterType(form, 'tier3'), 'tier3', 120);
+    expect(selectLeadFilterType(phone, 'tier1').min).toBe(75);
+    expect(phone.prices?.tier1).toBe(75);
+  });
+  it('zero clears only the selected threshold', () => {
+    const form = setLeadFilterMinimum(EMPTY_LEAD_FILTER, 'tier1', 75);
+    const zero = setLeadFilterMinimum(form, 'tier1', 0);
+    expect(zero.min).toBeNull();
+    expect(zero.prices?.tier1).toBe(0);
+  });
+});
 
 describe('nationwide city selection', () => {
   it('nationwide clears all previously selected cities', () => {
