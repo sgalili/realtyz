@@ -743,6 +743,13 @@
       "when": 1793320427444,
       "tag": "0105_workspace_logos_square_landscape",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1793323427455,
+      "tag": "0106_restrict_rita_invitation_template",
+      "breakpoints": true
     }
   ]
 }

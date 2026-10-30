@@ -381,6 +381,9 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   // Bulk WhatsApp is business-initiated → Meta requires an approved template.
   const [waTemplate, setWaTemplate] = useState<WaTemplateSelection | null>(null);
   const [messageBody, setMessageBody] = useState('שלום [שם_פרטי], יש לנו נכס חדש ב[עיר] שיכול להתאים לך: [נכס]. נשמח לספר עוד.');
+  const [waTemplateBody, setWaTemplateBody] = useState('');
+  const templateOnly = selectedChannels.length === 1 && selectedChannels[0] === 'whatsapp';
+  const sendMessageBody = templateOnly ? waTemplateBody : messageBody;
   // Per-channel message overrides — when set, overrides the master messageBody for that channel
   const [channelMessages, setChannelMessages] = useState<Partial<Record<ChannelId, string>>>({});
   const getChannelText = useCallback((channel: ChannelId) => channelMessages[channel] ?? messageBody, [channelMessages, messageBody]);
@@ -774,7 +777,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
           mode: 'test',
           channel,
           recipient,
-          message: messageBody,
+          message: channel === 'whatsapp' ? waTemplateBody : messageBody,
           subject: blastName || 'TORAFF - בדיקה',
           preview_name: user?.user_metadata?.full_name ?? user?.email ?? '',
           wa_template: channel === 'whatsapp' ? waTemplate ?? undefined : undefined,
@@ -789,7 +792,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
     } catch (e: any) {
       toast.error(`שגיאה בשליחת בדיקה: ${e?.message ?? 'לא ידוע'}`, { id: 'test-send' });
     }
-  }, [messageBody, selectedChannels, testPhone, isDemoMode, blastName, waTemplate]);
+  }, [messageBody, waTemplateBody, selectedChannels, testPhone, isDemoMode, blastName, waTemplate]);
 
   // Map UI channels to provider service rows in api_configs
   const channelToProvider: Partial<Record<ChannelId, string[]>> = {
@@ -805,7 +808,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   };
 
   const startSend = useCallback(async () => {
-    const parsed = BroadcastSchema.safeParse({ blastName, messageBody, totalRecipients, selectedChannels });
+    const parsed = BroadcastSchema.safeParse({ blastName, messageBody: sendMessageBody.slice(0, 1000), totalRecipients, selectedChannels });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? 'נא לבדוק את פרטי הקמפיין');
       return;
@@ -964,7 +967,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             recipient_phone: v.phone_number ?? null,
             recipient_email: (v as any).email ?? null,
             recipient_name: v.full_name ?? null,
-            message_body: messageBody,
+            message_body: channel === 'whatsapp' ? waTemplateBody : messageBody,
             status,
             failure_reason,
             created_at: now,
@@ -1076,7 +1079,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
       toast.error('שגיאה בשיגור: ' + (err?.message ?? 'שגיאה לא ידועה'));
       setPhase('compose');
     }
-  }, [blastName, messageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired, waTemplate, connectedChannels.whatsapp, recipientSource, pastedNumbers]);
+  }, [blastName, messageBody, waTemplateBody, sendMessageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired, waTemplate, connectedChannels.whatsapp, recipientSource, pastedNumbers]);
 
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
@@ -1535,24 +1538,16 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                 </div>
 
                 {selectedChannels.includes('whatsapp') && (
-                  <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
-                    <p className="text-sm font-semibold text-foreground">בחר תבנית הזמנה לשיחת וואטסאפ לאיש קשר חדש</p>
-                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} campaignOnly audience={templateAudience} />
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">תבנית וואטסאפ מאושרת לשליחה</p>
+                    <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} onBodyChange={setWaTemplateBody} campaignOnly audience={templateAudience} />
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder="תוכן ההודעה" />
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Select value="" onValueChange={(tag) => insertTag(tag)}>
-                        <SelectTrigger className="h-8 w-auto gap-2 text-xs" dir="rtl"><SelectValue placeholder="תגיות התאמה אישית" /></SelectTrigger>
-                        <SelectContent dir="rtl">
-                          {personalizationTags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <span dir="ltr">{messageBody.length}/1000</span>
+                {!templateOnly && <div className="space-y-2">
+                  <div className="relative">
+                    <Textarea className="pb-8" value={messageBody} onChange={(event) => setMessageBody(event.target.value)} rows={6} maxLength={1000} placeholder="תוכן ההודעה" />
+                    <span className="pointer-events-none absolute bottom-2 left-3 text-xs text-muted-foreground" dir="ltr">{messageBody.length}/1000</span>
                   </div>
 
                   {/* Attachments toolbar */}
@@ -1568,6 +1563,12 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                     }}
                   />
                   <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Select value="" onValueChange={(tag) => insertTag(tag)}>
+                      <SelectTrigger className="h-8 w-auto gap-2 text-xs" dir="rtl"><SelectValue placeholder="תגיות התאמה אישית" /></SelectTrigger>
+                      <SelectContent dir="rtl">
+                        {personalizationTags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                     <Button
                       type="button"
                       variant="outline"
@@ -1649,7 +1650,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                       })}
                     </div>
                   )}
-                </div>
+                </div>}
 
                 {selectedChannels.includes('voice') && (
                   <div className="space-y-2 rounded-lg border border-primary/25 bg-primary/5 p-4">
@@ -1779,7 +1780,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                     {(() => {
                       const hasConnectedSelected = selectedChannels.some((c) => connectedChannels[c]);
                       const trialBlocked = false;
-                      const disabled = (selectedChannels.includes('whatsapp') && !waTemplate) || broadcastCost.hasPending || !blastName.trim() || !messageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
+                      const disabled = (selectedChannels.includes('whatsapp') && !waTemplate) || broadcastCost.hasPending || !blastName.trim() || !sendMessageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
                       return (
                         <>
                           <Button size="lg" className="h-auto whitespace-normal text-center bg-primary text-primary-foreground hover:bg-primary-glow" onClick={() => setConfirmOpen(true)} disabled={disabled}>
