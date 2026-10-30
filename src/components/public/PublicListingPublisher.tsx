@@ -145,7 +145,14 @@ function ChoiceGrid({ options, value, onPick, columns = 3 }: { options: string[]
   );
 }
 
-export function PublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '', pricingOnly = false, adminOnlyEdit = false }: { pricingOnly?: boolean; adminOnlyEdit?: boolean; label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
+export function PublicListingPublisher(props: Parameters<typeof ScopedPublicListingPublisher>[0]) {
+  const { user } = useAuth();
+  const { activeWorkspaceId, loading } = useWorkspace();
+  const scope = `${user?.id ?? 'visitor'}:${activeWorkspaceId ?? 'pending'}`;
+  return <ScopedPublicListingPublisher key={scope} {...props} disabled={props.disabled || (!!user && loading)} />;
+}
+
+function ScopedPublicListingPublisher({ autoResume = false, disabled = false, resumeDraft, onRecovered, label = 'פרסום חינם', triggerClassName = '', pricingOnly = false, adminOnlyEdit = false }: { pricingOnly?: boolean; adminOnlyEdit?: boolean; label?: string; triggerClassName?: string; autoResume?: boolean; disabled?: boolean; resumeDraft?: import('@/lib/publicListingDraft').PublicListingDraft; onRecovered?: () => void }) {
   const { user, loading: authLoading } = useAuth();
   const { gender } = usePersonalLanguage();
   const { activeWorkspaceId, activeWorkspace, loading: workspaceLoading } = useWorkspace();
@@ -162,7 +169,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   });
   const ownerRoles = useWorkspaceOwnerRoles();
   const { level4Unlocked } = useAffiliateLicense();
-  const isBroker = Boolean(user && activeWorkspace && level4Unlocked && (ownerRoles.some((r) => ['managing_broker', 'lead_agent', 'agent'].includes(r)) || (activeWorkspace.is_self && isAgent)));
+  const isBroker = Boolean(user && activeWorkspace && !workspaceLoading && level4Unlocked && ownerRoles.some((r) => ['managing_broker', 'lead_agent', 'agent'].includes(r)));
   const publisherIdentity = workspacePublisherIdentity(activeWorkspaceId, publisherProfile?.ownerId ?? null, publisherProfile?.profile);
   const publisherName = publisherIdentity.name;
   const publisherPhone = publisherIdentity.phone;
@@ -288,7 +295,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     const changedWorkspace = Boolean(initializedPublisher.current && initializedPublisher.current !== identity);
     const first = initializedPublisher.current !== identity;
     initializedPublisher.current = identity;
-    setFields(current => ({ ...current, publisherType: isBroker ? 'broker' : current.publisherType === 'broker' ? 'private' : current.publisherType, contactName: changedWorkspace ? publisherName : current.contactName || publisherName, contactWhatsapp: changedWorkspace ? publisherPhone : current.contactWhatsapp || publisherPhone, contactEmail: changedWorkspace ? publisherIdentity.email : current.contactEmail || publisherIdentity.email, marketingAccepted: first ? true : current.marketingAccepted }));
+    setFields(current => ({ ...current, publisherType: isBroker ? 'broker' : current.publisherType === 'broker' ? 'private' : current.publisherType, contactName: publisherName, contactWhatsapp: publisherPhone, contactEmail: publisherIdentity.email, marketingAccepted: first ? true : current.marketingAccepted }));
     
   }, [open, isBroker, user?.id, activeWorkspaceId, publisherName, publisherPhone, publisherIdentity.email, publisherProfile, workspaceLoading, step, reviewMode]);
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
