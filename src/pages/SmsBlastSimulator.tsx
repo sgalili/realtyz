@@ -1186,7 +1186,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   }
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6 [&_[role=combobox]]:font-bold" dir="rtl">
 
       {phase === 'compose' && (
         <div className={dedicatedChannel ? 'mx-auto w-full max-w-3xl' : 'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]'}>
@@ -1469,8 +1469,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         if (mode === 'file') listFileInputRef.current?.click();
                       }}
                     >
-                      <SelectTrigger className="mb-3 text-[17px]" dir="rtl"><SelectValue placeholder="למי שולחים ווטסאפ?" /></SelectTrigger>
-                      <SelectContent dir="rtl" className="text-[17px] [&_[role=option]]:text-[17px]">
+                      <SelectTrigger className="mb-3 text-[17px] font-bold" dir="rtl"><SelectValue placeholder={dedicatedChannel === 'sms' ? 'למי שולחים SMS?' : dedicatedChannel === 'email' ? 'למי שולחים מייל?' : 'למי שולחים ווטסאפ?'} /></SelectTrigger>
+                      <SelectContent dir="rtl" className="text-[17px] [&_[role=option]]:text-[17px] [&_[role=option][data-state=checked]]:font-bold">
                         <SelectItem value="contacts"><span className="inline-flex items-center gap-2"><Users className="h-3.5 w-3.5" />אנשי הקשר שלי</span></SelectItem>
                         <SelectItem value="file"><span className="inline-flex items-center gap-2"><FileSpreadsheet className="h-3.5 w-3.5" />העלאת רשימה</span></SelectItem>
                         <SelectItem value="paste"><span className="inline-flex items-center gap-2"><FileText className="h-3.5 w-3.5" />הדבקת מספרים</span></SelectItem>
@@ -1536,7 +1536,6 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                 {selectedChannels.includes('whatsapp') && (
                   <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground">תבנית וואטסאפ מאושרת לשליחה</p>
                     <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} onBodyChange={setWaTemplateBody} campaignOnly audience={templateAudience} />
                   </div>
                 )}
@@ -1562,7 +1561,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <Select value="" onValueChange={(tag) => insertTag(tag)}>
                       <SelectTrigger className="h-8 w-auto gap-2 text-[15px]" dir="rtl"><SelectValue placeholder="תגיות התאמה אישית" /></SelectTrigger>
-                      <SelectContent dir="rtl" className="text-[15px] [&_[role=option]]:text-[15px]">
+                      <SelectContent dir="rtl" className="text-[15px] [&_[role=option]]:text-[15px] [&_[role=option][data-state=checked]]:font-bold">
                         {personalizationTags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
                       </SelectContent>
                     </Select>

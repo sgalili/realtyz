@@ -1,5 +1,9 @@
 # Roadmap
 
+## Service recipient presentation October 30
+- [ ] Match recipient placement and typography across SMS, WhatsApp, email and IVR; service-specific bold placeholders, bold selections and inline WhatsApp template placeholder.
+- [ ] Verify menus and selection readback without sending campaigns.
+
 ## WhatsApp templates October 30
 - [x] Restrict broker invitation template listing and sending to Rita's workspace; restrictive cache RLS and deployed send checks.
 - [x] Hide resolved variables and duplicate free-text editor; align counters and personalization toolbar.
