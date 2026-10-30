@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChartNoAxesCombined, Wallet, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -36,7 +37,21 @@ export default function HomeActivityPill() {
   const [open, setOpen] = useState(false);
   const [activity, setActivity] = useState('properties');
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const headerAnchor = triggerRef.current?.closest('header') ?? undefined;
+  const [portalAnchor, setPortalAnchor] = useState<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    if (!open || !portalAnchor) return;
+    const position = () => {
+      const rect = triggerRef.current?.closest('header')?.getBoundingClientRect();
+      if (!rect) return;
+      portalAnchor.style.setProperty('--activity-top', `${rect.bottom}px`);
+      portalAnchor.style.setProperty('--activity-left', `${rect.left}px`);
+      portalAnchor.style.setProperty('--activity-width', `${rect.width}px`);
+    };
+    position();
+    window.addEventListener('resize', position);
+    window.addEventListener('scroll', position, true);
+    return () => { window.removeEventListener('resize', position); window.removeEventListener('scroll', position, true); };
+  }, [open, portalAnchor]);
   const [everOpened, setEverOpened] = useState(false);
   useEffect(() => { setOpen(false); setActivity('properties'); setEverOpened(false); }, [user?.id, owner, partnerView, privateView]);
   useEffect(() => { if (open) setEverOpened(true); document.documentElement.classList.toggle('activity-drawer-open', open); return () => document.documentElement.classList.remove('activity-drawer-open'); }, [open]);
@@ -65,7 +80,10 @@ export default function HomeActivityPill() {
     <PopoverTrigger asChild><Button ref={triggerRef} variant="ghost" size="icon" onClick={(event) => { event.preventDefault(); setOpen(current => !current); }} className={cn('pointer-events-auto -ms-[5px] h-9 w-9 cursor-pointer shadow-none hover:bg-transparent focus-visible:ring-0 data-[state=open]:bg-transparent', open && 'text-destructive hover:text-destructive')} aria-label="הפעילות שלי" title="הפעילות שלי">
       <ChartNoAxesCombined className="!h-[23px] !w-[23px]" />
     </Button></PopoverTrigger>
-    {(open || everOpened) && <PopoverContent forceMount portalContainer={headerAnchor} side="bottom" align="start" className="home-activity-drawer p-0 data-[state=closed]:hidden" aria-label="הפעילות שלי" dir="rtl">
+    {(open || everOpened) && createPortal(<div ref={setPortalAnchor} className="home-activity-layer" hidden={!open}>
+      {open && <div className="home-activity-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
+    </div>, document.body)}
+    {(open || everOpened) && portalAnchor && <PopoverContent forceMount portalContainer={portalAnchor} side="bottom" align="start" className="home-activity-drawer p-0 data-[state=closed]:hidden" aria-label="הפעילות שלי" dir="rtl">
       <div className="flex items-center justify-between gap-2 px-3 py-1.5">
         <Button variant="ghost" size="sm" className="h-8 min-w-0 gap-1.5 px-1 text-xs" aria-label="יתרת קרדיטים בארנק" onClick={() => { setOpen(false); navigate('/wallet'); }}><Wallet className="h-4 w-4 shrink-0 text-primary" /><span className="truncate tabular-nums">{wallet.isError ? 'היתרה אינה זמינה' : wallet.isLoading || !wallet.data ? 'טוען יתרה…' : fmtCompactCredits(ilsToCredits(wallet.data.balance), 2)}</span></Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="סגירת הפעילות" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
