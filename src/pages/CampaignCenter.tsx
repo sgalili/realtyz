@@ -41,7 +41,7 @@ import { Label } from '@/components/ui/label';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
 import {
-  ArrowRight, Plus, CameraPlus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
+  ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Square, Users,
   Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil, Megaphone, History, Save, XCircle } from 'lucide-react';
@@ -115,6 +115,7 @@ import { onOAuthResult } from '@/lib/oauthPopupBridge';
 import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConfirmation';
 import { publicUrl } from '@/lib/publicUrl';
 import { PageAvatarIcon } from '@/components/campaigns/PageAvatarIcon';
+import { CameraPlusIcon } from '@/components/campaigns/CameraPlusIcon';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
 import { useRefreshMetaPageBinding, useMetaPageBinding } from '@/hooks/useMetaPageBinding';
 
@@ -2577,7 +2578,7 @@ const InlineComposer = ({
                 aria-label="הוספת תמונות מהגלריה"
                 title="הוספת תמונות מהגלריה"
               >
-                <CameraPlus className="h-5 w-5" />
+                <CameraPlusIcon className="h-5 w-5" />
               </Button>
               {attachments.map((att, i) => {
                 const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
