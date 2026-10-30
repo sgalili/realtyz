@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Maximize2, Trash2, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { RitaAvatar } from '@/components/RitaAvatar';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useRitaWorkspaceIdentity } from '@/hooks/useRitaWorkspaceIdentity';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -21,7 +20,12 @@ type MiniMsg = { role: string; content: string };
  * full screen as well.
  */
 export function SidebarRitaChat() {
-  const { user } = useAuth();
+  const identity = useRitaWorkspaceIdentity();
+  return <ScopedSidebarRitaChat key={identity.scope} identity={identity} />;
+}
+
+function ScopedSidebarRitaChat({ identity }: { identity: ReturnType<typeof useRitaWorkspaceIdentity> }) {
+  const { scope, firstName, ready } = identity;
   const cache = useQueryClient();
   const [messages, setMessages] = useState<MiniMsg[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,46 +34,24 @@ export function SidebarRitaChat() {
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const refresh = () => { void cache.invalidateQueries({ queryKey: ['app-header-user-profile', user?.id] }); };
+    const refresh = () => { void cache.invalidateQueries({ queryKey: ['rita-workspace-identity'] }); };
     window.addEventListener('realtyz:profile-saved', refresh);
     return () => window.removeEventListener('realtyz:profile-saved', refresh);
-  }, [user?.id, cache]);
-
-  // The greeting addresses the signed-in person by their own first name.
-  const { data: profile } = useQuery({
-    queryKey: ['app-header-user-profile', user?.id],
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-      return (data as { full_name?: string | null } | null) ?? null;
-    },
-  });
+  }, [cache]);
 
   useEffect(() => {
     const onState = (e: Event) => {
-      const d = (e as CustomEvent<{ messages: MiniMsg[]; loading: boolean }>).detail;
+      const d = (e as CustomEvent<{ scope: string; messages: MiniMsg[]; loading: boolean }>).detail;
+      if (!scope || d?.scope !== scope) return;
       setMessages(d?.messages ?? []);
       setLoading(!!d?.loading);
     };
     window.addEventListener('rita:state', onState);
     window.dispatchEvent(new Event('rita:state-request'));
     return () => window.removeEventListener('rita:state', onState);
-  }, []);
+  }, [scope]);
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight }); }, [messages, loading, collapsed]);
 
-  useEffect(() => {
-    setMessages([]); setText(''); setLoading(false);
-    window.dispatchEvent(new Event('rita:state-request'));
-  }, [user?.id]);
-
-  const fullName = (profile?.full_name?.trim() || '').trim();
-  const firstName = fullName.split(/\s+/).filter(Boolean)[0] ?? '';
   const placeholder = firstName
     ? `היי ${firstName}, איך אני יכולה לעזור?`
     : 'היי, איך אני יכולה לעזור?';
@@ -79,13 +61,13 @@ export function SidebarRitaChat() {
   const clearChat = () => {
     setMessages([]);
     setCollapsed(false);
-    window.dispatchEvent(new CustomEvent('rita:clear'));
+    window.dispatchEvent(new CustomEvent('rita:clear', { detail: { scope } }));
   };
 
   const send = () => {
     const t = text.trim();
-    if (!t || loading) return;
-    window.dispatchEvent(new CustomEvent('rita:send', { detail: { text: t } }));
+    if (!t || loading || !ready) return;
+    window.dispatchEvent(new CustomEvent('rita:send', { detail: { text: t, scope } }));
     setText('');
   };
 
@@ -154,7 +136,7 @@ export function SidebarRitaChat() {
         </button>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} aria-label="הודעה לריטה"
           className="min-w-0 flex-1 bg-transparent py-1 text-[16px] text-foreground outline-none placeholder:text-[16px] placeholder:text-muted-foreground" />
-        <Button type="submit" size="icon" disabled={!text.trim() || loading} className="h-7 w-7 shrink-0 rounded-full" aria-label="שליחה">
+        <Button type="submit" size="icon" disabled={!text.trim() || loading || !ready} className="h-7 w-7 shrink-0 rounded-full" aria-label="שליחה">
           <ArrowUp className="h-4 w-4" />
         </Button>
       </form>

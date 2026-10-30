@@ -811,6 +811,9 @@ serve(async (req) => {
         const { data: authorizedOwner, error: workspaceError } = await authClient.rpc('current_workspace_owner');
         if (workspaceError || !authorizedOwner) return new Response(JSON.stringify({ error: 'Workspace unavailable' }), { status: 403, headers: corsHeaders });
         currentOwnerId = authorizedOwner;
+        if (body?.expected_workspace_owner_id && body.expected_workspace_owner_id !== currentOwnerId) {
+          return new Response(JSON.stringify({ error: 'Workspace changed; start a new conversation' }), { status: 409, headers: corsHeaders });
+        }
       } catch { return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders }); }
     }
     // Lead-facing turns (post-tour follow-up replies, inbound SMS/WhatsApp) may
@@ -1085,9 +1088,14 @@ serve(async (req) => {
     const isInternalDashboard = !lead_id && identity.mode === "internal";
     const wsPersona = await fetchWorkspacePersona(supabase as any, currentOwnerId);
     let personalDirective = '';
-    if (!lead_id && identity.userId && !identity.isService) {
-      const { data: personalProfile } = await supabase.from('profiles').select('full_name, gender').eq('id', identity.userId).maybeSingle();
-      personalDirective = '\n\n' + accountPersonalization(personalProfile, identity.roles);
+    let presentationRoles = identity.roles;
+    if (!lead_id && currentOwnerId && (identity.userId || identity.isService)) {
+      const [{ data: ownerProfile }, { data: ownerRoles }] = await Promise.all([
+        supabase.from('profiles').select('full_name, gender').eq('id', currentOwnerId).maybeSingle(),
+        supabase.from('user_roles').select('role').eq('user_id', currentOwnerId),
+      ]);
+      presentationRoles = (ownerRoles ?? []).map((row: { role: string }) => row.role);
+      personalDirective = '\n\n' + accountPersonalization(ownerProfile, presentationRoles);
     }
     // The mode preference only changes wording; verified roles and the server
     // license check remain the authority for sensitive closing information.
@@ -1098,11 +1106,11 @@ serve(async (req) => {
     }
     const masterDirective = buildMasterAgentPrompt(identity.mode, {
       surface: lead_id ? "lead_conversation" : "internal_dashboard",
-      roles: identity.roles,
+      roles: presentationRoles,
       owner: { name: wsPersona.name, agency: wsPersona.agency },
       personaBrief: wsPersona.brief,
       domain: wsPersona.domain,
-    }) + personalDirective + (lead_id ? '' : '\n\n' + ritaWorkflowDirective(identity.roles, body?.ui_mode, canViewClosing));
+    }) + personalDirective + (lead_id ? '' : '\n\n' + ritaWorkflowDirective(presentationRoles, body?.ui_mode, canViewClosing));
     console.log("agent identity:", identity.mode, "-", identity.reason);
 
     // A property-search turn is deterministic: execute it before asking the
