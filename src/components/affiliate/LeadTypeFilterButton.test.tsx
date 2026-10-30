@@ -77,9 +77,9 @@ describe('role-based advanced filter fields', () => {
     setRole('broker');
     renderFilter();
     expect(screen.getByText('עמלת תיווך עבור סגירת עסקה')).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'חדרים מינימום' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'חדרים' })).toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'שטח מינימום' })).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'קומה מינימום' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'קומה' })).toBeInTheDocument();
   });
 
   it('developer sees only market/property filters, never lead filters', () => {
@@ -88,7 +88,7 @@ describe('role-based advanced filter fields', () => {
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(screen.queryByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).not.toBeInTheDocument();
     expect(screen.getByText('פרטי הנכס')).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'קומה מינימום' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'קומה' })).toBeInTheDocument();
   });
 
   it('private user sees a compact market set without lead filters', () => {
@@ -96,7 +96,7 @@ describe('role-based advanced filter fields', () => {
     renderFilter();
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(screen.getByText('סוג עסקה')).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'חדרים מינימום' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'חדרים' })).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'קומה מינימום' })).not.toBeInTheDocument();
   });

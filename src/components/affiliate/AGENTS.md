@@ -1,4 +1,5 @@
 # Affiliate pricing
+- Property filters reuse publisher amenity controls in filter mode and shared option constants; chosen values match authorized listing facts, never guessed missing values. Why: identical menus without changing publication or reward behavior.
 - Advanced reward filters retain per-tier thresholds in the existing account/workspace-scoped filter state; positive thresholds drive OR matching at each tier's own minimum, while expansion is presentation-only and slider labels stay independent of potential estimates. Why: apply prices without unscoped caches or cross-tier threshold confusion.
 - Property pricing information uses distinct lead cards and a desktop max-w-2xl dialog; the publisher pricing-only editor shares the same bounded presentation without changing wizard or authorization flows. Why: consistent readable pricing across guest and authorized views.
 - Closing-split disclosures reuse ClosingSplitNote and existing reward-rate helpers; public closing notes mount only inside existing server-authorized pricing gates. Why: consistent gross/net explanations without changing payouts or visibility.

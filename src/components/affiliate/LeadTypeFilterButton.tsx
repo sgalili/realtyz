@@ -145,6 +145,7 @@ export default function LeadTypeFilterButton({
 }) {
   const [localOpen, setLocalOpen] = useState(false);
   const [expandedType, setExpandedType] = useState<LeadTypeKey | null>(null);
+  const [entryDateMode, setEntryDateMode] = useState(false);
   const open = controlledOpen ?? localOpen;
   const setOpen = (next: boolean) => { setLocalOpen(next); onOpenChange?.(next); };
   const { user } = useAuth();
@@ -304,7 +305,7 @@ export default function LeadTypeFilterButton({
             </div>
             <PropertyAmenitiesFields fields={amenityFields} onChange={patchAmenities} filterMode hideRooms={!show('rooms')} />
             <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
-              <Select value={amenities.entryDate === 'מיידית' ? 'immediate' : amenities.entryDate ? 'date' : 'all'} onValueChange={value => patchAmenities({ entryDate: value === 'immediate' ? 'מיידית' : '' })}><SelectTrigger aria-label="תאריך כניסה" className="h-10 text-[16px]"><SelectValue placeholder="תאריך כניסה" /></SelectTrigger><SelectContent><SelectItem value="all">תאריך כניסה</SelectItem><SelectItem value="immediate">מיידית</SelectItem></SelectContent></Select>
+              <div className="space-y-2"><Select value={amenities.entryDate === 'מיידית' ? 'immediate' : entryDateMode || amenities.entryDate ? 'date' : 'all'} onValueChange={value => { setEntryDateMode(value === 'date'); patchAmenities({ entryDate: value === 'immediate' ? 'מיידית' : '' }); }}><SelectTrigger aria-label="תאריך כניסה" className="h-10 text-[16px]"><SelectValue placeholder="תאריך כניסה" /></SelectTrigger><SelectContent><SelectItem value="all">תאריך כניסה</SelectItem><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{entryDateMode && <Input type="date" aria-label="תאריך כניסה נבחר" value={amenities.entryDate === 'מיידית' ? '' : amenities.entryDate ?? ''} onChange={event => patchAmenities({ entryDate: event.target.value })} />}</div>
               <Select value={amenities.condition || 'all'} onValueChange={value => patchAmenities({ condition: value === 'all' ? '' : value })}><SelectTrigger aria-label="מצב הנכס" className="h-10 text-[16px]"><SelectValue placeholder="מצב הנכס" /></SelectTrigger><SelectContent><SelectItem value="all">מצב הנכס</SelectItem>{PROPERTY_CONDITION_OPTIONS.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>
             </div>
             <SectionTitle>מאפיינים</SectionTitle>
