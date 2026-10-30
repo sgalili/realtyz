@@ -213,7 +213,7 @@ function PersonalTab() {
   const identity = useAccountIdentity();
   const { isSuperAdmin } = useUserRole();
   const { activeWorkspaceId } = useWorkspace();
-  const profileOwnerId = activeWorkspaceId ?? user?.id ?? null;
+  const profileOwnerId = activeWorkspaceId;
   const isOwnProfile = profileOwnerId === user?.id;
   const [emails, setEmails] = useState<Row[]>([newRow('')]);
   const [whatsapps, setWhatsapps] = useState<Row[]>([newRow('')]);
@@ -243,6 +243,7 @@ function PersonalTab() {
 
   useEffect(() => {
     if (!user || !profileOwnerId || hydratedFor === profileOwnerId) return;
+    let cancelled = false;
     const ownerId = profileOwnerId;
     // Reset everything the moment the active workspace changes so nothing
     // from the previous tenant can linger on screen.
@@ -263,6 +264,7 @@ function PersonalTab() {
           .select('id, email, full_name, phone, city, gender, broker_license_number, locked_broker_name')
           .eq('id', ownerId)
           .maybeSingle();
+        if (cancelled) return;
         if ((data as any)?.id && (data as any).id !== ownerId) return;
         const server: any = data ?? {};
         const loginEmail = isOwnProfile && hasRealEmailLogin(user) ? realEmail(user.email) : '';
@@ -293,8 +295,9 @@ function PersonalTab() {
         setBrokerLicense(String(server.broker_license_number ?? ''));
         setStoredLicense(String(server.broker_license_number ?? '').trim());
       } catch { /* ignore */ }
-      setHydratedFor(ownerId);
+      if (!cancelled) setHydratedFor(ownerId);
     })();
+    return () => { cancelled = true; };
   }, [user, profileOwnerId, isOwnProfile, hydratedFor]);
 
   const verifiedLicenseLocked = !!lockedBrokerName || (showBrokerFields && isOwnProfile && !licenseSuspended && !!storedLicense);
@@ -825,7 +828,7 @@ export default function Profile() {
       <div className="mb-3">
         <CompleteProfileBanner force={params.get('welcome') === 'developer'} />
       </div>
-      <UpgradeToBrokerButton key={activeWorkspaceId ?? user?.id ?? 'broker-upgrade'} profileOwnerId={activeWorkspaceId ?? user?.id} />
+      {activeWorkspaceId && <UpgradeToBrokerButton key={`${user?.id}:${activeWorkspaceId}`} profileOwnerId={activeWorkspaceId} />}
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <TabsList className={`sticky top-0 z-30 grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px] bg-muted`}>
@@ -836,7 +839,7 @@ export default function Profile() {
           {isAgency && <TabsTrigger className="text-base" value="managers">מנהלים</TabsTrigger>}
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
-          <PersonalTab key={activeWorkspaceId ?? user?.id ?? 'profile'} />
+          {activeWorkspaceId && <PersonalTab key={`${user?.id}:${activeWorkspaceId}`} />}
         </TabsContent>
         <TabsContent value="aibrain" className="mt-[20px] space-y-4" dir="rtl">
           <KnowledgeBase key={activeWorkspaceId ?? user?.id ?? 'brain'} />

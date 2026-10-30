@@ -156,7 +156,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const { user, loading: authLoading } = useAuth();
   const { gender } = usePersonalLanguage();
   const { activeWorkspaceId, activeWorkspace, loading: workspaceLoading } = useWorkspace();
-  const { isPropertyOwner, isAgent, isSuperAdmin, isDeveloper, loading: rolesLoading, fetched: rolesFetched, error: rolesError, refetch: refetchRoles } = useUserRole();
+  const { isPropertyOwner, isSuperAdmin, isDeveloper, loading: rolesLoading, fetched: rolesFetched, error: rolesError, refetch: refetchRoles } = useUserRole();
   const { data: publisherProfile } = useQuery({
     queryKey: ['publisher-profile', user?.id, activeWorkspaceId],
     enabled: Boolean(user?.id && activeWorkspaceId && !workspaceLoading),
@@ -292,7 +292,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   useEffect(() => {
     if (!open || !user || workspaceLoading || !publisherProfile || pricingOnly) return;
     const identity = `${user?.id}:${activeWorkspaceId}`;
-    const changedWorkspace = Boolean(initializedPublisher.current && initializedPublisher.current !== identity);
     const first = initializedPublisher.current !== identity;
     initializedPublisher.current = identity;
     setFields(current => ({ ...current, publisherType: isBroker ? 'broker' : current.publisherType === 'broker' ? 'private' : current.publisherType, contactName: publisherName, contactWhatsapp: publisherPhone, contactEmail: publisherIdentity.email, marketingAccepted: first ? true : current.marketingAccepted }));
