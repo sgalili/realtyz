@@ -1450,10 +1450,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             </Card>}
 
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base text-center">למי שולחים?</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <div className="space-y-2">
                   <div>
                     <input
@@ -1472,8 +1469,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         if (mode === 'file') listFileInputRef.current?.click();
                       }}
                     >
-                      <SelectTrigger className="mb-3" dir="rtl"><SelectValue placeholder="בחרו נמענים" /></SelectTrigger>
-                      <SelectContent dir="rtl">
+                      <SelectTrigger className="mb-3 text-[17px]" dir="rtl"><SelectValue placeholder="למי שולחים ווטסאפ?" /></SelectTrigger>
+                      <SelectContent dir="rtl" className="text-[17px] [&_[role=option]]:text-[17px]">
                         <SelectItem value="contacts"><span className="inline-flex items-center gap-2"><Users className="h-3.5 w-3.5" />אנשי הקשר שלי</span></SelectItem>
                         <SelectItem value="file"><span className="inline-flex items-center gap-2"><FileSpreadsheet className="h-3.5 w-3.5" />העלאת רשימה</span></SelectItem>
                         <SelectItem value="paste"><span className="inline-flex items-center gap-2"><FileText className="h-3.5 w-3.5" />הדבקת מספרים</span></SelectItem>
@@ -1564,8 +1561,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                   />
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <Select value="" onValueChange={(tag) => insertTag(tag)}>
-                      <SelectTrigger className="h-8 w-auto gap-2 text-xs" dir="rtl"><SelectValue placeholder="תגיות התאמה אישית" /></SelectTrigger>
-                      <SelectContent dir="rtl">
+                      <SelectTrigger className="h-8 w-auto gap-2 text-[15px]" dir="rtl"><SelectValue placeholder="תגיות התאמה אישית" /></SelectTrigger>
+                      <SelectContent dir="rtl" className="text-[15px] [&_[role=option]]:text-[15px]">
                         {personalizationTags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -1783,7 +1780,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                       const disabled = (selectedChannels.includes('whatsapp') && !waTemplate) || broadcastCost.hasPending || !blastName.trim() || !sendMessageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
                       return (
                         <>
-                          <Button size="lg" className="h-auto whitespace-normal text-center bg-primary text-primary-foreground hover:bg-primary-glow" onClick={() => setConfirmOpen(true)} disabled={disabled}>
+                          <Button size="lg" className="h-auto whitespace-normal px-[42px] py-[18px] text-center text-[17px] bg-primary text-primary-foreground hover:bg-primary-glow" onClick={() => setConfirmOpen(true)} disabled={disabled}>
                             <Send className="h-4 w-4 ml-1" />
                             שליחה ל-{totalRecipients.toLocaleString('he-IL')} נמענים
                           </Button>
@@ -1906,8 +1903,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <div className="space-y-1">
               <Label className="text-xs">עיר</Label>
               <Select value={filterCity} onValueChange={setFilterCity}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="text-[17px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="text-[17px] [&_[role=option]]:text-[17px]">
                   <SelectItem value="all">כל הערים</SelectItem>
                   {cityOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
@@ -1916,8 +1913,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <div className="space-y-1">
               <Label className="text-xs">תגית עניין</Label>
               <Select value={filterTag} onValueChange={setFilterTag}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="text-[17px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="text-[17px] [&_[role=option]]:text-[17px]">
                   <SelectItem value="all">כל התגיות</SelectItem>
                   {tagOptions.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
@@ -1926,8 +1923,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <div className="space-y-1">
               <Label className="text-xs">סטטוס</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="text-[17px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="text-[17px] [&_[role=option]]:text-[17px]">
                   <SelectItem value="all">כל הסטטוסים</SelectItem>
                   <SelectItem value="active">פעיל</SelectItem>
                   <SelectItem value="inactive">לא פעיל</SelectItem>
@@ -1938,8 +1935,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <div className="space-y-1">
               <Label className="text-xs">נאמנות</Label>
               <Select value={filterLoyalty} onValueChange={setFilterLoyalty}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="text-[17px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="text-[17px] [&_[role=option]]:text-[17px]">
                   <SelectItem value="all">כל הרמות</SelectItem>
                   {loyaltyOptions.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                 </SelectContent>
