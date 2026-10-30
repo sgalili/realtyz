@@ -310,8 +310,10 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [closingOpen, setClosingOpen] = useState(false);
   const showRewards = showPublisherRewards(fields.price);
   useEffect(() => {
-    if (!fields.dealType || fields.commissionDeal !== '' || fields.closingConfirmed !== false) return;
-    setFields(current => ({ ...current, commissionDeal: String(publisherClosingDefault(current.dealType)), commissionDealType: 'percent' }));
+    if (!fields.dealType || fields.closingConfirmed !== false || fields.listingId || fields.commissionDealType === 'fixed') return;
+    const initial = String(publisherClosingDefault(fields.dealType));
+    if (fields.commissionDeal === initial || (fields.commissionDeal && !['1', '10'].includes(fields.commissionDeal))) return;
+    setFields(current => ({ ...current, commissionDeal: initial, commissionDealType: 'percent' }));
   }, [fields.dealType, fields.commissionDeal, fields.closingConfirmed]);
   const allExpanded = LEAD_TYPES.every(({ key }) => openLeads[key] === true) && closingOpen;
   const toggleAllCards = () => {
