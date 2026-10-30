@@ -184,14 +184,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [adminUnlocked, setAdminUnlocked] = useState(!adminOnlyEdit);
   const [legalSection, setLegalSection] = useState<'terms' | 'brokerage' | null>(null);
   const { data: readyProperties } = useReadyBoardProperties(open && isBroker);
-  // Pure partners must state who they publish as; other identities are never asked.
-  const { isAffiliateOnly } = useUserRole();
-  const [askPublishAs, setAskPublishAs] = useState(false);
-  const [publishAs, setPublishAs] = useState<'owner' | 'broker' | null>(null);
-  void publishAs;
+  const requireOwnerDeclaration = !pricingOnly && !isBroker && !isDeveloper;
   const [step, setStep] = useState(0);
   const [importSlide, setImportSlide] = useState(false);
-  const [whoSlide, setWhoSlide] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
   const authThenConfirm = useRef(false);
   const pendingAuthPublish = useRef<{ fields: PublicListingDraftFields; files: File[]; videos: File[] } | null>(null);
@@ -235,8 +230,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   useEffect(() => {
     if (openedScope.current && openedScope.current !== draftScope && openedScope.current !== 'visitor') {
       setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setPublishError('');
-      setImported(null); setImportUrl(''); setImportOption(null); setStep(0); setReviewMode(false); setImportSlide(false); setWhoSlide(false);
-      setAskPublishAs(false); setPublishAs(null); setOtpOpen(false); setConfirming(false); setMediaOrder([]); setPendingFileDelete(null);
+      setImported(null); setImportUrl(''); setImportOption(null); setStep(0); setReviewMode(false); setImportSlide(false);
+      setOtpOpen(false); setConfirming(false); setMediaOrder([]); setPendingFileDelete(null);
       setLegalSection(null); setAddressResolved(false); setExpandedStep('step-0'); setResumed(false); setImportStage(''); setPublishStage('');
       pendingAuthPublish.current = null; authThenConfirm.current = false; initializedPublisher.current = ''; restoredScope.current = ''; lastAutoImport.current = ''; 
     }
@@ -298,7 +293,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     const identity = `${user?.id}:${activeWorkspaceId}`;
     const first = initializedPublisher.current !== identity;
     initializedPublisher.current = identity;
-    setFields(current => ({ ...current, publisherType: isBroker ? 'broker' : current.publisherType === 'broker' ? 'private' : current.publisherType, contactName: publisherName, contactWhatsapp: publisherPhone, contactEmail: publisherIdentity.email, marketingAccepted: first ? true : current.marketingAccepted }));
+    setFields(current => ({ ...current, publisherType: isBroker ? 'broker' : isDeveloper ? current.publisherType : 'private', contactName: publisherName, contactWhatsapp: publisherPhone, contactEmail: publisherIdentity.email, marketingAccepted: first ? true : current.marketingAccepted }));
     
   }, [open, isBroker, user?.id, activeWorkspaceId, publisherName, publisherPhone, publisherIdentity.email, publisherProfile, workspaceLoading, step, reviewMode]);
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
@@ -343,6 +338,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
     if (!user?.id || publishing || entryPending || !activeWorkspaceId) return;
+    if (requireOwnerDeclaration && !draftFields.ownerDeclarationAccepted) return;
     if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || !(Number(draftFields.commissionDeal) > 0)) {
       return;
     }
@@ -538,14 +534,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     }
     if (step === 0 && (key === 'publisherType' || key === 'dealType')) {
       setImportOption(null);
-      // Smart skip: a signed-in user with a known role does not need to pick the role.
-      const known = isBroker ? 'broker' : user && isPropertyOwner ? 'private' : null;
-      if (key === 'publisherType') { setWhoSlide(false); setImportSlide(true); return; }
-      if (known) {
-        setFields({ ...nextFields, publisherType: known });
-        setImportSlide(true); return;
-      }
-      setWhoSlide(true);
+      setFields({ ...nextFields, publisherType: isBroker ? 'broker' : 'private' });
+      setImportSlide(true);
       return;
     }
     setStep((current) => Math.min(current + 1, STEP_TITLES.length - 1));
@@ -602,6 +592,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       setPublishing(false);
       return;
     }
+    if (requireOwnerDeclaration && !fields.ownerDeclarationAccepted) { toast.error('יש לאשר את הצהרת הבעלות והרשאת הפרסום'); return; }
     const missing = missingAdFields(fields);
     if (missing.length) { toast.error(`יש להשלים: ${missing.join(' · ')}`); return; }
     if (!fields.city.trim() || !(fields.street.trim() || fields.address.trim()) || !fields.propertyType.trim() || !fields.price) {
@@ -763,30 +754,18 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   // The publish button stays disabled until every mandatory detail is complete.
   const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || importedVideoUrls(fields.importedListing).length > 0 || files.length > 0 || videos.length > 0;
-  const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia), [fields, hasMedia]);
+  const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia, requireOwnerDeclaration), [fields, hasMedia, requireOwnerDeclaration]);
   const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker);
 
   const renderStep = (step: number) => (
     <>
-          {step === 0 && !importSlide && !whoSlide && (
+          {step === 0 && !importSlide && (
             <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
               <p className="text-center text-[19px] font-semibold text-muted-foreground">סוג המודעה</p>
               <div className="grid grid-cols-2 gap-2">
                 {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
                   <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
                 ))}
-              </div>
-            </div>
-          )}
-          {step === 0 && !importSlide && whoSlide && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <p className="text-center text-[19px] font-semibold text-muted-foreground">מי מפרסם?</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button type="button" variant={fields.publisherType === 'private' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'private')}>בעל הנכס</Button>
-                  {isBroker && <Button type="button" variant={fields.publisherType === 'broker' ? 'default' : 'outline'} className="h-auto px-2 py-4 text-base font-bold" onClick={() => void pickAndAdvance('publisherType', 'broker')}>מתווך</Button>}
-                  <Button type="button" className="h-auto px-2 py-4 text-base font-bold" variant={fields.publisherType === 'developer' ? 'default' : 'outline'} onClick={() => void pickAndAdvance('publisherType', 'developer')}>יזם</Button>
-                </div>
               </div>
             </div>
           )}
@@ -1016,7 +995,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   return (
     <>
-    {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => { if (user && isAffiliateOnly) { setPublishAs(null); setAskPublishAs(true); } else setOpen(true); }} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
+    {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => setOpen(true)} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
     <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { pendingAuthPublish.current = null; authThenConfirm.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
         <DialogHeader><DialogTitle className="text-right">אימות מספר הטלפון</DialogTitle></DialogHeader>
@@ -1027,21 +1006,11 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
         }} />
       </DialogContent>
     </Dialog>
-    <Dialog open={askPublishAs} onOpenChange={setAskPublishAs}>
-      <DialogContent dir="rtl" className="sm:max-w-sm">
-        <DialogHeader><DialogTitle className="text-right">בתור מי אתה מפרסם את הנכס?</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-2 pt-2">
-          {([['owner', 'בעל הנכס']] as const).map(([value, text]) => (
-            <Button key={value} type="button" variant="outline" className="h-14 text-base font-bold" onClick={() => { setPublishAs(value); setAskPublishAs(false); setOpen(true); setFields(current => ({ ...current, publisherType: 'private' })); }}>{text}</Button>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
     <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 !text-center">
           {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תגמולים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
-          {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
+          {!pricingOnly && (reviewMode || step > 0 || importSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {pricingOnly ? <span>מחיר והגדרת תגמולים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
@@ -1102,6 +1071,10 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
               <Checkbox id="publication-consent" aria-label="אישור התנאים והרשאת הפרסום" checked={fields.termsAccepted} onCheckedChange={(checked) => set('termsAccepted', checked === true)} className="mt-0.5 rounded-none" />
               <span><label htmlFor="publication-consent">מאשר/ת את </label><Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('terms')}>התקנון</Button>, <Button type="button" variant="link" className="h-auto p-0 text-xs font-bold underline decoration-2 underline-offset-4" onClick={() => setLegalSection('brokerage')}>תנאי התיווך</Button> ו<a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline decoration-2 underline-offset-4">הפרטיות</a><label htmlFor="publication-consent">, ומורשה לפרסם את הנכס והתמונות.</label></span>
             </div>
+            {requireOwnerDeclaration && <label htmlFor="publisher-owner-declaration" className="flex items-start gap-2 text-sm leading-snug">
+              <Checkbox id="publisher-owner-declaration" required checked={fields.ownerDeclarationAccepted === true} onCheckedChange={checked => set('ownerDeclarationAccepted', checked === true)} className="mt-0.5 rounded-none" />
+              <span>אני בעל הנכס או מורשה מטעמו ואיני מתווך</span>
+            </label>}
             </div>
           )}
         </div>
