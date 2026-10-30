@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Rita active-owner isolation October 30
-- [ ] Bind greeting, assistant name/role/gender and state strictly to the authorized workspace owner, without caller fallbacks.
-- [ ] Reset state and discard stale responses/events on user/workspace switches; test and verify signed-in behavior.
+- [x] Bind greeting and assistant name/role/gender to the authorized owner; caller authorization remains separate. Scoped history excludes unknown legacy transcripts; ai-agent deployed.
+- [x] Remount all Rita surfaces on handoff and reject late events/responses; signed-in Shafi greeting, partner suggestions and live reply confirmed her exact name and affiliate role, without runtime errors. Real workspace switching was not exercised; regression tests cover handoffs.
 
 ## Office details and sticky tabs October 30
 - [x] Fixed-height opaque sticky profile tabs, verified at 411px and 1280px.

@@ -6,7 +6,10 @@ import { SidebarRitaChat } from './SidebarRitaChat';
 const identity = vi.hoisted(() => ({ scope: 'admin:shafi', ownerId: 'shafi', name: 'שפי ישראלי', firstName: 'שפי', gender: 'female', roles: ['affiliate'], ready: true, error: false }));
 vi.mock('@/hooks/useRitaWorkspaceIdentity', () => ({ useRitaWorkspaceIdentity: () => identity }));
 vi.mock('@/components/RitaAvatar', () => ({ RitaAvatar: () => <span /> }));
-beforeEach(() => { identity.scope = 'admin:shafi'; identity.firstName = 'שפי'; });
+beforeEach(() => {
+  identity.scope = 'admin:shafi'; identity.firstName = 'שפי';
+  HTMLElement.prototype.scrollTo = vi.fn();
+});
 function setup() {
   const cache = new QueryClient();
   return render(<QueryClientProvider client={cache}><SidebarRitaChat /></QueryClientProvider>);
