@@ -49,7 +49,12 @@ export function CampaignMessagePropertyPicker({ value, onChange }: {
             const { data, error } = await supabase.from('developer_projects').select('*')
               .eq('workspace_owner_id', workspaceId).order('created_at', { ascending: false }).range(from, from + 999);
             if (error) throw error;
-            rows.push(...data.flatMap(project => projectCampaignTargets(project)));
+            rows.push(...data.flatMap(project => projectCampaignTargets(project)).map(target => ({
+              id: target.id,
+              property_title: target.property_title,
+              address: typeof target.address === 'string' ? target.address : null,
+              city: typeof target.city === 'string' ? target.city : null,
+            })));
             if (data.length < 1000) break;
           }
         }
