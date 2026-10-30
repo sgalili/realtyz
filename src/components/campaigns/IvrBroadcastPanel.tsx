@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { CampaignServiceIcon } from '@/components/campaigns/CampaignServiceIcon';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { sameCampaignMessageContext } from '@/lib/campaignMessageProperty';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -84,6 +85,9 @@ export const IvrBroadcastPanel = () => {
   const [listings, setListings] = useState<ListingOpt[]>([]);
   const [listingId, setListingId] = useState<string>('');
   const [ownerName, setOwnerName] = useState<string>('');
+  const scriptContext = useRef({ propertyId: null as string | null, workspaceId });
+  scriptContext.current = { propertyId: listingId || null, workspaceId };
+  const scriptVersion = useRef(0);
 
   // Audience
   const [audience, setAudience] = useState<AudienceMode | ''>('');
@@ -325,6 +329,8 @@ export const IvrBroadcastPanel = () => {
 
   // Auto-generate a punchy promo script when a property is selected
   const autoGenerateScriptForListing = async (l: ListingOpt | null) => {
+    const context = { ...scriptContext.current };
+    const version = ++scriptVersion.current;
     setAutoScripting(true);
     try {
       const facts: string[] = [];
@@ -339,15 +345,16 @@ export const IvrBroadcastPanel = () => {
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: { topic, platform: 'ivr', selectedListingId: l?.id, listingFocusOnly: !!l },
       });
-      if (error) throw new Error(error.message);
+      if (version !== scriptVersion.current || !sameCampaignMessageContext(context, scriptContext.current)) return;
+      if (error || (data as any)?.listing_unavailable) throw new Error(error?.message || 'הנכס אינו זמין');
       const text = String((data as any)?.content ?? (data as any)?.text ?? '').trim();
       if (!text) throw new Error('empty');
       setTtsText(text);
       lastAutoScriptRef.current = text;
     } catch (e: any) {
-      toast.error(`יצירת סקריפט נכשלה: ${e?.message ?? 'שגיאה'}`);
+      if (version === scriptVersion.current && sameCampaignMessageContext(context, scriptContext.current)) toast.error(`יצירת סקריפט נכשלה: ${e?.message ?? 'שגיאה'}`);
     } finally {
-      setAutoScripting(false);
+      if (version === scriptVersion.current) setAutoScripting(false);
     }
   };
 
@@ -578,6 +585,43 @@ export const IvrBroadcastPanel = () => {
               </SelectContent>
             </Select>
 
+              <div className="space-y-1.5">
+                <Select value={listingId} onValueChange={value => { scriptVersion.current++; setAutoScripting(false); setTtsText(''); setListingId(value); }} dir="rtl">
+                  <SelectTrigger className="w-full text-[17px] text-right border-border bg-background font-bold">
+                    <SelectValue placeholder="קידום נכס מהמאגר" />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl" className="[&_[role=option][data-state=checked]]:font-bold">
+                    <div className="sticky top-0 z-10 bg-popover p-2 border-b border-border/60">
+                      <div className="relative">
+                        <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          autoFocus
+                          value={listingSearch}
+                          onChange={(e) => setListingSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          placeholder="חיפוש לפי כתובת, עיר, חדרים..."
+                          className="h-8 text-right text-[12.5px] pr-7 rounded-md"
+                        />
+                      </div>
+                    </div>
+                    <SelectItem value="none" className="text-[17px]">ללא נכס · הודעה כללית</SelectItem>
+                    {filteredListings.map((l) => (
+                      <SelectItem key={l.id} value={l.id} className="pe-2 text-[17px]">
+                        <span className="truncate block max-w-[22rem]">{listingLabel(l)}</span>
+                      </SelectItem>
+                    ))}
+                    {filteredListings.length === 0 && (
+                      <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">לא נמצאו נכסים תואמים</div>
+                    )}
+                  </SelectContent>
+                </Select>
+                {selectedListing && (
+                  <p className="text-[11px] text-muted-foreground text-right leading-snug">
+                    סקריפט קצר ומותאם נכתב אוטומטית מפרטי הנכס. ניתן לרענן או לערוך ידנית.
+                  </p>
+                )}
+              </div>
+
             {audience === 'manual' && (
               <div className="rounded-xl border border-[#0f1b3d]/15 bg-background">
                 <div className="p-2 border-b border-[#0f1b3d]/10">
@@ -676,43 +720,6 @@ export const IvrBroadcastPanel = () => {
                 {agentVoiceId && <Button type="button" variant="ghost" size="icon" aria-label="השמע את הקול הנבחר" title="השמע את הקול הנבחר" className="absolute left-8 top-1 h-9 w-9" onClick={() => { const voice = allAgents.find(item => item.voice_id === agentVoiceId); if (voice) void playVoicePreview(voice); }}>
                   {loadingPreviewId === agentVoiceId ? <Loader2 className="h-4 w-4 animate-spin" /> : previewingVoiceId === agentVoiceId ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </Button>}
-              </div>
-
-              <div className="space-y-1.5">
-                <Select value={listingId} onValueChange={setListingId} dir="rtl">
-                  <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
-                    <SelectValue placeholder="בחירת נכס לקמפיין" />
-                  </SelectTrigger>
-                  <SelectContent dir="rtl" className="[&_[role=option][data-state=checked]]:font-bold">
-                    <div className="sticky top-0 z-10 bg-popover p-2 border-b border-border/60">
-                      <div className="relative">
-                        <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                          autoFocus
-                          value={listingSearch}
-                          onChange={(e) => setListingSearch(e.target.value)}
-                          onKeyDown={(e) => e.stopPropagation()}
-                          placeholder="חיפוש לפי כתובת, עיר, חדרים..."
-                          className="h-8 text-right text-[12.5px] pr-7 rounded-md"
-                        />
-                      </div>
-                    </div>
-                    <SelectItem value="none" className="text-[17px]">ללא נכס · הודעה כללית</SelectItem>
-                    {filteredListings.map((l) => (
-                      <SelectItem key={l.id} value={l.id} className="pe-2 text-[17px]">
-                        <span className="truncate block max-w-[22rem]">{listingLabel(l)}</span>
-                      </SelectItem>
-                    ))}
-                    {filteredListings.length === 0 && (
-                      <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">לא נמצאו נכסים תואמים</div>
-                    )}
-                  </SelectContent>
-                </Select>
-                {selectedListing && (
-                  <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                    סקריפט קצר ומותאם נכתב אוטומטית מפרטי הנכס. ניתן לרענן או לערוך ידנית.
-                  </p>
-                )}
               </div>
 
               <div className="relative">
