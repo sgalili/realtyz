@@ -117,9 +117,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const initializedUserRef = useRef<string | null>(null);
+  const currentUserRef = useRef(user?.id ?? null);
+  currentUserRef.current = user?.id ?? null;
+  const requestVersion = useRef(0);
 
 
   const refresh = useCallback(async () => {
+    const version = ++requestVersion.current;
+    const accountId = user?.id ?? null;
+    const current = () => version === requestVersion.current && accountId === currentUserRef.current;
     if (!user) {
       setWorkspaces([]);
       setActiveWorkspaceId(null);
@@ -127,14 +133,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       return;
     }
     const accountCache = readWorkspaceCache(user.id);
-    setWorkspaces(accountCache.list);
-    setActiveWorkspaceId(accountCache.activeId);
+    setWorkspaces([]);
+    setActiveWorkspaceId(null);
     setLoading(true);
     try {
       const [{ data, error }, { data: profile }] = await Promise.all([
         supabase.rpc('get_my_workspaces'),
         supabase.from('profiles').select('active_workspace_owner_id').eq('id', user.id).maybeSingle(),
       ]);
+      if (!current()) return;
       if (error) throw error;
       const rows = dedupeWorkspaces((data ?? []) as Workspace[], user.id);
       setWorkspaces(rows);
@@ -152,6 +159,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const nextActive = validProfileActive ?? validStored ?? fallback;
       if (profileActive !== nextActive) {
         const { error: switchError } = await supabase.rpc('set_active_workspace', { _owner: nextActive });
+        if (!current()) return;
         if (switchError) throw switchError;
       }
       setActiveWorkspaceId(nextActive);
@@ -160,12 +168,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       }
       writeWorkspaceCache(user.id, rows, nextActive);
     } catch (err) {
+      if (!current()) return;
       // Cached branding never authorizes a tenant after membership validation fails.
       setWorkspaces([]);
       setActiveWorkspaceId(null);
       queryClient.clear();
     } finally {
-      setLoading(false);
+      if (current()) setLoading(false);
     }
     // Keyed by the user id only: a refreshed session object must never retrigger
     // the whole workspace fetch.
@@ -192,11 +201,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
+    const accountId = user.id;
+    const version = ++requestVersion.current;
     setLoading(true);
     await queryClient.cancelQueries();
     // Change the server-side workspace first. Refetching before this completes
     // can briefly return rows from the previous tenant under the new UI label.
     const { error } = await supabase.rpc('set_active_workspace', { _owner: ownerId });
+    if (version !== requestVersion.current || accountId !== currentUserRef.current) return;
     if (error) {
       setLoading(false);
       toast.error('לא ניתן לעבור למרחב העבודה שנבחר');
@@ -243,9 +255,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [mustChoose]);
 
   const value: WorkspaceContextType = {
-    workspaces,
-    activeWorkspaceId,
-    activeWorkspace,
+    workspaces: initializedUserRef.current === user?.id && !loading ? workspaces : [],
+    activeWorkspaceId: initializedUserRef.current === user?.id && !loading ? activeWorkspaceId : null,
+    activeWorkspace: initializedUserRef.current === user?.id && !loading ? activeWorkspace : null,
     setActiveWorkspace,
     refresh,
     loading,
@@ -260,9 +272,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
 export const useWorkspace = () => useContext(WorkspaceContext);
 
-/** Returns the active workspace owner id (or current user's id as fallback). */
+/** Tenant reads wait for the server-validated selection; never fall back to the caller. */
 export function useActiveWorkspaceOwnerId(): string | null {
   const { activeWorkspaceId } = useWorkspace();
-  const { user } = useAuth();
-  return activeWorkspaceId ?? user?.id ?? null;
+  return activeWorkspaceId;
 }
