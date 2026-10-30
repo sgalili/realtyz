@@ -13,7 +13,6 @@ import { useEffect, useState } from 'react';
 import { ClipboardList, Phone, Filter, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { closingLevelClass, LEAD_PRICE_RANGES } from '@/lib/leadPriceRanges';
 import { partnerPotential } from '@/lib/partnerPotential';
 import { Input } from '@/components/ui/input';
@@ -34,7 +33,6 @@ import {
   leadFilterActiveCount,
   propertyFilterActiveCount,
   selectFilterCity,
-  selectLeadFilterType,
   setLeadFilterMinimum,
   leadFilterSliderRange,
   FILTER_FEATURES,
@@ -143,6 +141,7 @@ export default function LeadTypeFilterButton({
   onOpenChange?: (open: boolean) => void;
 }) {
   const [localOpen, setLocalOpen] = useState(false);
+  const [expandedType, setExpandedType] = useState<LeadTypeKey | null>(null);
   const open = controlledOpen ?? localOpen;
   const setOpen = (next: boolean) => { setLocalOpen(next); onOpenChange?.(next); };
   const { user } = useAuth();
@@ -190,21 +189,16 @@ export default function LeadTypeFilterButton({
   const active = leadFilterActiveCount(state) + (property ? propertyFilterActiveCount(property) : 0);
 
   const BOUND_KEY = { tier1: 'form', tier2: 'whatsapp', tier3: 'phone', tier4: 'closing' } as const;
-  const activeType: LeadTypeKey = leadTypes.find((key) => state.types.includes(key)) ?? leadTypes[0];
-  const sliderTier = activeType === 'tier1' ? 'form' : activeType === 'tier2' ? 'whatsapp' : 'phone';
-  const liveBound = bounds.data?.[BOUND_KEY[activeType]];
-  const sliderRange = leadFilterSliderRange(activeType, liveBound);
-  // Opening the filter selects the first lead type by default.
   useEffect(() => {
-    if (open && showLeadFilters && state.types.length !== 1) onChange(selectLeadFilterType(state, activeType));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, showLeadFilters]);
+    if (!open) setExpandedType(null);
+  }, [open]);
 
   const patch = (next: Partial<PropertyFilterState>) => {
     if (property && onPropertyChange) onPropertyChange({ ...property, ...next });
   };
 
   const reset = () => {
+    setExpandedType(null);
     onChange(EMPTY_LEAD_FILTER);
     if (onPropertyChange) onPropertyChange(EMPTY_PROPERTY_FILTER);
   };
@@ -227,26 +221,24 @@ export default function LeadTypeFilterButton({
       </div>
         {showLeadFilters ? (<>
           <SectionTitle>תגמולים לפי סוג פנייה</SectionTitle>
-          <RadioGroup aria-label="תגמולים לפי סוג פנייה" value={state.types[0] ?? ''} onValueChange={key => onChange(selectLeadFilterType(state, key as LeadTypeKey))} className="gap-1.5" dir="rtl">
+          <div className="space-y-1.5" dir="rtl">
             {leadTypes.map((key) => {
               const Icon = ICONS[key];
-              const amount = state.types.includes(key) ? state.min ?? 0 : state.prices?.[key] ?? 0;
+              const amount = state.prices?.[key] ?? (state.types[0] === key ? state.min ?? 0 : 0);
               const tier = key === 'tier1' ? 'form' : key === 'tier2' ? 'whatsapp' : 'phone';
               const bound = bounds.data?.[BOUND_KEY[key]];
               const range = leadFilterSliderRange(key, bound) ?? LEAD_PRICE_RANGES[tier];
               const color = amount > 0 ? closingLevelClass(partnerPotential((amount - range.min) / Math.max(1, range.max - range.min)).level) : 'text-muted-foreground';
               return (
-                <label key={key} className="flex cursor-pointer items-start gap-2 text-[15px] font-medium">
-                  <RadioGroupItem value={key} aria-label={FILTER_LEAD_LABELS[key]} className="mt-1 shrink-0" />
+                <div key={key}>
+                <Button type="button" variant="ghost" aria-label={FILTER_LEAD_LABELS[key]} aria-expanded={expandedType === key} onClick={() => setExpandedType(expandedType === key ? null : key)} className="h-auto w-full items-start justify-start gap-2 whitespace-normal px-0 py-1 text-right text-[15px] font-medium">
                   <Icon className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
                   <span className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-right text-[15px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
-                </label>
+                </Button>
+                {expandedType === key && <div className="py-2 animate-in fade-in-0 motion-reduce:animate-none"><LeadPriceSlider hidePotential range={range} tier={tier} label={FILTER_LEAD_LABELS[key]} value={String(amount)} onChange={value => onChange(setLeadFilterMinimum(state, key, Number(value)))} /></div>}
+                </div>
               );
             })}
-          </RadioGroup>
-          <div className="space-y-1">
-            
-            <LeadPriceSlider hidePotential range={sliderRange} key={activeType} tier={sliderTier} label="שווי ליד מינימלי" value={String(state.min ?? 0)} onChange={(value) => onChange(setLeadFilterMinimum(state, activeType, Number(value)))} />
           </div>
         </>) : null}
 

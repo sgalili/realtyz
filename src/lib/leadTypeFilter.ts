@@ -33,16 +33,11 @@ export function leadFilterSliderRange(key: LeadTypeKey, bounds?: { min: number |
   return Number.isFinite(min) && Number.isFinite(max) && max >= min ? { min, max } : undefined;
 }
 
-/** Keep each tier's chosen threshold while only filtering the selected tier. */
-export function selectLeadFilterType(state: LeadFilterState, key: LeadTypeKey): LeadFilterState {
-  const previous = state.types[0];
-  const prices = { ...state.prices, ...(previous ? { [previous]: state.min ?? 0 } : {}) };
-  return { ...state, types: [key], min: prices[key] || null, max: null, prices };
-}
-
 export function setLeadFilterMinimum(state: LeadFilterState, key: LeadTypeKey, amount: number): LeadFilterState {
   const value = Number.isFinite(amount) && amount > 0 ? amount : 0;
-  return { ...state, types: [key], min: value || null, max: null, prices: { ...state.prices, [key]: value } };
+  const previous = state.types[0];
+  const prices = { ...(state.prices ?? (previous ? { [previous]: state.min ?? 0 } : {})), [key]: value };
+  return { ...state, types: LEAD_TYPE_ORDER.filter(type => (prices[type] ?? 0) > 0), min: null, max: null, prices };
 }
 
 export function leadFilterActiveCount(state: LeadFilterState): number {
@@ -72,6 +67,10 @@ export function leadTierAmounts(row: Record<string, unknown> | null | undefined)
  * falls inside the requested range.
  */
 export function matchesLeadFilter(amounts: LeadTierAmounts, state: LeadFilterState): boolean {
+  if (state.prices) {
+    const priced = LEAD_TYPE_ORDER.filter(key => (state.prices?.[key] ?? 0) > 0);
+    return !priced.length || priced.some(key => amounts[key] >= (state.prices?.[key] ?? 0));
+  }
   const keys = state.types.length ? state.types : LEAD_TYPE_ORDER;
   const values = keys.map((key) => amounts[key]).filter((value) => value > 0);
   if (state.types.length && values.length === 0) return false;
