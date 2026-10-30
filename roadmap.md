@@ -1,5 +1,11 @@
 # Roadmap
 
+## Workspace publisher isolation and explicit upgrade October 30
+- [ ] Bind publisher identity to active owner, reset all wizard state on scope change and block stale workspace refreshes.
+- [ ] Remove broker prompts and contact-step license fields from standard publication.
+- [ ] Add explicit “יש לי רישיון” upgrade entry; preserve SMS/certificate and identity authorization.
+- [ ] Run isolation/upgrade tests and check the signed-in publication flow.
+
 ## Publisher fees and verification October 30
 - [x] ILS-first closing/sale fee values and limits; center ad type and restrict inventory import choices.
 - [x] Remove colored field/dropdown focus borders globally while keeping neutral keyboard focus.
