@@ -56,7 +56,7 @@ export function DeliverySettings({
         <div className="flex items-center gap-2">
           <div>
             <Label className="flex items-center gap-1.5 text-sm font-semibold"><ShieldCheck className="h-4 w-4 text-primary" />הגדרות שליחה</Label>
-            {!compact && <p className="text-xs text-muted-foreground">הגבלת קצב, חלון זמן והשהייה אקראית להגנה מסימון כספאם.</p>}
+            {!compact && <p className="text-xs text-muted-foreground">הגבלת קצב, והשהייה אקראית להגנה מסימון כספאם.</p>}
           </div>
         </div>
         <Switch checked={enabled} onCheckedChange={onEnabledChange} />
