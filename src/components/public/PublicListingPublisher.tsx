@@ -66,14 +66,15 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { celebratePublication, preparePublicationSound } from '@/lib/publicationCelebration';
 import { missingAdFields, missingPublishFields, draftPricingPayload } from '@/lib/adRecovery';
+import { PROPERTY_TYPE_OPTIONS, PROPERTY_CONDITION_OPTIONS, PROPERTY_FLOOR_OPTIONS } from '@/lib/propertyFormOptions';
 
 const isVideoUrl = (s: unknown) => typeof s === 'string' && /\.(mp4|webm|mov|m3u8|m4v)(\?|#|$)/i.test(s);
 const importedVideoUrls = (src: any): string[] => Array.from(new Set([...(Array.isArray(src?.videos) ? src.videos : []), ...(Array.isArray(src?.media_videos) ? src.media_videos : []), ...(src?.video_url ? [src.video_url] : []), ...(Array.isArray(src?.photos) ? src.photos.filter(isVideoUrl) : [])].filter((v: unknown): v is string => typeof v === 'string' && v.length > 0)));
 
-const PROPERTY_TYPES = ['דירה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'בית פרטי', 'מיני פנטהאוז', 'סטודיו', 'מגרש', 'משרד', 'חנות', 'מחסן'];
-const CONDITIONS = ['חדש מקבלן', 'חדש', 'משופץ', 'שמור', 'דרוש שיפוץ'];
-const FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
-const TOTAL_FLOOR_OPTIONS = ['קרקע', ...Array.from({ length: 9 }, (_, index) => String(index + 1)), '10+'];
+const PROPERTY_TYPES = PROPERTY_TYPE_OPTIONS;
+const CONDITIONS = PROPERTY_CONDITION_OPTIONS;
+const FLOOR_OPTIONS = PROPERTY_FLOOR_OPTIONS;
+const TOTAL_FLOOR_OPTIONS = PROPERTY_FLOOR_OPTIONS;
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
