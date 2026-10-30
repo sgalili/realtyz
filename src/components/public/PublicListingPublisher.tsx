@@ -11,6 +11,10 @@ import { fmtILS } from '@/lib/formatCurrency';
 import type { RewardTypes } from '@/components/affiliate/CommissionTierBadges';
 import Terms from '@/pages/Terms';
 import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
+import { brokerInventoryChoices } from '@/lib/publisherEligibility';
+import { UpgradeToBrokerButton } from '@/components/profile/UpgradeToBrokerButton';
+import { closingFeeAmount } from '@/lib/closingFee';
 import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
 import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
@@ -160,7 +164,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     },
   });
   const ownerRoles = useWorkspaceOwnerRoles();
-  const isBroker = Boolean(user && activeWorkspace && (isSuperAdmin || ownerRoles.some((r) => ['managing_broker', 'lead_agent', 'agent', 'junior_agent'].includes(r)) || ['managing_broker', 'lead_agent', 'agent', 'junior_agent'].includes(activeWorkspace.role) || (activeWorkspace.is_self && isAgent)));
+  const { level4Unlocked } = useAffiliateLicense();
+  const isBroker = Boolean(user && activeWorkspace && level4Unlocked && (ownerRoles.some((r) => ['managing_broker', 'lead_agent', 'agent'].includes(r)) || (activeWorkspace.is_self && isAgent)));
   const publisherName = publisherProfile?.full_name || user?.user_metadata?.full_name || '';
   const publisherPhone = publisherProfile?.phone || user?.phone || '';
   const navigate = useNavigate();
@@ -181,11 +186,13 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const [importSlide, setImportSlide] = useState(false);
   const [whoSlide, setWhoSlide] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
+  const [brokerGate, setBrokerGate] = useState(false);
   const authThenConfirm = useRef(false);
   const pendingAuthPublish = useRef<{ fields: PublicListingDraftFields; files: File[]; videos: File[] } | null>(null);
   // Which sub-option of the minimalist create-ad screen is expanded.
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
+  const showImportChoices = brokerInventoryChoices(ownerRoles, isBroker, readyProperties?.length ?? 0);
   const [files, setFiles] = useState<File[]>([]);
   const [mediaOrder, setMediaOrder] = useState<string[]>([]);
   const [pendingFileDelete, setPendingFileDelete] = useState<File | null>(null);
@@ -328,9 +335,9 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     try {
       setPublishStage('השלמת הרשאת מפרסם');
       // The account type follows what the poster picked: מתווך → broker, פרטי → private owner.
-       if (draftFields.publisherType === 'broker' && !isBroker) {
-        if (!brokerLicense || verifiedBrokerLicense !== brokerLicense) throw new Error(INVALID_BROKER_LICENSE);
-        await verifyBrokerLicense(brokerLicense, 'verify');
+       if (draftFields.publisherType === 'broker') {
+        const { data: smsVerified, error: smsError } = await supabase.rpc('publisher_sms_verified');
+        if (smsError || smsVerified !== true) throw new Error('יש להשלים אימות SMS לפני פרסום כמתווך');
         const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();
@@ -513,6 +520,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
     const nextFields = { ...fields, [key]: value };
     setFields(nextFields);
     try { await saveDraft(nextFields); } catch { /* best effort */ }
+    if (key === 'publisherType' && value === 'broker') {
+      const { data: ownVerified } = user ? await supabase.rpc('partner_can_view_closing', { _user_id: user.id }) : { data: false };
+      const { data: smsVerified } = user ? await supabase.rpc('publisher_sms_verified') : { data: false };
+      if (ownVerified !== true || smsVerified !== true) { setBrokerGate(true); return; }
+    }
     if (reviewMode) {
       // Single-choice cards close and open the next card after a pick.
       const current = Number(expandedStep.replace('step-', ''));
@@ -744,12 +756,12 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   // The publish button stays disabled until every mandatory detail is complete.
   const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || importedVideoUrls(fields.importedListing).length > 0 || files.length > 0 || videos.length > 0;
   const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia), [fields, hasMedia]);
-  const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker || (!!brokerLicense && verifiedBrokerLicense === brokerLicense));
+  const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker);
 
   const renderStep = (step: number) => (
     <>
           {step === 0 && !importSlide && !whoSlide && (
-            <div className="space-y-2">
+            <div className="mx-auto flex min-h-[55dvh] w-full max-w-lg flex-col justify-center space-y-2 text-center">
               <p className="text-center text-[19px] font-semibold text-muted-foreground">סוג המודעה</p>
               <div className="grid grid-cols-2 gap-2">
                 {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
@@ -773,6 +785,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           {step === 0 && importSlide && (
             <div className="flex min-h-[55dvh] flex-col justify-center space-y-4">
               <div className="space-y-2 pt-1">
+                  {showImportChoices && <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'yad2'} onClick={() => setImportOption('yad2')}>ייבוא מיד2<ChevronDown className="ms-2 h-4 w-4" /></Button>
+                    <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'mine'} onClick={() => setImportOption('mine')}>הנכסים שלי ({readyProperties?.length ?? 0})<ChevronDown className="ms-2 h-4 w-4" /></Button>
+                  </div>}
+                  {(!showImportChoices || importOption === 'yad2') && <>
                   <p className="text-center text-[19px] font-semibold text-muted-foreground">ייבוא מודעה מיד 2</p>
                   {(
                     <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="placeholder:text-muted-foreground/60" value={importUrl} onChange={e => { setImportOption('yad2'); setImportUrl(e.target.value); }} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); setImportOption('yad2'); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} />
@@ -792,16 +809,8 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
                     </TooltipProvider>
                     <span>בהדבקת הקישור {gender === 'female' ? 'את מצהירה' : 'אתה מצהיר'} שיש לך הזכות המלאה לשווק את הנכס ולהשתמש בתמונות ובפרטיו.</span>
                   </p>
-                  {isBroker && (
-                    <>
-                      <Button type="button" variant={importOption === 'mine' ? 'secondary' : 'outline'} className="w-full justify-between" aria-expanded={importOption === 'mine'} onClick={() => setImportOption((current) => (current === 'mine' ? null : 'mine'))}>
-                        הנכסים שלי
-                        {' '}({readyPropertiesLoading ? '…' : readyPropertiesError ? 'לא זמין' : readyProperties?.length ?? 0})
-                        <ChevronDown className={cn('h-4 w-4 transition-transform', importOption === 'mine' && 'rotate-180')} />
-                      </Button>
-                  {importOption === 'mine' && <MyPropertiesPicker key={draftScope} />}
-                    </>
-                  )}
+                  </>}
+                  {showImportChoices && importOption === 'mine' && <MyPropertiesPicker key={draftScope} />}
                   {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
                   <button type="button" className="mx-auto block pt-1 text-sm font-semibold text-primary underline underline-offset-4" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setStep(1); setReviewMode(true); setExpandedStep('step-2'); }}>
                     המשך ללא ייבוא
@@ -905,7 +914,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
           {step === 7 && (
             <div className="space-y-3">
               {fields.publisherType === 'broker' && (isBroker ? (publisherProfile?.broker_license_number ? <Input aria-label="מספר רישיון תיווך" id="publisher-license" value={publisherProfile.broker_license_number} readOnly disabled dir="ltr" className="text-right" /> : null) : <BrokerLicenseField bare value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} />)}
-               <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
+               <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" readOnly={fields.publisherType === 'broker' && isBroker} value={fields.publisherType === 'broker' && isBroker ? publisherName : fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
                 <div><Input aria-label="מספר ווטסאפ *" placeholder="* מספר ווטסאפ" id="publisher-whatsapp" inputMode="tel" dir="ltr" className="text-right placeholder:[direction:rtl]" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
                 <div><Input aria-label="אימייל" placeholder="אימייל" id="publisher-email" type="email" dir="ltr" className="text-right placeholder:text-right placeholder:[direction:rtl]" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
             </div>
@@ -997,6 +1006,11 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
 
   return (
     <>
+    <Dialog open={brokerGate && !user} onOpenChange={setBrokerGate}><DialogContent dir="rtl" className="sm:max-w-sm"><DialogHeader><DialogTitle>אימות רישיון תיווך</DialogTitle></DialogHeader><BrokerLicenseField bare value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /><WhatsAppOtpVerify smsOnly title="אימות ב-SMS" description="יש לאמת את הטלפון ולהשלים את בדיקת הרישיון לפני פרסום כמתווך." onVerified={async result => {
+      const { error } = result.token_hash ? await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' }) : { error: new Error('missing session') };
+      if (error) toast.error('הכניסה נכשלה. נסו שוב.');
+    }} /></DialogContent></Dialog>
+    {brokerGate && user && <UpgradeToBrokerButton key={user.id} publisher onApproved={() => { setBrokerGate(false); setWhoSlide(false); setImportSlide(true); void refetchRoles(); }} />}
     {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => { if (user && isAffiliateOnly) { setPublishAs(null); setAskPublishAs(true); } else setOpen(true); }} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
     <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { pendingAuthPublish.current = null; authThenConfirm.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
@@ -1013,14 +1027,14 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
         <DialogHeader><DialogTitle className="text-right">בתור מי אתה מפרסם את הנכס?</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-2 pt-2">
           {([['owner', 'בעל הנכס'], ['broker', 'מתווך']] as const).map(([value, text]) => (
-            <Button key={value} type="button" variant="outline" className="h-14 text-base font-bold" onClick={() => { setPublishAs(value); setAskPublishAs(false); setOpen(true); }}>{text}</Button>
+            <Button key={value} type="button" variant="outline" className="h-14 text-base font-bold" onClick={() => { setPublishAs(value); setAskPublishAs(false); setOpen(true); if (value === 'broker') void pickAndAdvance('publisherType', 'broker'); }}>{text}</Button>
           ))}
         </div>
       </DialogContent>
     </Dialog>
     <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
       <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
-         <DialogHeader className="relative shrink-0 px-10 pb-4 text-center">
+         <DialogHeader className="relative shrink-0 px-10 pb-4 !text-center">
           {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תגמולים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
           {!pricingOnly && (reviewMode || step > 0 || importSlide || whoSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); if (importSlide && !isBroker && !(user && isPropertyOwner)) { setImportSlide(false); setWhoSlide(true); } else { setImportSlide(false); setWhoSlide(false); } }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
