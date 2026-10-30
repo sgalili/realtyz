@@ -1,5 +1,9 @@
 # Roadmap
 
+## Direct non-broker publication October 30
+- [x] Skip publisher-type selections for partner/private publication and add mandatory owner declaration without changing broker/developer flows.
+- [x] 27 focused tests passed; signed-in mobile direct entry skips both publisher selections. Declaration starts unchecked, checked state survives reload and can be unchecked. Build OK and no runtime errors; no listing published.
+
 ## Step 8 pricing refinement October 30
 - [x] Empty focused price, five-digit reward visibility, exact lead titles, nonzero closing bounds and editable percentage/default.
 - [x] Native board scrollbar and full-width collapsed rental/reward summary.

@@ -9,6 +9,20 @@ const row = {
   contact_options: { lead_daily_limits: { form: 5, whatsapp: 3, phone: 2 }, questions: ['תקציב?'], questions_phone: [], form_fields: fields, custom_flag: true },
 };
 describe('saved ad recovery', () => {
+  it('requires explicit owner declaration for private publication, including legacy drafts', () => {
+    const draft = { ...EMPTY_PUBLIC_LISTING_DRAFT, publisherType: 'private' as const };
+    expect(missingPublishFields({ ...draft, ownerDeclarationAccepted: undefined }, true)).toContain('הצהרת בעלות והרשאה');
+    expect(missingPublishFields({ ...draft, ownerDeclarationAccepted: false }, true)).toContain('הצהרת בעלות והרשאה');
+    expect(missingPublishFields({ ...draft, ownerDeclarationAccepted: true }, true)).not.toContain('הצהרת בעלות והרשאה');
+  });
+  it('keeps broker and developer publication exempt from the non-broker declaration', () => {
+    for (const publisherType of ['broker', 'developer'] as const) {
+      expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, publisherType }, true)).not.toContain('הצהרת בעלות והרשאה');
+    }
+  });
+  it('does not replace terms or commission consent with the owner declaration', () => {
+    expect(missingPublishFields({ ...EMPTY_PUBLIC_LISTING_DRAFT, publisherType: 'private', ownerDeclarationAccepted: true }, true)).toEqual(expect.arrayContaining(['אישור התקנון', 'אישור מנגנון העמלות']));
+  });
   it('disabling only the form fee saves zero while retaining fields, questions and other fees', () => {
     const draft = { ...listingToDraft(row), commissionForm: '' };
     const saved = draftPricingPayload(draft, row.contact_options);
