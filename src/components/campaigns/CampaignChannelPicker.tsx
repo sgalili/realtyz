@@ -23,6 +23,9 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
   onBack: () => void;
 }) {
   const { data: prices = [], isLoading, isError, refetch } = useCampaignPricing();
+  // The Page chooser is only offered after the cloud vault proves a live
+  // Facebook session for this workspace; before that there is nothing to pick.
+  const cloudConnected = useCloudSessionConnected();
   const channel = DISTRIBUTION_CHANNELS.find((item) => item.id === selected);
   const price = channel ? campaignServicePrice(channel.id, prices) : null;
   return (
