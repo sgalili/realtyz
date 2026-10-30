@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
-import { resolveWorkspaceCardIdentity } from '@/lib/workspaceIdentity';
+import { resolveWorkspaceCardIdentity, resolveWorkspaceCardImage } from '@/lib/workspaceIdentity';
 
 function initials(name?: string | null) {
   if (!name) return '?';
