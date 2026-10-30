@@ -19,6 +19,7 @@ it('removes nationwide selection when a custom area is added', () => {
   const change = vi.fn();
   render(<IsraeliCityPicker value="" onChange={() => {}} selectedValues={['כל הארץ']} onSelectionChange={change} firstOptions={['כל הארץ']} />);
   fireEvent.click(screen.getByRole('combobox'));
+  fireEvent.change(screen.getByRole('textbox', { name: 'חיפוש עיר' }), { target: { value: 'כל הארץ' } });
   fireEvent.click(screen.getByRole('button', { name: 'אחר (טקסט חופשי)' }));
   fireEvent.change(screen.getByRole('textbox', { name: 'עיר או אזור אחר' }), { target: { value: 'הגליל' } });
   fireEvent.keyDown(screen.getByRole('textbox', { name: 'עיר או אזור אחר' }), { key: 'Enter' });
