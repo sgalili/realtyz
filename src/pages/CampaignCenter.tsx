@@ -8710,7 +8710,7 @@ const CampaignCenter = () => {
           {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'instagram' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200">{wizardChannel === 'ivr' ? <IvrBroadcastPanel /> : <SmsBlastSimulator dedicatedChannel={wizardChannel} />}</div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
-          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
+          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} showConnectButton={false} />}
           {wizardChannel === 'instagram' && <InstagramConnectGate onStatusChange={setFbReady} />}
           
           <div hidden aria-hidden="true">
