@@ -1,5 +1,9 @@
 # Roadmap
 
+## Rita active-owner isolation October 30
+- [ ] Bind greeting, assistant name/role/gender and state strictly to the authorized workspace owner, without caller fallbacks.
+- [ ] Reset state and discard stale responses/events on user/workspace switches; test and verify signed-in behavior.
+
 ## Office details and sticky tabs October 30
 - [x] Fixed-height opaque sticky profile tabs, verified at 411px and 1280px.
 - [x] Exclusive nationwide city selection; square-logo-only layout with inline name save and automatic logo/service-area saves; no outer card or global office save.
