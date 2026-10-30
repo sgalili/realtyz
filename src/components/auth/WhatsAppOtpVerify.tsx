@@ -48,7 +48,7 @@ export function WhatsAppOtpVerify({
   defaultPhone = '',
   lockPhone = false,
   title = 'אימות בוואטסאפ',
-  description = 'נשלח קוד בן 4 ספרות מהמספר הרשמי שלנו בוואטסאפ.',
+  description,
   onVerified,
   allowSms = false,
   smsOnly = false,
@@ -119,7 +119,7 @@ export function WhatsAppOtpVerify({
           <MessageCircle className="h-4 w-4 text-green-600" />
           {title}
         </p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-muted-foreground">{description ?? (smsOnly ? 'נשלח קוד אימות בן 4 ספרות ב-SMS.' : 'נשלח קוד בן 4 ספרות מהמספר הרשמי שלנו בוואטסאפ.')}</p>
       </div>
 
       {error && (
@@ -129,7 +129,7 @@ export function WhatsAppOtpVerify({
       )}
 
       <div className="space-y-1">
-        <Label className="text-xs">מספר וואטסאפ</Label>
+        <Label className="text-xs">{smsOnly ? 'מספר טלפון' : 'מספר וואטסאפ'}</Label>
         <Input
           dir="ltr"
           inputMode="tel"

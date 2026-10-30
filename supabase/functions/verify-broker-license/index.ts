@@ -59,7 +59,7 @@ Deno.serve(async req => {
       if (!sms || !authAccount.user?.phone_confirmed_at || sms.phone_number !== String(authAccount.user.phone ?? '').replace(/\D/g, '')) return reply({ valid: false, error: 'sms_required', message: 'יש להשלים אימות SMS לפני אימות הרישיון' }, 403);
       const { data: profile } = await admin.from('profiles').select('full_name').eq('id', userId).maybeSingle();
       const { data: previous } = await admin.from('broker_license_verifications').select('account_name_before_verification').eq('user_id', userId).maybeSingle();
-      const accountName = previous?.account_name_before_verification || profile?.full_name || '';
+      const accountName = previous?.account_name_before_verification ?? profile?.full_name ?? '';
       const { error: registryError } = await admin.from('official_brokers_registry').upsert({ license_number: licenseNumber, holder_name: record['שם המתווך'], source_url: BROKER_REGISTRY_SOURCE, source_updated_at: updatedAt, checked_at: new Date().toISOString() });
       if (registryError) throw new Error('registry_not_saved');
       const { error } = await admin.from('broker_license_verifications').upsert({ user_id: userId, license_number: licenseNumber, registry_holder_name: record['שם המתווך'], account_name_before_verification: accountName, source_url: BROKER_REGISTRY_SOURCE, source_updated_at: updatedAt, verified_at: new Date().toISOString() });
