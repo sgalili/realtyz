@@ -31,6 +31,7 @@ type Props = {
   allowSms?: boolean;
   /** SMS only; WhatsApp/email appear only after "לא קיבלתי קוד". */
   smsOnly?: boolean;
+  brokerVerification?: boolean;
   onEmailFallback?: () => void;
 };
 
@@ -51,6 +52,7 @@ export function WhatsAppOtpVerify({
   onVerified,
   allowSms = false,
   smsOnly = false,
+  brokerVerification = false,
   onEmailFallback,
 }: Props) {
   const [fallbackOpen, setFallbackOpen] = useState(false);
@@ -99,7 +101,7 @@ export function WhatsAppOtpVerify({
     setBusy(true);
     setError(null);
     const { data, error: fnError } = await supabase.functions.invoke('whatsapp-auth', {
-      body: { action: 'verify', phone: normalized, code: code.replace(/\D/g, '') },
+      body: { action: brokerVerification ? 'broker_verify' : 'verify', phone: normalized, code: code.replace(/\D/g, '') },
     });
     setBusy(false);
     if (fnError || data?.error) {
@@ -174,7 +176,7 @@ export function WhatsAppOtpVerify({
           </>
         )}
       </div>
-      {smsOnly && sent && (fallbackOpen ? (
+      {smsOnly && !brokerVerification && sent && (fallbackOpen ? (
         <div className="space-y-2 rounded-md border p-3">
           <p className="text-xs text-muted-foreground">אפשר להירשם גם בדרך אחרת:</p>
           <div className="flex flex-wrap gap-2">

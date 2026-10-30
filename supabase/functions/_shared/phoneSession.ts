@@ -14,22 +14,32 @@ export async function verifiedPhoneSession(admin: any, client: any, phone: strin
   // accounts get a non-deliverable internal sign-in alias (never emailed,
   // RFC 2606 .invalid TLD) and sign in through a server-issued magic-link hash.
   let email: string | undefined = target?.email;
+  let userId: string | undefined = target?.id;
   if (!email) {
     email = `p${phone}@phone.toraff.invalid`;
     if (target) {
       const { error } = await admin.auth.admin.updateUserById(target.id, { email, email_confirm: true, phone: `+${phone}`, phone_confirm: true });
       if (error) throw error;
     } else {
-      const { error } = await admin.auth.admin.createUser({
+      const { data, error } = await admin.auth.admin.createUser({
         email, email_confirm: true, phone: `+${phone}`, phone_confirm: true,
         user_metadata: { provider, phone_number: phone, internal_email_alias: true },
       });
       if (error) throw error;
+      userId = data.user?.id;
     }
   }
   void client;
   const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
   if (error) throw error;
   if (!data.properties?.hashed_token) throw new Error('Phone session could not be created');
+  if (provider === 'sms_019') {
+    const verifiedUserId = userId ?? data.user?.id;
+    if (!verifiedUserId) throw new Error('Verified account missing');
+    const { error: phoneError } = await admin.auth.admin.updateUserById(verifiedUserId, { phone: `+${phone}`, phone_confirm: true });
+    if (phoneError) throw phoneError;
+    const { error: evidenceError } = await admin.from('broker_sms_verifications').upsert({ user_id: verifiedUserId, phone_number: phone, verified_at: new Date().toISOString() });
+    if (evidenceError) throw evidenceError;
+  }
   return { token_hash: data.properties.hashed_token };
 }
