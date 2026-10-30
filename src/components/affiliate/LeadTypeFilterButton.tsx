@@ -248,7 +248,7 @@ export default function LeadTypeFilterButton({
         </div>
       ) : null}
         {showLeadFilters ? (<>
-          <SectionTitle>תגמולים לפי סוג פנייה</SectionTitle>
+          <SectionTitle>תגמולים לפי סוג פנייה:</SectionTitle>
           <div className="space-y-1.5" dir="rtl">
             {leadTypes.map((key) => {
               const Icon = ICONS[key];
