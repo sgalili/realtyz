@@ -88,7 +88,7 @@ export const WaTemplatePicker = ({ value, onChange, campaignOnly = false, audien
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <Select
+        <Select dir="rtl"
           value={value ? `${value.name}|${value.language}` : undefined}
           onValueChange={(v) => {
             const [name, language] = v.split('|');
@@ -97,10 +97,10 @@ export const WaTemplatePicker = ({ value, onChange, campaignOnly = false, audien
             onChange({ name, language, body_params: keys.map(templateParamDefault) });
           }}
         >
-          <SelectTrigger className="bg-background border-border">
-            <SelectValue placeholder="בחר תבנית" />
+          <SelectTrigger className={`bg-background border-border font-bold${campaignOnly ? ' text-[17px]' : ''}`}>
+            <SelectValue placeholder={campaignOnly ? 'תבנית וואטסאפ מאושרת לשליחה' : 'בחר תבנית'} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent dir="rtl" className={campaignOnly ? '[&_[role=option]]:text-[17px] [&_[role=option][data-state=checked]]:font-bold' : '[&_[role=option][data-state=checked]]:font-bold'}>
             {templates.map((t) => (
               <SelectItem key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>
                 {waTemplateLabel(t.name)}
