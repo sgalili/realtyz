@@ -1,5 +1,10 @@
 # Roadmap
 
+## Office details and sticky tabs October 30
+- [ ] Fixed-height opaque sticky profile tabs.
+- [ ] Exclusive nationwide city selection; square-logo-only layout with inline name save and automatic logo/service-area saves; no outer card or global office save.
+- [ ] Verify scoped saves, city rules and signed-in layout/readback.
+
 ## Inline profile saving October 30
 - [x] Save only the confirmed profile field; pencil becomes check while editing, no global save; metadata/cache merge only saved field values.
 - [x] Exit and labeled account deletion below upgrade in normal flow with separator. Ten tests passed; signed-in mobile city confirmation restored pencil and survived reload; action position static and deletion opened confirmation without sending code. Build OK.

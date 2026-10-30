@@ -510,225 +510,159 @@ function PersonalTab() {
 
 function WorkspaceTab() {
   const queryClient = useQueryClient();
-  const identity = useAccountIdentity();
-  const company = ['יזם', 'קבלן'].includes(identity.label);
   const { user } = useAuth();
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { refresh: refreshBrand } = useWhiteLabel();
-  const ownerId = activeWorkspaceId ?? user?.id ?? null;
-
+  const ownerId = activeWorkspaceId;
   const [agencyName, setAgencyName] = useState('');
+  const [savedAgencyName, setSavedAgencyName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [landscapeLogoUrl, setLandscapeLogoUrl] = useState('');
   const [officeDetails, setOfficeDetails] = useState({ office_address: '', public_email: '', brokerage_name: '', brokerage_license: '' });
-  const isMasterOffice = ownerId === RITA_WORKSPACE_OWNER_ID;
-  const [serviceAreaRows, setServiceAreaRows] = useState<Row[]>([newRow('')]);
+  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingField, setSavingField] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingLogo, setPendingLogo] = useState<{ file: File; kind: 'square' | 'landscape'; ownerId: string } | null>(null);
+  const [pendingLogo, setPendingLogo] = useState<{ file: File; ownerId: string } | null>(null);
+  const alive = useRef(true);
+  const saveLock = useRef(false);
+  const isMasterOffice = ownerId === RITA_WORKSPACE_OWNER_ID;
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
-  useEffect(() => { setPendingLogo(null); }, [ownerId]);
-
-  // Load shared workspace branding from white_label_settings keyed by the workspace owner.
   useEffect(() => {
     if (!ownerId) return;
     let cancelled = false;
+    setLoading(true);
+    setPendingLogo(null);
     (async () => {
-      setLoading(true);
       try {
-        const { data } = await (supabase as any)
-          .from('white_label_settings')
-          .select('agency_name, logo_url, landscape_logo_url, office_address, public_email, brokerage_name, brokerage_license')
-          .eq('user_id', ownerId)
-          .maybeSingle();
+        const { data, error } = await supabase.from('white_label_settings')
+          .select('agency_name, logo_url, office_address, public_email, brokerage_name, brokerage_license')
+          .eq('user_id', ownerId).maybeSingle();
+        if (error) throw error;
+        const { data: profile, error: profileError } = await supabase.from('profiles')
+          .select('city, service_areas').eq('id', ownerId).maybeSingle();
+        if (profileError) throw profileError;
         if (cancelled) return;
-        setAgencyName((data as any)?.agency_name || (['שותף', 'פרטי', 'מפרסם'].includes(identity.label) ? '' : activeWorkspace?.workspace_name) || '');
-        setLogoUrl((data as any)?.logo_url || activeWorkspace?.workspace_logo_url || '');
-        setLandscapeLogoUrl((data as any)?.landscape_logo_url || '');
+        const name = data?.agency_name || '';
+        setAgencyName(name); setSavedAgencyName(name);
+        setLogoUrl(data?.logo_url || activeWorkspace?.workspace_logo_url || '');
         setOfficeDetails({ office_address: data?.office_address || '', public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
-
-        const { data: ownerProfile } = await supabase
-          .from('profiles')
-          .select('city, service_areas')
-          .eq('id', ownerId)
-          .maybeSingle();
-        if (cancelled) return;
-        setServiceAreaRows(rowList((ownerProfile as any)?.service_areas, [(ownerProfile as any)?.city || ''].filter(Boolean)));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+        setServiceAreas(normalizeCitySelection(profile?.service_areas?.length ? profile.service_areas : [profile?.city || '']));
+      } catch (error: any) {
+        if (!cancelled) toast.error(error?.message || 'טעינת פרטי המשרד נכשלה');
+      } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [ownerId, activeWorkspace?.workspace_name, activeWorkspace?.workspace_logo_url]);
+  }, [ownerId]);
 
-  const onLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, kind: 'square' | 'landscape') => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  const notifySaved = async () => {
+    await refreshBrand();
+    if (!alive.current) return;
+    window.dispatchEvent(new Event('realtyz:profile-saved'));
+    void queryClient.invalidateQueries({ queryKey: ['service_areas', ownerId] });
+  };
+
+  const saveOfficeField = async (field: OfficeField, value: string): Promise<boolean> => {
+    if (!ownerId || loading || saveLock.current) return false;
+    saveLock.current = true;
+    setSavingField(field);
+    try {
+      const { data, error } = await supabase.from('white_label_settings')
+        .upsert(workspaceDetailPatch(ownerId, field, value), { onConflict: 'user_id' })
+        .select('user_id').single();
+      if (error) throw error;
+      if (data?.user_id !== ownerId) throw new Error('השדה לא נשמר');
+      if (!alive.current) return false;
+      if (field === 'agency_name') {
+        setSavedAgencyName(value.trim()); setAgencyName(value.trim());
+        if (user?.id === ownerId) {
+          const { error: metadataError } = await supabase.auth.updateUser({ data: { agency_name: value.trim() } });
+          if (metadataError) throw metadataError;
+        }
+      }
+      if (field === 'logo_url') setLogoUrl(value);
+      await notifySaved();
+      return true;
+    } catch (error: any) {
+      if (alive.current) toast.error(error?.message || 'שמירת השדה נכשלה');
+      return false;
+    } finally { saveLock.current = false; if (alive.current) setSavingField(null); }
+  };
+
+  const saveServiceAreas = async (values: string[]) => {
+    if (!ownerId || loading || saveLock.current) return;
+    const next = normalizeCitySelection(values);
+    saveLock.current = true;
+    setSavingField('service_areas');
+    try {
+      const { data, error } = await supabase.from('profiles').update({ service_areas: next })
+        .eq('id', ownerId).select('id, service_areas').single();
+      if (error) throw error;
+      if (data?.id !== ownerId) throw new Error('אזורי השירות לא נשמרו');
+      if (!alive.current) return;
+      setServiceAreas(normalizeCitySelection(data.service_areas || []));
+      if (user?.id === ownerId) {
+        const { error: metadataError } = await supabase.auth.updateUser({ data: { service_areas: next } });
+        if (metadataError) throw metadataError;
+      }
+      await notifySaved();
+    } catch (error: any) {
+      if (alive.current) toast.error(error?.message || 'שמירת אזורי השירות נכשלה');
+    } finally { saveLock.current = false; if (alive.current) setSavingField(null); }
+  };
+
+  const onLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file || !ownerId) return;
-    if (!file.type.startsWith('image/')) { toast.error('יש לבחור קובץ תמונה (PNG, JPG, SVG או WEBP)'); return; }
-    if (file.size === 0) { toast.error('הקובץ ריק – נסו לבחור תמונה אחרת'); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error('הקובץ גדול מדי (מקסימום 5MB)'); return; }
-    setPendingLogo({ file, kind, ownerId });
+    if (!file.type.startsWith('image/')) { toast.error('יש לבחור קובץ תמונה'); return; }
+    if (!file.size || file.size > 5 * 1024 * 1024) { toast.error('יש לבחור תמונה בגודל עד 5MB'); return; }
+    setPendingLogo({ file, ownerId });
   };
 
   const uploadCroppedLogo = async (file: File) => {
     if (!pendingLogo || !ownerId || pendingLogo.ownerId !== ownerId) return;
-    const { kind } = pendingLogo;
     setUploading(true);
     try {
-      const path = `${ownerId}/${kind}-logo-${Date.now()}.png`;
-
-      const { error: upErr } = await supabase.storage
-        .from('agency-logos')
-        .upload(path, file, { upsert: true, contentType: file.type || undefined, cacheControl: '3600' });
-      if (upErr) throw new Error(`העלאת הקובץ נכשלה: ${upErr.message}`);
-
-      const { data: pub } = supabase.storage.from('agency-logos').getPublicUrl(path);
-      const publicUrl = typeof pub?.publicUrl === 'string' ? pub.publicUrl : '';
-      if (!publicUrl.startsWith('http')) throw new Error('לא הצלחנו לקבל כתובת ציבורית לתמונה');
-
-      const nextSquare = kind === 'square' ? publicUrl : (logoUrl || null);
-      const nextLandscape = kind === 'landscape' ? publicUrl : (landscapeLogoUrl || null);
-
-      const { error: wlErr } = await (supabase as any)
-        .from('white_label_settings')
-        .upsert({
-          user_id: ownerId,
-          agency_name: agencyName || null,
-          logo_url: nextSquare,
-          landscape_logo_url: nextLandscape,
-        } as any, { onConflict: 'user_id' });
-      if (wlErr) throw new Error(`שמירת הלוגו נכשלה: ${wlErr.message}`);
-
-      if (kind === 'square') setLogoUrl(publicUrl); else setLandscapeLogoUrl(publicUrl);
-      if (kind === 'square') { try { window.localStorage.setItem(LOGO_STORAGE_KEY, publicUrl); } catch {} }
-      await refreshBrand();
-      setPendingLogo(null);
-      toast.success('הלוגו הועלה ושותף לכל חברי המשרד');
-    } catch (err: any) {
-      toast.error('שגיאה בהעלאת הלוגו', { description: err?.message || 'נסו שוב או בחרו קובץ אחר' });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-
-  const removeLogo = async (kind: 'square' | 'landscape') => {
-    if (!ownerId) return;
-    const prevSquare = logoUrl;
-    const prevLandscape = landscapeLogoUrl;
-    if (kind === 'square') setLogoUrl('');
-    else setLandscapeLogoUrl('');
-    try {
-      const { error } = await (supabase as any)
-        .from('white_label_settings')
-        .upsert({
-          user_id: ownerId,
-          agency_name: agencyName || null,
-          logo_url: kind === 'square' ? null : prevSquare || null,
-          landscape_logo_url: kind === 'landscape' ? null : prevLandscape || null,
-        } as any, { onConflict: 'user_id' });
+      const path = `${ownerId}/square-logo-${Date.now()}.png`;
+      const { error } = await supabase.storage.from('agency-logos').upload(path, file, { contentType: file.type || undefined, cacheControl: '3600' });
       if (error) throw error;
-      if (kind === 'square') { try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {} }
-      await refreshBrand();
-      toast.success('הלוגו הוסר');
-    } catch (err: any) {
-      if (kind === 'square') setLogoUrl(prevSquare); else setLandscapeLogoUrl(prevLandscape);
-      toast.error('הסרת הלוגו נכשלה', { description: err?.message || 'נסו שוב' });
-    }
-  };
-
-
-
-  const save = async () => {
-    if (!ownerId) { toast.error('לא נמצא מרחב עבודה פעיל'); return; }
-    setSaving(true);
-    try {
-      const { error } = await (supabase as any)
-        .from('white_label_settings')
-          .upsert({ user_id: ownerId, agency_name: agencyName || null, logo_url: logoUrl || null, landscape_logo_url: landscapeLogoUrl || null, ...(isMasterOffice ? Object.fromEntries(Object.entries(officeDetails).map(([key, value]) => [key, value.trim() || null])) : {}) } as any, { onConflict: 'user_id' });
-      if (error) throw error;
-      const serviceAreas = [...new Set(serviceAreaRows.map((r) => r.value.trim()).filter(Boolean))];
-      const { error: profileError } = await supabase.from('profiles').update({ service_areas: serviceAreas } as any).eq('id', ownerId);
-      if (profileError) throw profileError;
-      if (user?.id === ownerId) {
-        await supabase.auth.updateUser({ data: { agency_name: agencyName, service_areas: serviceAreas } });
+      if (!alive.current) return;
+      const { data } = supabase.storage.from('agency-logos').getPublicUrl(path);
+      if (!data.publicUrl.startsWith('http')) throw new Error('לא התקבלה כתובת לתמונה');
+      if (await saveOfficeField('logo_url', data.publicUrl)) {
+        if (!alive.current) return;
+        setPendingLogo(null);
+        toast.success('הלוגו נשמר');
       }
-      try { window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({ agency_name: agencyName, service_areas: serviceAreas })); } catch {}
-      await refreshBrand();
-      window.dispatchEvent(new Event('realtyz:profile-saved'));
-      void queryClient.invalidateQueries({ queryKey: ['service_areas', ownerId] });
-      toast.success('פרטי המשרד נשמרו ושותפו לכל חברי המשרד');
-    } catch (err: any) {
-      toast.error(err?.message || 'שמירה נכשלה');
-    } finally {
-      setSaving(false);
-    }
+    } catch (error: any) { if (alive.current) toast.error(error?.message || 'העלאת הלוגו נכשלה'); }
+    finally { if (alive.current) setUploading(false); }
   };
 
+  const busy = loading || uploading || savingField !== null;
   return (
-    <Card>
-      <CardContent className="space-y-4 pb-24">
-        {pendingLogo && pendingLogo.ownerId === ownerId && (
-          <ImageCropDialog file={pendingLogo.file} aspect={pendingLogo.kind === 'square' ? 1 : 16 / 7} title={pendingLogo.kind === 'square' ? 'חיתוך לוגו ריבוע' : 'חיתוך לוגו מלבן'} onCancel={() => setPendingLogo(null)} onConfirm={uploadCroppedLogo} />
-        )}
-        <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card/40 p-3 text-right">
-          <LogoBox title="לוגו ריבוע" url={logoUrl} disabled={uploading} aspect="square" onUpload={(e) => onLogoUpload(e, 'square')} onRemove={() => removeLogo('square')} />
-          <LogoBox title="לוגו מלבן" url={landscapeLogoUrl} disabled={uploading} aspect="landscape" onUpload={(e) => onLogoUpload(e, 'landscape')} onRemove={() => removeLogo('landscape')} />
+    <div className="w-full min-w-0 space-y-4 pb-4">
+      {pendingLogo && pendingLogo.ownerId === ownerId && <ImageCropDialog file={pendingLogo.file} aspect={1} title="חיתוך לוגו" onCancel={() => setPendingLogo(null)} onConfirm={uploadCroppedLogo} />}
+      <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3 text-right sm:grid-cols-[128px_minmax(0,1fr)] sm:gap-5">
+        <LogoBox title="לוגו" url={logoUrl} disabled={busy} aspect="square" onUpload={onLogoUpload} onRemove={() => void saveOfficeField('logo_url', '')} />
+        <div className="min-w-0 space-y-3">
+          <div className="relative">
+            <Input dir="rtl" aria-label="שם תצוגה" placeholder="שם תצוגה" value={agencyName} disabled={busy} onChange={event => setAgencyName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && agencyName !== savedAgencyName) void saveOfficeField('agency_name', agencyName); }} className="h-10 pe-10 text-right text-base font-bold" />
+            {agencyName !== savedAgencyName && <Button type="button" variant="ghost" size="icon" aria-label="שמירת שם תצוגה" disabled={busy} onClick={() => void saveOfficeField('agency_name', agencyName)} className="absolute inset-y-0 left-0 h-10 w-10"><Check className="h-4 w-4" /></Button>}
           </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border bg-card/40 p-3 text-right">
-            <div className="mb-1.5 flex items-center gap-2 text-sm text-muted-foreground">
-              <Building2 className="h-3.5 w-3.5" />
-              <span>{company ? 'שם החברה' : ['מפרסם', 'פרטי', 'שותף'].includes(identity.label) ? 'שם לתצוגה (לא חובה)' : 'שם המשרד'}</span>
-            </div>
-            <Input dir="rtl" value={agencyName} disabled={loading} onChange={(e) => setAgencyName(e.target.value)} className="h-9 text-right text-base font-bold" />
-          </div>
-
-          <div className="rounded-lg border bg-card/40 p-3 text-right">
-            <div className="mb-1.5 flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              <span>אזורי שירות</span>
-            </div>
-            <div className="space-y-2">
-              <IsraeliCityPicker
-                value=""
-                onChange={() => {}}
-                selectedValues={serviceAreaRows.map(row => row.value).filter(Boolean)}
-                onSelectionChange={values => setServiceAreaRows(values.map(value => newRow(value)))}
-                firstOptions={['כל הארץ']}
-                placeholder="אזורי שירות"
-                className="text-base"
-                itemClassName="text-base"
-              />
-              <div className="flex min-h-9 flex-wrap gap-1.5">
-                {serviceAreaRows.filter((row) => row.value).map((row) => (
-                  <span key={row.id} className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-sm font-medium text-foreground">
-                    {row.value}
-                    <Button type="button" variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive" onClick={() => setServiceAreaRows(serviceAreaRows.filter((item) => item.id !== row.id))} aria-label={`הסר ${row.value}`}>
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+          <IsraeliCityPicker value="" onChange={() => {}} selectedValues={serviceAreas} onSelectionChange={values => void saveServiceAreas(values)} firstOptions={['כל הארץ']} placeholder="אזורי שירות" disabled={busy} className="h-10 text-base" itemClassName="text-base" />
         </div>
-        {isMasterOffice && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {([['office_address', 'כתובת המשרד'], ['public_email', 'דוא״ל ציבורי'], ['brokerage_name', 'שם המתווך האחראי'], ['brokerage_license', 'רישיון תיווך']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
-            <label htmlFor={`office-${key}`} className="text-xs text-muted-foreground">{label}</label>
-            <Input id={`office-${key}`} type={key === 'public_email' ? 'email' : 'text'} dir={key === 'public_email' || key === 'brokerage_license' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={loading} onChange={(event) => setOfficeDetails((previous) => ({ ...previous, [key]: event.target.value }))} />
-          </div>)}
-        </div>}
-        <div className="fixed bottom-[var(--app-footer-space)] left-1/2 z-30 w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 border-t border-border bg-background p-3 lg:w-[var(--app-content-width)]">
-        <Button onClick={save} size="lg" className="w-full text-[17px]" disabled={saving || loading}>
-          {saving ? 'שומר…' : 'שמירת פרטי המשרד'}
-        </Button>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      {isMasterOffice && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {([['office_address', 'כתובת המשרד'], ['public_email', 'דוא״ל ציבורי'], ['brokerage_name', 'שם המתווך האחראי'], ['brokerage_license', 'רישיון תיווך']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
+          <label htmlFor={`office-${key}`} className="text-base text-muted-foreground">{label}</label>
+          <div className="relative">
+            <Input id={`office-${key}`} type={key === 'public_email' ? 'email' : 'text'} dir={key === 'public_email' || key === 'brokerage_license' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={busy} className="pl-10" onChange={event => setOfficeDetails(previous => ({ ...previous, [key]: event.target.value }))} />
+            <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 left-0 h-10 w-10" aria-label={`שמירת ${label}`} disabled={busy} onClick={() => void saveOfficeField(key, officeDetails[key])}><Check className="h-4 w-4" /></Button>
+          </div>
+        </div>)}
+      </div>}
+    </div>
   );
 }
 
@@ -746,9 +680,9 @@ function LogoBox({ title, url, disabled, aspect, onUpload, onRemove }: {
       <div className="flex items-center justify-between gap-2">
         <label htmlFor={inputId} className="text-xs font-bold text-muted-foreground">{title}</label>
         {url && !disabled && (
-          <button type="button" onClick={onRemove} className="text-destructive hover:bg-destructive/10 rounded-sm p-1" aria-label={`מחק ${title}`}>
+          <Button type="button" variant="ghost" size="icon" onClick={onRemove} className="h-6 w-6 text-destructive hover:bg-destructive/10" aria-label={`מחק ${title}`}>
             <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         )}
       </div>
       <label className={cn('flex cursor-pointer items-center justify-center overflow-hidden rounded-md border bg-background transition hover:bg-accent/40', aspect === 'square' ? 'aspect-square' : 'aspect-[16/7]', disabled && 'pointer-events-none opacity-60')} htmlFor={inputId}>
@@ -858,13 +792,15 @@ export default function Profile() {
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
-        <TabsList className={`sticky top-0 z-30 grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px] bg-muted`}>
+        <div className="sticky top-0 z-30 -mx-2 mb-[15px] h-16 bg-background px-2 py-2 before:absolute before:inset-x-0 before:bottom-full before:h-6 before:bg-background sm:-mx-4 sm:px-4">
+        <TabsList className={`grid h-12 w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} bg-muted`}>
           <TabsTrigger className="text-base" value="personal">פרופיל</TabsTrigger>
           <TabsTrigger className="text-base" value="workspace">{officeLabel}</TabsTrigger>
           <TabsTrigger className="text-base" value="aibrain">מח AI</TabsTrigger>
           <TabsTrigger className="text-base" value="connections">חיבורים</TabsTrigger>
           {isAgency && <TabsTrigger className="text-base" value="managers">מנהלים</TabsTrigger>}
         </TabsList>
+        </div>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           {activeWorkspaceId && <PersonalTab key={`${user?.id}:${activeWorkspaceId}`} />}
         </TabsContent>
@@ -877,7 +813,7 @@ export default function Profile() {
           </TabsContent>
         )}
         <TabsContent value="workspace" className="mt-[20px] space-y-4">
-          <WorkspaceTab key={activeWorkspaceId ?? user?.id ?? 'workspace'} />
+          {activeWorkspaceId && <WorkspaceTab key={`${user?.id}:${activeWorkspaceId}`} />}
         </TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4" dir="rtl">
           <ConnectionsTab key={activeWorkspaceId ?? user?.id ?? 'connections'} />
