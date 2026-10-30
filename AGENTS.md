@@ -53,8 +53,7 @@
 - Internal Rita separates signed-in account identity from JWT-authorized workspace data; drawer state remounts on account/workspace switches. Activity reuses My Ads or the shared redacted board. Facebook calls are bounded and group refreshes cannot overlap. Why: prevent borrowed identity, stale tenant state and endless loading.
 <!-- LOVABLE:END -->
 
-- Affiliate pricing rules: see src/components/affiliate/AGENTS.md.
-- Facebook extension/group rules: see extension/AGENTS.md.
+- Nested rules: src/components/affiliate/AGENTS.md, extension/AGENTS.md, src/components/campaigns/AGENTS.md.
 - Closing splits: compute_closing_split pays 80% to authorized brokers (partner_can_view_closing) via idempotent paid_amount delta; otherwise platform retains 100%. No subscription plans; billing is credits only. Why: legal license model.
 - Facebook groups UI reuses FacebookCloudConnectGate for cloud login and confirmed membership import; legacy entry points delegate to it, never installation or cookie entry. Joins need server evidence and rule consent; quotas stay workspace-scoped. Why: one truthful cloud connection flow.
 - Global instructions use global_ai_documents/private global-ai-training with Super Admin checks; global_ai_config is legacy only. Brains share BrainResources title-free text entry and derived filenames; global library comes first. Why: one library without tenant leaks.
