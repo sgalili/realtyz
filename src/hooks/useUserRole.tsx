@@ -63,10 +63,10 @@ export function useUserRole() {
     },
     staleTime: 60_000,
   });
-  const roles: AppRole[] = viewingOther
+  const roles: AppRole[] = wsLoading || (!!user && !activeWorkspaceId) ? (isSuperAdmin ? ['super_admin'] : []) : viewingOther
     ? [...(ownerRolesQuery.data ?? []).filter(r => r !== 'super_admin' && r !== 'admin'), 'super_admin']
     : ownRoles;
-  const isAdmin = viewingOther ? false : roles.includes('admin') || isSuperAdmin;
+  const isAdmin = viewingOther || wsLoading || !activeWorkspaceId ? false : roles.includes('admin') || isSuperAdmin;
   const isModerator = roles.includes('moderator') || isAdmin;
 
   // --- Real-estate team roles ---
@@ -143,8 +143,8 @@ export function useUserRole() {
     canAccessBilling,
     canInviteTeam,
     canAssignLeads,
-    loading: isLoading || (viewingOther && ownerRolesQuery.isLoading),
-    fetched: isFetched && (!viewingOther || ownerRolesQuery.isFetched),
+    loading: isLoading || wsLoading || (viewingOther && ownerRolesQuery.isLoading),
+    fetched: isFetched && !wsLoading && (!viewingOther || ownerRolesQuery.isFetched),
     error: isError,
     refetch,
   };
