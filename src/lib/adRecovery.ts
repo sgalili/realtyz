@@ -29,7 +29,7 @@ export function missingAdFields(f: PublicListingDraftFields): string[] {
 }
 
 /** Everything that must be complete before the publish button is enabled. */
-export function missingPublishFields(f: PublicListingDraftFields, hasMedia: boolean): string[] {
+export function missingPublishFields(f: PublicListingDraftFields, hasMedia: boolean, requireOwnerDeclaration = f.publisherType === 'private'): string[] {
   return [
     !f.publisherType && 'סוג מפרסם',
     !f.dealType && 'סוג עסקה',
@@ -47,6 +47,7 @@ export function missingPublishFields(f: PublicListingDraftFields, hasMedia: bool
     !(Number(f.commissionDeal) > 0) && 'עמלת סגירה',
     !f.termsAccepted && 'אישור התקנון',
     !f.commissionTermsAccepted && 'אישור מנגנון העמלות',
+    requireOwnerDeclaration && !f.ownerDeclarationAccepted && 'הצהרת בעלות והרשאה',
   ].filter((v): v is string => Boolean(v));
 }
 

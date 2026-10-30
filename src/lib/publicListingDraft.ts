@@ -42,6 +42,7 @@ export type PublicListingDraftFields = {
   contactWhatsapp: string;
   contactEmail: string;
   termsAccepted: boolean;
+  ownerDeclarationAccepted?: boolean;
   marketingAccepted: boolean;
   commissionForm?: string;
   commissionWhatsapp?: string;
@@ -97,6 +98,7 @@ export const EMPTY_PUBLIC_LISTING_DRAFT: PublicListingDraftFields = {
   contactWhatsapp: '',
   contactEmail: '',
   termsAccepted: false,
+  ownerDeclarationAccepted: false,
   marketingAccepted: false,
   commissionForm: '',
   commissionWhatsapp: '',

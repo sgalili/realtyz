@@ -1,5 +1,9 @@
 # Roadmap
 
+## Direct non-broker publication October 30
+- [ ] Skip publisher-type selections for partner/private publication and add mandatory owner declaration without changing broker/developer flows.
+- [ ] Run consent regression tests and signed-in direct-entry/checkbox checks without publishing.
+
 ## Step 8 pricing refinement October 30
 - [x] Empty focused price, five-digit reward visibility, exact lead titles, nonzero closing bounds and editable percentage/default.
 - [x] Native board scrollbar and full-width collapsed rental/reward summary.
