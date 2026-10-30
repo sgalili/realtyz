@@ -1,5 +1,9 @@
 # Roadmap
 
+## Partner campaign picker October 30
+- [ ] Use the shared public-safe available partner inventory instead of workspace-owned properties in partner context.
+- [ ] Verify inventory scope, complete pagination and selected-property readback with focused tests and signed-in preview.
+
 ## Facebook chooser disconnection October 30
 - [x] Add workspace profile disconnection/account switching and independent Page disconnection; remove group shortcuts.
 - [x] Show profile connection first when disconnected; 17 focused tests passed and signed-in 442px preview checked. Fixture-backed Page removal, profile disconnect and reconnect dialog verified without changing real connections; build OK and no runtime errors.
