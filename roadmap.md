@@ -1,5 +1,9 @@
 # Roadmap
 
+## Publisher cards and optional consent October 30
+- [x] Move view toggle, anchor expanded steps, unify closing offer/percentage and rename Rita cards.
+- [x] Reorder declarations and preserve optional marketing decision and authentication; 46 focused tests passed. Signed-in mobile verified 1% sale, 0.2–2% bounds, collapsed/expanded percentage and decline-to-confirmation with consent unchecked and no runtime errors. No listing published.
+
 ## Step 8 closing and consent refinement October 30
 - [x] Closing first, required/zero styling, undefined sale 1% and rent 50%, matching percentage summaries.
 - [x] Combined legal approval and final declaration wording; four Navy Blue legal links have no underlines. 42 focused tests passed; signed-in mobile rent 12000 → 6000 (50%), expanded/collapsed summary and approval checked. Build OK, no runtime errors; no listing published.
