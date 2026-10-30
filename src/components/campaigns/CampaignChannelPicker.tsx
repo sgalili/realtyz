@@ -2,7 +2,6 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CampaignServiceIcon } from './CampaignServiceIcon';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
-import { useCloudSessionConnected } from '@/hooks/useCloudSession';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { FacebookPageSelector } from './FacebookPageSelector';
 import { SOCIAL_DRAFT_CREDITS } from '@/lib/socialDraftGeneration';
@@ -23,9 +22,6 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
   onBack: () => void;
 }) {
   const { data: prices = [], isLoading, isError, refetch } = useCampaignPricing();
-  // The Page chooser is only offered after the cloud vault proves a live
-  // Facebook session for this workspace; before that there is nothing to pick.
-  const cloudConnected = useCloudSessionConnected();
   const channel = DISTRIBUTION_CHANNELS.find((item) => item.id === selected);
   const price = channel ? campaignServicePrice(channel.id, prices) : null;
   return (
@@ -39,7 +35,7 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
             {channel && <span className="ms-auto shrink-0 text-center text-sm font-normal text-muted-foreground">{['facebook', 'instagram'].includes(channel.id) ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(SOCIAL_DRAFT_CREDITS)}</span><span className="block">לפוסט</span></> : price ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(price.credits)}</span><span className="block">ל{price.unit}</span></> : 'המחירון אינו זמין'}</span>}
           </h2>
         </div>
-        {channel?.id === 'facebook' && cloudConnected && <FacebookPageSelector />}
+        {channel?.id === 'facebook' && <FacebookPageSelector />}
       </div>
       {!channel && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {DISTRIBUTION_CHANNELS.map((item) => {

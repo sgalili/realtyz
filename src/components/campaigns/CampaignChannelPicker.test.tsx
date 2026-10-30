@@ -12,7 +12,8 @@ vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data
 vi.mock('@/hooks/useFacebookHealth', () => ({ useRefreshFacebookHealth: () => () => {} }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => 'workspace-a' }));
 vi.mock('@/lib/cloudSession', () => ({ getCloudSessionState: mocks.state }));
-vi.mock('@/lib/facebookPageConnect', () => ({ callMetaPageConnect: vi.fn(() => new Promise(() => {})) }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: vi.fn() } } }));
+vi.mock('@/lib/facebookPageConnect', () => ({ callMetaPageConnect: vi.fn(async () => ({ bindings: [] })) }));
 vi.mock('@/lib/facebookConnectionFlow', () => ({ openFacebookConnection: vi.fn() }));
 vi.mock('@/lib/campaignFeedCache', () => ({ purgeCachedPostsForPage: vi.fn() }));
 
