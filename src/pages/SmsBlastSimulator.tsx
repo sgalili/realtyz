@@ -1903,8 +1903,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <div className="space-y-1">
               <Label className="text-xs">עיר</Label>
               <Select value={filterCity} onValueChange={setFilterCity}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="text-[17px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="text-[17px] [&_[role=option]]:text-[17px]">
                   <SelectItem value="all">כל הערים</SelectItem>
                   {cityOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
@@ -1913,8 +1913,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <div className="space-y-1">
               <Label className="text-xs">תגית עניין</Label>
               <Select value={filterTag} onValueChange={setFilterTag}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="text-[17px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="text-[17px] [&_[role=option]]:text-[17px]">
                   <SelectItem value="all">כל התגיות</SelectItem>
                   {tagOptions.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
@@ -1923,8 +1923,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <div className="space-y-1">
               <Label className="text-xs">סטטוס</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="text-[17px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="text-[17px] [&_[role=option]]:text-[17px]">
                   <SelectItem value="all">כל הסטטוסים</SelectItem>
                   <SelectItem value="active">פעיל</SelectItem>
                   <SelectItem value="inactive">לא פעיל</SelectItem>
@@ -1935,8 +1935,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
             <div className="space-y-1">
               <Label className="text-xs">נאמנות</Label>
               <Select value={filterLoyalty} onValueChange={setFilterLoyalty}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="text-[17px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="text-[17px] [&_[role=option]]:text-[17px]">
                   <SelectItem value="all">כל הרמות</SelectItem>
                   {loyaltyOptions.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                 </SelectContent>
