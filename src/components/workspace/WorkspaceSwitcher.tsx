@@ -169,6 +169,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
               )}
               {visibleWorkspaces.map((w) => {
                 const workspaceCard = resolveWorkspaceCardIdentity(w, undefined, masterBrand);
+                const rowImage = resolveWorkspaceCardImage(w);
                 const label = workspaceCard.title;
                 const active = w.workspace_owner_id === activeWorkspaceId;
                 return (
