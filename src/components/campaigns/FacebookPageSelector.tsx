@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Check, ChevronDown, Facebook, Loader2, Plus, Trash2, Users } from 'lucide-react';
+import { Check, ChevronDown, Facebook, Loader2, Plus, Trash2, LogOut } from 'lucide-react';
+import { useCloudSessionConnected, CLOUD_SESSION_KEY } from '@/hooks/useCloudSession';
+import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useMetaPageBinding, useRefreshMetaPageBinding } from '@/hooks/useMetaPageBinding';
 import { useRefreshFacebookHealth } from '@/hooks/useFacebookHealth';
@@ -30,7 +31,8 @@ function Avatar({ page, size = 'h-6 w-6' }: { page: Page; size?: string }) {
 
 export function FacebookPageSelector() {
   const owner = useActiveWorkspaceOwnerId();
-  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const cloudConnected = useCloudSessionConnected();
   const { data: selected } = useMetaPageBinding();
   const refresh = useRefreshMetaPageBinding();
   const refreshHealth = useRefreshFacebookHealth();
@@ -38,18 +40,23 @@ export function FacebookPageSelector() {
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState<Page | null>(null);
   const [removingBusy, setRemovingBusy] = useState(false);
+  const [disconnectProfile, setDisconnectProfile] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
   const { data: pages = [], refetch, isFetching, error: pagesError } = useQuery<Page[]>({
     queryKey: ['managed-facebook-pages', owner], enabled: !!owner, retry: false, staleTime: 60_000,
     queryFn: async () => {
-      const data = await callMetaPageConnect({ action: 'list_pages', owner_id: owner });
-      return Array.isArray(data?.pages) ? data.pages : [];
+      const data = await callMetaPageConnect({ action: 'bindings', owner_id: owner });
+      return Array.isArray(data?.bindings) ? data.bindings : [];
     },
   });
   useEffect(() => {
     const reload = () => { void refetch(); refresh(); };
     window.addEventListener('focus', reload);
-    return () => window.removeEventListener('focus', reload);
+    window.addEventListener('realtyz:facebook-connection-changed', reload);
+    return () => { window.removeEventListener('focus', reload); window.removeEventListener('realtyz:facebook-connection-changed', reload); };
   }, [refetch, refresh]);
+
+  useEffect(() => { setOpen(false); setRemoving(null); setDisconnectProfile(false); }, [owner]);
 
   const current = pages.find((p) => p.id === selected?.pageId) ?? null;
 
@@ -58,7 +65,7 @@ export function FacebookPageSelector() {
     if (!owner || saving || pageId === selected?.pageId) { setOpen(false); return; }
     setSaving(true);
     try {
-      await callMetaPageConnect({ action: 'select_page', page_id: pageId, owner_id: owner });
+      await callMetaPageConnect({ action: 'set_default', page_id: pageId, owner_id: owner });
       refresh();
       setOpen(false);
     } catch (e) { toast.error(e instanceof Error ? e.message : 'בחירת העמוד נכשלה'); }
@@ -66,7 +73,7 @@ export function FacebookPageSelector() {
   };
 
   const confirmRemove = async () => {
-    if (!removing || removingBusy) return;
+    if (!removing || removingBusy || !owner) return;
     setRemovingBusy(true);
     try {
       await callMetaPageConnect({ action: 'disconnect_page', page_id: removing.id, owner_id: owner });
@@ -79,11 +86,31 @@ export function FacebookPageSelector() {
   };
 
   const addPage = () => { setOpen(false); openFacebookConnection(); };
-  const manageGroups = () => { setOpen(false); navigate('/profile?tab=connections&connect=facebook-groups'); };
+  const confirmProfileDisconnect = async () => {
+    if (!owner || profileBusy) return;
+    setProfileBusy(true);
+    try {
+      // Existing server-authorized actions remove old Page grants and the cloud
+      // browser reference, so the next connection cannot reuse the old account.
+      const { data, error } = await supabase.functions.invoke('fb-session-vault', { body: { action: 'clear' } });
+      if (error || data?.error || data?.success !== true) throw new Error(data?.message || 'ניתוק הפרופיל נכשל');
+      await callMetaPageConnect({ action: 'disconnect', owner_id: owner });
+      refresh(); refreshHealth();
+      await Promise.all([CLOUD_SESSION_KEY, 'managed-facebook-pages', 'fb-posting-capacity', 'social-connections'].map(key => qc.invalidateQueries({ queryKey: [key] })));
+      window.dispatchEvent(new Event('realtyz:facebook-connection-changed'));
+      window.dispatchEvent(new Event('realtyz:facebook-disconnected'));
+      setDisconnectProfile(false);
+      toast.success('פרופיל הפייסבוק נותק. אפשר לחבר חשבון אחר.');
+    } catch (e) {
+      void qc.invalidateQueries({ queryKey: [CLOUD_SESSION_KEY] });
+      toast.error(e instanceof Error ? e.message : 'ניתוק הפרופיל נכשל');
+    } finally { setProfileBusy(false); }
+  };
 
   return (
     <div dir="rtl" className="mt-2 flex min-w-0 flex-col gap-1 text-sm" aria-label="עמוד הפייסבוק לפרסום">
-      <Popover open={open} onOpenChange={setOpen}>
+      {!cloudConnected && <Button type="button" variant="outline" onClick={addPage} className="h-10 w-full gap-2 sm:w-72"><Facebook className="h-4 w-4" />חיבור לפרופיל פייסבוק</Button>}
+      {(cloudConnected || pages.length > 0) && <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" className="h-10 w-full justify-between gap-2 px-3 sm:w-72" aria-label="בחירת עמוד פייסבוק" disabled={saving}>
             <span className="flex min-w-0 items-center gap-2">
@@ -104,10 +131,6 @@ export function FacebookPageSelector() {
                     <span className="min-w-0 flex-1 truncate">{page.name || page.id}</span>
                     {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
                   </Button>
-                  <Button variant="ghost" size="icon" type="button" onClick={manageGroups} aria-label={`ניהול קבוצות עבור ${page.name || page.id}`} title="ניהול קבוצות"
-                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground">
-                    <Users className="h-4 w-4" />
-                  </Button>
                   <Button variant="ghost" size="icon" type="button" onClick={() => { setOpen(false); setRemoving(page); }} aria-label={`נתק את העמוד ${page.name || page.id}`} title="נתק עמוד"
                     className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
@@ -118,12 +141,13 @@ export function FacebookPageSelector() {
             {pages.length === 0 && !isFetching && <p className="px-2 py-2 text-muted-foreground">אין עמודים מחוברים</p>}
           </div>
           <div className="mt-1 border-t pt-1">
-            <Button variant="ghost" type="button" onClick={addPage} className="h-auto w-full justify-start gap-2 rounded-md px-2 py-2 text-right text-primary hover:bg-muted/60">
+            {cloudConnected && <Button variant="ghost" type="button" onClick={addPage} className="h-auto w-full justify-start gap-2 rounded-md px-2 py-2 text-right text-primary hover:bg-muted/60">
               <Plus className="h-4 w-4" />הוספת עמוד נוסף
-            </Button>
+            </Button>}
+            {cloudConnected && <Button variant="ghost" type="button" onClick={() => { setOpen(false); setDisconnectProfile(true); }} className="h-auto w-full justify-start gap-2 px-2 py-2 text-destructive" disabled={profileBusy}><LogOut className="h-4 w-4" />ניתוק פרופיל פייסבוק</Button>}
           </div>
         </PopoverContent>
-      </Popover>
+      </Popover>}
       {pagesError && <span role="alert" className="text-xs text-destructive">{pagesError.message}</span>}
 
       <AlertDialog open={!!removing} onOpenChange={(v) => !v && !removingBusy && setRemoving(null)}>
@@ -138,6 +162,18 @@ export function FacebookPageSelector() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {removingBusy && <Loader2 className="h-4 w-4 animate-spin" />}נתק
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={disconnectProfile} onOpenChange={(value) => !value && !profileBusy && setDisconnectProfile(false)}>
+        <AlertDialogContent dir="rtl" className="text-right">
+          <AlertDialogHeader className="text-right">
+            <AlertDialogTitle>לנתק את פרופיל הפייסבוק?</AlertDialogTitle>
+            <AlertDialogDescription>חיבור הפייסבוק, העמודים, הרשאות הקבוצות וחיבור אינסטגרם המקושר יוסרו מסביבת העבודה. פרסום דרכם ידרוש חיבור מחדש. לאחר הניתוק אפשר להתחבר לחשבון פייסבוק אחר.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row justify-between gap-2 sm:justify-between">
+            <AlertDialogCancel disabled={profileBusy} className="mt-0">ביטול</AlertDialogCancel>
+            <AlertDialogAction disabled={profileBusy} onClick={(event) => { event.preventDefault(); void confirmProfileDisconnect(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{profileBusy && <Loader2 className="h-4 w-4 animate-spin" />}נתק פרופיל</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
