@@ -103,4 +103,26 @@ describe('role-based advanced filter fields', () => {
     expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'קומה מינימום' })).not.toBeInTheDocument();
   });
+
+  it('deal toggle at the top of the dialog reports the chosen deal type', () => {
+    setRole('partner');
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const onPropertyChange = vi.fn();
+    render(
+      <QueryClientProvider client={client}>
+        <LeadTypeFilterButton
+          state={EMPTY_LEAD_FILTER}
+          onChange={() => {}}
+          propertyState={EMPTY_PROPERTY_FILTER}
+          onPropertyChange={onPropertyChange}
+          cities={['תל אביב']}
+          neighborhoods={['פלורנטין']}
+          propertyTypes={['דירה']}
+        />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'סינון מתקדם' }));
+    fireEvent.click(screen.getByRole('button', { name: 'להשכרה' }));
+    expect(onPropertyChange).toHaveBeenCalledWith(expect.objectContaining({ dealType: 'rent' }));
+  });
 });
