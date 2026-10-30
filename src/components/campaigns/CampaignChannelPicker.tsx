@@ -38,7 +38,7 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
             <span className="min-w-0">{channel ? `קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}</span>
             {channel && <span className="ms-auto shrink-0 text-center text-sm font-normal text-muted-foreground">{['facebook', 'instagram'].includes(channel.id) ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(SOCIAL_DRAFT_CREDITS)}</span><span className="block">לפוסט</span></> : price ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(price.credits)}</span><span className="block">ל{price.unit}</span></> : 'המחירון אינו זמין'}</span>}
           </h2>
-          {channel?.id === 'facebook' && <FacebookPageSelector />}
+          {channel?.id === 'facebook' && cloudConnected && <FacebookPageSelector />}
         </div>
       </div>
       {!channel && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
