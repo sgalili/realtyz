@@ -50,6 +50,24 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly
     return () => { generation.current++; stop(); };
   }, [owner]);
 
+  // A connection finished elsewhere in the app (quick-connect dialog, another
+  // screen) has to reach this gate too, otherwise the publishing step stays
+  // closed until a reload.
+  const statusRef = useRef(onStatusChange);
+  statusRef.current = onStatusChange;
+  useEffect(() => {
+    const refresh = () => {
+      const run = generation.current;
+      void getCloudSessionState().then(s => {
+        if (generation.current !== run) return;
+        setConnected(s.active);
+        if (s.active) { setOpen(false); statusRef.current?.(true); }
+      });
+    };
+    window.addEventListener('realtyz:facebook-connection-changed', refresh);
+    return () => window.removeEventListener('realtyz:facebook-connection-changed', refresh);
+  }, []);
+
   const finish = async (run: number) => {
     if (generation.current !== run) return;
     stop(); setPhase('syncing'); setConnected(true); setErrorMessage('');
