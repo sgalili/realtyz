@@ -10,18 +10,18 @@ const ONE_YEAR = 60 * 60 * 24 * 365;
 
 function GenderAvatar({ gender }: { gender: 'male' | 'female' | null }) {
   return (
-    <svg viewBox="12 12 72 72" className="!h-full !w-full text-muted-foreground/40" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 96 96" className="!h-full !w-full text-foreground" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {gender === 'female' ? (
         <>
-          <path d="M48 14c-15 0-24 11-24 26 0 12-3 20-8 26 8 3 18 4 32 4s24-1 32-4c-5-6-8-14-8-26 0-15-9-26-24-26z" opacity="0.55" />
-          <circle cx="48" cy="40" r="15" />
-          <path d="M18 96c2-17 15-28 30-28s28 11 30 28z" />
+          <path d="M30 54c-4-4-5-10-5-17 0-14 9-23 23-23s23 9 23 23c0 7-1 13-5 17" />
+          <path d="M32 34c0 14 5 23 16 23s16-9 16-23c-7 0-13-3-16-8-3 5-9 8-16 8z" />
+          <path d="M19 82c2-13 14-20 29-20s27 7 29 20" />
         </>
       ) : (
         <>
-          <circle cx="48" cy="38" r="17" />
-          <path d="M31 33c0-12 8-19 17-19s17 7 17 19c-4-5-10-7-17-7s-13 2-17 7z" opacity="0.55" />
-          <path d="M14 96c2-18 16-30 34-30s32 12 34 30z" />
+          <circle cx="48" cy="36" r="18" />
+          <path d="M31 30c5 1 11-1 16-5 5 4 11 6 18 5" />
+          <path d="M19 82c2-13 14-21 29-21s27 8 29 21" />
         </>
       )}
     </svg>

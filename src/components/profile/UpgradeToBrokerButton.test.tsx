@@ -20,7 +20,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
     }; return chain;
   },
 } }));
-const mount = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><UpgradeToBrokerButton /></QueryClientProvider>);
+const mount = (profileOwnerId?: string) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><UpgradeToBrokerButton profileOwnerId={profileOwnerId} /></QueryClientProvider>);
 beforeEach(() => { state.verified = false; state.license = ''; state.pending = false; state.reads = []; state.submissions = 0; });
 afterEach(cleanup);
 
@@ -47,4 +47,12 @@ it('keeps pending requests accessible without permitting duplicate submission', 
 it('hides upgrade only after active verification is confirmed by the server', async () => {
   state.verified = true; mount();
   await waitFor(() => expect(screen.queryByRole('button', { name: 'שדרג למתווך מורשה' })).toBeNull());
+});
+it('checks the displayed workspace owner without offering submission as another person', async () => {
+  mount('partner-only-owner');
+  await waitFor(() => expect(state.reads.length).toBe(2));
+  expect(state.reads).toEqual(['partner-only-owner', 'partner-only-owner']);
+  fireEvent.click(screen.getByRole('button', { name: 'שדרג למתווך מורשה' }));
+  expect(screen.queryByRole('textbox', { name: 'מספר רישיון חדש' })).toBeNull();
+  expect(state.submissions).toBe(0);
 });

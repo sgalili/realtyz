@@ -366,47 +366,16 @@ function PersonalTab() {
       <CardContent className="space-y-3 pb-3">
         <ProfileAvatarUploader profileOwnerId={profileOwnerId} gender={gender === 'female' ? 'female' : gender === 'male' ? 'male' : null} />
 
-        <div className="flex flex-col items-center gap-1 pb-1">
-          {verifiedLicenseLocked ? (
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="inline-flex items-center gap-1.5 text-lg font-bold" aria-label="שם מלא לפי פנקס המתווכים">
-                <BadgeCheck className="h-4 w-4 text-primary" aria-hidden />
-                {fullName}
-              </span>
-              <span className="text-sm text-muted-foreground">השם נלקח מפנקס המתווכים הרשמי ואינו ניתן לעריכה</span>
-            </div>
-          ) : editing.fullName ? (
-            <Input
-              autoFocus
-              dir="rtl"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              onBlur={() => setEdit('fullName')}
-              placeholder="הזן שם מלא"
-              className="text-center !text-lg font-bold max-w-xs"
-            />
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setEdit('fullName')}
-                className="text-lg font-bold hover:text-primary"
-              >
-                {fullName || 'הזן שם מלא'}
-              </button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-muted-foreground hover:text-primary"
-                onClick={() => setEdit('fullName')}
-                aria-label="עריכת שם מלא"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
+        {verifiedLicenseLocked ? (
+          <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+            <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span className="shrink-0 text-sm font-semibold text-muted-foreground">שם מלא:</span>
+            <span className="min-w-0 flex-1 break-words text-base font-bold" aria-label="שם מלא לפי פנקס המתווכים">{fullName}</span>
+          </div>
+        ) : (
+          <ProfileFieldRow icon={UserIcon} label="שם מלא" value={fullName} editing={editing.fullName ?? false} onChange={setFullName} onToggleEdit={() => setEdit('fullName')} inputDir="rtl" placeholder="הזן שם מלא" />
+        )}
+        {verifiedLicenseLocked && <p className="text-sm text-muted-foreground">השם נלקח מפנקס המתווכים הרשמי ואינו ניתן לעריכה</p>}
 
 
         <ProfileArrayRows rows={emails} setRows={setEmails} icon={Mail} label='דוא"ל' />
@@ -854,10 +823,10 @@ export default function Profile() {
       <div className="mb-3">
         <CompleteProfileBanner force={params.get('welcome') === 'developer'} />
       </div>
-      <UpgradeToBrokerButton key={user?.id ?? 'broker-upgrade'} />
+      <UpgradeToBrokerButton key={activeWorkspaceId ?? user?.id ?? 'broker-upgrade'} profileOwnerId={activeWorkspaceId ?? user?.id} />
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
-        <TabsList className={`grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px]`}>
+        <TabsList className={`sticky top-0 z-30 grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px] bg-muted`}>
           <TabsTrigger className="text-base" value="personal">פרופיל</TabsTrigger>
           <TabsTrigger className="text-base" value="workspace">{officeLabel}</TabsTrigger>
           <TabsTrigger className="text-base" value="aibrain">מח AI</TabsTrigger>

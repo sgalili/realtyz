@@ -511,7 +511,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
           <PageHero />
-          <main className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-x-hidden px-[15px] ${location.pathname.startsWith('/properties') ? 'pt-0' : 'pt-[20px]'} ${location.pathname === '/' || location.pathname === '/public-listings' || location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
+          <main className={`realtyz-main-surface min-h-0 flex-1 overscroll-contain overflow-x-hidden px-[15px] ${location.pathname.startsWith('/properties') ? 'pt-0' : location.pathname === '/profile' ? 'pt-[10px]' : 'pt-[20px]'} ${location.pathname === '/' || location.pathname === '/public-listings' || location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'overflow-y-hidden pb-0' : 'overflow-y-auto pb-6'}`}>
             <div key={`${user?.id}:${activeWorkspaceId}`} className={`app-content-width w-full ${location.pathname === '/' || location.pathname === '/public-listings' ? '!flex h-full min-h-0 flex-col' : location.pathname.startsWith('/inbox') || location.pathname.startsWith('/communication') ? 'h-full' : ''}`}>
               <FacebookConnectionBanner />
               {user && (workspaceLoading || !activeWorkspaceId) ? <div role="status" className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : children}

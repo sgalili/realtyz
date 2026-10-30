@@ -226,7 +226,7 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/my-ads/, title: "המודעות שלי" },
   { match: /^\/sharing-pool/, title: "נכסים פתוחים לשיתוף" },
   { match: /^\/developer-dashboard/, title: "הפרויקטים שלנו" },
-  { match: /^\/(command-center|tasks)/, title: "משימות" },
+  { match: /^\/(command-center|tasks)/, title: "מטלות" },
   { match: /^\/dashboard$/, title: "לוח בקרה" },
   { match: /^\/lead-crm/, title: "לידים" },
   { match: /^\/inbox/, title: "צ׳אטים" },

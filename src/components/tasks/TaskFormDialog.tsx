@@ -53,6 +53,7 @@ export default function TaskFormDialog({
   initial,
   onSubmit,
   footerNote,
+  personal = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -61,6 +62,7 @@ export default function TaskFormDialog({
   initial?: Partial<TaskFormValues>;
   onSubmit: (values: TaskFormValues) => Promise<void>;
   footerNote?: string;
+  personal?: boolean;
 }) {
   const ownerId = useActiveWorkspaceOwnerId();
   const [lead, setLead] = useState<TaskLeadLite | null>(null);
@@ -89,7 +91,7 @@ export default function TaskFormDialog({
   }, [open, initial?.lead?.id, initial?.when, initial?.priority, initial?.text]);
 
   useEffect(() => {
-    if (!open || !ownerId) return;
+    if (!open || !ownerId || personal) return;
     const q = leadQuery.trim();
     if (q.length < 2) { setLeadResults([]); return; }
     let cancelled = false;
@@ -109,7 +111,7 @@ export default function TaskFormDialog({
       setSearching(false);
     }, 250);
     return () => { cancelled = true; clearTimeout(t); setSearching(false); };
-  }, [leadQuery, open, ownerId]);
+  }, [leadQuery, open, ownerId, personal]);
 
   const loadCalendarSlots = async () => {
     setCalendarLoading(true);
@@ -155,7 +157,7 @@ export default function TaskFormDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="space-y-2">
+          {!personal && <div className="space-y-2">
             <Label className="text-sm font-semibold">ליד</Label>
             {lead ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
@@ -214,14 +216,14 @@ export default function TaskFormDialog({
                 )}
               </>
             )}
-          </div>
+          </div>}
 
-          <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
-            <div className="space-y-2">
+          <div className={personal ? 'grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_110px]' : 'grid grid-cols-[1fr_auto_auto] items-end gap-2'}>
+            <div className="min-w-0 space-y-2">
               <Label className="text-sm font-semibold">מועד</Label>
-              <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+              <Input aria-label="מועד" dir="ltr" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className="min-w-0" />
             </div>
-            <Button
+            {!personal && <Button
               type="button"
               variant="outline"
               size="icon"
@@ -232,7 +234,7 @@ export default function TaskFormDialog({
               title="בדיקת זמינות ביומן Google"
             >
               {calendarLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck2 className="h-4 w-4" />}
-            </Button>
+            </Button>}
             <div className="min-w-[110px] space-y-2">
               <Label className="text-sm font-semibold">דחיפות</Label>
               <Select value={priority} onValueChange={setPriority}>
@@ -276,7 +278,7 @@ export default function TaskFormDialog({
               <Label className="text-sm font-semibold">משימה / תזכורת</Label>
               <VoiceInputButton size="sm" language="auto" onTranscript={(value) => setText((current) => current ? `${current} ${value}` : value)} />
             </div>
-            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="resize-none" />
+            <Textarea aria-label="משימה / תזכורת" value={text} onChange={(e) => setText(e.target.value)} rows={4} className="resize-none" />
           </div>
 
           {footerNote && <p className="text-sm text-muted-foreground">{footerNote}</p>}
