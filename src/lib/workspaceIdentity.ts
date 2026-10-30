@@ -151,12 +151,13 @@ export function resolveWorkspaceCardIdentity(
   // The workspace list decides this server-side; a stale local cache that
   // predates the field falls back to "does this workspace carry a brand name".
   const isOffice = workspace?.is_office ?? (!!brandName && brandName !== DEFAULT_NAME);
+  const image = resolveWorkspaceCardImage(workspace, brand);
 
   if (isOffice) {
     return {
       title: identity.name,
       subtitle: person || phoneLine || email,
-      logo: identity.logo,
+      logo: image.url,
       isOffice: true,
       isTenant: identity.isTenant,
     };
@@ -165,7 +166,7 @@ export function resolveWorkspaceCardIdentity(
   return {
     title: person || identity.name,
     subtitle: phoneLine || (email && email !== person ? email : ''),
-    logo: identity.logo,
+    logo: image.url,
     isOffice: false,
     isTenant: identity.isTenant,
   };

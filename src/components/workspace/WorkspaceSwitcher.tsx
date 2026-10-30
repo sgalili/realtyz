@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useUserRole } from '@/hooks/useUserRole';
-import { resolveWorkspaceCardIdentity, resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
+import { resolveWorkspaceCardIdentity, resolveWorkspaceCardImage, resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
