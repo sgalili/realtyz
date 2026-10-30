@@ -125,4 +125,26 @@ describe('role-based advanced filter fields', () => {
     fireEvent.click(screen.getByRole('button', { name: 'להשכרה' }));
     expect(onPropertyChange).toHaveBeenCalledWith(expect.objectContaining({ dealType: 'rent' }));
   });
+
+  it('filter button shows an active-filter count while the dialog is closed', () => {
+    setRole('partner');
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <LeadTypeFilterButton
+          state={EMPTY_LEAD_FILTER}
+          onChange={() => {}}
+          propertyState={{ ...EMPTY_PROPERTY_FILTER, dealType: 'rent' }}
+          onPropertyChange={() => {}}
+          cities={['תל אביב']}
+          neighborhoods={['פלורנטין']}
+          propertyTypes={['דירה']}
+        />
+      </QueryClientProvider>,
+    );
+    const closed = screen.getByRole('button', { name: 'סינון מתקדם (1 סינונים פעילים)' });
+    expect(closed).toHaveTextContent('1');
+    fireEvent.click(closed);
+    expect(screen.getByRole('button', { name: 'סינון מתקדם (1 סינונים פעילים)' })).not.toHaveTextContent('1');
+  });
 });
