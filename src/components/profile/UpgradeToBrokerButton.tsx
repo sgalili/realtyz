@@ -19,19 +19,21 @@ const FAILURES: Record<string, string> = {
 };
 
 /** Non-broker upgrade request: registry + certificate match, then manual Super Admin approval. */
-export function UpgradeToBrokerButton() {
+export function UpgradeToBrokerButton({ profileOwnerId }: { profileOwnerId?: string }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [license, setLicense] = useState('');
   const [busy, setBusy] = useState(false);
   const { user } = useAuth();
-  const { data: account } = useQuery({ queryKey: ['broker-upgrade-request', user?.id, 'profile-status'], enabled: !!user?.id, queryFn: async () => {
-    if (!user?.id) return null;
+  const subjectId = profileOwnerId ?? user?.id;
+  const isOwnProfile = subjectId === user?.id;
+  const { data: account } = useQuery({ queryKey: ['broker-upgrade-request', user?.id, subjectId, 'profile-status'], enabled: !!user?.id && !!subjectId, queryFn: async () => {
+    if (!user?.id || !subjectId) return null;
     const [verification, profile, request, affiliate] = await Promise.all([
-      supabase.rpc('partner_can_view_closing', { _user_id: user.id }),
-      supabase.from('profiles').select('broker_license_number').eq('id', user.id).maybeSingle(),
-      supabase.from('broker_upgrade_requests').select('id, license_number').eq('user_id', user.id).eq('status', 'pending').maybeSingle(),
-      supabase.from('affiliate_profiles').select('license_number, license_status').eq('user_id', user.id).maybeSingle(),
+      supabase.rpc('partner_can_view_closing', { _user_id: subjectId }),
+      supabase.from('profiles').select('broker_license_number').eq('id', subjectId).maybeSingle(),
+      isOwnProfile ? supabase.from('broker_upgrade_requests').select('id, license_number').eq('user_id', subjectId).eq('status', 'pending').maybeSingle() : Promise.resolve({ data: null, error: null }),
+      isOwnProfile ? supabase.from('affiliate_profiles').select('license_number, license_status').eq('user_id', subjectId).maybeSingle() : Promise.resolve({ data: null, error: null }),
     ]);
     for (const result of [verification, profile, request, affiliate]) if (result.error) throw result.error;
     return {
@@ -50,7 +52,7 @@ export function UpgradeToBrokerButton() {
   const ready = !!license && !!file;
 
   const submit = async () => {
-    if (!ready || busy || pending || !file) return;
+    if (!isOwnProfile || !ready || busy || pending || !file) return;
     setBusy(true);
     try {
       await verifyBrokerLicense(license, 'verify');
@@ -96,7 +98,7 @@ export function UpgradeToBrokerButton() {
           <Button asChild variant="outline" className="flex-1"><a href={BROKER_COURSE_URL} target="_blank" rel="noopener noreferrer">לקורס</a></Button>
           <Button asChild variant="outline" className="flex-1"><a href={BROKER_EXAM_REGISTRATION_URL} target="_blank" rel="noopener noreferrer">להרשמה למבחן הלאומי</a></Button>
         </div>
-        {pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
+        {!isOwnProfile ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
           <p>מספר רישיון תיווך: <b dir="ltr">{account?.license}</b></p>
           <p>הבקשה בבדיקה. נעדכן אותך בהמשך.</p>
         </div> : <div className="space-y-2 border-t border-border pt-3">
@@ -112,7 +114,7 @@ export function UpgradeToBrokerButton() {
         {result ? <div role="status" className="space-y-1 rounded-md border border-success bg-success/10 p-3 text-base">
           <p className="font-semibold text-success">{result === 'approved' ? 'החשבון שודרג למתווך מורשה' : 'הבקשה התקבלה'}</p>
           {result === 'pending' && <p>נעדכן אותך כשהבדיקה תסתיים.</p>}
-        </div> : !pending && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
+        </div> : isOwnProfile && !pending && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
           {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}שדרוג החשבון
         </Button>}
       </DialogContent>
