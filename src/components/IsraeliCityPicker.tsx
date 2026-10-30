@@ -17,9 +17,20 @@ type Props = {
   selectedValues?: string[];
   onSelectionChange?: (values: string[]) => void;
   firstOptions?: string[];
+  disabled?: boolean;
 };
 
-export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עיר', className, itemClassName, selectedValues, onSelectionChange, firstOptions = [] }: Props) {
+export function normalizeCitySelection(values: string[]): string[] {
+  const unique = [...new Set(values.map(value => value.trim()).filter(Boolean))];
+  return unique.includes('כל הארץ') ? ['כל הארץ'] : unique;
+}
+
+export function toggleCitySelection(values: string[], city: string): string[] {
+  if (values.includes(city)) return normalizeCitySelection(values.filter(value => value !== city));
+  return city === 'כל הארץ' ? ['כל הארץ'] : [...values.filter(value => value !== 'כל הארץ'), city];
+}
+
+export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עיר', className, itemClassName, selectedValues, onSelectionChange, firstOptions = [], disabled = false }: Props) {
   const otherId = useId();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -37,7 +48,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
 
   const selectCity = (city: string) => {
     if (selectedValues && onSelectionChange) {
-      onSelectionChange(selectedValues.includes(city) ? selectedValues.filter(item => item !== city) : [...selectedValues, city]);
+      onSelectionChange(toggleCitySelection(selectedValues, city));
       return;
     }
     onChange(city);
@@ -48,7 +59,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
   const applyOther = () => {
     const v = otherText.trim();
     if (!v) return;
-    if (selectedValues && onSelectionChange) onSelectionChange([...new Set([...selectedValues, v])]);
+    if (selectedValues && onSelectionChange) onSelectionChange(v === 'כל הארץ' ? ['כל הארץ'] : [...new Set([...selectedValues.filter(city => city !== 'כל הארץ'), v])]);
     else onChange(v);
     setOtherText('');
     setEditingOther(false);
@@ -61,6 +72,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
       <PopoverTrigger asChild>
         <Button
           type="button"
+          disabled={disabled}
           variant="outline"
           role="combobox"
           aria-label={placeholder}
@@ -68,8 +80,8 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
           dir="rtl"
           className={cn('h-9 w-full justify-between text-right text-sm font-semibold', className)}
         >
-          <span className={cn('flex-1 truncate', !value && 'text-muted-foreground font-normal')}>
-            {value || placeholder}
+          <span className={cn('min-w-0 flex-1 truncate', !value && !selectedValues?.length && 'text-muted-foreground font-normal')}>
+            {selectedValues?.length ? normalizeCitySelection(selectedValues).join(', ') : value || placeholder}
           </span>
           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
         </Button>
@@ -96,7 +108,7 @@ export function IsraeliCityPicker({ value, onChange, placeholder = 'בחר עי�
             ) : (
               [...firstOptions.filter(option => !search || option.includes(search)), ...filtered].map((city) => (
                 <div key={city} className="flex items-center px-2">
-                  {selectedValues && <SelectBox checked={selectedValues.includes(city)} onChange={() => selectCity(city)} label={city} />}
+                  {selectedValues && <SelectBox checked={normalizeCitySelection(selectedValues).includes(city)} onChange={() => selectCity(city)} label={city} />}
                 <Button
                   key={city}
                   type="button"

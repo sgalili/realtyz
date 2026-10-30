@@ -1,5 +1,10 @@
 # Roadmap
 
+## Office details and sticky tabs October 30
+- [x] Fixed-height opaque sticky profile tabs, verified at 411px and 1280px.
+- [x] Exclusive nationwide city selection; square-logo-only layout with inline name save and automatic logo/service-area saves; no outer card or global office save.
+- [x] Eleven focused tests passed; signed-in nationwide save persisted alone after reload without saving a display-name draft. Original Ashdod selection restored and verified; no runtime errors. Logo upload was not exercised against real branding.
+
 ## Inline profile saving October 30
 - [x] Save only the confirmed profile field; pencil becomes check while editing, no global save; metadata/cache merge only saved field values.
 - [x] Exit and labeled account deletion below upgrade in normal flow with separator. Ten tests passed; signed-in mobile city confirmation restored pencil and survived reload; action position static and deletion opened confirmation without sending code. Build OK.
