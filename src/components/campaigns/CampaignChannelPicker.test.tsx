@@ -5,6 +5,7 @@ import { CampaignChannelPicker, DISTRIBUTION_CHANNELS } from './CampaignChannelP
 
 const mocks = vi.hoisted(() => ({ state: vi.fn() }));
 
+vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
 vi.mock('@/hooks/useCampaignPricing', () => ({ useCampaignPricing: () => ({ data: [], isLoading: false, isError: false }) }));
 vi.mock('./CampaignServiceIcon', () => ({ CampaignServiceIcon: () => null }));
 vi.mock('@/hooks/useMetaPageBinding', () => ({ useMetaPageBinding: () => ({ data: null }), useRefreshMetaPageBinding: () => () => {} }));
