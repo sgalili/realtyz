@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
 import { LayoutGrid, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 export default function BoardSearchControls({ query, onQueryChange, onSearch, filter, grid, onViewToggle }: {
   query: string; onQueryChange: (value: string) => void; onSearch?: () => void; filter: ReactNode;
