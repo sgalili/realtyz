@@ -1,5 +1,9 @@
 # Roadmap
 
+## Facebook chooser disconnection October 30
+- [ ] Add workspace profile disconnection/account switching and independent Page disconnection; remove group shortcuts.
+- [ ] Show profile connection first when disconnected and verify focused tests and preview without altering real connections.
+
 ## Personal profile and tasks October 30
 - [x] Outline default avatar, matching full-name field and fixed profile tabs with 10px less top spacing.
 - [x] Show unverified workspace profile upgrade without submitting another person's verification.
