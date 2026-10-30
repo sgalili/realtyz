@@ -138,14 +138,14 @@ export function WorkspaceSelectorModal() {
                   <div className="text-xs text-muted-foreground truncate">{roleLabel(w.role, w.is_self)}</div>
                 </div>
                 <Avatar className="h-10 w-10 shrink-0 border bg-background">
-                  {w.workspace_logo_url || w.owner_avatar_url ? (
+                  {rowImage.url ? (
                     <AvatarImage
-                      src={w.workspace_logo_url ?? w.owner_avatar_url ?? undefined}
-                      className={w.workspace_logo_url ? 'object-contain p-1' : 'object-cover'}
+                      src={rowImage.url}
+                      className={rowImage.isAvatar ? 'object-cover' : 'object-contain p-1'}
                     />
                   ) : (
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      <Building2 className="h-5 w-5" />
+                      {card.isOffice ? <Building2 className="h-5 w-5" /> : <User className="h-5 w-5" />}
                     </AvatarFallback>
                   )}
                 </Avatar>
