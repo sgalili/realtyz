@@ -183,9 +183,11 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                     )}
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
-                      {workspaceCard.logo
-                        ? <img src={workspaceCard.logo} alt={label} className="h-full w-full object-contain p-0.5" />
-                        : <Building2 className="h-3.5 w-3.5 text-primary" />}
+                      {rowImage.url
+                        ? <img src={rowImage.url} alt={label} className={rowImage.isAvatar ? 'h-full w-full object-cover' : 'h-full w-full object-contain p-0.5'} />
+                        : workspaceCard.isOffice
+                          ? <Building2 className="h-3.5 w-3.5 text-primary" />
+                          : <User className="h-3.5 w-3.5 text-primary" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">
                       <span className="block truncate">{label}</span>
