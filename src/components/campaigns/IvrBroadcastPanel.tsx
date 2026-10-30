@@ -562,7 +562,74 @@ export const IvrBroadcastPanel = () => {
   const audienceCount = targetLeads.length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4" dir="rtl">
+    <div className="mx-auto w-full max-w-3xl space-y-6 [&_[role=combobox]]:font-bold" dir="rtl">
+      <div className="rounded-lg border border-border bg-card p-6">
+          {/* Audience selector */}
+          <div className="space-y-2">
+            <Select value={audience} onValueChange={(v) => setAudience(v as AudienceMode)} dir="rtl">
+              <SelectTrigger className="w-full text-[17px] text-right border-border bg-background font-bold">
+                <SelectValue placeholder={<span className="font-bold">למי מחייגים?</span>} />
+              </SelectTrigger>
+              <SelectContent dir="rtl" className="[&_[role=option][data-state=checked]]:font-bold">
+                <SelectItem value="all" className="text-[17px]">כל הרשימה ({loadingLeads ? '…' : leads.length})</SelectItem>
+                <SelectItem value="manual" className="text-[17px]">בחירה מהרשימה</SelectItem>
+                <SelectItem value="csv" className="text-[17px]">העלאת רשימה (CSV / Excel)</SelectItem>
+                <SelectItem value="paste" className="text-[17px]">הדבקת טקסט</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {audience === 'manual' && (
+              <div className="rounded-xl border border-[#0f1b3d]/15 bg-background">
+                <div className="p-2 border-b border-[#0f1b3d]/10">
+                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="חיפוש לפי שם או טלפון..."
+                    className="text-right h-9 rounded-lg" />
+                </div>
+                <label className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#0f1b3d]/10 bg-muted/40 cursor-pointer">
+                  <span className="text-xs font-semibold text-[#0f1b3d]">בחר הכל ({filteredLeads.length})</span>
+                  <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAllFiltered} />
+                </label>
+                <div className="max-h-44 overflow-y-auto divide-y divide-border/50">
+                  {filteredLeads.map((l) => (
+                    <label key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40">
+                      <div className="flex-1 min-w-0 text-right">
+                        <div className="text-sm font-medium truncate">{l.full_name || 'ללא שם'}</div>
+                        <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">{formatPhoneDisplay(l.phone)}</div>
+                      </div>
+                      <Checkbox checked={selectedLeadIds.has(l.id)} onCheckedChange={() => toggleLead(l.id)} />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {audience === 'csv' && (
+              <div className="rounded-xl border border-[#0f1b3d]/15 bg-background p-3 space-y-2">
+                <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls,text/csv" className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleCsvFile(e.target.files[0])} />
+                <Button variant="outline" onClick={() => csvInputRef.current?.click()} className="w-full rounded-lg">
+                  <Upload className="ml-2 h-4 w-4" /> בחירת קובץ CSV / Excel
+                </Button>
+                {csvPhones.length > 0 && (
+                  <div className="text-[11px] text-muted-foreground text-right">נטענו {csvPhones.length} מספרים</div>
+                )}
+              </div>
+            )}
+
+            {audience === 'paste' && (
+              <Textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)}
+                placeholder="הדביקו מספרי טלפון, מופרדים בפסיק / רווח / שורה חדשה"
+                className="text-right min-h-[90px] rounded-xl border-[#0f1b3d]/20" />
+            )}
+
+            {audience && audienceCount > 0 && (
+              <div className="text-[11px] text-muted-foreground text-right flex items-center justify-end gap-1.5">
+                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                {audienceCount} יעדים נבחרו
+              </div>
+            )}
+          </div>
+
+      </div>
       <div className="space-y-4">
           {/* Top 3-tab toggle: TTS active first */}
           <div className="flex gap-2">
@@ -578,7 +645,7 @@ export const IvrBroadcastPanel = () => {
                   <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold pl-16 [&>svg]:absolute [&>svg]:left-2 [&>svg]:top-1/2 [&>svg]:-translate-y-1/2">
                     <SelectValue placeholder="בחירת נציג/ת AI להקלטה">{agentVoiceId ? agentLabel : undefined}</SelectValue>
                   </SelectTrigger>
-                  <SelectContent dir="rtl">
+                  <SelectContent dir="rtl" className="[&_[role=option][data-state=checked]]:font-bold">
                     {allAgents.map((a) => (
                       <SelectItem key={a.voice_id} value={a.voice_id} className="pe-8 text-[17px]">
                         <div className="flex items-center justify-between gap-2 w-full">
@@ -616,7 +683,7 @@ export const IvrBroadcastPanel = () => {
                   <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
                     <SelectValue placeholder="בחירת נכס לקמפיין" />
                   </SelectTrigger>
-                  <SelectContent dir="rtl">
+                  <SelectContent dir="rtl" className="[&_[role=option][data-state=checked]]:font-bold">
                     <div className="sticky top-0 z-10 bg-popover p-2 border-b border-border/60">
                       <div className="relative">
                         <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -732,71 +799,6 @@ export const IvrBroadcastPanel = () => {
           )}
 
           {source !== 'tts' && audioSeconds != null && <p className="text-sm text-muted-foreground">משך ההקלטה: <span dir="ltr" className="font-mono tabular-nums">{formatIvrDuration(audioSeconds)}</span></p>}
-
-          {/* Audience selector */}
-          <div className="space-y-2">
-            <Select value={audience} onValueChange={(v) => setAudience(v as AudienceMode)} dir="rtl">
-              <SelectTrigger className="w-full h-12 text-[17px] text-right border-[#0f1b3d]/20 rounded-xl bg-background">
-                <SelectValue placeholder={<span className="font-bold">למי מחייגים?</span>} />
-              </SelectTrigger>
-              <SelectContent dir="rtl">
-                <SelectItem value="all" className="text-[17px]">כל הרשימה ({loadingLeads ? '…' : leads.length})</SelectItem>
-                <SelectItem value="manual" className="text-[17px]">בחירה מהרשימה</SelectItem>
-                <SelectItem value="csv" className="text-[17px]">העלאת רשימה (CSV / Excel)</SelectItem>
-                <SelectItem value="paste" className="text-[17px]">הדבקת טקסט</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {audience === 'manual' && (
-              <div className="rounded-xl border border-[#0f1b3d]/15 bg-background">
-                <div className="p-2 border-b border-[#0f1b3d]/10">
-                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="חיפוש לפי שם או טלפון..."
-                    className="text-right h-9 rounded-lg" />
-                </div>
-                <label className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#0f1b3d]/10 bg-muted/40 cursor-pointer">
-                  <span className="text-xs font-semibold text-[#0f1b3d]">בחר הכל ({filteredLeads.length})</span>
-                  <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAllFiltered} />
-                </label>
-                <div className="max-h-44 overflow-y-auto divide-y divide-border/50">
-                  {filteredLeads.map((l) => (
-                    <label key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40">
-                      <div className="flex-1 min-w-0 text-right">
-                        <div className="text-sm font-medium truncate">{l.full_name || 'ללא שם'}</div>
-                        <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">{formatPhoneDisplay(l.phone)}</div>
-                      </div>
-                      <Checkbox checked={selectedLeadIds.has(l.id)} onCheckedChange={() => toggleLead(l.id)} />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {audience === 'csv' && (
-              <div className="rounded-xl border border-[#0f1b3d]/15 bg-background p-3 space-y-2">
-                <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls,text/csv" className="hidden"
-                  onChange={(e) => e.target.files?.[0] && handleCsvFile(e.target.files[0])} />
-                <Button variant="outline" onClick={() => csvInputRef.current?.click()} className="w-full rounded-lg">
-                  <Upload className="ml-2 h-4 w-4" /> בחירת קובץ CSV / Excel
-                </Button>
-                {csvPhones.length > 0 && (
-                  <div className="text-[11px] text-muted-foreground text-right">נטענו {csvPhones.length} מספרים</div>
-                )}
-              </div>
-            )}
-
-            {audience === 'paste' && (
-              <Textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)}
-                placeholder="הדביקו מספרי טלפון, מופרדים בפסיק / רווח / שורה חדשה"
-                className="text-right min-h-[90px] rounded-xl border-[#0f1b3d]/20" />
-            )}
-
-            {audience && audienceCount > 0 && (
-              <div className="text-[11px] text-muted-foreground text-right flex items-center justify-end gap-1.5">
-                <Check className="h-3.5 w-3.5 text-emerald-600" />
-                {audienceCount} יעדים נבחרו
-              </div>
-            )}
-          </div>
 
           {/* Dispatch button */}
           <label className="flex items-center gap-2 text-[17px] cursor-pointer">
