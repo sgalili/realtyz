@@ -239,7 +239,7 @@ export default function LeadTypeFilterButton({
                 <label key={key} className="flex cursor-pointer items-start gap-2 text-[15px] font-medium">
                   <RadioGroupItem value={key} aria-label={FILTER_LEAD_LABELS[key]} className="mt-1 shrink-0" />
                   <Icon className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
-                  <span className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-left text-[15px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
+                  <span className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-right text-[15px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
                 </label>
               );
             })}
