@@ -214,10 +214,15 @@ export default function LeadTypeFilterButton({
   const patchAmenities = (next: Partial<PublicListingDraftFields>) => patch({ amenities: { ...amenities, ...Object.fromEntries(Object.entries(next).filter(([key]) => ['rooms', 'elevatorCount', 'parkingCount', 'balconyTypes', 'viewType', 'airDirections', 'condition', 'entryDate', 'totalFloors'].includes(key))) } });
 
   const trigger = (
-    <Button type="button" variant="ghost" size="icon" aria-label="סינון מתקדם" title="סינון מתקדם" aria-expanded={open}
+    <Button type="button" variant="ghost" size="icon" aria-label={active ? `סינון מתקדם (${active} סינונים פעילים)` : 'סינון מתקדם'} title="סינון מתקדם" aria-expanded={open}
       onClick={inline ? () => setOpen(!open) : undefined}
       className={`relative h-7 w-7 shrink-0 text-muted-foreground ${open ? 'bg-primary text-primary-foreground' : ''} ${className}`}>
       <Filter className="h-4 w-4" />
+      {active > 0 && !open ? (
+        <span aria-hidden className="pointer-events-none absolute -right-1 -top-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-[3px] text-[9px] font-semibold leading-none text-primary-foreground ring-1 ring-background">
+          {active > 9 ? '9+' : active}
+        </span>
+      ) : null}
     </Button>
   );
   const content = (
