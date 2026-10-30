@@ -113,7 +113,7 @@ function ProfileFieldRow({
       className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm"
     >
       <Icon className={cn('h-4 w-4 shrink-0', iconClass ?? 'text-primary')} />
-      <span className="text-sm font-semibold text-muted-foreground shrink-0">{label}:</span>
+      <span className="text-base font-semibold text-muted-foreground shrink-0">{label}:</span>
       <div className="flex-1 min-w-0">
         {editing ? (
           children ?? (
@@ -392,17 +392,14 @@ function PersonalTab() {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-right"></CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 pb-3">
+    <div className="w-full min-w-0">
+      <div className="space-y-3 pb-3">
         <ProfileAvatarUploader profileOwnerId={profileOwnerId} gender={gender === 'female' ? 'female' : gender === 'male' ? 'male' : null} />
 
         {verifiedLicenseLocked ? (
           <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            <span className="shrink-0 text-sm font-semibold text-muted-foreground">שם מלא:</span>
+            <span className="shrink-0 text-base font-semibold text-muted-foreground">שם מלא:</span>
             <span className="min-w-0 flex-1 break-words text-base font-bold" aria-label="שם מלא לפי פנקס המתווכים">{fullName}</span>
           </div>
         ) : (
@@ -455,7 +452,7 @@ function PersonalTab() {
         {verifiedLicenseLocked ? (
           <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            <span className="shrink-0 text-sm font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
+            <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
             <div className="min-w-0 flex-1">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
             </div>
@@ -466,7 +463,7 @@ function PersonalTab() {
         ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : (
           <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            <span className="shrink-0 text-sm font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
+            <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
             <div className="min-w-0 flex-1">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך">{brokerLicense || '—'}</span>
             </div>
@@ -486,7 +483,7 @@ function PersonalTab() {
           </Button>
           {user && <DeleteAccountButton showLabel />}
         </div>
-      </CardContent>
+      </div>
 
       <AlertDialog open={removeLicenseOpen} onOpenChange={(o) => !removingLicense && setRemoveLicenseOpen(o)}>
         <AlertDialogContent dir="rtl">
@@ -508,7 +505,7 @@ function PersonalTab() {
       </AlertDialog>
 
 
-    </Card>
+    </div>
   );
 }
 
