@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 /* Link emphasis uses color/weight, never underlines, including hover states. */
-a, a *, [role="link"], button[class*="underline"], button[class*="underline"] * {
+a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *, .welcome-dismiss {
   text-decoration-line: none !important;
 }
 .consent-link, .consent-link:hover, .consent-link:focus-visible {

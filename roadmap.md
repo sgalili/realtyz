@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Step 8 closing and consent refinement October 30
-- [ ] Closing first, required/zero styling, undefined sale 1% and rent 50%, matching percentage summaries.
-- [ ] Combined legal approval, final declaration wording and Navy Blue links without underlines; verify focused tests and signed-in form without publishing.
+- [x] Closing first, required/zero styling, undefined sale 1% and rent 50%, matching percentage summaries.
+- [x] Combined legal approval and final declaration wording; four Navy Blue legal links have no underlines. 42 focused tests passed; signed-in mobile rent 12000 → 6000 (50%), expanded/collapsed summary and approval checked. Build OK, no runtime errors; no listing published.
 
 ## Direct non-broker publication October 30
 - [x] Skip publisher-type selections for partner/private publication and add mandatory owner declaration without changing broker/developer flows.
