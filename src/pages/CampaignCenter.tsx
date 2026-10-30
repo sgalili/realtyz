@@ -1,5 +1,8 @@
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import { canRestorePropertyDraft, propertyCampaignSelection } from '@/lib/campaignPropertyContext';
+import { fetchPartnerCampaignInventory } from '@/lib/partnerCampaignInventory';
+import { useAppMode } from '@/hooks/useAppMode';
+import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { generateSocialDraft } from '@/lib/socialDraftGeneration';
 import { reorderItems } from '@/lib/reorderItems';
 import { ThumbnailReorderHandle } from '@/components/campaigns/ThumbnailReorderHandle';
@@ -893,10 +896,12 @@ const InlineComposer = ({
   // another one. Persisted to localStorage so dialog closes, route changes,
   // and hard refreshes never lose unfinished work.
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const { isPartnerMode } = useAppMode();
+  const { level4Unlocked } = useAffiliateLicense();
   const isRitaWorkspace = useIsRitaWorkspace();
   const requestedListingId = presetListingId || (typeof window !== 'undefined'
     ? propertyCampaignSelection(new URLSearchParams(window.location.search))[0] : null) || null;
-  const usesGroupTopics = isRitaWorkspace && !requestedListingId;
+  const usesGroupTopics = isRitaWorkspace && !isPartnerMode && !requestedListingId;
   const selectedContextRef = useRef({ listingId: null as string | null, workspace: workspaceOwnerId });
   const wsScope = workspaceOwnerId ?? 'anon';
   const draftKey = `rz-composer-draft:v3:${wsScope}:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
@@ -1515,8 +1520,14 @@ const InlineComposer = ({
     (async () => {
       setListingsLoading(true);
       setListingsError(false);
+      setListings([]);
       if (!workspaceOwnerId) { setListings([]); setListingsLoading(false); return; }
       try {
+        if (isPartnerMode) {
+          const rows = await fetchPartnerCampaignInventory(level4Unlocked);
+          if (!cancelled) setListings(rows);
+          return;
+        }
         const pageSize = 1000;
         const rows: CampaignListing[] = [];
         for (let from = 0; ; from += pageSize) {
@@ -1547,7 +1558,7 @@ const InlineComposer = ({
       }
     })();
     return () => { cancelled = true; };
-  }, [listingPickerOpen, workspaceOwnerId]);
+  }, [listingPickerOpen, workspaceOwnerId, isPartnerMode, level4Unlocked]);
 
   // The full listing list is only loaded when the picker opens, so a deep-linked
   // draft fetches its own row. That way the card title shows the REAL property
@@ -1653,10 +1664,10 @@ const InlineComposer = ({
 
   const visibleListings = useMemo(() => {
     const q = normalizeListingText(listingQuery).toLowerCase();
-    const deduped = dedupeListings(listings);
+    const deduped = isPartnerMode ? listings : dedupeListings(listings);
     if (!q) return deduped;
     return deduped.filter((listing) => listingSearchText(listing).includes(q));
-  }, [listings, listingQuery]);
+  }, [listings, listingQuery, isPartnerMode]);
 
 
   // Append user-uploaded campaign images to the selected listing's gallery so

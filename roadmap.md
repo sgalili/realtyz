@@ -1,5 +1,9 @@
 # Roadmap
 
+## Partner campaign picker October 30
+- [x] Use the shared public-safe available partner inventory instead of workspace-owned properties in partner context; preserve listing IDs and exclude closing-only offers for unverified partners.
+- [x] Ten focused tests passed including pagination and privacy. Signed-in partner workspace fetched five shared rows, showed four audience-eligible choices plus clear selection, and selected address/price/photos read back; build OK, no runtime errors. No campaign published.
+
 ## Facebook chooser disconnection October 30
 - [x] Add workspace profile disconnection/account switching and independent Page disconnection; remove group shortcuts.
 - [x] Show profile connection first when disconnected; 17 focused tests passed and signed-in 442px preview checked. Fixture-backed Page removal, profile disconnect and reconnect dialog verified without changing real connections; build OK and no runtime errors.
