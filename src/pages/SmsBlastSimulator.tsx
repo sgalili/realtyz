@@ -382,8 +382,6 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const [waTemplate, setWaTemplate] = useState<WaTemplateSelection | null>(null);
   const [messageBody, setMessageBody] = useState('שלום [שם_פרטי], יש לנו נכס חדש ב[עיר] שיכול להתאים לך: [נכס]. נשמח לספר עוד.');
   const [waTemplateBody, setWaTemplateBody] = useState('');
-  const templateOnly = selectedChannels.length === 1 && selectedChannels[0] === 'whatsapp';
-  const sendMessageBody = templateOnly ? waTemplateBody : messageBody;
   // Per-channel message overrides — when set, overrides the master messageBody for that channel
   const [channelMessages, setChannelMessages] = useState<Partial<Record<ChannelId, string>>>({});
   const getChannelText = useCallback((channel: ChannelId) => channelMessages[channel] ?? messageBody, [channelMessages, messageBody]);
@@ -465,6 +463,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   const [loyaltyOptions, setLoyaltyOptions] = useState<string[]>([]);
   const [recipientSource, setRecipientSource] = useState<string | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<ChannelId[]>(dedicatedChannel ? [dedicatedChannel] : []);
+  const templateOnly = selectedChannels.length === 1 && selectedChannels[0] === 'whatsapp';
+  const sendMessageBody = templateOnly ? waTemplateBody : messageBody;
   useEffect(() => {
     if (dedicatedChannel) { setSelectedChannels([dedicatedChannel]); return; }
     const channel = new URLSearchParams(location.search).get('channel');
