@@ -1,8 +1,9 @@
 # Roadmap
 
 ## Facebook chooser disconnection October 30
-- [ ] Add workspace profile disconnection/account switching and independent Page disconnection; remove group shortcuts.
-- [ ] Show profile connection first when disconnected and verify focused tests and preview without altering real connections.
+- [x] Add workspace profile disconnection/account switching and independent Page disconnection; remove group shortcuts.
+- [x] Show profile connection first when disconnected; 17 focused tests passed and signed-in 442px preview checked. Fixture-backed Page removal, profile disconnect and reconnect dialog verified without changing real connections; build OK and no runtime errors.
+- [ ] Real new-account login and Page authorization readback await a user-controlled Facebook login and usable cloud runner/Page grant; no real connection was disconnected during verification.
 
 ## Personal profile and tasks October 30
 - [x] Outline default avatar, matching full-name field and fixed profile tabs with 10px less top spacing.
