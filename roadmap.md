@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Service recipient presentation October 30
-- [ ] Match recipient placement and typography across SMS, WhatsApp, email and IVR; service-specific bold placeholders, bold selections and inline WhatsApp template placeholder.
-- [ ] Verify menus and selection readback without sending campaigns.
+- [x] Match recipient placement and typography across SMS, WhatsApp, email and IVR; service-specific bold placeholders, bold selections and inline WhatsApp template placeholder.
+- [x] SMS, IVR and WhatsApp signed-in mobile selection/readback verified: identical 17px/700 text, 362px width and top position; WhatsApp template typography matches. Twelve regression tests passed, build OK; no campaigns sent. Email retains its sender prerequisite; recipient interaction remains unverified because this workspace has no configured sender.
 
 ## WhatsApp templates October 30
 - [x] Restrict broker invitation template listing and sending to Rita's workspace; restrictive cache RLS and deployed send checks.
