@@ -238,9 +238,10 @@ export default function LeadTypeFilterButton({
               const color = amount > 0 ? closingLevelClass(partnerPotential((amount - range.min) / Math.max(1, range.max - range.min)).level) : 'text-muted-foreground';
               return (
                 <div key={key}>
-                <Button type="button" variant="ghost" aria-label={FILTER_LEAD_LABELS[key]} aria-expanded={expandedType === key} onClick={() => setExpandedType(expandedType === key ? null : key)} className="h-auto w-full items-start justify-start gap-2 whitespace-normal px-0 py-1 text-right text-[15px] font-medium">
+                <Button type="button" variant="ghost" aria-label={FILTER_LEAD_LABELS[key]} aria-expanded={expandedType === key} onClick={() => setExpandedType(expandedType === key ? null : key)} className="h-auto w-full items-start justify-start gap-2 whitespace-nowrap px-0 py-1 text-right text-[14px] font-medium">
                   <Icon key="icon" className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
-                  <span key="title" className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-right text-[15px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
+                  <span key="title" className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-right text-[14px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
+                  <ChevronDown key="chevron" aria-hidden className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${expandedType === key ? 'rotate-180' : ''}`} />
                 </Button>
                 {expandedType === key && <div className="py-2 animate-in fade-in-0 motion-reduce:animate-none"><LeadPriceSlider hidePotential range={range} tier={tier} label={FILTER_LEAD_LABELS[key]} value={String(amount)} onChange={value => onChange(setLeadFilterMinimum(state, key, Number(value)))} /></div>}
                 </div>
