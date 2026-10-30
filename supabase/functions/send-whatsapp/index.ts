@@ -29,6 +29,7 @@ import { z } from "https://esm.sh/zod@3.25.76";
 import { appendDisclosure } from "../_shared/compliance.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { profileGenderByAddress, personalizeMessage } from '../_shared/personalLanguage.ts';
+import { canUseWaTemplate } from '../_shared/waTemplateAccess.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -891,6 +892,18 @@ Deno.serve(async (req) => {
 
     // Owning workspace (credentials + logging). Transport is always Meta Cloud.
     const routing = await resolveWorkspaceOwner(admin, userId, routingTenantId);
+    if (parsed.data.template_id === 'invitation_to_realestate_brokers') {
+      let templateOwner = routingTenantId;
+      if (bearer !== SERVICE_ROLE_KEY) {
+        if (!userId) return json({ error: 'Authentication required' }, 401);
+        const scoped = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+        const { data: activeOwner, error } = await scoped.rpc('current_workspace_owner');
+        if (error) return json({ error: 'Workspace authorization required' }, 403);
+        templateOwner = activeOwner;
+      }
+      if (!canUseWaTemplate(parsed.data.template_id, templateOwner)) return json({ error: 'התבנית זמינה רק בסביבת העבודה של ריטה' }, 403);
+      routing.owner_id = templateOwner;
+    }
     // Audio-only IVR copies: authenticated, workspace-authorized and inside Meta's session window.
     if (parsed.data.audio_url) {
       if (!userId || !parsed.data.lead_id) return json({ error: 'Authenticated workspace lead required' }, 403);

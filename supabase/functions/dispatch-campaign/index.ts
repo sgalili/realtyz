@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveSms019Config, sendSms019 } from "../_shared/sms019.ts";
+import { canUseWaTemplate } from '../_shared/waTemplateAccess.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -153,8 +154,13 @@ async function sendWhatsAppTemplate(
   previewText: string,
 ): Promise<SendResult> {
   const params = template.body_params.map((v) => personalize(v, ctx));
+  const templateAdmin = createClient(routerCtx.supabaseUrl, routerCtx.serviceRoleKey);
+  const { data: cachedTemplate } = await templateAdmin.from('wa_message_templates')
+    .select('body_text').eq('owner_user_id', routerCtx.userId).eq('name', template.name)
+    .eq('language', template.language).eq('status', 'APPROVED').maybeSingle();
+  const keys = [...new Set(Array.from(String(cachedTemplate?.body_text ?? '').matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g), m => m[1].trim()))];
   const components = params.length > 0
-    ? [{ type: "body", parameters: params.map((text) => ({ type: "text", text })) }]
+    ? [{ type: "body", parameters: params.map((text, i) => ({ type: "text", text, ...(keys[i] && !/^\d+$/.test(keys[i]) ? { parameter_name: keys[i] } : {}) })) }]
     : [];
   try {
     const res = await fetch(`${routerCtx.supabaseUrl}/functions/v1/send-whatsapp`, {
@@ -584,6 +590,17 @@ Deno.serve(async (req) => {
         .eq("user_id", userId)
         .maybeSingle();
       if (member) ownerUserId = requestedOwnerId;
+    }
+    if (body.wa_template) {
+      const { data: activeOwner, error: workspaceError } = await supabase.rpc('current_workspace_owner');
+      if (workspaceError || !activeOwner || (requestedOwnerId && requestedOwnerId !== activeOwner)) {
+        return new Response(JSON.stringify({ error: 'Workspace authorization required' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      ownerUserId = activeOwner;
+      const template = parseWaTemplate(body.wa_template);
+      if (template && !canUseWaTemplate(template.name, ownerUserId)) {
+        return new Response(JSON.stringify({ error: 'התבנית זמינה רק בסביבת העבודה של ריטה' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     // Load provider configs (global, shared across all users) using service role

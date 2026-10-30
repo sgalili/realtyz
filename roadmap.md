@@ -1,5 +1,10 @@
 # Roadmap
 
+## WhatsApp templates October 30
+- [x] Restrict broker invitation template listing and sending to Rita's workspace; restrictive cache RLS and deployed send checks.
+- [x] Hide resolved variables and duplicate free-text editor; align counters and personalization toolbar.
+- [x] Five focused tests passed, non-Rita live send request rejected with 403 before delivery, signed-in mobile WhatsApp shows one approved message with inset counter and no invitation or variable input; build OK, no runtime errors. No messages sent. Email toolbar visual check not completed because channel state stayed WhatsApp.
+
 ## Partner campaign picker October 30
 - [x] Use the shared public-safe available partner inventory instead of workspace-owned properties in partner context; preserve listing IDs and exclude closing-only offers for unverified partners.
 - [x] Ten focused tests passed including pagination and privacy. Signed-in partner workspace fetched five shared rows, showed four audience-eligible choices plus clear selection, and selected address/price/photos read back; build OK, no runtime errors. No campaign published.
