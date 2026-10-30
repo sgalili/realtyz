@@ -99,6 +99,10 @@ export type PropertyFilterState = {
   floorMax: number | null;
   /** Feature keys from FILTER_FEATURES; every selected feature must be present. */
   features?: string[];
+  amenities?: {
+    rooms?: string; elevatorCount?: string; parkingCount?: string; balconyTypes?: string[];
+    viewType?: string; airDirections?: string; condition?: string; entryDate?: string; totalFloors?: string;
+  };
 };
 
 /** Property features offered in the post-ad flow and imported listings. */
@@ -181,7 +185,7 @@ export function propertyFilterActiveCount(state: PropertyFilterState): number {
   for (const key of ['roomsMin', 'roomsMax', 'priceMin', 'priceMax', 'sizeMin', 'sizeMax', 'floorMin', 'floorMax'] as const) {
     if (state[key] != null) count += 1;
   }
-  return count + (state.features?.length ?? 0);
+  return count + (state.features?.length ?? 0) + Object.values(state.amenities ?? {}).filter(value => Array.isArray(value) ? value.length > 0 : !!value).length;
 }
 
 function numeric(row: Record<string, unknown>, ...keys: string[]): number | null {
@@ -221,6 +225,38 @@ export function matchesPropertyFilter(row: Record<string, unknown>, state: Prope
   if (!inRange(numeric(row, 'sqm', 'size_sqm'), state.sizeMin, state.sizeMax)) return false;
   if (!inRange(numeric(row, 'floor'), state.floorMin, state.floorMax)) return false;
   if (state.features?.length && !state.features.every(key => rowHasFeature(row, key))) return false;
+  const selected = state.amenities;
+  if (selected) {
+    const raw = row.raw && typeof row.raw === 'object' ? row.raw as Record<string, unknown> : {};
+    const features = row.features && typeof row.features === 'object' && !Array.isArray(row.features) ? row.features as Record<string, unknown> : {};
+    const rawFeatures = raw.features && typeof raw.features === 'object' && !Array.isArray(raw.features) ? raw.features as Record<string, unknown> : {};
+    const source = features.source_details && typeof features.source_details === 'object' ? features.source_details as Record<string, unknown> : {};
+    const bags = [row, features, raw, rawFeatures, source];
+    const read = (...keys: string[]): unknown => {
+      for (const bag of bags) for (const key of keys) if (bag[key] != null && bag[key] !== '') return bag[key];
+      return undefined;
+    };
+    const countMatches = (choice: string | undefined, actual: unknown) => {
+      if (!choice) return true;
+      const n = actual === true ? 1 : actual === false ? 0 : actual === 'קרקע' ? 0 : Number.parseFloat(String(actual));
+      const expected = Number.parseFloat(choice);
+      return Number.isFinite(n) && (choice.endsWith('+') ? n >= expected : n === expected);
+    };
+    if (!countMatches(selected.rooms, read('rooms'))) return false;
+    if (!countMatches(selected.elevatorCount, read('elevator_count', 'elevatorCount', 'elevator', 'includeElevator'))) return false;
+    if (!countMatches(selected.parkingCount, read('parking_count', 'parkingCount', 'parking', 'parking_spots', 'includeParking'))) return false;
+    if (!countMatches(selected.totalFloors === 'קרקע' ? '0' : selected.totalFloors, read('total_floors', 'totalFloors'))) return false;
+    if (!countMatches(selected.airDirections, read('air_directions', 'airDirections'))) return false;
+    if (selected.condition && read('condition') !== selected.condition) return false;
+    if (selected.viewType && read('view_type', 'viewType') !== selected.viewType && !(selected.viewType === 'נוף פתוח' && read('open_view', 'openView') === true)) return false;
+    if (selected.entryDate && read('entry_date', 'entryDate') !== selected.entryDate) return false;
+    if (selected.balconyTypes?.length) {
+      const actual = read('balcony_types', 'balconyTypes');
+      if (selected.balconyTypes.includes('ללא מרפסת')) {
+        if (!(Array.isArray(actual) && actual.length === 0) && read('balcony', 'includeBalcony') !== false) return false;
+      } else if (!Array.isArray(actual) || !selected.balconyTypes.some(type => actual.includes(type))) return false;
+    }
+  }
   return true;
 }
 

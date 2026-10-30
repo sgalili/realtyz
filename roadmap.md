@@ -1,5 +1,9 @@
 # Roadmap
 
+## Publisher-style filters October 30
+- [x] Share publisher room, floor, amenity, condition and entry menus; preserve reward sections and role visibility.
+- [x] Match selected options against saved listing facts; 20 focused tests and signed-in menu selection/readback passed.
+
 ## Shared property filters October 29
 - [x] Reuse public filters in Properties, align below search over the hidden options row, enable scrolling and preserve page position.
 - [x] Placeholder-only fields, opposite icon-only close, exclusive nationwide selection, extra 5px below blue section.

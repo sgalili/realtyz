@@ -48,3 +48,27 @@ describe('nationwide city selection', () => {
     expect(matchesPropertyFilter({ city: 'אילת' }, next)).toBe(false);
   });
 });
+
+describe('publisher-style property options', () => {
+  it('matches room counts including the 6+ choice', () => {
+    const state = { ...EMPTY_PROPERTY_FILTER, amenities: { rooms: '6+' } };
+    expect(matchesPropertyFilter({ rooms: 7 }, state)).toBe(true);
+    expect(matchesPropertyFilter({ rooms: 5.5 }, state)).toBe(false);
+  });
+  it('matches exact elevator and parking counts without treating missing as none', () => {
+    const state = { ...EMPTY_PROPERTY_FILTER, amenities: { elevatorCount: '3+', parkingCount: '0' } };
+    expect(matchesPropertyFilter({ features: { elevator_count: '4', parking_count: '0' } }, state)).toBe(true);
+    expect(matchesPropertyFilter({ features: { elevator_count: '2', parking_count: '0' } }, state)).toBe(false);
+    expect(matchesPropertyFilter({ features: { elevator_count: '4' } }, state)).toBe(false);
+  });
+  it('matches selected balcony types, view and air directions from saved features', () => {
+    const state = { ...EMPTY_PROPERTY_FILTER, amenities: { balconyTypes: ['מרפסת שמש'], viewType: 'נוף לים', airDirections: '2' } };
+    expect(matchesPropertyFilter({ features: { balcony_types: ['מרפסת שמש'], view_type: 'נוף לים', air_directions: '2' } }, state)).toBe(true);
+    expect(matchesPropertyFilter({ features: { balcony_types: ['מרפסת שירות'], view_type: 'נוף לים', air_directions: '2' } }, state)).toBe(false);
+  });
+  it('matches condition and immediate entry without guessing absent values', () => {
+    const state = { ...EMPTY_PROPERTY_FILTER, amenities: { condition: 'שמור', entryDate: 'מיידית' } };
+    expect(matchesPropertyFilter({ features: { condition: 'שמור', entry_date: 'מיידית' } }, state)).toBe(true);
+    expect(matchesPropertyFilter({ features: { condition: 'שמור' } }, state)).toBe(false);
+  });
+});

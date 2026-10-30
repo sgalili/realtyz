@@ -20,6 +20,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { LeadPriceSlider } from '@/components/public/LeadPriceSlider';
+import { PropertyAmenitiesFields } from '@/components/public/PropertyAmenitiesFields';
+import { EMPTY_PUBLIC_LISTING_DRAFT, type PublicListingDraftFields } from '@/lib/publicListingDraft';
+import { PROPERTY_TYPE_OPTIONS, PROPERTY_CONDITION_OPTIONS, PROPERTY_FLOOR_OPTIONS } from '@/lib/propertyFormOptions';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
@@ -142,6 +145,7 @@ export default function LeadTypeFilterButton({
 }) {
   const [localOpen, setLocalOpen] = useState(false);
   const [expandedType, setExpandedType] = useState<LeadTypeKey | null>(null);
+  const [entryDateMode, setEntryDateMode] = useState(false);
   const open = controlledOpen ?? localOpen;
   const setOpen = (next: boolean) => { setLocalOpen(next); onOpenChange?.(next); };
   const { user } = useAuth();
@@ -204,6 +208,9 @@ export default function LeadTypeFilterButton({
   };
 
   const show = (field: PropertyField) => !!property && fields.includes(field);
+  const amenities = property?.amenities ?? {};
+  const amenityFields: PublicListingDraftFields = { ...EMPTY_PUBLIC_LISTING_DRAFT, ...amenities };
+  const patchAmenities = (next: Partial<PublicListingDraftFields>) => patch({ amenities: { ...amenities, ...Object.fromEntries(Object.entries(next).filter(([key]) => ['rooms', 'elevatorCount', 'parkingCount', 'balconyTypes', 'viewType', 'airDirections', 'condition', 'entryDate', 'totalFloors'].includes(key))) } });
 
   const trigger = (
     <Button type="button" variant="ghost" size="icon" aria-label="סינון מתקדם" title="סינון מתקדם" aria-expanded={open}
@@ -259,13 +266,13 @@ export default function LeadTypeFilterButton({
                   </Select>
                 </div>
               ) : null}
-              {show('propertyType') && propertyTypes.length ? (
+              {show('propertyType') ? (
                 <div className="space-y-1">
                   <Select value={property.propertyType} onValueChange={(value) => patch({ propertyType: value })}>
                     <SelectTrigger aria-label="סוג נכס" className="h-9 text-[16px]"><SelectValue placeholder="סוג נכס" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">סוג נכס</SelectItem>
-                      {propertyTypes.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                      {Array.from(new Set([...PROPERTY_TYPE_OPTIONS, ...propertyTypes])).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -293,13 +300,17 @@ export default function LeadTypeFilterButton({
                 </div>
               ) : null}
               {show('price') ? <div className="col-span-2"><RangeRow label="מחיר" suffix="₪" min={property.priceMin} max={property.priceMax} step={1000} onChange={({ min, max }) => patch({ priceMin: min, priceMax: max })} /></div> : null}
-              {show('rooms') ? <div className="col-span-2"><RangeRow label="חדרים" min={property.roomsMin} max={property.roomsMax} step={0.5} onChange={({ min, max }) => patch({ roomsMin: min, roomsMax: max })} /></div> : null}
               {show('size') ? <div className="col-span-2"><RangeRow label="שטח" suffix='מ"ר' min={property.sizeMin} max={property.sizeMax} step={5} onChange={({ min, max }) => patch({ sizeMin: min, sizeMax: max })} /></div> : null}
-              {show('floor') ? <div className="col-span-2"><RangeRow label="קומה" min={property.floorMin} max={property.floorMax} onChange={({ min, max }) => patch({ floorMin: min, floorMax: max })} /></div> : null}
+              {show('floor') ? <><Select value={property.floorMin == null ? 'all' : String(property.floorMin)} onValueChange={value => patch({ floorMin: value === 'all' ? null : Number(value), floorMax: value === 'all' || value === '10' ? null : Number(value) })}><SelectTrigger aria-label="קומה" className="h-10 text-[16px]"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent><SelectItem value="all">קומה</SelectItem>{PROPERTY_FLOOR_OPTIONS.map(value => <SelectItem key={value} value={value === 'קרקע' ? '0' : value.replace('+', '')}>{value === 'קרקע' ? value : `קומה ${value}`}</SelectItem>)}</SelectContent></Select><Select value={amenities.totalFloors || 'all'} onValueChange={value => patchAmenities({ totalFloors: value === 'all' ? '' : value })}><SelectTrigger aria-label="כמה קומות יש בבניין?" className="h-10 text-[16px]"><SelectValue placeholder="כמה קומות יש בבניין?" /></SelectTrigger><SelectContent><SelectItem value="all">כמה קומות יש בבניין?</SelectItem>{PROPERTY_FLOOR_OPTIONS.map(value => <SelectItem key={value} value={value}>{value === 'קרקע' ? value : `${value} קומות`}</SelectItem>)}</SelectContent></Select></> : null}
+            </div>
+            <PropertyAmenitiesFields fields={amenityFields} onChange={patchAmenities} filterMode hideRooms={!show('rooms')} />
+            <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
+              <div className="space-y-2"><Select value={amenities.entryDate === 'מיידית' ? 'immediate' : entryDateMode || amenities.entryDate ? 'date' : 'all'} onValueChange={value => { setEntryDateMode(value === 'date'); patchAmenities({ entryDate: value === 'immediate' ? 'מיידית' : '' }); }}><SelectTrigger aria-label="תאריך כניסה" className="h-10 text-[16px]"><SelectValue placeholder="תאריך כניסה" /></SelectTrigger><SelectContent><SelectItem value="all">תאריך כניסה</SelectItem><SelectItem value="immediate">מיידית</SelectItem><SelectItem value="date">בחירת תאריך</SelectItem></SelectContent></Select>{entryDateMode && <Input type="date" aria-label="תאריך כניסה נבחר" value={amenities.entryDate === 'מיידית' ? '' : amenities.entryDate ?? ''} onChange={event => patchAmenities({ entryDate: event.target.value })} />}</div>
+              <Select value={amenities.condition || 'all'} onValueChange={value => patchAmenities({ condition: value === 'all' ? '' : value })}><SelectTrigger aria-label="מצב הנכס" className="h-10 text-[16px]"><SelectValue placeholder="מצב הנכס" /></SelectTrigger><SelectContent><SelectItem value="all">מצב הנכס</SelectItem>{PROPERTY_CONDITION_OPTIONS.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select>
             </div>
             <SectionTitle>מאפיינים</SectionTitle>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-              {FILTER_FEATURES.map(feature => {
+              {FILTER_FEATURES.filter(feature => !['elevator', 'parking', 'balcony', 'open_view', 'renovated'].includes(feature.key)).map(feature => {
                 const checked = property.features?.includes(feature.key) ?? false;
                 return <label key={feature.key} className="flex cursor-pointer items-center gap-2 text-[15px]">
                   <Checkbox checked={checked} onCheckedChange={() => patch({ features: checked ? (property.features ?? []).filter(k => k !== feature.key) : [...(property.features ?? []), feature.key] })} />
