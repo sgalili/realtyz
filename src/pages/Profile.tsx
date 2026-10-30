@@ -446,6 +446,7 @@ function PersonalTab() {
           </div>
         ))}
 
+        {profileOwnerId && <UpgradeToBrokerButton profileOwnerId={profileOwnerId} />}
       </CardContent>
 
       <AlertDialog open={removeLicenseOpen} onOpenChange={(o) => !removingLicense && setRemoveLicenseOpen(o)}>
@@ -828,7 +829,6 @@ export default function Profile() {
       <div className="mb-3">
         <CompleteProfileBanner force={params.get('welcome') === 'developer'} />
       </div>
-      {activeWorkspaceId && <UpgradeToBrokerButton key={`${user?.id}:${activeWorkspaceId}`} profileOwnerId={activeWorkspaceId} />}
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">
         <TabsList className={`sticky top-0 z-30 grid w-full ${isAgency ? 'grid-cols-5' : 'grid-cols-4'} mb-[15px] bg-muted`}>
