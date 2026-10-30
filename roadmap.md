@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Logo and activity layering October 30
-- [ ] Move logo label inside upload square; lift activity above page sections and blur underlying content; verify open/close and tab layout.
+- [x] Logo label inside top-right of upload square. Body-level activity layer stays above page tabs with 5px backdrop blur; signed-in logo, topmost hit test, live properties, earnings tab and close cleanup verified. Nine focused tests passed; build OK and no runtime errors.
 
 ## Rita active-owner isolation October 30
 - [x] Bind greeting and assistant name/role/gender to the authorized owner; caller authorization remains separate. Scoped history excludes unknown legacy transcripts; ai-agent deployed.
