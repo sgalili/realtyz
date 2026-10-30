@@ -24,7 +24,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { RITA_WORKSPACE_OWNER_ID } from '@/config/workspaceMode';
 import { supabase } from '@/integrations/supabase/client';
-import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
+import { IsraeliCityPicker, normalizeCitySelection } from '@/components/IsraeliCityPicker';
 import { ConnectionsTab } from '@/components/profile/ConnectionsTab';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { WhatsAppConnectionModeCard } from '@/components/settings/WhatsAppConnectionModeCard';
@@ -43,12 +43,11 @@ import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { profileFieldChange, type ProfileContacts, type ProfileSaveField } from '@/lib/profileFieldSave';
+import { workspaceDetailPatch, type OfficeField } from '@/lib/workspaceDetailSave';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
 
-const WORKSPACE_STORAGE_KEY = 'realtyz-workspace-details';
-const LOGO_STORAGE_KEY = 'realtyz-agency-logo';
 const PROFILE_STORAGE_KEY = 'realtyz-profile-contacts';
 
 const profileStorageKey = (workspaceOwnerId: string) => `${PROFILE_STORAGE_KEY}:${workspaceOwnerId}`;
