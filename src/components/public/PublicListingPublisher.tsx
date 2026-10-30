@@ -767,7 +767,7 @@ export function PublicListingPublisher({ autoResume = false, disabled = false, r
   const renderStep = (step: number) => (
     <>
           {step === 0 && !importSlide && !whoSlide && (
-            <div className="mx-auto flex min-h-[55dvh] w-full max-w-lg flex-col justify-center space-y-2 text-center">
+            <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
               <p className="text-center text-[19px] font-semibold text-muted-foreground">סוג המודעה</p>
               <div className="grid grid-cols-2 gap-2">
                 {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (

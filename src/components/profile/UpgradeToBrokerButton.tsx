@@ -87,7 +87,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
 
   if (account?.verified && !publisher) return null;
   return <>
-    <section aria-label="שדרוג וסטטוס רישיון תיווך" className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3" dir="rtl">
+    {!publisher && <section aria-label="שדרוג וסטטוס רישיון תיווך" className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3" dir="rtl">
       {account?.license && <div className="flex flex-wrap items-center justify-between gap-2 text-base">
         <span>מספר רישיון תיווך: <b dir="ltr">{account.license}</b></span>
         <span role="status" className="text-sm text-muted-foreground">{pending ? 'בבדיקה' : account.rejected ? 'הרישיון נדחה — ניתן להגיש מחדש' : 'הרישיון הוזן — השדרוג טרם אושר'}</span>
@@ -95,13 +95,13 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
     <Button type="button" size="lg" className="w-full gap-2 text-base" onClick={() => setOpen(true)}>
       <BadgeCheck className="h-5 w-5" aria-hidden />שדרג למתווך מורשה
     </Button>
-    </section>
+    </section>}
     <Dialog open={open} onOpenChange={(o) => { if (busy) return; setOpen(o); if (!o && result) void queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] }); }}>
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-md overflow-y-auto text-right">
         <DialogHeader className="text-right">
           <DialogTitle className="text-right text-xl">שדרוג למתווך מורשה</DialogTitle>
           <DialogDescription className="text-right text-base leading-relaxed">
-            מתווך מורשה מקבל גישה לעמלות סגירה ולכלי התיווך. כך מקבלים רישיון:
+            {publisher ? 'אימות החשבון והרישיון נדרש לפני פרסום כמתווך.' : 'מתווך מורשה מקבל גישה לעמלות סגירה ולכלי התיווך. כך מקבלים רישיון:'}
           </DialogDescription>
         </DialogHeader>
         {!publisher && <ol className="list-decimal space-y-1 ps-5 text-base text-foreground">
