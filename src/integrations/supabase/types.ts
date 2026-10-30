@@ -688,6 +688,7 @@ export type Database = {
           payload: Json
           role: string
           user_id: string
+          workspace_owner_id: string | null
         }
         Insert: {
           content: string
@@ -696,6 +697,7 @@ export type Database = {
           payload?: Json
           role: string
           user_id: string
+          workspace_owner_id?: string | null
         }
         Update: {
           content?: string
@@ -704,6 +706,7 @@ export type Database = {
           payload?: Json
           role?: string
           user_id?: string
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }
