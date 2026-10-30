@@ -3,6 +3,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 afterEach(cleanup);
 describe('closing fee interaction', () => {
+  it('publisher rent starts at half of monthly rent and edits percentage as a fixed amount', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider publisherCard dualMode dealType="rent" price={12000} value={50} onChange={vi.fn()} onValueChange={change} />);
+    expect(screen.getByRole('slider').getAttribute('aria-valuenow')).toBe('6000');
+    fireEvent.click(screen.getByRole('button', { name: 'עריכת אחוז עמלת סגירה' }));
+    const input = screen.getByRole('textbox', { name: 'עריכת אחוז עמלת סגירה' });
+    fireEvent.change(input, { target: { value: '60' } });
+    fireEvent.blur(input);
+    expect(change).toHaveBeenCalledWith(7200, 'fixed');
+  });
+  it('an explicitly zero publisher commission stays zero without assigning the minimum', () => {
+    const change = vi.fn();
+    render(<ClosingFeeSlider publisherCard dualMode dealType="sale" price={2000000} value={0} onChange={change} />);
+    expect(screen.getByRole('button', { name: 'עריכת עמלת סגירה' }).textContent).toBe('₪0');
+    expect(change).not.toHaveBeenCalled();
+  });
   it('publisher sale slider has a true 0.2% minimum and 2% maximum without zero', () => {
     const change = vi.fn();
     render(<ClosingFeeSlider publisherCard dualMode dealType="sale" price={2000000} value={1} onChange={vi.fn()} onValueChange={change} />);
