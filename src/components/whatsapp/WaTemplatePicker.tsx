@@ -131,9 +131,8 @@ export const WaTemplatePicker = ({ value, onChange, campaignOnly = false, audien
       )}
 
       {selected && (
-        <div className="relative rounded-md border border-border bg-background p-3 pb-8 text-sm text-foreground whitespace-pre-wrap" aria-label="תוכן התבנית שתישלח">
+        <div className="rounded-md border border-border bg-background p-3 text-sm text-foreground whitespace-pre-wrap" aria-label="תוכן התבנית שתישלח">
           {preview}
-          <span className="absolute bottom-2 left-3 text-xs text-muted-foreground" dir="ltr">{preview.length}</span>
         </div>
       )}
     </div>
