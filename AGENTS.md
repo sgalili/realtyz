@@ -61,4 +61,4 @@
 - Public publisher projections share classification-aware names from source evidence or server user_roles for manual ads; unknown identities stay private. Board eligibility still requires positive price, configured rewards and a non-generic publisher, filtering without deletion. Why: consistent attribution without exposing private people.
 - Rent displays always use "₪X / לחודש" via src/lib/propertyPrice.ts helpers. Why: consistent monthly pricing.
 - Broker upgrades require SMS evidence, registry+certificate and pre-registry account-name match; else pending review. Listing triggers recheck SMS/license/roles; names lock server-side. Why: no circular approval or client bypass.
-- Super Admin in another workspace: useUserRole returns owner roles plus super_admin; servers check the real caller. Why: no broker leakage.
+- Workspace handoffs hide cache, discard stale requests and remount publishers; tenant UI uses owner roles. Servers validate callers. Why: no leaks.

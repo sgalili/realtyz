@@ -24,6 +24,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(publisher);
   const [license, setLicense] = useState('');
+  const [hasLicense, setHasLicense] = useState(publisher);
   const [busy, setBusy] = useState(false);
   const { user } = useAuth();
   const subjectId = profileOwnerId ?? user?.id;
@@ -50,7 +51,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
     };
   } });
   useEffect(() => {
-    if (!open) setLicense(account?.license ?? '');
+    if (!open) { setLicense(account?.license ?? ''); setHasLicense(publisher); setFile(null); setResult(null); }
   }, [account?.license, open]);
   const pending = account?.pending === true;
   const [file, setFile] = useState<File | null>(null);
@@ -109,14 +110,15 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
           <li>נרשמים למבחן הלאומי של רשם המתווכים ועוברים אותו.</li>
           <li>מקבלים רישיון ומזינים כאן את מספרו ואת צילום התעודה.</li>
         </ol>}
-        {!publisher && <div className="flex items-center justify-between gap-2">
-          <Button asChild variant="outline" className="flex-1"><a href={BROKER_COURSE_URL} target="_blank" rel="noopener noreferrer">לקורס</a></Button>
-          <Button asChild variant="outline" className="flex-1"><a href={BROKER_EXAM_REGISTRATION_URL} target="_blank" rel="noopener noreferrer">להרשמה למבחן הלאומי</a></Button>
+        {!publisher && <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button asChild variant="outline"><a href={BROKER_COURSE_URL} target="_blank" rel="noopener noreferrer">לקורס</a></Button>
+          <Button asChild variant="outline"><a href={BROKER_EXAM_REGISTRATION_URL} target="_blank" rel="noopener noreferrer">להרשמה למבחן הלאומי</a></Button>
+          <Button variant={hasLicense ? 'secondary' : 'outline'} aria-expanded={hasLicense} onClick={() => setHasLicense(true)}>יש לי רישיון</Button>
         </div>}
         {publisher && account?.verified ? <div className="space-y-3"><p>הרישיון מאומת. נדרש אימות SMS של החשבון לפני הפרסום.</p>{sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" onVerified={() => { void sms.refetch(); }} />}<Button disabled={sms.data !== true || busy} onClick={() => void continueVerified()}>המשך לפרסום</Button></div> : !isOwnProfile ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
           <p>מספר רישיון תיווך: <b dir="ltr">{account?.license}</b></p>
           <p>הבקשה בבדיקה. נעדכן אותך בהמשך.</p>
-        </div> : <div className="space-y-2 border-t border-border pt-3">
+        </div> : hasLicense && <div className="space-y-2 border-t border-border pt-3">
           <p className="text-base font-semibold">כבר קיבלת רישיון?</p>
           <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={() => {}} />
           {sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" description="נדרש אימות מספר הטלפון של החשבון לפני אימות הרישיון." onVerified={() => { void sms.refetch(); }} />}
@@ -130,7 +132,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
         {result ? <div role="status" className="space-y-1 rounded-md border border-success bg-success/10 p-3 text-base">
           <p className="font-semibold text-success">{result === 'approved' ? 'החשבון שודרג למתווך מורשה' : 'הבקשה התקבלה'}</p>
           {result === 'pending' && <p>נעדכן אותך כשהבדיקה תסתיים.</p>}
-        </div> : isOwnProfile && !pending && !(publisher && account?.verified) && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
+        </div> : hasLicense && isOwnProfile && !pending && !(publisher && account?.verified) && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
           {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}שדרוג החשבון
         </Button>}
       </DialogContent>

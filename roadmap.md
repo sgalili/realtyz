@@ -1,5 +1,12 @@
 # Roadmap
 
+## Workspace publisher isolation and explicit upgrade October 30
+- [x] Bind publisher identity to active owner, remount wizard state on scope change, block stale workspace refreshes and hide unvalidated cached context; profile hydration cancels stale reads.
+- [x] Remove automatic broker prompts and contact-step license fields from standard publication; no broker choice for unverified workspace owners.
+- [x] Add explicit “יש לי רישיון” upgrade entry; preserve SMS/certificate and identity authorization, with no submission on another owner's behalf.
+- [x] 17 focused tests passed; signed-in 411px standard publication shows no broker option/modal/license input. Profile upgrade shows the new option; current session views another owner's profile, so submission remains correctly blocked. Build OK.
+- [ ] Genuine self-account license verification requires an authorized account, received SMS and certificate; real multi-workspace contact readback requires a session with selectable workspace access. No role, phone or identity changed during checks.
+
 ## Publisher fees and verification October 30
 - [x] ILS-first closing/sale fee values and limits; center ad type and restrict inventory import choices.
 - [x] Remove colored field/dropdown focus borders globally while keeping neutral keyboard focus.

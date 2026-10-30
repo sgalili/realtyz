@@ -29,7 +29,11 @@ it('allows an unverified account without a license to open verification', async 
   mount();
   await waitFor(() => expect(state.reads.length).toBe(4));
   fireEvent.click(screen.getByRole('button', { name: 'שדרג למתווך מורשה' }));
+  expect(screen.queryByRole('textbox', { name: 'מספר רישיון חדש' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'יש לי רישיון' }));
   expect(screen.getByRole('textbox', { name: 'מספר רישיון חדש' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'שדרוג החשבון' })).toBeDisabled();
+  expect(state.submissions).toBe(0);
   expect(state.reads.every(id => id === 'signed-in-account')).toBe(true);
 });
 it('does not treat an entered license as verified status', async () => {
