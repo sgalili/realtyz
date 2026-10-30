@@ -109,7 +109,7 @@ export function FacebookPageSelector() {
 
   return (
     <div dir="rtl" className="mt-2 flex min-w-0 flex-col gap-1 text-sm" aria-label="עמוד הפייסבוק לפרסום">
-      {!cloudConnected && <Button type="button" variant="outline" onClick={addPage} className="h-10 w-full gap-2 sm:w-72"><Facebook className="h-4 w-4" />חיבור לפרופיל פייסבוק</Button>}
+      {!cloudConnected && <Button type="button" onClick={addPage} className="h-12 w-full gap-2 bg-social-facebook text-base font-semibold text-social-foreground hover:bg-social-facebook/90 sm:w-72"><Facebook className="!h-[30px] !w-[30px]" />התחברות לפייסבוק</Button>}
       {(cloudConnected || pages.length > 0) && <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" className="h-10 w-full justify-between gap-2 px-3 sm:w-72" aria-label="בחירת עמוד פייסבוק" disabled={saving}>

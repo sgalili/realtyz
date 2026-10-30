@@ -36,7 +36,7 @@ it('offers profile connection and never discovery without an active profile', as
   mocks.connected = false;
   mocks.call.mockResolvedValue({ bindings: [] });
   mount();
-  fireEvent.click(screen.getByRole('button', { name: 'חיבור לפרופיל פייסבוק' }));
+  fireEvent.click(screen.getByRole('button', { name: 'התחברות לפייסבוק' }));
   expect(mocks.open).toHaveBeenCalledTimes(1);
   await waitFor(() => expect(mocks.call).toHaveBeenCalled());
   expect(mocks.call.mock.calls.every(([input]) => input.action === 'bindings')).toBe(true);
