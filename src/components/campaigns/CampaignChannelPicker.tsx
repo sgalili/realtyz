@@ -30,16 +30,16 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
   const price = channel ? campaignServicePrice(channel.id, prices) : null;
   return (
     <section className="mx-auto w-full max-w-3xl space-y-6" dir="rtl">
-      <div className="flex items-center gap-3">
-        {channel && <Button type="button" variant="ghost" size="icon" onClick={onBack} aria-label="חזרה לבחירת ערוץ"><ArrowRight /></Button>}
-        <div className="min-w-0 flex-1">
-          <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-3">
+          {channel && <Button type="button" variant="ghost" size="icon" onClick={onBack} aria-label="חזרה לבחירת ערוץ" className="shrink-0"><ArrowRight /></Button>}
+          <h2 className="flex min-w-0 flex-1 items-center gap-2 text-xl font-bold text-foreground">
             {channel && <CampaignServiceIcon channel={channel.id} className="h-6 w-6 shrink-0" />}
             <span className="min-w-0">{channel ? `קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}</span>
             {channel && <span className="ms-auto shrink-0 text-center text-sm font-normal text-muted-foreground">{['facebook', 'instagram'].includes(channel.id) ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(SOCIAL_DRAFT_CREDITS)}</span><span className="block">לפוסט</span></> : price ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(price.credits)}</span><span className="block">ל{price.unit}</span></> : 'המחירון אינו זמין'}</span>}
           </h2>
-          {channel?.id === 'facebook' && cloudConnected && <FacebookPageSelector />}
         </div>
+        {channel?.id === 'facebook' && cloudConnected && <FacebookPageSelector />}
       </div>
       {!channel && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {DISTRIBUTION_CHANNELS.map((item) => {
