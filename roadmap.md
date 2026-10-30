@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Step 8 pricing refinement October 30
-- [ ] Empty focused price, five-digit reward visibility, exact lead titles, nonzero closing bounds and editable percentage/default.
-- [ ] Native board scrollbar and full-width collapsed rental/reward summary.
-- [ ] Focused tests and signed-in preview checks without publishing.
+- [x] Empty focused price, five-digit reward visibility, exact lead titles, nonzero closing bounds and editable percentage/default.
+- [x] Native board scrollbar and full-width collapsed rental/reward summary.
+- [x] 25 focused tests passed; signed-in empty/9999/2000000 price visibility, 0.2–2% bounds, 1% default and 1.5% manual readback verified. Mobile/desktop collapsed rental summary checked with four rewards; build OK. No listing published.
 
 ## Logo and activity layering October 30
 - [x] Logo label inside top-right of upload square. Body-level activity layer stays above page tabs with 5px backdrop blur; signed-in logo, topmost hit test, live properties, earnings tab and close cleanup verified. Nine focused tests passed; build OK and no runtime errors.
