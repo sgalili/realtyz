@@ -332,7 +332,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               </div>
             </div>
           )}
-          <div className={embedded ? '' : 'mt-3'}><BoardSearchControls query={query} onQueryChange={setQuery} onSearch={() => void load()} deals={deals} onDealToggle={toggleDeal} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} />} /></div>
+          <div className={embedded ? '' : 'mt-3'}><BoardSearchControls query={query} onQueryChange={setQuery} onSearch={() => void load()} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} />} /></div>
         </div>
       </header>
 
