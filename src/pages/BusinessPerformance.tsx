@@ -45,6 +45,7 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import { CommissionEditor } from '@/components/dealroom/CommissionEditor';
+import { LeadTypeConversionCard } from '@/components/dashboard/LeadTypeConversionCard';
 
 type Window = '30' | '90' | '365';
 
@@ -192,6 +193,8 @@ export default function BusinessPerformance() {
           </TabsList>
         </Tabs>
       </div>
+
+      <LeadTypeConversionCard days={Number(windowDays)} />
 
       {/* KPI Tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
