@@ -55,9 +55,10 @@ const Auth = () => {
       const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: `+${mobile.data}`, code } });
       if (error || data?.error) throw new Error(data?.error ?? 'קוד האימות אינו תקין');
       // The server verifies OTP; there are no client master-code or alternate-provider paths.
-      const result = data?.session ? await supabase.auth.setSession(data.session)
-        : data?.token_hash ? await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' })
+      let result: { error: unknown } = data?.session ? await supabase.auth.setSession(data.session)
+        : data?.token_hash ? await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' })
         : { error: new Error('הכניסה נכשלה. נסו שוב.') };
+      if (result.error && data?.token_hash) result = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
       if (result.error) throw result.error;
       navigate('/', { replace: true });
     } catch (error) {
@@ -74,7 +75,7 @@ const Auth = () => {
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
           <InputOTP maxLength={4} value={otp} onChange={value => { setOtp(value); if (value.length === 4) void verify(value); }} containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
-            <InputOTPGroup className="flex-row-reverse gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-none focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
+            <InputOTPGroup className="gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-none focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
           </InputOTP>
           <Button type="button" className="w-full" disabled={loading || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
           <Button type="button" variant="link" disabled={loading || resendSeconds > 0} onClick={() => void sendCode()}>{resendSeconds > 0 ? `שליחה חוזרת בעוד ${resendSeconds}` : 'שלחו לי קוד שוב'}</Button>
