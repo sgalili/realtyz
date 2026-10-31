@@ -82,7 +82,7 @@ export default function PropertyContactActions({
   const ref = propertyInquiryRef();
   // Fire-and-forget: counts which lead type visitors pick; never blocks the inquiry.
   const trackClick = (leadType: 'form' | 'whatsapp' | 'phone') => {
-    void supabase.rpc('record_lead_type_click', { _listing_id: listingId, _lead_type: leadType }).then(() => undefined, () => undefined);
+    try { void Promise.resolve(supabase.rpc('record_lead_type_click', { _listing_id: listingId, _lead_type: leadType })).catch(() => undefined); } catch { /* tracking must never block the inquiry */ }
   };
 
   // Canonical opener built from the property row itself, so Rita can parse the
