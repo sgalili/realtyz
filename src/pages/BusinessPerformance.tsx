@@ -46,6 +46,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CommissionEditor } from '@/components/dealroom/CommissionEditor';
 import { LeadTypeConversionCard } from '@/components/dashboard/LeadTypeConversionCard';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 type Window = '30' | '90' | '365';
 
@@ -106,6 +107,7 @@ function formatHours(h: number): string {
 
 export default function BusinessPerformance() {
   const [windowDays, setWindowDays] = useState<Window>('90');
+  const { activeWorkspaceId } = useWorkspace();
   const [editingLead, setEditingLead] = useState<{
     id: string;
     full_name: string | null;
@@ -114,16 +116,16 @@ export default function BusinessPerformance() {
   } | null>(null);
 
   const { data: perf, isLoading: perfLoading, error: perfError } = useQuery({
-    queryKey: ['business-performance', windowDays],
+    queryKey: ['business-performance', activeWorkspaceId, windowDays],
+    enabled: !!activeWorkspaceId,
     queryFn: async (): Promise<PerfPayload | null> => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u?.user) return null;
+      if (!activeWorkspaceId) return null;
       const { data, error } = await (supabase.rpc as unknown as (
         fn: string,
         args: Record<string, unknown>,
       ) => Promise<{ data: PerfPayload | null; error: { message: string } | null }>)(
         'get_business_performance',
-        { user_uuid: u.user.id, days_window: Number(windowDays) },
+        { user_uuid: activeWorkspaceId, days_window: Number(windowDays) },
       );
       if (error) throw new Error(error.message);
       return data;
@@ -131,7 +133,8 @@ export default function BusinessPerformance() {
   });
 
   const { data: leadsForCommission, isLoading: leadsLoading } = useQuery({
-    queryKey: ['business-leads', windowDays],
+    queryKey: ['business-leads', activeWorkspaceId, windowDays],
+    enabled: !!activeWorkspaceId,
     queryFn: async () => {
       const sinceDate = new Date();
       sinceDate.setDate(sinceDate.getDate() - Number(windowDays));
@@ -139,6 +142,7 @@ export default function BusinessPerformance() {
         .from('leads')
         .select('id, full_name, lead_stage, interaction_outcome, commission_amount, expected_close_date, last_interaction_at')
         .eq('is_demo', false)
+        .eq('workspace_owner_id', activeWorkspaceId!)
         .gte('created_at', sinceDate.toISOString())
         .order('priority_score', { ascending: false, nullsFirst: false })
         .limit(200);
