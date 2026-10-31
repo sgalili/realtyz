@@ -80,6 +80,10 @@ export default function PropertyContactActions({
   const [joinOpen, setJoinOpen] = useState(false);
   const [challenge, setChallenge] = useState<InquiryChallenge | null>(null);
   const ref = propertyInquiryRef();
+  // Fire-and-forget: counts which lead type visitors pick; never blocks the inquiry.
+  const trackClick = (leadType: 'form' | 'whatsapp' | 'phone') => {
+    void supabase.rpc('record_lead_type_click', { _listing_id: listingId, _lead_type: leadType }).then(() => undefined, () => undefined);
+  };
 
   // Canonical opener built from the property row itself, so Rita can parse the
   // exact property (type, street + house number, city) with zero questions.
@@ -168,9 +172,9 @@ export default function PropertyContactActions({
     <>
       <div data-property-contact-row onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} style={style} className={cn(shareOnly ? 'inline-flex shrink-0' : 'flex w-full flex-wrap items-center gap-1.5', !compact && !shareOnly && 'sticky bottom-0 right-0 z-10 rounded-md bg-card pb-3 pt-2', className)}>
         {!shareOnly && <div data-inquiry-actions className="mt-1 flex w-full min-w-0 items-center gap-1.5">
-          {showDigital && <Button variant="inquiryForm" className="property-inquiry-action" onClick={() => { setMode('digital'); setInquiryStarted(true); }}><ClipboardList /><span>השארת פרטים</span></Button>}
-          {showWhatsapp && <Button variant="inquiryWhatsapp" className="property-inquiry-action" onClick={openRita}><WhatsAppIcon /><span>ווטסאפ</span></Button>}
-          {showPhone && <Button variant="inquiryPhone" className="property-inquiry-action" onClick={() => { setMode('phone'); setInquiryStarted(true); }}><Phone /><span>שיחת טלפון</span></Button>}
+          {showDigital && <Button variant="inquiryForm" className="property-inquiry-action" onClick={() => { trackClick('form'); setMode('digital'); setInquiryStarted(true); }}><ClipboardList /><span>השארת פרטים</span></Button>}
+          {showWhatsapp && <Button variant="inquiryWhatsapp" className="property-inquiry-action" onClick={() => { trackClick('whatsapp'); openRita(); }}><WhatsAppIcon /><span>ווטסאפ</span></Button>}
+          {showPhone && <Button variant="inquiryPhone" className="property-inquiry-action" onClick={() => { trackClick('phone'); setMode('phone'); setInquiryStarted(true); }}><Phone /><span>שיחת טלפון</span></Button>}
         </div>}
         {showShare && !user && (
           <Button variant="outline" size={compact ? 'icon' : 'default'} className={cn(shareButtonClassName || (compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'), !shareOnly && 'order-5 sm:order-none')} aria-label="שיתוף נכס" title="שיתוף נכס" onClick={() => setJoinOpen(true)}>
