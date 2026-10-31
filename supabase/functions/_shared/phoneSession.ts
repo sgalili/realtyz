@@ -30,16 +30,21 @@ export async function verifiedPhoneSession(admin: any, client: any, phone: strin
     }
   }
   void client;
+  // Every account update happens BEFORE the sign-in link is issued: updating
+  // the user afterwards can invalidate the freshly issued token hash, which
+  // made a correct SMS code fail at the final sign-in step.
+  if (provider === 'sms_019') {
+    if (!userId) throw new Error('Verified account missing');
+    const alreadyConfirmed = String(target?.phone ?? '').replace(/\D/g, '') === phone && !!target?.phone_confirmed_at;
+    if (!alreadyConfirmed) {
+      const { error: phoneError } = await admin.auth.admin.updateUserById(userId, { phone: `+${phone}`, phone_confirm: true });
+      if (phoneError) throw phoneError;
+    }
+    const { error: evidenceError } = await admin.from('broker_sms_verifications').upsert({ user_id: userId, phone_number: phone, verified_at: new Date().toISOString() });
+    if (evidenceError) throw evidenceError;
+  }
   const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
   if (error) throw error;
   if (!data.properties?.hashed_token) throw new Error('Phone session could not be created');
-  if (provider === 'sms_019') {
-    const verifiedUserId = userId ?? data.user?.id;
-    if (!verifiedUserId) throw new Error('Verified account missing');
-    const { error: phoneError } = await admin.auth.admin.updateUserById(verifiedUserId, { phone: `+${phone}`, phone_confirm: true });
-    if (phoneError) throw phoneError;
-    const { error: evidenceError } = await admin.from('broker_sms_verifications').upsert({ user_id: verifiedUserId, phone_number: phone, verified_at: new Date().toISOString() });
-    if (evidenceError) throw evidenceError;
-  }
-  return { token_hash: data.properties.hashed_token };
+  return { token_hash: data.properties.hashed_token, verification_type: 'magiclink' };
 }
