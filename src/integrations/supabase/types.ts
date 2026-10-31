@@ -4658,6 +4658,30 @@ export type Database = {
           },
         ]
       }
+      lead_type_clicks: {
+        Row: {
+          created_at: string
+          id: string
+          lead_type: string
+          listing_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_type: string
+          listing_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_type?: string
+          listing_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           address: string | null
@@ -9297,6 +9321,15 @@ export type Database = {
         Args: { _city?: string; _deal_type: string }
         Returns: Json
       }
+      get_lead_type_conversion: {
+        Args: { _days?: number; _owner: string }
+        Returns: {
+          clicks: number
+          closed: number
+          lead_type: string
+          leads: number
+        }[]
+      }
       get_listing_publishers: {
         Args: { _listing_ids: string[] }
         Returns: {
@@ -9672,6 +9705,10 @@ export type Database = {
           _sender_type: string
         }
         Returns: string
+      }
+      record_lead_type_click: {
+        Args: { _lead_type: string; _listing_id: string }
+        Returns: undefined
       }
       record_property_referral_inquiry: {
         Args: { _code: string; _lead_id: string; _listing_id: string }

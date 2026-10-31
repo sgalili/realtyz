@@ -771,6 +771,13 @@
       "when": 1793338594803,
       "tag": "0109_scope_rita_history_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1793426667953,
+      "tag": "0110_lead_type_click_tracking",
+      "breakpoints": true
     }
   ]
 }
