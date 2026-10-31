@@ -46,6 +46,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CommissionEditor } from '@/components/dealroom/CommissionEditor';
 import { LeadTypeConversionCard } from '@/components/dashboard/LeadTypeConversionCard';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 type Window = '30' | '90' | '365';
 
