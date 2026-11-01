@@ -9,6 +9,8 @@ import { MissingCityAlert } from './MissingCityAlert';
  * The trigger reads "בחירת ערים" until the visitor picks cities, then lists the
  * cities that actually have shared-pool properties. Its very last row is the
  * missing-city opt-in: the WhatsApp form only appears once that row is clicked.
+ * The trigger and the open list are siblings so the surrounding filter grid
+ * keeps its two-column layout while the list spans the full width.
  */
 export function CityFilterSelect({
   cities,
@@ -23,7 +25,8 @@ export function CityFilterSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [missingOpen, setMissingOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
@@ -31,7 +34,9 @@ export function CityFilterSelect({
       return;
     }
     const onPointerDown = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || listRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
@@ -46,24 +51,27 @@ export function CityFilterSelect({
   const label = nationwide ? 'בחירת ערים' : selected.join(', ');
 
   return (
-    <div ref={root} className="col-span-2 min-w-0 space-y-1">
-      <button
-        type="button"
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label="אזור"
-        onClick={() => setOpen((value) => !value)}
-        className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-[16px] shadow-sm transition-colors hover:bg-muted/50"
-      >
-        <span className={`truncate ${nationwide ? 'text-muted-foreground' : ''}`}>{label}</span>
-        <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
-      </button>
+    <>
+      <div ref={triggerRef} className="min-w-0 space-y-1">
+        <button
+          type="button"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label="אזור"
+          onClick={() => setOpen((value) => !value)}
+          className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-[16px] shadow-sm transition-colors hover:bg-muted/50"
+        >
+          <span className={`truncate ${nationwide ? 'text-muted-foreground' : ''}`}>{label}</span>
+          <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
       {open ? (
         <div
+          ref={listRef}
           role="listbox"
           aria-label="בחירת ערים"
-          className="max-h-56 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-top-1 motion-reduce:animate-none"
+          className="col-span-2 max-h-56 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-top-1 motion-reduce:animate-none"
         >
           <button
             type="button"
@@ -104,7 +112,7 @@ export function CityFilterSelect({
           {missingOpen ? <MissingCityAlert preferences={preferences} /> : null}
         </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
