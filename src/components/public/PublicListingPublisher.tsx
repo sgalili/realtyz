@@ -357,7 +357,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
     if (!user?.id || publishing || entryPending || !activeWorkspaceId) return;
-    if (requireOwnerDeclaration && !draftFields.ownerDeclarationAccepted) return;
+    if (requireOwnerDeclaration && draftFields.publisherType !== 'developer' && !draftFields.ownerDeclarationAccepted) return;
     if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || !(Number(draftFields.commissionDeal) > 0)) {
       return;
     }
@@ -611,7 +611,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       setPublishing(false);
       return;
     }
-    if (requireOwnerDeclaration && !fields.ownerDeclarationAccepted) { toast.error('יש לאשר את הצהרת הבעלות והרשאת הפרסום'); return; }
+    if (roleNeedsOwnerDeclaration && !fields.ownerDeclarationAccepted) { toast.error('יש לאשר את הצהרת הבעלות והרשאת הפרסום'); return; }
     const missing = missingAdFields(fields);
     if (missing.length) { toast.error(`יש להשלים: ${missing.join(' · ')}`); return; }
     if (!fields.city.trim() || !(fields.street.trim() || fields.address.trim()) || !fields.propertyType.trim() || !fields.price) {
@@ -773,7 +773,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   // The publish button stays disabled until every mandatory detail is complete.
   const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || importedVideoUrls(fields.importedListing).length > 0 || files.length > 0 || videos.length > 0;
-  const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia, requireOwnerDeclaration), [fields, hasMedia, requireOwnerDeclaration]);
+  const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia, roleNeedsOwnerDeclaration), [fields, hasMedia, roleNeedsOwnerDeclaration]);
   const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker);
 
   const renderStep = (step: number) => (
