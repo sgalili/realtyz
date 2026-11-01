@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commissionEditScope } from './PropertyCommissionIcons';
+import { commissionEditScope, rewardColorLevels } from './PropertyCommissionIcons';
 
 const row = (user_id: string, workspace_owner_id: string) => ({ user_id, workspace_owner_id });
 
