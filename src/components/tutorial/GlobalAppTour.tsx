@@ -16,6 +16,7 @@ import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { APP_TOUR_EVENT, buildWalkthrough, useWalkthrough, walkthroughStore } from '@/lib/appWalkthrough';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
 import { shouldShowWelcome } from '@/lib/welcomePreference';
+import { openFaq } from '@/components/faq/FaqDialog';
 
 export function GlobalAppTour() {
   const [showWelcome, setShowWelcome] = useState(false);
