@@ -54,6 +54,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkspaceOwnerRoles } from '@/hooks/useWorkspaceFeatures';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
+import { BrokerCertificateCheck } from '@/components/auth/BrokerCertificateCheck';
 import { brokerLicenseDigits, brokerLicenseSchema, verifyBrokerLicense } from '@/lib/brokerLicense';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
@@ -200,6 +201,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [importSlide, setImportSlide] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
   const authThenConfirm = useRef(false);
+  const awaitingCertificate = useRef(false);
+  const [guestStage, setGuestStage] = useState<'otp' | 'certificate'>('otp');
+  const [guestLicense, setGuestLicense] = useState('');
   const pendingAuthPublish = useRef<{ fields: PublicListingDraftFields; files: File[]; videos: File[] } | null>(null);
   // Which sub-option of the minimalist create-ad screen is expanded.
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
@@ -246,7 +250,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   // First-time visitors verify their phone inside the wizard; the account is created and the ad published in one flow.
   useEffect(() => {
     const pending = pendingAuthPublish.current;
-    if (!user?.id || !activeWorkspaceId || workspaceLoading || !pending || draftScope === 'visitor') return;
+    if (!user?.id || !activeWorkspaceId || workspaceLoading || !pending || draftScope === 'visitor' || awaitingCertificate.current) return;
     pendingAuthPublish.current = null;
     restoredScope.current = draftScope;
     setFields(pending.fields); setFiles(pending.files); setVideos(pending.videos);
@@ -672,17 +676,12 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     }
     if (!confirming) {
       if (publisherMarketingDecision(marketingAccepted, marketingReviewed) === 'explain') { setMarketingInfoOpen(true); return; }
-      if (!user) {
-        // Guests register by SMS code right after the 8 steps, before approving and publishing.
-        try { await saveDraft(); } catch { /* the in-memory copy below is enough */ }
-        pendingAuthPublish.current = { fields: { ...fields, marketingAccepted }, files, videos }; authThenConfirm.current = true; setOtpOpen(true); return;
-      }
       setConfirming(true); return;
     }
     if (user) publicationAudio.current = preparePublicationSound();
     try {
       await saveDraft();
-      if (!user) { pendingAuthPublish.current = { fields, files, videos }; setOtpOpen(true); return; }
+      if (!user) { pendingAuthPublish.current = { fields: { ...fields, marketingAccepted }, files, videos }; authThenConfirm.current = false; setGuestStage('otp'); setGuestLicense(fields.brokerLicense ?? ''); setOtpOpen(true); return; }
       await publish();
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'שגיאת אחסון בדפדפן';
@@ -792,7 +791,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       case 4: return Boolean(f.rooms);
       case 5: return Boolean(f.sqm || f.builtSqm);
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
-      case 7: return Boolean(f.contactName?.trim().split(/\s+/).length >= 2 && f.contactWhatsapp.replace(/\D/g, '').length >= 9 && (f.publisherType !== 'broker' || isBroker || brokerLicenseSchema.safeParse(f.brokerLicense ?? '').success));
+      case 7: return Boolean(f.contactName?.trim().split(/\s+/).length >= 2 && f.contactWhatsapp.replace(/\D/g, '').length >= 9 && (f.publisherType !== 'broker' || isBroker || !user || brokerLicenseSchema.safeParse(f.brokerLicense ?? '').success));
       case 8: return pricingCardComplete(f);
       default: return false;
     }
@@ -801,7 +800,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   // The publish button stays disabled until every mandatory detail is complete.
   const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || importedVideoUrls(fields.importedListing).length > 0 || files.length > 0 || videos.length > 0;
   const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia, roleNeedsOwnerDeclaration), [fields, hasMedia, roleNeedsOwnerDeclaration]);
-  const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker || brokerLicenseSchema.safeParse(fields.brokerLicense ?? '').success);
+  const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker || !user || brokerLicenseSchema.safeParse(fields.brokerLicense ?? '').success);
 
   const renderStep = (step: number) => (
     <>
@@ -977,7 +976,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             <div className="space-y-3">
                <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" readOnly={fields.publisherType === 'broker' && isBroker} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
                 <div><Input aria-label="מספר ווטסאפ *" placeholder="* מספר ווטסאפ" id="publisher-whatsapp" inputMode="tel" dir="ltr" className="text-right placeholder:[direction:rtl]" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
-                {fields.publisherType === 'broker' && !isBroker && <div className="space-y-1"><Input aria-label="מספר רישיון תיווך *" placeholder="* מספר רישיון תיווך" id="publisher-broker-license" inputMode="numeric" dir="ltr" className="text-right placeholder:[direction:rtl]" value={fields.brokerLicense ?? ''} onChange={(e) => set('brokerLicense', brokerLicenseDigits(e.target.value))} /><p className="text-[13px] text-muted-foreground">הרישיון ייבדק מול פנקס המתווכים הרשמי יחד עם אימות ה-SMS.</p></div>}
+                {fields.publisherType === 'broker' && !isBroker && !!user && <div className="space-y-1"><Input aria-label="מספר רישיון תיווך *" placeholder="* מספר רישיון תיווך" id="publisher-broker-license" inputMode="numeric" dir="ltr" className="text-right placeholder:[direction:rtl]" value={fields.brokerLicense ?? ''} onChange={(e) => set('brokerLicense', brokerLicenseDigits(e.target.value))} /><p className="text-[13px] text-muted-foreground">הרישיון ייבדק מול פנקס המתווכים הרשמי יחד עם אימות ה-SMS.</p></div>}
                 <div><Input aria-label="אימייל" placeholder="אימייל" id="publisher-email" type="email" dir="ltr" className="text-right placeholder:text-right placeholder:[direction:rtl]" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
             </div>
           )}
@@ -1070,19 +1069,29 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   return (
     <>
     {!resumeDraft && <Button disabled={disabled || entryPending} onClick={openNewPublication} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
-    <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { pendingAuthPublish.current = null; authThenConfirm.current = false; } setOtpOpen(value); }}>
+    <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { if (guestStage === 'certificate') return; pendingAuthPublish.current = null; authThenConfirm.current = false; awaitingCertificate.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
-        <DialogHeader><DialogTitle className="text-right">אימות מספר הטלפון</DialogTitle></DialogHeader>
-        <WhatsAppOtpVerify smsOnly title="אימות ב-SMS" onEmailFallback={() => { setOtpOpen(false); pendingAuthPublish.current = null; authThenConfirm.current = false; setOpen(false); navigate('/auth', { state: { tab: 'signup', returnTo: window.location.pathname } }); }} defaultPhone={fields.contactWhatsapp} description="נשלח אליך קוד בן 4 ספרות ב-SMS. לאחר האימות החשבון ייפתח ותוכל/י לאשר ולפרסם את המודעה." onVerified={async (result) => {
+        <DialogHeader><DialogTitle className="text-right">{guestStage === 'certificate' ? 'צילום רישיון התיווך' : 'אימות ופרסום המודעה'}</DialogTitle></DialogHeader>
+        {guestStage === 'certificate' ? <BrokerCertificateCheck onResult={(result) => {
+          const pending = pendingAuthPublish.current;
+          if (!result?.matched || !pending || !awaitingCertificate.current) return;
+          if (result.licenseNumber && result.licenseNumber.replace(/^0+/, '') !== (pending.fields.brokerLicense ?? '').replace(/^0+/, '')) return;
+          awaitingCertificate.current = false; setGuestStage('otp'); setOtpOpen(false);
+          // Re-trigger the post-auth publication effect now that the certificate matched.
+          void (async () => { pendingAuthPublish.current = null; setFields(pending.fields); setFiles(pending.files); setVideos(pending.videos); publicationAudio.current = preparePublicationSound(); await publish(pending.fields, pending.files, pending.videos); })();
+        }} /> : <>
+        {fields.publisherType === 'broker' && !isBroker && <Input aria-label="מספר רישיון תיווך *" placeholder="* מספר רישיון תיווך" inputMode="numeric" dir="ltr" className="text-right placeholder:[direction:rtl]" value={guestLicense} onChange={(e) => setGuestLicense(brokerLicenseDigits(e.target.value))} />}
+        {(fields.publisherType !== 'broker' || isBroker || brokerLicenseSchema.safeParse(guestLicense).success) && <WhatsAppOtpVerify smsOnly title="אימות ב-SMS" onEmailFallback={() => { setOtpOpen(false); pendingAuthPublish.current = null; authThenConfirm.current = false; setOpen(false); navigate('/auth', { state: { tab: 'signup', returnTo: window.location.pathname } }); }} defaultPhone={fields.contactWhatsapp} description="נשלח אליך קוד בן 4 ספרות ב-SMS. לאחר האימות החשבון ייפתח והמודעה תפורסם מיד." onVerified={async (result) => {
+          const brokerFlow = fields.publisherType === 'broker' && !isBroker;
+          if (brokerFlow && pendingAuthPublish.current) { pendingAuthPublish.current = { ...pendingAuthPublish.current, fields: { ...pendingAuthPublish.current.fields, brokerLicense: guestLicense } }; awaitingCertificate.current = true; }
           const { error } = result.session ? await supabase.auth.setSession(result.session) : result.token_hash ? (await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'magiclink' }).then(r => r.error ? supabase.auth.verifyOtp({ token_hash: result.token_hash!, type: 'email' }) : r)) : { error: new Error('missing session') };
-          if (error) { pendingAuthPublish.current = null; toast.error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); return; }
-          setOtpOpen(false);
-          // Broker license verification runs together with the SMS code, against the official registry.
-          if (fields.publisherType === 'broker' && fields.brokerLicense) {
-            try { await verifyBrokerLicense(fields.brokerLicense, 'verify'); await refetchRoles(); toast.success('רישיון התיווך אומת'); }
-            catch (e) { toast.error(e instanceof Error ? e.message : 'אימות הרישיון נכשל'); }
-          }
-        }} />
+          if (error) { pendingAuthPublish.current = null; awaitingCertificate.current = false; toast.error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); return; }
+          if (!brokerFlow) { setOtpOpen(false); return; }
+          // Broker license is checked against the official registry, then a matching certificate photo is mandatory.
+          try { await verifyBrokerLicense(guestLicense, 'verify'); await refetchRoles(); setGuestStage('certificate'); }
+          catch (e) { awaitingCertificate.current = false; pendingAuthPublish.current = null; setOtpOpen(false); toast.error(e instanceof Error ? e.message : 'אימות הרישיון נכשל'); }
+        }} />}
+        </>}
       </DialogContent>
     </Dialog>
     <Dialog open={open && !entryPending} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); if (value && !pricingOnly && !resumeDraft) { openNewPublication(); return; } setOpen(value); }}>
