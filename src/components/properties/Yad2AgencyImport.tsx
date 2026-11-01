@@ -38,7 +38,7 @@ async function applyRule(listingId: string, workspaceId: string, rule: ImportCom
 }
 
 
-const PENDING_KEY = 'toraff-pending-agency-import';
+import { savePendingYad2Import, readPendingYad2Import, clearPendingYad2Import } from '@/lib/pendingYad2Import';
 
 export default function Yad2AgencyImport({ publisherType = 'broker' }: { publisherType?: string }) {
 
@@ -46,7 +46,8 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
   const { activeWorkspaceId } = useWorkspace();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [url, setUrl] = useState(() => { try { return sessionStorage.getItem(PENDING_KEY) ?? ''; } catch { return ''; } });
+  const [url, setUrl] = useState(() => { const p = readPendingYad2Import(); return p?.kind === 'agency' ? p.url : ''; });
+  const autoStarted = useRef(false);
   const [phase, setPhase] = useState<'idle' | 'discovering' | 'importing' | 'done'>('idle');
   const [progress, setProgress] = useState<ImportProgress>({ total: 0, done: 0, failed: 0, running: 0 });
   const [imported, setImported] = useState<string[]>([]);
@@ -63,17 +64,26 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
     queryKey: ['verified-roles-import', user?.id], enabled: !!user?.id,
     queryFn: async () => { const { data } = await supabase.rpc('get_verified_user_roles'); return (data ?? []) as string[]; },
   });
+  // Resume an import a guest started before signing in.
+  useEffect(() => {
+    if (autoStarted.current || !user || !activeWorkspaceId || phase !== 'idle') return;
+    const p = readPendingYad2Import();
+    if (p?.kind !== 'agency' || !p.url) return;
+    autoStarted.current = true; setUrl(p.url);
+    void start(p.url);
+  });
+
   if (user && !activeWorkspaceId) return null;
   const unverifiedBroker = publisherType === 'broker' && !roles.some(r => BROKER_ROLES.includes(r));
 
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] }); void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] }); };
 
-  const start = async () => {
-    if (!user || !activeWorkspaceId) { try { sessionStorage.setItem(PENDING_KEY, url.trim()); } catch { /* ignore */ } navigate('/auth'); return; }
-    try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
+  const start = async (value: string = url) => {
+    if (!user || !activeWorkspaceId) { savePendingYad2Import({ kind: 'agency', url: value.trim(), publisherType }); navigate('/auth', { state: { returnTo: window.location.pathname } }); return; }
+    clearPendingYad2Import();
     const run = ++scope.current, ws = activeWorkspaceId, activeRule = rule;
     setPhase('discovering'); setImported([]);
-    const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(url) } });
+    const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(value) } });
     if (run !== scope.current) return;
     if (error || !data?.ok) { toast.error(await errorText(error) || 'לא נמצאו מודעות'); setPhase('idle'); return; }
     const items: string[] = data.items ?? [];

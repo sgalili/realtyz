@@ -56,6 +56,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { brokerLicenseDigits, brokerLicenseSchema, verifyBrokerLicense } from '@/lib/brokerLicense';
 import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
+import { savePendingYad2Import, readPendingYad2Import, clearPendingYad2Import } from '@/lib/pendingYad2Import';
 import { isYad2ItemUrl } from '@/lib/yad2ImportLinks';
 
 
@@ -275,9 +276,24 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     if (knownPublisherRole) { setRolePicked(true); setImportSlide(true); }
     setOpen(true);
   };
+  // After sign-in, reopen the import screen and continue a guest's pending Yad2 import.
+  const resumedImport = useRef(false);
+  const importYad2Ref = useRef<(value?: string) => Promise<void>>();
+  useEffect(() => {
+    if (resumedImport.current || !user?.id || !activeWorkspaceId || workspaceLoading) return;
+    const pending = readPendingYad2Import();
+    if (!pending) return;
+    resumedImport.current = true;
+    resetEntryNavigation();
+    const type = (knownPublisherRole || pending.publisherType || 'broker') as PublicListingDraftFields['publisherType'];
+    setFields(current => ({ ...current, publisherType: type, ownerDeclarationAccepted: false }));
+    setRolePicked(true); setImportSlide(true); setOpen(true);
+    if (pending.kind === 'single') { setImportUrl(pending.url); window.setTimeout(() => void importYad2Ref.current?.(pending.url), 0); }
+  }, [user?.id, activeWorkspaceId, workspaceLoading]);
   // Restore scoped draft content, never its navigation, on a free-ad opening.
   useEffect(() => {
     if (!open || resumeDraft || restoredScope.current === draftScope) return;
+    if (resumedImport.current) { restoredScope.current = draftScope; return; }
     let cancelled = false;
     void (async () => {
       // Restore ONLY the draft of this exact user+workspace scope — never a
@@ -704,9 +720,11 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     }
   };
 
+  importYad2Ref.current = (value?: string) => importYad2(value);
   const importYad2 = async (value = importUrl) => {
     if (importInFlight.current) return;
-    if (!user) { navigate('/auth'); return; }
+    if (!user) { savePendingYad2Import({ kind: 'single', url: value.trim(), publisherType: fields.publisherType }); navigate('/auth', { state: { returnTo: window.location.pathname } }); return; }
+    clearPendingYad2Import();
     let url: URL;
     // Accept any Yad2 link: standard ads, regional paths, short (/s/...) and share links, any subdomain.
     const raw = value.trim().match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S*/i)?.[0] ?? value.trim();
