@@ -56,6 +56,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { brokerLicenseDigits, brokerLicenseSchema, verifyBrokerLicense } from '@/lib/brokerLicense';
 import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
+// A single Yad2 ad link: an item page or one of the short share forms the importer resolves.
+const YAD2_ITEM_URL_PATTERN = /^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:(?:realestate\/)?item\/\S+|s\/\S+|share\/\S+)/i;
+
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import {
   EMPTY_PUBLIC_LISTING_DRAFT,
