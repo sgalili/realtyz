@@ -143,7 +143,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     return () => { window.removeEventListener(BOARD_SEARCH_OPEN_EVENT, openSearch); window.removeEventListener(BOARD_VIEW_TOGGLE_EVENT, toggle); };
   }, []);
   useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_VIEW_STATE_EVENT, { detail: { grid } })); }, [grid]);
-  useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_SEARCH_STATE_EVENT, { detail: { open: searchOpen, count: appliedFilterCount } })); }, [searchOpen, appliedFilterCount]);
   // Favorite listings of the signed-in user. The card heart, the table heart and
   // the "ניהול המודעה שלי" menu all read this one cached list.
   const { favoriteIds: favIds, toggleFavorite: saveFavorite } = useListingFavorites();
@@ -171,6 +170,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const appliedFilterCount = leadFilterActiveCount(leadFilter) + propertyFilterActiveCount(propFilter);
   const resetFilters = () => { setLeadFilter(EMPTY_LEAD_FILTER); setPropFilter(EMPTY_PROPERTY_FILTER); setQuery(''); };
+  useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_SEARCH_STATE_EVENT, { detail: { open: searchOpen, count: appliedFilterCount } })); }, [searchOpen, appliedFilterCount]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
 
