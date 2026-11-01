@@ -66,7 +66,7 @@ describe('role-based advanced filter fields', () => {
     const deal = screen.getByRole('group', { name: 'סוג עסקה' });
     expect(deal).toBeInTheDocument();
     // The deal toggle sits at the very top of the dialog, above the rewards section.
-    expect(deal.compareDocumentPosition(screen.getByText('תגמולים לפי סוג פנייה')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(deal.compareDocumentPosition(screen.getByText('תגמולים לפי סוג פנייה:')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'אזור' })).toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: 'שכונה' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'מחיר מינימום' })).not.toBeInTheDocument();
