@@ -260,12 +260,10 @@ export function matchesPropertyFilter(row: Record<string, unknown>, state: Prope
   return true;
 }
 
-/** Nationwide replaces city selections and blocks additions until explicitly cleared. */
+/** Nationwide clears city selections; picking a city leaves nationwide. */
 export function selectFilterCity(state: PropertyFilterState, value: string): PropertyFilterState {
   if (value === 'all') return { ...state, city: 'all', selectedCities: [], neighborhood: 'all' };
-  if (value === 'choose') return { ...state, city: '', selectedCities: [], neighborhood: 'all' };
-  if (state.city === 'all') return state;
-  const current = state.selectedCities ?? (state.city ? [state.city] : []);
+  const current = state.selectedCities ?? (state.city && state.city !== 'all' ? [state.city] : []);
   const selectedCities = current.includes(value) ? current.filter(city => city !== value) : [...current, value];
-  return { ...state, city: selectedCities[0] ?? '', selectedCities, neighborhood: 'all' };
+  return { ...state, city: selectedCities[0] ?? 'all', selectedCities, neighborhood: 'all' };
 }
