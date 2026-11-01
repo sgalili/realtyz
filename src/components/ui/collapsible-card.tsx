@@ -11,7 +11,7 @@ export function CollapsibleCard({ title, open, onToggle, children, className }: 
         <ChevronDown className={cn('h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-700 ease-in-out motion-reduce:transition-none', open && 'rotate-180')} />
       </button>
       <div className={cn('grid transition-[grid-template-rows,opacity] duration-700 ease-in-out motion-reduce:transition-none', open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
-        <div className="overflow-hidden" inert={!open ? '' as unknown as boolean : undefined}>
+        <div className="overflow-hidden" aria-hidden={!open}>
           <div className="space-y-3 px-4 pb-4">{children}</div>
         </div>
       </div>
