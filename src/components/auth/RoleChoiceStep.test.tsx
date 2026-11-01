@@ -16,12 +16,10 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-vi.mock("@/i18n/personalLanguage", () => ({
-  usePersonalLanguage: () => ({ gender: undefined }),
-  personalGenderKey: (id: string) => ["personal-gender", id],
-  genderText: (_gender: string | undefined, values: { male: string; female: string; neutral?: string }) =>
-    values.neutral ?? values.male,
-}));
+vi.mock("@/i18n/personalLanguage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/i18n/personalLanguage")>();
+  return { ...actual, usePersonalLanguage: () => ({ gender: undefined }) };
+});
 
 vi.mock("@/hooks/useUserRole", () => ({ userRolesQueryKey: (id: string) => ["user-roles", id] }));
 vi.mock("@/lib/signupRole", () => ({ clearPendingSignupRole: vi.fn(), markPostSignupWelcome: vi.fn() }));
