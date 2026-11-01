@@ -54,6 +54,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useWorkspaceOwnerRoles } from '@/hooks/useWorkspaceFeatures';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
+import { brokerLicenseDigits, brokerLicenseSchema, verifyBrokerLicense } from '@/lib/brokerLicense';
+import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import {
   EMPTY_PUBLIC_LISTING_DRAFT,
@@ -358,7 +360,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
     if (!user?.id || publishing || entryPending || !activeWorkspaceId) return;
     if (publisherRequiresOwnership(draftFields.publisherType, pricingOnly) && !draftFields.ownerDeclarationAccepted) return;
-    if (draftFields.publisherType === 'broker' && !isBroker) { toast.error('יש לאמת את רישיון התיווך בפרופיל לפני פרסום כמתווך'); return; }
+    if (draftFields.publisherType === 'broker' && !isBroker && !brokerLicenseSchema.safeParse(draftFields.brokerLicense ?? '').success) { toast.error('יש להזין מספר רישיון תיווך תקין בשלב פרטי ההתקשרות'); return; }
     if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || !(Number(draftFields.commissionDeal) > 0)) {
       return;
     }
@@ -370,6 +372,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
        if (draftFields.publisherType === 'broker' && activeWorkspaceId === user.id) {
         const { data: smsVerified, error: smsError } = await supabase.rpc('publisher_sms_verified');
         if (smsError || smsVerified !== true) throw new Error('יש להשלים אימות SMS לפני פרסום כמתווך');
+        // License is checked against the official registry server-side, bound to the SMS-verified account.
+        if (!isBroker) await verifyBrokerLicense(draftFields.brokerLicense ?? '', 'verify');
         const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
         if (error) throw error;
         await refetchRoles();
@@ -542,7 +546,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   };
 
   const pickAndAdvance = async <K extends 'publisherType' | 'dealType' | 'propertyType'>(key: K, value: PublicListingDraftFields[K]) => {
-    if (key === 'publisherType' && value === 'broker' && !isBroker) return;
     const nextFields = { ...fields, [key]: value };
     setFields(nextFields);
     try { await saveDraft(nextFields); } catch { /* best effort */ }
@@ -766,7 +769,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       case 4: return Boolean(f.rooms);
       case 5: return Boolean(f.sqm || f.builtSqm);
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;
-      case 7: return Boolean(f.contactName?.trim().split(/\s+/).length >= 2 && f.contactWhatsapp.replace(/\D/g, '').length >= 9);
+      case 7: return Boolean(f.contactName?.trim().split(/\s+/).length >= 2 && f.contactWhatsapp.replace(/\D/g, '').length >= 9 && (f.publisherType !== 'broker' || isBroker || brokerLicenseSchema.safeParse(f.brokerLicense ?? '').success));
       case 8: return pricingCardComplete(f);
       default: return false;
     }
@@ -775,7 +778,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   // The publish button stays disabled until every mandatory detail is complete.
   const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || importedVideoUrls(fields.importedListing).length > 0 || files.length > 0 || videos.length > 0;
   const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia, roleNeedsOwnerDeclaration), [fields, hasMedia, roleNeedsOwnerDeclaration]);
-  const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker);
+  const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker || brokerLicenseSchema.safeParse(fields.brokerLicense ?? '').success);
 
   const renderStep = (step: number) => (
     <>
@@ -785,7 +788,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
               <div className="grid grid-cols-1 gap-2">
                 {([['private', 'בעל נכס פרטי'], ['broker', 'מתווך'], ['developer', 'יזם / קבלן']] as const).map(([value, label]) => (
                   <Button key={value} type="button" variant={fields.publisherType === value && rolePicked ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => {
-                    if (value === 'broker' && !isBroker) { toast.error('פרסום כמתווך זמין לאחר אימות רישיון תיווך בפרופיל'); return; }
                     const next = { ...fields, publisherType: value as PublicListingDraftFields['publisherType'] };
                     setFields(next); setRolePicked(true); void saveDraft(next).catch(() => {});
                   }}>{label}</Button>
@@ -831,6 +833,12 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                     <span>בהדבקת הקישור {gender === 'female' ? 'את מצהירה' : 'אתה מצהיר'} שיש לך הזכות המלאה לשווק את הנכס ולהשתמש בתמונות ובפרטיו.</span>
                   </p>
                   </>}
+                  {(fields.publisherType === 'broker' || fields.publisherType === 'developer') && (!showImportChoices || importOption === 'yad2') && <div className="space-y-1 text-[13px] leading-5 text-muted-foreground">
+                    <p>יש לכם עמוד משרד ביד2? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם ייובאו בלחיצה אחת.</p>
+                    <p dir="ltr" className="text-right font-mono text-[12px] text-muted-foreground/80">https://www.yad2.co.il/realestate/agency/…</p>
+                    <p>{fields.publisherType === 'developer' ? 'טיפ: ביד2, היכנסו לאחד הפרויקטים שלכם ולחצו על שם החברה כדי להגיע לעמוד הראשי.' : 'טיפ: ביד2, היכנסו לאחת המודעות שלכם ולחצו על שם המשרד כדי להגיע לעמוד הראשי.'}</p>
+                    <Yad2AgencyImport />
+                  </div>}
                   {showImportChoices && importOption === 'mine' && <MyPropertiesPicker key={draftScope} />}
                   {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
                   <button type="button" className="mx-auto block pt-1 text-sm font-semibold text-primary underline underline-offset-4" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setStep(1); setReviewMode(true); setExpandedStep('step-2'); }}>
@@ -936,6 +944,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             <div className="space-y-3">
                <div><Input aria-label="השם שלך *" placeholder="השם שלך *" id="publisher-name" readOnly={fields.publisherType === 'broker' && isBroker} value={fields.contactName} onChange={(e) => set('contactName', e.target.value)} /></div>
                 <div><Input aria-label="מספר ווטסאפ *" placeholder="* מספר ווטסאפ" id="publisher-whatsapp" inputMode="tel" dir="ltr" className="text-right placeholder:[direction:rtl]" value={formatIlPhone(fields.contactWhatsapp)} onChange={(e) => set('contactWhatsapp', formatIlPhone(e.target.value))} /></div>
+                {fields.publisherType === 'broker' && !isBroker && <div className="space-y-1"><Input aria-label="מספר רישיון תיווך *" placeholder="* מספר רישיון תיווך" id="publisher-broker-license" inputMode="numeric" dir="ltr" className="text-right placeholder:[direction:rtl]" value={fields.brokerLicense ?? ''} onChange={(e) => set('brokerLicense', brokerLicenseDigits(e.target.value))} /><p className="text-[13px] text-muted-foreground">הרישיון ייבדק מול פנקס המתווכים הרשמי יחד עם אימות ה-SMS.</p></div>}
                 <div><Input aria-label="אימייל" placeholder="אימייל" id="publisher-email" type="email" dir="ltr" className="text-right placeholder:text-right placeholder:[direction:rtl]" value={fields.contactEmail} onChange={(e) => set('contactEmail', e.target.value)} /></div>
             </div>
           )}
@@ -1035,6 +1044,11 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           const { error } = result.session ? await supabase.auth.setSession(result.session) : result.token_hash ? (await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'magiclink' }).then(r => r.error ? supabase.auth.verifyOtp({ token_hash: result.token_hash!, type: 'email' }) : r)) : { error: new Error('missing session') };
           if (error) { pendingAuthPublish.current = null; toast.error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); return; }
           setOtpOpen(false);
+          // Broker license verification runs together with the SMS code, against the official registry.
+          if (fields.publisherType === 'broker' && fields.brokerLicense) {
+            try { await verifyBrokerLicense(fields.brokerLicense, 'verify'); await refetchRoles(); toast.success('רישיון התיווך אומת'); }
+            catch (e) { toast.error(e instanceof Error ? e.message : 'אימות הרישיון נכשל'); }
+          }
         }} />
       </DialogContent>
     </Dialog>
