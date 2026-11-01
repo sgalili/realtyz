@@ -14,7 +14,7 @@ export function readPendingBrokerLicense() {
 }
 export async function verifyBrokerLicense(value: string, action?: 'check' | 'verify'): Promise<string>;
 export async function verifyBrokerLicense(value: string, action: 'check' | 'verify', withName: true): Promise<{ licenseNumber: string; holderName?: string }>;
-export async function verifyBrokerLicense(value: string, action: 'check' | 'verify' = 'check', withName = false) {
+export async function verifyBrokerLicense(value: string, action: 'check' | 'verify' = 'check', withName = false): Promise<string | { licenseNumber: string; holderName?: string }> {
   const licenseNumber = brokerLicenseSchema.parse(brokerLicenseDigits(value.trim()).replace(/^0+/, ''));
   const { data, error } = await supabase.functions.invoke('verify-broker-license', { body: { licenseNumber, action } });
   if (error) throw new Error(BROKER_REGISTRY_UNAVAILABLE);
