@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, Search, X } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -52,7 +52,8 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
       const foot = panel?.querySelector<HTMLElement>('[data-search-foot]');
       const body = panel?.querySelector<HTMLElement>('[data-search-body]');
       if (!head || !body) return;
-      const next = head.offsetHeight + body.offsetHeight + (foot?.offsetHeight ?? 0);
+      // +4px buffer so the collapsed panel never clips the advanced row's bottom edge.
+      const next = head.offsetHeight + body.offsetHeight + (foot?.offsetHeight ?? 0) + 4;
       setCollapsedHeight(prev => (Math.abs(prev - next) > 0.5 ? next : prev));
     };
     measure();
@@ -90,8 +91,7 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
       }}
       className="relative flex w-full flex-col overflow-hidden border-b border-border bg-background motion-reduce:!transition-none">
       <div data-search-head className="relative shrink-0 border-b border-border px-[15px] pb-3 pt-3">
-        <Button type="button" variant="ghost" size="icon" aria-label="סגירת החיפוש" onClick={onClose} className="absolute end-0 top-0 h-8 w-8 rounded-none"><X className="h-5 w-5" /></Button>
-        <div className="flex items-center gap-2 pe-6">
+        <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input autoFocus value={query} onChange={e => onQueryChange(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }} placeholder="חיפוש נכס, עיר, רחוב…" className="h-11 ps-9 text-[16px]" />

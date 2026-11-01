@@ -298,8 +298,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                 <div className="relative shrink-0">
                   <Button variant="ghost" size="icon" className="board-header-icon-btn !h-[44px] !w-[44px] shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="!h-[20px] !w-[20px]" strokeWidth={1.75} /></Button>
                   {searchOpen ? (
-                    <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
-                      <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                    <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
+                      <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
                     </button>
                   ) : appliedFilterCount > 0 ? <span aria-label={`${appliedFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{appliedFilterCount}</span> : null}
                 </div>
