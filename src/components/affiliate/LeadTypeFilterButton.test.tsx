@@ -60,16 +60,16 @@ describe('role-based advanced filter fields', () => {
     expect(screen.getByRole('button', { name: 'פנייה לאחר סינון בווטסאפ עם ריטה AI' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'פנייה לאחר סינון בטלפון עם ריטה AI' })).toBeInTheDocument();
     expect(screen.queryByText('עמלת תיווך עבור סגירת עסקה')).not.toBeInTheDocument();
-    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('slider', { name: 'טווח מחיר' })).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: 'פנייה דרך טופס בעמוד נחיתה' }));
-    expect(screen.getByRole('slider')).toBeInTheDocument();
+    expect(screen.getAllByRole('slider')).toHaveLength(3);
     const deal = screen.getByRole('group', { name: 'סוג עסקה' });
     expect(deal).toBeInTheDocument();
     // The deal toggle sits at the very top of the dialog, above the rewards section.
     expect(deal.compareDocumentPosition(screen.getByText('תגמולים לפי סוג פנייה')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'אזור' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'שכונה' })).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'מחיר מינימום' })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'שכונה' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'מחיר מינימום' })).not.toBeInTheDocument();
     // Minimal set: no rooms/size/floor for partners.
     expect(screen.queryByRole('spinbutton', { name: 'חדרים מינימום' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
@@ -122,8 +122,10 @@ describe('role-based advanced filter fields', () => {
       </QueryClientProvider>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'סינון מתקדם' }));
-    fireEvent.click(screen.getByRole('button', { name: 'להשכרה' }));
-    expect(onPropertyChange).toHaveBeenCalledWith(expect.objectContaining({ dealType: 'rent' }));
+    expect(screen.getByRole('checkbox', { name: 'להשכרה' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'למכירה' })).toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'להשכרה' }));
+    expect(onPropertyChange).toHaveBeenCalledWith(expect.objectContaining({ dealType: 'sale' }));
   });
 
   it('filter button shows an active-filter count while the dialog is closed', () => {
