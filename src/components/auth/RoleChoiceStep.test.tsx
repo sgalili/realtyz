@@ -75,7 +75,7 @@ describe("user type step closing", () => {
 
   it("offers every user type and hides the back arrow until one is chosen", () => {
     render();
-    expect(screen.getAllByRole("button", { name: /^(בעל נכס|קונה\/שוכר|מתווך\/סוכנות|יזם \/ קבלן|תוכנית שותפים)$/ })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: /^(בעל נכס|קונה\/שוכר|מתווך\/סוכנות|יזם\/קבלן|תוכנית שותפים)$/ })).toHaveLength(5);
     expect(screen.queryByRole("button", { name: "חזרה" })).toBeNull();
   });
 
@@ -83,7 +83,7 @@ describe("user type step closing", () => {
     render();
     fireEvent.click(screen.getByRole("button", { name: "בעל נכס" }));
     fireEvent.click(screen.getByRole("button", { name: "חזרה" }));
-    expect(screen.getAllByRole("button", { name: /^(בעל נכס|קונה\/שוכר|מתווך\/סוכנות|יזם \/ קבלן|תוכנית שותפים)$/ })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: /^(בעל נכס|קונה\/שוכר|מתווך\/סוכנות|יזם\/קבלן|תוכנית שותפים)$/ })).toHaveLength(5);
     expect(signOut).not.toHaveBeenCalled();
     expect(screen.getByTestId("path").textContent).toBe("/dashboard");
   });
