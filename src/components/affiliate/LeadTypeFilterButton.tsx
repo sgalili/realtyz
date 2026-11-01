@@ -32,6 +32,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useUserRole } from '@/hooks/useUserRole';
+import { MissingCityAlert } from './MissingCityAlert';
 import {
   EMPTY_LEAD_FILTER,
   EMPTY_PROPERTY_FILTER,
@@ -322,6 +323,7 @@ export default function LeadTypeFilterButton({
                   </Select>
                 </div>
               ) : null}
+              {show('city') ? <MissingCityAlert preferences={{ deal: (property as any).deal, propertyType: property.propertyType, priceMin: property.priceMin, priceMax: property.priceMax }} /> : null}
               {false && show('neighborhood') && neighborhoods.length ? (
                 <div className="space-y-1">
                   <Select value={property.neighborhood} onValueChange={(value) => patch({ neighborhood: value })}>
