@@ -20,7 +20,7 @@ export type SmsSignupType = typeof signupTypes[number];
 export const signupTypeFields: Record<SmsSignupType, readonly [string, string][]> = {
   property_owner: [['deal_type', 'סוג העסקה'], ['property_area', 'אזור הנכס'], ['property_type', 'סוג הנכס']],
   property_seeker: [['search_area', 'אזור חיפוש מועדף'], ['budget', 'תקציב משוער']],
-  broker: [['office_name', 'שם המשרד'], ['service_area', 'אזור פעילות']],
+  broker: [['office_name', 'שם המשרד'], ['service_area', 'אזורי שירות']],
   developer: [['company_name', 'שם החברה'], ['main_project', 'ייבוא פרוייקטים']],
   partner: [['marketing_channel', 'ערוץ שיווק עיקרי']],
 };

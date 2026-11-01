@@ -9,7 +9,7 @@ export function exactRegistryRecord(records: unknown[], license: string) {
   return records.find((row): row is Record<string, unknown> => {
     if (!row || typeof row !== 'object') return false;
     const record = row as Record<string, unknown>;
-    return String(record['מס רשיון']) === license && typeof record['שם המתווך'] === 'string' && record['שם המתווך'].trim().length > 0;
+    return String(record['מס רשיון']).trim().replace(/\.0+$/, '').replace(/^0+/, '') === license.trim().replace(/^0+/, '') && typeof record['שם המתווך'] === 'string' && record['שם המתווך'].trim().length > 0;
   });
 }
 

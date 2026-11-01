@@ -12,10 +12,12 @@ export function savePendingBrokerLicense(value: string) {
 export function readPendingBrokerLicense() {
   try { return localStorage.getItem(PENDING_LICENSE_KEY) ?? ''; } catch { return ''; }
 }
-export async function verifyBrokerLicense(value: string, action: 'check' | 'verify' = 'check') {
-  const licenseNumber = brokerLicenseSchema.parse(value);
+export async function verifyBrokerLicense(value: string, action?: 'check' | 'verify'): Promise<string>;
+export async function verifyBrokerLicense(value: string, action: 'check' | 'verify', withName: true): Promise<{ licenseNumber: string; holderName?: string }>;
+export async function verifyBrokerLicense(value: string, action: 'check' | 'verify' = 'check', withName = false): Promise<string | { licenseNumber: string; holderName?: string }> {
+  const licenseNumber = brokerLicenseSchema.parse(brokerLicenseDigits(value.trim()).replace(/^0+/, ''));
   const { data, error } = await supabase.functions.invoke('verify-broker-license', { body: { licenseNumber, action } });
   if (error) throw new Error(BROKER_REGISTRY_UNAVAILABLE);
   if (data?.valid !== true) throw new Error(data?.message || INVALID_BROKER_LICENSE);
-  return licenseNumber;
+  return withName ? { licenseNumber, holderName: typeof data?.holderName === 'string' ? data.holderName : undefined } : licenseNumber;
 }

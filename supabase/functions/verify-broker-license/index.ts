@@ -19,7 +19,8 @@ Deno.serve(async req => {
   if (req.method !== 'POST') return reply({ error: 'method_not_allowed' }, 405);
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return reply({ valid: false, error: 'invalid_license', message: INVALID_BROKER_LICENSE }, 400);
-  const { licenseNumber, action } = parsed.data;
+  const { action } = parsed.data;
+  const licenseNumber = parsed.data.licenseNumber.trim().replace(/^0+/, '');
   let userId: string | undefined;
   const url = Deno.env.get('SUPABASE_URL');
   const anon = Deno.env.get('SUPABASE_ANON_KEY');
@@ -30,6 +31,9 @@ Deno.serve(async req => {
     const { data, error } = await authClient.auth.getUser();
     if (error || !data.user) return reply({ valid: false, error: 'auth_required', message: 'יש להתחבר כדי לאמת רישיון' }, 401);
     userId = data.user.id;
+  } else if (url && anon && req.headers.get('Authorization')) {
+    const { data } = await createClient(url, anon, { global: { headers: { Authorization: req.headers.get('Authorization')! } } }).auth.getUser();
+    userId = data.user?.id;
   }
   try {
     // Server-only test licenses are bound to one account.
@@ -48,7 +52,12 @@ Deno.serve(async req => {
     const resource = metadata.resources?.find((r: { id?: string }) => r.id === BROKER_REGISTRY_RESOURCE);
     const updatedAt = resource?.last_modified;
     if (metadata.organization?.name !== 'ministry_of_justice' || !updatedAt || !registrySourceIsFresh(updatedAt) || !Array.isArray(results.records)) throw new Error('registry_unavailable');
-    const record = exactRegistryRecord(results.records, licenseNumber);
+    let records: unknown[] = results.records;
+    if (!exactRegistryRecord(records, licenseNumber)) {
+      const fallback = new URL(searchUrl); fallback.searchParams.delete('filters'); fallback.searchParams.set('q', licenseNumber); fallback.searchParams.set('limit', '20');
+      records = (await officialJson(fallback)).records ?? [];
+    }
+    const record = exactRegistryRecord(records, licenseNumber);
     if (!record) return reply({ valid: false, error: 'license_not_found', message: INVALID_BROKER_LICENSE });
     if (action === 'verify') {
       const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -69,8 +78,8 @@ Deno.serve(async req => {
       const { error: affiliateError } = await admin.from('affiliate_profiles').update({ license_number: licenseNumber, license_holder_name: record['שם המתווך'], license_status: 'verified', license_verified_at: new Date().toISOString(), license_rejection_reason: null }).eq('user_id', userId);
       if (affiliateError) throw new Error('affiliate_verification_not_completed');
     }
-    // Do not expose registry holders' personal information through this endpoint.
-    return reply({ valid: true, source: BROKER_REGISTRY_SOURCE, updatedAt });
+    // Holder name (public registry data) is returned only to signed-in callers, for the signup confirmation step.
+    return reply({ valid: true, source: BROKER_REGISTRY_SOURCE, updatedAt, ...(userId ? { holderName: String(record['שם המתווך']).trim() } : {}) });
   } catch {
     return reply({ valid: false, error: 'registry_unavailable', message: BROKER_REGISTRY_UNAVAILABLE });
   }
