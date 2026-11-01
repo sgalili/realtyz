@@ -37,7 +37,13 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const onLicenseVerified = useCallback((value: string | null, name?: string) => { setVerifiedLicense(value); if (value) { setHolderName(name ?? ''); setCertificateOk(false); } }, []);
   const onCertificate = useCallback((result: { matched: boolean; licenseNumber?: string } | null) => setCertificateOk(!!result?.matched && (!result.licenseNumber || result.licenseNumber.replace(/^0+/, '') === verifiedLicense)), [verifiedLicense]);
   const brokerDetailsReady = selected === 'broker' && signupDetailsValid('broker', details) && !!license && verifiedLicense === license;
-  useEffect(() => { if (brokerDetailsReady && brokerStep === 'details') setBrokerStep('certificate'); }, [brokerDetailsReady, brokerStep]);
+  const [continueError, setContinueError] = useState('');
+  useEffect(() => setContinueError(''), [license, details]);
+  const continueBroker = () => {
+    if (!signupDetailsValid('broker', details)) { setContinueError('יש להשלים את כל הפרטים לפני ההמשך.'); return; }
+    if (!brokerDetailsReady) { setContinueError(INVALID_BROKER_LICENSE); return; }
+    setBrokerStep('certificate');
+  };
   const { user } = useAuth();
   const { gender: savedGender } = usePersonalLanguage();
   const pending = readSmsSignup();
@@ -113,6 +119,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         return <Input key={key} aria-label={label} placeholder={label} maxLength={200} type={key === 'budget' ? 'number' : 'text'} min={key === 'budget' ? 1 : undefined} className={fieldClass} value={value} onChange={e => change(e.target.value)} />;
       })}
       {selected === 'broker' && brokerStep === 'details' && <BrokerLicenseField signup value={license} onChange={setLicense} onVerified={onLicenseVerified} />}
+      {selected === 'broker' && brokerStep === 'details' && <>{continueError && <p role="alert" className="text-sm text-destructive">{continueError}</p>}<Button type="button" className="h-12 w-full text-lg font-bold" onClick={continueBroker}>{wording('המשך', 'המשיכי', 'המשך')}</Button></>}
       {ready && <Button type="submit" className="h-12 w-full text-lg" disabled={busy}>{busy ? 'שמירה...' : wording('המשך', 'המשיכי', 'המשך')}</Button>}
     </form>}
   </div>;
