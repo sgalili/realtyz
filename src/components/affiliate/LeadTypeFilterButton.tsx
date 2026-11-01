@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
+import { createPortal } from 'react-dom';
 import { LeadPriceSlider } from '@/components/public/LeadPriceSlider';
 import { PropertyAmenitiesFields } from '@/components/public/PropertyAmenitiesFields';
 import { EMPTY_PUBLIC_LISTING_DRAFT, type PublicListingDraftFields } from '@/lib/publicListingDraft';
@@ -109,6 +111,25 @@ function RangeRow({
   );
 }
 
+/** Dual-handle price range bounded by the platform's published prices. */
+function PriceRangeSlider({ min, max, bounds, onChange }: { min: number | null; max: number | null; bounds: { min: number; max: number }; onChange: (next: { min: number | null; max: number | null }) => void }) {
+  const lo = Math.max(bounds.min, Math.min(min ?? bounds.min, bounds.max));
+  const hi = Math.min(bounds.max, Math.max(max ?? bounds.max, lo));
+  const step = bounds.max - bounds.min > 200_000 ? 10_000 : 500;
+  const fmt = (v: number) => `₪${v.toLocaleString('he-IL')}`;
+  return (
+    <div className="space-y-2" dir="rtl">
+      <div className="flex items-center justify-between text-[15px]">
+        <span>ממחיר: <bdi className="font-semibold">{fmt(lo)}</bdi></span>
+        <span>עד מחיר: <bdi className="font-semibold">{fmt(hi)}</bdi></span>
+      </div>
+      <Slider dir="rtl" min={bounds.min} max={bounds.max} step={step} minStepsBetweenThumbs={0} value={[lo, hi]} aria-label="טווח מחיר"
+        onValueChange={([a, b]) => onChange({ min: a <= bounds.min ? null : a, max: b >= bounds.max ? null : b })} />
+      <div className="flex justify-between text-[12px] text-muted-foreground"><bdi>{fmt(bounds.min)}</bdi><bdi>{fmt(bounds.max)}</bdi></div>
+    </div>
+  );
+}
+
 /** Which property fields each role needs, in display order. */
 type PropertyField = 'dealType' | 'propertyType' | 'city' | 'neighborhood' | 'price' | 'rooms' | 'size' | 'floor';
 
@@ -123,6 +144,7 @@ export default function LeadTypeFilterButton({
   onPropertyChange,
   cities = [],
   neighborhoods = [],
+  priceBounds,
   propertyTypes = [],
   hideLeadFilters = false,
   className = '',
@@ -141,6 +163,8 @@ export default function LeadTypeFilterButton({
   hideLeadFilters?: boolean;
   className?: string;
   inline?: boolean;
+  /** Lowest/highest published price on the platform; slider absolute bounds. */
+  priceBounds?: { min: number; max: number } | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -236,13 +260,13 @@ export default function LeadTypeFilterButton({
         <div className="flex items-center gap-1" role="group" aria-label="סוג עסקה">
           {(['sale', 'rent'] as const).map((value) => {
             const on = property.dealType === 'all' || property.dealType === value;
+            const other = value === 'sale' ? 'rent' : 'sale';
             return (
-              <Button key={value} type="button" variant="ghost" size="sm" aria-pressed={on}
-                onClick={() => patch({ dealType: property.dealType === value ? 'all' : value })}
-                className={cn('gap-1.5 whitespace-nowrap px-2 text-[14px] hover:bg-transparent', on ? 'text-foreground' : 'text-muted-foreground/60')}>
-                <span className={cn('h-2 w-2 shrink-0 rounded-full', value === 'sale' ? 'bg-success' : 'bg-sale', on ? 'opacity-100' : 'opacity-30')} />
+              <label key={value} className="flex cursor-pointer items-center gap-2 px-2 text-[15px]">
+                <Checkbox checked={on} aria-label={value === 'sale' ? 'למכירה' : 'להשכרה'}
+                  onCheckedChange={() => patch({ dealType: on ? (property.dealType === 'all' ? other : 'all') : 'all' })} />
                 {value === 'sale' ? 'למכירה' : 'להשכרה'}
-              </Button>
+              </label>
             );
           })}
         </div>
@@ -298,7 +322,7 @@ export default function LeadTypeFilterButton({
                   </Select>
                 </div>
               ) : null}
-              {show('neighborhood') && neighborhoods.length ? (
+              {false && show('neighborhood') && neighborhoods.length ? (
                 <div className="space-y-1">
                   <Select value={property.neighborhood} onValueChange={(value) => patch({ neighborhood: value })}>
                     <SelectTrigger aria-label="שכונה" className="h-9 text-[16px]"><SelectValue placeholder="שכונה" /></SelectTrigger>
@@ -309,9 +333,9 @@ export default function LeadTypeFilterButton({
                   </Select>
                 </div>
               ) : null}
-              {show('price') ? <div className="col-span-2"><RangeRow label="מחיר" suffix="₪" min={property.priceMin} max={property.priceMax} step={1000} onChange={({ min, max }) => patch({ priceMin: min, priceMax: max })} /></div> : null}
+              {show('price') ? <div className="col-span-2"><PriceRangeSlider min={property.priceMin} max={property.priceMax} bounds={priceBounds && priceBounds.max > priceBounds.min ? priceBounds : { min: 0, max: 10_000_000 }} onChange={({ min, max }) => patch({ priceMin: min, priceMax: max })} /></div> : null}
               {show('size') ? <div className="col-span-2"><RangeRow label="שטח" suffix='מ"ר' min={property.sizeMin} max={property.sizeMax} step={5} onChange={({ min, max }) => patch({ sizeMin: min, sizeMax: max })} /></div> : null}
-              {show('floor') ? <><Select value={property.floorMin == null ? 'all' : String(property.floorMin)} onValueChange={value => patch({ floorMin: value === 'all' ? null : Number(value), floorMax: value === 'all' || value === '10' ? null : Number(value) })}><SelectTrigger aria-label="קומה" className="h-10 text-[16px]"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent><SelectItem value="all">קומה</SelectItem>{PROPERTY_FLOOR_OPTIONS.map(value => <SelectItem key={value} value={value === 'קרקע' ? '0' : value.replace('+', '')}>{value === 'קרקע' ? value : `קומה ${value}`}</SelectItem>)}</SelectContent></Select><Select value={amenities.totalFloors || 'all'} onValueChange={value => patchAmenities({ totalFloors: value === 'all' ? '' : value })}><SelectTrigger aria-label="כמה קומות יש בבניין?" className="h-10 text-[16px]"><SelectValue placeholder="כמה קומות יש בבניין?" /></SelectTrigger><SelectContent><SelectItem value="all">כמה קומות יש בבניין?</SelectItem>{PROPERTY_FLOOR_OPTIONS.map(value => <SelectItem key={value} value={value}>{value === 'קרקע' ? value : `${value} קומות`}</SelectItem>)}</SelectContent></Select></> : null}
+              {show('floor') ? <><Select value={property.floorMin == null ? 'all' : String(property.floorMin)} onValueChange={value => patch({ floorMin: value === 'all' ? null : Number(value), floorMax: value === 'all' || value === '10' ? null : Number(value) })}><SelectTrigger aria-label="קומה" className="h-10 text-[16px]"><SelectValue placeholder="קומה" /></SelectTrigger><SelectContent><SelectItem value="all">קומה</SelectItem>{PROPERTY_FLOOR_OPTIONS.map(value => <SelectItem key={value} value={value === 'קרקע' ? '0' : value.replace('+', '')}>{value === 'קרקע' ? value : `קומה ${value}`}</SelectItem>)}</SelectContent></Select><Select value={amenities.totalFloors || 'all'} onValueChange={value => patchAmenities({ totalFloors: value === 'all' ? '' : value })}><SelectTrigger aria-label="קומות בבניין" className="h-10 text-[16px]"><SelectValue placeholder="קומות בבניין" /></SelectTrigger><SelectContent><SelectItem value="all">קומות בבניין</SelectItem>{PROPERTY_FLOOR_OPTIONS.map(value => <SelectItem key={value} value={value}>{value === 'קרקע' ? value : `${value} קומות`}</SelectItem>)}</SelectContent></Select></> : null}
             </div>
             <PropertyAmenitiesFields fields={amenityFields} onChange={patchAmenities} filterMode hideRooms={!show('rooms')} />
             <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
@@ -334,7 +358,8 @@ export default function LeadTypeFilterButton({
 
     </>
   );
-  if (inline) return <>{trigger}{open ? <div role="dialog" aria-label="סינון מתקדם" data-property-filter-panel dir="rtl" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }} className="absolute -inset-x-px top-full z-50 mt-1 max-h-[60dvh] space-y-3 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-top-2 motion-reduce:animate-none">{content}</div> : null}</>;
-  return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild>{trigger}</PopoverTrigger><PopoverContent align="start" onOpenAutoFocus={event => event.preventDefault()} onCloseAutoFocus={event => event.preventDefault()} className="max-h-[70dvh] w-80 space-y-3 overflow-y-auto overscroll-contain p-3" dir="rtl">{content}</PopoverContent></Popover>;
+  const scrim = open && typeof document !== 'undefined' ? createPortal(<div aria-hidden className="filter-blur-scrim" style={{ top: Math.max(0, document.querySelector('header')?.getBoundingClientRect().bottom ?? 0) }} onClick={() => setOpen(false)} />, document.body) : null;
+  if (inline) return <>{scrim}{trigger}{open ? <div role="dialog" aria-label="סינון מתקדם" data-property-filter-panel dir="rtl" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }} className="absolute -inset-x-px top-full z-50 mt-1 max-h-[60dvh] space-y-3 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-top-2 motion-reduce:animate-none">{content}</div> : null}</>;
+  return <>{scrim}<Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild>{trigger}</PopoverTrigger><PopoverContent align="start" onOpenAutoFocus={event => event.preventDefault()} onCloseAutoFocus={event => event.preventDefault()} className="max-h-[70dvh] w-80 space-y-3 overflow-y-auto overscroll-contain p-3" dir="rtl">{content}</PopoverContent></Popover></>;
 
 }
