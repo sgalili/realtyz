@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { RoleChoiceStep } from "@/components/auth/RoleChoiceStep";
@@ -41,6 +42,7 @@ const PathProbe = () => {
 
 const render = () =>
   rtlRender(
+    <QueryClientProvider client={new QueryClient()}>
     <MemoryRouter initialEntries={["/dashboard"]}>
       <Routes>
         <Route
@@ -53,7 +55,8 @@ const render = () =>
           }
         />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 describe("user type step closing", () => {
