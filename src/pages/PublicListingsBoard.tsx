@@ -116,24 +116,18 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const toggleDeal = (key: 'sale' | 'rent') => setDeals((cur) => { const next = { ...cur, [key]: !cur[key] }; return next.sale || next.rent ? next : cur; });
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [wrapWidth, setWrapWidth] = useState<number | null>(null);
-  const [scrollIndicator, setScrollIndicator] = useState({ width: 100, offset: 0 });
+  // The table box keeps the browser's own horizontal scroll bar as its only one.
   useEffect(() => {
     const el = tableWrapRef.current;
     if (!el) return;
-    const update = () => {
-      setWrapWidth(el.clientWidth);
-      const width = el.scrollWidth > 0 ? Math.min(100, el.clientWidth / el.scrollWidth * 100) : 100;
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      const offset = maxScroll > 0 ? Math.min(1, Math.abs(el.scrollLeft) / maxScroll) * (100 - width) : 0;
-      setScrollIndicator(previous => previous.width === width && previous.offset === offset ? previous : { width, offset });
-    };
+    const update = () => setWrapWidth(el.clientWidth);
     update();
-    el.addEventListener('scroll', update, { passive: true });
     const ro = new ResizeObserver(update);
     ro.observe(el);
     if (el.firstElementChild) ro.observe(el.firstElementChild);
-    return () => { ro.disconnect(); el.removeEventListener('scroll', update); };
+    return () => { ro.disconnect(); };
   });
+
   const [grid, setGrid] = useState(() => {
     try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; }
   });
@@ -169,40 +163,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Draggable scroll bar under the table header row: dragging the thumb slides the table sideways.
-  const thumbDrag = useRef<{ pointerId: number; startX: number; startNorm: number } | null>(null);
-  const onBarPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const el = tableWrapRef.current;
-    const track = e.currentTarget;
-    const thumb = track.querySelector<HTMLElement>('[data-thumb]');
-    if (!el || !thumb) return;
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    if (maxScroll <= 0) return;
-    const trackW = track.clientWidth;
-    const thumbW = thumb.offsetWidth;
-    let norm = scrollIndicator.width >= 100 ? 0 : scrollIndicator.offset / Math.max(0.001, 100 - scrollIndicator.width);
-    if (!thumb.contains(e.target as Node)) {
-      const rect = track.getBoundingClientRect();
-      norm = Math.min(1, Math.max(0, (rect.right - e.clientX - thumbW / 2) / Math.max(1, trackW - thumbW)));
-      el.scrollLeft = -norm * maxScroll;
-    }
-    thumbDrag.current = { pointerId: e.pointerId, startX: e.clientX, startNorm: norm };
-    track.setPointerCapture(e.pointerId);
-  };
-  const onBarPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = thumbDrag.current;
-    const el = tableWrapRef.current;
-    if (!drag || !el || e.pointerId !== drag.pointerId) return;
-    const thumb = e.currentTarget.querySelector<HTMLElement>('[data-thumb]');
-    if (!thumb) return;
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    const span = Math.max(1, e.currentTarget.clientWidth - thumb.offsetWidth);
-    const norm = Math.min(1, Math.max(0, drag.startNorm - (e.clientX - drag.startX) / span));
-    el.scrollLeft = -norm * maxScroll;
-  };
-  const onBarPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (thumbDrag.current?.pointerId === e.pointerId) thumbDrag.current = null;
-  };
 
   const load = async () => {
     const cached = boardCache.get();
@@ -406,20 +366,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                   })}
                 </tbody>
               </table>
-<div className="sticky bottom-0 start-0 z-[5] bg-card px-3 py-1.5" style={wrapWidth ? { width: wrapWidth } : undefined}>
-                        {scrollIndicator.width < 99.5 && (
-                          <div
-                            className="relative h-[7px] cursor-grab touch-none select-none active:cursor-grabbing"
-                            onPointerDown={onBarPointerDown}
-                            onPointerMove={onBarPointerMove}
-                            onPointerUp={onBarPointerUp}
-                            onPointerCancel={onBarPointerUp}
-                          >
-<div className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-muted-foreground/15" />
-                            <div data-thumb className="absolute top-1/2 h-[5px] -translate-y-1/2 rounded-full bg-muted-foreground/40 shadow-sm" style={{ width: `${scrollIndicator.width}%`, marginInlineStart: `${scrollIndicator.offset}%` }} />
-                          </div>
-                        )}
-                      </div>
                     
               {filtered.length > visibleCount && <AutoLoadSentinel key={visibleCount} onReach={() => setVisibleCount(count => count + 10)} />}
             </HorizontalTableScroll>
