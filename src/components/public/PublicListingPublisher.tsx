@@ -185,8 +185,10 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [adminUnlocked, setAdminUnlocked] = useState(!adminOnlyEdit);
   const [legalSection, setLegalSection] = useState<'terms' | 'brokerage' | null>(null);
   const { data: readyProperties } = useReadyBoardProperties(open && isBroker);
-  const requireOwnerDeclaration = !pricingOnly && !isBroker && !isDeveloper;
+  const requireOwnerDeclaration = !pricingOnly && !isBroker && !isDeveloper && fields.publisherType !== 'developer';
   const [step, setStep] = useState(0);
+  // First question of the wizard: who is publishing (drives the rest of the flow).
+  const [rolePicked, setRolePicked] = useState(false);
   const [importSlide, setImportSlide] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
   const authThenConfirm = useRef(false);
@@ -232,7 +234,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   useEffect(() => {
     if (openedScope.current && openedScope.current !== draftScope && openedScope.current !== 'visitor') {
       setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setPublishError('');
-      setImported(null); setImportUrl(''); setImportOption(null); setStep(0); setReviewMode(false); setImportSlide(false);
+      setImported(null); setImportUrl(''); setImportOption(null); setRolePicked(false); setStep(0); setReviewMode(false); setImportSlide(false);
       setOtpOpen(false); setConfirming(false); setMediaOrder([]); setPendingFileDelete(null);
       setLegalSection(null); setAddressResolved(false); setExpandedStep('step-0'); setResumed(false); setImportStage(''); setPublishStage('');
       pendingAuthPublish.current = null; authThenConfirm.current = false; initializedPublisher.current = ''; restoredScope.current = ''; lastAutoImport.current = ''; 
@@ -271,7 +273,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
         setFields(draft); setFiles(draft.files ?? []); setVideos(draft.videos ?? []);
         setImportUrl(draft.importUrl ?? ''); setPublishError(draft.publicationError || '');
         const started = Boolean(draft.reviewMode || (draft.wizardStep ?? draft.resumeStep ?? 0) > 0 || draft.dealType || draft.city || draft.importedListing);
-        setStep(started ? 1 : 0); setReviewMode(started); setImportSlide(false); setImportOption(!started && draft.importUrl ? 'yad2' : null);
+        setRolePicked(started); setStep(started ? 1 : 0); setReviewMode(started); setImportSlide(false); setImportOption(!started && draft.importUrl ? 'yad2' : null);
         setExpandedStep('');
         setImported(draft.importedListing ?? null);
       }
@@ -294,7 +296,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     if (!open || !user || workspaceLoading || !publisherProfile || pricingOnly) return;
     const identity = `${user?.id}:${activeWorkspaceId}`;
     initializedPublisher.current = identity;
-    setFields(current => ({ ...current, publisherType: isBroker ? 'broker' : isDeveloper ? current.publisherType : 'private', contactName: publisherName, contactWhatsapp: publisherPhone, contactEmail: publisherIdentity.email, marketingAccepted: current.marketingAccepted }));
+    setFields(current => ({ ...current, publisherType: current.publisherType === 'developer' || (current.publisherType === 'broker' && isBroker) || current.publisherType === 'private' ? current.publisherType : isBroker ? 'broker' : isDeveloper ? current.publisherType : 'private', contactName: publisherName, contactWhatsapp: publisherPhone, contactEmail: publisherIdentity.email, marketingAccepted: current.marketingAccepted }));
     
   }, [open, isBroker, user?.id, activeWorkspaceId, publisherName, publisherPhone, publisherIdentity.email, publisherProfile, workspaceLoading, step, reviewMode]);
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
@@ -472,7 +474,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
        celebratePublication(publicationAudio.current);
        publicationAudio.current = null;
        initializedPublisher.current = '';
-        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setStep(0); setImportSlide(false); setImported(null); setImportUrl(''); setReviewMode(false);
+        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setRolePicked(false); setStep(0); setImportSlide(false); setImported(null); setImportUrl(''); setReviewMode(false);
       const publishedListingId = (data as { id?: string } | null)?.id;
       // Rita welcome WhatsApp for first-time posters (once per user, best-effort).
       try {
@@ -550,7 +552,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     }
     if (step === 0 && (key === 'publisherType' || key === 'dealType')) {
       setImportOption(null);
-      setFields({ ...nextFields, publisherType: isBroker ? 'broker' : 'private' });
+      setFields({ ...nextFields, publisherType: nextFields.publisherType || (isBroker ? 'broker' : 'private') });
       setImportSlide(true);
       return;
     }
@@ -775,7 +777,21 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const renderStep = (step: number) => (
     <>
-          {step === 0 && !importSlide && (
+          {step === 0 && !importSlide && !rolePicked && (
+            <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
+              <p className="text-center text-[19px] font-semibold text-muted-foreground">בתור מי אתה מפרסם?</p>
+              <div className="grid grid-cols-1 gap-2">
+                {([['private', 'בעל נכס פרטי'], ['broker', 'מתווך'], ['developer', 'יזם / קבלן']] as const).map(([value, label]) => (
+                  <Button key={value} type="button" variant={fields.publisherType === value && rolePicked ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => {
+                    if (value === 'broker' && !isBroker) { toast.error('פרסום כמתווך זמין לאחר אימות רישיון תיווך בפרופיל'); return; }
+                    const next = { ...fields, publisherType: value as PublicListingDraftFields['publisherType'] };
+                    setFields(next); setRolePicked(true); void saveDraft(next).catch(() => {});
+                  }}>{label}</Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {step === 0 && !importSlide && rolePicked && (
             <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
               <p className="text-center text-[19px] font-semibold text-muted-foreground">סוג המודעה</p>
               <div className="grid grid-cols-2 gap-2">
@@ -1026,7 +1042,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 !text-center">
           {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תגמולים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
-          {!pricingOnly && (reviewMode || step > 0 || importSlide) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
+          {!pricingOnly && (reviewMode || step > 0 || importSlide || rolePicked) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); if (step === 0 && !importSlide && !reviewMode) setRolePicked(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {pricingOnly ? <span>מחיר והגדרת תגמולים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>
