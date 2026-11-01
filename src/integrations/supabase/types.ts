@@ -1337,6 +1337,7 @@ export type Database = {
         Row: {
           certificate_check_id: string | null
           certificate_name: string | null
+          certificate_path: string | null
           created_at: string
           id: string
           license_number: string
@@ -1350,6 +1351,7 @@ export type Database = {
         Insert: {
           certificate_check_id?: string | null
           certificate_name?: string | null
+          certificate_path?: string | null
           created_at?: string
           id?: string
           license_number: string
@@ -1363,6 +1365,7 @@ export type Database = {
         Update: {
           certificate_check_id?: string | null
           certificate_name?: string | null
+          certificate_path?: string | null
           created_at?: string
           id?: string
           license_number?: string
@@ -9795,6 +9798,10 @@ export type Database = {
         Returns: undefined
       }
       remove_my_broker_license: { Args: never; Returns: Json }
+      request_broker_license_review: {
+        Args: { _certificate_path: string; _details?: Json; _license: string }
+        Returns: Json
+      }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       resume_group_posting: {
         Args: { _campaign_log_id: string }
