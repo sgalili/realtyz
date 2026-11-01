@@ -193,6 +193,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [step, setStep] = useState(0);
   // First question of the wizard: who is publishing (drives the rest of the flow).
   const [rolePicked, setRolePicked] = useState(false);
+  const [seeker, setSeeker] = useState(false);
   const [importSlide, setImportSlide] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
   const authThenConfirm = useRef(false);
@@ -771,15 +772,29 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const renderStep = (step: number) => (
     <>
-          {step === 0 && !importSlide && !rolePicked && (
+          {step === 0 && !importSlide && !rolePicked && !seeker && (
             <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
               <p className="text-center text-[19px] font-semibold text-muted-foreground">מי מפרסם?</p>
               <div className="grid grid-cols-1 gap-2">
-                {([['private', 'בעל נכס פרטי'], ['broker', 'מתווך'], ['developer', 'יזם / קבלן']] as const).map(([value, label]) => (
+                {([['private', 'מוכר / משכיר'], ['seeker', 'קונה / שוכר'], ['broker', 'מתווך / סוכנות'], ['developer', 'יזם / קבלן']] as const).map(([value, label]) => (
                   <Button key={value} type="button" variant={fields.publisherType === value && rolePicked ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => {
+                    if (value === 'seeker') { setSeeker(true); return; }
                     const next = { ...fields, publisherType: value as PublicListingDraftFields['publisherType'] };
                     setFields(next); setRolePicked(true); void saveDraft(next).catch(() => {});
                   }}>{label}</Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {step === 0 && !importSlide && seeker && (
+            <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
+              <p className="text-center text-[19px] font-semibold text-muted-foreground">מה אתם מחפשים?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {([['sale', 'קונה', 'נכס לקנייה'], ['rent', 'שוכר', 'נכס לשכירות']] as const).map(([value, role, label]) => (
+                  <Button key={value} type="button" variant="outline" className="h-auto flex-col gap-0.5 p-4 text-base font-bold" onClick={() => {
+                    setSeeker(false); setOpen(false);
+                    window.dispatchEvent(new CustomEvent('toraff:board-seeker-intent', { detail: { dealType: value, role } }));
+                  }}><span>{role}</span><span className="text-xs font-medium text-muted-foreground">{label}</span></Button>
                 ))}
               </div>
             </div>
@@ -788,8 +803,10 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
               <p className="text-center text-[19px] font-semibold text-muted-foreground">סוג המודעה</p>
               <div className="grid grid-cols-2 gap-2">
-                {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
-                  <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
+                {(fields.publisherType === 'private'
+                  ? ([['sale', 'מוכר', 'למכירה'], ['rent', 'משכיר', 'להשכרה']] as const)
+                  : ([['sale', '', 'למכירה'], ['rent', '', 'להשכרה']] as const)).map(([value, role, label]) => (
+                  <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto flex-col gap-0.5 p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{role ? <><span>{role}</span><span className="text-xs font-medium text-muted-foreground">{label}</span></> : label}</Button>
                 ))}
               </div>
             </div>
