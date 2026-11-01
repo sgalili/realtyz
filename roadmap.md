@@ -1,5 +1,10 @@
 # Roadmap
 
+## Mandatory publisher entry November 1
+- [x] Reset every explicit free-ad opening to publisher choice before sale/rent, including developer accounts; preserve scoped content and pricing-only recovery.
+- [x] Keep broker verification and import authorization, and require ownership by selected private branch rather than account role.
+- [ ] Run focused tests and check reopening, back navigation and branch behavior in the preview.
+
 ## Publisher cards and optional consent October 30
 - [x] Move view toggle, anchor expanded steps, unify closing offer/percentage and rename Rita cards.
 - [x] Reorder declarations and preserve optional marketing decision and authentication; 46 focused tests passed. Signed-in mobile verified 1% sale, 0.2–2% bounds, collapsed/expanded percentage and decline-to-confirmation with consent unchecked and no runtime errors. No listing published.
