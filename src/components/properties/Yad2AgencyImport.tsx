@@ -120,6 +120,7 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
       </div>
       {phase === 'done' && <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setRuleOpen(true)}><Settings2 className="h-4 w-4" />הגדרת עמלות לנכסים שיובאו</Button>}
       <p className="text-xs text-muted-foreground">הנכסים נשמרים כטיוטות בלשונית הטיוטות. אפשר לערוך עמלה ומחיר לכל נכס בנפרד ולפרסם.</p>
+      {unverifiedBroker && <p className="text-xs font-medium text-foreground">הנכסים יישארו ממתינים לפרסום עד לאימות רישיון התיווך בשלב פרטי ההתקשרות.</p>}
     </div>}
     <Dialog open={ruleOpen} onOpenChange={setRuleOpen}>
       <DialogContent dir="rtl" className="max-w-md">
