@@ -27,6 +27,7 @@ export function CityFilterSelect({
   const [missingOpen, setMissingOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
