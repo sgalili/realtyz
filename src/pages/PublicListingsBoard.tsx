@@ -35,7 +35,7 @@ import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardCol
 import { propertyInquiryRef } from '@/lib/propertyReferral';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 import { GuestSignupDialog } from '@/components/public/GuestSignupDialog';
-import BoardSearchOverlay, { BOARD_SEARCH_OPEN_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
+import BoardSearchOverlay, { BOARD_SEARCH_OPEN_EVENT, BOARD_SEARCH_STATE_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
 import { useAffiliateMarketplace } from '@/hooks/useAffiliate';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';

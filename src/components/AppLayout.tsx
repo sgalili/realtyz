@@ -274,10 +274,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const boardRoute = location.pathname === '/' || location.pathname === '/public-listings';
   const [boardGrid, setBoardGrid] = useState(() => { try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; } });
+  const [boardSearchOpen, setBoardSearchOpen] = useState(false);
   useEffect(() => {
     const onView = (e: Event) => setBoardGrid(Boolean((e as CustomEvent<{ grid: boolean }>).detail?.grid));
+    const onSearch = (e: Event) => setBoardSearchOpen(Boolean((e as CustomEvent<{ open: boolean }>).detail?.open));
     window.addEventListener(BOARD_VIEW_STATE_EVENT, onView);
-    return () => window.removeEventListener(BOARD_VIEW_STATE_EVENT, onView);
+    window.addEventListener(BOARD_SEARCH_STATE_EVENT, onSearch);
+    return () => { window.removeEventListener(BOARD_VIEW_STATE_EVENT, onView); window.removeEventListener(BOARD_SEARCH_STATE_EVENT, onSearch); };
   }, []);
   const { isDemoMode, setDemoMode, demoCandidateId, setDemoCandidateId } = useDemoMode();
   useSessionTimeout();
