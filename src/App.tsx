@@ -562,6 +562,7 @@ const App = () => (
             </WorkspaceScope>
             </Suspense>
             <AppFooter />
+            <FaqHost />
             <SocialDraftChargeDialog />
             </MandateProvider>
             </ElectionTypeProvider>

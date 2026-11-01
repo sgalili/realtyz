@@ -543,7 +543,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <QuickActionDrawer />
           <TutorialHost />
           <GlobalAppTour />
-          <FaqHost />
           <DeveloperTerminology />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
             <DialogContent dir="rtl" className="premium-auth-modal sm:max-w-md">
