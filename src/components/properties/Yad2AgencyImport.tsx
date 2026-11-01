@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { importCommissionPayload, readImportRule, saveImportRule, runPool, type ImportCommissionRule } from '@/lib/importCommissionDefaults';
+import { agencyUrlForRequest, isYad2AgencyUrl } from '@/lib/yad2ImportLinks';
+
 
 const BROKER_ROLES = ['managing_broker', 'agent', 'lead_agent', 'junior_agent', 'super_admin'];
 const PARALLEL = 4;
@@ -34,7 +36,9 @@ async function applyRule(listingId: string, workspaceId: string, rule: ImportCom
   await supabase.from('listings').update({ ...columns, features: { ...(feature as object), deal_closing_commission: closing } } as never).eq('id', listingId).eq('workspace_owner_id', workspaceId);
 }
 
-export default function Yad2AgencyImport() {
+
+export default function Yad2AgencyImport({ publisherType = 'broker' }: { publisherType?: string }) {
+
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const queryClient = useQueryClient();
@@ -62,7 +66,7 @@ export default function Yad2AgencyImport() {
   const start = async () => {
     const run = ++scope.current, ws = activeWorkspaceId, activeRule = rule;
     setPhase('discovering'); setImported([]);
-    const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url } });
+    const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(url) } });
     if (run !== scope.current) return;
     if (error || !data?.ok) { toast.error(await errorText(error) || 'לא נמצאו מודעות'); setPhase('idle'); return; }
     const items: string[] = data.items ?? [];
@@ -96,14 +100,15 @@ export default function Yad2AgencyImport() {
   const pending = progress.total - progress.done - progress.failed;
   const num = (k: keyof ImportCommissionRule) => (e: React.ChangeEvent<HTMLInputElement>) => setRule(r => ({ ...r, [k]: Math.max(0, Number(e.target.value.replace(/[^\d.]/g, '')) || 0) }));
 
-  return <section dir="rtl" className="space-y-3 rounded-lg border bg-card p-4">
-    <h2 className="font-semibold">ייבוא כל הנכסים מעמוד המשרד ביד2</h2>
-    <div className="flex flex-col gap-2 sm:flex-row">
-      <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/agency/..." dir="ltr" disabled={busy} className="text-[16px]" />
-      <Button onClick={() => void start()} disabled={busy || !url.trim()} className="gap-2 shrink-0">
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{phase === 'discovering' ? 'מאתר מודעות…' : 'ייבוא כל הנכסים'}
-      </Button>
-    </div>
+  return <section dir="rtl" className="space-y-3 rounded-xl border bg-card p-4">
+    <h2 className="text-[17px] font-semibold">יבוא כל המודעות שלי מיד 2</h2>
+    <p className="text-[13.5px] leading-6 text-muted-foreground">יש לכם עמוד משרד ביד שתיים? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם יובאו בלחיצה אחת.</p>
+    <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/agency/..." dir="ltr" disabled={busy} className="text-[16px] placeholder:text-muted-foreground/50" />
+    <p className="text-[12.5px] leading-5 text-muted-foreground">{publisherType === 'developer' ? 'טיפ: ביד 2, היכנסו לאחד הפרויקטים שלכם ולחצו על שם החברה כדי להגיע לעמוד הראשי.' : 'טיפ: ביד 2, היכנסו לאחת המודעות שלכם ולחצו על שם המשרד כדי להגיע לעמוד הראשי'}</p>
+    {isYad2AgencyUrl(url) && <Button onClick={() => void start()} disabled={busy} className="w-full gap-2">
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{phase === 'discovering' ? 'מאתר מודעות…' : 'יבוא כל הנכסים'}
+    </Button>}
+
     {phase !== 'idle' && phase !== 'discovering' && <div className="space-y-2" aria-live="polite">
       <Progress value={progress.total ? ((progress.done + progress.failed) / progress.total) * 100 : 0} />
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">

@@ -56,6 +56,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { brokerLicenseDigits, brokerLicenseSchema, verifyBrokerLicense } from '@/lib/brokerLicense';
 import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
+import { isYad2ItemUrl } from '@/lib/yad2ImportLinks';
+
+
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import {
   EMPTY_PUBLIC_LISTING_DRAFT,
@@ -216,7 +219,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [expandedStep, setExpandedStep] = useState('step-0');
   const [addressResolved, setAddressResolved] = useState(false);
   const importInFlight = useRef(false);
-  const lastAutoImport = useRef('');
   const [importStage, setImportStage] = useState('');
   const [myPropsSave, setMyPropsSave] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const publisherScroll = useRef<HTMLDivElement>(null);
@@ -231,7 +233,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       setImported(null); setImportUrl(''); setImportOption(null); setRolePicked(false); setStep(0); setReviewMode(false); setImportSlide(false);
       setOtpOpen(false); setConfirming(false); setMediaOrder([]); setPendingFileDelete(null);
       setLegalSection(null); setAddressResolved(false); setExpandedStep('step-0'); setResumed(false); setImportStage(''); setPublishStage('');
-      pendingAuthPublish.current = null; authThenConfirm.current = false; initializedPublisher.current = ''; restoredScope.current = ''; lastAutoImport.current = ''; 
+      pendingAuthPublish.current = null; authThenConfirm.current = false; initializedPublisher.current = ''; restoredScope.current = ''; 
     }
     openedScope.current = draftScope;
   }, [draftScope]);
@@ -744,19 +746,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     finally { importInFlight.current = false; setImporting(false); }
   };
 
-  useEffect(() => {
-    if (!open || reviewMode || importOption !== 'yad2' || importing) return;
-    const value = importUrl.trim();
-    if (!/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)/i.test(value)) return;
-    if (lastAutoImport.current === value) return;
-    const timer = window.setTimeout(() => {
-      lastAutoImport.current = value;
-      void importYad2(value);
-    }, 180);
-    return () => window.clearTimeout(timer);
-    // Import callbacks read the current draft when a new URL is entered.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [importUrl, open, importOption, reviewMode, importing]);
 
   const stepFilled = (i: number): boolean => {
     const f = fields;
@@ -784,7 +773,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     <>
           {step === 0 && !importSlide && !rolePicked && (
             <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
-              <p className="text-center text-[19px] font-semibold text-muted-foreground">בתור מי אתה מפרסם?</p>
+              <p className="text-center text-[19px] font-semibold text-muted-foreground">מי מפרסם?</p>
               <div className="grid grid-cols-1 gap-2">
                 {([['private', 'בעל נכס פרטי'], ['broker', 'מתווך'], ['developer', 'יזם / קבלן']] as const).map(([value, label]) => (
                   <Button key={value} type="button" variant={fields.publisherType === value && rolePicked ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => {
@@ -807,43 +796,38 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           )}
           {step === 0 && importSlide && (
             <div className="flex min-h-[55dvh] flex-col justify-center space-y-4">
-              <div className="space-y-2 pt-1">
+              <div className="space-y-4 pt-1">
                   {showImportChoices && <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'yad2'} onClick={() => setImportOption('yad2')}>ייבוא מיד2<ChevronDown className="ms-2 h-4 w-4" /></Button>
-                    <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'mine'} onClick={() => setImportOption('mine')}>הנכסים שלי ({readyProperties?.length ?? 0})<ChevronDown className="ms-2 h-4 w-4" /></Button>
+                    <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'yad2'} onClick={() => setImportOption('yad2')}>ייבוא מיד2</Button>
+                    <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'mine'} onClick={() => setImportOption('mine')}>הנכסים שלי ({readyProperties?.length ?? 0})</Button>
                   </div>}
-                  {(!showImportChoices || importOption === 'yad2') && <>
-                  <p className="text-center text-[19px] font-semibold text-muted-foreground">ייבוא מודעה מיד 2</p>
-                  {(
-                    <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="placeholder:text-muted-foreground/60" value={importUrl} onChange={e => { setImportOption('yad2'); setImportUrl(e.target.value); }} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); setImportOption('yad2'); const pasted = e.clipboardData.getData('text').trim(); const clean = pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted; setImportUrl(clean); setPublishError(''); if (/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/\S+/i.test(clean)) { lastAutoImport.current = clean; void importYad2(clean); } }} />
+                  {(fields.publisherType === 'broker' || fields.publisherType === 'developer') && (!showImportChoices || importOption === 'yad2') && <Yad2AgencyImport publisherType={fields.publisherType} />}
+                  {(!showImportChoices || importOption === 'yad2') && (
+                    <section dir="rtl" className="space-y-3 rounded-xl border bg-card p-4">
+                      <h2 className="text-[17px] font-semibold">יבוא מודעה מיד 2</h2>
+                      <p className="flex items-start gap-1.5 text-[13px] leading-5 text-muted-foreground">
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button type="button" aria-label="פירוט על הזכויות לנכס שמיובא" className="mt-0.5 shrink-0 rounded-full text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                <Info className="h-3.5 w-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[260px] text-[13px] leading-6">
+                              <p>TORAFF היא כלי טכנולוגי בלבד. האחריות על הנכס, התמונות והפרטים שמייבאים חלה עליך, כולל עמידה בתנאי השימוש של הלוח שממנו הועתק הקישור. פירוט מלא בתקנון.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <span>בהדבקת הקישור {gender === 'female' ? 'את מצהירה' : 'אתה מצהיר'} שיש לך הזכות המלאה לשווק את הנכס ולהשתמש בתמונות ובפרטיו.</span>
+                      </p>
+                      <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="text-[16px] placeholder:text-muted-foreground/50" value={importUrl} onChange={e => { setImportOption('yad2'); setImportUrl(e.target.value); }} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); setImportOption('yad2'); const pasted = e.clipboardData.getData('text').trim(); setImportUrl(pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted); setPublishError(''); }} />
+                      {isYad2ItemUrl(importUrl) && !importing && <Button type="button" className="w-full" onClick={() => void importYad2(importUrl.trim())}>יבוא המודעה</Button>}
+                      {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
+                    </section>
                   )}
-                  <p className="flex items-start gap-1.5 text-[12.5px] leading-5 text-muted-foreground">
-                    <TooltipProvider delayDuration={150}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button type="button" aria-label="פירוט על הזכויות לנכס שמיובא" className="mt-0.5 shrink-0 rounded-full text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                            <Info className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-[260px] text-[13px] leading-6">
-                          <p>TORAFF היא כלי טכנולוגי בלבד. האחריות על הנכס, התמונות והפרטים שמייבאים חלה עליך, כולל עמידה בתנאי השימוש של הלוח שממנו הועתק הקישור. פירוט מלא בתקנון.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <span>בהדבקת הקישור {gender === 'female' ? 'את מצהירה' : 'אתה מצהיר'} שיש לך הזכות המלאה לשווק את הנכס ולהשתמש בתמונות ובפרטיו.</span>
-                  </p>
-                  </>}
-                  {(fields.publisherType === 'broker' || fields.publisherType === 'developer') && (!showImportChoices || importOption === 'yad2') && <div className="space-y-1 text-[13px] leading-5 text-muted-foreground">
-                    <p>יש לכם עמוד משרד ביד2? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם ייובאו בלחיצה אחת.</p>
-                    <p dir="ltr" className="text-right font-mono text-[12px] text-muted-foreground/80">https://www.yad2.co.il/realestate/agency/…</p>
-                    <p>{fields.publisherType === 'developer' ? 'טיפ: ביד2, היכנסו לאחד הפרויקטים שלכם ולחצו על שם החברה כדי להגיע לעמוד הראשי.' : 'טיפ: ביד2, היכנסו לאחת המודעות שלכם ולחצו על שם המשרד כדי להגיע לעמוד הראשי.'}</p>
-                    <Yad2AgencyImport />
-                  </div>}
                   {showImportChoices && importOption === 'mine' && <MyPropertiesPicker key={draftScope} />}
-                  {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
-                  <button type="button" className="mx-auto block pt-1 text-sm font-semibold text-primary underline underline-offset-4" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setStep(1); setReviewMode(true); setExpandedStep('step-2'); }}>
-                    המשך ללא ייבוא
-                  </button>
+                  <Button type="button" variant="outline" className="mx-auto mt-6 block w-full max-w-xs" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setStep(1); setReviewMode(true); setExpandedStep('step-2'); }}>המשך ללא ייבוא</Button>
+
                 </div>
             </div>
           )}
