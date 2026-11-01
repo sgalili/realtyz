@@ -13,6 +13,7 @@ import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
 import { SocialDraftChargeDialog } from '@/components/campaigns/SocialDraftChargeDialog';
 import { AppFooter } from "@/components/AppFooter";
+import { FaqHost } from "@/components/faq/FaqDialog";
 import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
@@ -562,6 +563,7 @@ const App = () => (
             </WorkspaceScope>
             </Suspense>
             <AppFooter />
+            <FaqHost />
             <SocialDraftChargeDialog />
             </MandateProvider>
             </ElectionTypeProvider>
