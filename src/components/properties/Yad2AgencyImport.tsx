@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -37,12 +38,15 @@ async function applyRule(listingId: string, workspaceId: string, rule: ImportCom
 }
 
 
+const PENDING_KEY = 'toraff-pending-agency-import';
+
 export default function Yad2AgencyImport({ publisherType = 'broker' }: { publisherType?: string }) {
 
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const queryClient = useQueryClient();
-  const [url, setUrl] = useState('');
+  const navigate = useNavigate();
+  const [url, setUrl] = useState(() => { try { return sessionStorage.getItem(PENDING_KEY) ?? ''; } catch { return ''; } });
   const [phase, setPhase] = useState<'idle' | 'discovering' | 'importing' | 'done'>('idle');
   const [progress, setProgress] = useState<ImportProgress>({ total: 0, done: 0, failed: 0, running: 0 });
   const [imported, setImported] = useState<string[]>([]);
@@ -59,12 +63,14 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
     queryKey: ['verified-roles-import', user?.id], enabled: !!user?.id,
     queryFn: async () => { const { data } = await supabase.rpc('get_verified_user_roles'); return (data ?? []) as string[]; },
   });
-  if (!user || !activeWorkspaceId) return null;
+  if (user && !activeWorkspaceId) return null;
   const unverifiedBroker = publisherType === 'broker' && !roles.some(r => BROKER_ROLES.includes(r));
 
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] }); void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] }); };
 
   const start = async () => {
+    if (!user || !activeWorkspaceId) { try { sessionStorage.setItem(PENDING_KEY, url.trim()); } catch { /* ignore */ } navigate('/auth'); return; }
+    try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
     const run = ++scope.current, ws = activeWorkspaceId, activeRule = rule;
     setPhase('discovering'); setImported([]);
     const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(url) } });
@@ -91,6 +97,7 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
   };
 
   const applyGlobal = async () => {
+    if (!user || !activeWorkspaceId) return;
     saveImportRule(user.id, activeWorkspaceId, rule);
     await runPool(imported, PARALLEL, id => applyRule(id, activeWorkspaceId, rule, false));
     refresh(); setRuleOpen(false);
