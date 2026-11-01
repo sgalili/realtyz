@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { importCommissionPayload, readImportRule, saveImportRule, runPool, type ImportCommissionRule } from '@/lib/importCommissionDefaults';
+import { agencyUrlForRequest, isYad2AgencyUrl } from '@/lib/yad2ImportLinks';
+
 
 const BROKER_ROLES = ['managing_broker', 'agent', 'lead_agent', 'junior_agent', 'super_admin'];
 const PARALLEL = 4;
@@ -34,13 +36,6 @@ async function applyRule(listingId: string, workspaceId: string, rule: ImportCom
   await supabase.from('listings').update({ ...columns, features: { ...(feature as object), deal_closing_commission: closing } } as never).eq('id', listingId).eq('workspace_owner_id', workspaceId);
 }
 
-/** Agency-page links the discovery function accepts: https://<sub.>yad2.co.il/realestate/agency/<id>. */
-export const YAD2_AGENCY_URL_PATTERN = /^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/realestate\/agency\/[^/?#\s]+/i;
-/** The discovery function requires a full https URL, so pasted links get the scheme back. */
-const agencyUrlForRequest = (raw: string) => {
-  const value = raw.trim();
-  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
-};
 
 export default function Yad2AgencyImport({ publisherType = 'broker' }: { publisherType?: string }) {
 
@@ -110,7 +105,7 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
     <p className="text-[13.5px] leading-6 text-muted-foreground">יש לכם עמוד משרד ביד שתיים? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם יובאו בלחיצה אחת.</p>
     <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/agency/..." dir="ltr" disabled={busy} className="text-[16px] placeholder:text-muted-foreground/50" />
     <p className="text-[12.5px] leading-5 text-muted-foreground">{publisherType === 'developer' ? 'טיפ: ביד 2, היכנסו לאחד הפרויקטים שלכם ולחצו על שם החברה כדי להגיע לעמוד הראשי.' : 'טיפ: ביד 2, היכנסו לאחת המודעות שלכם ולחצו על שם המשרד כדי להגיע לעמוד הראשי'}</p>
-    {YAD2_AGENCY_URL_PATTERN.test(url.trim()) && <Button onClick={() => void start()} disabled={busy} className="w-full gap-2">
+    {isYad2AgencyUrl(url) && <Button onClick={() => void start()} disabled={busy} className="w-full gap-2">
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{phase === 'discovering' ? 'מאתר מודעות…' : 'יבוא כל הנכסים'}
     </Button>}
 

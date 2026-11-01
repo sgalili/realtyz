@@ -56,8 +56,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { brokerLicenseDigits, brokerLicenseSchema, verifyBrokerLicense } from '@/lib/brokerLicense';
 import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
-// A single Yad2 ad link: an item page or one of the short share forms the importer resolves.
-const YAD2_ITEM_URL_PATTERN = /^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:(?:realestate\/)?item\/\S+|s\/\S+|share\/\S+)/i;
+import { isYad2ItemUrl } from '@/lib/yad2ImportLinks';
+
 
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import {
@@ -821,7 +821,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                         <span>בהדבקת הקישור {gender === 'female' ? 'את מצהירה' : 'אתה מצהיר'} שיש לך הזכות המלאה לשווק את הנכס ולהשתמש בתמונות ובפרטיו.</span>
                       </p>
                       <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="text-[16px] placeholder:text-muted-foreground/50" value={importUrl} onChange={e => { setImportOption('yad2'); setImportUrl(e.target.value); }} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); setImportOption('yad2'); const pasted = e.clipboardData.getData('text').trim(); setImportUrl(pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted); setPublishError(''); }} />
-                      {YAD2_ITEM_URL_PATTERN.test(importUrl.trim()) && !importing && <Button type="button" className="w-full" onClick={() => void importYad2(importUrl.trim())}>יבוא המודעה</Button>}
+                      {isYad2ItemUrl(importUrl) && !importing && <Button type="button" className="w-full" onClick={() => void importYad2(importUrl.trim())}>יבוא המודעה</Button>}
                       {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
                     </section>
                   )}
