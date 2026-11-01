@@ -13,6 +13,8 @@ type BrokerAttributionProps = {
   dealType?: string | null;
   trailing?: ReactNode;
   table?: boolean;
+  /** Signed-out layout: exclusivity label top-left with icon-only rewards in one row below it. */
+  guestStack?: boolean;
 };
 
 export default function BrokerAttribution({
@@ -26,6 +28,7 @@ export default function BrokerAttribution({
   dealType,
   trailing,
   table = false,
+  guestStack = false,
 }: BrokerAttributionProps) {
   const broker = brokerName?.trim() && !brokerName.includes('לא צוין') ? brokerName.trim() : '';
   const office = officeName?.trim() && !officeName.includes('לא צוין') ? officeName.trim() : '';
@@ -48,13 +51,17 @@ export default function BrokerAttribution({
           {!isPrivate && office && office !== 'מפרסם פרטי' && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
           {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {license}</span>}
         </div>}
-        {exclusive && (
+        {exclusive && !guestStack && (
           <span className={`flex w-fit items-center gap-1 text-xs font-semibold text-foreground ${compact ? 'mt-1' : 'mt-1.5'}`}>
             <Award className="h-3.5 w-3.5 text-primary" />בבלעדיות
           </span>
         )}
       </div>
-      {trailing && <div className="ms-auto max-w-[45%] shrink-0 [&_[data-commission-icons]]:justify-end">{trailing}</div>}
+      {guestStack && (exclusive || trailing) && <div className="ms-auto flex shrink-0 flex-col items-end gap-1.5 self-start">
+        {exclusive && <span className="flex w-fit items-center gap-1 text-xs font-semibold text-foreground"><Award className="h-3.5 w-3.5 text-primary" />בבלעדיות</span>}
+        {trailing && <div data-guest-reward-row className="[&_[data-commission-icons]]:justify-end [&_.grid]:flex [&_.grid]:flex-nowrap [&_.grid]:items-center [&_.grid]:gap-2 [&_bdi]:hidden [&_span.text-xs]:hidden [&_svg]:h-4 [&_svg]:w-4">{trailing}</div>}
+      </div>}
+      {!guestStack && trailing && <div className="ms-auto max-w-[45%] shrink-0 [&_[data-commission-icons]]:justify-end">{trailing}</div>}
     </div>
   );
 }
