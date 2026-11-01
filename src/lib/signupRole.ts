@@ -108,6 +108,7 @@ export async function applyPendingSignupRole(): Promise<string | null> {
   }
   const { data, error } = await supabase.rpc('select_signup_user_type', { _type: role });
   if (error || !(data as { ok?: boolean } | null)?.ok) return null;
+  notifySignupAdmin();
   markPostSignupWelcome(role);
   clearPendingSignupRole();
   return '/';

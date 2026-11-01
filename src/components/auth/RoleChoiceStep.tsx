@@ -65,6 +65,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       } else await signupRpc('complete_sms_signup_details', { _type: selected, _details: details });
       markPostSignupWelcome(selected, selected === 'property_owner' ? details.deal_type : undefined);
       clearSmsSignup(); clearPendingSignupRole();
+      notifySignupAdmin();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) }),
         queryClient.invalidateQueries({ queryKey: ['workspace-owner-roles'] }),

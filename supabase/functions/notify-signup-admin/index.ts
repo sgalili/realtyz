@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: 'not_configured' });
     }
 
-    const avatar = phone ? await fetchGreenAvatar(creds, phone).catch(() => null) : null;
+    const avatar = phone ? await fetchGreenAvatar(creds, `${phone}@c.us`).catch(() => null) : null;
     const text = [
       '🆕 נרשם משתמש חדש ל-TORAFF',
       `שם מלא: ${profile?.full_name?.trim() || '—'}`,
