@@ -40,6 +40,34 @@ export function commissionEditScope(
 /** Reward facts a view already holds (the board feed computes these server-side). */
 export type RewardFacts = { reward_levels?: Partial<Record<'form' | 'whatsapp' | 'phone', number | null>> | null; closing_level?: number | null; reward_types?: RewardTypes };
 
+/**
+ * Icon color levels (0-3) for one ad, so every view paints the same icon the
+ * same way. The server-computed facts a view already holds win first: guests
+ * receive redacted amounts, so amounts alone cannot reproduce the board's
+ * colors. Then any levels shipped with the row, then the same derivation the
+ * server applies to amounts this viewer is allowed to see.
+ */
+export function rewardColorLevels(
+  facts: RewardFacts | undefined,
+  source: Record<string, unknown> | undefined,
+  raw: Record<string, unknown> | undefined,
+  tiers: { tier1: number; tier2: number; tier3: number },
+  closing: { value: unknown; type: unknown; dealType: unknown; price: unknown },
+): { levels: Record<'form' | 'whatsapp' | 'phone', number | null>; closingLevel: number } {
+  const serverLevels = (facts?.reward_levels ?? source?.reward_levels ?? raw?.reward_levels) as Partial<Record<'form' | 'whatsapp' | 'phone', number | null>> | undefined;
+  const leadLevelOf = (key: 'form' | 'whatsapp' | 'phone', value: unknown) => (Number(value) > 0 ? leadPriceLevel(key, Number(value)) : null);
+  const levels = {
+    form: serverLevels?.form ?? leadLevelOf('form', tiers.tier1),
+    whatsapp: serverLevels?.whatsapp ?? leadLevelOf('whatsapp', tiers.tier2),
+    phone: serverLevels?.phone ?? leadLevelOf('phone', tiers.tier3),
+  };
+  const closingLevel = typeof facts?.closing_level === 'number' ? facts.closing_level
+    : typeof source?.closing_level === 'number' ? source.closing_level
+    : typeof raw?.closing_level === 'number' ? raw.closing_level
+    : closingRewardLevel(closing.value, closing.type, closing.dealType, closing.price) ?? 0;
+  return { levels, closingLevel };
+}
+
 export default function PropertyCommissionIcons({ listingId, raw, networkOpen, table = false, facts }: { listingId: string; raw?: Record<string, unknown>; networkOpen?: boolean; table?: boolean; facts?: RewardFacts }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
@@ -102,20 +130,11 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     tier3: source?.affiliate_tier3_amount == null && !listing ? undefined : tiers.tier3,
   }, !!user, level4Unlocked, showAll);
   if (!Object.values(display.types).some(Boolean) && !owned.data) return null;
-  // Icon colors come from 0-3 levels. Guests receive redacted amounts, so the
-  // server-computed facts a view already holds win first, then any levels
-  // shipped with the row, then the same derivation the server applies to amounts.
-  const serverLevels = (facts?.reward_levels ?? source?.reward_levels ?? raw?.reward_levels) as Partial<Record<'form' | 'whatsapp' | 'phone', number | null>> | undefined;
-  const leadLevelOf = (key: 'form' | 'whatsapp' | 'phone', value: unknown) => (Number(value) > 0 ? leadPriceLevel(key, Number(value)) : null);
-  const levels = {
-    form: serverLevels?.form ?? leadLevelOf('form', tiers.tier1),
-    whatsapp: serverLevels?.whatsapp ?? leadLevelOf('whatsapp', tiers.tier2),
-    phone: serverLevels?.phone ?? leadLevelOf('phone', tiers.tier3),
-  };
-  const closingLevel = typeof facts?.closing_level === 'number' ? facts.closing_level
-    : typeof source?.closing_level === 'number' ? source.closing_level
-    : typeof raw?.closing_level === 'number' ? raw.closing_level
-    : closingRewardLevel(dcc?.value ?? source?.affiliate_tier4_amount, dcc?.type ?? source?.affiliate_tier4_type, source?.deal_type, source?.asking_price) ?? 0;
+  // Icon colors come from 0-3 levels resolved by the shared derivation below.
+  const { levels, closingLevel } = rewardColorLevels(facts, source, raw, tiers, {
+    value: dcc?.value ?? source?.affiliate_tier4_amount, type: dcc?.type ?? source?.affiliate_tier4_type,
+    dealType: source?.deal_type, price: source?.asking_price,
+  });
   const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table || !user ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={levels as never} />;
   if (table && owned.data) return <><Button variant="ghost" className="relative min-h-8 min-w-8 bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תגמולים" disabled={owned.isFetching} onClick={async event => { event.stopPropagation(); const fresh = await owned.refetch(); if (fresh.data) setDraft({ ...listingToDraft(fresh.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{Object.values(display.types).some(Boolean) ? icons : (level4Unlocked ? <Trophy className="h-3.5 w-3.5 text-lead-closing" aria-label="סגירת עסקה" /> : <span className="text-xs font-semibold text-primary underline underline-offset-2">הגדרת תגמולים</span>)}</Button>{draft && <PublicListingPublisher pricingOnly adminOnlyEdit={!!owned.data?.__adminOnly} resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
   return <LeadPricingDialog readOnly closingLevel={closingLevel} rewardTypes={types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}>{icons}</LeadPricingDialog>;
