@@ -119,7 +119,7 @@ function RangeSlider({ label, min, max, bounds, step, fmt, onChange }: { label: 
     <div className="space-y-2 rounded-md border border-border/70 p-3" dir="rtl">
       <div className="flex items-center justify-between text-[15px]">
         <span className="font-semibold">{label}</span>
-        <span className="text-muted-foreground"><bdi className="font-semibold text-foreground">{fmt(lo)}</bdi> – <bdi className="font-semibold text-foreground">{hi >= bounds.max && max == null ? `${fmt(hi)}+` : fmt(hi)}</bdi></span>
+        <span className="text-muted-foreground">מ־<bdi className="font-semibold text-foreground">{fmt(lo)}</bdi> עד <bdi className="font-semibold text-foreground">{hi >= bounds.max && max == null ? `${fmt(hi)}+` : fmt(hi)}</bdi></span>
       </div>
       <Slider dir="rtl" min={bounds.min} max={bounds.max} step={step} minStepsBetweenThumbs={0} value={[lo, hi]} aria-label={`טווח ${label}`}
         onValueChange={([a, b]) => onChange({ min: a <= bounds.min ? null : a, max: b >= bounds.max ? null : b })} />
