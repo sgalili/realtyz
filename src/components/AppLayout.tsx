@@ -1,5 +1,5 @@
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
-import { BOARD_SEARCH_OPEN_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
+import { BOARD_SEARCH_OPEN_EVENT, BOARD_SEARCH_STATE_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -274,10 +274,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const boardRoute = location.pathname === '/' || location.pathname === '/public-listings';
   const [boardGrid, setBoardGrid] = useState(() => { try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; } });
+  const [boardSearchOpen, setBoardSearchOpen] = useState(false);
   useEffect(() => {
     const onView = (e: Event) => setBoardGrid(Boolean((e as CustomEvent<{ grid: boolean }>).detail?.grid));
+    const onSearch = (e: Event) => setBoardSearchOpen(Boolean((e as CustomEvent<{ open: boolean }>).detail?.open));
     window.addEventListener(BOARD_VIEW_STATE_EVENT, onView);
-    return () => window.removeEventListener(BOARD_VIEW_STATE_EVENT, onView);
+    window.addEventListener(BOARD_SEARCH_STATE_EVENT, onSearch);
+    return () => { window.removeEventListener(BOARD_VIEW_STATE_EVENT, onView); window.removeEventListener(BOARD_SEARCH_STATE_EVENT, onSearch); };
   }, []);
   const { isDemoMode, setDemoMode, demoCandidateId, setDemoCandidateId } = useDemoMode();
   useSessionTimeout();
@@ -498,7 +501,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="app-header-content flex w-full items-center justify-between gap-2">
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
-              {boardRoute && <Button variant="ghost" size="icon" className="-ms-[5px] h-10 w-10" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[22px] !w-[22px]" /></Button>}
+              {boardRoute && <div className="relative shrink-0">
+                <Button variant="ghost" size="icon" className="-ms-[5px] h-10 w-10" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[22px] !w-[22px]" /></Button>
+                {boardSearchOpen && (
+                  <button type="button" aria-label="סגירת החיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
+                    <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                  </button>
+                )}
+              </div>}
               <NotificationCenter />
               <HomeActivityPill />
             </div>
