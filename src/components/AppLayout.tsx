@@ -501,7 +501,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="app-header-content flex w-full items-center justify-between gap-2">
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
-              {boardRoute && <Button variant="ghost" size="icon" className="-ms-[5px] h-10 w-10" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[22px] !w-[22px]" /></Button>}
+              {boardRoute && <div className="relative shrink-0">
+                <Button variant="ghost" size="icon" className="-ms-[5px] h-10 w-10" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[22px] !w-[22px]" /></Button>
+                {boardSearchOpen && (
+                  <button type="button" aria-label="סגירת החיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
+                    <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                  </button>
+                )}
+              </div>}
               <NotificationCenter />
               <HomeActivityPill />
             </div>
