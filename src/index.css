@@ -1102,6 +1102,24 @@ a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *,
     color: hsl(var(--foreground) / 0.86);
   }
 
+  .auth-footer-signup {
+    order: 1;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    font-size: calc(0.68rem + 1px);
+    font-weight: 400;
+    color: hsl(var(--foreground) / 0.86);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .auth-footer-signup:hover {
+    color: hsl(var(--foreground));
+  }
+
   @media (max-width: 420px) {
     .auth-footer-legal { gap: 3px; }
     .auth-footer-links { gap: 4px; }
