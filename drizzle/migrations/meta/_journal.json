@@ -813,6 +813,13 @@
       "when": 1793570687007,
       "tag": "0115_broker_license_manual_review",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1793571121795,
+      "tag": "0116_license_autopublish_and_board_visibility",
+      "breakpoints": true
     }
   ]
 }

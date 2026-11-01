@@ -9416,6 +9416,7 @@ export type Database = {
           clicks: number
           deal_type: string
           image_url: string
+          is_hidden: boolean
           listing_id: string
           relation: string
           slug: string
@@ -9854,6 +9855,10 @@ export type Database = {
       set_invite_bonus_settings: {
         Args: { _friend: number; _referrer: number }
         Returns: Json
+      }
+      set_my_ads_board_visibility: {
+        Args: { _ids: string[]; _visible: boolean }
+        Returns: number
       }
       set_referral_leftover_discount: {
         Args: { _referral_id: string; _type: string; _value: number }

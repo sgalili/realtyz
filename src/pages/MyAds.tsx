@@ -16,6 +16,8 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { publicUrl } from '@/lib/publicUrl';
 import { listingToDraft, missingAdFields } from '@/lib/adRecovery';
+import { EyeOff } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Eye, Loader2, MousePointerClick, Users, ImageIcon, Banknote, ChevronDown, BadgeCheck } from 'lucide-react';
 import ListingLifecycleStatus from '@/components/listings/ListingLifecycleStatus';
 import TransparencyWidget from '@/components/transparency/TransparencyWidget';
@@ -41,8 +43,25 @@ import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
 type Row = {
   listing_id: string; relation: 'owned' | 'promoting'; title: string | null; city: string | null; address: string | null;
   deal_type: string | null; asking_price: number | null; slug: string | null; image_url: string | null;
-  views: number; clicks: number; affiliates: number;
+  views: number; clicks: number; affiliates: number; is_hidden?: boolean;
 };
+async function setBoardVisibility(ids: string[], visible: boolean) {
+  const { data, error } = await supabase.rpc('set_my_ads_board_visibility' as never, { _ids: ids, _visible: visible } as never);
+  if (error) throw error;
+  return Number(data) || 0;
+}
+function OwnedVisibilityBar({ rows, onDone }: { rows: Row[]; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const run = async (visible: boolean, ids: string[]) => {
+    if (!ids.length) return;
+    setBusy(true);
+    try { const n = await setBoardVisibility(ids, visible); toast.success(visible ? `${n} מודעות מוצגות שוב בלוח` : `${n} מודעות הוסתרו מהלוח`); onDone(); }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'העדכון נכשל'); }
+    finally { setBusy(false); }
+  };
+  const anyVisible = rows.some(r => !r.is_hidden);
+  return <div className="flex justify-center"><Button type="button" variant={anyVisible ? 'outline' : 'default'} disabled={busy} className="h-10 gap-2 px-5 text-[15px] font-semibold" onClick={() => void run(!anyVisible, rows.filter(r => anyVisible ? !r.is_hidden : r.is_hidden).map(r => r.listing_id))}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : anyVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}{anyVisible ? 'הסתרת כל המודעות מהלוח' : 'הצגת כל המודעות בלוח'}</Button></div>;
+}
 type Affiliate = { affiliate_id: string; name: string; views: number; clicks: number; leads: number; paid_bids: number; paid_count: number; since: string | null; last_activity: string | null };
 type History = { id: string; at: string; type: string; amount: number; name: string };
 type Details = { affiliates: Affiliate[]; history: History[]; history_started_at: string | null; has_older_history: boolean; owned: boolean };
@@ -128,7 +147,15 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
   const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = useExclusiveExpansion(`my-ads:${activeWorkspaceId}`, `${r.relation}:${r.listing_id}`);
   const title = [r.address, r.city].filter(Boolean).join(', ') || r.title || 'נכס';
-  return <article className="relative min-w-0 py-3" data-my-ad={r.listing_id}>
+  const queryClient = useQueryClient();
+  const [toggling, setToggling] = useState(false);
+  const flipVisibility = async () => {
+    setToggling(true);
+    try { await setBoardVisibility([r.listing_id], !!r.is_hidden); toast.success(r.is_hidden ? 'המודעה מוצגת שוב בלוח' : 'המודעה הוסתרה מהלוח'); await queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] }); }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'העדכון נכשל'); }
+    finally { setToggling(false); }
+  };
+  return <article className={`relative min-w-0 py-3 ${r.is_hidden ? 'opacity-70' : ''}`} data-my-ad={r.listing_id}>
     <div className="absolute top-3 end-0 z-10">
       <AdActions row={r} owned={owned} title={title} />
     </div>
@@ -139,6 +166,7 @@ function AdCard({ row: r, owned = false }: { row: Row; owned?: boolean }) {
       <div className="min-w-0 flex-1">
         <Link to={`/p/${r.slug || r.listing_id}`} state={{ returnTo: '/my-ads' }} className="block pe-9" title={title}><PublicAdHeading compact dense title={title} price={formatPrice(Number(r.asking_price) || 0, null)} dealType={r.deal_type} /></Link>
         <div className="mt-1 flex items-center justify-end gap-2">
+          {owned && <Button type="button" variant="ghost" size="sm" disabled={toggling} className="me-auto h-8 gap-1.5 px-2 text-xs" aria-pressed={!r.is_hidden} onClick={() => void flipVisibility()}>{toggling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : r.is_hidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}{r.is_hidden ? 'מוסתרת · הצגה' : 'מוצגת · הסתרה'}</Button>}
 
           <button type="button" className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground" aria-expanded={open} aria-controls={`stats-${r.relation}-${r.listing_id}`} onClick={() => setOpen(v => !v)}>
             {([{ icon: Eye, value: r.views, label: 'צפיות' }, { icon: MousePointerClick, value: r.clicks, label: 'קליקים' }, { icon: Users, value: r.affiliates, label: 'שותפים' }]).map(({ icon: Icon, value, label }) => <span key={label} title={label} className="inline-flex items-center gap-1"><Icon className="h-3.5 w-3.5" aria-label={label} /><span className="tabular-nums text-foreground">{number(value)}</span></span>)}
@@ -232,6 +260,7 @@ function MyAdsPage() {
         const draft = listingToDraft(row);
         const missing = missingAdFields(draft).filter(field => !['שם מפרסם', 'מספר ווטסאפ', 'אישור התקנון'].includes(field));
         if (!['pending', 'live'].includes(row.status)) return [];
+        if ((row.features as Record<string, unknown> | null)?.hidden_by_owner === true) return [];
         if (row.status !== 'pending' && !draft.publicationError && !missing.length) return [];
         return [{ ...draft, files: [], videos: [], savedAt: new Date(row.updated_at).getTime(), publicationError: draft.publicationError || (row.status === 'failed' ? 'הפרסום הקודם לא הושלם. לא נשמר פירוט שגיאה.' : '') } satisfies PublicListingDraft];
       });
@@ -334,7 +363,7 @@ function MyAdsPage() {
     <Yad2AgencyImport />
     {tFilter && !listingFilter ? null : isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <div className="flex flex-col items-center gap-3 pt-8 text-center"><ImageIcon className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.25} aria-hidden="true" /><p className="text-[16px] text-muted-foreground">עדיין אין מודעות שפורסמו</p></div> : (['owned', 'promoting'] as const).map(relation => {
       const rows = visible.filter(r => r.relation === relation);
-      return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2><div className="divide-y divide-border/60">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
+      return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2>{relation === 'owned' && <OwnedVisibilityBar rows={rows} onDone={() => void refetch()} />}<div className="divide-y divide-border/60">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
     })}
       </TabsContent>
     </Tabs>

@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -40,8 +41,10 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const onLicenseVerified = useCallback((value: string | null, name?: string) => { setVerifiedLicense(value); if (value) { setHolderName(name ?? ''); setCertificateOk(false); } }, []);
   const onCertificate = useCallback((result: { matched: boolean; licenseNumber?: string } | null) => setCertificateOk(!!result?.matched && (!result.licenseNumber || result.licenseNumber.replace(/^0+/, '') === verifiedLicense)), [verifiedLicense]);
   const [continueError, setContinueError] = useState('');
+  const [licenseChecking, setLicenseChecking] = useState(false);
   useEffect(() => setContinueError(''), [license, details]);
   const continueBroker = () => {
+    if (licenseChecking) return;
     if (!signupDetailsValid('broker', details)) { setContinueError('יש להשלים את כל הפרטים לפני ההמשך.'); return; }
     // Unmatched registry numbers continue to a manual admin review instead of blocking.
     if (!brokerLicenseSchema.safeParse(license).success) { setContinueError('יש להזין מספר רישיון בספרות בלבד.'); return; }
@@ -128,8 +131,8 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
         if (key === 'main_project') return <div key={key} className="space-y-2"><label htmlFor="signup-developer-url" className="block font-normal">ייבוא פרוייקטים</label><p className="text-sm font-normal">{wording('הדבק כאן קישור לעמוד החברה שלך ב יד2:', 'הדביקי כאן קישור לעמוד החברה שלך ב יד2:')}</p><Input id="signup-developer-url" type="url" aria-label="קישור לעמוד החברה ביד2" placeholder="https://www.yad2.co.il/yad1/developers/1000000" className={`${fieldClass} text-base`} dir="ltr" maxLength={200} value={value} onChange={e => change(e.target.value)} /></div>;
         return <Input key={key} aria-label={label} placeholder={label} maxLength={200} type={key === 'budget' ? 'number' : 'text'} min={key === 'budget' ? 1 : undefined} className={fieldClass} value={value} onChange={e => change(e.target.value)} />;
       })}
-      {selected === 'broker' && brokerStep === 'details' && <BrokerLicenseField signup value={license} onChange={setLicense} onVerified={onLicenseVerified} />}
-      {selected === 'broker' && brokerStep === 'details' && <>{continueError && <p role="alert" className="text-sm text-destructive">{continueError}</p>}<Button type="button" className="h-12 w-full text-lg font-bold" onClick={continueBroker}>{wording('המשך', 'המשיכי', 'המשך')}</Button></>}
+      {selected === 'broker' && brokerStep === 'details' && <BrokerLicenseField signup onChecking={setLicenseChecking} value={license} onChange={setLicense} onVerified={onLicenseVerified} />}
+      {selected === 'broker' && brokerStep === 'details' && <>{continueError && <p role="alert" className="text-sm text-destructive">{continueError}</p>}<Button type="button" className="h-12 w-full text-lg font-bold" disabled={licenseChecking} aria-busy={licenseChecking} onClick={continueBroker}>{licenseChecking ? <Loader2 className="h-5 w-5 animate-spin" aria-label="טוען" /> : wording('המשך', 'המשיכי', 'המשך')}</Button></>}
       {ready && <Button type="submit" className="h-12 w-full text-lg" disabled={busy}>{busy ? 'שמירה...' : wording('המשך', 'המשיכי', 'המשך')}</Button>}
     </form>}
   </div>;
