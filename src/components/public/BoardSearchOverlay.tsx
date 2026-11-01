@@ -72,7 +72,9 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
   if (!mounted) return null;
   const submit = () => { if (query.trim()) onSearch(); onClose(); };
   const available = Math.max(0, viewportHeight - top);
-  const height = advanced ? available : (collapsedHeight || available);
+  // Collapsed before the measurement lands, "auto" already equals the content
+  // height, so the panel never paints full-screen for a frame.
+  const height = advanced ? available : (collapsedHeight || 'auto');
   return createPortal(
     <div ref={panelRef} role="dialog" aria-modal="true" aria-label="חיפוש נכסים" dir="rtl"
       style={{
