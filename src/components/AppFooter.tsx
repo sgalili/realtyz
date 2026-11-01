@@ -18,7 +18,7 @@ export function AppFooter() {
         <div className="auth-footer-links">
           <Link to="/terms">תנאים</Link>
           <Link to="/privacy-policy">פרטיות</Link>
-          <Link to="/commission-mechanism">מנגנון העמלות</Link>
+          <Link to="/commission-mechanism">עמלות</Link>
         </div>
       </div>
     </footer>
