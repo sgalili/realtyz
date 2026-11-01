@@ -304,7 +304,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               </div>
             </div>
           )}
-          <BoardSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} query={query} onQueryChange={setQuery} onSearch={() => void load()} resultCount={filtered.length} filters={<LeadTypeFilterButton panelOnly state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} priceBounds={priceBounds} />} />
+          <BoardSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} query={query} onQueryChange={setQuery} onSearch={() => void load()} resultCount={filtered.length} dealType={propFilter.dealType} onDealTypeChange={dealType => setPropFilter({ ...propFilter, dealType: dealType as typeof propFilter.dealType })} filters={<LeadTypeFilterButton panelOnly hideDealType state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} priceBounds={priceBounds} />} />
         </div>
       </header>
 
