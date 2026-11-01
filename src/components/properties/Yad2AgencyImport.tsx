@@ -16,7 +16,7 @@ import { importCommissionPayload, readImportRule, saveImportRule, runPool, type 
 const BROKER_ROLES = ['managing_broker', 'agent', 'lead_agent', 'junior_agent', 'super_admin'];
 const PARALLEL = 4;
 
-type Progress = { total: number; done: number; failed: number; running: number };
+type ImportProgress = { total: number; done: number; failed: number; running: number };
 
 async function errorText(error: unknown) {
   if (error instanceof FunctionsHttpError) { try { const b = await error.context.json(); return b?.message || b?.detail || b?.error || 'שגיאה'; } catch { /* ignore */ } }
@@ -40,7 +40,7 @@ export default function Yad2AgencyImport() {
   const queryClient = useQueryClient();
   const [url, setUrl] = useState('');
   const [phase, setPhase] = useState<'idle' | 'discovering' | 'importing' | 'done'>('idle');
-  const [progress, setProgress] = useState<Progress>({ total: 0, done: 0, failed: 0, running: 0 });
+  const [progress, setProgress] = useState<ImportProgress>({ total: 0, done: 0, failed: 0, running: 0 });
   const [imported, setImported] = useState<string[]>([]);
   const [ruleOpen, setRuleOpen] = useState(false);
   const [rule, setRule] = useState<ImportCommissionRule>(() => (user && activeWorkspaceId ? readImportRule(user.id, activeWorkspaceId) : readImportRule('', '')));
