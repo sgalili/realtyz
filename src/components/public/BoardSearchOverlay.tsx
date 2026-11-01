@@ -119,7 +119,7 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
       </div>
       {advanced && (
         <div data-search-foot className="shrink-0 border-t border-border px-[15px] pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3">
-          <Button type="button" className="mx-auto flex h-11 w-full max-w-2xl text-[16px]" onClick={submit}>הצגת {resultCount.toLocaleString('he-IL')} נכסים</Button>
+          <Button type="button" className="mx-auto flex h-11 w-full max-w-2xl text-[18px]" onClick={submit}>הצגת {resultCount.toLocaleString('he-IL')} נכסים</Button>
         </div>
       )}
     </div>

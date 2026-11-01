@@ -64,7 +64,7 @@ const FILTER_LEAD_LABELS: Record<LeadTypeKey, string> = {
 
 /** Compact section heading for visual hierarchy inside the popover. */
 function SectionTitle({ children }: { children: string }) {
-  return <div className="text-[15px] font-semibold leading-none">{children}</div>;
+  return <div className="text-[18px] font-semibold leading-none">{children}</div>;
 }
 
 /** Two numeric bounds on one row. */
@@ -346,7 +346,7 @@ export default function LeadTypeFilterButton({
             <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
               {FILTER_FEATURES.filter(feature => !['elevator', 'parking', 'balcony', 'open_view', 'renovated'].includes(feature.key)).map(feature => {
                 const checked = property.features?.includes(feature.key) ?? false;
-                return <label key={feature.key} className="flex cursor-pointer items-center gap-2 text-[15px]">
+                return <label key={feature.key} className="flex cursor-pointer items-center gap-2 text-[18px]">
                   <Checkbox checked={checked} onCheckedChange={() => patch({ features: checked ? (property.features ?? []).filter(k => k !== feature.key) : [...(property.features ?? []), feature.key] })} />
                   <span className="truncate">{feature.label}</span>
                 </label>;
