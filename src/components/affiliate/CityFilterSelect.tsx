@@ -69,7 +69,7 @@ export function CityFilterSelect({
           aria-expanded={open}
           aria-label="אזור"
           onClick={() => setOpen((value) => !value)}
-          className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-[16px] shadow-sm transition-colors hover:bg-muted/50"
+          className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-[18px] shadow-sm transition-colors hover:bg-muted/50"
         >
           <span className={`truncate ${nationwide ? 'text-muted-foreground' : ''}`}>{label}</span>
           <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
@@ -86,7 +86,7 @@ export function CityFilterSelect({
               role="option"
               aria-selected={nationwide}
               onClick={() => onChange(selectFilterCity(state, 'all'))}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-right text-[18px] hover:bg-accent hover:text-accent-foreground"
             >
               <Check aria-hidden className={`h-4 w-4 shrink-0 ${nationwide ? 'opacity-100' : 'opacity-0'}`} />
               <span>כל הארץ</span>
@@ -100,7 +100,7 @@ export function CityFilterSelect({
                   role="option"
                   aria-selected={on}
                   onClick={() => onChange(selectFilterCity(state, city))}
-                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-right text-[18px] hover:bg-accent hover:text-accent-foreground"
                 >
                   <Check aria-hidden className={`h-4 w-4 shrink-0 ${on ? 'opacity-100' : 'opacity-0'}`} />
                   <span className="truncate">{city}</span>
@@ -112,7 +112,7 @@ export function CityFilterSelect({
               type="button"
               aria-expanded={missingOpen}
               onClick={() => setMissingOpen((value) => !value)}
-              className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
+              className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-right text-[18px] hover:bg-accent hover:text-accent-foreground"
             >
               <span>העיר שלך לא מופיעה כאן?</span>
               <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 motion-reduce:transition-none ${missingOpen ? 'rotate-180' : ''}`} />
