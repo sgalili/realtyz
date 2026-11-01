@@ -51,7 +51,6 @@ async function setBoardVisibility(ids: string[], visible: boolean) {
   return Number(data) || 0;
 }
 function OwnedVisibilityBar({ rows, onDone }: { rows: Row[]; onDone: () => void }) {
-  const [selectMode, setSelectMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const run = async (visible: boolean, ids: string[]) => {
     if (!ids.length) return;
