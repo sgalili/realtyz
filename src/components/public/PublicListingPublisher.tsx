@@ -285,7 +285,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     if (!pending) return;
     resumedImport.current = true;
     resetEntryNavigation();
-    const type = knownPublisherRole || pending.publisherType || 'broker';
+    const type = (knownPublisherRole || pending.publisherType || 'broker') as PublicListingDraftFields['publisherType'];
     setFields(current => ({ ...current, publisherType: type, ownerDeclarationAccepted: false }));
     setRolePicked(true); setImportSlide(true); setOpen(true);
     if (pending.kind === 'single') { setImportUrl(pending.url); window.setTimeout(() => void importYad2Ref.current?.(pending.url), 0); }
