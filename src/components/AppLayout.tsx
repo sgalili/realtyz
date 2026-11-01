@@ -507,7 +507,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <Button variant="ghost" size="icon" className="-ms-[5px] h-9 w-9" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[28.75px] !w-[28.75px]" /></Button>
                 {boardSearchOpen ? (
                   <button type="button" aria-label="סגירת החיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))} className="absolute -top-1 -right-1 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
-                    <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                    <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
                   </button>
                 ) : boardFilterCount > 0 ? <span aria-label={`${boardFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{boardFilterCount}</span> : null}
               </div>}
