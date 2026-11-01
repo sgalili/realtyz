@@ -32,7 +32,7 @@ export function BrokerLicenseField({ value, onChange, onVerified, compact = fals
     <div id="signup-broker-license-status" aria-live="polite" className="text-sm">
       {!bare && !signup && status === 'checking' && <span className="text-muted-foreground">בודקים בפנקס המתווכים המורשים…</span>}
       {!bare && !signup && status === 'valid' && <span className="text-success">הרישיון נמצא בפנקס המתווכים המורשים</span>}
-      {status === 'error' && <span role="alert" className="text-destructive">{message}</span>}
+      {status === 'error' && !signup && <span role="alert" className="text-destructive">{message}</span>}
     </div>
     {!signup && !bare && <><ClosingSplitNote registration /><BrokerTestLinks /></>}
   </div>;
