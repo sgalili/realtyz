@@ -19,6 +19,9 @@ const FAILURES: Record<string, string> = {
   invalid_official_license: 'מספר הרישיון אינו מופיע בפנקס המתווכים המורשים.',
 };
 
+/** Stable ref: reveal and focus the license input once when it mounts. */
+const focusLicenseOnMount = (el: HTMLDivElement | null) => { if (el) requestAnimationFrame(() => { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); el.querySelector('input')?.focus(); }); };
+
 /** Non-broker upgrade request: registry + certificate match, then manual Super Admin approval. */
 export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApproved }: { profileOwnerId?: string; publisher?: boolean; onApproved?: () => void }) {
   const queryClient = useQueryClient();
@@ -120,7 +123,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
           <p>הבקשה בבדיקה. נעדכן אותך בהמשך.</p>
         </div> : hasLicense && <div className="space-y-2 border-t border-border pt-3">
           <p className="text-base font-semibold">כבר קיבלת רישיון?</p>
-          <div ref={el => { if (el) requestAnimationFrame(() => { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); el.querySelector('input')?.focus(); }); }}>
+          <div ref={focusLicenseOnMount}>
           <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={() => {}} /></div>
           {sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" description="נדרש אימות מספר הטלפון של החשבון לפני אימות הרישיון." onVerified={() => { void sms.refetch(); }} />}
           <label htmlFor="broker-certificate-image" className="block text-base">צילום תעודת הרישיון</label>
