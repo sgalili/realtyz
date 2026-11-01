@@ -120,8 +120,8 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
   const num = (k: keyof ImportCommissionRule) => (e: React.ChangeEvent<HTMLInputElement>) => setRule(r => ({ ...r, [k]: Math.max(0, Number(e.target.value.replace(/[^\d.]/g, '')) || 0) }));
 
   return <CollapsibleCard title="יבוא כל המודעות שלי מיד 2" open={open || busy || phase === 'done'} onToggle={() => onToggle?.()}>
-    <p className="text-[13.5px] leading-6 text-muted-foreground">יש לכם עמוד משרד ביד שתיים? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם יובאו בלחיצה אחת.</p>
-    <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/agency/..." dir="ltr" disabled={busy} className="text-[16px] placeholder:text-muted-foreground/50" />
+    <p className="text-[15.5px] leading-6 text-muted-foreground">יש לכם עמוד משרד ביד שתיים? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם יובאו בלחיצה אחת.</p>
+    <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/agency/..." dir="ltr" disabled={busy} className="text-[16px] placeholder:text-muted-foreground/35" />
     <p className="text-[12.5px] leading-5 text-muted-foreground">{publisherType === 'developer' ? 'טיפ: ביד 2, היכנסו לאחד הפרויקטים שלכם ולחצו על שם החברה כדי להגיע לעמוד הראשי.' : 'טיפ: ביד 2, היכנסו לאחת המודעות שלכם ולחצו על שם המשרד כדי להגיע לעמוד הראשי'}</p>
     {isYad2AgencyUrl(url) && <Button onClick={() => void start()} disabled={busy} className="w-full gap-2">
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{phase === 'discovering' ? 'מאתר מודעות…' : 'יבוא כל הנכסים'}
