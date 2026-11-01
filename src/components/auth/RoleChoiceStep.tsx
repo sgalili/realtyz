@@ -16,7 +16,8 @@ import { prepareRewardSounds } from '@/lib/rewardFeedback';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { BrokerCertificateCheck } from '@/components/auth/BrokerCertificateCheck';
-import { verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
+import { verifyBrokerLicense, INVALID_BROKER_LICENSE, brokerLicenseSchema } from '@/lib/brokerLicense';
+import { BrokerLicensePhotoUpload, uploadBrokerLicensePhoto, requestBrokerLicenseReview, BROKER_LICENSE_REVIEW_MESSAGE } from '@/components/auth/BrokerLicensePhotoUpload';
 import { clearSmsSignup, readSmsSignup, signupDetailsValid, signupRpc, notifySignupAdmin, signupTypeFields, signupTypes, type SmsSignupType } from '@/lib/smsSignup';
 
 export const PRIMARY_SIGNUP_TYPES = signupTypes;
@@ -34,6 +35,8 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const [holderName, setHolderName] = useState('');
   const [brokerStep, setBrokerStep] = useState<'details' | 'certificate'>('details');
   const [certificateOk, setCertificateOk] = useState(false);
+  const [reviewPhoto, setReviewPhoto] = useState<File | null>(null);
+  const needsReview = verifiedLicense !== license;
   const onLicenseVerified = useCallback((value: string | null, name?: string) => { setVerifiedLicense(value); if (value) { setHolderName(name ?? ''); setCertificateOk(false); } }, []);
   const onCertificate = useCallback((result: { matched: boolean; licenseNumber?: string } | null) => setCertificateOk(!!result?.matched && (!result.licenseNumber || result.licenseNumber.replace(/^0+/, '') === verifiedLicense)), [verifiedLicense]);
   const brokerDetailsReady = selected === 'broker' && signupDetailsValid('broker', details) && !!license && verifiedLicense === license;
@@ -41,7 +44,8 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   useEffect(() => setContinueError(''), [license, details]);
   const continueBroker = () => {
     if (!signupDetailsValid('broker', details)) { setContinueError('יש להשלים את כל הפרטים לפני ההמשך.'); return; }
-    if (!brokerDetailsReady) { setContinueError(INVALID_BROKER_LICENSE); return; }
+    // Unmatched registry numbers continue to a manual admin review instead of blocking.
+    if (!brokerLicenseSchema.safeParse(license).success) { setContinueError('יש להזין מספר רישיון בספרות בלבד.'); return; }
     setBrokerStep('certificate');
   };
   const { user } = useAuth();
@@ -60,7 +64,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     });
     return () => { alive = false; };
   }, [user?.id]);
-  const ready = selected && signupDetailsValid(selected, details) && (selected !== 'broker' || (!!license && verifiedLicense === license && brokerStep === 'certificate' && certificateOk));
+  const ready = selected && signupDetailsValid(selected, details) && (selected !== 'broker' || (!!license && brokerStep === 'certificate' && (needsReview ? !!reviewPhoto : certificateOk)));
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (busy || !user || !selected || !ready) return;
@@ -71,6 +75,13 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       if (pending) {
         await signupRpc('complete_sms_signup', { _first_name: pending.firstName, _last_name: pending.lastName, _gender: pending.gender, _phone: pending.phone });
         queryClient.setQueryData(personalGenderKey(user.id), pending.gender);
+      }
+      if (selected === 'broker' && needsReview) {
+        await requestBrokerLicenseReview(license, await uploadBrokerLicensePhoto(user.id, reviewPhoto!), details);
+        clearSmsSignup(); clearPendingSignupRole(); notifySignupAdmin();
+        toast.success(BROKER_LICENSE_REVIEW_MESSAGE, { duration: 8000 });
+        await queryClient.invalidateQueries({ queryKey: ['primary-user-type'] });
+        onDone?.(); navigate('/', { replace: true }); return;
       }
       if (selected === 'broker') await verifyBrokerLicense(license, 'verify');
       if (licenseSuspended) {
@@ -104,7 +115,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     {licenseSuspended && <div role="alert" className="mb-4 w-full max-w-lg border border-destructive p-3 text-destructive">{INVALID_BROKER_LICENSE}</div>}
     {!selected && <div role="group" aria-label="סוג משתמש" className="grid w-full max-w-lg grid-cols-2 gap-3">{signupTypes.map(type => <Button key={type} type="button" variant="outline" className="h-16 whitespace-normal text-lg font-bold" disabled={busy || (licenseSuspended && type !== 'broker')} onClick={() => { setSelected(type); setDetails({}); }}>{currentLabels[type]}</Button>)}</div>}
     {selected && <form onSubmit={submit} className="w-full max-w-lg space-y-3">
-      {selected === 'broker' && brokerStep === 'certificate' && <div className="space-y-3"><p className="text-center text-2xl font-bold">{holderName || license}</p><BrokerCertificateCheck onResult={onCertificate} /></div>}
+      {selected === 'broker' && brokerStep === 'certificate' && <div className="space-y-3"><p className="text-center text-2xl font-bold">{holderName || license}</p>{needsReview ? <BrokerLicensePhotoUpload file={reviewPhoto} onFile={setReviewPhoto} /> : <BrokerCertificateCheck onResult={onCertificate} />}</div>}
       {!(selected === 'broker' && brokerStep === 'certificate') && signupTypeFields[selected].map(([key, label]) => {
         const value = details[key] ?? '';
         const change = (next: string) => setDetails(previous => ({ ...previous, [key]: next }));
