@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Search, Send, UserPlus, X } from 'lucide-react';
+import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Search, Send, X } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
@@ -86,8 +86,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const { activeWorkspaceId } = useWorkspace();
   const marketplace = useAffiliateMarketplace();
   const { level4Unlocked } = useAffiliateLicense();
-  const goToAuth = () =>
-    navigate('/auth', { state: { returnTo: location.pathname + location.search } });
   const [cards, setCards] = useState<PublicCard[]>(() => boardCache.get<PublicCard>() ?? []);
   const [visibleCount, setVisibleCount] = useState(24);
   // Listings the signed-in poster owns (marked with the "שלי" badge on the card image).
@@ -295,9 +293,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="relative z-50 grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-x-2 bg-card sm:gap-x-3">
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
-                {!user && <button type="button" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="flex shrink-0 items-center justify-center self-center border-0 bg-transparent p-0 leading-none text-primary"><UserPlus className="h-[25px] w-[25px] translate-x-[6px]" strokeWidth={1.75} /></button>}
                 <div className="relative shrink-0">
-                  <Button variant="ghost" size="icon" className="shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="h-[25px] w-[25px]" strokeWidth={1.75} /></Button>
+                  <Button variant="ghost" size="icon" className="!h-12 !w-12 shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="h-[30px] w-[30px]" strokeWidth={1.75} /></Button>
                   {searchOpen && (
                     <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
                       <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
