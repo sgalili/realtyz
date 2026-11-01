@@ -32,14 +32,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { useUserRole } from '@/hooks/useUserRole';
-import { MissingCityAlert } from './MissingCityAlert';
+import { CityFilterSelect } from './CityFilterSelect';
 import {
   EMPTY_LEAD_FILTER,
   EMPTY_PROPERTY_FILTER,
   LEAD_TYPE_ORDER,
   leadFilterActiveCount,
   propertyFilterActiveCount,
-  selectFilterCity,
   setLeadFilterMinimum,
   leadFilterSliderRange,
   FILTER_FEATURES,
@@ -312,18 +311,14 @@ export default function LeadTypeFilterButton({
                   </Select>
                 </div>
               ) : null}
-              {show('city') && cities.length ? (
-                <div className="space-y-1">
-                  <Select value="" onValueChange={(value) => patch(selectFilterCity(property, value))}>
-                    <SelectTrigger aria-label="אזור" className="h-9 text-[16px]"><span className="truncate">{property.city === 'all' ? 'כל הארץ' : property.selectedCities?.length ? property.selectedCities.join(', ') : property.city || 'אזור'}</span></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">כל הארץ</SelectItem>
-                      {property.city === 'all' ? <SelectItem value="choose">בחירת ערים</SelectItem> : cities.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {show('city') ? (
+                <CityFilterSelect
+                  cities={cities}
+                  state={property}
+                  onChange={patch}
+                  preferences={{ deal: (property as any).deal, propertyType: property.propertyType, priceMin: property.priceMin, priceMax: property.priceMax }}
+                />
               ) : null}
-              {show('city') ? <MissingCityAlert preferences={{ deal: (property as any).deal, propertyType: property.propertyType, priceMin: property.priceMin, priceMax: property.priceMax }} /> : null}
               {false && show('neighborhood') && neighborhoods.length ? (
                 <div className="space-y-1">
                   <Select value={property.neighborhood} onValueChange={(value) => patch({ neighborhood: value })}>
