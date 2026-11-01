@@ -147,6 +147,7 @@ export default function LeadTypeFilterButton({
   className = '',
   inline = false,
   panelOnly = false,
+  hideDealType = false,
   open: controlledOpen,
   onOpenChange,
 }: {
@@ -163,6 +164,7 @@ export default function LeadTypeFilterButton({
   inline?: boolean;
   /** Render the filter body directly (inside the full-page search). */
   panelOnly?: boolean;
+  hideDealType?: boolean;
   /** Lowest/highest published price on the platform; slider absolute bounds. */
   priceBounds?: { min: number; max: number } | null;
   open?: boolean;
@@ -256,7 +258,7 @@ export default function LeadTypeFilterButton({
         <h2 className="text-[17px] font-semibold leading-none">חיפוש מתקדם</h2>
         {active ? <Button type="button" size="sm" variant="ghost" className="ms-auto h-7 px-2 text-[12px]" onClick={reset}>ניקוי סינון</Button> : null}
       </div>}
-      {property && show('dealType') ? (
+      {property && show('dealType') && !hideDealType ? (
         <div className="flex items-center gap-1" role="group" aria-label="סוג עסקה">
           {(['sale', 'rent'] as const).map((value) => {
             const on = property.dealType === 'all' || property.dealType === value;

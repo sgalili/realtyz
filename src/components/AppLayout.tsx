@@ -498,7 +498,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="app-header-content flex w-full items-center justify-between gap-2">
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
-              {boardRoute && <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[22px] !w-[22px]" /></Button>}
+              {boardRoute && <Button variant="ghost" size="icon" className="-ms-[5px] h-10 w-10" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[22px] !w-[22px]" /></Button>}
               <NotificationCenter />
               <HomeActivityPill />
             </div>
@@ -515,7 +515,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!h-10 !w-[97px] sm:!w-[108px] whitespace-nowrap px-1 !text-[16px] sm:!text-[18px]" />
+              <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!h-auto !w-auto !min-w-0 !p-[5px] whitespace-nowrap !text-[15px] sm:!text-[17px]" />
               {boardRoute && <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={boardGrid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} onClick={() => window.dispatchEvent(new Event(BOARD_VIEW_TOGGLE_EVENT))}>{boardGrid ? <List className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}</Button>}
             </div>
             </div>
