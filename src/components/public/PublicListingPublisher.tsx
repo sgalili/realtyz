@@ -56,6 +56,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { BrokerCertificateCheck } from '@/components/auth/BrokerCertificateCheck';
 import { brokerLicenseDigits, brokerLicenseSchema, verifyBrokerLicense } from '@/lib/brokerLicense';
+import { BrokerLicensePhotoUpload, uploadBrokerLicensePhoto, requestBrokerLicenseReview, BROKER_LICENSE_REVIEW_MESSAGE } from '@/components/auth/BrokerLicensePhotoUpload';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
 import { savePendingYad2Import, readPendingYad2Import, clearPendingYad2Import } from '@/lib/pendingYad2Import';
@@ -204,6 +205,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const awaitingCertificate = useRef(false);
   const [guestStage, setGuestStage] = useState<'otp' | 'certificate'>('otp');
   const [guestLicense, setGuestLicense] = useState('');
+  const [licenseReview, setLicenseReview] = useState(false);
+  const [reviewPhoto, setReviewPhoto] = useState<File | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
   const pendingAuthPublish = useRef<{ fields: PublicListingDraftFields; files: File[]; videos: File[] } | null>(null);
   // Which sub-option of the minimalist create-ad screen is expanded.
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
@@ -406,10 +410,20 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
         const { data: smsVerified, error: smsError } = await supabase.rpc('publisher_sms_verified');
         if (smsError || smsVerified !== true) throw new Error('יש להשלים אימות SMS לפני פרסום כמתווך');
         // License is checked against the official registry server-side, bound to the SMS-verified account.
-        if (!isBroker) await verifyBrokerLicense(draftFields.brokerLicense ?? '', 'verify');
-        const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
-        if (error) throw error;
-        await refetchRoles();
+        if (!isBroker && !draftFields.brokerLicenseReview) {
+          try { await verifyBrokerLicense(draftFields.brokerLicense ?? '', 'verify'); }
+          catch {
+            // Unmatched number: collect the license photo for a manual admin review instead of blocking.
+            pendingAuthPublish.current = { fields: draftFields, files: draftFiles, videos: draftVideos }; awaitingCertificate.current = true;
+            setGuestLicense(draftFields.brokerLicense ?? ''); setLicenseReview(true); setReviewPhoto(null); setGuestStage('certificate'); setOtpOpen(true);
+            setPublishing(false); setPublishStage(''); return;
+          }
+        }
+        if (!draftFields.brokerLicenseReview) {
+          const { error } = await supabase.rpc('register_as_broker', { _display_name: draftFields.contactName.trim() || null });
+          if (error) throw error;
+          await refetchRoles();
+        }
        } else if (draftFields.publisherType === 'developer' && !isDeveloper && activeWorkspaceId === user.id) {
         // Roles are refreshed on the next visit so the open wizard is not redirected mid-publication.
         const { error } = await supabase.rpc('register_as_developer' as any, { _display_name: draftFields.contactName.trim() || null });
@@ -487,7 +501,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           contact_email: draftFields.contactEmail?.trim() || null,
         },
         media_photos: photos, image_url: photos[0] ?? null,
-         status: 'live', source: draftFields.listingId ? source?.source || 'manual' : source ? 'yad2' : 'manual', is_published: true, affiliate_enabled: true,
+         status: draftFields.brokerLicenseReview ? 'pending' : 'live', source: draftFields.listingId ? source?.source || 'manual' : source ? 'yad2' : 'manual', is_published: !draftFields.brokerLicenseReview, affiliate_enabled: !draftFields.brokerLicenseReview,
       };
       const { features: pricingFeatures, ...pricing } = draftPricingPayload(draftFields, source?.contact_options ?? {});
       Object.assign(payload, pricing);
@@ -509,8 +523,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       void queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
       void queryClient.invalidateQueries({ queryKey: ['ready-board-properties'] });
        void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
-      toast.success('הנכס פורסם בלוח השיתופי');
-       celebratePublication(publicationAudio.current);
+      if (draftFields.brokerLicenseReview) toast.success(BROKER_LICENSE_REVIEW_MESSAGE, { duration: 10000, description: 'המודעה נשמרה וממתינה לאישור מנהל.' });
+      else { toast.success('הנכס פורסם בלוח השיתופי');
+       celebratePublication(publicationAudio.current); }
        publicationAudio.current = null;
        initializedPublisher.current = '';
         setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setRolePicked(false); setSeeker(false); setManualDeal(false); setStep(0); setImportSlide(false); setImported(null); setImportUrl(''); setReviewMode(false);
@@ -1072,7 +1087,22 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { if (guestStage === 'certificate') return; pendingAuthPublish.current = null; authThenConfirm.current = false; awaitingCertificate.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
         <DialogHeader><DialogTitle className="text-right">{guestStage === 'certificate' ? 'צילום רישיון התיווך' : 'אימות ופרסום המודעה'}</DialogTitle></DialogHeader>
-        {guestStage === 'certificate' ? <BrokerCertificateCheck onResult={(result) => {
+        {guestStage === 'certificate' && licenseReview ? <div className="space-y-3">
+          <BrokerLicensePhotoUpload file={reviewPhoto} onFile={setReviewPhoto} />
+          <Button type="button" className="h-12 w-full text-lg font-bold" disabled={!reviewPhoto || reviewBusy || !user} onClick={async () => {
+            const pending = pendingAuthPublish.current;
+            if (!pending || !reviewPhoto || !user) return;
+            setReviewBusy(true);
+            try {
+              await requestBrokerLicenseReview(pending.fields.brokerLicense || guestLicense, await uploadBrokerLicensePhoto(user.id, reviewPhoto));
+              const next = { ...pending.fields, brokerLicense: pending.fields.brokerLicense || guestLicense, brokerLicenseReview: true };
+              awaitingCertificate.current = false; pendingAuthPublish.current = null; setLicenseReview(false); setGuestStage('otp'); setOtpOpen(false);
+              setFields(next); setFiles(pending.files); setVideos(pending.videos);
+              await publish(next, pending.files, pending.videos);
+            } catch (e) { toast.error(e instanceof Error ? e.message : 'השליחה לבדיקה נכשלה'); }
+            finally { setReviewBusy(false); }
+          }}>{reviewBusy ? 'שולח...' : 'המשך'}</Button>
+        </div> : guestStage === 'certificate' ? <BrokerCertificateCheck onResult={(result) => {
           const pending = pendingAuthPublish.current;
           if (!result?.matched || !pending || !awaitingCertificate.current) return;
           if (result.licenseNumber && result.licenseNumber.replace(/^0+/, '') !== (pending.fields.brokerLicense ?? '').replace(/^0+/, '')) return;
@@ -1089,7 +1119,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           if (!brokerFlow) { setOtpOpen(false); return; }
           // Broker license is checked against the official registry, then a matching certificate photo is mandatory.
           try { await verifyBrokerLicense(guestLicense, 'verify'); await refetchRoles(); setGuestStage('certificate'); }
-          catch (e) { awaitingCertificate.current = false; pendingAuthPublish.current = null; setOtpOpen(false); toast.error(e instanceof Error ? e.message : 'אימות הרישיון נכשל'); }
+          catch { await refetchRoles(); setLicenseReview(true); setReviewPhoto(null); setGuestStage('certificate'); }
         }} />}
         </>}
       </DialogContent>

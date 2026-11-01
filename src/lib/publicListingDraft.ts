@@ -7,6 +7,8 @@ export type PublicListingDraftFields = {
   publisherType: 'broker' | 'private' | 'developer' | '';
   /** Broker license entered at contact step; verified server-side after SMS. */
   brokerLicense?: string;
+  /** Registry did not match; license photo sent to manual admin review, ad saved pending. */
+  brokerLicenseReview?: boolean;
   dealType: 'sale' | 'rent' | '';
   propertyType: string;
   city: string;
