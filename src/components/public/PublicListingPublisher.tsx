@@ -13,7 +13,7 @@ import type { RewardTypes } from '@/components/affiliate/CommissionTierBadges';
 import Terms from '@/pages/Terms';
 import { useReadyBoardProperties } from '@/hooks/useReadyBoardProperties';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
-import { brokerInventoryChoices } from '@/lib/publisherEligibility';
+import { brokerInventoryChoices, publisherEntryNavigation, publisherRequiresOwnership } from '@/lib/publisherEligibility';
 import { workspacePublisherIdentity } from '@/lib/workspacePublisherIdentity';
 import { closingFeeAmount } from '@/lib/closingFee';
 import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
@@ -185,7 +185,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [adminUnlocked, setAdminUnlocked] = useState(!adminOnlyEdit);
   const [legalSection, setLegalSection] = useState<'terms' | 'brokerage' | null>(null);
   const { data: readyProperties } = useReadyBoardProperties(open && isBroker);
-  const requireOwnerDeclaration = !pricingOnly && !isBroker && !isDeveloper;
   const [step, setStep] = useState(0);
   // First question of the wizard: who is publishing (drives the rest of the flow).
   const [rolePicked, setRolePicked] = useState(false);
@@ -197,7 +196,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
   const showImportChoices = brokerInventoryChoices(ownerRoles, isBroker, readyProperties?.length ?? 0) && fields.publisherType === 'broker';
-  const roleNeedsOwnerDeclaration = requireOwnerDeclaration && fields.publisherType !== 'developer';
+  const roleNeedsOwnerDeclaration = publisherRequiresOwnership(fields.publisherType, pricingOnly);
   const [files, setFiles] = useState<File[]>([]);
   const [mediaOrder, setMediaOrder] = useState<string[]>([]);
   const [pendingFileDelete, setPendingFileDelete] = useState<File | null>(null);
@@ -224,14 +223,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const openedScope = useRef('');
   const draftScope = user?.id ? `${user.id}:${activeWorkspaceId ?? 'pending'}` : 'visitor';
   const entryPending = authLoading || Boolean(user && (workspaceLoading || !activeWorkspaceId || !activeWorkspace || rolesLoading || !rolesFetched || rolesError));
-  useEffect(() => {
-    // Only an explicit open sends developers to project import; a recovered
-    // draft just closes silently so the public board stays on screen.
-    if (!pricingOnly && !entryPending && user && isDeveloper && (open || resumeDraft)) {
-      setOpen(false);
-      if (open && !resumeDraft) navigate('/developer-dashboard?import=1');
-    }
-  }, [entryPending, user, isDeveloper, open, resumeDraft, navigate]);
   useEffect(() => {
     if (openedScope.current && openedScope.current !== draftScope && openedScope.current !== 'visitor') {
       setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setPublishError('');
@@ -261,7 +252,18 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, draftScope, workspaceLoading, activeWorkspaceId]);
   const saveDraft = (f = fields, images = files, clips = videos) => pricingOnly || restoredScope.current !== draftScope ? Promise.resolve() : savePublicListingDraft({ ...f, publicationError: f.publicationError || publishError, resumeStep: reviewMode ? Number(expandedStep.replace('step-', '')) || 0 : step, importUrl, reviewMode, importSlide, expandedStep, wizardStep: step }, images, clips, draftScope);
-  // Always restore the last saved draft (all slides, media, step) for this user/workspace when the wizard opens.
+  const resetEntryNavigation = () => {
+    const entry = publisherEntryNavigation();
+    setStep(entry.step); setRolePicked(entry.rolePicked); setReviewMode(entry.reviewMode);
+    setImportSlide(entry.importSlide); setExpandedStep(entry.expandedStep);
+    setImportOption(null); setConfirming(false); setLegalSection(null);
+  };
+  const openNewPublication = () => {
+    resetEntryNavigation();
+    setFields(current => ({ ...current, publisherType: '', ownerDeclarationAccepted: false }));
+    setOpen(true);
+  };
+  // Restore scoped draft content, never its navigation, on a free-ad opening.
   useEffect(() => {
     if (!open || resumeDraft || restoredScope.current === draftScope) return;
     let cancelled = false;
@@ -271,11 +273,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       const draft = await readPublicListingDraft(draftScope).catch(() => null);
       if (cancelled) return;
       if (draft) {
-        setFields(draft); setFiles(draft.files ?? []); setVideos(draft.videos ?? []);
+        setFields({ ...draft, publisherType: '', ownerDeclarationAccepted: false }); setFiles(draft.files ?? []); setVideos(draft.videos ?? []);
         setImportUrl(draft.importUrl ?? ''); setPublishError(draft.publicationError || '');
-        const started = Boolean(draft.reviewMode || (draft.wizardStep ?? draft.resumeStep ?? 0) > 0 || draft.dealType || draft.city || draft.importedListing);
-        setRolePicked(started); setStep(started ? 1 : 0); setReviewMode(started); setImportSlide(false); setImportOption(!started && draft.importUrl ? 'yad2' : null);
-        setExpandedStep('');
+        resetEntryNavigation();
         setImported(draft.importedListing ?? null);
       }
       restoredScope.current = draftScope;
@@ -297,7 +297,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     if (!open || !user || workspaceLoading || !publisherProfile || pricingOnly) return;
     const identity = `${user?.id}:${activeWorkspaceId}`;
     initializedPublisher.current = identity;
-    setFields(current => ({ ...current, publisherType: current.publisherType === 'developer' || (current.publisherType === 'broker' && isBroker) || current.publisherType === 'private' ? current.publisherType : isBroker ? 'broker' : isDeveloper ? current.publisherType : 'private', contactName: publisherName, contactWhatsapp: publisherPhone, contactEmail: publisherIdentity.email, marketingAccepted: current.marketingAccepted }));
+    setFields(current => ({ ...current, contactName: publisherName, contactWhatsapp: publisherPhone, contactEmail: publisherIdentity.email, marketingAccepted: current.marketingAccepted }));
     
   }, [open, isBroker, user?.id, activeWorkspaceId, publisherName, publisherPhone, publisherIdentity.email, publisherProfile, workspaceLoading, step, reviewMode]);
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
@@ -357,7 +357,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
     if (!user?.id || publishing || entryPending || !activeWorkspaceId) return;
-    if (requireOwnerDeclaration && draftFields.publisherType !== 'developer' && !draftFields.ownerDeclarationAccepted) return;
+    if (publisherRequiresOwnership(draftFields.publisherType, pricingOnly) && !draftFields.ownerDeclarationAccepted) return;
+    if (draftFields.publisherType === 'broker' && !isBroker) { toast.error('יש לאמת את רישיון התיווך בפרופיל לפני פרסום כמתווך'); return; }
     if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || !(Number(draftFields.commissionDeal) > 0)) {
       return;
     }
@@ -1014,8 +1015,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     </>
   );
 
-  if (!pricingOnly && isDeveloper && user && !entryPending) return <Button disabled={disabled} onClick={() => navigate('/developer-dashboard?import=1')} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>;
-
   // Read-only Super Admin view reuses the recovered ad row for the shared card presentation.
   const adminRow = (fields.importedListing ?? {}) as Record<string, unknown>;
   const adminDcc = (adminRow.features as { deal_closing_commission?: { type?: string; value?: number } } | undefined)?.deal_closing_commission;
@@ -1028,7 +1027,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   return (
     <>
-    {!resumeDraft && <Button disabled={disabled || entryPending} onClick={() => setOpen(true)} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
+    {!resumeDraft && <Button disabled={disabled || entryPending} onClick={openNewPublication} className={`h-9 whitespace-nowrap text-[15px] sm:text-[19px] font-bold leading-none bg-success text-success-foreground hover:bg-success/90 ${triggerClassName}`}>{label}</Button>}
     <Dialog open={otpOpen} onOpenChange={(value) => { if (!value) { pendingAuthPublish.current = null; authThenConfirm.current = false; } setOtpOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-sm">
         <DialogHeader><DialogTitle className="text-right">אימות מספר הטלפון</DialogTitle></DialogHeader>
@@ -1039,7 +1038,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
         }} />
       </DialogContent>
     </Dialog>
-    <Dialog open={open && !entryPending && (!isDeveloper || pricingOnly)} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); setOpen(value); }}>
+    <Dialog open={open && !entryPending} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); if (value && !pricingOnly && !resumeDraft) { openNewPublication(); return; } setOpen(value); }}>
       <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 !text-center">
           {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תגמולים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
