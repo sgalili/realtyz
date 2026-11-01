@@ -162,6 +162,7 @@ export function GlobalAppTour() {
       </div>
       <div className="flex shrink-0 flex-row gap-2">
         <Button variant="outline" size="lg" className="min-w-0 flex-1 text-base sm:text-lg" onClick={() => setShowWelcome(shouldShowWelcome('instructions'))}>היכרות עם TORAFF<ChevronLeft /></Button>
+        <Button variant="outline" size="lg" className="min-w-0 flex-1 text-base sm:text-lg" onClick={() => { close(); openFaq(); }}>שאלות ותשובות<ChevronLeft /></Button>
         <Button size="lg" className="min-w-0 flex-1 text-base font-bold sm:text-lg" onClick={() => walkthroughStore.move(1)}>מתחילים את הסיור<ChevronLeft /></Button>
       </div>
     </DialogContent>

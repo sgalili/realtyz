@@ -6,6 +6,7 @@ import { PlatformTicker } from '@/components/landing/LogoTickers';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dismissWelcome, welcomeDismissed } from '@/lib/welcomePreference';
+import { openFaq } from '@/components/faq/FaqDialog';
 import { useNavigate } from 'react-router-dom';
 
 type Accent = 'gold' | 'red' | 'sky';
@@ -101,7 +102,10 @@ export function WelcomeSlides({ onDone }: { onDone: () => void }) {
           {SLIDES.map((_, i) => <Button key={i} type="button" variant="ghost" size="icon" aria-label={`שקופית ${i + 1}`} aria-current={i === index} onClick={() => go(i)} className="h-8 w-8 hover:bg-transparent"><span className={cn('welcome-dot h-2.5 rounded-full transition-all duration-300', i === index ? 'w-8' : 'w-2.5 opacity-45')} /></Button>)}
           <Button type="button" variant="ghost" size="icon" aria-label="הבא" onClick={() => (last ? finish() : go(index + 1))} className="welcome-arrow h-10 w-10 bg-transparent hover:bg-transparent"><ChevronLeft className="h-8 w-8" /></Button>
         </div>
-        <Button variant="link" className="welcome-dismiss h-auto p-0 text-base" onClick={() => { dismissWelcome(); finish(); }}>אל תציגו לי יותר</Button>
+        <div className="flex items-center gap-4">
+          <Button variant="link" className="welcome-dismiss h-auto p-0 text-base font-semibold" onClick={openFaq}>שאלות ותשובות</Button>
+          <Button variant="link" className="welcome-dismiss h-auto p-0 text-base" onClick={() => { dismissWelcome(); finish(); }}>אל תציגו לי יותר</Button>
+        </div>
       </div>
     </section>
   );

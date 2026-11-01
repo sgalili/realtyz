@@ -1,5 +1,6 @@
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { BOARD_SEARCH_OPEN_EVENT, BOARD_SEARCH_STATE_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
+import { FaqHost } from '@/components/faq/FaqDialog';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -542,6 +543,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <QuickActionDrawer />
           <TutorialHost />
           <GlobalAppTour />
+          <FaqHost />
           <DeveloperTerminology />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
             <DialogContent dir="rtl" className="premium-auth-modal sm:max-w-md">
