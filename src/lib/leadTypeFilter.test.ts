@@ -31,21 +31,26 @@ describe('per-type reward thresholds', () => {
   });
 });
 
-describe('nationwide city selection', () => {
+describe('city selection', () => {
   it('nationwide clears all previously selected cities', () => {
     expect(selectFilterCity({ ...EMPTY_PROPERTY_FILTER, city: 'חיפה', selectedCities: ['חיפה', 'תל אביב'] }, 'all').selectedCities).toEqual([]);
   });
-  it('cannot add a city while nationwide is selected', () => {
+  it('picking a city while nationwide is active selects only that city', () => {
     const next = selectFilterCity(EMPTY_PROPERTY_FILTER, 'חיפה');
-    expect(next.city).toBe('all');
-    expect(next.selectedCities ?? []).toEqual([]);
+    expect(next.city).toBe('חיפה');
+    expect(next.selectedCities).toEqual(['חיפה']);
   });
-  it('can select multiple cities after explicitly clearing nationwide', () => {
-    const choose = selectFilterCity(EMPTY_PROPERTY_FILTER, 'choose');
-    const next = selectFilterCity(selectFilterCity(choose, 'חיפה'), 'תל אביב');
+  it('keeps every chosen city and filters to exactly those cities', () => {
+    const next = selectFilterCity(selectFilterCity(EMPTY_PROPERTY_FILTER, 'חיפה'), 'תל אביב');
     expect(next.selectedCities).toEqual(['חיפה', 'תל אביב']);
     expect(matchesPropertyFilter({ city: 'תל אביב' }, next)).toBe(true);
     expect(matchesPropertyFilter({ city: 'אילת' }, next)).toBe(false);
+  });
+  it('deselecting the last city returns to nationwide', () => {
+    const next = selectFilterCity(selectFilterCity(EMPTY_PROPERTY_FILTER, 'חיפה'), 'חיפה');
+    expect(next.selectedCities).toEqual([]);
+    expect(next.city).toBe('all');
+    expect(matchesPropertyFilter({ city: 'אילת' }, next)).toBe(true);
   });
 });
 
