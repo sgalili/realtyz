@@ -24,10 +24,26 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
-  if (!open) return null;
+  // Keep mounted through the exit animation; reveal top-to-bottom via clip-path (GPU-composited, 60fps).
+  const [mounted, setMounted] = useState(open);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      const id = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+      return () => cancelAnimationFrame(id);
+    }
+    setShown(false);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const t = window.setTimeout(() => setMounted(false), reduce ? 0 : 320);
+    return () => window.clearTimeout(t);
+  }, [open]);
+  if (!mounted) return null;
   const submit = () => { if (query.trim()) onSearch(); onClose(); };
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="חיפוש נכסים" dir="rtl" style={{ top }} className="fixed inset-x-0 bottom-0 z-[60] flex flex-col bg-background animate-in fade-in-0 motion-reduce:animate-none">
+    <div role="dialog" aria-modal="true" aria-label="חיפוש נכסים" dir="rtl"
+      style={{ top, clipPath: shown ? 'inset(0 0 0 0)' : 'inset(0 0 100% 0)', transition: 'clip-path 300ms cubic-bezier(0.22, 1, 0.36, 1)', willChange: 'clip-path' }}
+      className="fixed inset-x-0 bottom-0 z-[60] flex flex-col bg-background motion-reduce:!transition-none">
       <div className="relative shrink-0 border-b border-border px-[15px] pb-3 pt-3">
         <Button type="button" variant="ghost" size="icon" aria-label="סגירת החיפוש" onClick={onClose} className="absolute end-0 top-0 h-8 w-8 rounded-none"><X className="h-5 w-5" /></Button>
         <div className="flex items-center gap-2 pe-6">
