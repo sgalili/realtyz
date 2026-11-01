@@ -196,7 +196,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   // Which sub-option of the minimalist create-ad screen is expanded.
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
-  const showImportChoices = brokerInventoryChoices(ownerRoles, isBroker, readyProperties?.length ?? 0);
+  const showImportChoices = brokerInventoryChoices(ownerRoles, isBroker, readyProperties?.length ?? 0) && fields.publisherType === 'broker';
   const [files, setFiles] = useState<File[]>([]);
   const [mediaOrder, setMediaOrder] = useState<string[]>([]);
   const [pendingFileDelete, setPendingFileDelete] = useState<File | null>(null);
