@@ -64,17 +64,26 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
     queryKey: ['verified-roles-import', user?.id], enabled: !!user?.id,
     queryFn: async () => { const { data } = await supabase.rpc('get_verified_user_roles'); return (data ?? []) as string[]; },
   });
+  // Resume an import a guest started before signing in.
+  useEffect(() => {
+    if (autoStarted.current || !user || !activeWorkspaceId || phase !== 'idle') return;
+    const p = readPendingYad2Import();
+    if (p?.kind !== 'agency' || !p.url) return;
+    autoStarted.current = true; setUrl(p.url);
+    void start(p.url);
+  });
+
   if (user && !activeWorkspaceId) return null;
   const unverifiedBroker = publisherType === 'broker' && !roles.some(r => BROKER_ROLES.includes(r));
 
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] }); void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] }); };
 
-  const start = async () => {
-    if (!user || !activeWorkspaceId) { savePendingYad2Import({ kind: 'agency', url: url.trim(), publisherType }); navigate('/auth', { state: { returnTo: window.location.pathname } }); return; }
+  const start = async (value: string = url) => {
+    if (!user || !activeWorkspaceId) { savePendingYad2Import({ kind: 'agency', url: value.trim(), publisherType }); navigate('/auth', { state: { returnTo: window.location.pathname } }); return; }
     clearPendingYad2Import();
     const run = ++scope.current, ws = activeWorkspaceId, activeRule = rule;
     setPhase('discovering'); setImported([]);
-    const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(url) } });
+    const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(value) } });
     if (run !== scope.current) return;
     if (error || !data?.ok) { toast.error(await errorText(error) || 'לא נמצאו מודעות'); setPhase('idle'); return; }
     const items: string[] = data.items ?? [];
@@ -96,15 +105,6 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
     if (run !== scope.current) return;
     setPhase('done'); setRuleOpen(true);
   };
-
-  // Resume an import a guest started before signing in.
-  useEffect(() => {
-    if (autoStarted.current || !user || !activeWorkspaceId || phase !== 'idle') return;
-    const p = readPendingYad2Import();
-    if (p?.kind !== 'agency' || !p.url) return;
-    autoStarted.current = true; setUrl(p.url);
-    void start();
-  });
 
   const applyGlobal = async () => {
     if (!user || !activeWorkspaceId) return;
