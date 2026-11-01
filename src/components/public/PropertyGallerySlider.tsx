@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Heart, ImageOff } from 'lucide-react';
+import { BadgeCheck, ChevronLeft, ChevronRight, Heart, ImageOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ImageSequenceDialog } from '@/components/properties/ImageSequenceDialog';
 
 /** Horizontal snap slider with arrows, counter and thumbnail strip (RTL safe). */
-export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay }: { photos: string[]; alt: string; onFavorite?: () => void; overlay?: ReactNode }) {
+export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay, share, isMine = false }: { photos: string[]; alt: string; onFavorite?: () => void; overlay?: ReactNode; share?: ReactNode; isMine?: boolean }) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
   const [enlarged, setEnlarged] = useState<string | null>(null);
@@ -52,7 +52,9 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
           ))}
         </div>
         {(overlay || onFavorite) && <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-white/70 p-0.5">{overlay}{onFavorite && !overlay && <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label="שמירה במועדפים" className="h-9 w-9 text-destructive"><Heart className="h-5 w-5" /></Button>}</div>}
-        {photos.length > 1 && <span className="absolute right-2 top-2 z-10 rounded-full bg-white/70 px-2 py-1 text-xs font-semibold tabular-nums text-foreground">{index + 1}/{photos.length}</span>}
+        {share && <div className="absolute bottom-2 left-2 z-10">{share}</div>}
+        {photos.length > 1 && <div className="absolute bottom-2 right-2 z-10 flex items-center rounded-full bg-white/70"><Button type="button" size="icon" variant="ghost" aria-label="תמונה קודמת" onClick={() => goTo(index - 1)} className="h-8 w-8 rounded-full hover:bg-transparent"><ChevronRight className="h-4 w-4" /></Button><span className="px-0.5 text-xs font-semibold tabular-nums text-foreground" dir="ltr">{index + 1}/{photos.length}</span><Button type="button" size="icon" variant="ghost" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="h-8 w-8 rounded-full hover:bg-transparent"><ChevronLeft className="h-4 w-4" /></Button></div>}
+        {isMine && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-md bg-background/80 px-1.5 py-0.5 text-xs font-semibold text-success"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />שלי</span>}
       </div>
       <ImageSequenceDialog photos={photos} current={enlarged} onChange={setEnlarged} alt={alt} />
       {photos.length > 1 && (

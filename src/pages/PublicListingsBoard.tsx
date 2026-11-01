@@ -374,11 +374,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
-                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards />}
+                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} isMine={ownedIds.has(card.id)} share={<PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} />} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards />}
                             </div>
                           </div>
                           </AnimatedExpansion>
-                          {open && <PropertyContactActions listingId={card.id} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} formAsButton compact className="mx-3 mb-1 lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
+                          {open && <PropertyContactActions listingId={card.id} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} formAsButton compact showShare={false} className="sticky bottom-0 z-20 mx-3 mb-1 bg-card pb-2 pt-1 lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
                         </td>
                       </tr>,
                     ];
