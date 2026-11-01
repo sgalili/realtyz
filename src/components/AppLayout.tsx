@@ -1,4 +1,5 @@
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
+import { BOARD_SEARCH_OPEN_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { shouldShowWelcome, WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
-import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
+import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu, Search, List, LayoutGrid } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -271,6 +272,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { activeWorkspace, activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
+  const boardRoute = location.pathname === '/' || location.pathname === '/public-listings';
+  const [boardGrid, setBoardGrid] = useState(() => { try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; } });
+  useEffect(() => {
+    const onView = (e: Event) => setBoardGrid(Boolean((e as CustomEvent<{ grid: boolean }>).detail?.grid));
+    window.addEventListener(BOARD_VIEW_STATE_EVENT, onView);
+    return () => window.removeEventListener(BOARD_VIEW_STATE_EVENT, onView);
+  }, []);
   const { isDemoMode, setDemoMode, demoCandidateId, setDemoCandidateId } = useDemoMode();
   useSessionTimeout();
   const queryClient = useQueryClient();
@@ -490,6 +498,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="app-header-content flex w-full items-center justify-between gap-2">
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
+              {boardRoute && <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[22px] !w-[22px]" /></Button>}
               <NotificationCenter />
               <HomeActivityPill />
             </div>
@@ -507,6 +516,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
               <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!h-10 !w-[97px] sm:!w-[108px] whitespace-nowrap px-1 !text-[16px] sm:!text-[18px]" />
+              {boardRoute && <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={boardGrid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} onClick={() => window.dispatchEvent(new Event(BOARD_VIEW_TOGGLE_EVENT))}>{boardGrid ? <List className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}</Button>}
             </div>
             </div>
           </header>

@@ -72,7 +72,7 @@ describe('role-based advanced filter fields', () => {
     expect(screen.queryByRole('spinbutton', { name: 'מחיר מינימום' })).not.toBeInTheDocument();
     // Minimal set: no rooms/size/floor for partners.
     expect(screen.queryByRole('spinbutton', { name: 'חדרים מינימום' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'טווח שטח (מ"ר)' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'קומה מינימום' })).not.toBeInTheDocument();
   });
 
@@ -80,9 +80,9 @@ describe('role-based advanced filter fields', () => {
     setRole('broker');
     renderFilter();
     expect(screen.getByText('עמלת תיווך עבור סגירת עסקה')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'חדרים' })).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'שטח מינימום' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'קומה' })).toBeInTheDocument();
+    expect(screen.getAllByRole('slider', { name: 'טווח חדרים' })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('slider', { name: 'טווח שטח (מ"ר)' })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('slider', { name: 'טווח קומה' })[0]).toBeInTheDocument();
   });
 
   it('developer sees only market/property filters, never lead filters', () => {
@@ -91,7 +91,7 @@ describe('role-based advanced filter fields', () => {
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(screen.queryByRole('slider', { name: 'סליידר עמלה עבור שווי ליד מינימלי' })).not.toBeInTheDocument();
     expect(screen.getByText('פרטי הנכס')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'קומה' })).toBeInTheDocument();
+    expect(screen.getAllByRole('slider', { name: 'טווח קומה' })[0]).toBeInTheDocument();
   });
 
   it('private user sees a compact market set without lead filters', () => {
@@ -99,8 +99,8 @@ describe('role-based advanced filter fields', () => {
     renderFilter();
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'סוג עסקה' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'חדרים' })).toBeInTheDocument();
-    expect(screen.queryByRole('spinbutton', { name: 'שטח מינימום' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('slider', { name: 'טווח חדרים' })[0]).toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'טווח שטח (מ"ר)' })).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'קומה מינימום' })).not.toBeInTheDocument();
   });
 
