@@ -276,9 +276,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const boardRoute = location.pathname === '/' || location.pathname === '/public-listings';
   const [boardGrid, setBoardGrid] = useState(() => { try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; } });
   const [boardSearchOpen, setBoardSearchOpen] = useState(false);
+  const [boardFilterCount, setBoardFilterCount] = useState(0);
   useEffect(() => {
     const onView = (e: Event) => setBoardGrid(Boolean((e as CustomEvent<{ grid: boolean }>).detail?.grid));
-    const onSearch = (e: Event) => setBoardSearchOpen(Boolean((e as CustomEvent<{ open: boolean }>).detail?.open));
+    const onSearch = (e: Event) => { const d = (e as CustomEvent<{ open: boolean; count?: number }>).detail; setBoardSearchOpen(Boolean(d?.open)); setBoardFilterCount(Number(d?.count) || 0); };
     window.addEventListener(BOARD_VIEW_STATE_EVENT, onView);
     window.addEventListener(BOARD_SEARCH_STATE_EVENT, onSearch);
     return () => { window.removeEventListener(BOARD_VIEW_STATE_EVENT, onView); window.removeEventListener(BOARD_SEARCH_STATE_EVENT, onSearch); };
@@ -503,12 +504,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
               {boardRoute && <div className="relative shrink-0">
-                <Button variant="ghost" size="icon" className="-ms-[5px] h-10 w-10" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[22px] !w-[22px]" /></Button>
-                {boardSearchOpen && (
+                <Button variant="ghost" size="icon" className="-ms-[5px] h-9 w-9" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[28.75px] !w-[28.75px]" /></Button>
+                {boardSearchOpen ? (
                   <button type="button" aria-label="סגירת החיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
                     <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
                   </button>
-                )}
+                ) : boardFilterCount > 0 ? <span aria-label={`${boardFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{boardFilterCount}</span> : null}
               </div>}
               <NotificationCenter />
               <HomeActivityPill />

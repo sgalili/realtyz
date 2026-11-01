@@ -143,7 +143,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     return () => { window.removeEventListener(BOARD_SEARCH_OPEN_EVENT, openSearch); window.removeEventListener(BOARD_VIEW_TOGGLE_EVENT, toggle); };
   }, []);
   useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_VIEW_STATE_EVENT, { detail: { grid } })); }, [grid]);
-  useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_SEARCH_STATE_EVENT, { detail: { open: searchOpen } })); }, [searchOpen]);
+  useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_SEARCH_STATE_EVENT, { detail: { open: searchOpen, count: appliedFilterCount } })); }, [searchOpen, appliedFilterCount]);
   // Favorite listings of the signed-in user. The card heart, the table heart and
   // the "ניהול המודעה שלי" menu all read this one cached list.
   const { favoriteIds: favIds, toggleFavorite: saveFavorite } = useListingFavorites();
@@ -169,6 +169,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [unlocked, setUnlocked] = useState<any | null>(null);
   const [leadFilter, setLeadFilter] = useState(EMPTY_LEAD_FILTER);
   const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
+  const appliedFilterCount = leadFilterActiveCount(leadFilter) + propertyFilterActiveCount(propFilter);
+  const resetFilters = () => { setLeadFilter(EMPTY_LEAD_FILTER); setPropFilter(EMPTY_PROPERTY_FILTER); setQuery(''); };
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
 
@@ -295,11 +297,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <div className="flex items-center justify-start">
                 <div className="relative shrink-0">
                   <Button variant="ghost" size="icon" className="!h-[60px] !w-[60px] shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="h-[37.5px] w-[37.5px]" strokeWidth={1.75} /></Button>
-                  {searchOpen && (
+                  {searchOpen ? (
                     <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
                       <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
                     </button>
-                  )}
+                  ) : appliedFilterCount > 0 ? <span aria-label={`${appliedFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{appliedFilterCount}</span> : null}
                 </div>
                 <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
               </div>
@@ -314,7 +316,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
       </header>
 
       <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain pb-0 pt-[15px]', embedded ? 'px-0' : 'px-[15px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
-        {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p> : (
+        {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <div className="flex flex-col items-center justify-center gap-4 py-16 text-center"><p className="text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p>{(appliedFilterCount > 0 || query.trim()) && <Button type="button" onClick={resetFilters}>איפוס סינונים</Button>}</div> : (
           grid ? (
           <div className="property-card-grid">
             {filtered.slice(0, visibleCount).map(card => <StandardPropertyCard key={card.id} card={card} signedIn={!!user} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} />)}
