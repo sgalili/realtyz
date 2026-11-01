@@ -216,7 +216,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [expandedStep, setExpandedStep] = useState('step-0');
   const [addressResolved, setAddressResolved] = useState(false);
   const importInFlight = useRef(false);
-  const lastAutoImport = useRef('');
   const [importStage, setImportStage] = useState('');
   const [myPropsSave, setMyPropsSave] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const publisherScroll = useRef<HTMLDivElement>(null);
@@ -231,7 +230,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       setImported(null); setImportUrl(''); setImportOption(null); setRolePicked(false); setStep(0); setReviewMode(false); setImportSlide(false);
       setOtpOpen(false); setConfirming(false); setMediaOrder([]); setPendingFileDelete(null);
       setLegalSection(null); setAddressResolved(false); setExpandedStep('step-0'); setResumed(false); setImportStage(''); setPublishStage('');
-      pendingAuthPublish.current = null; authThenConfirm.current = false; initializedPublisher.current = ''; restoredScope.current = ''; lastAutoImport.current = ''; 
+      pendingAuthPublish.current = null; authThenConfirm.current = false; initializedPublisher.current = ''; restoredScope.current = ''; 
     }
     openedScope.current = draftScope;
   }, [draftScope]);
@@ -744,19 +743,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     finally { importInFlight.current = false; setImporting(false); }
   };
 
-  useEffect(() => {
-    if (!open || reviewMode || importOption !== 'yad2' || importing) return;
-    const value = importUrl.trim();
-    if (!/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/(?:realestate\/item\/\S+|s\/\S+|share\/\S+)/i.test(value)) return;
-    if (lastAutoImport.current === value) return;
-    const timer = window.setTimeout(() => {
-      lastAutoImport.current = value;
-      void importYad2(value);
-    }, 180);
-    return () => window.clearTimeout(timer);
-    // Import callbacks read the current draft when a new URL is entered.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [importUrl, open, importOption, reviewMode, importing]);
 
   const stepFilled = (i: number): boolean => {
     const f = fields;
@@ -784,7 +770,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     <>
           {step === 0 && !importSlide && !rolePicked && (
             <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
-              <p className="text-center text-[19px] font-semibold text-muted-foreground">בתור מי אתה מפרסם?</p>
+              <p className="text-center text-[19px] font-semibold text-muted-foreground">מי מפרסם?</p>
               <div className="grid grid-cols-1 gap-2">
                 {([['private', 'בעל נכס פרטי'], ['broker', 'מתווך'], ['developer', 'יזם / קבלן']] as const).map(([value, label]) => (
                   <Button key={value} type="button" variant={fields.publisherType === value && rolePicked ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => {
