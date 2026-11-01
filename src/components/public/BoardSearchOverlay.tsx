@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 
 export const BOARD_SEARCH_OPEN_EVENT = 'toraff:board-search-open';
+export const BOARD_SEARCH_STATE_EVENT = 'toraff:board-search-state';
 export const BOARD_VIEW_TOGGLE_EVENT = 'toraff:board-view-toggle';
 export const BOARD_VIEW_STATE_EVENT = 'toraff:board-view-state';
 
