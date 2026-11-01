@@ -61,7 +61,7 @@
 - [Metadata Backfill & Owner CRM](mem://features/metadata-backfill-owner-crm) — listings-metadata-backfill + owner-crm-sync edge fns, crons, Meta WhatsApp owner profile enrichment.
 - [Green API Inbound & Avatar Sync](mem://features/greenapi-inbound-and-avatars) — greenapi-webhook inbound AI auto-responder with real listing lookups; resumable background WhatsApp avatar sync jobs (wa_avatar_sync_jobs + useWaAvatarSync).
 - [Master Agent Prompt](mem://features/master-agent-prompt) — Dual-frontier internal/external AI directive in _shared/masterAgentPrompt.ts, wired into every agent surface.
-- [WhatsApp Meta-Only (HARD)](mem://constraints/whatsapp-meta-only) — Chat/inbox/sending/webhooks are Official Meta Cloud API only; Green API is avatars-only.
+- [WhatsApp Meta-Only (HARD)](mem://constraints/whatsapp-meta-only) — Chat/inbox/sending/webhooks are Official Meta Cloud API only; Green API is avatars-only. User-approved exception: the one-time Super Admin new-signup alert (name, type, phone, profile photo) is sent via Green API.
 - [Tenant Isolation & Product Tour](mem://features/tenant-isolation-and-tour) — workspace-scoped RLS on listings/social_connections/campaign_settings, ProductTour dialog, graphic header logo.
 - [Global Meta App + Isolation (HARD)](mem://constraints/tenant-isolation-meta) — One system Meta app for all users; no FB_PAGE_* env token fallbacks; messenger_page_bindings unique on (owner_id,page_id).
 - [Package Pricing](mem://features/pricing-packages) — Fixed monthly packages ₪0/145/495/795; per-contact pricing retired; tour WA button removed.

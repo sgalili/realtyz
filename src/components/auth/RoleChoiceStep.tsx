@@ -16,7 +16,7 @@ import { prepareRewardSounds } from '@/lib/rewardFeedback';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { BrokerLicenseField } from '@/components/auth/BrokerLicenseField';
 import { verifyBrokerLicense, INVALID_BROKER_LICENSE } from '@/lib/brokerLicense';
-import { clearSmsSignup, readSmsSignup, signupDetailsValid, signupRpc, signupTypeFields, signupTypes, type SmsSignupType } from '@/lib/smsSignup';
+import { clearSmsSignup, readSmsSignup, signupDetailsValid, signupRpc, notifySignupAdmin, signupTypeFields, signupTypes, type SmsSignupType } from '@/lib/smsSignup';
 
 export const PRIMARY_SIGNUP_TYPES = signupTypes;
 const labels: Record<SmsSignupType, string> = { property_owner: 'בעל נכס', property_seeker: 'קונה/שוכר', broker: 'מתווך/סוכנות', developer: 'יזם/קבלן', partner: 'תוכנית שותפים' };
@@ -65,6 +65,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
       } else await signupRpc('complete_sms_signup_details', { _type: selected, _details: details });
       markPostSignupWelcome(selected, selected === 'property_owner' ? details.deal_type : undefined);
       clearSmsSignup(); clearPendingSignupRole();
+      notifySignupAdmin();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) }),
         queryClient.invalidateQueries({ queryKey: ['workspace-owner-roles'] }),

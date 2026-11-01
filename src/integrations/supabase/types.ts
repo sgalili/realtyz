@@ -7229,6 +7229,27 @@ export type Database = {
           },
         ]
       }
+      signup_admin_alerts: {
+        Row: {
+          error: string | null
+          sent_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          error?: string | null
+          sent_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          error?: string | null
+          sent_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       signup_bonus_grants: {
         Row: {
           created_at: string
