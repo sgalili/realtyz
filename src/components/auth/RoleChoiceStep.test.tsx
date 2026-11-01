@@ -18,7 +18,14 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 vi.mock("@/i18n/personalLanguage", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/i18n/personalLanguage")>();
-  return { ...actual, usePersonalLanguage: () => ({ gender: undefined }) };
+  return {
+    ...actual,
+    usePersonalLanguage: () => ({
+      gender: undefined,
+      command: (text?: string) => text,
+      text: (forms: { male: string; female: string; neutral?: string }) => forms.neutral ?? forms.male,
+    }),
+  };
 });
 
 vi.mock("@/hooks/useUserRole", () => ({ userRolesQueryKey: (id: string) => ["user-roles", id] }));
