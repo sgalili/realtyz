@@ -39,7 +39,6 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const needsReview = verifiedLicense !== license;
   const onLicenseVerified = useCallback((value: string | null, name?: string) => { setVerifiedLicense(value); if (value) { setHolderName(name ?? ''); setCertificateOk(false); } }, []);
   const onCertificate = useCallback((result: { matched: boolean; licenseNumber?: string } | null) => setCertificateOk(!!result?.matched && (!result.licenseNumber || result.licenseNumber.replace(/^0+/, '') === verifiedLicense)), [verifiedLicense]);
-  const brokerDetailsReady = selected === 'broker' && signupDetailsValid('broker', details) && !!license && verifiedLicense === license;
   const [continueError, setContinueError] = useState('');
   useEffect(() => setContinueError(''), [license, details]);
   const continueBroker = () => {
