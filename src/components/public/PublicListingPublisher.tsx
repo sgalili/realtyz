@@ -185,7 +185,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [adminUnlocked, setAdminUnlocked] = useState(!adminOnlyEdit);
   const [legalSection, setLegalSection] = useState<'terms' | 'brokerage' | null>(null);
   const { data: readyProperties } = useReadyBoardProperties(open && isBroker);
-  const requireOwnerDeclaration = !pricingOnly && !isBroker && !isDeveloper && fields.publisherType !== 'developer';
+  const requireOwnerDeclaration = !pricingOnly && !isBroker && !isDeveloper;
   const [step, setStep] = useState(0);
   // First question of the wizard: who is publishing (drives the rest of the flow).
   const [rolePicked, setRolePicked] = useState(false);
@@ -197,6 +197,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [importOption, setImportOption] = useState<'yad2' | 'mine' | null>(null);
   const [fields, setFields] = useState<PublicListingDraftFields>(EMPTY_PUBLIC_LISTING_DRAFT);
   const showImportChoices = brokerInventoryChoices(ownerRoles, isBroker, readyProperties?.length ?? 0) && fields.publisherType === 'broker';
+  const roleNeedsOwnerDeclaration = requireOwnerDeclaration && fields.publisherType !== 'developer';
   const [files, setFiles] = useState<File[]>([]);
   const [mediaOrder, setMediaOrder] = useState<string[]>([]);
   const [pendingFileDelete, setPendingFileDelete] = useState<File | null>(null);
@@ -356,7 +357,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const publish = async (draftFields = fields, draftFiles = files, draftVideos = videos) => {
     if (!user?.id || publishing || entryPending || !activeWorkspaceId) return;
-    if (requireOwnerDeclaration && !draftFields.ownerDeclarationAccepted) return;
+    if (requireOwnerDeclaration && draftFields.publisherType !== 'developer' && !draftFields.ownerDeclarationAccepted) return;
     if (!draftFields.city.trim() || !(draftFields.street.trim() || draftFields.address.trim()) || !draftFields.propertyType.trim() || !(Number(draftFields.price) > 0) || !(Number(draftFields.commissionDeal) > 0)) {
       return;
     }
@@ -610,7 +611,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       setPublishing(false);
       return;
     }
-    if (requireOwnerDeclaration && !fields.ownerDeclarationAccepted) { toast.error('יש לאשר את הצהרת הבעלות והרשאת הפרסום'); return; }
+    if (roleNeedsOwnerDeclaration && !fields.ownerDeclarationAccepted) { toast.error('יש לאשר את הצהרת הבעלות והרשאת הפרסום'); return; }
     const missing = missingAdFields(fields);
     if (missing.length) { toast.error(`יש להשלים: ${missing.join(' · ')}`); return; }
     if (!fields.city.trim() || !(fields.street.trim() || fields.address.trim()) || !fields.propertyType.trim() || !fields.price) {
@@ -772,7 +773,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   // The publish button stays disabled until every mandatory detail is complete.
   const hasMedia = (Array.isArray((fields.importedListing as any)?.photos) ? (fields.importedListing as any).photos.length : 0) > 0 || importedVideoUrls(fields.importedListing).length > 0 || files.length > 0 || videos.length > 0;
-  const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia, requireOwnerDeclaration), [fields, hasMedia, requireOwnerDeclaration]);
+  const missingPublish = useMemo(() => missingPublishFields(fields, hasMedia, roleNeedsOwnerDeclaration), [fields, hasMedia, roleNeedsOwnerDeclaration]);
   const canPublish = missingPublish.length === 0 && (fields.publisherType !== 'broker' || isBroker);
 
   const renderStep = (step: number) => (
@@ -1071,7 +1072,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           ) : renderStep(step)}
           {!pricingOnly && (reviewMode || isLast) && (
             <div className="flex flex-col gap-[6px]">
-            {requireOwnerDeclaration && <label htmlFor="publisher-owner-declaration" className="flex items-start gap-2 text-sm leading-snug">
+            {roleNeedsOwnerDeclaration && <label htmlFor="publisher-owner-declaration" className="flex items-start gap-2 text-sm leading-snug">
               <Checkbox id="publisher-owner-declaration" required checked={fields.ownerDeclarationAccepted === true} onCheckedChange={checked => set('ownerDeclarationAccepted', checked === true)} className="mt-0.5 rounded-none" />
               <span>אני בעל/ת הנכס או מי מטעמו, ללא רישיון תיווך, ומורשה לפרסם את הנכס והתמונות.</span>
             </label>}
