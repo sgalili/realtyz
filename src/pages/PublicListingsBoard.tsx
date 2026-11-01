@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Search, Send, UserPlus } from 'lucide-react';
+import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Search, Send, UserPlus, X } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
@@ -296,7 +296,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
                 {!user && <button type="button" onClick={goToAuth} aria-label="כניסה או הרשמה" title="כניסה או הרשמה" className="-translate-y-[2px] flex shrink-0 flex-col items-center self-center border-0 bg-transparent p-0 leading-none text-primary"><UserPlus className="h-[25px] w-[25px] translate-x-[6px]" strokeWidth={1.75} /><span className="mt-0.5 text-[10px] font-medium leading-none">הרשמה/כניסה</span></button>}
-                <Button variant="ghost" size="icon" className="shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(true)}><Search className="h-5 w-5" /></Button>
+                <div className="relative shrink-0">
+                  <Button variant="ghost" size="icon" className="shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(true)}><Search className="h-5 w-5" /></Button>
+                  {searchOpen && (
+                    <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
+                      <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                    </button>
+                  )}
+                </div>
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
