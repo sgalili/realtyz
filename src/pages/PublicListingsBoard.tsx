@@ -138,7 +138,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   });
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
-    const openSearch = () => setSearchOpen(true);
+    const openSearch = () => setSearchOpen((v) => !v);
     const toggle = () => toggleGrid();
     window.addEventListener(BOARD_SEARCH_OPEN_EVENT, openSearch);
     window.addEventListener(BOARD_VIEW_TOGGLE_EVENT, toggle);
