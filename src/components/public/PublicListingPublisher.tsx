@@ -1044,6 +1044,11 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           const { error } = result.session ? await supabase.auth.setSession(result.session) : result.token_hash ? (await supabase.auth.verifyOtp({ token_hash: result.token_hash, type: 'magiclink' }).then(r => r.error ? supabase.auth.verifyOtp({ token_hash: result.token_hash!, type: 'email' }) : r)) : { error: new Error('missing session') };
           if (error) { pendingAuthPublish.current = null; toast.error('האימות הצליח אך הכניסה נכשלה. נסו שוב.'); return; }
           setOtpOpen(false);
+          // Broker license verification runs together with the SMS code, against the official registry.
+          if (fields.publisherType === 'broker' && fields.brokerLicense) {
+            try { await verifyBrokerLicense(fields.brokerLicense, 'verify'); await refetchRoles(); toast.success('רישיון התיווך אומת'); }
+            catch (e) { toast.error(e instanceof Error ? e.message : 'אימות הרישיון נכשל'); }
+          }
         }} />
       </DialogContent>
     </Dialog>
