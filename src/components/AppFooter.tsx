@@ -9,7 +9,7 @@ export function AppFooter() {
   return (
     <footer className="auth-page-footer" dir="rtl" aria-label="תחתית האתר">
       <div className="auth-footer-legal">
-        <span className="auth-footer-copyright"><span dir="ltr">© 2026 TORAFF</span> · כל הזכויות שמורות</span>
+        <span className="auth-footer-copyright"><span dir="ltr">© 2026 TORAFF</span></span>
         {!user && (
           <Link to="/auth" className="auth-footer-signup" aria-label="להרשמה/כניסה">
             <UserPlus className="h-4 w-4" strokeWidth={1.75} aria-hidden />
