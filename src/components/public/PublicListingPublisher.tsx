@@ -854,7 +854,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                   {(fields.publisherType === 'broker' || fields.publisherType === 'developer') && (!showImportChoices || importOption === 'yad2') && <Yad2AgencyImport publisherType={fields.publisherType} open={importCard === 'agency'} onToggle={() => setImportCard(c => c === 'agency' ? null : 'agency')} />}
                   {(!showImportChoices || importOption === 'yad2') && (
                     <CollapsibleCard title="יבוא מודעה מיד 2" open={importCard === 'single' || importing} onToggle={() => setImportCard(c => c === 'single' ? null : 'single')}>
-                      <p className="flex items-start gap-1.5 text-[13px] leading-5 text-muted-foreground">
+                      <p className="flex items-start gap-1.5 text-[15px] leading-6 text-muted-foreground">
                         <TooltipProvider delayDuration={150}>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -869,7 +869,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                         </TooltipProvider>
                         <span>בהדבקת הקישור {gender === 'female' ? 'את מצהירה' : 'אתה מצהיר'} שיש לך הזכות המלאה לשווק את הנכס ולהשתמש בתמונות ובפרטיו.</span>
                       </p>
-                      <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="text-[16px] placeholder:text-muted-foreground/50" value={importUrl} onChange={e => { setImportOption('yad2'); setImportUrl(e.target.value); }} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); setImportOption('yad2'); const pasted = e.clipboardData.getData('text').trim(); setImportUrl(pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted); setPublishError(''); }} />
+                      <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="text-[16px] placeholder:text-muted-foreground/35" value={importUrl} onChange={e => { setImportOption('yad2'); setImportUrl(e.target.value); }} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); setImportOption('yad2'); const pasted = e.clipboardData.getData('text').trim(); setImportUrl(pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted); setPublishError(''); }} />
                       {isYad2ItemUrl(importUrl) && !importing && <Button type="button" className="w-full" onClick={() => void importYad2(importUrl.trim())}>יבוא המודעה</Button>}
                       {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
                     </CollapsibleCard>
