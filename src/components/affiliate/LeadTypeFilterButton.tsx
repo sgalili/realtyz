@@ -263,7 +263,7 @@ export default function LeadTypeFilterButton({
             const other = value === 'sale' ? 'rent' : 'sale';
             return (
               <label key={value} className="flex cursor-pointer items-center gap-2 px-2 text-[15px]">
-                <Checkbox checked={on} aria-label={value === 'sale' ? 'למכירה' : 'להשכרה'}
+                <Checkbox className="rounded-[3px]" checked={on} aria-label={value === 'sale' ? 'למכירה' : 'להשכרה'}
                   onCheckedChange={() => patch({ dealType: on ? (property.dealType === 'all' ? other : 'all') : 'all' })} />
                 {value === 'sale' ? 'למכירה' : 'להשכרה'}
               </label>
