@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { normalizeListing } from '@/pages/PublicListingPage';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
-import PropertyCommissionIcons from './PropertyCommissionIcons';
+import PropertyCommissionIcons, { type RewardFacts } from './PropertyCommissionIcons';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -67,7 +67,7 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
   return 'other';
 }
 
-export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, gallery, hideRewards = false }: { idOrSlug: string; hideRewards?: boolean; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; gallery?: ReactNode }) {
+export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, gallery, hideRewards = false, rewardFacts }: { idOrSlug: string; hideRewards?: boolean; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; gallery?: ReactNode; rewardFacts?: RewardFacts }) {
   const { user } = useAuth();
   const { activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const navigate = useNavigate();
@@ -199,7 +199,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
             </Button>
           </div>
         )}
-        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} guestStack={!user} trailing={listing.id && (!hideRewards || !user) ? <PropertyCommissionIcons listingId={listing.id} raw={raw} /> : undefined} />
+        <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} guestStack={!user} trailing={listing.id && (!hideRewards || !user) ? <PropertyCommissionIcons listingId={listing.id} raw={raw} facts={rewardFacts} /> : undefined} />
         {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
