@@ -293,6 +293,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   // Restore scoped draft content, never its navigation, on a free-ad opening.
   useEffect(() => {
     if (!open || resumeDraft || restoredScope.current === draftScope) return;
+    if (resumedImport.current) { restoredScope.current = draftScope; return; }
     let cancelled = false;
     void (async () => {
       // Restore ONLY the draft of this exact user+workspace scope — never a
