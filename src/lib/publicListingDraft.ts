@@ -5,6 +5,8 @@ export type PublicListingDraftFields = {
   importedListing?: Record<string, any> | null;
   /** מתווך / פרטי */
   publisherType: 'broker' | 'private' | 'developer' | '';
+  /** Broker license entered at contact step; verified server-side after SMS. */
+  brokerLicense?: string;
   dealType: 'sale' | 'rent' | '';
   propertyType: string;
   city: string;
