@@ -294,7 +294,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
                 <div className="relative shrink-0">
-                  <Button variant="ghost" size="icon" className="!h-12 !w-12 shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="h-[30px] w-[30px]" strokeWidth={1.75} /></Button>
+                  <Button variant="ghost" size="icon" className="!h-[60px] !w-[60px] shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="h-[37.5px] w-[37.5px]" strokeWidth={1.75} /></Button>
                   {searchOpen && (
                     <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
                       <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
