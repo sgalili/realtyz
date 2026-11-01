@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
@@ -65,6 +65,8 @@ const render = () =>
   );
 
 describe("user type step closing", () => {
+  beforeEach(() => signOut.mockClear());
+
   it("signs out and leaves for the homepage when the close button is pressed", async () => {
     render();
     expect(screen.getByTestId("path").textContent).toBe("/dashboard");
