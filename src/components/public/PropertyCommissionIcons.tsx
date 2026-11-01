@@ -37,7 +37,10 @@ export function commissionEditScope(
   return row.workspace_owner_id === activeWorkspaceId ? 'edit' : 'none';
 }
 
-export default function PropertyCommissionIcons({ listingId, raw, networkOpen, table = false }: { listingId: string; raw?: Record<string, unknown>; networkOpen?: boolean; table?: boolean }) {
+/** Reward facts a view already holds (the board feed computes these server-side). */
+export type RewardFacts = { reward_levels?: Partial<Record<'form' | 'whatsapp' | 'phone', number | null>> | null; closing_level?: number | null; reward_types?: RewardTypes };
+
+export default function PropertyCommissionIcons({ listingId, raw, networkOpen, table = false, facts }: { listingId: string; raw?: Record<string, unknown>; networkOpen?: boolean; table?: boolean; facts?: RewardFacts }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const marketplace = useAffiliateMarketplace();
@@ -82,7 +85,7 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     tier3: Number(source?.affiliate_tier3_amount ?? 0), tier4: level4Unlocked ? closingIls : 0,
     tier4Type: 'fixed' as 'percent' | 'fixed',
   };
-  const configured = source?.reward_types as RewardTypes | undefined;
+  const configured = facts?.reward_types ?? (source?.reward_types as RewardTypes | undefined);
   const types: RewardTypes = configured ?? {
     form: source?.affiliate_tier1_amount == null ? undefined : tiers.tier1 > 0,
     whatsapp: source?.affiliate_tier2_amount == null ? undefined : tiers.tier2 > 0,
@@ -99,17 +102,18 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     tier3: source?.affiliate_tier3_amount == null && !listing ? undefined : tiers.tier3,
   }, !!user, level4Unlocked, showAll);
   if (!Object.values(display.types).some(Boolean) && !owned.data) return null;
-  // Icon colors come from 0-3 levels. The board feed ships them; other views
-  // (the publisher card) only carry amounts, so mirror the server's derivation
-  // with the same helpers and keep every view on one color scale.
-  const serverLevels = (source?.reward_levels ?? raw?.reward_levels) as Partial<Record<'form' | 'whatsapp' | 'phone', number | null>> | undefined;
+  // Icon colors come from 0-3 levels. Guests receive redacted amounts, so the
+  // server-computed facts a view already holds win first, then any levels
+  // shipped with the row, then the same derivation the server applies to amounts.
+  const serverLevels = (facts?.reward_levels ?? source?.reward_levels ?? raw?.reward_levels) as Partial<Record<'form' | 'whatsapp' | 'phone', number | null>> | undefined;
   const leadLevelOf = (key: 'form' | 'whatsapp' | 'phone', value: unknown) => (Number(value) > 0 ? leadPriceLevel(key, Number(value)) : null);
   const levels = {
     form: serverLevels?.form ?? leadLevelOf('form', tiers.tier1),
     whatsapp: serverLevels?.whatsapp ?? leadLevelOf('whatsapp', tiers.tier2),
     phone: serverLevels?.phone ?? leadLevelOf('phone', tiers.tier3),
   };
-  const closingLevel = typeof source?.closing_level === 'number' ? source.closing_level
+  const closingLevel = typeof facts?.closing_level === 'number' ? facts.closing_level
+    : typeof source?.closing_level === 'number' ? source.closing_level
     : typeof raw?.closing_level === 'number' ? raw.closing_level
     : closingRewardLevel(dcc?.value ?? source?.affiliate_tier4_amount, dcc?.type ?? source?.affiliate_tier4_type, source?.deal_type, source?.asking_price) ?? 0;
   const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table || !user ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={levels as never} />;
