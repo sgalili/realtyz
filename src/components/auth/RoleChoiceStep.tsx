@@ -50,7 +50,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     if (!brokerLicenseSchema.safeParse(license).success) { setContinueError('יש להזין מספר רישיון בספרות בלבד.'); return; }
     setBrokerStep('certificate');
   };
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { gender: savedGender } = usePersonalLanguage();
   const pending = readSmsSignup();
   const gender = pending?.gender ?? savedGender;
@@ -109,8 +109,8 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
     finally { setBusy(false); }
   };
   return <div dir="rtl" className="auth-gradient-shell relative flex h-[100dvh] flex-col items-center overflow-y-auto bg-background px-4 pb-16 pt-[50px]">
-    <Button type="button" variant="ghost" size="icon" aria-label="סגירה" className="absolute left-4 top-4 h-10 w-10" onClick={() => navigate('/auth')}><X className="h-8 w-8" /></Button>
-    <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" disabled={busy} onClick={() => { if (selected === 'broker' && brokerStep === 'certificate') { setBrokerStep('details'); setVerifiedLicense(null); setLicense(''); } else if (selected && !licenseSuspended) setSelected(null); else navigate('/auth'); }}><ArrowRight className="h-8 w-8" /></Button>
+    <Button type="button" variant="ghost" size="icon" aria-label="סגירה ויציאה מהחשבון" title="סגירה ויציאה מהחשבון" className="absolute left-4 top-4 h-10 w-10" disabled={busy} onClick={async () => { await signOut(); navigate('/', { replace: true }); }}><X className="h-8 w-8" /></Button>
+    {selected && !licenseSuspended && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" disabled={busy} onClick={() => { if (selected === 'broker' && brokerStep === 'certificate') { setBrokerStep('details'); setVerifiedLicense(null); setLicense(''); } else setSelected(null); }}><ArrowRight className="h-8 w-8" /></Button>}
     <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
     {!selected && <h1 className="mb-8 mt-[100px] shrink-0 text-center text-[17px] !font-bold">{wording('מה סוג המשתמש שלך?', 'מה סוג המשתמשת שלך?', 'מה סוג החשבון שלך?')}</h1>}
     {selected && <div className="mt-[100px] shrink-0" aria-hidden />}
