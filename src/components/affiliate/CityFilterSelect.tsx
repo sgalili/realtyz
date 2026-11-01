@@ -45,9 +45,10 @@ export function CityFilterSelect({
 
   // The dialog scrolls, so bring the freshly opened form into view.
   useEffect(() => {
-    if (!missingOpen) return;
+    const form = formRef.current;
+    if (!missingOpen || typeof form?.scrollIntoView !== 'function') return;
     const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    formRef.current?.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+    form.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
   }, [missingOpen]);
 
   const selected = state.selectedCities?.length
