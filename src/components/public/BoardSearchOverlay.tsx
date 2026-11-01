@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import { ChevronDown, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,14 +10,14 @@ export const BOARD_SEARCH_STATE_EVENT = 'toraff:board-search-state';
 export const BOARD_VIEW_TOGGLE_EVENT = 'toraff:board-view-toggle';
 export const BOARD_VIEW_STATE_EVENT = 'toraff:board-view-state';
 
-/** Full-page search: free text on top, all filters under one "חיפוש מתקדם" row. */
+/** Inline search panel: free text on top, all filters under one "חיפוש מתקדם" row.
+ *  Renders in normal flow below the header so it pushes the listings down instead
+ *  of covering them; results stay visible and update live under the panel. */
 export default function BoardSearchOverlay({ open, onClose, query, onQueryChange, onSearch, filters, resultCount, dealType, onDealTypeChange }: {
   dealType: string; onDealTypeChange: (v: string) => void;
   open: boolean; onClose: () => void; query: string; onQueryChange: (v: string) => void; onSearch: () => void; filters: ReactNode; resultCount: number;
 }) {
   const [advanced, setAdvanced] = useState(false);
-  const [top, setTop] = useState(0);
-  useEffect(() => { if (open) setTop(Math.max(0, document.querySelector('header')?.getBoundingClientRect().bottom ?? 0)); }, [open]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -52,8 +51,8 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
       const head = panel?.querySelector<HTMLElement>('[data-search-head]');
       const foot = panel?.querySelector<HTMLElement>('[data-search-foot]');
       const body = panel?.querySelector<HTMLElement>('[data-search-body]');
-      if (!head || !foot || !body) return;
-      const next = head.offsetHeight + body.offsetHeight + foot.offsetHeight;
+      if (!head || !body) return;
+      const next = head.offsetHeight + body.offsetHeight + (foot?.offsetHeight ?? 0);
       setCollapsedHeight(prev => (Math.abs(prev - next) > 0.5 ? next : prev));
     };
     measure();
@@ -62,7 +61,7 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
     const observer = new ResizeObserver(measure);
     targets.forEach(el => observer.observe(el));
     return () => observer.disconnect();
-  }, [mounted]);
+  }, [mounted, advanced]);
   useEffect(() => {
     const onResize = () => setViewportHeight(window.innerHeight);
     window.addEventListener('resize', onResize);
@@ -71,22 +70,25 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
 
   if (!mounted) return null;
   const submit = () => { if (query.trim()) onSearch(); onClose(); };
-  const available = Math.max(0, viewportHeight - top);
+  // The panel sits in normal flow right under the header. Measure the room down
+  // to the bottom of the board root (not window.innerHeight: 100dvh can be
+  // smaller, and over-tall content would push the header out of view).
+  const panelRect = panelRef.current?.getBoundingClientRect();
+  const rootBottom = panelRef.current?.closest('header')?.parentElement?.getBoundingClientRect().bottom ?? viewportHeight;
+  const available = Math.max(0, rootBottom - (panelRect?.top ?? 0));
   // Collapsed before the measurement lands, "auto" already equals the content
   // height, so the panel never paints full-screen for a frame.
   const height = advanced ? available : (collapsedHeight || 'auto');
-  return createPortal(
-    <div ref={panelRef} role="dialog" aria-modal="true" aria-label="חיפוש נכסים" dir="rtl"
+  return (
+    <div ref={panelRef} role="dialog" aria-label="חיפוש נכסים" dir="rtl"
       style={{
-        top,
         height,
         clipPath: shown ? 'inset(0 0 0 0)' : 'inset(0 0 100% 0)',
         transform: shown ? 'translateY(0)' : 'translateY(-16px)',
         transition: 'clip-path 520ms cubic-bezier(0.22, 1, 0.36, 1), transform 520ms cubic-bezier(0.22, 1, 0.36, 1), height 520ms cubic-bezier(0.22, 1, 0.36, 1)',
         willChange: 'clip-path, transform',
       }}
-      // Below the z-50 dropdown/dialog layer so filter menus open on top of the panel.
-      className="fixed inset-x-0 z-[45] flex flex-col overflow-hidden bg-background motion-reduce:!transition-none">
+      className="relative flex w-full flex-col overflow-hidden border-b border-border bg-background motion-reduce:!transition-none">
       <div data-search-head className="relative shrink-0 border-b border-border px-[15px] pb-3 pt-3">
         <Button type="button" variant="ghost" size="icon" aria-label="סגירת החיפוש" onClick={onClose} className="absolute end-0 top-0 h-8 w-8 rounded-none"><X className="h-5 w-5" /></Button>
         <div className="flex items-center gap-2 pe-6">
@@ -115,10 +117,11 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
           <AnimatedExpansion open={advanced}><div className="pt-3">{filters}</div></AnimatedExpansion>
         </div>
       </div>
-      <div data-search-foot className="shrink-0 border-t border-border px-[15px] pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3">
-        <Button type="button" className="mx-auto flex h-11 w-full max-w-2xl text-[16px]" onClick={submit}>הצגת {resultCount.toLocaleString('he-IL')} נכסים</Button>
-      </div>
-    </div>,
-    document.body,
+      {advanced && (
+        <div data-search-foot className="shrink-0 border-t border-border px-[15px] pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3">
+          <Button type="button" className="mx-auto flex h-11 w-full max-w-2xl text-[16px]" onClick={submit}>הצגת {resultCount.toLocaleString('he-IL')} נכסים</Button>
+        </div>
+      )}
+    </div>
   );
 }
