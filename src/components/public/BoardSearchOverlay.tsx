@@ -70,10 +70,12 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
 
   if (!mounted) return null;
   const submit = () => { if (query.trim()) onSearch(); onClose(); };
-  // The panel sits in normal flow right under the header; its own top edge tells
-  // us how much room is left down to the bottom of the viewport.
-  const panelTop = panelRef.current?.getBoundingClientRect().top ?? 0;
-  const available = Math.max(0, viewportHeight - panelTop);
+  // The panel sits in normal flow right under the header. Measure the room down
+  // to the bottom of the board root (not window.innerHeight: 100dvh can be
+  // smaller, and over-tall content would push the header out of view).
+  const panelRect = panelRef.current?.getBoundingClientRect();
+  const rootBottom = panelRef.current?.closest('header')?.parentElement?.getBoundingClientRect().bottom ?? viewportHeight;
+  const available = Math.max(0, rootBottom - (panelRect?.top ?? 0));
   // Collapsed before the measurement lands, "auto" already equals the content
   // height, so the panel never paints full-screen for a frame.
   const height = advanced ? available : (collapsedHeight || 'auto');
