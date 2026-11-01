@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { openFaq } from '@/components/faq/FaqDialog';
 
 /** Canonical legal footer shared by public, account and administration pages. */
 export function AppFooter() {
@@ -17,7 +16,6 @@ export function AppFooter() {
           </Link>
         )}
         <div className="auth-footer-links">
-          <button type="button" onClick={openFaq} className="focus-visible:outline-none">שאלות ותשובות</button>
           <Link to="/terms">תנאים</Link>
           <Link to="/privacy-policy">פרטיות</Link>
           <Link to="/commission-mechanism">מנגנון העמלות</Link>
