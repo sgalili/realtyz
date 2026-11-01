@@ -20,7 +20,7 @@
 - Property headings fit one address/price row; maps use photo markers, safe DOM popups and details-only selection with scroll-to-top. Why: avoid overlap and premature navigation.
 - Campaign targets use authorized rows or public-view facts, override unrelated drafts and discard stale responses; project refs stay out of UUID fields. Why: exact, isolated actions.
 - Drafts retain scoped errors and post-only exclusions, never deleting source photos. Explicit publish; celebration owns canvas/audio. Cached reward sounds follow account-only new ledger earnings, never workspace balances or historical grants.
-- Publisher numbering excludes setup; preserves keys and resolved addresses; ignores stale searches.
+- Publisher setup resets navigation separately from scoped draft content; selected branches drive ownership checks. Why: no cached-step bypass.
 - Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state, consistent counts.
 - Public publisher pricing and shared card-header rules: read src/components/public/AGENTS.md.
 - Facebook auth/groups are mounted siblings, so Page state never interrupts groups.

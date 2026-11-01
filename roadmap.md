@@ -3,7 +3,7 @@
 ## Mandatory publisher entry November 1
 - [x] Reset every explicit free-ad opening to publisher choice before sale/rent, including developer accounts; preserve scoped content and pricing-only recovery.
 - [x] Keep broker verification and import authorization, and require ownership by selected private branch rather than account role.
-- [ ] Run focused tests and check reopening, back navigation and branch behavior in the preview.
+- [x] 31 focused tests passed; guest and signed-in mobile opening, sale/rent back, cached reopening and private/developer declaration branches verified without runtime errors. Build OK; no listing published or license changed.
 
 ## Publisher cards and optional consent October 30
 - [x] Move view toggle, anchor expanded steps, unify closing offer/percentage and rename Rita cards.
