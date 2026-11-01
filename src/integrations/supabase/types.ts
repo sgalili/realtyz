@@ -1832,6 +1832,42 @@ export type Database = {
           },
         ]
       }
+      city_alert_requests: {
+        Row: {
+          consent_at: string
+          created_at: string
+          error: string | null
+          id: string
+          phone: string
+          preferences: Json
+          requested_city: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          consent_at?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          phone: string
+          preferences?: Json
+          requested_city?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          consent_at?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          phone?: string
+          preferences?: Json
+          requested_city?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       client_portal_links: {
         Row: {
           created_at: string
