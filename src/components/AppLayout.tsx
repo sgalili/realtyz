@@ -272,6 +272,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { activeWorkspace, activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
+  const boardRoute = location.pathname === '/' || location.pathname === '/public-listings';
+  const [boardGrid, setBoardGrid] = useState(() => { try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; } });
+  useEffect(() => {
+    const onView = (e: Event) => setBoardGrid(Boolean((e as CustomEvent<{ grid: boolean }>).detail?.grid));
+    window.addEventListener(BOARD_VIEW_STATE_EVENT, onView);
+    return () => window.removeEventListener(BOARD_VIEW_STATE_EVENT, onView);
+  }, []);
   const { isDemoMode, setDemoMode, demoCandidateId, setDemoCandidateId } = useDemoMode();
   useSessionTimeout();
   const queryClient = useQueryClient();
