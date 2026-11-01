@@ -193,6 +193,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [step, setStep] = useState(0);
   // First question of the wizard: who is publishing (drives the rest of the flow).
   const [rolePicked, setRolePicked] = useState(false);
+  const [seeker, setSeeker] = useState(false);
   const [importSlide, setImportSlide] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
   const authThenConfirm = useRef(false);
@@ -230,7 +231,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   useEffect(() => {
     if (openedScope.current && openedScope.current !== draftScope && openedScope.current !== 'visitor') {
       setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setPublishError('');
-      setImported(null); setImportUrl(''); setImportOption(null); setRolePicked(false); setStep(0); setReviewMode(false); setImportSlide(false);
+      setImported(null); setImportUrl(''); setImportOption(null); setRolePicked(false); setSeeker(false); setStep(0); setReviewMode(false); setImportSlide(false);
       setOtpOpen(false); setConfirming(false); setMediaOrder([]); setPendingFileDelete(null);
       setLegalSection(null); setAddressResolved(false); setExpandedStep('step-0'); setResumed(false); setImportStage(''); setPublishStage('');
       pendingAuthPublish.current = null; authThenConfirm.current = false; initializedPublisher.current = ''; restoredScope.current = ''; 
@@ -482,7 +483,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
        celebratePublication(publicationAudio.current);
        publicationAudio.current = null;
        initializedPublisher.current = '';
-        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setRolePicked(false); setStep(0); setImportSlide(false); setImported(null); setImportUrl(''); setReviewMode(false);
+        setConfirming(false); setOpen(false); setFields(EMPTY_PUBLIC_LISTING_DRAFT); setFiles([]); setVideos([]); setRolePicked(false); setSeeker(false); setStep(0); setImportSlide(false); setImported(null); setImportUrl(''); setReviewMode(false);
       const publishedListingId = (data as { id?: string } | null)?.id;
       // Rita welcome WhatsApp for first-time posters (once per user, best-effort).
       try {
@@ -771,15 +772,29 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const renderStep = (step: number) => (
     <>
-          {step === 0 && !importSlide && !rolePicked && (
+          {step === 0 && !importSlide && !rolePicked && !seeker && (
             <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
               <p className="text-center text-[19px] font-semibold text-muted-foreground">מי מפרסם?</p>
               <div className="grid grid-cols-1 gap-2">
-                {([['private', 'בעל נכס פרטי'], ['broker', 'מתווך'], ['developer', 'יזם / קבלן']] as const).map(([value, label]) => (
+                {([['private', 'מוכר / משכיר'], ['seeker', 'קונה / שוכר'], ['broker', 'מתווך / סוכנות'], ['developer', 'יזם / קבלן']] as const).map(([value, label]) => (
                   <Button key={value} type="button" variant={fields.publisherType === value && rolePicked ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => {
+                    if (value === 'seeker') { setSeeker(true); return; }
                     const next = { ...fields, publisherType: value as PublicListingDraftFields['publisherType'] };
                     setFields(next); setRolePicked(true); void saveDraft(next).catch(() => {});
                   }}>{label}</Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {step === 0 && !importSlide && seeker && (
+            <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
+              <p className="text-center text-[19px] font-semibold text-muted-foreground">מה אתם מחפשים?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {([['sale', 'קונה', 'נכס לקנייה'], ['rent', 'שוכר', 'נכס לשכירות']] as const).map(([value, role, label]) => (
+                  <Button key={value} type="button" variant="outline" className="h-auto flex-col gap-0.5 p-4 text-base font-bold" onClick={() => {
+                    setSeeker(false); setOpen(false);
+                    window.dispatchEvent(new CustomEvent('toraff:board-seeker-intent', { detail: { dealType: value, role } }));
+                  }}><span>{role}</span><span className="text-xs font-medium text-muted-foreground">{label}</span></Button>
                 ))}
               </div>
             </div>
@@ -788,8 +803,10 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             <div className="mx-auto flex h-full w-full max-w-lg flex-col justify-center space-y-2 text-center">
               <p className="text-center text-[19px] font-semibold text-muted-foreground">סוג המודעה</p>
               <div className="grid grid-cols-2 gap-2">
-                {([['sale', 'למכירה'], ['rent', 'להשכרה']] as const).map(([value, label]) => (
-                  <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{label}</Button>
+                {(fields.publisherType === 'private'
+                  ? ([['sale', 'מוכר', 'למכירה'], ['rent', 'משכיר', 'להשכרה']] as const)
+                  : ([['sale', '', 'למכירה'], ['rent', '', 'להשכרה']] as const)).map(([value, role, label]) => (
+                  <Button key={value} type="button" variant={fields.dealType === value ? 'default' : 'outline'} className="h-auto flex-col gap-0.5 p-4 text-base font-bold" onClick={() => void pickAndAdvance('dealType', value)}>{role ? <><span>{role}</span><span className="text-xs font-medium text-muted-foreground">{label}</span></> : label}</Button>
                 ))}
               </div>
             </div>
@@ -1040,7 +1057,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 !text-center">
           {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תגמולים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
-          {!pricingOnly && (reviewMode || step > 0 || importSlide || rolePicked) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); if (step === 0 && !importSlide && !reviewMode) setRolePicked(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
+          {!pricingOnly && (reviewMode || step > 0 || importSlide || rolePicked || seeker) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => { setConfirming(false); setReviewMode(false); if (step === 0 && !importSlide && !reviewMode) { setRolePicked(false); setSeeker(false); } setSeeker(false); setStep(0); setImportSlide(false); }}><ArrowRight className="h-5 w-5" /></Button>}
           <DialogTitle>
             {pricingOnly ? <span>מחיר והגדרת תגמולים</span> : reviewMode ? 'פרסום מודעה' : step > 0 ? `${step} / 8 · ${STEP_TITLES[step]}` : STEP_TITLES[step]}
           </DialogTitle>

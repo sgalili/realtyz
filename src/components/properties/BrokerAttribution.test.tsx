@@ -8,7 +8,7 @@ describe('Public publisher strip', () => {
     expect(container.querySelector('[data-publisher-attribution]')).toContainElement(screen.getByText('₪80'));
     expect(screen.getByText('מפרסם')).toBeInTheDocument();
   });
-  it.each([['sale', 'מוכר פרטי'], ['rent', 'משכיר פרטי']])('uses a silhouette and correct subtitle for %s', (dealType, subtitle) => {
+  it.each([['sale', 'מוכר'], ['rent', 'משכיר']])('uses a silhouette and correct subtitle for %s', (dealType, subtitle) => {
     const { container } = render(<BrokerAttribution publisherKind="private" dealType={dealType} brokerName="מפרסם" logoUrl="https://example.com/logo.png" licenceNumber="12345" />);
     expect(screen.getByText(subtitle)).toBeInTheDocument();
     expect(container.querySelector('img')).toBeNull();
@@ -16,9 +16,9 @@ describe('Public publisher strip', () => {
   });
   it('recognizes existing public private attribution without inferring from missing branding', () => {
     const { rerender } = render(<BrokerAttribution officeName="מפרסם פרטי" dealType="rent" />);
-    expect(screen.getByText('משכיר פרטי')).toBeInTheDocument();
+    expect(screen.getByText('משכיר')).toBeInTheDocument();
     rerender(<BrokerAttribution brokerName="מפרסם" />);
-    expect(screen.queryByText('משכיר פרטי')).not.toBeInTheDocument();
+    expect(screen.queryByText('משכיר')).not.toBeInTheDocument();
   });
   it('renders the exclusivity label under the office name inside the same text column', () => {
     const { container } = render(<BrokerAttribution brokerName="עדן ויטמן" officeName="אנגלו סכסון הרצליה" exclusive />);
