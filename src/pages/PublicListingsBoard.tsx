@@ -296,14 +296,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               <h1 className="sr-only">לוח שיווק שותפים</h1>
               <div className="flex items-center justify-start">
                 <div className="relative shrink-0">
-                  <Button variant="ghost" size="icon" className="!h-[60px] !w-[60px] shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="h-[37.5px] w-[37.5px]" strokeWidth={1.75} /></Button>
+                  <Button variant="ghost" size="icon" className="board-header-icon-btn !h-[44px] !w-[44px] shrink-0" aria-label="חיפוש" onClick={() => setSearchOpen(v => !v)}><Search className="!h-[20px] !w-[20px]" strokeWidth={1.75} /></Button>
                   {searchOpen ? (
                     <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
                       <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
                     </button>
                   ) : appliedFilterCount > 0 ? <span aria-label={`${appliedFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{appliedFilterCount}</span> : null}
                 </div>
-                <Button variant="ghost" size="icon" className="shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}</Button>
+                <Button variant="ghost" size="icon" className="board-header-icon-btn !h-[44px] !w-[44px] shrink-0" onClick={toggleGrid} aria-label={grid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'}>{grid ? <List className="!h-[18px] !w-[18px]" /> : <LayoutGrid className="!h-[18px] !w-[18px]" />}</Button>
               </div>
               <Button variant="ghost" className="h-auto shrink-0 justify-self-center p-0 hover:bg-transparent" aria-label="TORAFF - דף הבית" onClick={() => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); }}><PlatformBrand className="h-[52px] shrink-0 sm:h-[65px]" /></Button>
               <div className="flex items-center justify-end">
