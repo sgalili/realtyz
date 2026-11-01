@@ -59,7 +59,8 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
     queryKey: ['verified-roles-import', user?.id], enabled: !!user?.id,
     queryFn: async () => { const { data } = await supabase.rpc('get_verified_user_roles'); return (data ?? []) as string[]; },
   });
-  if (!user || !activeWorkspaceId || !roles.some(r => BROKER_ROLES.includes(r))) return null;
+  if (!user || !activeWorkspaceId) return null;
+  const unverifiedBroker = publisherType === 'broker' && !roles.some(r => BROKER_ROLES.includes(r));
 
   const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] }); void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] }); };
 

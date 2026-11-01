@@ -8,7 +8,6 @@ import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
-const BROKER_ROLES = ['managing_broker', 'agent', 'lead_agent', 'junior_agent', 'super_admin'];
 const MAX_PAGES = 10;
 const MAX_ITEMS = 200;
 const CACHE_SECONDS = 6 * 60 * 60;
@@ -33,8 +32,8 @@ Deno.serve(async req => {
   if (!owner) return json({ error: 'workspace_unavailable', message: 'סביבת העבודה אינה זמינה' }, 403);
   const { data: allowed } = await client.rpc('ws_current_access', { _ws: owner });
   if (!allowed) return json({ error: 'workspace_forbidden', message: 'אין הרשאה לסביבת העבודה' }, 403);
-  const { data: roles } = await client.from('user_roles').select('role').eq('user_id', user.id);
-  if (!roles?.some(r => BROKER_ROLES.includes(r.role))) return json({ error: 'forbidden', message: 'ייבוא מלא מיד2 זמין למתווכים מאומתים בלבד' }, 403);
+  // Open to developers and not-yet-verified brokers: discovery only returns links;
+  // every imported ad is saved as a draft and publication stays server-gated on verification.
 
   let body: any;
   try { body = await req.json(); } catch { return json({ message: 'בקשה לא תקינה' }, 400); }
