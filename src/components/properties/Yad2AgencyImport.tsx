@@ -1,3 +1,4 @@
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -40,7 +41,7 @@ async function applyRule(listingId: string, workspaceId: string, rule: ImportCom
 
 import { savePendingYad2Import, readPendingYad2Import, clearPendingYad2Import } from '@/lib/pendingYad2Import';
 
-export default function Yad2AgencyImport({ publisherType = 'broker' }: { publisherType?: string }) {
+export default function Yad2AgencyImport({ publisherType = 'broker', open = true, onToggle }: { publisherType?: string; open?: boolean; onToggle?: () => void }) {
 
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
@@ -118,8 +119,7 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
   const pending = progress.total - progress.done - progress.failed;
   const num = (k: keyof ImportCommissionRule) => (e: React.ChangeEvent<HTMLInputElement>) => setRule(r => ({ ...r, [k]: Math.max(0, Number(e.target.value.replace(/[^\d.]/g, '')) || 0) }));
 
-  return <section dir="rtl" className="space-y-3 rounded-xl border bg-card p-4">
-    <h2 className="text-[17px] font-semibold">יבוא כל המודעות שלי מיד 2</h2>
+  return <CollapsibleCard title="יבוא כל המודעות שלי מיד 2" open={open || busy || phase === 'done'} onToggle={() => onToggle?.()}>
     <p className="text-[13.5px] leading-6 text-muted-foreground">יש לכם עמוד משרד ביד שתיים? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם יובאו בלחיצה אחת.</p>
     <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://www.yad2.co.il/realestate/agency/..." dir="ltr" disabled={busy} className="text-[16px] placeholder:text-muted-foreground/50" />
     <p className="text-[12.5px] leading-5 text-muted-foreground">{publisherType === 'developer' ? 'טיפ: ביד 2, היכנסו לאחד הפרויקטים שלכם ולחצו על שם החברה כדי להגיע לעמוד הראשי.' : 'טיפ: ביד 2, היכנסו לאחת המודעות שלכם ולחצו על שם המשרד כדי להגיע לעמוד הראשי'}</p>
@@ -158,5 +158,5 @@ export default function Yad2AgencyImport({ publisherType = 'broker' }: { publish
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </section>;
+  </CollapsibleCard>;
 }
