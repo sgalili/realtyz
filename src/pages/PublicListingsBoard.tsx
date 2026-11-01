@@ -52,6 +52,7 @@ export type PublicCard = {
   affiliate_enabled?: boolean;
   reward_types?: { form: boolean; whatsapp: boolean; phone: boolean; closing: boolean };
   closing_level?: number | null;
+  reward_levels?: { form: number | null; whatsapp: number | null; phone: number | null } | null;
   attribution?: { broker_name?: string | null; office_name?: string | null; agency_logo_url?: string | null; broker_license_number?: string | null; publisher_kind?: string | null };
 };
 
@@ -354,7 +355,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           </div>
                           ) : id === 'address' ? <div className="w-44 min-w-0 max-w-[11rem] sm:w-64 sm:max-w-[16rem]"><PublicCardSummary card={card} showCommissions={false} showBroker={false} dense /></div>
                           : id === 'price' ? <span className="text-[17px] font-bold">{shekel(card.price)}{card.deal_type === 'rent' && card.price ? <span className="ms-1 text-xs font-normal"> / לחודש</span> : null}</span>
-                          : id === 'commissions' ? <PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types, closing_level: card.closing_level, reward_levels: (card as { reward_levels?: unknown }).reward_levels }} />
+                          : id === 'commissions' ? <PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types, closing_level: card.closing_level, reward_levels: card.reward_levels }} />
                           : id === 'rooms' ? card.rooms || ''
                           : id === 'sqm' ? card.sqm || ''
                           : id === 'publisher' ? <div className="w-48 max-w-[12rem]"><PublicCardPublisher card={card} /></div>
@@ -374,7 +375,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
-                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} isMine={ownedIds.has(card.id)} share={<PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} />} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards />}
+                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} isMine={ownedIds.has(card.id)} share={<PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} />} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards rewardFacts={{ reward_levels: card.reward_levels, closing_level: card.closing_level, reward_types: card.reward_types }} />}
                             </div>
                           </div>
                           </AnimatedExpansion>

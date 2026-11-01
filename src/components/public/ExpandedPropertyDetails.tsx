@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { normalizeListing } from '@/pages/PublicListingPage';
 import BrokerAttribution from '@/components/properties/BrokerAttribution';
-import PropertyCommissionIcons from './PropertyCommissionIcons';
+import PropertyCommissionIcons, { type RewardFacts } from './PropertyCommissionIcons';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
