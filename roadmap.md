@@ -1,6 +1,12 @@
 # Roadmap
 
+## Yad2 import cards November 1
+- [x] Split the import slide into two framed cards: "יבוא כל המודעות שלי מיד 2" (exact office-page sentence, lighter placeholder, tip under the input) and "יבוא מודעה מיד 2" (statement under the title), office-page card first.
+- [x] Import buttons appear only for a matching link (office page vs single ad), "המשך ללא ייבוא" is a framed outline button, the role heading reads "מי מפרסם?" and the top tabs have no arrows.
+- [x] 8 focused tests passed (src/test/yad2ImportLinks.test.ts, src/test/yad2Publisher.test.ts); signed-in broker flow verified: no import request fired while typing, buttons appeared only for valid links, no runtime errors. No listing imported or published.
+
 ## Mandatory publisher entry November 1
+
 - [x] Reset every explicit free-ad opening to publisher choice before sale/rent, including developer accounts; preserve scoped content and pricing-only recovery.
 - [x] Keep broker verification and import authorization, and require ownership by selected private branch rather than account role.
 - [x] 31 focused tests passed; guest and signed-in mobile opening, sale/rent back, cached reopening and private/developer declaration branches verified without runtime errors. Build OK; no listing published or license changed.
