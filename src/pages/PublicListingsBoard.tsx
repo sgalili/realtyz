@@ -266,6 +266,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   useEffect(() => { setVisibleCount(24); }, [query, deal, propFilter, leadFilter, grid]);
   // Guest reward indicators disclose configured types, never prices.
   const visibleColumns = columns.visible;
+  const priceBounds = useMemo(() => { const p = cards.map(c => Number(c.price)).filter(v => Number.isFinite(v) && v > 0); return p.length ? { min: Math.min(...p), max: Math.max(...p) } : null; }, [cards]);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
   const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
@@ -292,7 +293,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               </div>
             </div>
           )}
-          <div className={embedded ? '' : 'mt-3'}><BoardSearchControls query={query} onQueryChange={setQuery} onSearch={() => void load()} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} />} /></div>
+          <div className={embedded ? '' : 'mt-3'}><BoardSearchControls query={query} onQueryChange={setQuery} onSearch={() => void load()} grid={grid} onViewToggle={toggleGrid} filter={<LeadTypeFilterButton state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} priceBounds={priceBounds} />} /></div>
         </div>
       </header>
 

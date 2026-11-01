@@ -120,7 +120,8 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
           <p>הבקשה בבדיקה. נעדכן אותך בהמשך.</p>
         </div> : hasLicense && <div className="space-y-2 border-t border-border pt-3">
           <p className="text-base font-semibold">כבר קיבלת רישיון?</p>
-          <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={() => {}} />
+          <div ref={el => { if (el) requestAnimationFrame(() => { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); el.querySelector('input')?.focus(); }); }}>
+          <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={() => {}} /></div>
           {sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" description="נדרש אימות מספר הטלפון של החשבון לפני אימות הרישיון." onVerified={() => { void sms.refetch(); }} />}
           <label htmlFor="broker-certificate-image" className="block text-base">צילום תעודת הרישיון</label>
           <Input id="broker-certificate-image" type="file" accept={CERTIFICATE_MIME_TYPES.join(',')} disabled={busy} className="h-auto text-base" onChange={event => {
