@@ -55,6 +55,7 @@ import { useWorkspaceOwnerRoles } from '@/hooks/useWorkspaceFeatures';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { brokerLicenseDigits, brokerLicenseSchema, verifyBrokerLicense } from '@/lib/brokerLicense';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
 import { savePendingYad2Import, readPendingYad2Import, clearPendingYad2Import } from '@/lib/pendingYad2Import';
 import { isYad2ItemUrl } from '@/lib/yad2ImportLinks';
@@ -216,6 +217,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [confirming, setConfirming] = useState(false);
   const [marketingInfoOpen, setMarketingInfoOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
+  const [importCard, setImportCard] = useState<'agency' | 'single' | null>(null);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<Record<string, any> | null>(null);
   const [reviewMode, setReviewMode] = useState(false);
@@ -263,7 +265,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     const entry = publisherEntryNavigation();
     setStep(entry.step); setRolePicked(entry.rolePicked); setReviewMode(entry.reviewMode);
     setImportSlide(entry.importSlide); setExpandedStep(entry.expandedStep);
-    setImportOption(null); setConfirming(false); setLegalSection(null); setManualDeal(false); setSeeker(false);
+    setImportOption(null); setImportCard(null); setConfirming(false); setLegalSection(null); setManualDeal(false); setSeeker(false);
   };
   // Signed-in accounts with a known publisher role skip "מי מפרסם?"; guests and partner-only accounts answer it.
   const knownPublisherRole: '' | 'broker' | 'developer' | 'private' = !user ? ''
@@ -288,6 +290,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     const type = (knownPublisherRole || pending.publisherType || 'broker') as PublicListingDraftFields['publisherType'];
     setFields(current => ({ ...current, publisherType: type, ownerDeclarationAccepted: false }));
     setRolePicked(true); setImportSlide(true); setOpen(true);
+    setImportCard(pending.kind);
     if (pending.kind === 'single') { setImportUrl(pending.url); window.setTimeout(() => void importYad2Ref.current?.(pending.url), 0); }
   }, [user?.id, activeWorkspaceId, workspaceLoading]);
   // Restore scoped draft content, never its navigation, on a free-ad opening.
@@ -842,16 +845,15 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             </div>
           )}
           {step === 0 && importSlide && (
-            <div className="flex min-h-[55dvh] flex-col justify-center space-y-4">
+            <div className="flex h-full min-h-[55dvh] flex-col justify-center space-y-4">
               <div className="space-y-4 pt-1">
                   {showImportChoices && <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'yad2'} onClick={() => setImportOption('yad2')}>ייבוא מיד2</Button>
                     <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'mine'} onClick={() => setImportOption('mine')}>הנכסים שלי ({readyProperties?.length ?? 0})</Button>
                   </div>}
-                  {(fields.publisherType === 'broker' || fields.publisherType === 'developer') && (!showImportChoices || importOption === 'yad2') && <Yad2AgencyImport publisherType={fields.publisherType} />}
+                  {(fields.publisherType === 'broker' || fields.publisherType === 'developer') && (!showImportChoices || importOption === 'yad2') && <Yad2AgencyImport publisherType={fields.publisherType} open={importCard === 'agency'} onToggle={() => setImportCard(c => c === 'agency' ? null : 'agency')} />}
                   {(!showImportChoices || importOption === 'yad2') && (
-                    <section dir="rtl" className="space-y-3 rounded-xl border bg-card p-4">
-                      <h2 className="text-[17px] font-semibold">יבוא מודעה מיד 2</h2>
+                    <CollapsibleCard title="יבוא מודעה מיד 2" open={importCard === 'single' || importing} onToggle={() => setImportCard(c => c === 'single' ? null : 'single')}>
                       <p className="flex items-start gap-1.5 text-[13px] leading-5 text-muted-foreground">
                         <TooltipProvider delayDuration={150}>
                           <Tooltip>
@@ -870,7 +872,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                       <Input id="yad2-import-url" dir="ltr" type="url" placeholder="https://www.yad2.co.il/item/..." className="text-[16px] placeholder:text-muted-foreground/50" value={importUrl} onChange={e => { setImportOption('yad2'); setImportUrl(e.target.value); }} onFocus={e => e.currentTarget.select()} onPaste={e => { e.preventDefault(); setImportOption('yad2'); const pasted = e.clipboardData.getData('text').trim(); setImportUrl(pasted.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i)?.[0] ?? pasted); setPublishError(''); }} />
                       {isYad2ItemUrl(importUrl) && !importing && <Button type="button" className="w-full" onClick={() => void importYad2(importUrl.trim())}>יבוא המודעה</Button>}
                       {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
-                    </section>
+                    </CollapsibleCard>
                   )}
                   {showImportChoices && importOption === 'mine' && <MyPropertiesPicker key={draftScope} />}
                   <Button type="button" variant="outline" className="mx-auto mt-6 block w-full max-w-xs" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setManualDeal(true); }}>המשך ללא ייבוא</Button>
