@@ -43,6 +43,13 @@ export function CityFilterSelect({
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [open]);
 
+  // The dialog scrolls, so bring the freshly opened form into view.
+  useEffect(() => {
+    if (!missingOpen) return;
+    const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    formRef.current?.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+  }, [missingOpen]);
+
   const selected = state.selectedCities?.length
     ? state.selectedCities
     : state.city && state.city !== 'all'
@@ -110,7 +117,7 @@ export function CityFilterSelect({
               <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 motion-reduce:transition-none ${missingOpen ? 'rotate-180' : ''}`} />
             </button>
           </div>
-          {missingOpen ? <MissingCityAlert preferences={preferences} /> : null}
+          {missingOpen ? <div ref={formRef}><MissingCityAlert preferences={preferences} /></div> : null}
         </div>
       ) : null}
     </>
