@@ -69,46 +69,46 @@ export function CityFilterSelect({
       {open ? (
         <div
           ref={listRef}
-          role="listbox"
-          aria-label="בחירת ערים"
-          className="col-span-2 max-h-56 overflow-y-auto overscroll-contain rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-top-1 motion-reduce:animate-none"
+          className="col-span-2 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-top-1 motion-reduce:animate-none"
         >
-          <button
-            type="button"
-            role="option"
-            aria-selected={nationwide}
-            onClick={() => onChange(selectFilterCity(state, 'all'))}
-            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
-          >
-            <Check aria-hidden className={`h-4 w-4 shrink-0 ${nationwide ? 'opacity-100' : 'opacity-0'}`} />
-            <span>כל הארץ</span>
-          </button>
-          {cities.map((city) => {
-            const on = selected.includes(city);
-            return (
-              <button
-                key={city}
-                type="button"
-                role="option"
-                aria-selected={on}
-                onClick={() => onChange(selectFilterCity(state, city))}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
-              >
-                <Check aria-hidden className={`h-4 w-4 shrink-0 ${on ? 'opacity-100' : 'opacity-0'}`} />
-                <span className="truncate">{city}</span>
-              </button>
-            );
-          })}
-          <div aria-hidden className="my-1 h-px bg-border" />
-          <button
-            type="button"
-            aria-expanded={missingOpen}
-            onClick={() => setMissingOpen((value) => !value)}
-            className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
-          >
-            <span>העיר שלך לא מופיעה כאן?</span>
-            <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 motion-reduce:transition-none ${missingOpen ? 'rotate-180' : ''}`} />
-          </button>
+          <div role="listbox" aria-label="בחירת ערים" className="max-h-56 overflow-y-auto overscroll-contain">
+            <button
+              type="button"
+              role="option"
+              aria-selected={nationwide}
+              onClick={() => onChange(selectFilterCity(state, 'all'))}
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
+            >
+              <Check aria-hidden className={`h-4 w-4 shrink-0 ${nationwide ? 'opacity-100' : 'opacity-0'}`} />
+              <span>כל הארץ</span>
+            </button>
+            {cities.map((city) => {
+              const on = selected.includes(city);
+              return (
+                <button
+                  key={city}
+                  type="button"
+                  role="option"
+                  aria-selected={on}
+                  onClick={() => onChange(selectFilterCity(state, city))}
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Check aria-hidden className={`h-4 w-4 shrink-0 ${on ? 'opacity-100' : 'opacity-0'}`} />
+                  <span className="truncate">{city}</span>
+                </button>
+              );
+            })}
+            <div aria-hidden className="my-1 h-px bg-border" />
+            <button
+              type="button"
+              aria-expanded={missingOpen}
+              onClick={() => setMissingOpen((value) => !value)}
+              className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-right text-[16px] hover:bg-accent hover:text-accent-foreground"
+            >
+              <span>העיר שלך לא מופיעה כאן?</span>
+              <ChevronDown aria-hidden className={`h-4 w-4 shrink-0 opacity-50 transition-transform duration-200 motion-reduce:transition-none ${missingOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
           {missingOpen ? <MissingCityAlert preferences={preferences} /> : null}
         </div>
       ) : null}
