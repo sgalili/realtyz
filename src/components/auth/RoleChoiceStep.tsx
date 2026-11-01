@@ -35,7 +35,7 @@ export function RoleChoiceStep({ onDone }: { onDone?: () => void }) {
   const [brokerStep, setBrokerStep] = useState<'details' | 'certificate'>('details');
   const [certificateOk, setCertificateOk] = useState(false);
   const onLicenseVerified = useCallback((value: string | null, name?: string) => { setVerifiedLicense(value); if (value) { setHolderName(name ?? ''); setCertificateOk(false); } }, []);
-  const onCertificate = useCallback((result: { matched: boolean } | null) => setCertificateOk(!!result?.matched), []);
+  const onCertificate = useCallback((result: { matched: boolean; licenseNumber?: string } | null) => setCertificateOk(!!result?.matched && (!result.licenseNumber || result.licenseNumber.replace(/^0+/, '') === verifiedLicense)), [verifiedLicense]);
   const brokerDetailsReady = selected === 'broker' && signupDetailsValid('broker', details) && !!license && verifiedLicense === license;
   useEffect(() => { if (brokerDetailsReady && brokerStep === 'details') setBrokerStep('certificate'); }, [brokerDetailsReady, brokerStep]);
   const { user } = useAuth();
