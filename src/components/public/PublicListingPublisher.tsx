@@ -507,6 +507,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       Object.assign(payload, pricing);
       Object.assign(payload.features, pricingFeatures);
       (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
+      if (draftFields.brokerLicenseReview) (payload.features as Record<string, unknown>).awaiting_license_approval = true;
       let request;
       if (draftFields.listingId && activeWorkspaceId) {
         const { data: existing, error: readError } = await supabase.from('listings').select('features, contact_options, source_metadata, additional_details').eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId).single();
