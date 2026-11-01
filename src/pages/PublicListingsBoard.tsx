@@ -139,9 +139,16 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   useEffect(() => {
     const openSearch = () => setSearchOpen((v) => !v);
     const toggle = () => toggleGrid();
+    // A buyer/renter picked in "מי מפרסם?" opens the search already limited to their deal type.
+    const seekerIntent = (e: Event) => {
+      const deal = (e as CustomEvent<{ dealType?: string }>).detail?.dealType;
+      if (deal === 'sale' || deal === 'rent') { setDeals({ sale: deal === 'sale', rent: deal === 'rent' }); setPropFilter((cur) => ({ ...cur, dealType: deal as typeof cur.dealType })); }
+      setSearchOpen(true);
+    };
     window.addEventListener(BOARD_SEARCH_OPEN_EVENT, openSearch);
     window.addEventListener(BOARD_VIEW_TOGGLE_EVENT, toggle);
-    return () => { window.removeEventListener(BOARD_SEARCH_OPEN_EVENT, openSearch); window.removeEventListener(BOARD_VIEW_TOGGLE_EVENT, toggle); };
+    window.addEventListener('toraff:board-seeker-intent', seekerIntent);
+    return () => { window.removeEventListener(BOARD_SEARCH_OPEN_EVENT, openSearch); window.removeEventListener(BOARD_VIEW_TOGGLE_EVENT, toggle); window.removeEventListener('toraff:board-seeker-intent', seekerIntent); };
   }, []);
   useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_VIEW_STATE_EVENT, { detail: { grid } })); }, [grid]);
   // Favorite listings of the signed-in user. The card heart, the table heart and
