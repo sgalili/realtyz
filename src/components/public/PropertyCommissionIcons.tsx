@@ -99,8 +99,20 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     tier3: source?.affiliate_tier3_amount == null && !listing ? undefined : tiers.tier3,
   }, !!user, level4Unlocked, showAll);
   if (!Object.values(display.types).some(Boolean) && !owned.data) return null;
-  const closingLevel = typeof source?.closing_level === 'number' ? source.closing_level : typeof raw?.closing_level === 'number' ? raw.closing_level : 0;
-  const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table || !user ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={(source?.reward_levels ?? raw?.reward_levels) as never} />;
+  // Icon colors come from 0-3 levels. The board feed ships them; other views
+  // (the publisher card) only carry amounts, so mirror the server's derivation
+  // with the same helpers and keep every view on one color scale.
+  const serverLevels = (source?.reward_levels ?? raw?.reward_levels) as Partial<Record<'form' | 'whatsapp' | 'phone', number | null>> | undefined;
+  const leadLevelOf = (key: 'form' | 'whatsapp' | 'phone', value: unknown) => (Number(value) > 0 ? leadPriceLevel(key, Number(value)) : null);
+  const levels = {
+    form: serverLevels?.form ?? leadLevelOf('form', tiers.tier1),
+    whatsapp: serverLevels?.whatsapp ?? leadLevelOf('whatsapp', tiers.tier2),
+    phone: serverLevels?.phone ?? leadLevelOf('phone', tiers.tier3),
+  };
+  const closingLevel = typeof source?.closing_level === 'number' ? source.closing_level
+    : typeof raw?.closing_level === 'number' ? raw.closing_level
+    : closingRewardLevel(dcc?.value ?? source?.affiliate_tier4_amount, dcc?.type ?? source?.affiliate_tier4_type, source?.deal_type, source?.asking_price) ?? 0;
+  const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table || !user ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={levels as never} />;
   if (table && owned.data) return <><Button variant="ghost" className="relative min-h-8 min-w-8 bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תגמולים" disabled={owned.isFetching} onClick={async event => { event.stopPropagation(); const fresh = await owned.refetch(); if (fresh.data) setDraft({ ...listingToDraft(fresh.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{Object.values(display.types).some(Boolean) ? icons : (level4Unlocked ? <Trophy className="h-3.5 w-3.5 text-lead-closing" aria-label="סגירת עסקה" /> : <span className="text-xs font-semibold text-primary underline underline-offset-2">הגדרת תגמולים</span>)}</Button>{draft && <PublicListingPublisher pricingOnly adminOnlyEdit={!!owned.data?.__adminOnly} resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
   return <LeadPricingDialog readOnly closingLevel={closingLevel} rewardTypes={types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}>{icons}</LeadPricingDialog>;
 }
