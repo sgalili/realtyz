@@ -1,3 +1,4 @@
+import { notifyLicenseStatus } from '@/lib/licenseStatusNotify';
 import { useState } from 'react';
 import { Loader2, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,8 @@ export async function uploadBrokerLicensePhoto(userId: string, file: File) {
 export async function requestBrokerLicenseReview(license: string, certificatePath: string, details?: Record<string, string>) {
   const { error } = await supabase.rpc('request_broker_license_review' as never, { _license: license, _certificate_path: certificatePath, _details: details ?? null } as never);
   if (error) throw new Error('לא ניתן לשלוח את הרישיון לבדיקה כרגע.');
+  const { data } = await supabase.auth.getUser();
+  notifyLicenseStatus(data.user?.id);
 }
 
 export const BROKER_LICENSE_REVIEW_MESSAGE = 'אימות רישיון התיווך שלך נשלח לבדיקה ונעדכן אותך בקרוב.';

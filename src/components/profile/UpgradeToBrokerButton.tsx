@@ -1,3 +1,4 @@
+import { notifyLicenseStatus } from '@/lib/licenseStatusNotify';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -80,6 +81,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
         if (up.error) throw new Error('העלאת התעודה נכשלה.');
         const { error } = await supabase.rpc('admin_submit_broker_license' as any, { _user_id: subjectId, _license: license, _certificate_path: path });
         if (error) throw new Error('שליחת הרישיון לבדיקה נכשלה.');
+        notifyLicenseStatus(subjectId);
         setResult('pending');
         await queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] });
         await queryClient.invalidateQueries({ queryKey: ['admin-broker-upgrade-requests'] });

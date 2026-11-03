@@ -1,3 +1,4 @@
+import { notifyLicenseStatus } from '@/lib/licenseStatusNotify';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,11 +27,12 @@ export function BrokerUpgradeRequestsCard() {
       return rows.map((r, i) => ({ ...r, certUrl: signed[i], profile: byId.get(r.user_id) as { full_name?: string; email?: string; phone?: string } | undefined }));
     },
   });
-  const review = async (id: string, approve: boolean) => {
+  const review = async (id: string, approve: boolean, userId?: string) => {
     setBusy(id);
     try {
       const { data, error } = await supabase.rpc('review_broker_upgrade_request' as any, { _id: id, _approve: approve });
       if (error) throw error;
+      notifyLicenseStatus(userId);
       const published = (data as any)?.published ?? 0; const failed = (data as any)?.failed ?? 0;
       if (approve && failed) toast.warning(`${failed} מודעות לא פורסמו — פרטי השגיאה נשמרו במודעה`);
       toast.success(approve ? `החשבון שודרג למתווך מורשה${published ? ` · ${published} מודעות פורסמו` : ''}` : 'הבקשה נדחתה');
@@ -50,8 +52,8 @@ export function BrokerUpgradeRequestsCard() {
           <p className="text-sm">רישיון <span dir="ltr" className="tabular-nums">{r.license_number}</span> · שם בפנקס: {r.registry_holder_name ?? '—'} · שם בתעודה: {r.certificate_name ?? '—'}</p>
           <p className="text-xs text-muted-foreground">{format(new Date(r.created_at), 'dd/MM/yyyy HH:mm')}</p>
           <div className="flex justify-between gap-2">
-            <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => void review(r.id, false)}>דחייה</Button>
-            <Button size="sm" disabled={busy === r.id} onClick={() => void review(r.id, true)}>אישור</Button>
+            <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => void review(r.id, false, r.user_id)}>דחייה</Button>
+            <Button size="sm" disabled={busy === r.id} onClick={() => void review(r.id, true, r.user_id)}>אישור</Button>
           </div>
         </div>
       ))}
