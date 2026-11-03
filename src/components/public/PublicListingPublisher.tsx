@@ -866,7 +866,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                     <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'yad2'} onClick={() => setImportOption('yad2')}>ייבוא מיד2</Button>
                     <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'mine'} onClick={() => setImportOption('mine')}>הנכסים שלי ({readyProperties?.length ?? 0})</Button>
                   </div>}
-                  {(fields.publisherType === 'broker' || fields.publisherType === 'developer') && (!showImportChoices || importOption === 'yad2') && <Yad2AgencyImport publisherType={fields.publisherType} open={importCard === 'agency'} onToggle={() => setImportCard(c => c === 'agency' ? null : 'agency')} />}
                   {(!showImportChoices || importOption === 'yad2') && (
                     <CollapsibleCard title="יבוא מודעה מיד 2" open={importCard === 'single' || importing} onToggle={() => setImportCard(c => c === 'single' ? null : 'single')}>
                       <p className="flex items-start gap-1.5 text-[15px] leading-6 text-muted-foreground">
@@ -889,6 +888,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                       {importing && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{importStage}</div>}
                     </CollapsibleCard>
                   )}
+                  {(fields.publisherType === 'broker' || fields.publisherType === 'developer') && (!showImportChoices || importOption === 'yad2') && <Yad2AgencyImport publisherType={fields.publisherType} open={importCard === 'agency'} onToggle={() => setImportCard(c => c === 'agency' ? null : 'agency')} />}
                   {showImportChoices && importOption === 'mine' && <MyPropertiesPicker key={draftScope} />}
                   <Button type="button" variant="outline" className="mx-auto mt-6 block w-full max-w-xs" onClick={() => { setPublishError(''); setImportSlide(false); setImportOption(null); setManualDeal(true); }}>המשך ללא ייבוא</Button>
 

@@ -38,7 +38,6 @@ import type { PublicCard } from '@/pages/PublicListingsBoard';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { toast } from 'sonner';
 import { useListingAudience } from '@/hooks/useListingAudience';
-import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
 
 type Row = {
   listing_id: string; relation: 'owned' | 'promoting'; title: string | null; city: string | null; address: string | null;
@@ -360,7 +359,6 @@ function MyAdsPage() {
     {tFilter && !listingFilter && <TransparencyResults filter={tFilter} />}
     {tFilter?.key === 'disputed' && <LeadDisputesPanel />}
     <div className="flex justify-center py-2"><PublicListingPublisher label="פרסום נכס" triggerClassName="!h-11 !min-w-[180px] !rounded-md !px-8 !text-[17px] !font-semibold" /></div>
-    <Yad2AgencyImport />
     {tFilter && !listingFilter ? null : isLoading ? <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : isError ? <div role="alert">לא ניתן לטעון את המודעות <Button variant="link" onClick={() => void refetch()}>ניסיון נוסף</Button></div> : !data.length ? <div className="flex flex-col items-center gap-3 pt-8 text-center"><ImageIcon className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.25} aria-hidden="true" /><p className="text-[16px] text-muted-foreground">עדיין אין מודעות שפורסמו</p></div> : (['owned', 'promoting'] as const).map(relation => {
       const rows = visible.filter(r => r.relation === relation);
       return rows.length ? <section key={relation} className="space-y-2"><h2 className="font-bold">{relation === 'owned' ? 'המודעות שלי' : 'נכסים שאני מקדם'} ({rows.length})</h2>{relation === 'owned' && <OwnedVisibilityBar rows={rows} onDone={() => void refetch()} />}<div className="divide-y divide-border/60">{rows.map(r => <AdCard key={r.listing_id} row={r} owned={relation === 'owned'} />)}</div></section> : null;
