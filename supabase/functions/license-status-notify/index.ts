@@ -8,7 +8,7 @@ import { sendWhatsApp } from '../_shared/engagementJobs.ts';
 const RITA = 'dc819834-1aa9-4aca-bb27-ec2c8cebde69';
 const TEMPLATES = {
   pending: { name: 'license_review_pending', text: 'שלום {{1}}, קיבלנו את בקשת אימות רישיון התיווך שלך ב-TORAFF. הבקשה נמצאת כעת בבדיקת מנהל, ונעדכן אותך כאן ברגע שהבדיקה תסתיים.' },
-  approved: { name: 'license_review_approved', text: 'שלום {{1}}, רישיון התיווך שלך ב-TORAFF אושר בהצלחה. החשבון עודכן לחשבון מתווך מאומת, ומודעות שהמתינו לאישור מתפרסמות כעת בלוח הנכסים.' },
+  approved: { name: 'license_activated_published', text: 'שלום {{1}}, חשבונך ב-TORAFF אומת ופעיל בהצלחה! הנכסים שלך פורסמו לציבור. לצפייה במודעות שלך לחצו כאן: https://toraff.co.il/my-ads' },
   rejected: { name: 'license_review_rejected', text: 'שלום {{1}}, בדקנו את בקשת אימות רישיון התיווך שלך ב-TORAFF ולא ניתן היה לאשר אותה כרגע. אפשר לעדכן את מספר הרישיון או להעלות תעודה חדשה בעמוד הפרופיל ולשלוח שוב לבדיקה.' },
 } as const;
 type Kind = keyof typeof TEMPLATES;
