@@ -15,7 +15,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
-import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspace, useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
@@ -48,19 +48,21 @@ export function HeaderProfileMenu() {
 
   const { settings: brand } = useWhiteLabel();
 
+  // Avatar always belongs to the active workspace owner, never the viewer (e.g. a Super Admin).
+  const avatarOwnerId = useActiveWorkspaceOwnerId();
   useEffect(() => {
-    if (!user?.id) {
-      setProfileAvatarUrl(null);
+    setProfileAvatarUrl(null);
+    if (!user?.id || !avatarOwnerId) {
       setProfileName(null);
       return;
     }
     supabase
       .from('profiles')
       .select('avatar_url, full_name')
-      .eq('id', user.id)
+      .eq('id', avatarOwnerId)
       .maybeSingle()
       .then(({ data }) => { setProfileAvatarUrl(data?.avatar_url ?? null); setProfileName(data?.full_name ?? null); });
-  }, [user?.id]);
+  }, [user?.id, avatarOwnerId]);
 
   if (!user) return null;
 

@@ -286,6 +286,12 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     if (knownPublisherRole) { setRolePicked(true); setImportSlide(true); }
     setOpen(true);
   };
+  // Roles can finish loading after the dialog opens: once a known role (e.g. verified broker) arrives, skip "מי מפרסם?" automatically.
+  useEffect(() => {
+    if (!open || !knownPublisherRole || rolePicked || step !== 0 || importSlide || reviewMode) return;
+    setFields(current => ({ ...current, publisherType: knownPublisherRole, ownerDeclarationAccepted: false }));
+    setRolePicked(true); setImportSlide(true);
+  }, [open, knownPublisherRole, rolePicked, step, importSlide, reviewMode]);
   // After sign-in, reopen the import screen and continue a guest's pending Yad2 import.
   const resumedImport = useRef(false);
   const importYad2Ref = useRef<(value?: string) => Promise<void>>();

@@ -9461,6 +9461,24 @@ export type Database = {
           views: number
         }[]
       }
+      get_my_ads_stats_for: {
+        Args: { _workspace: string }
+        Returns: {
+          address: string
+          affiliates: number
+          asking_price: number
+          city: string
+          clicks: number
+          deal_type: string
+          image_url: string
+          is_hidden: boolean
+          listing_id: string
+          relation: string
+          slug: string
+          title: string
+          views: number
+        }[]
+      }
       get_my_new_earnings: {
         Args: { _since: string }
         Returns: {

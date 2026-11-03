@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspace, useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useUserRole } from '@/hooks/useUserRole';
 import { resolveWorkspaceCardIdentity, resolveWorkspaceCardImage, resolveWorkspaceIdentity, workspaceInitial } from '@/lib/workspaceIdentity';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -30,18 +30,20 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const { setOpen: setSidebarOpen, setOpenMobile } = useSidebar();
 
+  // Avatar always belongs to the active workspace owner, never the viewer (e.g. a Super Admin).
+  const avatarOwnerId = useActiveWorkspaceOwnerId();
   useEffect(() => {
-    if (!user?.id) {
-      setProfileAvatarUrl(null);
+    setProfileAvatarUrl(null);
+    if (!user?.id || !avatarOwnerId) {
       return;
     }
     supabase
       .from('profiles')
       .select('avatar_url')
-      .eq('id', user.id)
+      .eq('id', avatarOwnerId)
       .maybeSingle()
       .then(({ data }) => setProfileAvatarUrl((data as any)?.avatar_url ?? null));
-  }, [user?.id]);
+  }, [user?.id, avatarOwnerId]);
 
   const { isSuperAdmin } = useUserRole();
   const [query, setQuery] = useState('');
