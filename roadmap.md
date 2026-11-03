@@ -4,6 +4,7 @@
 - [x] Move search, sort and view-mode toggle below the site title and above the table on the signed-in home page; search far right, view toggle far left, sort beside it; no property count.
 - [x] Share one sort menu with "הנכסים שלי" (src/lib/listingSortOptions.ts + src/components/ui/sort-dropdown.tsx); removed the duplicate header search/view controls.
 - [x] 5 focused tests passed; signed-in desktop verified positions, the six identical options, ascending price re-order and no count. Build OK; the 9 failing suite tests are unrelated (phoneSession, signupRole, wallet, ai-brain, group chips).
+- [x] Controls row now sits above the search panel and stays put when it opens (measured 0px move at 1280px and 393px); removed the magnifier inside the search field and the 12px space above it.
 
 
 ## Yad2 import cards November 1
