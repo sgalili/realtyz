@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -90,11 +90,10 @@ export default function BoardSearchOverlay({ open, onClose, query, onQueryChange
         willChange: 'clip-path, transform',
       }}
       className="relative flex w-full flex-col overflow-hidden border-b border-border bg-background motion-reduce:!transition-none">
-      <div data-search-head className="relative shrink-0 border-b border-border px-[15px] pb-3 pt-3">
+      <div data-search-head className="relative shrink-0 border-b border-border px-[15px] pb-3 pt-0">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
-            <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input autoFocus value={query} onChange={e => onQueryChange(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }} placeholder="חיפוש נכס, עיר, רחוב…" className="h-11 ps-9 text-[16px]" />
+            <Input autoFocus value={query} onChange={e => onQueryChange(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit(); }} placeholder="חיפוש נכס, עיר, רחוב…" className="h-11 text-[16px]" />
           </div>
           <div role="group" aria-label="סוג עסקה" className="flex shrink-0 items-center gap-2">
             {(['sale', 'rent'] as const).map(value => {
