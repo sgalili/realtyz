@@ -68,6 +68,30 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_approved_broker_licenses: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          license_number: string
+          request_id: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          license_number: string
+          request_id?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          license_number?: string
+          request_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_leads: {
         Row: {
           attempted_target: number | null

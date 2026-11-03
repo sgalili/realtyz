@@ -31,7 +31,8 @@ export function BrokerUpgradeRequestsCard() {
     try {
       const { data, error } = await supabase.rpc('review_broker_upgrade_request' as any, { _id: id, _approve: approve });
       if (error) throw error;
-      const published = (data as any)?.published ?? 0;
+      const published = (data as any)?.published ?? 0; const failed = (data as any)?.failed ?? 0;
+      if (approve && failed) toast.warning(`${failed} מודעות לא פורסמו — פרטי השגיאה נשמרו במודעה`);
       toast.success(approve ? `החשבון שודרג למתווך מורשה${published ? ` · ${published} מודעות פורסמו` : ''}` : 'הבקשה נדחתה');
       await qc.invalidateQueries({ queryKey: ['admin-broker-upgrade-requests'] });
       await qc.invalidateQueries({ queryKey: ['notif-admin-pending-licenses'] });
