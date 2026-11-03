@@ -29,7 +29,10 @@ async function autopilotAllowed(admin: any, ownerId: string, lead: any): Promise
   }
 }
 
-export async function runRitaForDm(admin: any, ownerId: string, page: MetaPage, dm: InboundDm): Promise<void> {
+export type DmSender = (reply: string) => Promise<{ ok: true; messageId: string | null } | { ok: false; error: string }>;
+
+/** `send` overrides Graph delivery (cloud browser sessions queue the reply instead). */
+export async function runRitaForDm(admin: any, ownerId: string, page: MetaPage | null, dm: InboundDm, send?: DmSender, source = "meta-dm-webhook"): Promise<void> {
   const leadId = await resolveDmLead(admin, ownerId, dm);
   if (!leadId) return;
   const { data: lead } = await admin
@@ -125,7 +128,7 @@ export async function runRitaForDm(admin: any, ownerId: string, page: MetaPage, 
   if (!reply) return; // stay silent rather than send a canned line
   if (!isProductInquiry) void saveRitaState(admin, leadId, lead.preferences, dm.text, reply);
 
-  const sent = await sendDm(page, dm.platform, dm.senderId, reply);
+  const sent: any = send ? await send(reply) : page ? await sendDm(page, dm.platform, dm.senderId, reply) : { ok: false, error: "no_sender" };
   if (!sent.ok) {
     await logIntegrationError({
       integration: "meta",
@@ -146,7 +149,7 @@ export async function runRitaForDm(admin: any, ownerId: string, page: MetaPage, 
       status: sent.ok ? "sent" : "failed",
       error: sent.ok ? null : sent.error,
       ai_assisted: true,
-      source: "meta-dm-webhook",
+      source,
     },
   } as any);
 }
