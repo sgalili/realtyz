@@ -12,11 +12,31 @@ const MAX_PAGES = 10;
 const MAX_ITEMS = 200;
 const CACHE_SECONDS = 6 * 60 * 60;
 
-export function itemIdsFromHtml(html: string): string[] {
-  const ids = new Set<string>();
-  for (const m of html.matchAll(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9]{6,12})(?=["'?\/\s<])/gi)) ids.add(m[1].toLowerCase());
+// Returns only ads that belong to the given agency. Yad2 agency pages also embed
+// promoted/recommended ads of other offices; those must never be imported.
+export function itemIdsFromHtml(html: string, agencyId?: string): string[] {
   const next = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)?.[1];
-  if (next) for (const m of next.matchAll(/"token"\s*:\s*"([a-z0-9]{6,12})"/gi)) ids.add(m[1].toLowerCase());
+  if (next && agencyId) {
+    try {
+      const own = new Set<string>(); let sawAgencyField = false;
+      const walk = (v: any, inherited: boolean) => {
+        if (Array.isArray(v)) { v.forEach(x => walk(x, inherited)); return; }
+        if (!v || typeof v !== 'object') return;
+        let mine = inherited;
+        for (const [k, val] of Object.entries(v)) {
+          if (/agency.?id|customer.?id|merchant.?id/i.test(k) && (typeof val === 'string' || typeof val === 'number')) { sawAgencyField = true; mine = String(val) === agencyId; }
+        }
+        if (typeof v.token === 'string' && /^[a-z0-9]{6,12}$/i.test(v.token) && mine) own.add(v.token.toLowerCase());
+        for (const val of Object.values(v)) if (val && typeof val === 'object') walk(val, mine);
+      };
+      walk(JSON.parse(next), false);
+      if (sawAgencyField) return [...own];
+    } catch { /* fall through */ }
+  }
+  const ids = new Set<string>();
+  // Skip promoted/recommended blocks in raw HTML when we cannot verify ownership.
+  const cleaned = html.replace(/<[^>]+(?:promoted|recommend|sponsored|similar)[^>]*>[\s\S]*?<\/(?:section|aside)>/gi, '');
+  for (const m of cleaned.matchAll(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9]{6,12})(?=["'?\/\s<])/gi)) ids.add(m[1].toLowerCase());
   return [...ids];
 }
 
@@ -42,7 +62,9 @@ Deno.serve(async req => {
     const raw = typeof body?.url === 'string' ? body.url.trim() : '';
     pageUrl = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
     if (pageUrl.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/i.test(pageUrl.hostname) || pageUrl.username || !/^\/realestate\/agency\/[^/]+/i.test(pageUrl.pathname)) throw new Error('invalid');
-    pageUrl.hash = ''; pageUrl.searchParams.delete('page');
+    // Canonical agency URL: drop sale/rent and any other filter params that break reading.
+    const agencyId = pageUrl.pathname.match(/^\/realestate\/agency\/([^/]+)/i)![1];
+    pageUrl = new URL(`https://www.yad2.co.il/realestate/agency/${encodeURIComponent(agencyId)}`);
   } catch { return json({ error: 'invalid_url', message: 'הדביקו את הקישור לעמוד המשרד שלכם ביד2 (realestate/agency)' }, 400); }
 
   const token = Deno.env.get('BRIGHTDATA_API_TOKEN');
@@ -65,7 +87,7 @@ Deno.serve(async req => {
       if (Date.now() > deadline - 5000) { partial = true; break; }
       const u = new URL(pageUrl.href);
       if (p > 1) u.searchParams.set('page', String(p));
-      const found = itemIdsFromHtml(await fetchPage(u.href));
+      const found = itemIdsFromHtml(await fetchPage(u.href), decodeURIComponent(pageUrl.pathname.split('/')[3]));
       pages++;
       const fresh = found.filter(id => !ids.includes(id));
       if (!fresh.length) break;
