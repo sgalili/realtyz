@@ -13,6 +13,8 @@ import { formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from 
 // Gray, unbolded placeholder; black bold typed text; no border/ring on focus.
 const fieldClass = 'h-12 min-w-0 text-lg md:text-lg font-normal text-foreground placeholder:text-lg placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0';
 
+const PENDING_OTP_KEY = 'toraff-pending-sms-otp';
+const PENDING_OTP_TTL_MS = 5 * 60 * 1000;
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,6 +32,16 @@ const Auth = () => {
   const profile = smsSignupSchema.safeParse({ firstName, lastName, gender, phone });
   const ready = mobile.success && (!signup || profile.success);
   useEffect(() => { clearPendingSignupRole(); }, []);
+  // Restore a recently sent code so a refresh or return still lets the user type it.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PENDING_OTP_KEY) ?? 'null');
+      if (!saved || Date.now() - saved.sentAt > PENDING_OTP_TTL_MS) { localStorage.removeItem(PENDING_OTP_KEY); return; }
+      setPhone(saved.phone); setSignup(!!saved.signup); setGender(saved.gender ?? ''); setCodeSent(true);
+      setResendSeconds(Math.max(0, 60 - Math.floor((Date.now() - saved.sentAt) / 1000)));
+    } catch { localStorage.removeItem(PENDING_OTP_KEY); }
+  }, []);
+  const switchPhone = () => { localStorage.removeItem(PENDING_OTP_KEY); setCodeSent(false); setOtp(''); setAttempts(0); setPhone(''); };
   useEffect(() => {
     if (resendSeconds <= 0) return;
     const timer = window.setTimeout(() => setResendSeconds(value => value - 1), 1000);
@@ -44,6 +56,7 @@ const Auth = () => {
       if (error || data?.error) throw new Error(data?.error ?? 'לא ניתן לשלוח קוד כרגע. נסו שוב.');
       if (signup && profile.success) saveSmsSignup(profile.data);
       setCodeSent(true); setOtp(''); setAttempts(0); setResendSeconds(60);
+      localStorage.setItem(PENDING_OTP_KEY, JSON.stringify({ phone, signup, gender, sentAt: Date.now() }));
       toast.success('קוד האימות נשלח ב-SMS');
     } catch (error) { toast.error(error instanceof Error ? error.message : 'שליחת הקוד נכשלה'); }
     finally { setLoading(false); }
@@ -60,6 +73,7 @@ const Auth = () => {
         : { error: new Error('הכניסה נכשלה. נסו שוב.') };
       if (result.error && data?.token_hash) result = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
       if (result.error) throw result.error;
+      localStorage.removeItem(PENDING_OTP_KEY);
       navigate('/', { replace: true });
     } catch (error) {
       setAttempts(value => value + 1); setOtp('');
@@ -69,17 +83,18 @@ const Auth = () => {
   return <div dir="rtl" className="auth-gradient-shell relative flex h-[100dvh] flex-col overflow-hidden bg-background px-4 pb-14 text-foreground">
     <Button type="button" variant="ghost" size="icon" aria-label="סגירת ההרשמה וחזרה לדף הבית" className="absolute left-4 top-4 z-20 h-10 w-10 bg-transparent p-1 hover:bg-transparent" onClick={() => navigate('/')}><X className="h-8 w-8" /></Button>
     {/* Back arrow only where there is a previous step to return to: the SMS code slide. */}
-    {codeSent && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" onClick={() => { setCodeSent(false); setOtp(''); }}><ArrowRight className="h-8 w-8" /></Button>}
+    {codeSent && <Button type="button" variant="ghost" size="icon" aria-label="חזרה" className="absolute right-4 top-4 h-10 w-10" onClick={switchPhone}><ArrowRight className="h-8 w-8" /></Button>}
 
     <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center pt-[40px]">
       <img src={realtyzLogo} alt="TORAFF" className="h-14 w-auto shrink-0 object-contain" />
       <h1 className={`mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? gender === 'female' ? 'הזיני את הקוד שקיבלת ב-SMS' : gender === 'male' ? 'הזן את הקוד שקיבלת ב-SMS' : 'הזינו את הקוד שקיבלתם ב-SMS' : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
+          <p className="-mt-6 text-base text-muted-foreground">נשלח למספר <span dir="ltr" className="font-medium text-foreground">{phone}</span> <button type="button" className="ms-1 text-sm text-primary underline underline-offset-2" onClick={switchPhone}>החלפה</button></p>
           <InputOTP maxLength={4} value={otp} onChange={value => { setOtp(value); if (value.length === 4) void verify(value); }} containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
-            <InputOTPGroup className="gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-none focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
+            <InputOTPGroup className="flex-row-reverse gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-none focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
           </InputOTP>
-          <Button type="button" className="w-full" disabled={loading || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
+          <Button type="button" className="w-full text-[17px]" disabled={loading || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
           <Button type="button" variant="link" disabled={loading || resendSeconds > 0} onClick={() => void sendCode()}>{resendSeconds > 0 ? `שליחה חוזרת בעוד ${resendSeconds}` : 'שלחו לי קוד שוב'}</Button>
         </div> : <form onSubmit={sendCode} className="space-y-3">
           {signup && <div className="grid grid-cols-2 gap-3">
