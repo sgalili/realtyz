@@ -1,6 +1,15 @@
 /** Called only after the caller's phone challenge has been verified server-side. */
-const toIntl = (v: unknown) => { const d = String(v ?? '').replace(/\D/g, ''); return /^05\d{8}$/.test(d) ? `972${d.slice(1)}` : d; };
-export async function verifiedPhoneSession(admin: any, client: any, phone: string, provider: string) {
+/** Canonical Israeli form 9725XXXXXXXX for 05X / 5X / +972 / 972 / 00972 / 9720 inputs. */
+export const toIntl = (v: unknown) => {
+  let d = String(v ?? '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('9720')) d = `972${d.slice(4)}`;
+  if (/^0\d{8,9}$/.test(d)) d = `972${d.slice(1)}`;
+  else if (/^5\d{8}$/.test(d)) d = `972${d}`;
+  return d;
+};
+export async function verifiedPhoneSession(admin: any, client: any, rawPhone: string, provider: string) {
+  const phone = toIntl(rawPhone);
   let target: any = null;
   for (let page = 1; ; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
@@ -16,10 +25,16 @@ export async function verifiedPhoneSession(admin: any, client: any, phone: strin
     const local = `0${phone.slice(3)}`;
     const { data: rows } = await admin.from('profiles').select('id, phone')
       .or(`phone.eq.${local},phone.eq.${phone},phone.eq.+${phone},phone.ilike.%${phone.slice(-9)}`).limit(10);
-    const norm = (v: string) => { const d = String(v ?? '').replace(/\D/g, ''); return d.startsWith('05') ? `972${d.slice(1)}` : d; };
-    const match = (rows ?? []).filter((r: any) => norm(r.phone) === phone);
-    if (match.length === 1) {
-      const { data } = await admin.auth.admin.getUserById(match[0].id);
+    const match = (rows ?? []).filter((r: any) => toIntl(r.phone) === phone);
+    let pick = match.length === 1 ? match[0] : null;
+    if (match.length > 1) {
+      // Several profiles share the number: prefer the one holding a real role.
+      const { data: rr } = await admin.from('user_roles').select('user_id, role').in('user_id', match.map((m: any) => m.id));
+      const ranked = match.filter((m: any) => (rr ?? []).some((r: any) => r.user_id === m.id && r.role !== 'user'));
+      if (ranked.length === 1) pick = ranked[0];
+    }
+    if (pick) {
+      const { data } = await admin.auth.admin.getUserById(pick.id);
       if (data?.user) target = data.user;
     }
   }
@@ -53,7 +68,7 @@ export async function verifiedPhoneSession(admin: any, client: any, phone: strin
   // made a correct SMS code fail at the final sign-in step.
   if (provider === 'sms_019') {
     if (!userId) throw new Error('Verified account missing');
-    const alreadyConfirmed = String(target?.phone ?? '').replace(/\D/g, '') === phone && !!target?.phone_confirmed_at;
+    const alreadyConfirmed = toIntl(target?.phone) === phone && !!target?.phone_confirmed_at;
     if (!alreadyConfirmed) {
       const { error: phoneError } = await admin.auth.admin.updateUserById(userId, { phone: `+${phone}`, phone_confirm: true });
       if (phoneError) throw phoneError;
