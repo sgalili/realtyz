@@ -323,8 +323,8 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
               >
                 <Icon className="h-4 w-4 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{result.title}</p>
-                  {result.subtitle && <p className="text-xs text-muted-foreground truncate">{result.subtitle}</p>}
+                  <p className="break-words text-sm font-medium text-foreground">{result.title}</p>
+                  {result.subtitle && <p className="break-words text-xs text-muted-foreground">{result.subtitle}</p>}
                 </div>
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 shrink-0">
                   {labelFor(result.type)}

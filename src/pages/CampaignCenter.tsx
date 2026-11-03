@@ -2507,10 +2507,10 @@ const InlineComposer = ({
                     className="w-full rounded-md border border-border px-3 py-2 text-right text-sm hover:bg-muted disabled:opacity-60"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-medium">{r.title}</span>
+                      <span className="break-words font-medium">{r.title}</span>
                       <SourceBadge source={r.source} compact />
                     </div>
-                    <div className="text-[11px] text-muted-foreground truncate">
+                    <div className="break-words text-[11px] text-muted-foreground">
                       {[r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null, r.price ? `₪${r.price.toLocaleString('he-IL')}${r.listing_type === 'rent' ? ' / לחודש' : ''}` : null]
                         .filter(Boolean).join(' · ')}
                       {importingExternalKey === r.key ? ' · מייבא…' : ''}

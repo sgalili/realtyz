@@ -82,12 +82,12 @@ export function ProjectAlternativesCard({
               className={`group rounded-lg border bg-card p-3 hover:border-primary transition-colors ${compact ? 'min-w-[240px]' : ''}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-lg font-semibold text-foreground truncate">
+                <p className="break-words text-lg font-semibold text-foreground">
                   {row.property_title || 'יחידה בפרויקט'}
                 </p>
-                <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
+                <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" />
               </div>
-              <p className="text-base text-muted-foreground truncate mt-0.5">
+              <p className="mt-0.5 break-words text-base text-muted-foreground">
                 {[row.address, row.neighborhood, row.city].filter(Boolean).join(', ') || '—'}
               </p>
               <div className="flex items-center gap-3 mt-2 text-base text-muted-foreground">

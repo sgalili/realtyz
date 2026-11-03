@@ -343,7 +343,7 @@ function ProfessionalCommandCenter() {
                           navigate(`/properties/${task.listingId}`, { state: { returnTo: '/command-center' } });
                         }}
                       >
-                        <span className="line-clamp-2 break-normal text-right [overflow-wrap:normal]">{task.listingMeta ?? task.listingLabel ?? 'כרטיס נכס'}</span>
+                        <span className="break-words text-right">{task.listingMeta ?? task.listingLabel ?? 'כרטיס נכס'}</span>
                       </Button>
                     )}
                   </span>

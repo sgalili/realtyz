@@ -166,7 +166,7 @@ export function PendingListingsCard() {
                   <div className="flex items-start gap-2 min-w-0">
                     <Building2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{l.property_title}</p>
+                      <p className="break-words text-sm font-semibold">{l.property_title}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {l.is_investment_opportunity ? (
                           <Badge className="text-[10px] bg-amber-500/15 text-amber-700 border border-amber-500/40 hover:bg-amber-500/20 gap-1">

@@ -55,7 +55,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
                     {!!card.sqm && <span className="inline-flex items-center gap-1"><Ruler className="h-3.5 w-3.5 text-primary" />{card.sqm} מ״ר</span>}
                     {card.floor != null && <span className="inline-flex items-center gap-1"><Layers className="h-3.5 w-3.5 text-primary" />{card.floor === 0 ? 'קרקע' : `קומה ${card.floor}`}{card.total_floors ? ` מתוך ${card.total_floors}` : ''}</span>}
                   </div>
-                  {publicAdDescription(card.description, card.title) && <p className="line-clamp-3 text-xs text-muted-foreground">{publicAdDescription(card.description, card.title)}</p>}
+                  {publicAdDescription(card.description, card.title) && <p className="break-words text-xs text-muted-foreground">{publicAdDescription(card.description, card.title)}</p>}
                    <div data-card-contact-actions className="mt-auto pt-1">
                      {actions}
                      {showContact && <PropertyContactActions

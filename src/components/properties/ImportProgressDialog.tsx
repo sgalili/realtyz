@@ -70,7 +70,7 @@ export function ImportProgressDialog({
                   {s.status === 'pending' && <Hourglass className="h-4 w-4 text-muted-foreground" />}
                 </span>
                 <SourceBadge source={s.source} compact />
-                <span className="flex-1 truncate">{s.title || 'נכס'}</span>
+                <span className="flex-1 break-words">{s.title || 'נכס'}</span>
                 {s.status === 'error' && s.error && (
                   <span className="text-[11px] text-destructive truncate max-w-[140px]" title={s.error}>
                     {s.error}
