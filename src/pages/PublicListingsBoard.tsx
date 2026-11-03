@@ -410,7 +410,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
             <div className="flex items-center gap-2">
               {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-10 w-10 shrink-0 rounded object-cover" /> : <div className="h-10 w-10 shrink-0 rounded bg-muted" />}
               <div className="min-w-0">
-                <p className="truncate font-semibold">{cleanTitle(card)}</p>
+                <p className="break-words font-semibold">{cleanTitle(card)}</p>
                 <p className="text-muted-foreground">{shekel(card.price)}</p>
               </div>
             </div>

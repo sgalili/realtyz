@@ -75,7 +75,7 @@ function HomelyPanel() {
           )}
           <div className="p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="font-semibold leading-tight line-clamp-1">{p.property_title ?? 'נכס'}</h3>
+              <h3 className="break-words font-semibold leading-tight">{p.property_title ?? 'נכס'}</h3>
               {p.status && <Badge variant="secondary" className="shrink-0">{p.status}</Badge>}
             </div>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -135,7 +135,7 @@ function Yad2Panel() {
                     <a href={it.link} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 group">
                       <ExternalLink className="h-4 w-4 mt-1 shrink-0 text-muted-foreground group-hover:text-primary" />
                       <div className="min-w-0">
-                        <p className="font-medium text-sm line-clamp-1">{it.title}</p>
+                        <p className="break-words font-medium text-sm">{it.title}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{it.description.replace(/<[^>]+>/g, '')}</p>
                       </div>
                     </a>

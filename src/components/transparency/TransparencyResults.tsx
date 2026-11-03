@@ -21,7 +21,7 @@ export default function TransparencyResults({ filter }: { filter: TransparencyFi
     <h2 className="font-bold">{data.length} {titles[filter.key]}</h2>
     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : !data.length ? <p className="text-sm text-muted-foreground">אין רשומות להצגה</p> :
       <ul className="divide-y">{data.map(r => <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-        <span className="min-w-0 truncate font-medium">{r.title || 'נכס'}</span>
+        <span className="min-w-0 break-words font-medium">{r.title || 'נכס'}</span>
         <span className="flex shrink-0 items-center gap-3 text-muted-foreground"><span>{statusLabel(r.dispute_status)}</span><b className="text-foreground">₪{Number(r.gross || 0).toLocaleString('he-IL')}</b><time>{new Date(r.created_at).toLocaleDateString('he-IL')}</time></span>
       </li>)}</ul>}
   </section>;

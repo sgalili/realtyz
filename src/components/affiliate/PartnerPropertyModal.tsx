@@ -49,7 +49,7 @@ export function PartnerPropertyModal({ listing, onClose, actions }: { listing: M
         {listing && <>
           <div className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b bg-background px-4 py-2 pe-12">
             <div className="min-w-0">
-              <DialogTitle className="truncate text-base">{listing.property_title || 'פרטי נכס'}</DialogTitle>
+              <DialogTitle className="break-words text-base">{listing.property_title || 'פרטי נכס'}</DialogTitle>
               <DialogDescription className="sr-only">כל פרטי הנכס, המפרסם והעמלות</DialogDescription>
             </div>
             <div className="flex shrink-0 items-center gap-1">{actions}<CopyListingLinkButton listingId={listing.listing_id} /></div>

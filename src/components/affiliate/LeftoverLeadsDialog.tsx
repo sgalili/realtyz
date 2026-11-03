@@ -56,7 +56,7 @@ export default function LeftoverLeadsDialog({ inline = false }: { inline?: boole
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id} className="border-b last:border-0">
-                      <td className="max-w-[160px] truncate p-2" title={r.listing_label}>{r.listing_label}<div className="text-xs text-muted-foreground">{fmt(r.created_at)}</div></td>
+                      <td className="max-w-[160px] break-words p-2" title={r.listing_label}>{r.listing_label}<div className="text-xs text-muted-foreground">{fmt(r.created_at)}</div></td>
                       <td className="p-2">{r.lead_name || '—'}<div dir="ltr" className="text-end text-xs text-muted-foreground">{r.lead_phone || ''}</div></td>
                       <td className="p-2">{TIER[r.tier] ?? r.tier}</td>
                       <td className="p-2 whitespace-nowrap">
