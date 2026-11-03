@@ -40,6 +40,19 @@ export function itemIdsFromHtml(html: string, agencyId?: string): string[] {
   return [...ids];
 }
 
+function officeLogoFromHtml(html: string): string | null {
+  const candidates = [
+    ...[...html.matchAll(/"(?:agencyLogo|officeLogo|logoUrl|logo)"\s*:\s*"(https?:[^"]+)"/gi)].map(m => m[1]),
+    html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i)?.[1],
+  ];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const url = raw.replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+    try { const u = new URL(url); if (u.protocol === 'https:' && /(^|\.)yad2\.co\.il$|(^|\.)yad2\.co\.il\./i.test(u.hostname) || /img\.yad2/i.test(u.hostname)) return u.href; } catch { /* skip */ }
+  }
+  return null;
+}
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ message: 'בקשה לא תקינה' }, 405);
@@ -82,12 +95,15 @@ Deno.serve(async req => {
 
   const ids: string[] = [];
   let pages = 0, partial = false;
+  let officeLogo: string | null = null;
   try {
     for (let p = 1; p <= MAX_PAGES; p++) {
       if (Date.now() > deadline - 5000) { partial = true; break; }
       const u = new URL(pageUrl.href);
       if (p > 1) u.searchParams.set('page', String(p));
-      const found = itemIdsFromHtml(await fetchPage(u.href), decodeURIComponent(pageUrl.pathname.split('/')[3]));
+      const html = await fetchPage(u.href);
+      if (p === 1) officeLogo = officeLogoFromHtml(html);
+      const found = itemIdsFromHtml(html, decodeURIComponent(pageUrl.pathname.split('/')[3]));
       pages++;
       const fresh = found.filter(id => !ids.includes(id));
       if (!fresh.length) break;
@@ -98,6 +114,18 @@ Deno.serve(async req => {
     console.error('agency discovery failed', e instanceof Error ? e.message : e);
     if (!ids.length) return json({ error: 'fetch_failed', message: 'לא ניתן לקרוא את עמוד המשרד ביד2 כרגע. נסו שוב מאוחר יותר.' }, 502);
     partial = true;
+  }
+  if (officeLogo) {
+    // Save the office logo to this workspace only, never overwriting an existing logo.
+    try {
+      const svc = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (svc) {
+        const admin = createClient(backend, svc);
+        const { data: wl } = await admin.from('white_label_settings').select('id, logo_url').eq('user_id', owner).maybeSingle();
+        if (!wl) await admin.from('white_label_settings').insert({ user_id: owner, logo_url: officeLogo });
+        else if (!wl.logo_url) await admin.from('white_label_settings').update({ logo_url: officeLogo }).eq('id', wl.id);
+      }
+    } catch (e) { console.error('office logo save failed', e instanceof Error ? e.message : e); }
   }
   const items = ids.slice(0, MAX_ITEMS).map(id => `https://www.yad2.co.il/realestate/item/${id}`);
   return json({ ok: true, source_url: pageUrl.href, pages_read: pages, partial, items });
