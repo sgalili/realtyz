@@ -7,7 +7,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { shouldShowWelcome, WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
-import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu, Search, List, LayoutGrid } from 'lucide-react';
+import { Bot, Zap, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
