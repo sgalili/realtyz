@@ -848,6 +848,13 @@
       "when": 1793705481259,
       "tag": "0120_admin_override_broker_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1793705781034,
+      "tag": "0121_license_status_notified",
+      "breakpoints": true
     }
   ]
 }

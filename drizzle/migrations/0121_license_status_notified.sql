@@ -1,0 +1,1 @@
+ALTER TABLE public.broker_upgrade_requests ADD COLUMN IF NOT EXISTS whatsapp_notified_status text;
