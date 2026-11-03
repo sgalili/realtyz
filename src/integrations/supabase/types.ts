@@ -8719,6 +8719,10 @@ export type Database = {
       }
       admin_purge_user_data: { Args: { _uid: string }; Returns: number }
       admin_remove_broker_license: { Args: { _user_id: string }; Returns: Json }
+      admin_submit_broker_license: {
+        Args: { _certificate_path: string; _license: string; _user_id: string }
+        Returns: Json
+      }
       admin_unlink_referral: { Args: { _referred: string }; Returns: Json }
       advance_listing_stage: {
         Args: { _listing: string; _stage: string }

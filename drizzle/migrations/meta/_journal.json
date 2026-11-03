@@ -834,6 +834,13 @@
       "when": 1793704781206,
       "tag": "0118_office_city_phone",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1793705189420,
+      "tag": "0119_admin_submit_broker_license",
+      "breakpoints": true
     }
   ]
 }
