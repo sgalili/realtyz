@@ -16,8 +16,10 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
   from: (table: string) => {
     const chain = {
       select: () => chain,
+      order: () => chain,
+      limit: () => chain,
       eq: (field: string, value: string) => { if (field === 'id' || field === 'user_id') state.reads.push(value); return chain; },
-      maybeSingle: async () => ({ data: table === 'profiles' ? { broker_license_number: state.license } : table === 'broker_upgrade_requests' && state.pending ? { id: 'request', license_number: state.license, status: 'pending' } : (state as any).approved ? { id: 'request', license_number: state.license, status: 'approved' } : null, error: null }),
+      maybeSingle: async () => ({ data: table === 'profiles' ? { broker_license_number: state.license } : table === 'broker_upgrade_requests' && state.pending ? { id: 'request', license_number: state.license, status: 'pending' } : table === 'broker_upgrade_requests' && (state as any).approved ? { id: 'request', license_number: state.license, status: 'approved' } : null, error: null }),
     }; return chain;
   },
 } }));
