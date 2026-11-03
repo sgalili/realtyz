@@ -21,7 +21,8 @@ export function BrokerLicenseField({ value, onChange, onVerified, compact = fals
         setStatus('valid'); onVerified(value, result.holderName);
       }).catch((error: unknown) => {
         if (cancelled) return;
-        setStatus('error'); setMessage(error instanceof Error ? error.message : INVALID_BROKER_LICENSE);
+        // Registry miss stays silent; the submission is flagged for admin review later.
+        void error; setStatus('idle');
       });
     }, 600);
     return () => { cancelled = true; window.clearTimeout(timer); };
@@ -31,8 +32,6 @@ export function BrokerLicenseField({ value, onChange, onVerified, compact = fals
     <Label className={compact || signup || bare ? 'sr-only' : 'font-semibold'} htmlFor="signup-broker-license">מספר רישיון תיווך ממשלתי *</Label>
     <Input className={signup ? 'h-12 text-xl font-bold placeholder:font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0' : compact ? 'auth-unified-field' : undefined} placeholder={signup || bare ? 'מספר רישיון תיווך ממשלתי *' : undefined} id="signup-broker-license" value={value} onChange={e => onChange(brokerLicenseDigits(e.target.value))} required aria-required="true" aria-invalid={status === 'error'} aria-describedby="signup-broker-license-status" inputMode="numeric" pattern="[1-9][0-9]{0,9}" maxLength={10} autoComplete="off" dir={signup && !value ? 'rtl' : 'ltr'} />
     <div id="signup-broker-license-status" aria-live="polite" className="text-sm">
-      {!bare && !signup && status === 'checking' && <span className="text-muted-foreground">בודקים בפנקס המתווכים המורשים…</span>}
-      {!bare && !signup && status === 'valid' && <span className="text-success">הרישיון נמצא בפנקס המתווכים המורשים</span>}
       {status === 'error' && !signup && <span role="alert" className="text-destructive">{message}</span>}
     </div>
     {!signup && !bare && <><ClosingSplitNote registration /><BrokerTestLinks /></>}

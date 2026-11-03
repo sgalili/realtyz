@@ -11,6 +11,7 @@ import { CERTIFICATE_MAX_BYTES, CERTIFICATE_MIME_TYPES } from '../../../supabase
 import { BROKER_COURSE_URL, BROKER_EXAM_REGISTRATION_URL } from '@/components/affiliate/BrokerClosingInfo';
 import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { toast } from '@/i18n/personalToast';
+import { uploadBrokerLicensePhoto, requestBrokerLicenseReview } from '@/components/auth/BrokerLicensePhotoUpload';
 import { WhatsAppOtpVerify } from '@/components/auth/WhatsAppOtpVerify';
 
 const FAILURES: Record<string, string> = {
@@ -84,12 +85,22 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
         await queryClient.invalidateQueries({ queryKey: ['admin-broker-upgrade-requests'] });
         return;
       }
-      await verifyBrokerLicense(license, 'verify');
-      const body = new FormData(); body.set('certificate', file);
-      const { data: cert, error: certError } = await supabase.functions.invoke('check-broker-certificate', { body });
-      if (certError || !cert?.matched || cert.licenseNumber !== license) throw new Error('לא ניתן לאמת את הרישיון. בדקו את המספר ואת התמונה ונסו שוב.');
-      const { data, error } = await supabase.rpc('submit_broker_upgrade_request' as any);
-      if (error) throw new Error(Object.entries(FAILURES).find(([k]) => error.message.includes(k))?.[1] ?? 'השדרוג לא הושלם. נסו שוב.');
+      // Any automated miss (registry, certificate, name) silently falls back to manual admin review.
+      let data: unknown = null; let automated = false;
+      try {
+        await verifyBrokerLicense(license, 'verify');
+        const body = new FormData(); body.set('certificate', file);
+        const { data: cert, error: certError } = await supabase.functions.invoke('check-broker-certificate', { body });
+        if (!certError && cert?.matched && cert.licenseNumber === license) {
+          const res = await supabase.rpc('submit_broker_upgrade_request' as any);
+          if (!res.error) { data = res.data; automated = true; }
+        }
+      } catch { /* silent: manual review below */ }
+      if (!automated) {
+        const path = await uploadBrokerLicensePhoto(user!.id, file);
+        await requestBrokerLicenseReview(license, path);
+        data = { status: 'pending' };
+      }
       const status = (data as { status?: string } | null)?.status === 'approved' ? 'approved' : 'pending';
       setResult(status);
       await queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] });
@@ -157,7 +168,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
         </div>}
         {result ? <div role="status" className="space-y-1 rounded-md border border-success bg-success/10 p-3 text-base">
           <p className="font-semibold text-success">{result === 'approved' ? 'החשבון שודרג למתווך מורשה' : 'הבקשה התקבלה'}</p>
-          {result === 'pending' && <p>נעדכן אותך כשהבדיקה תסתיים.</p>}
+          {result === 'pending' && <p>הבקשה ממתינה לאימות סופי של מנהל. נעדכן אותך בקרוב.</p>}
         </div> : hasLicense && (isOwnProfile || actingForOwner) && !pending && !(publisher && account?.verified) && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
           {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}שדרוג החשבון
         </Button>}
