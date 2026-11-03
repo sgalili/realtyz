@@ -62,3 +62,4 @@
 - Rent displays always use "₪X / לחודש" via src/lib/propertyPrice.ts helpers. Why: consistent monthly pricing.
 - Broker upgrades require SMS evidence, registry+certificate and pre-registry account-name match; else pending review. Listing triggers recheck SMS/license/roles; names lock server-side. Why: no circular approval or client bypass.
 - Workspace handoffs hide cache, discard stale requests and remount publishers; tenant UI uses owner roles. Servers validate callers. Why: no leaks.
+- Facebook Messenger replies, group-comment capture/auto-replies and their leads run through cloud-social-inbox and the cloud-runner job types (inbox_sync, messenger_send, comments_sync, comment_reply) on the saved cloud session; leads are keyed per workspace. Why: no Meta Graph dependency while business verification is pending.
