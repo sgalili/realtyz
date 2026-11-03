@@ -84,13 +84,30 @@ Deno.serve(async req => {
   const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'reatyz_yad2';
   if (!token) return json({ error: 'not_configured', message: 'שירות הייבוא מיד2 אינו מוגדר' }, 503);
   const deadline = Date.now() + 100000;
-  const fetchPage = (url: string) => cachedScrapingText('agency_import', url, CACHE_SECONDS, async () => {
+  const fetchPageOnce = (url: string) => cachedScrapingText('agency_import', url, CACHE_SECONDS, async () => {
     const result = await trackScraping('agency_import', 'rest', url, async () => {
       const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(Math.min(30000, Math.max(1000, deadline - Date.now()))) });
       return { status: res.status, html: await res.text() };
     }, v => ({ status: v.status, bytes: new TextEncoder().encode(v.html).length }));
     if (result.status >= 400) throw new Error(`provider_${result.status}`);
     return result.html;
+  });
+  // The page-reading provider fails intermittently (5xx/timeouts); retry before giving up.
+  const fetchPageWithRetry = async (url: string) => {
+    let last: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt && Date.now() > deadline - 15000) break;
+      try { return await fetchPageOnce(url); } catch (e) {
+        last = e;
+        const msg = e instanceof Error ? e.message : '';
+        if (/provider_4\d\d/.test(msg)) break;
+        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+      }
+    }
+    throw last ?? new Error('fetch_failed');
+  };
+  const fetchPage = fetchPageWithRetry;
+  void (() => {
   });
 
   const ids: string[] = [];
