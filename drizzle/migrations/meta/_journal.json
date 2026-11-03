@@ -869,6 +869,13 @@
       "when": 1793707715163,
       "tag": "0123_broker_approval_activation_notice",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1793708771894,
+      "tag": "0124_my_ads_stats_explicit_workspace",
+      "breakpoints": true
     }
   ]
 }
