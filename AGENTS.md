@@ -23,15 +23,12 @@
 - Publisher setup resets navigation separately from scoped draft content; selected branches drive ownership checks. Why: no cached-step bypass.
 - Publisher legal documents open in a nested view of the canonical Terms without unmounting the wizard; ready inventory and its count share a user/workspace-keyed paginated query and promotion readiness predicate. Why: exact return state, consistent counts.
 - Public publisher pricing and shared card-header rules: read src/components/public/AGENTS.md.
-- Facebook auth/groups are mounted siblings, so Page state never interrupts groups.
-- Group membership UI reads persisted cloud events, never local membership overrides. Why: truthful status.
 - Inquiry tiers need server-only workspace/listing identity and satisfactory screening; first turns/callbacks never qualify. Atomic upgrades charge only unpaid differences.
 - Tables share sort/reorder/hide; rewards never sort. HorizontalTableScroll owns both axes and movable wheel axes (RTL Shift-wheel too), preserves nested scrolling, collapses nested owners. Homepage stays bounded; prefs never store listings. Post-animation reveal scrolls only the table, anchoring property summaries below headings. Why: no hidden summaries.
 - Every successful app sign-in and completed signup lands on the global homepage; the layout only clears old pending login flags and never chooses a dashboard. OAuth authorization consent remains a separate flow. Why: all account types browse the same public-safe feed without bypassing role completion.
 - My Ads stats use workspace-authorized RPCs; favorites are user-scoped, paginated and public-safe, served only by src/hooks/useListingFavorites.ts so hearts and the owner menu share one list. Why: one favorite state.
 - Yad2 checks exact workspace records before daily claims; cache reads keep edits and source timestamps (no sliding freshness). Cache/scheduled feeds never invent/publish on failure. Search dispatch/results share sources; Homely needs verified workspace status. Counters use completed-search snapshots.
 - Yad2 keeps original publisher snapshots, source buckets and scoped DOM evidence; never null-overwrites or classifies from related ads; license needs evidence.
-- Group selection: one checkbox per row, immutable deduped snapshots, no-op guards; peer expansions use exclusive motion groups.
 - Media dedup uses host/path hashes; Yad2 reuses validated own public cache, not other hosts. Why: safe reuse.
 - Multi-select lists use the shared controls in src/components/ui/multi-select-controls.tsx so every page behaves the same.
 - Partner rewards freeze into immutable listing_reward_snapshots on pick; charges use the snapshot. Trust scores are server-computed (compute_trust_score), super_admin-overridable, audited.
@@ -53,9 +50,8 @@
 - Internal Rita separates signed-in account identity from JWT-authorized workspace data; drawer state remounts on account/workspace switches. Activity reuses My Ads or the shared redacted board. Facebook calls are bounded and group refreshes cannot overlap. Why: prevent borrowed identity, stale tenant state and endless loading.
 <!-- LOVABLE:END -->
 
-- Nested rules: src/components/affiliate/AGENTS.md, extension/AGENTS.md, src/components/campaigns/AGENTS.md.
+- Nested rules: src/components/social/AGENTS.md, src/components/affiliate/AGENTS.md, extension/AGENTS.md, src/components/campaigns/AGENTS.md.
 - Closing splits: compute_closing_split pays 80% to authorized brokers (partner_can_view_closing) via idempotent paid_amount delta; otherwise platform retains 100%. No subscription plans; billing is credits only. Why: legal license model.
-- Facebook groups UI reuses FacebookCloudConnectGate for cloud login and confirmed membership import; legacy entry points delegate to it, never installation or cookie entry. Joins need server evidence and rule consent; quotas stay workspace-scoped. Why: one truthful cloud connection flow.
 - Global instructions use global_ai_documents/private global-ai-training with Super Admin checks; global_ai_config is legacy only. Brains share BrainResources title-free text entry and derived filenames; global library comes first. Why: one library without tenant leaks.
 - Public/managed inventory reuse LeadTypeFilterButton and predicates with role-aware fields; managed filters anchor below search with bounded scroll and no focus scrolling. Why: consistent, isolated filtering.
 - Public publisher projections share classification-aware names from source evidence or server user_roles for manual ads; unknown identities stay private. Board eligibility still requires positive price, configured rewards and a non-generic publisher, filtering without deletion. Why: consistent attribution without exposing private people.
