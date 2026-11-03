@@ -8,7 +8,7 @@ import { ArrowRight, User, UserRound, X } from 'lucide-react';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clearPendingSignupRole } from '@/lib/signupRole';
-import { formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
+import { clearSmsSignup, formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
 
 // Gray, unbolded placeholder; black bold typed text; no border/ring on focus.
 const fieldClass = 'h-12 min-w-0 text-lg md:text-lg font-normal text-foreground placeholder:text-lg placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0';
@@ -78,6 +78,8 @@ const Auth = () => {
       if (result.error && data?.token_hash) result = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
       if (result.error) throw result.error;
       localStorage.removeItem(PENDING_OTP_KEY);
+      // Recognized existing account: drop any signup intent so no registration step runs.
+      if (data?.existing_account) { clearSmsSignup(); clearPendingSignupRole(); }
       navigate('/', { replace: true });
     } catch (error) {
       setAttempts(value => value + 1); setOtp('');
