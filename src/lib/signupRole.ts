@@ -80,6 +80,19 @@ export function clearPostSignupWelcome() {
  * Returns the path the user should land on, or null when nothing was pending.
  */
 export async function applyPendingSignupRole(): Promise<string | null> {
+  // An already-established account (any real role) never runs registration:
+  // leftover signup intent from an earlier attempt is discarded.
+  {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      const { data: existing } = await supabase.from('user_roles').select('role').eq('user_id', authUser.id);
+      if (existing?.some(r => r.role !== 'user')) {
+        clearSmsSignup();
+        clearPendingSignupRole();
+        return null;
+      }
+    }
+  }
   const sms = readSmsSignup();
   if (sms) {
     try {
