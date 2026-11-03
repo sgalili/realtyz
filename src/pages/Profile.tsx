@@ -455,6 +455,7 @@ function PersonalTab() {
             <div className="min-w-0 flex-1">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
             </div>
+            <span role="status" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-success"><BadgeCheck className="h-4 w-4" aria-hidden />מאומת</span>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

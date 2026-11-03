@@ -122,10 +122,8 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
     onApproved?.();
   };
 
-  if (account?.verified && !publisher) return account.license ? <section aria-label="סטטוס רישיון תיווך" dir="rtl" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-success/40 bg-success/5 p-3 text-base">
-    <span>מספר רישיון תיווך: <b dir="ltr">{account.license}</b></span>
-    <span role="status" className="flex items-center gap-1 font-semibold text-success"><BadgeCheck className="h-4 w-4" aria-hidden />מאומת</span>
-  </section> : null;
+  // The profile's license row above shows the verified status; no duplicate card here.
+  if (account?.verified && !publisher) return null;
   return <>
     {!publisher && <section aria-label="שדרוג וסטטוס רישיון תיווך" className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3" dir="rtl">
       {account?.license && <div className="flex flex-wrap items-center justify-between gap-2 text-base">
