@@ -22,7 +22,7 @@ const FAILURES: Record<string, string> = {
 };
 
 /** Stable ref: reveal and focus the license input once when it mounts. */
-const focusLicenseOnMount = (el: HTMLDivElement | null) => { if (el) requestAnimationFrame(() => { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); el.querySelector('input')?.focus(); }); };
+const focusLicenseOnMount = (el: HTMLDivElement | null) => { if (el) requestAnimationFrame(() => { el.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); el.querySelector('input')?.focus(); }); };
 
 /** Non-broker upgrade request: registry + certificate match, then manual Super Admin approval. */
 export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApproved }: { profileOwnerId?: string; publisher?: boolean; onApproved?: () => void }) {
@@ -51,13 +51,14 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
     const [verification, profile, request, affiliate] = await Promise.all([
       supabase.rpc('partner_can_view_closing', { _user_id: subjectId }),
       supabase.from('profiles').select('broker_license_number').eq('id', subjectId).maybeSingle(),
-      canRead ? supabase.from('broker_upgrade_requests').select('id, license_number').eq('user_id', subjectId).eq('status', 'pending').maybeSingle() : Promise.resolve({ data: null, error: null }),
+      canRead ? supabase.from('broker_upgrade_requests').select('id, license_number, status').eq('user_id', subjectId).order('created_at', { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null, error: null }),
       canRead ? supabase.from('affiliate_profiles').select('license_number, license_status').eq('user_id', subjectId).maybeSingle() : Promise.resolve({ data: null, error: null }),
     ]);
     for (const result of [verification, profile, request, affiliate]) if (result.error) throw result.error;
     return {
-      verified: verification.data === true,
-      pending: !!request.data,
+      // A Super Admin approval is the verified state even when the registry has no record.
+      verified: verification.data === true || request.data?.status === 'approved',
+      pending: request.data?.status === 'pending',
       license: request.data?.license_number || profile.data?.broker_license_number || affiliate.data?.license_number || '',
       rejected: affiliate.data?.license_status === 'rejected',
     };
