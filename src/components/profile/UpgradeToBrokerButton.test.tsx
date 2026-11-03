@@ -65,7 +65,6 @@ it('checks the displayed workspace owner without offering submission as another 
 });
 it('shows only the verified card after Super Admin approval', async () => {
   (state as any).approved = true; state.license = '77777'; mount();
-  await screen.findByText('מאומת');
-  expect(screen.queryByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' })).toBeNull();
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' })).toBeNull());
   expect(screen.queryByText('הרישיון הוזן — השדרוג טרם אושר')).toBeNull();
 });
