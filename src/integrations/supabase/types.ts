@@ -1371,6 +1371,7 @@ export type Database = {
           reviewer_id: string | null
           status: string
           user_id: string
+          whatsapp_notified_status: string | null
         }
         Insert: {
           certificate_check_id?: string | null
@@ -1385,6 +1386,7 @@ export type Database = {
           reviewer_id?: string | null
           status?: string
           user_id: string
+          whatsapp_notified_status?: string | null
         }
         Update: {
           certificate_check_id?: string | null
@@ -1399,6 +1401,7 @@ export type Database = {
           reviewer_id?: string | null
           status?: string
           user_id?: string
+          whatsapp_notified_status?: string | null
         }
         Relationships: []
       }
