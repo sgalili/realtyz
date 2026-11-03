@@ -7,7 +7,7 @@ import { toast } from '@/i18n/personalToast';
 import { ArrowRight, User, UserRound, X } from 'lucide-react';
 import realtyzLogo from '@/assets/realtyz-logo.webp';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { clearPendingSignupRole } from '@/lib/signupRole';
+import { clearPendingSignupRole, clearPostSignupWelcome } from '@/lib/signupRole';
 import { clearSmsSignup, formatAuthMobile, israeliMobile, saveSmsSignup, smsSignupSchema } from '@/lib/smsSignup';
 
 // Gray, unbolded placeholder; black bold typed text; no border/ring on focus.
