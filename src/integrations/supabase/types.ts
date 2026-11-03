@@ -8471,6 +8471,8 @@ export type Database = {
           landscape_logo_url: string | null
           logo_url: string | null
           office_address: string | null
+          office_city: string | null
+          office_phone: string | null
           primary_color: string | null
           primary_foreground_color: string | null
           public_email: string | null
@@ -8487,6 +8489,8 @@ export type Database = {
           landscape_logo_url?: string | null
           logo_url?: string | null
           office_address?: string | null
+          office_city?: string | null
+          office_phone?: string | null
           primary_color?: string | null
           primary_foreground_color?: string | null
           public_email?: string | null
@@ -8503,6 +8507,8 @@ export type Database = {
           landscape_logo_url?: string | null
           logo_url?: string | null
           office_address?: string | null
+          office_city?: string | null
+          office_phone?: string | null
           primary_color?: string | null
           primary_foreground_color?: string | null
           public_email?: string | null
