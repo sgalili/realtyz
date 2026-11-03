@@ -87,7 +87,7 @@ export function ShareWithLeadDialog({ property, open, onOpenChange }: Props) {
 
           {property && (
             <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-              <div className="font-semibold line-clamp-1">{property.title}</div>
+              <div className="break-words font-semibold">{property.title}</div>
               <div className="text-xs text-muted-foreground mt-0.5">
                 {property.city} · {property.rooms} חד' · ₪{property.price.toLocaleString('he-IL')}
               </div>

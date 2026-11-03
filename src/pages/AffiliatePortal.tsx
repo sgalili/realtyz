@@ -347,7 +347,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
         <>
       {/* Dedicated full-width title row — always the first element of the card. */}
       <div className="w-full border-b px-4 pb-2 pt-3">
-        <h3 className="w-full truncate text-base font-semibold leading-tight" title={title}>
+        <h3 className="w-full break-words text-base font-semibold leading-tight" title={title}>
           {title}
         </h3>
       </div>
@@ -463,7 +463,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex min-w-0 items-center gap-1">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{fullAddress}</span>
+            <span className="break-words">{fullAddress}</span>
           </span>
           {listing.rooms ? (
             <span className="inline-flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" /> {listing.rooms} חד'</span>
