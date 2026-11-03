@@ -1,6 +1,7 @@
 # Project Memory
 
 ## Core
+- [Monthly free credits](mem://features/monthly-free-credits.md) — 200 free credits per workspace, topped up to 200 monthly; no unlimited usage.
 - **Platform roles (HARD)**: Shai Galili (sgalili@gmail.com, 054-6811841) is the ONLY `super_admin`. Udi Vitman (052-2973500, 8f66ac1a…) is a regular broker (`managing_broker`) who owns his workspace and is a full member of Rita's ws only — never re-grant him super_admin; `grant_super_admin_to_wa_owner()` is intentionally a no-op.
 - **Brand name (HARD)**: Hebrew brand is **רילטיז** — never "ריאלטיז" anywhere (UI, workspace names, prompts).
 - **Connections isolation (HARD)**: social_connections unique on (workspace_owner_id, platform) — the old (created_by, platform) unique index is dropped; all upserts use onConflict workspace_owner_id,platform; disconnect hard-deletes for the active workspace only; no created_by/global fallback. See mem://constraints/workspace-isolation-social-connections.
