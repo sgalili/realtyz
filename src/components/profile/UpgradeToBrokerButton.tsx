@@ -32,18 +32,25 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
   const { user } = useAuth();
   const subjectId = profileOwnerId ?? user?.id;
   const isOwnProfile = subjectId === user?.id;
+  const { data: isSuperAdmin = false } = useQuery({ queryKey: ['is-super-admin', user?.id], enabled: !!user?.id, staleTime: 300000, queryFn: async () => {
+    const { data } = await supabase.rpc('has_role', { _user_id: user!.id, _role: 'super_admin' });
+    return data === true;
+  } });
+  // Super Admin acting for another account submits on the owner's behalf for manual review.
+  const actingForOwner = !isOwnProfile && isSuperAdmin;
+  const canRead = isOwnProfile || isSuperAdmin;
   const sms = useQuery({ queryKey: ['publisher-sms', user?.id], enabled: open && !!user?.id, queryFn: async () => {
     const { data, error } = await supabase.rpc('publisher_sms_verified');
     if (error) throw error;
     return data === true;
   } });
-  const { data: account } = useQuery({ queryKey: ['broker-upgrade-request', user?.id, subjectId, 'profile-status'], enabled: !!user?.id && !!subjectId, queryFn: async () => {
+  const { data: account } = useQuery({ queryKey: ['broker-upgrade-request', user?.id, subjectId, 'profile-status', isSuperAdmin], enabled: !!user?.id && !!subjectId, queryFn: async () => {
     if (!user?.id || !subjectId) return null;
     const [verification, profile, request, affiliate] = await Promise.all([
       supabase.rpc('partner_can_view_closing', { _user_id: subjectId }),
       supabase.from('profiles').select('broker_license_number').eq('id', subjectId).maybeSingle(),
-      isOwnProfile ? supabase.from('broker_upgrade_requests').select('id, license_number').eq('user_id', subjectId).eq('status', 'pending').maybeSingle() : Promise.resolve({ data: null, error: null }),
-      isOwnProfile ? supabase.from('affiliate_profiles').select('license_number, license_status').eq('user_id', subjectId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      canRead ? supabase.from('broker_upgrade_requests').select('id, license_number').eq('user_id', subjectId).eq('status', 'pending').maybeSingle() : Promise.resolve({ data: null, error: null }),
+      canRead ? supabase.from('affiliate_profiles').select('license_number, license_status').eq('user_id', subjectId).maybeSingle() : Promise.resolve({ data: null, error: null }),
     ]);
     for (const result of [verification, profile, request, affiliate]) if (result.error) throw result.error;
     return {
@@ -59,12 +66,24 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
   const pending = account?.pending === true;
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<'approved' | 'pending' | null>(null);
-  const ready = !!license && !!file && sms.data === true;
+  const ready = !!license && !!file && (actingForOwner || sms.data === true);
 
   const submit = async () => {
-    if (!isOwnProfile || !ready || busy || pending || !file) return;
+    if (!(isOwnProfile || actingForOwner) || !ready || busy || pending || !file) return;
     setBusy(true);
     try {
+      if (actingForOwner) {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `${user!.id}/admin-for-${subjectId}-${Date.now()}.${ext}`;
+        const up = await supabase.storage.from('broker-license-docs').upload(path, file, { contentType: file.type, upsert: false });
+        if (up.error) throw new Error('העלאת התעודה נכשלה.');
+        const { error } = await supabase.rpc('admin_submit_broker_license' as any, { _user_id: subjectId, _license: license, _certificate_path: path });
+        if (error) throw new Error('שליחת הרישיון לבדיקה נכשלה.');
+        setResult('pending');
+        await queryClient.invalidateQueries({ queryKey: ['broker-upgrade-request'] });
+        await queryClient.invalidateQueries({ queryKey: ['admin-broker-upgrade-requests'] });
+        return;
+      }
       await verifyBrokerLicense(license, 'verify');
       const body = new FormData(); body.set('certificate', file);
       const { data: cert, error: certError } = await supabase.functions.invoke('check-broker-certificate', { body });
@@ -121,14 +140,14 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
           <Button asChild variant="outline"><a href={BROKER_EXAM_REGISTRATION_URL} target="_blank" rel="noopener noreferrer">להרשמה למבחן הלאומי</a></Button>
           <Button variant={hasLicense ? 'secondary' : 'outline'} aria-expanded={hasLicense} type="button" onClick={() => { setHasLicense(true); if (!license && account?.license) setLicense(account.license); }}>יש לי רישיון</Button>
         </div>}
-        {publisher && account?.verified ? <div className="space-y-3"><p>הרישיון מאומת. נדרש אימות SMS של החשבון לפני הפרסום.</p>{sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" onVerified={() => { void sms.refetch(); }} />}<Button disabled={sms.data !== true || busy} onClick={() => void continueVerified()}>המשך לפרסום</Button></div> : !isOwnProfile ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
+        {publisher && account?.verified ? <div className="space-y-3"><p>הרישיון מאומת. נדרש אימות SMS של החשבון לפני הפרסום.</p>{sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" onVerified={() => { void sms.refetch(); }} />}<Button disabled={sms.data !== true || busy} onClick={() => void continueVerified()}>המשך לפרסום</Button></div> : !isOwnProfile && !actingForOwner ? <p role="status" className="border-t border-border pt-3 text-base">בקשת השדרוג מוגשת מתוך החשבון האישי של בעל הפרופיל.</p> : pending ? <div role="status" className="space-y-2 border-t border-border pt-3 text-base">
           <p>מספר רישיון תיווך: <b dir="ltr">{account?.license}</b></p>
           <p>סטטוס: ממתין לאישור מנהל. נעדכן אותך בהמשך.</p>
         </div> : hasLicense && <div className="space-y-2 border-t border-border pt-3">
           <p className="text-base font-semibold">כבר קיבלת רישיון?</p>
           <div ref={focusLicenseOnMount}>
           <BrokerLicenseField bare value={license} onChange={setLicense} onVerified={() => {}} /></div>
-          {sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" description="נדרש אימות מספר הטלפון של החשבון לפני אימות הרישיון." onVerified={() => { void sms.refetch(); }} />}
+          {!actingForOwner && sms.data !== true && <WhatsAppOtpVerify smsOnly brokerVerification defaultPhone={user?.phone ?? ''} lockPhone={!!user?.phone} title="אימות ב-SMS" description="נדרש אימות מספר הטלפון של החשבון לפני אימות הרישיון." onVerified={() => { void sms.refetch(); }} />}
           <label htmlFor="broker-certificate-image" className="block text-base">צילום תעודת הרישיון</label>
           <Input id="broker-certificate-image" type="file" accept={CERTIFICATE_MIME_TYPES.join(',')} disabled={busy} className="h-auto text-base" onChange={event => {
             const next = event.target.files?.[0] ?? null;
@@ -139,7 +158,7 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
         {result ? <div role="status" className="space-y-1 rounded-md border border-success bg-success/10 p-3 text-base">
           <p className="font-semibold text-success">{result === 'approved' ? 'החשבון שודרג למתווך מורשה' : 'הבקשה התקבלה'}</p>
           {result === 'pending' && <p>נעדכן אותך כשהבדיקה תסתיים.</p>}
-        </div> : hasLicense && isOwnProfile && !pending && !(publisher && account?.verified) && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
+        </div> : hasLicense && (isOwnProfile || actingForOwner) && !pending && !(publisher && account?.verified) && <Button type="button" size="lg" className="w-full text-base" disabled={!ready || busy} onClick={() => void submit()}>
           {busy && <Loader2 className="me-2 h-4 w-4 animate-spin" />}שדרוג החשבון
         </Button>}
       </DialogContent>
