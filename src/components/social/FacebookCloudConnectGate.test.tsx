@@ -9,7 +9,7 @@ vi.mock('@/lib/cloudGroupDiscovery', () => ({ fetchGroupsViaCloud: mocks.sync })
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { functions: { invoke: mocks.invoke } } }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('@/i18n/personalLanguage', () => ({ usePersonalLanguage: () => ({ gender: 'male', command: (v: string) => v, text: (forms: { male: string }) => forms.male }), localizeControlNode: (v: unknown) => v }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 import { FacebookCloudConnectGate } from './FacebookCloudConnectGate';
 
 describe('Facebook cloud connection', () => {
@@ -19,11 +19,21 @@ describe('Facebook cloud connection', () => {
   it('does not request or open a cloud browser before the guidance confirmation', async () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null);
     render(<FacebookCloudConnectGate alwaysVisible />);
-    fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
+    await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' });
     expect(mocks.invoke).not.toHaveBeenCalled();
-    expect(open).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
+    fireEvent.click(screen.getByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith('fb-session-vault', { body: { action: 'remote_login' } }));
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('never opens a blank tab when no cloud URL is available', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    mocks.invoke.mockResolvedValue({ data: { error: 'remote_failed', message: 'x' } });
+    render(<FacebookCloudConnectGate alwaysVisible />);
+    fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
+    expect(open).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('אינו זמין כרגע');
   });
 
   it('manual checking never imports before the server confirms a session', async () => {
@@ -31,7 +41,7 @@ describe('Facebook cloud connection', () => {
     mocks.invoke.mockImplementation((_name, { body }) => Promise.resolve({ data: body.action === 'remote_login' ? { url: 'https://gologin.example/session' } : { active: false } }));
     render(<FacebookCloudConnectGate alwaysVisible />);
     fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
-    fireEvent.click(screen.getByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
     fireEvent.click(await screen.findByRole('button', { name: 'בדיקת החיבור' }));
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith('fb-session-vault', { body: { action: 'remote_check' } }));
     expect(mocks.sync).not.toHaveBeenCalled();
@@ -76,7 +86,7 @@ describe('Facebook cloud connection', () => {
     mocks.invoke.mockResolvedValue({ data: { error: 'worker_unavailable', message: 'החיבור אינו זמין' } });
     render(<FacebookCloudConnectGate alwaysVisible />);
     fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
-    fireEvent.click(screen.getByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
     await screen.findByRole('alert');
     expect(mocks.invoke).toHaveBeenCalledWith('fb-session-vault', { body: { action: 'remote_login' } });
     expect(mocks.sync).not.toHaveBeenCalled();
@@ -87,7 +97,7 @@ describe('Facebook cloud connection', () => {
     mocks.invoke.mockResolvedValue({ data: { url: 'https://gologin.example/session' } });
     render(<FacebookCloudConnectGate alwaysVisible />);
     fireEvent.click(await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' }));
-    fireEvent.click(screen.getByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' }));
     const link = await screen.findByRole('link', { name: 'פתיחת חיבור לפייסבוק' });
     expect(link).toHaveAttribute('href', 'https://gologin.example/session');
     expect(link).toHaveAttribute('target', '_blank');
@@ -101,6 +111,7 @@ describe('Facebook cloud connection', () => {
     const connect = await screen.findByRole('button', { name: 'חיבור באמצעות פייסבוק' });
     vi.useFakeTimers();
     await act(async () => { fireEvent.click(connect); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' })); });
     expect(mocks.sync).not.toHaveBeenCalled();
     mocks.state.mockResolvedValue({ active: true });

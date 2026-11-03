@@ -14,7 +14,8 @@ import { usePersonalLanguage } from '@/i18n/personalLanguage';
 const RECONNECT_HINT = 'החיבור לפרופיל הענן של פייסבוק נותק או דורש כניסה מחדש. לחצו "חיבור באמצעות פייסבוק", היכנסו לחשבון בחלון הענן שנפתח וחזרו לכאן.';
 /** Friendly Hebrew guidance instead of raw API errors for cloud-session failures. */
 export function cloudSessionErrorMessage(code?: string, message?: string): string {
-  if (['no_cloud_session', 'decrypt_failed', 'remote_forbidden', 'remote_failed', 'session_expired', 'unauthorized'].includes(code ?? '')) return RECONNECT_HINT;
+  if (code === 'remote_forbidden' || code === 'remote_failed' || code === 'no_url') return 'חלון החיבור המאובטח לפייסבוק אינו זמין כרגע. נסו שוב בעוד מספר דקות.';
+  if (['no_cloud_session', 'decrypt_failed', 'session_expired', 'unauthorized'].includes(code ?? '')) return RECONNECT_HINT;
   if (code === 'not_configured' || code === 'cloud_worker_not_configured') return 'שירות פרופיל הענן של פייסבוק עדיין לא הוגדר. פנו למנהל המערכת.';
   return message && /[\u0590-\u05FF]/.test(message) ? message : 'פתיחת החיבור לפרופיל הענן נכשלה. נסו שוב בעוד רגע.';
 }
@@ -39,6 +40,22 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly
   const [manualUrl, setManualUrl] = useState('');
   const [connected, setConnected] = useState(false);
   const [guidanceOpen, setGuidanceOpen] = useState(false);
+  // Cloud browser URL prepared as soon as the guidance window opens, so the
+  // click opens it synchronously and never leaves a blank tab behind.
+  const [prepared, setPrepared] = useState<{ url: string; error: string; loading: boolean }>({ url: '', error: '', loading: false });
+  const prepareGen = useRef(0);
+  const prepareUrl = async () => {
+    const run = ++prepareGen.current;
+    setPrepared({ url: '', error: '', loading: true });
+    let url = ''; let err = '';
+    try {
+      const { data, error } = await supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_login' } });
+      const payload = data ?? await (error as { context?: Response } | null)?.context?.json().catch(() => null);
+      if (error || payload?.error || typeof payload?.url !== 'string' || !payload.url.startsWith('https://')) err = cloudSessionErrorMessage(payload?.error, payload?.message);
+      else url = payload.url;
+    } catch { err = cloudSessionErrorMessage(); }
+    if (prepareGen.current === run) setPrepared({ url, error: err, loading: false });
+  };
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const checking = useRef(false);
@@ -134,47 +151,29 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly
     return () => { window.removeEventListener('focus', checkOnReturn); document.removeEventListener('visibilitychange', checkOnReturn); };
   }, [phase, owner]);
 
+  useEffect(() => {
+    if (guidanceOpen && !connected) void prepareUrl(); else prepareGen.current++;
+  }, [guidanceOpen, owner]);
+
   const connect = async () => {
     const run = generation.current;
     if (connected) { await finish(run); return; }
-    // Placeholder opened synchronously on the click gesture so a new tab stays
-    // allowed while the backend prepares the GoLogin cloud browser URL.
-    let placeholder: Window | null = null;
-    try { placeholder = window.open('about:blank', '_blank'); } catch { /* blocked */ }
-    if (placeholder) placeholder.opener = null;
-    setPhase('waiting'); setErrorMessage(''); setManualUrl('');
-    let cloudUrl = '';
-    try {
-      const { data, error } = await supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_login' } });
-      const payload = data ?? await (error as { context?: Response } | null)?.context?.json().catch(() => null);
-      if (error || payload?.error || !payload?.url) throw new Error(cloudSessionErrorMessage(payload?.error, payload?.message));
-      if (generation.current !== run) { placeholder?.close(); return; }
-      cloudUrl = payload.url;
-    } catch (e) {
-      placeholder?.close();
-      if (generation.current !== run) return;
-      stop(); setPhase('idle'); setErrorMessage((e as Error).message);
-      toast.error((e as Error).message, { id: 'fb-cloud-session' });
+    if (prepared.loading) { toast.info('חלון החיבור המאובטח בהכנה, נסו שוב בעוד רגע.', { id: 'fb-cloud-session' }); return; }
+    const cloudUrl = prepared.url;
+    if (!cloudUrl) {
+      const msg = prepared.error || 'חלון החיבור המאובטח אינו זמין כרגע. נסו שוב בעוד מספר דקות.';
+      setErrorMessage(msg); toast.error(msg, { id: 'fb-cloud-session' });
+      void prepareUrl();
       return;
     }
-    setManualUrl(cloudUrl);
-    // Open the GoLogin cloud browser URL directly in a new tab; never navigate
-    // the current frame. If the direct open is blocked, reuse the placeholder
-    // tab, and as a last resort offer a manual link the user can click.
+    setErrorMessage('');
     let tab: Window | null = null;
-    try { if (placeholder && !placeholder.closed) { placeholder.location.href = cloudUrl; tab = placeholder; } else { tab = window.open(cloudUrl, '_blank'); } } catch { tab = null; }
-    if (tab) { try { tab.opener = null; } catch { /* cross-origin */ } }
-    if (tab && tab !== placeholder) placeholder?.close();
-    if (!tab) {
-      try {
-        if (placeholder && !placeholder.closed) { placeholder.location.href = cloudUrl; tab = placeholder; }
-      } catch { tab = null; }
-    }
-    if (!tab) {
-      placeholder?.close();
-      setManualUrl(cloudUrl);
-      toast.warning('הדפדפן חסם פתיחת חלון חדש. לחצו "פתיחת חיבור לפייסבוק" כדי להמשיך.');
-    }
+    try { tab = window.open(cloudUrl, '_blank'); if (tab) tab.opener = null; } catch { tab = null; }
+    setManualUrl(cloudUrl);
+    // The remote URL is single-use: prepare a fresh one for any retry.
+    setPrepared({ url: '', error: '', loading: false });
+    setPhase('waiting');
+    if (!tab) toast.warning('הדפדפן חסם פתיחת חלון חדש. לחצו "פתיחת חיבור לפייסבוק" כדי להמשיך.');
     deadline.current = Date.now() + 10 * 60_000;
     timer.current = window.setInterval(() => {
       if (generation.current !== run) return;
@@ -208,8 +207,8 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly
           <li>{g('חזרי', 'חזור')} לכאן לאחר מכן לסיום החיבור.</li>
         </ol>
         {phase !== 'idle' && <p role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{phase === 'syncing' ? 'מייבאים את הקבוצות…' : 'ממתינים לאישור החיבור מפייסבוק…'}</p>}
-        {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
-        <Button className="h-auto min-h-12 gap-2 whitespace-normal bg-social-facebook text-base text-social-foreground hover:bg-social-facebook/90" disabled={phase !== 'idle'} onClick={() => void connect()}><ExternalLink className="h-5 w-5 shrink-0" />{manualUrl ? 'פתיחת חיבור חדש לפייסבוק' : 'פתח חיבור לפייסבוק בלשונית חדשה'}</Button>
+        {(errorMessage || (!prepared.loading && prepared.error)) && <p role="alert" className="text-sm text-destructive">{errorMessage || prepared.error}</p>}
+        <Button className="h-auto min-h-12 gap-2 whitespace-normal bg-social-facebook text-base text-social-foreground hover:bg-social-facebook/90" disabled={phase !== 'idle' || prepared.loading} onClick={() => void connect()}>{prepared.loading ? <Loader2 className="h-5 w-5 shrink-0 animate-spin motion-reduce:animate-none" /> : <ExternalLink className="h-5 w-5 shrink-0" />}{prepared.loading ? 'מכינים את חלון החיבור…' : manualUrl ? 'פתיחת חיבור חדש לפייסבוק' : 'פתח חיבור לפייסבוק בלשונית חדשה'}</Button>
         {manualUrl && <>
           <a href={manualUrl} target="_blank" rel="noopener noreferrer" className="text-center text-base font-semibold text-primary underline underline-offset-4">פתיחת חיבור לפייסבוק</a>
           <Button variant="outline" disabled={checkingStatus || phase === 'syncing'} onClick={() => void checkConnection(generation.current, true)}><RefreshCw className={`me-2 h-4 w-4 ${checkingStatus ? 'animate-spin motion-reduce:animate-none' : ''}`} />בדיקת החיבור</Button>
