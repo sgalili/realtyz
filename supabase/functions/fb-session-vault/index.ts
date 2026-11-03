@@ -191,13 +191,32 @@ Deno.serve(async (req) => {
     let profileId = row?.remote_profile_id as string | undefined;
     const createProfile = async () => {
       const r = await fetch("https://api.gologin.com/browser/quick", {
-        method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${String(owner).slice(0, 8)}` }),
+        method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `toraff-${String(owner).replace(/-/g, "").slice(0, 12)}` }),
       });
       if (r.status === 401 || r.status === 403) throw Object.assign(new Error(`profile_${r.status}`), { gologin: { step: "profile", body: await r.text().catch(() => "") } });
       if (!r.ok) throw new Error(`profile_${r.status}`);
       const id = (await r.json())?.id;
       if (!id) throw new Error("profile_missing");
+      await attachIsraeliProxy(id);
       return id as string;
+    };
+    // Every new profile runs behind a GoLogin residential proxy in Israel.
+    // A profile is never launched without it: Facebook must only see an Israeli IP.
+    const attachIsraeliProxy = async (id: string) => {
+      const linked = await fetch("https://api.gologin.com/users-proxies/mobile-proxy", {
+        method: "POST", headers: h,
+        body: JSON.stringify({ countryCode: "il", isMobile: false, isDC: false, profileIdToLink: id }),
+      });
+      if (linked.ok) return;
+      const fallback = await fetch("https://api.gologin.com/browser/proxy/many/v2", {
+        method: "PATCH", headers: h,
+        body: JSON.stringify({ proxies: [{ profileId: id, proxy: { mode: "geolocation", autoProxyRegion: "il" } }] }),
+      });
+      if (!fallback.ok) {
+        console.error("gologin israeli proxy failed", linked.status, fallback.status);
+        await fetch("https://api.gologin.com/browser", { method: "DELETE", headers: h, body: JSON.stringify({ profilesToDelete: [id] }) }).catch(() => {});
+        throw new Error(`proxy_il_${linked.status}_${fallback.status}`);
+      }
     };
     const launch = (id: string) => fetch(`https://api.gologin.com/browser/${id}/web`, { method: "POST", headers: h });
     try {
