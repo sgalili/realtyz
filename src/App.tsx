@@ -207,7 +207,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   }, [user, roleApplied, queryClient]);
   const { data: walletState } = useCreditWallet();
   const walletLocked = !!walletState?.lockedAt;
-  const { roles, isSuperAdmin, isAffiliate, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
+  const { roles, accountRoles, isSuperAdmin, isAffiliate, isAffiliateOnly, isPropertyOwnerOnly, isPropertySeekerOnly, isDeveloper, loading: roleLoading, fetched: rolesFetched, error: roleError } = useUserRole();
   const { isPartnerMode } = useAppMode();
   const partnerConsent = usePartnerConsent();
   const location = useLocation();
@@ -227,7 +227,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
     </div>
   );
 
-  if (rolesFetched && !roleLoading && (roles.length === 0 || roles.every(role => role === 'user'))) {
+  if (rolesFetched && !roleLoading && (accountRoles.length === 0 || accountRoles.every(role => role === 'user'))) {
     if (!roleApplied) return <PageLoader />;
     if (location.pathname === '/profile') return <>{children}</>;
     return <Suspense fallback={<PageLoader />}><RoleChoiceStep /></Suspense>;

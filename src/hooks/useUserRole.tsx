@@ -118,6 +118,8 @@ export function useUserRole() {
 
   return {
     roles,
+    /** The signed-in account's own roles, independent of the active workspace. */
+    accountRoles: ownRoles,
     isAdmin,
     isSuperAdmin,
     isModerator,
