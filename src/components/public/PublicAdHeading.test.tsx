@@ -21,9 +21,10 @@ describe('property title heading', () => {
   });
 
   it('keeps the price on one line', () => {
-    render(<PublicAdHeading title={LONG_TITLE} price="₪12,000" dealType="rent" />);
-    const price = screen.getByText(/לחודש/);
-    expect(price.className).toContain('whitespace-nowrap');
+    const { container } = render(<PublicAdHeading title={LONG_TITLE} price="₪12,000" dealType="rent" />);
+    const price = container.querySelector('[data-ad-heading] p');
+    expect(price?.textContent).toContain('₪12,000');
+    expect(price?.className).toContain('whitespace-nowrap');
   });
 });
 
