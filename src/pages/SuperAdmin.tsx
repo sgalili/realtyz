@@ -367,7 +367,7 @@ const SuperAdmin = () => {
 
 
 
-      <Tabs defaultValue="intelligence" className="w-full">
+      <Tabs defaultValue="users" className="w-full">
         <TabsList className="flex h-auto flex-wrap justify-start">
           <TabsTrigger value="intelligence"><BrainCircuit className="ml-2 h-4 w-4" /> מרכז מודיעין</TabsTrigger>
           <TabsTrigger value="leads"><MessageCircle className="ml-2 h-4 w-4" /> לידים שנלכדו</TabsTrigger>
