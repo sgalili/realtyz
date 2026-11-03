@@ -18,10 +18,8 @@ export const LISTING_SORT_LABELS = Object.fromEntries(
   LISTING_SORT_OPTIONS.map((option) => [option.value, option.label]),
 ) as Record<ListingSortValue, string>;
 
-const numOr = (value: unknown, fallback: number) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-};
+const numOr = (value: number | null | undefined, fallback: number) =>
+  typeof value === 'number' && !Number.isNaN(value) ? value : fallback;
 
 /** Rows the board can sort: price, rooms and area are enough for every option. */
 export type SortableListingRow = { price?: number | null; rooms?: number | null; sqm?: number | null };
