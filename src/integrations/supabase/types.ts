@@ -9589,6 +9589,11 @@ export type Database = {
         }[]
       }
       get_workspace_owner_roles: { Args: { _owner: string }; Returns: string[] }
+      grant_monthly_free_credits_all: { Args: never; Returns: number }
+      grant_monthly_free_credits_for: {
+        Args: { _owner: string }
+        Returns: number
+      }
       group_post_lineage_jobs: {
         Args: { _log_id: string; _owner: string }
         Returns: {

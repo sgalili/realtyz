@@ -95,7 +95,7 @@ const WHATSAPP_POWERS = [
 ];
 
 const INCLUDED = [
-  'CRM לידים מלא ללא הגבלה',
+  'CRM לידים מלא',
   'תיבת שיחות מכל האפליקציות והרשתות',
 
   'ניהול נכסים ומלאי חי',
@@ -103,13 +103,13 @@ const INCLUDED = [
   'עוזר AI בווטסאפ כולל הודעות קוליות',
   'סנכרון Gmail ויומן גוגל',
   'אוטומציות, סיכומי שיחה ואימון AI',
-  'משתמשים וצוות ללא הגבלה',
+  'משתמשים וצוות',
 ];
 
 const FREE_TILES = [
   { image: imgOmnichannel, label: `${FREE_CONTACTS} לידים` },
   { image: imgPublishing, label: `${FREE_PROPERTIES} נכסים` },
-  { image: imgAi, label: 'AI ללא הגבלה' },
+  { image: imgAi, label: '200 קרדיטים בחודש' },
 ];
 
 const FAQ: { q: string; a: string }[] = [

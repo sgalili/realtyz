@@ -855,6 +855,13 @@
       "when": 1793705781034,
       "tag": "0121_license_status_notified",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1793706316678,
+      "tag": "0122_monthly_200_free_credits",
+      "breakpoints": true
     }
   ]
 }
