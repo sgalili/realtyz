@@ -112,7 +112,7 @@ describe('Facebook cloud connection', () => {
     vi.useFakeTimers();
     await act(async () => { fireEvent.click(connect); });
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    await act(async () => { fireEvent.click(await screen.findByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'פתח חיבור לפייסבוק בלשונית חדשה' })); });
     expect(mocks.sync).not.toHaveBeenCalled();
     mocks.state.mockResolvedValue({ active: true });
     await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
