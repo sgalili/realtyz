@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
       console.error("gologin remote_login error", (e as Error).message);
       if (String((e as Error).message).startsWith("proxy_il_")) {
         await logIntegrationError({ integration: "meta", functionName: "fb-session-vault", errorMessage: `GoLogin Israeli proxy could not be attached: ${(e as Error).message}`, context: { workspace_owner_id: owner } });
-        return json({ error: "remote_failed", message: "לא ניתן היה להקצות כתובת IP ישראלית לחלון החיבור. ייתכן שחבילת GoLogin אינה כוללת פרוקסי ישראלי. נסו שוב מאוחר יותר." }, 200);
+        return json({ error: "remote_forbidden", reason: "proxy_il", message: "לא ניתן היה להקצות כתובת IP ישראלית לחלון החיבור. ייתכן שחבילת GoLogin אינה כוללת פרוקסי ישראלי. נסו שוב מאוחר יותר." }, 200);
       }
       return json({ error: "remote_failed", message: `פתיחת החיבור לפייסבוק נכשלה (${(e as Error).message})` }, 200);
     }
