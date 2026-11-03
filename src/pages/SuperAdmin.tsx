@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, RadioTower, Flame, Crown, Gauge, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, AlertOctagon } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, AlertOctagon } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
 import { BrokerUpgradeRequestsCard } from '@/components/admin/BrokerUpgradeRequestsCard';
@@ -305,14 +305,12 @@ const SuperAdmin = () => {
     return (p.email ?? '').toLowerCase().includes(q) || (p.full_name ?? '').toLowerCase().includes(q);
   });
 
-  const liveDemoUsers = (demoSessions ?? []).filter((session) => Date.now() - new Date(session.last_seen_at).getTime() < 2 * 60 * 1000).length;
   const archetypeCounts = (demoSessions ?? []).reduce<Record<string, number>>((acc, session) => {
     const key = session.archetype || 'לא נבחר';
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
   const archetypeBreakdown = Object.entries(archetypeCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  const topArchetype = archetypeBreakdown[0]?.name ?? 'ממתין לנתונים';
 
   if (roleLoading) return <div className="p-8"><Skeleton className="h-64 w-full" /></div>;
 
@@ -367,12 +365,6 @@ const SuperAdmin = () => {
       </div>
 
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <PremiumStat icon={RadioTower} label="סוכני דמו פעילים" value={liveDemoUsers} hint="/dashboard?demo=true" />
-        <PremiumStat icon={Flame} label="עמוד מוביל" value="סנטימנט" hint="46% מצפיות הדמו" />
-        <PremiumStat icon={Crown} label="ארכיטיפ מוביל" value={topArchetype} hint="מכירות דמו בפועל" />
-        <PremiumStat icon={Gauge} label="לידים שנלכדו" value={capturedLeads?.length ?? 0} hint="מלכודות שליחת דוחות" />
-      </div>
 
       <Tabs defaultValue="intelligence" className="w-full">
         <TabsList className="flex h-auto flex-wrap justify-start">
@@ -504,9 +496,6 @@ const SuperAdmin = () => {
   );
 };
 
-function PremiumStat({ icon: Icon, label, value, hint }: { icon: typeof ShieldCheck; label: string; value: number | string; hint: string }) {
-  return <Card className="border-primary/15 bg-card shadow-[0_18px_50px_-36px_hsl(var(--primary))]"><CardContent className="p-5"><div className="mb-4 flex items-center justify-between"><span className="text-xs font-bold text-muted-foreground">{label}</span><Icon className="h-4 w-4 text-primary" /></div><p className="text-2xl font-black tabular-nums text-primary">{typeof value === 'number' ? value.toLocaleString() : value}</p><p className="mt-1 text-xs text-muted-foreground">{hint}</p></CardContent></Card>;
-}
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return <Card><CardContent className="p-5"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold tabular-nums text-primary">{value.toLocaleString()}</p></CardContent></Card>;
