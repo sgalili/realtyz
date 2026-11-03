@@ -8,6 +8,8 @@
 // The raw cookie payload is encrypted with AES-GCM (FB_SESSION_ENC_KEY) before
 // it touches the database and is NEVER returned to the client.
 
+import { diagnoseGoLogin403, goLoginToken } from "../_shared/gologin.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { encryptSession, decryptSession } from "../_shared/sessionCrypto.ts";
@@ -181,7 +183,7 @@ Deno.serve(async (req) => {
   }
 
   if (action === "remote_login") {
-    const token = Deno.env.get("GOLOGIN_API_TOKEN") ?? "";
+    const { token } = await goLoginToken(admin);
     if (!token) return json({ error: "not_configured", message: "שירות החיבור לפייסבוק עדיין לא הוגדר. פנו למנהל המערכת" }, 400);
     const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     const { data: row } = await admin.from("fb_cloud_sessions")
@@ -191,6 +193,7 @@ Deno.serve(async (req) => {
       const r = await fetch("https://api.gologin.com/browser/quick", {
         method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `realtyz-${String(owner).slice(0, 8)}` }),
       });
+      if (r.status === 401 || r.status === 403) throw Object.assign(new Error(`profile_${r.status}`), { gologin: { step: "profile", body: await r.text().catch(() => "") } });
       if (!r.ok) throw new Error(`profile_${r.status}`);
       const id = (await r.json())?.id;
       if (!id) throw new Error("profile_missing");
@@ -208,6 +211,12 @@ Deno.serve(async (req) => {
       if (!w.ok) {
         console.error("gologin web launch failed", w.status);
         if (w.status === 401 || w.status === 403) {
+          const d = await diagnoseGoLogin403(token, "launch", await w.text().catch(() => ""));
+          console.error("gologin launch 403", d.status);
+          await logIntegrationError({ integration: "meta", functionName: "fb-session-vault", errorCode: w.status, errorMessage: `GoLogin ${d.status}: ${d.message}`, context: { step: "launch", workspace_owner_id: owner } });
+          return json({ error: "remote_forbidden", reason: d.status, message: d.message }, 200);
+        }
+        if (false) {
           return json({
             error: "remote_forbidden",
             message: "חשבון החיבור אינו מאפשר פתיחת חיבור מרוחק (נדרש מפתח תקף ומנוי מתאים)",
@@ -222,6 +231,13 @@ Deno.serve(async (req) => {
       }, { onConflict: "workspace_owner_id" });
       return json({ success: true, url });
     } catch (e) {
+      const g = (e as any)?.gologin;
+      if (g) {
+        const d = await diagnoseGoLogin403(token, g.step, g.body);
+        console.error("gologin profile 403", d.status);
+        await logIntegrationError({ integration: "meta", functionName: "fb-session-vault", errorCode: 403, errorMessage: `GoLogin ${d.status}: ${d.message}`, context: { step: g.step, workspace_owner_id: owner } });
+        return json({ error: "remote_forbidden", reason: d.status, message: d.message }, 200);
+      }
       console.error("gologin remote_login error", (e as Error).message);
       return json({ error: "remote_failed", message: `פתיחת החיבור לפייסבוק נכשלה (${(e as Error).message})` }, 200);
     }
@@ -230,7 +246,7 @@ Deno.serve(async (req) => {
   // Poll the cloud browser profile: once Facebook login cookies exist there,
   // encrypt and activate the workspace session (no Meta OAuth involved).
   if (action === "remote_check") {
-    const token = Deno.env.get("GOLOGIN_API_TOKEN") ?? "";
+    const { token } = await goLoginToken(admin);
     if (!token || !ENC_KEY) return json({ success: true, active: false });
     const { data: row } = await admin.from("fb_cloud_sessions")
       .select("remote_profile_id,status").eq("workspace_owner_id", owner).maybeSingle();

@@ -6527,6 +6527,36 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_service_credentials: {
+        Row: {
+          key: string
+          last_check_message: string | null
+          last_check_status: string | null
+          last_checked_at: string | null
+          updated_at: string
+          updated_by: string | null
+          value_encrypted: string
+        }
+        Insert: {
+          key: string
+          last_check_message?: string | null
+          last_check_status?: string | null
+          last_checked_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value_encrypted: string
+        }
+        Update: {
+          key?: string
+          last_check_message?: string | null
+          last_check_status?: string | null
+          last_checked_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          value_encrypted?: string
+        }
+        Relationships: []
+      }
       platform_settings: {
         Row: {
           ai_paused: boolean
