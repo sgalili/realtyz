@@ -14,6 +14,7 @@ import { usePersonalLanguage } from '@/i18n/personalLanguage';
 const RECONNECT_HINT = 'החיבור לפרופיל הענן של פייסבוק נותק או דורש כניסה מחדש. לחצו "חיבור באמצעות פייסבוק", היכנסו לחשבון בחלון הענן שנפתח וחזרו לכאן.';
 /** Friendly Hebrew guidance instead of raw API errors for cloud-session failures. */
 export function cloudSessionErrorMessage(code?: string, message?: string): string {
+  if (code === 'remote_forbidden' && message && /[\u0590-\u05FF]/.test(message)) return message;
   if (code === 'remote_forbidden' || code === 'remote_failed' || code === 'no_url') return 'חלון החיבור המאובטח לפייסבוק אינו זמין כרגע. נסו שוב בעוד מספר דקות.';
   if (['no_cloud_session', 'decrypt_failed', 'session_expired', 'unauthorized'].includes(code ?? '')) return RECONNECT_HINT;
   if (code === 'not_configured' || code === 'cloud_worker_not_configured') return 'שירות פרופיל הענן של פייסבוק עדיין לא הוגדר. פנו למנהל המערכת.';
