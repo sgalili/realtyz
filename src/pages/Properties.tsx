@@ -164,12 +164,13 @@ export default function Properties() {
   // 200 rows, so the counter pill must not rely on the rendered length.
   const { data: totalListingsCount } = useQuery({
     queryKey: ['properties-total-count', activeWorkspaceId ?? 'anon'],
-    enabled: !!user,
+    enabled: !!user && !!activeWorkspaceId,
     staleTime: 60_000,
     queryFn: async () => {
       const { count, error } = await (supabase as any)
         .from('listings')
         .select('*', { count: 'exact', head: true })
+        .eq('workspace_owner_id', activeWorkspaceId as string)
         .neq('status', 'discarded');
       if (error) return null;
       return (count as number) ?? 0;
@@ -294,31 +295,11 @@ export default function Properties() {
   const loadDefaultPool = useCallback(async (type: ListingType | 'all' = 'all'): Promise<UnifiedResult[]> => {
     if (!activeWorkspaceId) return [];
     const cacheKey = `${activeWorkspaceId}:${type}`;
-    const cities = (isConfigured && coveredCities.length ? coveredCities : DEFAULT_CITIES).slice(0, 6);
-    // Own inventory + the SHARED market pool for the same cities. The pool is
-    // refreshed twice a day by the scheduled job, so any workspace working in
-    // these cities sees the fresh Yad2 inventory without an API call.
-    const batches = await Promise.all([
-      searchLocalListings({ workspace_owner_id: activeWorkspaceId, listing_type: 'all' }).catch(() => [] as UnifiedResult[]),
-      ...cities.map((c) =>
-        searchMarketPool({ city: c, listing_type: 'all' }, 100).catch(() => [] as UnifiedResult[]),
-      ),
-    ]);
-    const seen = new Set<string>();
-    const seenUrls = new Set<string>();
-    let all = batches.flat().filter((r) => {
-      if (seen.has(r.key)) return false;
-      const u = (r.url ?? '').split('?')[0];
-      if (u && seenUrls.has(u)) return false;
-      seen.add(r.key);
-      if (u) seenUrls.add(u);
-      return true;
-    });
-    // Safety net: if the workspace cities hold nothing yet, show all stored inventory.
-    if (!all.length) {
-      all = await searchLocalListings({ workspace_owner_id: activeWorkspaceId, listing_type: 'all' }).catch(() => [] as UnifiedResult[]);
-      if (!all.length) all = await searchMarketPool({ listing_type: 'all' }, 200).catch(() => [] as UnifiedResult[]);
-    }
+    // STRICT workspace isolation: "הנכסים שלי" shows only rows whose
+    // workspace_owner_id is the active workspace. No shared/global fallback —
+    // an empty workspace shows 0 properties and the empty state.
+    const all = await searchLocalListings({ workspace_owner_id: activeWorkspaceId, listing_type: 'all' })
+      .catch(() => [] as UnifiedResult[]);
     const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
       new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
     const take = (t: ListingType) => all.filter((r) => r.listing_type === t).sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
