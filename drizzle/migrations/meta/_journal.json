@@ -862,6 +862,13 @@
       "when": 1793706316678,
       "tag": "0122_monthly_200_free_credits",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1793707715163,
+      "tag": "0123_broker_approval_activation_notice",
+      "breakpoints": true
     }
   ]
 }
