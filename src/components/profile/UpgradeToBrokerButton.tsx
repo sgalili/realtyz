@@ -22,7 +22,7 @@ const FAILURES: Record<string, string> = {
 };
 
 /** Stable ref: reveal and focus the license input once when it mounts. */
-const focusLicenseOnMount = (el: HTMLDivElement | null) => { if (el) requestAnimationFrame(() => { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); el.querySelector('input')?.focus(); }); };
+const focusLicenseOnMount = (el: HTMLDivElement | null) => { if (el) requestAnimationFrame(() => { el.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); el.querySelector('input')?.focus(); }); };
 
 /** Non-broker upgrade request: registry + certificate match, then manual Super Admin approval. */
 export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApproved }: { profileOwnerId?: string; publisher?: boolean; onApproved?: () => void }) {
