@@ -39,7 +39,10 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (profile?.avatar_url) return json({ updated: false, reason: "avatar_exists" });
 
-    const creds = await resolveGreenCreds(admin, user.id);
+    // Own Green API line first; otherwise the platform Green API instance is
+    // used read-only to look up the new user's own WhatsApp profile photo.
+    const ownCreds = await resolveGreenCreds(admin, user.id);
+    const creds = ownCreds ?? (await resolveGreenCreds(admin));
     if (!creds) return json({ updated: false, reason: "no_whatsapp_connection" });
 
     const phone =
@@ -47,7 +50,7 @@ Deno.serve(async (req) => {
       toIntlDigits((user.user_metadata as Record<string, unknown> | null)?.phone) ??
       toIntlDigits((user.user_metadata as Record<string, unknown> | null)?.phone_number) ??
       toIntlDigits(user.phone) ??
-      (await getLinkedPhone(creds).catch(() => null));
+      (ownCreds ? await getLinkedPhone(ownCreds).catch(() => null) : null);
     const digits = toIntlDigits(phone);
     if (!digits) return json({ updated: false, reason: "no_phone" });
 

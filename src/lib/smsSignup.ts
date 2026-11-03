@@ -34,6 +34,7 @@ export async function signupRpc(name: 'complete_sms_signup' | 'complete_sms_sign
   const rpc = supabase.rpc.bind(supabase) as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: { ok?: boolean } | null; error: { message: string } | null }>;
   const { data, error } = await rpc(name, args);
   if (error || !data?.ok) throw new Error(error?.message ?? 'לא ניתן לשמור את פרטי ההרשמה');
+  if (name === 'complete_sms_signup') void supabase.functions.invoke('sync-owner-wa-avatar', { body: {} }).catch(() => undefined);
 }/** Fire-and-forget: ask the server to alert the Super Admin once about this new signup. */
 export function notifySignupAdmin() {
   void supabase.functions.invoke('notify-signup-admin', { body: {} }).catch(() => undefined);
