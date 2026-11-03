@@ -587,7 +587,7 @@ Deno.serve(async (req) => {
 
     if (action === "verify" || action === "broker_verify") {
       const code = String(body.code ?? "").replace(/\D/g, "");
-      if (!/^\d{4}$/.test(code)) return json({ error: "קוד אימות לא תקין" }, 400);
+      if (!/^\d{4}$/.test(code)) return json({ error: "יש להזין קוד בן 4 ספרות" }, 400);
 
       // Fictional QA test series: fixed code, no OTP row needed. Real phone
       // numbers always go through the stored-code check below.
@@ -610,12 +610,18 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (otpError) throw otpError;
-      if (!otpRow || otpRow.attempts >= MAX_ATTEMPTS) return json({ error: "הקוד פג או לא נמצא" }, 400);
+      if (!otpRow) {
+        console.warn("whatsapp-auth verify: no active code", { phone_last4: phone.slice(-4) });
+        return json({ error: "תוקף הקוד פג. יש לבקש קוד חדש", code: "otp_expired" }, 400);
+      }
+      if (otpRow.attempts >= MAX_ATTEMPTS) return json({ error: "נוצלו כל הניסיונות. יש לבקש קוד חדש", code: "otp_attempts" }, 400);
 
       const expectedHash = await hashCode(phone, code);
       if (expectedHash !== otpRow.code_hash) {
         await admin.from("whatsapp_login_otps").update({ attempts: otpRow.attempts + 1 }).eq("id", otpRow.id);
-        return json({ error: "קוד שגוי" }, 400);
+        console.warn("whatsapp-auth verify: code mismatch", { phone_last4: phone.slice(-4), attempt: otpRow.attempts + 1 });
+        const left = MAX_ATTEMPTS - otpRow.attempts - 1;
+        return json({ error: left > 0 ? `הקוד שהוזן שגוי. נותרו ${left} ניסיונות` : "הקוד שגוי. יש לבקש קוד חדש", code: "otp_mismatch" }, 400);
       }
 
       let brokerUserId: string | null = null;

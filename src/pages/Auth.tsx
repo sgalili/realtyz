@@ -105,7 +105,7 @@ const Auth = () => {
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
           <p className="-mt-6 text-base text-muted-foreground">נשלח למספר <span dir="ltr" className="font-medium text-foreground">{phone}</span> <button type="button" className="ms-1 text-sm text-primary underline underline-offset-2" onClick={switchPhone}>החלפה</button></p>
-          <InputOTP maxLength={4} value={otp} onChange={value => { setOtp(value); if (value.length === 4) void verify(value); }} containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
+          <InputOTP maxLength={4} value={otp} onChange={raw => { const value = raw.replace(/\D/g, '').slice(0, 4); setOtp(value); if (value.length === 4) void verify(value); }} pasteTransformer={text => { const d = text.replace(/\D/g, ''); return d.length > 4 ? d.slice(-4) : d; }} inputMode="numeric" autoComplete="one-time-code" containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
             <InputOTPGroup className="flex-row-reverse gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-none focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
           </InputOTP>
           <Button type="button" className="w-full text-[17px]" disabled={loading || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
