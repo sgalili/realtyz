@@ -11,6 +11,14 @@ import { GroupDiscoveryDialog } from './GroupDiscoveryDialog';
 import { BrandIcon } from '@/components/BrandIcon';
 import { usePersonalLanguage } from '@/i18n/personalLanguage';
 
+const RECONNECT_HINT = 'החיבור לפרופיל הענן של פייסבוק נותק או דורש כניסה מחדש. לחצו "חיבור באמצעות פייסבוק", היכנסו לחשבון בחלון הענן שנפתח וחזרו לכאן.';
+/** Friendly Hebrew guidance instead of raw API errors for cloud-session failures. */
+export function cloudSessionErrorMessage(code?: string, message?: string): string {
+  if (['no_cloud_session', 'decrypt_failed', 'remote_forbidden', 'remote_failed', 'session_expired', 'unauthorized'].includes(code ?? '')) return RECONNECT_HINT;
+  if (code === 'not_configured' || code === 'cloud_worker_not_configured') return 'שירות פרופיל הענן של פייסבוק עדיין לא הוגדר. פנו למנהל המערכת.';
+  return message && /[\u0590-\u05FF]/.test(message) ? message : 'פתיחת החיבור לפרופיל הענן נכשלה. נסו שוב בעוד רגע.';
+}
+
 /**
  * Clean two-step Facebook connection screen shown before creating a post when
  * the workspace has no active cloud session. Opens the remote cloud browser,
@@ -101,7 +109,9 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly
       const { data, error } = await supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_check' } });
       if (generation.current !== run) return;
       if (error || data?.error) {
-        setErrorMessage(data?.message || 'לא ניתן לבדוק את החיבור כרגע. נסו שוב.');
+        const msg = cloudSessionErrorMessage(data?.error, data?.message);
+        setErrorMessage(msg);
+        if (manual) toast.error(msg, { id: 'fb-cloud-session' });
         return;
       }
       const state = await getCloudSessionState();
@@ -137,13 +147,14 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly
     try {
       const { data, error } = await supabase.functions.invoke('fb-session-vault', { body: { action: 'remote_login' } });
       const payload = data ?? await (error as { context?: Response } | null)?.context?.json().catch(() => null);
-      if (error || payload?.error || !payload?.url) throw new Error(payload?.message || 'פתיחת החיבור לפייסבוק נכשלה');
+      if (error || payload?.error || !payload?.url) throw new Error(cloudSessionErrorMessage(payload?.error, payload?.message));
       if (generation.current !== run) { placeholder?.close(); return; }
       cloudUrl = payload.url;
     } catch (e) {
       placeholder?.close();
       if (generation.current !== run) return;
       stop(); setPhase('idle'); setErrorMessage((e as Error).message);
+      toast.error((e as Error).message, { id: 'fb-cloud-session' });
       return;
     }
     setManualUrl(cloudUrl);

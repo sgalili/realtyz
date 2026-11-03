@@ -7547,6 +7547,7 @@ const CampaignCenter = () => {
   // Facebook two-step flow: the publishing composer mounts only after the
   // connection screen is completed (or explicitly skipped).
   const [fbReady, setFbReady] = useState(false);
+  const [fbCloudConnectOpen, setFbCloudConnectOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   // Live status per collapsed draft card (keyed by composer instanceId).
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
@@ -8327,6 +8328,12 @@ const CampaignCenter = () => {
       window.location.href = '/profile?tab=connections';
       return;
     }
+    // Facebook connects only through the GoLogin cloud browser profile,
+    // never the unverified Meta OAuth window (blank tabs / profile_403).
+    if (c.id === 'facebook') {
+      setFbCloudConnectOpen(true);
+      return;
+    }
 
     try {
       toast.loading('פותח חיבור לפייסבוק…', { id: 'meta-connect' });
@@ -8710,7 +8717,13 @@ const CampaignCenter = () => {
           {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'instagram' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200">{wizardChannel === 'ivr' ? <IvrBroadcastPanel /> : <SmsBlastSimulator dedicatedChannel={wizardChannel} />}</div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
-          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} showConnectButton={false} />}
+          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
+          <Dialog open={fbCloudConnectOpen} onOpenChange={setFbCloudConnectOpen}>
+            <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
+              <DialogTitle className="text-center text-xl">חיבור לפייסבוק</DialogTitle>
+              <FacebookCloudConnectGate alwaysVisible connectionOnly onSynced={() => { setFbCloudConnectOpen(false); setConnectedChannels((prev) => new Set([...prev, 'facebook'])); }} onStatusChange={setFbReady} />
+            </DialogContent>
+          </Dialog>
           {wizardChannel === 'instagram' && <InstagramConnectGate onStatusChange={setFbReady} />}
           
           <div hidden aria-hidden="true">
