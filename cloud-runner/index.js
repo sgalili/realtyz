@@ -134,12 +134,12 @@ async function report(job, result) {
   if (!job.report_url) return;
   const callback = new URL(job.report_url);
   const expected = process.env.CLOUD_CALLBACK_ORIGIN;
-  if (!expected || callback.origin !== new URL(expected).origin || !['/functions/v1/fb-session-vault','/functions/v1/fb-group-manager','/functions/v1/cloud-group-poster'].includes(callback.pathname)) throw new Error('invalid_callback');
+  if (!expected || callback.origin !== new URL(expected).origin || !['/functions/v1/fb-session-vault','/functions/v1/fb-group-manager','/functions/v1/cloud-group-poster','/functions/v1/cloud-social-inbox'].includes(callback.pathname)) throw new Error('invalid_callback');
   await fetch(job.report_url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-worker-secret": SECRET },
     body: JSON.stringify({
-      action: job.job_type === 'group_join' ? 'join_result' : job.job_type === "group_fetch" ? "fetch_result" : "report",
+      action: SOCIAL_ACTIONS[job.job_type] || (job.job_type === 'group_join' ? 'join_result' : job.job_type === "group_fetch" ? "fetch_result" : "report"),
       job_id: job.job_id,
       ...(job.dispatch_token ? { dispatch_token: job.dispatch_token } : {}),
       ...result,
@@ -196,13 +196,147 @@ async function joinGroup(job) {
   } finally { await browser.close().catch(() => {}); }
 }
 
+// ── Inbox, Messenger and comment automation (same saved cloud session) ──────
+const SOCIAL_ACTIONS = { inbox_sync: 'inbox_result', messenger_send: 'send_result', comments_sync: 'comments_result', comment_reply: 'send_result' };
+const isFacebookUrl = (raw) => { try { const u = new URL(raw); return u.protocol === 'https:' && ['facebook.com','www.facebook.com','m.facebook.com'].includes(u.hostname); } catch { return false; } };
+async function withSession(job, fn) {
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox','--disable-setuid-sandbox','--lang=he-IL'] });
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 1000 });
+    if (job.user_agent) await page.setUserAgent(job.user_agent);
+    await page.setCookie(...parseCookies(job.session_cookies));
+    return await fn(page);
+  } finally { await browser.close().catch(() => {}); }
+}
+const expired = (page) => /\/login|\/checkpoint/.test(page.url());
+
+// Reads the newest Messenger threads and their latest inbound messages.
+async function syncInbox(job) {
+  return withSession(job, async (page) => {
+    await page.goto('https://www.facebook.com/messages/t/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await sleep(5000);
+    if (expired(page)) return { status: 'session_expired', error: 'נדרש חידוש התחברות לפייסבוק' };
+    const threads = await page.evaluate(() => {
+      const out = []; const seen = new Set();
+      for (const a of document.querySelectorAll('a[href*="/messages/t/"]')) {
+        const m = String(a.href).match(/\/messages\/t\/(\d+)/); if (!m || seen.has(m[1])) continue;
+        seen.add(m[1]);
+        out.push({ thread_id: m[1], name: String(a.getAttribute('aria-label') || a.textContent || '').trim().split('\n')[0].slice(0, 120) });
+      }
+      return out.slice(0, 10);
+    });
+    const results = [];
+    for (const t of threads.slice(0, Number(job.max_threads) || 8)) {
+      await page.goto(`https://www.facebook.com/messages/t/${t.thread_id}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await sleep(3500);
+      const data = await page.evaluate(() => {
+        const title = document.querySelector('[role="main"] h2, [role="main"] h1');
+        const rows = Array.from(document.querySelectorAll('[role="main"] [role="row"]'));
+        const msgs = [];
+        for (const r of rows) {
+          const label = String(r.querySelector('h4,h5,[data-scope="messages_table"] span')?.textContent || '');
+          const text = String(r.querySelector('[dir="auto"]')?.textContent || '').trim();
+          if (!text) continue;
+          const outbound = /^(You sent|שלחת|את\/ה שלחת|אתה שלחת|את שלחת)/.test(label.trim()) || /^(You sent|שלחת)/.test(String(r.textContent || '').trim());
+          msgs.push({ text: text.slice(0, 4000), outbound });
+        }
+        return { name: String(title?.textContent || '').trim().slice(0, 120), messages: msgs.slice(-12) };
+      });
+      results.push({ thread_id: t.thread_id, name: data.name || t.name, messages: data.messages });
+    }
+    return { status: 'completed', threads: results };
+  });
+}
+
+async function typeAndSend(page, box, text) {
+  await box.click();
+  const lines = String(text || '').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    await page.keyboard.type(lines[i], { delay: 10 });
+    if (i < lines.length - 1) { await page.keyboard.down('Shift'); await page.keyboard.press('Enter'); await page.keyboard.up('Shift'); }
+  }
+  await page.keyboard.press('Enter');
+  await sleep(2500);
+}
+
+async function sendMessenger(job) {
+  if (!/^\d+$/.test(String(job.thread_id || ''))) return { status: 'failed', error: 'invalid_thread' };
+  return withSession(job, async (page) => {
+    await page.goto(`https://www.facebook.com/messages/t/${job.thread_id}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await sleep(4000);
+    if (expired(page)) return { status: 'session_expired', error: 'נדרש חידוש התחברות לפייסבוק' };
+    const box = await page.waitForSelector('[role="main"] div[role="textbox"][contenteditable="true"]', { timeout: 20000 }).catch(() => null);
+    if (!box) return { status: 'failed', error: 'לא נמצאה תיבת הודעה' };
+    await typeAndSend(page, box, job.text);
+    return { status: 'completed' };
+  });
+}
+
+// Reads comments on posts we published to groups.
+async function syncComments(job) {
+  const posts = (Array.isArray(job.posts) ? job.posts : []).filter((p) => isFacebookUrl(p.post_url)).slice(0, 10);
+  return withSession(job, async (page) => {
+    const out = [];
+    for (const post of posts) {
+      await page.goto(post.post_url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await sleep(4000);
+      if (expired(page)) return { status: 'session_expired', error: 'נדרש חידוש התחברות לפייסבוק' };
+      for (let i = 0; i < 3; i++) { await page.evaluate(() => window.scrollBy(0, 1500)); await sleep(1000); }
+      const comments = await page.evaluate(() => {
+        const list = []; const seen = new Set();
+        for (const art of document.querySelectorAll('div[role="article"]')) {
+          const label = String(art.getAttribute('aria-label') || '');
+          if (!/comment|תגובה|תגובת/i.test(label)) continue;
+          const link = Array.from(art.querySelectorAll('a[href*="comment_id="]')).map((a) => a.href)[0] || '';
+          const id = (link.match(/comment_id=(\d+)/) || [])[1]; if (!id || seen.has(id)) continue;
+          seen.add(id);
+          const author = art.querySelector('a[role="link"] span, a span');
+          const authorLink = art.querySelector('a[href*="facebook.com/"]')?.href || '';
+          const authorId = (authorLink.match(/[?&]id=(\d+)/) || authorLink.match(/\/user\/(\d+)/) || authorLink.match(/facebook\.com\/([A-Za-z0-9.]+)/) || [])[1] || null;
+          const text = String(art.querySelector('[dir="auto"]:not(a [dir="auto"])')?.textContent || '').trim();
+          if (text) list.push({ comment_id: id, author_name: String(author?.textContent || '').trim().slice(0, 120), author_id: authorId, text: text.slice(0, 4000) });
+        }
+        return list.slice(0, 50);
+      });
+      out.push({ job_id: post.job_id, post_url: post.post_url, comments });
+    }
+    return { status: 'completed', posts: out };
+  });
+}
+
+async function replyComment(job) {
+  if (!isFacebookUrl(job.post_url) || !/^\d+$/.test(String(job.comment_id || ''))) return { status: 'failed', error: 'invalid_comment' };
+  return withSession(job, async (page) => {
+    const url = new URL(job.post_url); url.searchParams.set('comment_id', job.comment_id);
+    await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await sleep(4500);
+    if (expired(page)) return { status: 'session_expired', error: 'נדרש חידוש התחברות לפייסבוק' };
+    const clicked = await page.evaluate((cid) => {
+      for (const art of document.querySelectorAll('div[role="article"]')) {
+        if (!art.querySelector(`a[href*="comment_id=${cid}"]`)) continue;
+        const btn = Array.from(art.querySelectorAll('[role="button"]')).find((b) => /^(Reply|הגב|השב)$/.test(String(b.textContent || '').trim()));
+        if (btn) { btn.click(); return true; }
+      }
+      return false;
+    }, String(job.comment_id));
+    if (!clicked) return { status: 'failed', error: 'לא נמצא כפתור תגובה' };
+    await sleep(1500);
+    const box = await page.waitForSelector('div[contenteditable="true"][role="textbox"]:focus, div[contenteditable="true"][role="textbox"]', { timeout: 15000 }).catch(() => null);
+    if (!box) return { status: 'failed', error: 'לא נמצאה תיבת תגובה' };
+    await typeAndSend(page, box, job.text);
+    return { status: 'completed' };
+  });
+}
+const SOCIAL_RUNNERS = { inbox_sync: syncInbox, messenger_send: sendMessenger, comments_sync: syncComments, comment_reply: replyComment };
+
 // One serialized lane per Facebook account/workspace, no concurrent joins.
 const lanes = new Map();
 function schedule(job) {
   const key = job.workspace_owner_id || 'discovery';
   const previous = lanes.get(key) || Promise.resolve();
   const next = previous.catch(() => {}).then(async () => {
-    const run = job.job_type === 'group_join' ? joinGroup : job.job_type === 'group_fetch' ? fetchGroups : publish;
+    const run = SOCIAL_RUNNERS[job.job_type] || (job.job_type === 'group_join' ? joinGroup : job.job_type === 'group_fetch' ? fetchGroups : publish);
     try { await report(job, await run(job)); }
     catch { await report(job, job.job_type === 'group_join' ? {outcome:'failed',error:'cloud_join_failed'} : {status:'failed',error:'cloud_task_failed'}); }
     if(job.job_type === 'group_join') await sleep(120000);
