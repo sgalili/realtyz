@@ -86,7 +86,7 @@ export async function applyPendingSignupRole(): Promise<string | null> {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
       const { data: existing } = await supabase.from('user_roles').select('role').eq('user_id', authUser.id);
-      if (existing?.some(r => r.role !== 'user')) {
+      if (existing?.some(r => !['user', 'affiliate'].includes(r.role))) {
         clearSmsSignup();
         clearPendingSignupRole();
         return null;
