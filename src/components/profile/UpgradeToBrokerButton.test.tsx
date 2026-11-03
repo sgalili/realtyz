@@ -17,12 +17,12 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {
     const chain = {
       select: () => chain,
       eq: (field: string, value: string) => { if (field === 'id' || field === 'user_id') state.reads.push(value); return chain; },
-      maybeSingle: async () => ({ data: table === 'profiles' ? { broker_license_number: state.license } : table === 'broker_upgrade_requests' && state.pending ? { id: 'request', license_number: state.license } : null, error: null }),
+      maybeSingle: async () => ({ data: table === 'profiles' ? { broker_license_number: state.license } : table === 'broker_upgrade_requests' && state.pending ? { id: 'request', license_number: state.license, status: 'pending' } : (state as any).approved ? { id: 'request', license_number: state.license, status: 'approved' } : null, error: null }),
     }; return chain;
   },
 } }));
 const mount = (profileOwnerId?: string) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><UpgradeToBrokerButton profileOwnerId={profileOwnerId} /></QueryClientProvider>);
-beforeEach(() => { state.verified = false; state.license = ''; state.pending = false; state.reads = []; state.submissions = 0; });
+beforeEach(() => { state.verified = false; state.license = ''; state.pending = false; state.reads = []; state.submissions = 0; (state as any).approved = false; });
 afterEach(cleanup);
 
 it('allows an unverified account without a license to open verification', async () => {
@@ -60,4 +60,10 @@ it('checks the displayed workspace owner without offering submission as another 
   fireEvent.click(screen.getByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' }));
   expect(screen.queryByRole('textbox', { name: 'מספר רישיון חדש' })).toBeNull();
   expect(state.submissions).toBe(0);
+});
+it('shows only the verified card after Super Admin approval', async () => {
+  (state as any).approved = true; state.license = '77777'; mount();
+  await screen.findByText('מאומת');
+  expect(screen.queryByRole('button', { name: 'בעלי רישיון תיווך מרוויחים יותר!' })).toBeNull();
+  expect(screen.queryByText('הרישיון הוזן — השדרוג טרם אושר')).toBeNull();
 });
