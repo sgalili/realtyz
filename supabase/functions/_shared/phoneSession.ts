@@ -1,4 +1,5 @@
 /** Called only after the caller's phone challenge has been verified server-side. */
+const toIntl = (v: unknown) => { const d = String(v ?? '').replace(/\D/g, ''); return /^05\d{8}$/.test(d) ? `972${d.slice(1)}` : d; };
 export async function verifiedPhoneSession(admin: any, client: any, phone: string, provider: string) {
   let target: any = null;
   for (let page = 1; ; page++) {
@@ -6,8 +7,7 @@ export async function verifiedPhoneSession(admin: any, client: any, phone: strin
     if (error) throw error;
     const users = data?.users ?? [];
     target = users.find((u: any) =>
-      String(u.phone ?? '').replace(/\D/g, '') === phone ||
-      String(u.user_metadata?.phone_number ?? '').replace(/\D/g, '') === phone);
+      toIntl(u.phone) === phone || toIntl(u.user_metadata?.phone_number) === phone);
     if (target || users.length < 1000) break;
   }
   // Fallback: an existing profile saved the number in another format
