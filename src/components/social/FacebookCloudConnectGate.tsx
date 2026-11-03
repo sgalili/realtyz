@@ -168,7 +168,7 @@ export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly
     }
     setErrorMessage('');
     let tab: Window | null = null;
-    try { tab = window.open(cloudUrl, '_blank', 'noopener'); } catch { tab = null; }
+    try { tab = window.open(cloudUrl, '_blank'); if (tab) tab.opener = null; } catch { tab = null; }
     setManualUrl(cloudUrl);
     // The remote URL is single-use: prepare a fresh one for any retry.
     setPrepared({ url: '', error: '', loading: false });
