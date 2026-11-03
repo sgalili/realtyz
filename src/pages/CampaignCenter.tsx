@@ -7547,6 +7547,7 @@ const CampaignCenter = () => {
   // Facebook two-step flow: the publishing composer mounts only after the
   // connection screen is completed (or explicitly skipped).
   const [fbReady, setFbReady] = useState(false);
+  const [fbCloudConnectOpen, setFbCloudConnectOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   // Live status per collapsed draft card (keyed by composer instanceId).
   const [draftStatuses, setDraftStatuses] = useState<Record<string, ComposerStatus>>({});
