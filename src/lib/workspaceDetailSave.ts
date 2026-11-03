@@ -1,4 +1,4 @@
-export type OfficeField = 'agency_name' | 'logo_url' | 'office_address' | 'public_email' | 'brokerage_name' | 'brokerage_license';
+export type OfficeField = 'agency_name' | 'logo_url' | 'office_address' | 'public_email' | 'brokerage_name' | 'brokerage_license' | 'office_city' | 'office_phone';
 
 /** Each confirmation persists one field, never other unconfirmed drafts. */
 export function workspaceDetailPatch(ownerId: string, field: OfficeField, value: string): { user_id: string } & Partial<Record<OfficeField, string | null>> {

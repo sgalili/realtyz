@@ -517,7 +517,7 @@ function WorkspaceTab() {
   const [agencyName, setAgencyName] = useState('');
   const [savedAgencyName, setSavedAgencyName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [officeDetails, setOfficeDetails] = useState({ office_address: '', public_email: '', brokerage_name: '', brokerage_license: '' });
+  const [officeDetails, setOfficeDetails] = useState({ office_address: '', office_city: '', office_phone: '', public_email: '', brokerage_name: '', brokerage_license: '' });
   const [serviceAreas, setServiceAreas] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [savingField, setSavingField] = useState<string | null>(null);
@@ -536,7 +536,7 @@ function WorkspaceTab() {
     (async () => {
       try {
         const { data, error } = await supabase.from('white_label_settings')
-          .select('agency_name, logo_url, office_address, public_email, brokerage_name, brokerage_license')
+          .select('agency_name, logo_url, office_address, office_city, office_phone, public_email, brokerage_name, brokerage_license')
           .eq('user_id', ownerId).maybeSingle();
         if (error) throw error;
         const { data: profile, error: profileError } = await supabase.from('profiles')
@@ -546,7 +546,7 @@ function WorkspaceTab() {
         const name = data?.agency_name || '';
         setAgencyName(name); setSavedAgencyName(name);
         setLogoUrl(data?.logo_url || activeWorkspace?.workspace_logo_url || '');
-        setOfficeDetails({ office_address: data?.office_address || '', public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
+        setOfficeDetails({ office_address: data?.office_address || '', office_city: (data as any)?.office_city || '', office_phone: (data as any)?.office_phone || '', public_email: data?.public_email || '', brokerage_name: data?.brokerage_name || '', brokerage_license: data?.brokerage_license || '' });
         setServiceAreas(normalizeCitySelection(profile?.service_areas?.length ? profile.service_areas : [profile?.city || '']));
       } catch (error: any) {
         if (!cancelled) toast.error(error?.message || 'טעינת פרטי המשרד נכשלה');
@@ -653,8 +653,21 @@ function WorkspaceTab() {
           <IsraeliCityPicker value="" onChange={() => {}} selectedValues={serviceAreas} onSelectionChange={values => void saveServiceAreas(values)} firstOptions={['כל הארץ']} placeholder="אזורי שירות" disabled={busy} className="h-10 text-base" itemClassName="text-base" />
         </div>
       </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label className="text-base text-muted-foreground">עיר המשרד</label>
+          <IsraeliCityPicker value={officeDetails.office_city} onChange={value => { setOfficeDetails(previous => ({ ...previous, office_city: value })); void saveOfficeField('office_city', value); }} placeholder="בחירת עיר" disabled={busy} className="h-10 text-base" itemClassName="text-base" />
+        </div>
+        {([['office_address', 'כתובת המשרד (רחוב ומספר)'], ['office_phone', 'טלפון המשרד']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
+          <label htmlFor={`office-${key}`} className="text-base text-muted-foreground">{label}</label>
+          <div className="relative">
+            <Input id={`office-${key}`} type={key === 'office_phone' ? 'tel' : 'text'} inputMode={key === 'office_phone' ? 'tel' : undefined} dir={key === 'office_phone' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={busy} className="pl-10" onChange={event => setOfficeDetails(previous => ({ ...previous, [key]: event.target.value }))} />
+            <Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 left-0 h-10 w-10" aria-label={`שמירת ${label}`} disabled={busy} onClick={() => void saveOfficeField(key, officeDetails[key])}><Check className="h-4 w-4" /></Button>
+          </div>
+        </div>)}
+      </div>
       {isMasterOffice && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {([['office_address', 'כתובת המשרד'], ['public_email', 'דוא״ל ציבורי'], ['brokerage_name', 'שם המתווך האחראי'], ['brokerage_license', 'רישיון תיווך']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
+        {([['public_email', 'דוא״ל ציבורי'], ['brokerage_name', 'שם המתווך האחראי'], ['brokerage_license', 'רישיון תיווך']] as const).map(([key, label]) => <div key={key} className="space-y-1.5">
           <label htmlFor={`office-${key}`} className="text-base text-muted-foreground">{label}</label>
           <div className="relative">
             <Input id={`office-${key}`} type={key === 'public_email' ? 'email' : 'text'} dir={key === 'public_email' || key === 'brokerage_license' ? 'ltr' : 'rtl'} value={officeDetails[key]} disabled={busy} className="pl-10" onChange={event => setOfficeDetails(previous => ({ ...previous, [key]: event.target.value }))} />

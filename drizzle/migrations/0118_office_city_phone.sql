@@ -1,0 +1,1 @@
+ALTER TABLE public.white_label_settings ADD COLUMN IF NOT EXISTS office_city text, ADD COLUMN IF NOT EXISTS office_phone text;
