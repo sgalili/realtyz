@@ -36,6 +36,9 @@ import { propertyInquiryRef } from '@/lib/propertyReferral';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 import { GuestSignupDialog } from '@/components/public/GuestSignupDialog';
 import BoardSearchOverlay, { BOARD_SEARCH_OPEN_EVENT, BOARD_SEARCH_STATE_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
+import { SortDropdown } from '@/components/ui/sort-dropdown';
+import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
+import { sortListingRows, type ListingSortValue } from '@/lib/listingSortOptions';
 import { useAffiliateMarketplace } from '@/hooks/useAffiliate';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
@@ -135,6 +138,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     try { localStorage.setItem('public-board-view', next ? 'grid' : 'list'); } catch { /* ignore */ }
     return next;
   });
+  // Same sorting menu as "הנכסים שלי": the choice is kept per board visit.
+  const [sortBy, setSortBy] = useState<ListingSortValue>('newest');
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
     const openSearch = () => setSearchOpen((v) => !v);
@@ -258,7 +263,14 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     const fresh = filtered.filter(c => !rank.has(c.id));
     return [...fresh, ...filtered.filter(c => rank.has(c.id)).sort((a, b) => (rank.get(a.id) as number) - (rank.get(b.id) as number))];
   }, [filtered, rowOrder]);
-  const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, ordered);
+  // The sort menu owns the row order: "relevance" keeps the viewer's own dragged
+  // order, "newest" keeps the server's newest-first feed order, the rest compare
+  // price, rooms or area exactly like the property page does.
+  const sortedRows = useMemo(
+    () => sortListingRows(sortBy === 'newest' ? filtered : ordered, sortBy),
+    [filtered, ordered, sortBy],
+  );
+  const columns = usePublicBoardColumns(`${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`, sortedRows);
   const rowDrag = useRef<{ id: string; pointerId: number } | null>(null);
   // Floating preview + target highlight while a property row is dragged to a new position.
   const [dragGhost, setDragGhost] = useState<{ id: string; x: number; y: number; overId: string | null } | null>(null);
@@ -281,7 +293,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     setRowOrder(next);
     try { localStorage.setItem(rowOrderKey, JSON.stringify(next)); } catch { /* storage disabled */ }
   };
-  useEffect(() => { setVisibleCount(24); }, [query, deal, propFilter, leadFilter, grid]);
+  useEffect(() => { setVisibleCount(24); }, [query, deal, propFilter, leadFilter, grid, sortBy]);
   // Guest reward indicators disclose configured types, never prices.
   const visibleColumns = columns.visible;
   const priceBounds = useMemo(() => { const p = cards.map(c => Number(c.price)).filter(v => Number.isFinite(v) && v > 0); return p.length ? { min: Math.min(...p), max: Math.max(...p) } : null; }, [cards]);
@@ -323,11 +335,42 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         </div>
       </header>
 
+      {/* Signed-in home: the controls bar sits right under the site title and
+          above the listings — search at the far right, sorting next to the view
+          toggle at the far left, exactly like "הנכסים שלי". No count by default. */}
+      {embedded && (
+        <div className="mx-auto w-full max-w-6xl shrink-0 px-0">
+          <div className="flex shrink-0 items-center justify-between gap-0" style={{ marginInlineEnd: '-5px' }}>
+            <div className="relative shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-9 border-0 bg-transparent text-muted-foreground shadow-none hover:bg-transparent hover:text-primary"
+                aria-label="חיפוש"
+                onClick={() => setSearchOpen((value) => !value)}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+              {searchOpen ? (
+                <button type="button" aria-label="סגירת החיפוש" onClick={() => setSearchOpen(false)} className="absolute -top-1 -right-1 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
+                  <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                </button>
+              ) : appliedFilterCount > 0 ? <span aria-label={`${appliedFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{appliedFilterCount}</span> : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-0">
+              <SortDropdown value={sortBy} onChange={setSortBy} />
+              <ViewModeSwitch isGrid={grid} onToggle={toggleGrid} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <main aria-label="רשימת נכסים" className={cn('mx-auto min-h-0 w-full min-w-0 max-w-6xl flex-1 overscroll-contain pb-0 pt-[15px]', embedded ? 'px-0' : 'px-[15px]', grid || loading || filtered.length === 0 ? 'overflow-y-auto' : 'flex flex-col overflow-hidden')}>
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <div className="flex flex-col items-center justify-center gap-4 py-16 text-center"><p className="text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p>{(appliedFilterCount > 0 || query.trim()) && <Button type="button" onClick={resetFilters}>איפוס סינונים</Button>}</div> : (
           grid ? (
           <div className="property-card-grid">
-            {filtered.slice(0, visibleCount).map(card => <StandardPropertyCard key={card.id} card={card} signedIn={!!user} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} />)}
+            {sortedRows.slice(0, visibleCount).map(card => <StandardPropertyCard key={card.id} card={card} signedIn={!!user} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} />)}
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>

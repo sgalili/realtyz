@@ -1,5 +1,11 @@
 # Roadmap
 
+## Home controls bar November 3
+- [x] Move search, sort and view-mode toggle below the site title and above the table on the signed-in home page; search far right, view toggle far left, sort beside it; no property count.
+- [x] Share one sort menu with "הנכסים שלי" (src/lib/listingSortOptions.ts + src/components/ui/sort-dropdown.tsx); removed the duplicate header search/view controls.
+- [x] 5 focused tests passed; signed-in desktop verified positions, the six identical options, ascending price re-order and no count. Build OK; the 9 failing suite tests are unrelated (phoneSession, signupRole, wallet, ai-brain, group chips).
+
+
 ## Yad2 import cards November 1
 - [x] Split the import slide into two framed cards: "יבוא כל המודעות שלי מיד 2" (exact office-page sentence, lighter placeholder, tip under the input) and "יבוא מודעה מיד 2" (statement under the title), office-page card first.
 - [x] Import buttons appear only for a matching link (office page vs single ad), "המשך ללא ייבוא" is a framed outline button, the role heading reads "מי מפרסם?" and the top tabs have no arrows.

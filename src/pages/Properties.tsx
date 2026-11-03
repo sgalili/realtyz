@@ -23,7 +23,6 @@ import {
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem,
-  DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
@@ -32,7 +31,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
   ArrowRight, Loader2, Search as SearchIcon, Filter,
-   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon, ChevronDown,
+   Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon, ChevronDown,
    RefreshCw, Handshake, Pencil, Trash2,
   Send, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -81,6 +80,8 @@ import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { AffiliateCommissionButton } from '@/components/properties/AffiliateCommissionButton';
 import { AffiliateShareCell, AffiliateTierPrices } from '@/components/properties/AffiliateShareCell';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
+import { SortDropdown } from '@/components/ui/sort-dropdown';
+import type { ListingSortValue } from '@/lib/listingSortOptions';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useAffiliateConfigs } from '@/hooks/useAffiliate';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
@@ -199,7 +200,7 @@ export default function Properties() {
     setMaxPrice(next.priceMax ?? PRICE_MAX);
     setAreaMin(next.sizeMin == null ? '' : String(next.sizeMin));
   };
-  const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
+  const [sortBy, setSortBy] = useState<ListingSortValue>('newest');
 
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const { data: filterLeadConfigs } = useAffiliateConfigs(results.flatMap(row => row.localId ? [row.localId] : []));
@@ -868,14 +869,6 @@ export default function Properties() {
     }).sort((a, b) => b.count - a.count);
   }, [sourceStatus, completedResults, activeSources]);
 
-  const SORT_LABELS: Record<typeof sortBy, string> = {
-    relevance: 'רלוונטיות',
-    price_asc: 'מחיר: נמוך לגבוה',
-    price_desc: 'מחיר: גבוה לנמוך',
-    rooms_desc: 'הכי הרבה חדרים',
-    size_desc: 'הכי גדול (מ״ר)',
-    newest: 'החדשים ביותר',
-  };
 
   // Active advanced-filter criteria rendered as readable, removable words
   // right inside the search field.
@@ -912,32 +905,7 @@ export default function Properties() {
     <div data-testid={testId} className="flex shrink-0 items-center justify-end gap-0" style={{ marginInlineEnd: "-5px" }}>
 
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                   variant="ghost"
-                  size="sm"
-                   className="h-8 gap-1.5 border-0 bg-transparent text-xs shadow-none hover:bg-transparent hover:text-inherit"
-                  aria-label="מיון"
-                  title="מיון"
-                >
-                  <ArrowUpDown className="h-3.5 w-3.5" />
-                  
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
-                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
-                      {SORT_LABELS[key]}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SortDropdown value={sortBy} onChange={setSortBy} />
 
             <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
 

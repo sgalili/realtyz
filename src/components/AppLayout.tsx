@@ -1,5 +1,4 @@
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
-import { BOARD_SEARCH_OPEN_EVENT, BOARD_SEARCH_STATE_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
 import { FaqHost } from '@/components/faq/FaqDialog';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -8,7 +7,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { shouldShowWelcome, WELCOME_REOPEN_EVENT } from '@/lib/welcomePreference';
-import { Bot, Zap, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu, Search, List, LayoutGrid } from 'lucide-react';
+import { Bot, Zap, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -273,17 +272,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { activeWorkspace, activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
-  const boardRoute = location.pathname === '/' || location.pathname === '/public-listings';
-  const [boardGrid, setBoardGrid] = useState(() => { try { return localStorage.getItem('public-board-view') !== 'list'; } catch { return true; } });
-  const [boardSearchOpen, setBoardSearchOpen] = useState(false);
-  const [boardFilterCount, setBoardFilterCount] = useState(0);
-  useEffect(() => {
-    const onView = (e: Event) => setBoardGrid(Boolean((e as CustomEvent<{ grid: boolean }>).detail?.grid));
-    const onSearch = (e: Event) => { const d = (e as CustomEvent<{ open: boolean; count?: number }>).detail; setBoardSearchOpen(Boolean(d?.open)); setBoardFilterCount(Number(d?.count) || 0); };
-    window.addEventListener(BOARD_VIEW_STATE_EVENT, onView);
-    window.addEventListener(BOARD_SEARCH_STATE_EVENT, onSearch);
-    return () => { window.removeEventListener(BOARD_VIEW_STATE_EVENT, onView); window.removeEventListener(BOARD_SEARCH_STATE_EVENT, onSearch); };
-  }, []);
   const { isDemoMode, setDemoMode, demoCandidateId, setDemoCandidateId } = useDemoMode();
   useSessionTimeout();
   const queryClient = useQueryClient();
@@ -503,14 +491,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="app-header-content flex w-full items-center justify-between gap-2">
             <div className="relative z-40 flex shrink-0 items-center gap-1">
               <HeaderProfileLink />
-              {boardRoute && <div className="relative shrink-0">
-                <Button variant="ghost" size="icon" className="-ms-[5px] h-9 w-9" aria-label="חיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))}><Search className="!h-[28.75px] !w-[28.75px]" /></Button>
-                {boardSearchOpen ? (
-                  <button type="button" aria-label="סגירת החיפוש" onClick={() => window.dispatchEvent(new Event(BOARD_SEARCH_OPEN_EVENT))} className="absolute -top-1 -right-1 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm">
-                    <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-                  </button>
-                ) : boardFilterCount > 0 ? <span aria-label={`${boardFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{boardFilterCount}</span> : null}
-              </div>}
               <NotificationCenter />
               <HomeActivityPill />
             </div>
@@ -528,7 +508,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
               <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />
-              {boardRoute && <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={boardGrid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} onClick={() => window.dispatchEvent(new Event(BOARD_VIEW_TOGGLE_EVENT))}>{boardGrid ? <List className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}</Button>}
             </div>
             </div>
           </header>
