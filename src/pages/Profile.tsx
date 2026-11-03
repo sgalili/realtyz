@@ -14,7 +14,7 @@ import {
   Plus, Trash2, Pencil, Mail, Phone, MessageCircle, MapPin, User as UserIcon,
   Building2, ImageIcon, LogOut, X, Check,
 } from 'lucide-react';
-import { BadgeCheck } from 'lucide-react';
+import { BadgeCheck, Clock } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/i18n/personalToast';
@@ -318,6 +318,22 @@ function PersonalTab() {
   }, [user, profileOwnerId, isOwnProfile, hydratedFor]);
 
   const verifiedLicenseLocked = !!lockedBrokerName || (showBrokerFields && isOwnProfile && !licenseSuspended && !!storedLicense);
+  const [licenseLiveVerified, setLicenseLiveVerified] = useState<boolean | null>(null);
+  useEffect(() => {
+    const ownerId = profileOwnerId;
+    if (!ownerId || !storedLicense) { setLicenseLiveVerified(null); return; }
+    let cancelled = false;
+    (async () => {
+      const [{ data: roles }, { data: req }] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', ownerId),
+        supabase.from('broker_upgrade_requests').select('status').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      const brokerRole = (roles ?? []).some((r: any) => ['managing_broker', 'agent', 'lead_agent', 'junior_agent'].includes(String(r.role)));
+      setLicenseLiveVerified(brokerRole || (req as any)?.status === 'approved' || !!lockedBrokerName);
+    })();
+    return () => { cancelled = true; };
+  }, [profileOwnerId, storedLicense, lockedBrokerName]);
   const removeLicense = async () => {
     setRemovingLicense(true);
     try {
@@ -455,7 +471,9 @@ function PersonalTab() {
             <div className="min-w-0 flex-1">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
             </div>
-            <span role="status" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-success"><BadgeCheck className="h-4 w-4" aria-hidden />מאומת</span>
+            {licenseLiveVerified === false
+              ? <span role="status" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-muted-foreground"><Clock className="h-4 w-4" aria-hidden />ממתין לאימות</span>
+              : <span role="status" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-success"><BadgeCheck className="h-4 w-4" aria-hidden />מאומת</span>}
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
