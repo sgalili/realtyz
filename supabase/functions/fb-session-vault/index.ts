@@ -8,7 +8,7 @@
 // The raw cookie payload is encrypted with AES-GCM (FB_SESSION_ENC_KEY) before
 // it touches the database and is NEVER returned to the client.
 
-import { diagnoseGoLogin403, goLoginToken } from "../_shared/gologin.ts";
+import { attachIsraeliProxy as attachIsraeliProxy_, diagnoseGoLogin403, ensureToraffProfile, goLoginToken, toraffProfileName } from "../_shared/gologin.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
     let profileId = row?.remote_profile_id as string | undefined;
     const createProfile = async () => {
       const r = await fetch("https://api.gologin.com/browser/quick", {
-        method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: `toraff-${String(owner).replace(/-/g, "").slice(0, 12)}` }),
+        method: "POST", headers: h, body: JSON.stringify({ os: "lin", name: toraffProfileName(owner) }),
       });
       if (r.status === 401 || r.status === 403) throw Object.assign(new Error(`profile_${r.status}`), { gologin: { step: "profile", body: await r.text().catch(() => "") } });
       if (!r.ok) throw new Error(`profile_${r.status}`);
@@ -200,27 +200,15 @@ Deno.serve(async (req) => {
       await attachIsraeliProxy(id);
       return id as string;
     };
-    // Every new profile runs behind a GoLogin residential proxy in Israel.
-    // A profile is never launched without it: Facebook must only see an Israeli IP.
     const attachIsraeliProxy = async (id: string) => {
-      const linked = await fetch("https://api.gologin.com/users-proxies/mobile-proxy", {
-        method: "POST", headers: h,
-        body: JSON.stringify({ countryCode: "il", isMobile: false, isDC: false, profileIdToLink: id }),
-      });
-      if (linked.ok) return;
-      const fallback = await fetch("https://api.gologin.com/browser/proxy/many/v2", {
-        method: "PATCH", headers: h,
-        body: JSON.stringify({ proxies: [{ profileId: id, proxy: { mode: "geolocation", autoProxyRegion: "il" } }] }),
-      });
-      if (!fallback.ok) {
-        console.error("gologin israeli proxy failed", linked.status, fallback.status);
-        await fetch("https://api.gologin.com/browser", { method: "DELETE", headers: h, body: JSON.stringify({ profilesToDelete: [id] }) }).catch(() => {});
-        throw new Error(`proxy_il_${linked.status}_${fallback.status}`);
-      }
+      try { await attachIsraeliProxy_(token, id); }
+      catch (e) { await fetch("https://api.gologin.com/browser", { method: "DELETE", headers: h, body: JSON.stringify({ profilesToDelete: [id] }) }).catch(() => {}); throw e; }
     };
     const launch = (id: string) => fetch(`https://api.gologin.com/browser/${id}/web`, { method: "POST", headers: h });
     try {
       if (!profileId) profileId = await createProfile();
+      // Older profiles are renamed and moved to the Israeli proxy before launch.
+      else if (await ensureToraffProfile(token, profileId, owner) === "missing") profileId = await createProfile();
       let w = await launch(profileId);
       // A stored profile may be stale (deleted / from another GoLogin account): recreate once.
       if ((w.status === 403 || w.status === 404) && row?.remote_profile_id) {
