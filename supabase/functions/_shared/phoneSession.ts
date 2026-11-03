@@ -1,4 +1,5 @@
 /** Called only after the caller's phone challenge has been verified server-side. */
+const toIntl = (v: unknown) => { const d = String(v ?? '').replace(/\D/g, ''); return /^05\d{8}$/.test(d) ? `972${d.slice(1)}` : d; };
 export async function verifiedPhoneSession(admin: any, client: any, phone: string, provider: string) {
   let target: any = null;
   for (let page = 1; ; page++) {
@@ -6,9 +7,26 @@ export async function verifiedPhoneSession(admin: any, client: any, phone: strin
     if (error) throw error;
     const users = data?.users ?? [];
     target = users.find((u: any) =>
-      String(u.phone ?? '').replace(/\D/g, '') === phone ||
-      String(u.user_metadata?.phone_number ?? '').replace(/\D/g, '') === phone);
+      toIntl(u.phone) === phone || toIntl(u.user_metadata?.phone_number) === phone);
     if (target || users.length < 1000) break;
+  }
+  // Fallback: an existing profile saved the number in another format
+  // (05XXXXXXXX / +9725XXXXXXXX / 9725XXXXXXXX). Match it after normalizing.
+  if (!target) {
+    const local = `0${phone.slice(3)}`;
+    const { data: rows } = await admin.from('profiles').select('id, phone')
+      .or(`phone.eq.${local},phone.eq.${phone},phone.eq.+${phone},phone.ilike.%${phone.slice(-9)}`).limit(10);
+    const norm = (v: string) => { const d = String(v ?? '').replace(/\D/g, ''); return d.startsWith('05') ? `972${d.slice(1)}` : d; };
+    const match = (rows ?? []).filter((r: any) => norm(r.phone) === phone);
+    if (match.length === 1) {
+      const { data } = await admin.auth.admin.getUserById(match[0].id);
+      if (data?.user) target = data.user;
+    }
+  }
+  let existingAccount = false;
+  if (target) {
+    const { data: roleRows } = await admin.from('user_roles').select('role').eq('user_id', target.id);
+    existingAccount = (roleRows ?? []).some((r: any) => r.role !== 'user');
   }
   // Phone-provider logins are disabled at the auth layer, so phone-only
   // accounts get a non-deliverable internal sign-in alias (never emailed,
@@ -46,5 +64,5 @@ export async function verifiedPhoneSession(admin: any, client: any, phone: strin
   const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
   if (error) throw error;
   if (!data.properties?.hashed_token) throw new Error('Phone session could not be created');
-  return { token_hash: data.properties.hashed_token, verification_type: 'magiclink' };
+  return { token_hash: data.properties.hashed_token, verification_type: 'magiclink', existing_account: existingAccount };
 }
