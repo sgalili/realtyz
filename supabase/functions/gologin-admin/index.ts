@@ -6,7 +6,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { encryptSession } from "../_shared/sessionCrypto.ts";
-import { checkGoLoginToken, GOLOGIN_KEY, goLoginToken } from "../_shared/gologin.ts";
+import { checkGoLoginToken, ensureToraffProfile, GOLOGIN_KEY, goLoginToken } from "../_shared/gologin.ts";
 
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -42,6 +42,20 @@ Deno.serve(async (req) => {
   }
 
   const { token, source } = await goLoginToken(admin);
+  if (action === "migrate_profiles") {
+    if (!token) return json({ error: "not_configured", message: "לא הוגדר מפתח GoLogin" }, 400);
+    const { data: rows } = await admin.from("fb_cloud_sessions").select("workspace_owner_id, remote_profile_id").not("remote_profile_id", "is", null);
+    let updated = 0, missing = 0, failed = 0;
+    for (const r of rows ?? []) {
+      try {
+        const res = await ensureToraffProfile(token, r.remote_profile_id, r.workspace_owner_id);
+        if (res === "ok") updated++;
+        else { missing++; await admin.from("fb_cloud_sessions").update({ remote_profile_id: null }).eq("workspace_owner_id", r.workspace_owner_id); }
+      } catch (e) { failed++; console.error("gologin migrate failed", (e as Error).message); }
+    }
+    return json({ ok: failed === 0, total: rows?.length ?? 0, updated, missing, failed });
+  }
+
   if (action === "test") {
     const check = await checkGoLoginToken(token);
     if (source === "admin") await record(check.status, check.message);
