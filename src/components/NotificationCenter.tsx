@@ -196,6 +196,32 @@ export default function NotificationCenter() {
   });
 
   const queryClient = useQueryClient();
+  // Global Super Admin alerts: deliberately NOT workspace-scoped, so they stay
+  // visible whichever workspace the Super Admin is viewing. Role is re-checked
+  // server-side (has_role) and RLS only returns rows to super_admin.
+  const { data: isSuperAdmin = false } = useQuery({
+    queryKey: ['notif-is-super-admin', user?.id],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('has_role', { _user_id: user!.id, _role: 'super_admin' });
+      if (error) return false;
+      return data === true;
+    },
+  });
+  const { data: adminPending = [] } = useQuery({
+    queryKey: ['notif-admin-pending-licenses', user?.id],
+    enabled: !!user?.id && isSuperAdmin,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('broker_upgrade_requests')
+        .select('id, license_number, created_at').eq('status', 'pending')
+        .order('created_at', { ascending: false }).limit(20);
+      if (error) return [];
+      return data ?? [];
+    },
+  });
+  const unviewedAdminPending = adminPending.filter((r: any) => !viewedIds.has(`admin-lic-${r.id}`));
 
   useEffect(() => {
     if (!user?.id || !listingsEnabled) return;
@@ -304,7 +330,7 @@ export default function NotificationCenter() {
   const unviewedRitaSmsReplies = visibleRitaSmsReplies.filter((n: any) => !viewedIds.has(`rita-${n.id}`));
   const activeBudgetAlerts = budgetAlerts.filter(b => allows('budget') && !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
   const badgeCount =
-    unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + unviewedRitaSmsReplies.length + activeBudgetAlerts.length;
+    unviewedAdminPending.length + unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + unviewedRitaSmsReplies.length + activeBudgetAlerts.length;
 
   /** Every key currently rendered in the drawer. */
   const allKeys = [
@@ -396,6 +422,19 @@ export default function NotificationCenter() {
         </div>
 
         <ScrollArea className="h-[min(70vh,28rem)] max-h-[calc(100vh-8rem)]">
+          {adminPending.length > 0 && (
+            <button
+              type="button"
+              className="w-full px-4 py-3 border-b border-border/30 flex gap-3 items-start text-right bg-primary/5 hover:bg-primary/10"
+              onClick={() => { markManyViewed(adminPending.map((r: any) => `admin-lic-${r.id}`)); setOpen(false); navigate('/super-admin'); }}
+            >
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-semibold">התראת מנהל-על: {adminPending.length} בקשות רישיון תיווך ממתינות לאישור</span>
+                <p className="text-xs text-muted-foreground mt-1">אימות ידני של רישיונות ותעודות. גלוי בכל מרחבי העבודה.</p>
+              </div>
+            </button>
+          )}
           {activeBudgetAlerts.map(b => (
             <div
               key={b.service}
