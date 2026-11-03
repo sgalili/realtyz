@@ -31,25 +31,42 @@ Deno.serve(async (req) => {
 
     const admin = createClient(url, service);
 
+    // Optional target: a Super Admin may resolve another workspace owner's photo.
+    let body: Record<string, unknown> = {};
+    try { body = await req.json(); } catch { /* empty body */ }
+    const requested = typeof body.owner_id === "string" ? body.owner_id : null;
+    let targetId = user.id;
+    let targetMeta: Record<string, unknown> | null = (user.user_metadata as Record<string, unknown> | null) ?? null;
+    let targetPhone: string | null | undefined = user.phone;
+    if (requested && requested !== user.id) {
+      const { data: role } = await admin.from("user_roles").select("role")
+        .eq("user_id", user.id).eq("role", "super_admin").maybeSingle();
+      if (!role) return json({ error: "forbidden" }, 403);
+      targetId = requested;
+      const { data: tu } = await admin.auth.admin.getUserById(requested);
+      targetMeta = (tu?.user?.user_metadata as Record<string, unknown> | null) ?? null;
+      targetPhone = tu?.user?.phone ?? null;
+    }
+
     // Don't overwrite an avatar the user already has.
     const { data: profile } = await admin
       .from("profiles")
       .select("avatar_url, phone")
-      .eq("id", user.id)
+      .eq("id", targetId)
       .maybeSingle();
-    if (profile?.avatar_url) return json({ updated: false, reason: "avatar_exists" });
+    if (profile?.avatar_url) return json({ updated: false, reason: "avatar_exists", avatar_url: profile.avatar_url });
 
     // Own Green API line first; otherwise the platform Green API instance is
     // used read-only to look up the new user's own WhatsApp profile photo.
-    const ownCreds = await resolveGreenCreds(admin, user.id);
+    const ownCreds = await resolveGreenCreds(admin, targetId);
     const creds = ownCreds ?? (await resolveGreenCreds(admin));
     if (!creds) return json({ updated: false, reason: "no_whatsapp_connection" });
 
     const phone =
       toIntlDigits(profile?.phone) ??
-      toIntlDigits((user.user_metadata as Record<string, unknown> | null)?.phone) ??
-      toIntlDigits((user.user_metadata as Record<string, unknown> | null)?.phone_number) ??
-      toIntlDigits(user.phone) ??
+      toIntlDigits(targetMeta?.phone) ??
+      toIntlDigits(targetMeta?.phone_number) ??
+      toIntlDigits(targetPhone) ??
       (ownCreds ? await getLinkedPhone(ownCreds).catch(() => null) : null);
     const digits = toIntlDigits(phone);
     if (!digits) return json({ updated: false, reason: "no_phone" });
@@ -57,9 +74,9 @@ Deno.serve(async (req) => {
     const avatar = await fetchGreenAvatar(creds, `${digits}@c.us`);
     if (!avatar) return json({ updated: false, reason: "no_wa_avatar" });
 
-    await admin.from("profiles").update({ avatar_url: avatar }).eq("id", user.id);
-    await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: { ...(user.user_metadata ?? {}), avatar_url: avatar },
+    await admin.from("profiles").update({ avatar_url: avatar }).eq("id", targetId);
+    await admin.auth.admin.updateUserById(targetId, {
+      user_metadata: { ...(targetMeta ?? {}), avatar_url: avatar },
     });
 
     return json({ updated: true, avatar_url: avatar });

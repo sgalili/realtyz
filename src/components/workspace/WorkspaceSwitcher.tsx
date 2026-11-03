@@ -37,12 +37,23 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     if (!user?.id || !avatarOwnerId) {
       return;
     }
+    let cancelled = false;
     supabase
       .from('profiles')
       .select('avatar_url')
       .eq('id', avatarOwnerId)
       .maybeSingle()
-      .then(({ data }) => setProfileAvatarUrl((data as any)?.avatar_url ?? null));
+      .then(async ({ data }) => {
+        const saved = (data as any)?.avatar_url ?? null;
+        if (cancelled) return;
+        if (saved) { setProfileAvatarUrl(saved); return; }
+        // No stored photo yet: resolve the owner's WhatsApp picture server-side.
+        const { data: res } = await supabase.functions
+          .invoke('sync-owner-wa-avatar', { body: { owner_id: avatarOwnerId } })
+          .catch(() => ({ data: null as any }));
+        if (!cancelled) setProfileAvatarUrl((res as any)?.avatar_url ?? null);
+      });
+    return () => { cancelled = true; };
   }, [user?.id, avatarOwnerId]);
 
   const { isSuperAdmin } = useUserRole();
