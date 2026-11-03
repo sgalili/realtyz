@@ -527,7 +527,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex shrink-0 items-center gap-1">
               <HeaderCrisisAlert />
-              <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!h-auto !w-auto !min-w-0 !p-[5px] whitespace-nowrap !text-[15px] sm:!text-[17px]" />
+              <PublicListingPublisher autoResume label="פרסום חינם" triggerClassName="!w-[88px] sm:!w-[114px] !px-1 !text-[17px] sm:!text-[20px]" />
               {boardRoute && <Button variant="ghost" size="icon" className="h-10 w-10" aria-label={boardGrid ? 'תצוגת רשימה' : 'תצוגת כרטיסים'} onClick={() => window.dispatchEvent(new Event(BOARD_VIEW_TOGGLE_EVENT))}>{boardGrid ? <List className="h-5 w-5" /> : <LayoutGrid className="h-5 w-5" />}</Button>}
             </div>
             </div>
