@@ -107,8 +107,6 @@ Deno.serve(async req => {
     throw last ?? new Error('fetch_failed');
   };
   const fetchPage = fetchPageWithRetry;
-  void (() => {
-  });
 
   const ids: string[] = [];
   let pages = 0, partial = false;
