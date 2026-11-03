@@ -66,7 +66,11 @@ const Auth = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: `+${mobile.data}`, code } });
-      if (error || data?.error) throw new Error(data?.error ?? 'קוד האימות אינו תקין');
+      if (error || data?.error) {
+        let message = data?.error as string | undefined;
+        try { if (!message && error && 'context' in error) message = (await (error as { context: Response }).context.json())?.error; } catch { /* keep default */ }
+        throw new Error(message ?? 'קוד האימות אינו תקין');
+      }
       // The server verifies OTP; there are no client master-code or alternate-provider paths.
       let result: { error: unknown } = data?.session ? await supabase.auth.setSession(data.session)
         : data?.token_hash ? await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' })
