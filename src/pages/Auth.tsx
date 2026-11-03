@@ -78,8 +78,16 @@ const Auth = () => {
       if (result.error && data?.token_hash) result = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
       if (result.error) throw result.error;
       localStorage.removeItem(PENDING_OTP_KEY);
-      // Recognized existing account: drop any signup intent so no registration step runs.
-      if (data?.existing_account) { clearSmsSignup(); clearPendingSignupRole(); }
+      // Strict guard: an account that already holds a real role never sees registration.
+      let established = !!data?.existing_account;
+      if (!established) {
+        const { data: { user: signedIn } } = await supabase.auth.getUser();
+        if (signedIn) {
+          const { data: roleRows } = await supabase.from('user_roles').select('role').eq('user_id', signedIn.id);
+          established = (roleRows ?? []).some(r => !['user', 'affiliate'].includes(r.role));
+        }
+      }
+      if (established) { clearSmsSignup(); clearPendingSignupRole(); clearPostSignupWelcome(); }
       navigate('/', { replace: true });
     } catch (error) {
       setAttempts(value => value + 1); setOtp('');
