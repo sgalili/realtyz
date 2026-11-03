@@ -820,6 +820,13 @@
       "when": 1793571121795,
       "tag": "0116_license_autopublish_and_board_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1793704061090,
+      "tag": "0117_my_ads_promoting_own_workspace_only",
+      "breakpoints": true
     }
   ]
 }
