@@ -416,7 +416,7 @@ async function fetchGroups(job) {
 http
   .createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/capabilities') {
-      res.writeHead(200, {'Content-Type':'application/json'}).end(JSON.stringify({group_fetch:true,group_join:true,cloud_posts:true}));
+      res.writeHead(200, {'Content-Type':'application/json'}).end(JSON.stringify({group_fetch:true,group_join:true,cloud_posts:true,inbox_sync:true,messenger_send:true,comments_sync:true,comment_reply:true}));
       return;
     }
     if (req.method !== "POST") {
