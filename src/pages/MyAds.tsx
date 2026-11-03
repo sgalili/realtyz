@@ -38,7 +38,6 @@ import type { PublicCard } from '@/pages/PublicListingsBoard';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { toast } from 'sonner';
 import { useListingAudience } from '@/hooks/useListingAudience';
-import Yad2AgencyImport from '@/components/properties/Yad2AgencyImport';
 
 type Row = {
   listing_id: string; relation: 'owned' | 'promoting'; title: string | null; city: string | null; address: string | null;
