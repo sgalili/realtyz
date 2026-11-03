@@ -190,7 +190,7 @@ function ActivityProperties() {
   const ads = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId], enabled: !!user?.id && !!activeWorkspaceId,
     refetchInterval: 120_000, refetchOnWindowFocus: false, staleTime: 60_000,
-    queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
+    queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats_for', { _workspace: activeWorkspaceId! }); if (error) throw error; return (data ?? []) as Row[]; },
   });
   const audience = useListingAudience((ads.data ?? []).map(row => row.listing_id));
   const owned = (ads.data ?? []).filter(row => row.relation === 'owned' && audience.isVisible(row.listing_id));
@@ -270,7 +270,7 @@ function MyAdsPage() {
   const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['my-ads-stats', user?.id, activeWorkspaceId], enabled: !!user?.id && !!activeWorkspaceId,
     refetchInterval: 120_000, refetchOnWindowFocus: false, staleTime: 60_000,
-    queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats'); if (error) throw error; return (data ?? []) as Row[]; },
+    queryFn: async () => { const { data, error } = await supabase.rpc('get_my_ads_stats_for', { _workspace: activeWorkspaceId! }); if (error) throw error; return (data ?? []) as Row[]; },
   });
   const navigate = useNavigate();
   const [tFilter, setTFilter] = useState<TransparencyFilter | null>(null);
