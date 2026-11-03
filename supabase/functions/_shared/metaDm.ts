@@ -72,6 +72,8 @@ export type InboundDm = {
   senderName: string | null;
   text: string;
   createdAt: string | null;
+  /** Free-text origin saved on new leads (leads has no source column). */
+  source?: string;
 };
 
 /** Find (or create) the lead that owns a DM thread, keyed by PSID/IGSID. */
@@ -81,9 +83,11 @@ export async function resolveDmLead(
   dm: InboundDm,
 ): Promise<string | null> {
   const col = psidColumn(dm.platform);
+  // Workspace-scoped: the same Facebook sender in two workspaces is two leads.
   const { data: existing } = await admin
     .from("leads")
     .select("id")
+    .eq("workspace_owner_id", ownerId)
     .eq(col, dm.senderId)
     .limit(1)
     .maybeSingle();
@@ -92,11 +96,12 @@ export async function resolveDmLead(
   const { data: created, error } = await admin
     .from("leads")
     .insert({
-      user_id: ownerId,
+      workspace_owner_id: ownerId,
       phone_number: `dm-${dm.platform}-${dm.senderId}`,
       full_name: dm.senderName || `${dm.platform === "instagram" ? "Instagram" : "Messenger"} ${dm.senderId.slice(-6)}`,
       [col]: dm.senderId,
-      source: `${dm.platform}_dm`,
+      notes: dm.source ?? `${dm.platform}_dm`,
+      last_interaction_at: new Date().toISOString(),
       lead_stage: "new",
     } as any)
     .select("id")
