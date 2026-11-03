@@ -15,7 +15,7 @@ const LABEL: Record<string, string> = { valid: 'תקין', invalid_token: 'מפ�
 export function GoLoginTokenCard() {
   const [status, setStatus] = useState<Status>({});
   const [token, setToken] = useState('');
-  const [busy, setBusy] = useState<'' | 'save' | 'test'>('');
+  const [busy, setBusy] = useState<'' | 'save' | 'test' | 'migrate'>('');
 
   const call = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke('gologin-admin', { body });
@@ -43,6 +43,14 @@ export function GoLoginTokenCard() {
     catch (e) { toast.error((e as Error).message); } finally { setBusy(''); }
   };
 
+  const migrate = async () => {
+    setBusy('migrate');
+    try {
+      const r = await call({ action: 'migrate_profiles' });
+      const text = `עודכנו ${r.updated} מתוך ${r.total} פרופילים${r.missing ? `, ${r.missing} ייווצרו מחדש בחיבור הבא` : ''}${r.failed ? `, ${r.failed} נכשלו` : ''}`;
+      r.failed ? toast.warning(text) : toast.success(text);
+    } catch (e) { toast.error((e as Error).message); } finally { setBusy(''); }
+  };
   const check = status.last_check_status;
   return <Card>
     <CardHeader>
@@ -61,6 +69,7 @@ export function GoLoginTokenCard() {
         <Button onClick={() => void save()} disabled={!token.trim() || !!busy}>{busy === 'save' && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}שמירה</Button>
         <Button variant="outline" onClick={() => void test()} disabled={!status.configured || !!busy}>{busy === 'test' && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}בדיקה</Button>
       </div>
+      <Button variant="outline" className="w-full sm:w-auto" onClick={() => void migrate()} disabled={!status.configured || !!busy}>{busy === 'migrate' && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}עדכון כל הפרופילים הקיימים ל-IP ישראלי ולשם TORAFF</Button>
     </CardContent>
   </Card>;
 }

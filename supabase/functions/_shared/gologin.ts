@@ -43,3 +43,40 @@ export async function diagnoseGoLogin403(token: string, step: "profile" | "launc
       : "המפתח תקין, אך התוכנית ב-GoLogin אינה כוללת הפעלת דפדפן בענן (Cloud Browser). יש לשדרג תוכנית.",
   };
 }
+
+export const toraffProfileName = (owner: string) => `toraff-${String(owner).replace(/-/g, "").slice(0, 12)}`;
+
+/** Links a GoLogin residential proxy in Israel to the profile; throws proxy_il_* on failure. */
+export async function attachIsraeliProxy(token: string, id: string) {
+  const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const linked = await fetch("https://api.gologin.com/users-proxies/mobile-proxy", {
+    method: "POST", headers: h,
+    body: JSON.stringify({ countryCode: "il", isMobile: false, isDC: false, profileIdToLink: id }),
+  });
+  if (linked.ok) return;
+  const fallback = await fetch("https://api.gologin.com/browser/proxy/many/v2", {
+    method: "PATCH", headers: h,
+    body: JSON.stringify({ proxies: [{ profileId: id, proxy: { mode: "geolocation", autoProxyRegion: "il" } }] }),
+  });
+  if (!fallback.ok) throw new Error(`proxy_il_${linked.status}_${fallback.status}`);
+}
+
+/**
+ * Brings an existing profile up to standard: toraff- name and Israeli proxy.
+ * Returns "ok" when already compliant or fixed, "missing" when the profile no longer exists.
+ */
+export async function ensureToraffProfile(token: string, id: string, owner: string): Promise<"ok" | "missing"> {
+  const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const r = await fetch(`https://api.gologin.com/browser/${id}`, { headers: h });
+  if (r.status === 404 || r.status === 403) return "missing";
+  if (!r.ok) throw new Error(`profile_read_${r.status}`);
+  const p = await r.json().catch(() => ({}));
+  const proxy = p?.proxy ?? {};
+  const region = String(proxy.autoProxyRegion ?? p?.autoProxyRegion ?? proxy.country ?? p?.geolocation?.country ?? "").toLowerCase();
+  if (!(region === "il" && proxy.mode && proxy.mode !== "none")) await attachIsraeliProxy(token, id);
+  const name = toraffProfileName(owner);
+  if (!String(p?.name ?? "").startsWith("toraff-")) {
+    await fetch("https://api.gologin.com/browser/name/many", { method: "PATCH", headers: h, body: JSON.stringify([{ id, name }]) }).catch(() => {});
+  }
+  return "ok";
+}
