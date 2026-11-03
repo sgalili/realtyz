@@ -76,7 +76,7 @@ const Auth = () => {
       <h1 className={`mb-8 mt-[50px] text-center !font-normal ${codeSent ? 'text-xl' : 'text-[17px]'}`}>{codeSent ? gender === 'female' ? 'הזיני את הקוד שקיבלת ב-SMS' : gender === 'male' ? 'הזן את הקוד שקיבלת ב-SMS' : 'הזינו את הקוד שקיבלתם ב-SMS' : signup ? 'להרשמה מהירה בחינם:' : 'כניסה לחשבון'}</h1>
       <div className="min-h-0 w-full overflow-y-auto overscroll-contain">
         {codeSent ? <div className="space-y-5 text-center">
-          <InputOTP maxLength={4} value={otp} onChange={value => { setOtp(value); if (value.length === 4) void verify(value); }} containerClassName="justify-center" dir="rtl" disabled={loading || attempts >= 3}>
+          <InputOTP maxLength={4} value={otp} onChange={value => { setOtp(value); if (value.length === 4) void verify(value); }} containerClassName="justify-center" dir="ltr" disabled={loading || attempts >= 3}>
             <InputOTPGroup className="gap-2">{[0, 1, 2, 3].map(index => <InputOTPSlot key={index} index={index} className="h-16 w-16 rounded-md border bg-background text-[38px] font-bold text-primary focus-visible:outline-none focus-visible:ring-0 aria-[current=true]:ring-0" />)}</InputOTPGroup>
           </InputOTP>
           <Button type="button" className="w-full" disabled={loading || otp.length !== 4 || attempts >= 3} onClick={() => void verify()}>{loading ? 'מאמת...' : 'אימות הקוד'}</Button>
