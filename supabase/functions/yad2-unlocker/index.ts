@@ -231,6 +231,13 @@ export type BdTrace = {
   attempt: number;
 };
 let bdTrace: BdTrace[] = [];
+// Absolute per-invocation deadline so no single provider hop can push the
+// request past the platform's 150s idle cut-off.
+let requestDeadline = Number.POSITIVE_INFINITY;
+const hopTimeoutMs = (cap = 40_000) => Math.max(1_000, Math.min(cap, requestDeadline - Date.now()));
+function withDeadline<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`timeout: ${label}`)), ms))]);
+}
 
 async function unlock(
   url: string,
@@ -250,6 +257,7 @@ async function unlock(
   const maxAttempts = opts.maxAttempts ?? 4;
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (requestDeadline - Date.now() < 4_000) throw new Error(`timeout: budget exhausted before ${url}`);
     try {
       const { status, body, bdHeaders } = await brightDataRequest(url, { accept: opts.accept });
       const zoneErr = zoneModeError(bdHeaders);
@@ -2100,6 +2108,7 @@ Deno.serve(async (req) => {
     const startedAt = Date.now();
     const BUDGET_MS = 110_000;
     const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
+    requestDeadline = startedAt + BUDGET_MS;
     let timedOut = false;
     const body = earlyBody;
     // Memory guard: each Yad2 page is multi-MB of HTML and the regex parsers
@@ -2366,7 +2375,10 @@ Deno.serve(async (req) => {
       }
 
       // --- Fallback C: Bright Data Scraping Browser (real Chromium over WS) ----
-      if (!out.length && BD_WS) {
+      if (!out.length && BD_WS && timeLeft() < 50_000) {
+        timedOut = true;
+        diagnostics.push({ endpoint: `[browser] ${pageUrl}`, kind: "html", status: "error", error: "skipped: not enough time left" });
+      } else if (!out.length && BD_WS) {
         mode = "browser";
         try {
           const feedUrls = isItemUrl
@@ -2375,7 +2387,7 @@ Deno.serve(async (req) => {
           // For a single item we ALWAYS want the gw JSON: it is the only source
           // of `על הנכס` / `פרטים נוספים` / coordinates / price history. The HTML
           // alone yields a thin row (title = neighbourhood, no description).
-          const harvest = await scrapingBrowserHarvest(pageUrl, feedUrls, (html) => {
+          const harvest = await withDeadline(scrapingBrowserHarvest(pageUrl, feedUrls, (html) => {
             if (isItemUrl) return true;
             try {
               const probe = parseSearch(html, pageUrl, limit);
