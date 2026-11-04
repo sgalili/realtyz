@@ -14,7 +14,25 @@ const CACHE_SECONDS = 6 * 60 * 60;
 
 // Returns only ads that belong to the given agency. Yad2 agency pages also embed
 // promoted/recommended ads of other offices; those must never be imported.
+// Reads the agency's own feed query (queryKey ["realestate-agency-*-feed", agencyId]).
+export function agencyFeedFromHtml(html: string, agencyId: string): { ids: string[]; totalPages: number } | null {
+  const next = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)?.[1];
+  if (!next) return null;
+  try {
+    const queries = JSON.parse(next)?.props?.pageProps?.dehydratedState?.queries ?? [];
+    for (const q of queries) {
+      const key = q?.queryKey, d = q?.state?.data;
+      if (!Array.isArray(key) || !/agency.*feed/i.test(String(key[0])) || !Array.isArray(d?.feed)) continue;
+      if (String(key[1] ?? d?.details?.customerId ?? '') !== agencyId) continue;
+      const ids = d.feed.map((x: any) => x?.token).filter((t: any) => typeof t === 'string' && /^[a-z0-9]{6,12}$/i.test(t)).map((t: string) => t.toLowerCase());
+      return { ids, totalPages: Number(d?.pagination?.totalPages) || 1 };
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
 export function itemIdsFromHtml(html: string, agencyId?: string): string[] {
+  if (agencyId) { const feed = agencyFeedFromHtml(html, agencyId); if (feed) return feed.ids; }
   const next = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)?.[1];
   if (next && agencyId) {
     try {
@@ -111,19 +129,28 @@ Deno.serve(async req => {
   const ids: string[] = [];
   let pages = 0, partial = false;
   let officeLogo: string | null = null;
+  const agencyId = decodeURIComponent(pageUrl.pathname.split('/')[3]);
+  let readable = false;
   try {
-    for (let p = 1; p <= MAX_PAGES; p++) {
-      if (Date.now() > deadline - 5000) { partial = true; break; }
-      const u = new URL(pageUrl.href);
-      if (p > 1) u.searchParams.set('page', String(p));
-      const html = await fetchPage(u.href);
-      if (p === 1) officeLogo = officeLogoFromHtml(html);
-      const found = itemIdsFromHtml(html, decodeURIComponent(pageUrl.pathname.split('/')[3]));
-      pages++;
-      const fresh = found.filter(id => !ids.includes(id));
-      if (!fresh.length) break;
-      ids.push(...fresh);
-      if (ids.length >= MAX_ITEMS) { partial = true; break; }
+    // Agency pages split inventory by deal type; read each section with its pagination.
+    for (const section of ['forsale', 'rent']) {
+      let totalPages = MAX_PAGES;
+      for (let p = 1; p <= Math.min(MAX_PAGES, totalPages); p++) {
+        if (Date.now() > deadline - 5000) { partial = true; break; }
+        const u = new URL(`${pageUrl.href}/${section}`);
+        if (p > 1) u.searchParams.set('page', String(p));
+        const html = await fetchPage(u.href);
+        if (!officeLogo) officeLogo = officeLogoFromHtml(html);
+        const feed = agencyFeedFromHtml(html, agencyId);
+        if (feed) { readable = true; totalPages = feed.totalPages; }
+        const found = feed ? feed.ids : itemIdsFromHtml(html, agencyId);
+        pages++;
+        const fresh = found.filter(id => !ids.includes(id));
+        if (!fresh.length) break;
+        ids.push(...fresh);
+        if (ids.length >= MAX_ITEMS) { partial = true; break; }
+      }
+      if (ids.length >= MAX_ITEMS) break;
     }
   } catch (e) {
     console.error('agency discovery failed', e instanceof Error ? e.message : e);
@@ -142,6 +169,7 @@ Deno.serve(async req => {
       }
     } catch (e) { console.error('office logo save failed', e instanceof Error ? e.message : e); }
   }
+  if (!ids.length) return json({ error: readable ? 'no_listings' : 'unreadable_page', message: readable ? 'עמוד המשרד נקרא בהצלחה אך לא נמצאו בו מודעות פעילות למכירה או להשכרה.' : 'לא הצלחנו לקרוא את מבנה עמוד המשרד ביד2 (ייתכן שנדרש סבב פרוקסי חדש). נסו שוב בעוד כמה דקות.' }, 422);
   const items = ids.slice(0, MAX_ITEMS).map(id => `https://www.yad2.co.il/realestate/item/${id}`);
   return json({ ok: true, source_url: pageUrl.href, pages_read: pages, partial, items });
 });
