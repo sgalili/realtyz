@@ -180,6 +180,7 @@ async function brightDataRequest(
       Connection: "close",
     },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(hopTimeoutMs()),
     ...(bdHttpClient ? { client: bdHttpClient } : {}),
   } as RequestInit);
   const body = await res.text();
