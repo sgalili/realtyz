@@ -2397,7 +2397,7 @@ Deno.serve(async (req) => {
               console.warn(`[yad2-unlocker] scraping-browser: HTML parse threw ${String((e as Error)?.message ?? e)}`);
               return true;
             }
-          });
+          }), Math.max(5_000, timeLeft() - 15_000), "scraping browser");
 
           if (harvest.html) {
             const parsed = isItemUrl
