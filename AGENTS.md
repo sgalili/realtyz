@@ -57,3 +57,4 @@
 - Rent displays always use "₪X / לחודש" via src/lib/propertyPrice.ts helpers. Why: consistent monthly pricing.
 - Broker upgrades require SMS evidence, registry+certificate and pre-registry account-name match; else pending review. Listing triggers recheck SMS/license/roles; names lock server-side. Why: no circular approval or client bypass.
 - Workspace handoffs hide cache, discard stale requests and remount publishers; tenant UI uses owner roles. Servers validate callers. Why: no leaks.
+- Inventory promotion uses server-backed owner roles, exact workspace/IDs and returned public flags, never membership-role labels or social/wallet gates. Why: approved brokers can publish without false success or tenant leaks.

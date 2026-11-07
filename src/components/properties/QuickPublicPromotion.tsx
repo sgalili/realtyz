@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { BadgeCheck, Globe, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isReadyForBoard } from '@/lib/readyForBoard';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useUserRole } from '@/hooks/useUserRole';
+import { publishInventory, publicationErrorMessage } from '@/lib/publishInventory';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,41 +14,56 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 type PromotionRow = { id: string; property_title: string | null; address: string | null; house_number: string | null; city: string | null; asking_price: number | null; status: string | null; is_published: boolean | null; affiliate_enabled: boolean | null };
 export function QuickPublicPromotion({ ids, onPublished, compact = false }: { ids: string[]; onPublished: (ids: string[]) => void; compact?: boolean }) {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
+  const { roles, loading: rolesLoading } = useUserRole();
+  const scopeRef = useRef(activeWorkspaceId);
+  scopeRef.current = activeWorkspaceId;
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<PromotionRow[]>([]);
   const [accepted, setAccepted] = useState(false);
-  const allowed = ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin', 'affiliate'].includes(activeWorkspace?.role ?? '');
-  useEffect(() => { setOpen(false); setRows([]); setAccepted(false); }, [activeWorkspaceId]);
+  // Membership roles may remain "user" after the owner's broker approval.
+  // Use server-backed owner/account roles; RLS remains the write boundary.
+  const allowed = !rolesLoading && roles.some(role => ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin', 'affiliate'].includes(role));
+  useEffect(() => { setOpen(false); setRows([]); setAccepted(false); setBusy(false); }, [activeWorkspaceId]);
   if (!allowed || !activeWorkspaceId || !ids.length) return null;
   const eligible = rows.filter(isReadyForBoard);
   const prepare = async () => {
+    const workspaceId = activeWorkspaceId;
     setBusy(true); setAccepted(false);
     try {
       const { data, error } = await supabase.from('listings').select('id,property_title,address,house_number,city,asking_price,status,is_published,affiliate_enabled').eq('workspace_owner_id', activeWorkspaceId).in('id', [...new Set(ids)]);
       if (error) throw error;
-      setRows(data ?? []); setOpen(true);
-    } catch { toast.error('לא ניתן להכין את הנכסים לפרסום'); }
-    finally { setBusy(false); }
+      if (scopeRef.current !== workspaceId) return;
+      if (!data?.length) throw new Error('הנכס לא נמצא במשרד הפעיל או שאין הרשאה לצפות בו.');
+      setRows(data); setOpen(true);
+    } catch (error) {
+      console.error('[QuickPublicPromotion] prepare failed', { workspaceId, listingIds: ids, error });
+      if (scopeRef.current === workspaceId) toast.error(publicationErrorMessage(error));
+    }
+    finally { if (scopeRef.current === workspaceId) setBusy(false); }
   };
   const publish = async () => {
     if (!accepted || !eligible.length || busy) return;
+    const workspaceId = activeWorkspaceId;
     setBusy(true);
     try {
-      const { data, error } = await supabase.from('listings').update({ is_published: true, status: 'live', affiliate_enabled: true }).eq('workspace_owner_id', activeWorkspaceId).in('id', eligible.map(row => row.id)).neq('status', 'discarded').select('id');
-      if (error) throw error;
-      const saved = (data ?? []).map(row => row.id);
-      if (!saved.length) throw new Error('לא נשמרו שינויים. יש לבדוק הרשאות לפרסום במשרד הפעיל.');
+      const saved = await publishInventory(supabase, workspaceId, eligible.map(row => row.id));
+      if (scopeRef.current !== workspaceId) return;
       onPublished(saved);
       void qc.invalidateQueries({ queryKey: ['my-ads-stats'] });
       void qc.invalidateQueries({ queryKey: ['owner-listings'] });
       void qc.invalidateQueries({ queryKey: ['ready-board-properties'] });
+      void qc.invalidateQueries({ queryKey: ['properties-total-count'] });
+      void qc.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
       toast.success(`${saved.length} נכסים פורסמו בלוח הציבורי`);
       if (saved.length !== eligible.length) toast.warning('חלק מהנכסים לא פורסמו. יש לבדוק הרשאות.');
       setOpen(false);
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'הפרסום נכשל'); }
-    finally { setBusy(false); }
+    } catch (error) {
+      console.error('[QuickPublicPromotion] publish failed', { workspaceId, listingIds: eligible.map(row => row.id), error });
+      if (scopeRef.current === workspaceId) toast.error(publicationErrorMessage(error));
+    }
+    finally { if (scopeRef.current === workspaceId) setBusy(false); }
   };
   return <>
     <Button variant="outline" size={compact ? 'icon' : 'sm'} className={compact ? 'h-8 w-8 text-primary' : 'gap-1.5'} disabled={busy} title="פרסום בלוח הציבורי" aria-label="פרסום בלוח הציבורי" onClick={(event) => { event.stopPropagation(); void prepare(); }}>

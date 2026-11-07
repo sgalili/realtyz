@@ -1,5 +1,10 @@
 # Roadmap
 
+## Imported inventory publication November 7
+- [x] Fix workspace-role visibility and scoped publication with persisted readback and Hebrew failures; discard late workspace responses.
+- [x] Verified existing listings RLS/grants permit active-workspace updates; no schema change or weakening of required pricing/license checks. No Facebook or credit dependencies.
+- [x] Authenticated Super Admin in חגי אורן's workspace published imported property 01b77dc3-d7e6-459e-88ac-a45f0ed8f048 through the UI; public flags read back with 200 and persisted in the database. Broker-self access covered by regression test.
+
 ## Home controls bar November 3
 - [x] Move search, sort and view-mode toggle below the site title and above the table on the signed-in home page; search far right, view toggle far left, sort beside it; no property count.
 - [x] Share one sort menu with "הנכסים שלי" (src/lib/listingSortOptions.ts + src/components/ui/sort-dropdown.tsx); removed the duplicate header search/view controls.
