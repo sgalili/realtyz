@@ -253,7 +253,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
 
       {description && (
         <section>
-          <h3 className="mb-1.5 text-xs font-bold text-muted-foreground">תיאור</h3>
+          <h3 className="mb-1.5 text-xs font-bold text-muted-foreground">תיאור הנכס</h3>
           <p className="whitespace-pre-line break-words leading-relaxed text-foreground">{description}</p>
         </section>
       )}

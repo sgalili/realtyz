@@ -1531,7 +1531,7 @@ function managedCard(r: UnifiedResult): PublicCard {
   return {
     id: r.localId ?? r.key, slug: null, title: r.title, city: r.city, neighborhood: r.neighborhood ?? null,
     street: r.address ?? '', deal_type: r.listing_type, rooms: r.rooms, sqm: r.size_sqm, floor: r.floor ?? null,
-    total_floors: null, price: r.price, description: r.description ?? null, photos: r.photos ?? [], contact_options: null,
+    total_floors: null, price: r.price, description: r.description ?? null, photos: r.photos ?? [], contact_options: ((r.raw as any)?.contact_options ?? null) as PublicCard['contact_options'],
   };
 }
 

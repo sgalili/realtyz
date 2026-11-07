@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
     let signedIn = false;
     let viewerId: string | null = null;
     let closingAllowed = false;
+    let viewerClient: ReturnType<typeof createClient> | null = null;
     const authorization = req.headers.get('authorization');
     if (authorization?.startsWith('Bearer ')) {
       const { data: identity } = await admin.auth.getUser(authorization.slice(7));
@@ -38,6 +39,7 @@ Deno.serve(async (req) => {
         const viewer = createClient(backendUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? serviceKey, {
           global: { headers: { Authorization: authorization } },
         });
+        viewerClient = viewer;
         const { data: allowed, error: accessError } = await viewer.rpc('can_view_closing_prices');
         closingAllowed = !accessError && allowed === true;
       }
@@ -50,7 +52,15 @@ Deno.serve(async (req) => {
     if (error) throw error;
     // Affiliate links remain usable from the persisted database snapshot even
     // after the source ad expires or the local status changes.
-    const publishable = listing && (listing.is_published === true || listing.affiliate_enabled === true);
+    // Owners/authorized workspace members (and Super Admins via the same
+    // server check) may preview their own unpublished ads; the source link
+    // to the original ad is returned only to them.
+    let canManage = false;
+    if (listing && viewerClient) {
+      const { data: ok, error: manageError } = await viewerClient.rpc('can_access_workspace_owner', { _owner: listing.workspace_owner_id ?? listing.user_id });
+      canManage = !manageError && ok === true;
+    }
+    const publishable = listing && (listing.is_published === true || listing.affiliate_enabled === true || canManage);
     if (!publishable) {
       return new Response(JSON.stringify({ error: "not found" }), {
         status: 404,
@@ -127,7 +137,8 @@ Deno.serve(async (req) => {
       }
       const cleaned = cleanPayload(safe) as Record<string, any>;
       // Single whitelisted field: the imported ad's own Yad2 URL for the landing-page source link.
-      const yad2AdUrl = publicYad2AdUrl(row.source, row.source_metadata);
+      // Original source link: owner/admin only, never public visitors.
+      const yad2AdUrl = canManage && row.id === listing.id ? publicYad2AdUrl(row.source, row.source_metadata) : null;
       if (yad2AdUrl) cleaned.yad2_ad_url = yad2AdUrl;
       cleaned.contact_options = toPublicCard(row).contact_options;
       // Keep stable app identifiers for map selection and lead-gate actions.

@@ -13,7 +13,7 @@ import PropertyContactActions from '@/components/public/PropertyContactActions';
 import PublicCardSummary from '@/components/public/PublicCardSummary';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
-import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+import { publicUrl } from '@/lib/publicUrl';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import type { UnifiedResult } from '@/lib/propertySearch';
@@ -93,8 +93,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                     : card.floor != null ? `${card.floor}` : ''}
                   </td>)}
                   <td className="p-2 align-bottom" onClick={e => e.stopPropagation()}><div className="flex items-center justify-end gap-1">
-                    {localId && <PropertyShareMenu results={[result]} iconOnly variant="ghost" hidePublish hideOpenPage />}
-                    {localId && quickPromotion(result)}
+                                        {localId && quickPromotion(result)}
                     {localId && <Button type="button" size="icon" variant="ghost" onClick={() => onFavorite(localId)} aria-label={favoriteIds.has(localId) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favoriteIds.has(localId)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favoriteIds.has(localId) && 'fill-current')} /></Button>}
                   </div></td>
                 </tr>,
@@ -103,11 +102,11 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                     <AnimatedExpansion open={open}>
                       <div className="sticky right-0 min-w-0 space-y-3 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                         {open && (localId
-                          ? <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} />} idOrSlug={localId} isFav={favoriteIds.has(localId)} onFavorite={() => onFavorite(localId)} />
+                          ? <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} share={<PropertyContactActions listingId={localId} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(`/p/${card.slug || localId}`)} />} />} idOrSlug={localId} isFav={favoriteIds.has(localId)} onFavorite={() => onFavorite(localId)} />
                           : <><PropertyGallerySlider photos={card.photos} alt={title} />{card.description && <p className="whitespace-pre-line text-sm text-foreground">{card.description}</p>}</>)}
                       </div>
                     </AnimatedExpansion>
-                    {open && localId && <PropertyContactActions listingId={localId} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} formAsButton compact className="mx-3 mb-1 lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
+                    {open && localId && <PropertyContactActions listingId={localId} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} showShare={false} formAsButton compact className="mx-3 mb-1 lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
                   </td>
                 </tr>,
               ];

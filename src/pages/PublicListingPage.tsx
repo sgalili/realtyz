@@ -522,7 +522,7 @@ function PublicListingContent() {
             {/* Small source link for Yad2-imported ads — fits the existing spacing without growing the page. */}
             {data.yad2AdUrl && (
               <p className="-mb-1 text-center text-[11px] leading-none">
-                <a href={data.yad2AdUrl} target="_blank" rel="noopener noreferrer" title="צפייה במודעה המקורית ביד2" className="text-muted-foreground hover:underline">המודעה המקורית ביד2</a>
+                <a href={data.yad2AdUrl} target="_blank" rel="noopener noreferrer" title="מודעת המקור (גלוי רק לך)" className="text-muted-foreground hover:underline">מודעת המקור</a>
               </p>
             )}
           </CardContent>
