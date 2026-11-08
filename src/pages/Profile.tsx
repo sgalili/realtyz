@@ -406,6 +406,21 @@ function PersonalTab() {
 
   };
 
+  // Background registry match approves immediately; misses fall back to the upgrade request (manual Super Admin review).
+  const autoApprovedLicense = useRef('');
+  useEffect(() => {
+    if (!showBrokerFields || !isOwnProfile || verifiedLicenseLocked || !verifiedBrokerLicense) return;
+    if (verifiedBrokerLicense !== brokerLicense || brokerLicense === storedLicense || autoApprovedLicense.current === brokerLicense) return;
+    autoApprovedLicense.current = brokerLicense;
+    void saveField('brokerLicense', brokerLicense).then(ok => {
+      if (!ok || !mounted.current) return;
+      setStoredLicense(brokerLicense);
+      void queryClient.invalidateQueries();
+      toast.success('רישיון התיווך אומת מול פנקס המתווכים והחשבון אושר כמתווך');
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verifiedBrokerLicense, brokerLicense, storedLicense, verifiedLicenseLocked, showBrokerFields, isOwnProfile]);
+
   const handleSignOut = async () => {
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
     window.localStorage.setItem('realtyz-demo-mode', 'false');
