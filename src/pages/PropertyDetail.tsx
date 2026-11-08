@@ -34,6 +34,7 @@ import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDet
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { addressMapQuery, fullPropertyAddress } from '@/lib/fullAddress';
+import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { PropertyYad2SectionsCard, type Yad2Sections } from '@/components/properties/PropertyYad2SectionsCard';
 
 import SmartTimelineCard from '@/components/SmartTimelineCard';
@@ -915,7 +916,13 @@ export default function PropertyDetail() {
     raw: data?.row,
   });
   const customTitle = typeof (meta as any).custom_title === 'string' && (meta as any).custom_title.trim() ? String((meta as any).custom_title).trim() : '';
-  const dynamicHeadline = customTitle || computedHeadline || `${propertyTypeHe} ${transactionHe}`;
+  // The title is one complete string ("דירה להשכרה ברחוב אלי לנדאו, הרצליה
+  // פיתוח, הרצליה"), never a street-only fragment. The heading and the edit
+  // field bind to this same value, so an override survives save + reload.
+  const rowForTitle = (data?.row ?? {}) as Record<string, unknown>;
+  const hasTitleSource = !!fullPropertyAddress(rowForTitle as any) || !!String(rowForTitle.property_title ?? '').trim();
+  const completeTitle = hasTitleSource ? publicAdTitle(rowForTitle) : '';
+  const dynamicHeadline = customTitle || completeTitle || computedHeadline || `${propertyTypeHe} ${transactionHe}`;
 
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
   const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 0) || 0;
@@ -1452,7 +1459,7 @@ export default function PropertyDetail() {
       {/* Headline · neighborhood · price */}
       <header className="space-y-2">
         {editMode && form ? (
-          <Textarea dir="rtl" rows={2} aria-label="כותרת הנכס" value={form.title} onChange={(e) => setField('title', e.target.value)} className="resize-y text-2xl font-bold" />
+          <Input dir="rtl" aria-label="כותרת הנכס" placeholder="כותרת הנכס" value={form.title} onChange={(e) => setField('title', e.target.value)} className="text-[17px] font-bold leading-snug md:text-[17px]" />
         ) : <PublicAdHeading title={dynamicHeadline} price={!editMode ? property.price > 0 ? formatPrice(property.price) : 'פרטים חסרים' : undefined} dealType={isRent ? 'rent' : 'sale'} />}
         {editMode && form && <PriceInput value={form.price} onChange={(e) => setField('price', e.target.value)} className="max-w-xs" />}
         {pricePerMeter && <p className="text-sm text-muted-foreground">({pricePerMeter} ₪ למ״ר)</p>}
