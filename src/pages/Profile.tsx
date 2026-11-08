@@ -355,7 +355,9 @@ function PersonalTab() {
   const registryNameUpdated = (profile: RegistryProfile) => {
     if (!mounted.current || profile.id !== profileOwnerId) return;
     setFullName(profile.full_name);
-    savedContacts.current = { ...savedContacts.current, fullName: profile.full_name };
+    if (profile.city) setCity(profile.city);
+    savedContacts.current = { ...savedContacts.current, fullName: profile.full_name, ...(profile.city ? { city: profile.city } : {}) };
+    void queryClient.invalidateQueries();
     setEditing(previous => ({ ...previous, fullName: false }));
     try { window.localStorage.setItem(profileStorageKey(profile.id), JSON.stringify(savedContacts.current)); } catch { /* storage unavailable */ }
   };

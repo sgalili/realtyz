@@ -27,7 +27,7 @@ export async function fetchRegistryName(license: string, fetcher: typeof fetch =
       record = exactRegistryRecord((await officialJson(search)).records ?? [], license);
     }
     if (!record) throw new RegistryNameError('license_not_found', INVALID_BROKER_LICENSE, 404);
-    return { fullName: String(record['שם המתווך']).trim(), updatedAt, source: BROKER_REGISTRY_SOURCE };
+    return { fullName: String(record['שם המתווך']).trim(), city: String(record['עיר מגורים'] ?? '').trim(), updatedAt, source: BROKER_REGISTRY_SOURCE };
   } catch (error) {
     if (error instanceof RegistryNameError) throw error;
     throw new RegistryNameError('registry_unavailable', BROKER_REGISTRY_UNAVAILABLE, 503);

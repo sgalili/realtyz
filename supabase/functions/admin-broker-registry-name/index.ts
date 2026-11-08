@@ -25,7 +25,7 @@ Deno.serve(async req => {
     const parsed = Body.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return reply({ message: 'נא להזין מספר רישיון תקין בספרות בלבד' }, 400);
     const { user_id: userId, license_number: license } = parsed.data;
-    const { data: profile, error: profileError } = await admin.from('profiles').select('id,broker_license_number,locked_broker_name').eq('id', userId).maybeSingle();
+    const { data: profile, error: profileError } = await admin.from('profiles').select('id,full_name,city,broker_license_number,locked_broker_name').eq('id', userId).maybeSingle();
     if (profileError) throw profileError;
     if (!profile) return reply({ message: 'הפרופיל המבוקש לא נמצא' }, 404);
     assertRegistryNameTarget(profile, license);
@@ -35,10 +35,14 @@ Deno.serve(async req => {
     // This never writes verification evidence, broker roles, approval status or SMS state.
     const { error: registryError } = await admin.from('official_brokers_registry').upsert({ license_number: license, holder_name: registry.fullName, source_url: registry.source, source_updated_at: registry.updatedAt, checked_at: new Date().toISOString() });
     if (registryError) throw registryError;
-    const { data: saved, error: saveError } = await admin.from('profiles').update({ full_name: registry.fullName }).eq('id', userId).eq('broker_license_number', license).select('id,full_name,broker_license_number').single();
+    const { data: saved, error: saveError } = await admin.from('profiles').update({ full_name: registry.fullName, ...(registry.city && !profile.city ? { city: registry.city } : {}) }).eq('id', userId).eq('broker_license_number', license).select('id,full_name,city,broker_license_number').single();
     if (saveError || !saved || saved.full_name !== registry.fullName) throw new RegistryNameError('save_failed', 'השם נשלף, אך לא ניתן היה לעדכן את הפרופיל. רעננו ונסו שוב.', 409);
+    // Exact registry match confirmed by a Super Admin is official license evidence (no role grant).
+    const { data: previous } = await admin.from('broker_license_verifications').select('account_name_before_verification').eq('user_id', userId).maybeSingle();
+    const { error: evidenceError } = await admin.from('broker_license_verifications').upsert({ user_id: userId, license_number: license, registry_holder_name: registry.fullName, account_name_before_verification: previous?.account_name_before_verification ?? profile.full_name ?? '', source_url: registry.source, source_updated_at: registry.updatedAt, verified_at: new Date().toISOString() });
+    if (evidenceError) throw evidenceError;
     await admin.from('audit_logs').insert({ action: 'admin_registry_name_refresh', actor_id: identity.user.id, target_table: 'profiles', target_id: userId, details: { source: registry.source } });
-    return reply({ profile: saved, message: 'השם המלא נשלף בהצלחה מהמאגר הממשלתי' });
+    return reply({ profile: saved, registry: { full_name: registry.fullName, city: registry.city, license_number: license }, message: 'השם המלא נשלף בהצלחה מהמאגר הממשלתי' });
   } catch (error) {
     if (error instanceof RegistryNameError) return reply({ error: error.code, message: error.message }, error.status);
     console.error('[admin-broker-registry-name]', { code: 'profile_update_failed' });
