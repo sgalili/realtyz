@@ -5,6 +5,7 @@ import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, boardLeadPriceBounds, leadFilterActiveCount, propertyFilterActiveCount, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
 import { boardCache } from '@/lib/boardCache';
+import { listingDetailIdentifier } from '@/lib/publicListingLookup';
 import { fetchPublicBoardFeed } from '@/lib/publicBoardFeed';
 import { PlatformBrand } from '@/components/branding/PlatformBrand';
 import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference';
@@ -430,7 +431,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
-                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} isMine={ownedIds.has(card.id)} share={<PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} />} />} idOrSlug={card.slug || card.id} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards rewardFacts={{ reward_levels: card.reward_levels, closing_level: card.closing_level, reward_types: card.reward_types }} />}
+                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} isMine={ownedIds.has(card.id)} share={<PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} />} />} idOrSlug={listingDetailIdentifier(card)} onClose={() => setExpandedId(null)} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards rewardFacts={{ reward_levels: card.reward_levels, closing_level: card.closing_level, reward_types: card.reward_types }} />}
                             </div>
                           </div>
                           </AnimatedExpansion>

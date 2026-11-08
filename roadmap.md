@@ -1,5 +1,10 @@
 # Roadmap
 
+## Unavailable listing details November 8
+- [x] Confirm reported owner slug is absent from saved listings; preserve the server's publication and workspace access checks.
+- [x] Use immutable saved IDs for homepage expansion and show an explicit unavailable/retry state instead of empty expanded content.
+- [x] 24 focused tests passed; authenticated mobile expansion loaded real details using UUIDs, absent reported slug displayed the unavailable page with no page errors, and build OK. No missing listing was fabricated or authorization changed.
+
 ## Import commission modes and expansion November 8
 - [x] Remove Step 8 partner-count scaling and replace it with concise popularity text, preserving slider bounds.
 - [x] Anchor expanded My Properties titles below stationary headers within the existing scroller; managed summary rows now identify their expansion anchor.

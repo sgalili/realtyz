@@ -1,4 +1,5 @@
 # Public listing publisher
+- Internal card-detail queries share listingDetailIdentifier and immutable IDs; missing/deleted links show unavailable states without fallback to other rows or wider access. Why: stale slugs cannot blank cards or reveal unrelated listings.
 - Publisher pricing completion derives from live draft prices independently of legal consent; publication validation keeps its consent requirements. Collapsed Card 8 summarizes the current draft. Why: immediate truthful pricing status without weakening publication.
 - Publisher lead-price controls reuse shared bounds/colors and LeadPopularityNote, never count estimates; disabled fees hide settings without clearing limits/questions. Closing dual-mode callbacks persist both value and unit without changing legacy editors. Why: avoid invented counts, unintended charges or fee conversions.
 - Publisher lead and closing editors use PricingCardHeader for icon, price, title/help and control tracks; ClosingFeeSlider opts in without changing legacy editors. Why: shared alignment without changing other fee flows.

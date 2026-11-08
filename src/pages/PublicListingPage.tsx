@@ -38,6 +38,7 @@ import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { isUnavailableListingError } from '@/lib/publicListingLookup';
 
 export type PublicListing = {
   id: string | null;
@@ -287,6 +288,7 @@ function PublicListingContent() {
     retry: 1,
     queryFn: async (): Promise<{ property: PublicListing; properties: PublicListing[]; projectUnits: (PublicListing & { buildingName: string })[] } | null> => {
       const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(slug)}`, { method: 'GET' });
+      if (isUnavailableListingError(error)) return null;
       if (error) throw error;
       if (!payload?.property) return null;
       const workspaceProperties = Array.isArray(payload.workspace_properties) ? payload.workspace_properties : [];

@@ -8,17 +8,18 @@ import type { PublicCard } from '@/pages/PublicListingsBoard';
 import { useAuth } from '@/hooks/useAuth';
 import PropertyCommissionIcons from './PropertyCommissionIcons';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { listingDetailIdentifier } from '@/lib/publicListingLookup';
 
 export function PublicCardPublisher({ card }: { card: PublicCard }) {
   const { user } = useAuth();
   const { activeWorkspaceId, loading } = useWorkspace();
   const { data } = useQuery({
-    queryKey: ['public-listing-expanded', card.slug || card.id, user?.id, activeWorkspaceId],
-    enabled: (!user || !loading) && !String(card.slug || card.id).includes(':'),
+    queryKey: ['public-listing-expanded', listingDetailIdentifier(card), user?.id, activeWorkspaceId],
+    enabled: (!user || !loading) && !String(listingDetailIdentifier(card)).includes(':'),
     staleTime: 5 * 60 * 1000,
     retry: false,
     queryFn: async () => {
-      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(card.slug || card.id)}`, { method: 'GET' });
+      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(listingDetailIdentifier(card))}`, { method: 'GET' });
       if (error || !payload?.property) return null;
       return { listing: normalizeListing(payload.property, payload.attribution), raw: payload.property as Record<string, unknown> };
     },
@@ -31,12 +32,12 @@ export default function PublicCardSummary({ card, price, showBroker = true, show
   const { user } = useAuth();
   const { activeWorkspaceId, loading } = useWorkspace();
   const { data } = useQuery({
-    queryKey: ['public-listing-expanded', card.slug || card.id, user?.id, activeWorkspaceId],
-    enabled: (!user || !loading) && !String(card.slug || card.id).includes(':'),
+    queryKey: ['public-listing-expanded', listingDetailIdentifier(card), user?.id, activeWorkspaceId],
+    enabled: (!user || !loading) && !String(listingDetailIdentifier(card)).includes(':'),
     staleTime: 5 * 60 * 1000,
     retry: false,
     queryFn: async () => {
-      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(card.slug || card.id)}`, { method: 'GET' });
+      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(listingDetailIdentifier(card))}`, { method: 'GET' });
       if (error || !payload?.property) return null;
       return { listing: normalizeListing(payload.property, payload.attribution), raw: payload.property as Record<string, unknown> };
     },

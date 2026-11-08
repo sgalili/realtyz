@@ -16,6 +16,7 @@ import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { isUnavailableListingError } from '@/lib/publicListingLookup';
 
 type Raw = Record<string, unknown>;
 type Spec = { icon: LucideIcon; label: string; value: string };
@@ -79,7 +80,8 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(idOrSlug)}`, { method: 'GET' });
-      if (error) return null;
+      if (isUnavailableListingError(error)) return null;
+      if (error) throw error;
       if (!payload?.property) return null;
       return { listing: normalizeListing(payload.property, payload.attribution), raw: payload.property as Raw };
     },
@@ -103,7 +105,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
     });
   }, [listingId, hasPerks]);
   if (isLoading) return <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
-  if (!data) return null;
+  if (!data) return <div role="status" className="space-y-3 py-6 text-center"><p className="font-semibold">לא ניתן להציג את פרטי הנכס</p><p className="text-sm text-muted-foreground">המודעה אינה זמינה כרגע או שהקישור אינו עדכני.</p><div className="flex justify-center gap-2"><Button type="button" variant="outline" onClick={() => void refetch()}>ניסיון נוסף</Button>{onClose && <Button type="button" variant="ghost" size="icon" aria-label="סגירת פרטי הנכס" onClick={onClose}><X className="h-4 w-4" /></Button>}</div></div>;
   const { listing, raw } = data;
   const f0 = asObj(raw.features);
   // Map the publisher's own fields (manual ads) onto the same display keys Yad2 imports use.
