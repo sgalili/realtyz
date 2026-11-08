@@ -476,7 +476,7 @@ function PersonalTab() {
           <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-[90px] flex-1 basis-24">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
             </div>
             {licenseLiveVerified === false
@@ -491,7 +491,7 @@ function PersonalTab() {
           <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-[90px] flex-1 basis-24">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך">{brokerLicense || '—'}</span>
             </div>
             {isSuperAdmin && !!brokerLicense && (
