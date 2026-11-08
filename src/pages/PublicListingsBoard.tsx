@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEven
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BadgeCheck, GripVertical, Heart, LayoutGrid, List, Search, Send, X } from 'lucide-react';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
-import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, leadFilterActiveCount, propertyFilterActiveCount, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, boardLeadPriceBounds, leadFilterActiveCount, propertyFilterActiveCount, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
 import { WelcomeSlides } from '@/components/public/WelcomeSlides';
 import { boardCache } from '@/lib/boardCache';
 import { fetchPublicBoardFeed } from '@/lib/publicBoardFeed';
@@ -39,7 +39,6 @@ import BoardSearchOverlay, { BOARD_SEARCH_OPEN_EVENT, BOARD_SEARCH_STATE_EVENT, 
 import { SortDropdown } from '@/components/ui/sort-dropdown';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { sortListingRows, type ListingSortValue } from '@/lib/listingSortOptions';
-import { useAffiliateMarketplace } from '@/hooks/useAffiliate';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
 import type { UnifiedResult } from '@/lib/propertySearch';
@@ -55,6 +54,13 @@ export type PublicCard = {
   affiliate_enabled?: boolean;
   reward_types?: { form: boolean; whatsapp: boolean; phone: boolean; closing: boolean };
   closing_level?: number | null;
+  property_type?: string | null;
+  features?: Record<string, unknown>;
+  affiliate_tier1_amount?: number;
+  affiliate_tier2_amount?: number;
+  affiliate_tier3_amount?: number;
+  affiliate_tier4_amount?: number;
+  affiliate_tier4_type?: 'fixed' | 'percent';
   reward_levels?: { form: number | null; whatsapp: number | null; phone: number | null } | null;
   attribution?: { broker_name?: string | null; office_name?: string | null; agency_logo_url?: string | null; broker_license_number?: string | null; publisher_kind?: string | null };
 };
@@ -88,7 +94,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const location = useLocation();
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
-  const marketplace = useAffiliateMarketplace();
   const { level4Unlocked } = useAffiliateLicense();
   const [cards, setCards] = useState<PublicCard[]>(() => boardCache.get<PublicCard>() ?? []);
   const [visibleCount, setVisibleCount] = useState(24);
@@ -113,9 +118,6 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   }, [user?.id, activeWorkspaceId]);
   const [loading, setLoading] = useState(() => !boardCache.get());
   const [query, setQuery] = useState('');
-  const [deals, setDeals] = useState({ sale: true, rent: true });
-  const deal: 'all' | 'sale' | 'rent' = deals.sale && deals.rent ? 'all' : deals.sale ? 'sale' : 'rent';
-  const toggleDeal = (key: 'sale' | 'rent') => setDeals((cur) => { const next = { ...cur, [key]: !cur[key] }; return next.sale || next.rent ? next : cur; });
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
   const [wrapWidth, setWrapWidth] = useState<number | null>(null);
   // The table box keeps the browser's own horizontal scroll bar as its only one.
@@ -147,7 +149,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     // A buyer/renter picked in "מי מפרסם?" opens the search already limited to their deal type.
     const seekerIntent = (e: Event) => {
       const deal = (e as CustomEvent<{ dealType?: string }>).detail?.dealType;
-      if (deal === 'sale' || deal === 'rent') { setDeals({ sale: deal === 'sale', rent: deal === 'rent' }); setPropFilter((cur) => ({ ...cur, dealType: deal as typeof cur.dealType })); }
+      if (deal === 'sale' || deal === 'rent') setPropFilter((cur) => ({ ...cur, dealType: deal as typeof cur.dealType }));
       setSearchOpen(true);
     };
     window.addEventListener(BOARD_SEARCH_OPEN_EVENT, openSearch);
@@ -187,18 +189,23 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
 
+  const loadGeneration = useRef(0);
   const load = async () => {
-    const cached = boardCache.get();
-    if (cached) { setCards(cached); setLoading(false); }
-    else setLoading(true);
+    const generation = ++loadGeneration.current;
+    setLoading(true);
     try {
       const fresh = await fetchPublicBoardFeed();
+      if (generation !== loadGeneration.current) return;
       setCards(fresh); boardCache.set(fresh);
-    } catch { if (!cached) toast.error('לא ניתן לטעון את לוח הנכסים'); }
-    finally { setLoading(false); }
+    } catch { if (generation === loadGeneration.current) toast.error('לא ניתן לטעון את לוח הנכסים'); }
+    finally { if (generation === loadGeneration.current) setLoading(false); }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    setCards([]); boardCache.clear(); setLeadFilter(EMPTY_LEAD_FILTER);
+    void load();
+    return () => { loadGeneration.current += 1; };
+  }, [user?.id, activeWorkspaceId, level4Unlocked]);
 
   const openGate = (card: PublicCard, intent: GateIntent) => { setGate({ card, intent }); setToken(null); setUnlocked(null); setChat([]); };
 
@@ -248,11 +255,9 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   }, []);
   const filtered = useMemo(() => cards.filter((card) => {
     if (!visibleToListingAudience(card.reward_types, !!user, level4Unlocked)) return false;
-    if (deal !== 'all' && card.deal_type !== deal) return false;
     if (query.trim() && ![card.title, card.street, card.city, card.neighborhood].some(value => value?.toLowerCase().includes(query.trim().toLowerCase()))) return false;
-    const row = marketplace.data?.find(item => item.listing_id === card.id);
-    return matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter) && matchesLeadFilter(leadTierAmounts(row as unknown as Record<string, unknown>), leadFilter);
-  }), [cards, propFilter, query, deal, marketplace.data, leadFilter, user, level4Unlocked]);
+    return matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter) && matchesLeadFilter(leadTierAmounts(card as unknown as Record<string, unknown>), leadFilter);
+  }), [cards, propFilter, query, leadFilter, user, level4Unlocked]);
   // Custom row order chosen with the drag handle, saved per user/workspace on this device.
   const rowOrderKey = `public-board-row-order:v1:${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`;
   const [rowOrder, setRowOrder] = useState<string[]>([]);
@@ -293,10 +298,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     setRowOrder(next);
     try { localStorage.setItem(rowOrderKey, JSON.stringify(next)); } catch { /* storage disabled */ }
   };
-  useEffect(() => { setVisibleCount(24); }, [query, deal, propFilter, leadFilter, grid, sortBy]);
+  useEffect(() => { setVisibleCount(24); }, [query, propFilter, leadFilter, grid, sortBy]);
   // Guest reward indicators disclose configured types, never prices.
   const visibleColumns = columns.visible;
   const priceBounds = useMemo(() => { const p = cards.map(c => Number(c.price)).filter(v => Number.isFinite(v) && v > 0); return p.length ? { min: Math.min(...p), max: Math.max(...p) } : null; }, [cards]);
+  const rewardBounds = useMemo(() => boardLeadPriceBounds(cards as unknown as Record<string, unknown>[]), [cards]);
   const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
   const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
 
@@ -361,7 +367,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               </div>
             </div>
           )}
-          <BoardSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} query={query} onQueryChange={setQuery} onSearch={() => void load()} resultCount={filtered.length} dealType={propFilter.dealType} onDealTypeChange={dealType => setPropFilter({ ...propFilter, dealType: dealType as typeof propFilter.dealType })} filters={<LeadTypeFilterButton panelOnly hideDealType state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} priceBounds={priceBounds} />} />
+          <BoardSearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} query={query} onQueryChange={setQuery} onSearch={() => void load()} resultCount={filtered.length} dealType={propFilter.dealType} onDealTypeChange={dealType => setPropFilter({ ...propFilter, dealType: dealType as typeof propFilter.dealType })} filters={<LeadTypeFilterButton panelOnly hideDealType state={leadFilter} onChange={setLeadFilter} propertyState={propFilter} onPropertyChange={setPropFilter} cities={cities} neighborhoods={neighborhoods} priceBounds={priceBounds} rewardBounds={rewardBounds} />} />
         </div>
       </header>
 

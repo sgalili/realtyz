@@ -111,12 +111,12 @@ export type AffiliateReferral = {
   tier3_amount?: number;
 };
 
-/** Human-readable reward, e.g. "₪5,000" or "2.5% מהעסקה". */
-export function formatReward(type: RewardType, amount: number | null | undefined): string {
+/** Absolute net ILS reward; percentage agreements require their price basis. */
+export function formatReward(type: RewardType, amount: number | null | undefined, dealValue?: number | null): string {
   const value = Number(amount ?? 0);
   if (!value) return 'טרם נקבע';
-  if (type === 'percent') return `${partnerNetReward(value)}% לשותף`;
-  return `${fmtILS(partnerNetReward(value))} לשותף`;
+  const resolved = resolveRewardValue(type, value, dealValue);
+  return resolved == null ? 'מחיר לא זמין' : `${fmtILS(Math.round(partnerNetReward(resolved)))} לשותף`;
 }
 
 /** Resolves the ILS payout for a percent-based reward against a deal value. */

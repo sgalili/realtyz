@@ -494,7 +494,7 @@ loading ? (
                         ) : null}
                         {l.affiliate_enabled && (
                           <LeadPricingDialog readOnly gross listing={{ listing_id: l.id, broker_id: '', property_title: l.property_title, tier1_amount: Number(l.affiliate_tier1_amount ?? 0), tier2_amount: Number(l.affiliate_tier2_amount ?? 0), tier3_amount: Number(l.affiliate_tier3_amount ?? 0), tier3_type: l.affiliate_tier3_type ?? 'fixed', tier4_amount: Number(l.affiliate_tier4_amount ?? 0), tier4_type: l.affiliate_tier4_type ?? 'fixed' }}><Badge variant="secondary">
-                            {formatReward(l.affiliate_reward_type, l.affiliate_reward_amount)}
+                            {formatReward(l.affiliate_reward_type, l.affiliate_reward_amount, l.asking_price)}
                           </Badge></LeadPricingDialog>
                         )}
                         <div className="ms-auto flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
@@ -829,7 +829,7 @@ loading ? (
                           );
                         })()}
                         <div className="text-sm font-bold text-emerald-700">
-                          {formatReward(r.reward_type, r.reward_amount)}
+                          {formatReward(r.reward_type, r.reward_amount, r.listing?.asking_price)}
                         </div>
                         {r.listing?.id ? (
                           <PropertyShareMenu results={[toUnifiedResult(r.listing as any)]} iconOnly variant="ghost" />

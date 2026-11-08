@@ -1,5 +1,5 @@
 /** Stale-while-revalidate cache for the public-safe home feed (memory + session storage). */
-const KEY = 'toraff-board-cache-v1';
+const KEY = 'toraff-board-cache-v2';
 let memory: unknown[] | null = null;
 export const boardCache = {
   get<T = any>(): T[] | null {
@@ -8,7 +8,14 @@ export const boardCache = {
     return memory as T[] | null;
   },
   set(rows: unknown[]) {
-    memory = rows;
-    try { sessionStorage.setItem(KEY, JSON.stringify(rows)); } catch { /* quota/private mode: memory only */ }
+    memory = rows.map(row => {
+      const { affiliate_tier1_amount: _form, affiliate_tier2_amount: _wa, affiliate_tier3_amount: _phone, affiliate_tier4_amount: _closing, affiliate_tier4_type: _type, ...safe } = row as Record<string, unknown>;
+      return safe;
+    });
+    try { sessionStorage.setItem(KEY, JSON.stringify(memory)); } catch { /* quota/private mode: memory only */ }
+  },
+  clear() {
+    memory = null;
+    try { sessionStorage.removeItem(KEY); sessionStorage.removeItem('toraff-board-cache-v1'); } catch { /* storage unavailable */ }
   },
 };

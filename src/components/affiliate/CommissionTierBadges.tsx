@@ -15,7 +15,7 @@ const rewardIcons = [
   { key: 'closing', label: 'סגירת עסקה', Icon: Trophy, tone: 'text-lead-closing' },
 ] as const;
 
-export function RewardIcons({ levels, types, prices, zeroTypes, closingPercent = false, label = 'תגמולים', grid = false, closingLevel }: { levels?: Partial<Record<'form' | 'whatsapp' | 'phone', number | null>>; closingLevel?: number | null; grid?: boolean; types: RewardTypes; zeroTypes?: RewardTypes; prices?: Partial<Record<keyof RewardTypes, number>>; closingPercent?: boolean; label?: string | null }) {
+export function RewardIcons({ levels, types, prices, zeroTypes, label = 'תגמולים', grid = false, closingLevel }: { levels?: Partial<Record<'form' | 'whatsapp' | 'phone', number | null>>; closingLevel?: number | null; grid?: boolean; types: RewardTypes; zeroTypes?: RewardTypes; prices?: Partial<Record<keyof RewardTypes, number>>; label?: string | null }) {
   const { user } = useAuth();
   const { level4Unlocked } = useAffiliateLicense();
   const rows = rewardIcons.filter(row => types[row.key] === true);
@@ -31,7 +31,7 @@ export function RewardIcons({ levels, types, prices, zeroTypes, closingPercent =
       const level = key === 'closing' ? closingLevel : prices?.[key] != null ? leadPriceLevel(key as 'form', Number(prices[key])) : levels?.[key as 'form'] ?? null;
       const zero = zeroTypes ? zeroTypes[key] === true : prices?.[key] === 0;
       // Signed-out visitors keep the gray icon but never see the zero wording.
-      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: closingLevelColor(level) } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? (user ? <span className="text-xs font-semibold">ללא עמלה</span> : null) : prices?.[key] != null && <bdi dir="ltr">{key === 'closing' && closingPercent ? `${prices[key]}%` : fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
+      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: closingLevelColor(level) } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? (user ? <span className="text-xs font-semibold">ללא עמלה</span> : null) : prices?.[key] != null && <bdi dir="ltr">{fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
     })}</span>
   </span>;
 }

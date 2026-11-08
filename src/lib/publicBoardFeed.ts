@@ -11,6 +11,6 @@ export async function fetchPublicBoardFeed(): Promise<PublicCard[]> {
     const rows = (data?.properties ?? []) as PublicCard[];
     const before = all.size;
     rows.forEach(row => all.set(row.id, row));
-    if (data?.has_more !== true || all.size === before) return [...all.values()];
+    if (data?.has_more !== true || (rows.length > 0 && all.size === before)) return [...all.values()];
   }
 }

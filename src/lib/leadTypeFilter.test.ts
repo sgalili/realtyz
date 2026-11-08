@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, selectFilterCity, setLeadFilterMinimum, leadFilterSliderRange } from './leadTypeFilter';
+import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, boardLeadPriceBounds, leadTierAmounts, matchesPropertyFilter, matchesLeadFilter, selectFilterCity, setLeadFilterMinimum, leadFilterSliderRange } from './leadTypeFilter';
 
 describe('reward filter bounds', () => {
-  it('closing starts at 0 rather than the public 0.52 minimum', () => {
-    expect(leadFilterSliderRange('tier4', { min: 0.52, max: 37600 })).toEqual({ min: 0, max: 37600 });
+  it('closing preserves the actual board minimum and maximum', () => {
+    expect(leadFilterSliderRange('tier4', { min: 416, max: 37600 })).toEqual({ min: 416, max: 37600 });
+  });
+  it('does not invent closing bounds when authorized data is absent', () => {
+    expect(leadFilterSliderRange('tier4')).toBeUndefined();
+    expect(boardLeadPriceBounds([{ price: 3000000 }]).closing).toEqual({ min: null, max: null });
+  });
+  it('uses whole net shekels for percentage/fixed closing bounds across the full board', () => {
+    const rows = [{ price: 3000000, affiliate_tier4_amount: 1, affiliate_tier4_type: 'percent' }, { price: 6000, affiliate_tier4_amount: 3000, affiliate_tier4_type: 'fixed' }, { affiliate_tier4_amount: 0 }];
+    expect(boardLeadPriceBounds(rows).closing).toEqual({ min: 2400, max: 24000 });
+    expect(leadTierAmounts(rows[0]).tier4).toBe(24000);
+    expect(matchesLeadFilter(leadTierAmounts(rows[0]), setLeadFilterMinimum(EMPTY_LEAD_FILTER, 'tier4', 24000))).toBe(true);
+    expect(matchesLeadFilter(leadTierAmounts(rows[1]), setLeadFilterMinimum(EMPTY_LEAD_FILTER, 'tier4', 24000))).toBe(false);
+  });
+  it('matches loaded board rewards without affiliate marketplace membership', () => {
+    expect(leadTierAmounts({ affiliate_tier1_amount: 100 }).tier1).toBe(80);
+    expect(matchesLeadFilter(leadTierAmounts({ affiliate_tier1_amount: 100 }), setLeadFilterMinimum(EMPTY_LEAD_FILTER, 'tier1', 80))).toBe(true);
+    expect(matchesLeadFilter(leadTierAmounts({ affiliate_tier1_amount: 99 }), setLeadFilterMinimum(EMPTY_LEAD_FILTER, 'tier1', 80))).toBe(false);
   });
   it('other lead types retain their actual public minimum', () => {
     expect(leadFilterSliderRange('tier1', { min: 60, max: 150 })).toEqual({ min: 60, max: 150 });

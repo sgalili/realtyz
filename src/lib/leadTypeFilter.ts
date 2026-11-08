@@ -3,6 +3,7 @@
 // A property offers a lead type only when the publisher priced that tier:
 //   tier1 digital lead · tier2 WhatsApp screening · tier3 phone call ·
 //   tier4 deal closing (licensed brokers only).
+import { partnerNetReward } from './affiliatePlans';
 export type LeadTypeKey = 'tier1' | 'tier2' | 'tier3' | 'tier4';
 
 export const LEAD_TYPE_LABELS: Record<LeadTypeKey, string> = {
@@ -25,12 +26,23 @@ export type LeadFilterState = {
 
 export const EMPTY_LEAD_FILTER: LeadFilterState = { types: [], min: null, max: null };
 
-/** Closing search starts at zero; other tiers retain their public minimum. */
+/** Search uses actual authorized board bounds, never invented closing prices. */
 export function leadFilterSliderRange(key: LeadTypeKey, bounds?: { min: number | null; max: number | null }) {
-  if (bounds?.min == null || bounds.max == null) return key === 'tier4' ? { min: 0, max: 250 } : undefined;
-  const min = key === 'tier4' ? 0 : Number(bounds.min);
+  if (bounds?.min == null || bounds.max == null) return undefined;
+  const min = Number(bounds.min);
   const max = Number(bounds.max);
   return Number.isFinite(min) && Number.isFinite(max) && max >= min ? { min, max } : undefined;
+}
+
+/** Full unfiltered, server-redacted feed defines each search range in net ILS. */
+export function boardLeadPriceBounds(rows: Record<string, unknown>[]) {
+  const keys = { tier1: 'form', tier2: 'whatsapp', tier3: 'phone', tier4: 'closing' } as const;
+  const result: Record<string, { min: number | null; max: number | null }> = {};
+  for (const tier of LEAD_TYPE_ORDER) {
+    const values = rows.map(row => leadTierAmounts(row)[tier]).filter(value => Number.isFinite(value) && value > 0);
+    result[keys[tier]] = { min: values.length ? Math.min(...values) : null, max: values.length ? Math.max(...values) : null };
+  }
+  return result;
 }
 
 export function setLeadFilterMinimum(state: LeadFilterState, key: LeadTypeKey, amount: number): LeadFilterState {
@@ -53,11 +65,14 @@ export function leadTierAmounts(row: Record<string, unknown> | null | undefined)
     }
     return 0;
   };
+  const closing = num('affiliate_tier4_amount', 'tier4_amount');
+  const type = row?.affiliate_tier4_type ?? row?.tier4_type;
+  const closingIls = type === 'percent' ? closing * num('asking_price', 'price') / 100 : closing;
   return {
-    tier1: num('affiliate_tier1_amount', 'tier1_amount'),
-    tier2: num('affiliate_tier2_amount', 'tier2_amount'),
-    tier3: num('affiliate_tier3_amount', 'tier3_amount'),
-    tier4: num('affiliate_tier4_amount', 'tier4_amount'),
+    tier1: partnerNetReward(num('affiliate_tier1_amount', 'tier1_amount')),
+    tier2: partnerNetReward(num('affiliate_tier2_amount', 'tier2_amount')),
+    tier3: partnerNetReward(num('affiliate_tier3_amount', 'tier3_amount')),
+    tier4: Math.round(partnerNetReward(closingIls)),
   };
 }
 
@@ -141,6 +156,10 @@ export function rowHasFeature(row: Record<string, unknown>, featureKey: string):
   const def = FILTER_FEATURES.find(f => f.key === featureKey);
   if (!def) return true;
   const bags: Record<string, unknown>[] = [row];
+  for (const key of ['additional_details', 'attributes']) {
+    const bag = row[key];
+    if (bag && typeof bag === 'object' && !Array.isArray(bag)) bags.push(bag as Record<string, unknown>);
+  }
   const raw = row.raw as Record<string, unknown> | undefined;
   if (raw && typeof raw === 'object') bags.push(raw);
   for (const bag of [...bags]) {
@@ -214,7 +233,9 @@ export function matchesPropertyFilter(row: Record<string, unknown>, state: Prope
     return (min == null || value >= min) && (max == null || value <= max);
   };
   if (state.dealType !== 'all' && text(row, 'deal_type', 'listing_type') !== state.dealType) return false;
-  if (state.propertyType !== 'all' && text(row, 'property_type') !== state.propertyType) return false;
+  const propertyBags = [row, row.features, row.additional_details, row.attributes].filter((bag): bag is Record<string, unknown> => !!bag && typeof bag === 'object' && !Array.isArray(bag));
+  const propertyType = propertyBags.map(bag => text(bag, 'property_type', 'propertyType')).find(Boolean) || text((row.additional_details ?? row.attributes ?? {}) as Record<string, unknown>, 'text');
+  if (state.propertyType !== 'all' && propertyType !== state.propertyType) return false;
   if (state.city && state.city !== 'all') {
     const cities = state.selectedCities?.length ? state.selectedCities : [state.city];
     if (!cities.includes(text(row, 'city'))) return false;
@@ -231,7 +252,8 @@ export function matchesPropertyFilter(row: Record<string, unknown>, state: Prope
     const features = row.features && typeof row.features === 'object' && !Array.isArray(row.features) ? row.features as Record<string, unknown> : {};
     const rawFeatures = raw.features && typeof raw.features === 'object' && !Array.isArray(raw.features) ? raw.features as Record<string, unknown> : {};
     const source = features.source_details && typeof features.source_details === 'object' ? features.source_details as Record<string, unknown> : {};
-    const bags = [row, features, raw, rawFeatures, source];
+    const imported = [row.additional_details, row.attributes].filter((bag): bag is Record<string, unknown> => !!bag && typeof bag === 'object' && !Array.isArray(bag));
+    const bags = [row, features, raw, rawFeatures, source, ...imported];
     const read = (...keys: string[]): unknown => {
       for (const bag of bags) for (const key of keys) if (bag[key] != null && bag[key] !== '') return bag[key];
       return undefined;
@@ -244,10 +266,10 @@ export function matchesPropertyFilter(row: Record<string, unknown>, state: Prope
     };
     if (!countMatches(selected.rooms, read('rooms'))) return false;
     if (!countMatches(selected.elevatorCount, read('elevator_count', 'elevatorCount', 'elevator', 'includeElevator'))) return false;
-    if (!countMatches(selected.parkingCount, read('parking_count', 'parkingCount', 'parking', 'parking_spots', 'includeParking'))) return false;
+    if (!countMatches(selected.parkingCount, read('parking_count', 'parkingCount', 'parkingSpacesCount', 'parking', 'parking_spots', 'includeParking'))) return false;
     if (!countMatches(selected.totalFloors === 'קרקע' ? '0' : selected.totalFloors, read('total_floors', 'totalFloors'))) return false;
     if (!countMatches(selected.airDirections, read('air_directions', 'airDirections'))) return false;
-    if (selected.condition && read('condition') !== selected.condition) return false;
+    if (selected.condition && read('condition', 'propertyCondition') !== selected.condition) return false;
     if (selected.viewType && read('view_type', 'viewType') !== selected.viewType && !(selected.viewType === 'נוף פתוח' && read('open_view', 'openView') === true)) return false;
     if (selected.entryDate && read('entry_date', 'entryDate') !== selected.entryDate) return false;
     if (selected.balconyTypes?.length) {

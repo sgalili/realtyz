@@ -142,6 +142,7 @@ export default function LeadTypeFilterButton({
   cities = [],
   neighborhoods = [],
   priceBounds,
+  rewardBounds,
   propertyTypes = [],
   hideLeadFilters = false,
   className = '',
@@ -167,6 +168,7 @@ export default function LeadTypeFilterButton({
   hideDealType?: boolean;
   /** Lowest/highest published price on the platform; slider absolute bounds. */
   priceBounds?: { min: number; max: number } | null;
+  rewardBounds?: Record<string, { min: number | null; max: number | null }>;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -181,7 +183,7 @@ export default function LeadTypeFilterButton({
   const verifiedBroker = usePropertyPageAccess().properties;
   const bounds = useQuery({
     queryKey: ['public-lead-price-bounds', user?.id, verifiedBroker],
-    enabled: !!user && open,
+    enabled: !!user && (panelOnly || open) && !rewardBounds,
     staleTime: 5 * 60_000,
     retry: false,
     queryFn: async () => {
@@ -280,17 +282,17 @@ export default function LeadTypeFilterButton({
               const Icon = ICONS[key];
               const amount = state.prices?.[key] ?? (state.types[0] === key ? state.min ?? 0 : 0);
               const tier = key === 'tier1' ? 'form' : key === 'tier2' ? 'whatsapp' : 'phone';
-              const bound = bounds.data?.[BOUND_KEY[key]];
+              const bound = (rewardBounds ?? bounds.data)?.[BOUND_KEY[key]];
               const range = leadFilterSliderRange(key, bound) ?? LEAD_PRICE_RANGES[tier];
               const color = amount > 0 ? closingLevelClass(partnerPotential((amount - range.min) / Math.max(1, range.max - range.min)).level) : 'text-muted-foreground';
               return (
                 <div key={key}>
-                <Button type="button" variant="ghost" aria-label={FILTER_LEAD_LABELS[key]} aria-expanded={expandedType === key} onClick={() => setExpandedType(expandedType === key ? null : key)} className="h-auto w-full items-start justify-start gap-2 whitespace-nowrap px-0 py-1 text-right text-[14px] font-medium">
+                <Button type="button" variant="ghost" disabled={key === 'tier4' && !leadFilterSliderRange(key, bound)} aria-label={FILTER_LEAD_LABELS[key]} aria-expanded={expandedType === key} onClick={() => setExpandedType(expandedType === key ? null : key)} className="h-auto w-full items-start justify-start gap-2 whitespace-normal px-0 py-1 text-right text-[14px] font-medium">
                   <Icon key="icon" className={`mt-1 h-3.5 w-3.5 shrink-0 ${color}`} />
                   <span key="title" className="min-w-0 flex-1"><span>{FILTER_LEAD_LABELS[key]}</span>{amount > 0 && <span className={`block text-right text-[14px] font-semibold ${color}`}>לפחות: <bdi>₪{amount.toLocaleString('he-IL')}</bdi></span>}</span>
                   <ChevronDown key="chevron" aria-hidden className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${expandedType === key ? 'rotate-180' : ''}`} />
                 </Button>
-                {expandedType === key && <div className="py-2 animate-in fade-in-0 motion-reduce:animate-none"><LeadPriceSlider hidePotential range={range} tier={tier} label={FILTER_LEAD_LABELS[key]} value={String(amount)} onChange={value => onChange(setLeadFilterMinimum(state, key, Number(value)))} /></div>}
+                {expandedType === key && <div className="py-2 animate-in fade-in-0 motion-reduce:animate-none"><LeadPriceSlider hidePotential exactBounds={key === 'tier4'} range={range} tier={tier} label={FILTER_LEAD_LABELS[key]} value={String(amount)} onChange={value => onChange(setLeadFilterMinimum(state, key, Number(value)))} /></div>}
                 </div>
               );
             })}

@@ -405,7 +405,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
         )}
 
         <Badge className="absolute bottom-2 right-2 z-10 bg-emerald-600 text-white hover:bg-emerald-600">
-          {formatReward(listing.reward_type, listing.reward_amount)}
+          {formatReward(listing.reward_type, listing.reward_amount, listing.asking_price)}
         </Badge>
 
         {listing.deal_type && (
@@ -503,7 +503,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
               {SETTLEMENT_LABELS[referral.settlement_status] ?? referral.settlement_status}
             </Badge>
             <span className="text-xs font-bold text-emerald-700">
-              {formatReward(referral.reward_type, referral.reward_amount)}
+              {formatReward(referral.reward_type, referral.reward_amount, listing.asking_price)}
             </span>
             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
               <UserPlus className="h-3.5 w-3.5" />
@@ -542,7 +542,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
               <div>
                 <dt className="text-muted-foreground">תגמול</dt>
                 <dd className="font-semibold text-emerald-700">
-                  {formatReward(listing.reward_type, listing.reward_amount)}
+                  {formatReward(listing.reward_type, listing.reward_amount, listing.asking_price)}
                 </dd>
               </div>
               <div>

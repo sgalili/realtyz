@@ -62,18 +62,19 @@ describe('partner lead pricing information', () => {
     expect(screen.queryByText('₪8,000')).toBeNull();
     expect(screen.getByText('שדות מטופס בעמוד נחיתה')).toBeTruthy();
   });
-  it('shows 0.8% net and 0.2% platform share of a 1% closing fee for an authorized broker', () => {
+  it('does not fabricate a shekel payout when a percentage agreement has no property price', () => {
     state.level4Unlocked = true;
     render(<LeadPricingInfo closingOnly listing={{ ...listing, tier4_amount: 1, tier4_type: 'percent' }} details={{}} />);
-    expect(screen.getAllByText('0.8%')).toHaveLength(2);
-    expect(screen.getByText('0.2%')).toBeTruthy();
-    expect(screen.getByText('1%')).toBeTruthy();
+    expect(screen.getByText('מחיר לא זמין')).toBeTruthy();
+    expect(screen.queryByText('₪0')).toBeNull();
   });
-  it('shows the partner shekel value next to a percentage closing fee', () => {
+  it('shows only absolute net shekels for a percentage closing agreement', () => {
     state.level4Unlocked = true;
     render(<LeadPricingInfo closingOnly listing={{ ...listing, tier4_amount: 1, tier4_type: 'percent' }} details={{ asking_price: 3000000 }} />);
-    const closingAmount = screen.getAllByText('0.8%')[0];
-    expect(closingAmount.textContent).toBe('0.8%(₪24,000)');
+    expect(screen.getAllByText('₪24,000')).toHaveLength(2);
+    expect(screen.getByText('₪30,000')).toBeTruthy();
+    expect(screen.getByText('₪6,000')).toBeTruthy();
+    expect(screen.queryByText('0.8%')).toBeNull();
   });
   it('shows closing net as whole shekels for fixed amounts, without decimals', () => {
     state.level4Unlocked = true;
@@ -88,9 +89,9 @@ describe('partner lead pricing information', () => {
     expect(screen.queryByText('1%')).toBeNull();
   });
   it('keeps inventory gross prices and percentage prices consistent with clicked labels', () => {
-    render(<LeadPricingInfo gross listing={{ ...listing, tier3_amount: 2, tier3_type: 'percent' }} details={{ contact_options: { lead_daily_limits: { form: 7 } } }} />);
+    render(<LeadPricingInfo gross listing={{ ...listing, tier3_amount: 2, tier3_type: 'percent' }} details={{ asking_price: 3000000, contact_options: { lead_daily_limits: { form: 7 } } }} />);
     expect(screen.getByText('₪100')).toBeTruthy();
-    expect(screen.getByText('2%')).toBeTruthy();
+    expect(screen.getByText('₪60,000')).toBeTruthy();
     expect(screen.getByText('7')).toBeTruthy();
   });
   it('opens editable settings when the workspace-scoped authored row is authorized', () => {

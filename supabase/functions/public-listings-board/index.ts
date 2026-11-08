@@ -9,6 +9,8 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { PUBLIC_CARD_COLUMNS, toPublicCard } from "../_shared/publicMask.ts";
 import { isFeedEligible, meetsBoardRules, boardPublisherName, publisherDisplayKind, closingRewardLevel, privatePublisherAvatar } from '../_shared/publicListingVisibility.ts';
 import { verifiedSourceLicense } from '../_shared/yad2Publisher.ts';
+import { publicPricing } from '../_shared/publicListingVisibility.ts';
+import { boardFilterFacts } from '../_shared/boardFilterFacts.ts';
 
 // Coarse 0-3 lead price level matching the publisher sliders; reveals no amount.
 const LEAD_RANGES = { form: [40, 150], whatsapp: [50, 200], phone: [80, 250] } as const;
@@ -27,6 +29,20 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!backendUrl || !serviceKey) throw new Error("missing backend configuration");
     const admin = createClient(backendUrl, serviceKey);
+    let signedIn = false;
+    let closingAllowed = false;
+    const authorization = req.headers.get('authorization');
+    if (authorization?.startsWith('Bearer ')) {
+      const { data: identity } = await admin.auth.getUser(authorization.slice(7));
+      if (identity.user) {
+        signedIn = true;
+        const viewer = createClient(backendUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? serviceKey, {
+          global: { headers: { Authorization: authorization } },
+        });
+        const { data: allowed, error: accessError } = await viewer.rpc('can_view_closing_prices');
+        closingAllowed = !accessError && allowed === true;
+      }
+    }
 
     const num = (key: string): number | null => {
       const raw = url.searchParams.get(key);
@@ -44,7 +60,7 @@ Deno.serve(async (req) => {
 
     let query = admin
       .from("listings")
-      .select(`${PUBLIC_CARD_COLUMNS},source,source_metadata,workspace_owner_id,user_id,owner_id`)
+      .select(`${PUBLIC_CARD_COLUMNS},affiliate_tier4_type,source,source_metadata,workspace_owner_id,user_id,owner_id,attributes,additional_details,available_from,elevator,parking`)
       .eq("is_published", true)
       .neq("status", "discarded")
       .gt("asking_price", 0)
@@ -113,7 +129,14 @@ Deno.serve(async (req) => {
       const base = attribution(row);
       const name = boardPublisherName(base.broker_name, base.publisher_kind);
       if (!meetsBoardRules(row, name)) return [];
-      return [{ ...toPublicCard(row), affiliate_enabled: row.affiliate_enabled === true, reward_levels: { form: leadLevel('form', row.affiliate_tier1_amount), whatsapp: leadLevel('whatsapp', row.affiliate_tier2_amount), phone: leadLevel('phone', row.affiliate_tier3_amount) }, closing_level: closingRewardLevel(row.features?.deal_closing_commission?.value ?? row.affiliate_tier4_amount, row.features?.deal_closing_commission?.type ?? row.affiliate_tier4_type, row.deal_type, row.asking_price), attribution: { ...base, broker_name: name } }];
+      const pricing = publicPricing({
+        affiliate_tier1_amount: row.affiliate_tier1_amount, affiliate_tier2_amount: row.affiliate_tier2_amount,
+        affiliate_tier3_amount: row.affiliate_tier3_amount, affiliate_tier4_amount: row.affiliate_tier4_amount,
+        affiliate_tier4_type: row.affiliate_tier4_type, features: { deal_closing_commission: row.features?.deal_closing_commission },
+        asking_price: row.asking_price, deal_type: row.deal_type,
+      }, signedIn, closingAllowed);
+      const { features: _features, asking_price: _price, deal_type: _deal, ...rewardFacts } = pricing;
+      return [{ ...toPublicCard(row), ...boardFilterFacts(row), ...rewardFacts, affiliate_enabled: row.affiliate_enabled === true, reward_levels: { form: leadLevel('form', row.affiliate_tier1_amount), whatsapp: leadLevel('whatsapp', row.affiliate_tier2_amount), phone: leadLevel('phone', row.affiliate_tier3_amount) }, closing_level: closingRewardLevel(row.features?.deal_closing_commission?.value ?? row.affiliate_tier4_amount, row.features?.deal_closing_commission?.type ?? row.affiliate_tier4_type, row.deal_type, row.asking_price), attribution: { ...base, broker_name: name } }];
     });
     return json({ properties, has_more: rows.length === limit });
   } catch (error) {

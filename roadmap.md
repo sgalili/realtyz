@@ -1,5 +1,11 @@
 # Roadmap
 
+## Advanced search and shekel rewards November 8
+- [x] Fix homepage dropdown and slider matching against whitelisted property facts and authorized reward data in the same paginated board feed; remove split deal state and skip no later pages after an empty eligible page.
+- [x] Derive closing search bounds from current full-board net ILS values, independent of selected filters; no fabricated bounds when data is unavailable.
+- [x] Display commission/reward badges in absolute shekels without changing stored agreements or visibility permissions; strip financial values from persisted board caches.
+- [x] 104 focused tests passed; live signed-in property-type selection returned 7 matches, closing bounds 128–90400 and maximum threshold returned 1 match, form threshold returned 1 match with ₪120 net. Desktop/mobile inspected without page errors or horizontal mobile overflow.
+
 ## Imported inventory publication November 7
 - [x] Fix workspace-role visibility and scoped publication with persisted readback and Hebrew failures; discard late workspace responses.
 - [x] Verified existing listings RLS/grants permit active-workspace updates; no schema change or weakening of required pricing/license checks. No Facebook or credit dependencies.

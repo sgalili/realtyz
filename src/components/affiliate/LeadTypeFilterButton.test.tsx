@@ -53,6 +53,18 @@ function renderFilter() {
 }
 
 describe('role-based advanced filter fields', () => {
+  it('uses the full authorized board closing bounds inside the inline search panel', () => {
+    setRole('broker');
+    const client = new QueryClient();
+    const change = vi.fn();
+    render(<QueryClientProvider client={client}><LeadTypeFilterButton panelOnly state={EMPTY_LEAD_FILTER} onChange={change} rewardBounds={{ closing: { min: 2400, max: 24000 } }} /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'עמלת תיווך עבור סגירת עסקה' }));
+    const slider = screen.getByRole('slider');
+    expect(slider).toHaveAttribute('aria-valuemin', '2400');
+    expect(slider).toHaveAttribute('aria-valuemax', '24000');
+    fireEvent.keyDown(slider, { key: 'End' });
+    expect(change).toHaveBeenCalledWith(expect.objectContaining({ prices: { tier4: 24000 } }));
+  });
   it('partner sees lead types 1-3, lead value and only the minimal property fields', () => {
     setRole('partner');
     renderFilter();

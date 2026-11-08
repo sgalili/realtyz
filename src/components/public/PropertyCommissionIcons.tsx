@@ -108,7 +108,9 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
   const rawTier4 = Number(source?.affiliate_tier4_amount ?? 0) > 0 ? Number(source?.affiliate_tier4_amount) : Number(dcc?.value ?? 0);
   const rawType = Number(source?.affiliate_tier4_amount ?? 0) > 0 ? source?.affiliate_tier4_type : dcc?.type;
   const closingIls = rawType === 'percent' ? Math.round(Number(source?.asking_price ?? 0) * rawTier4 / 100) : Math.round(rawTier4);
-  const tiers = !property && listing ? listingTiers(listing) : {
+  const marketTiers = listing ? listingTiers(listing) : null;
+  const marketClosing = marketTiers?.tier4Type === 'percent' ? Math.round(Number(listing?.asking_price ?? 0) * marketTiers.tier4 / 100) : marketTiers?.tier4 ?? 0;
+  const tiers = !property && marketTiers ? { ...marketTiers, tier4: level4Unlocked ? marketClosing : 0, tier4Type: 'fixed' as const } : {
     tier1: Number(source?.affiliate_tier1_amount ?? 0), tier2: Number(source?.affiliate_tier2_amount ?? 0),
     tier3: Number(source?.affiliate_tier3_amount ?? 0), tier4: level4Unlocked ? closingIls : 0,
     tier4Type: 'fixed' as 'percent' | 'fixed',
@@ -135,7 +137,7 @@ export default function PropertyCommissionIcons({ listingId, raw, networkOpen, t
     value: dcc?.value ?? source?.affiliate_tier4_amount, type: dcc?.type ?? source?.affiliate_tier4_type,
     dealType: source?.deal_type, price: source?.asking_price,
   });
-  const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} closingPercent={tiers.tier4Type === 'percent'} label={table || !user ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={levels as never} />;
+  const icons = <RewardIcons types={display.types} zeroTypes={zeroTypes} prices={display.prices} label={table || !user ? null : 'תגמולים'} grid={table} closingLevel={closingLevel} levels={levels as never} />;
   if (table && owned.data) return <><Button variant="ghost" className="relative min-h-8 min-w-8 bg-transparent p-0 hover:bg-transparent" aria-label="עריכת תגמולים" disabled={owned.isFetching} onClick={async event => { event.stopPropagation(); const fresh = await owned.refetch(); if (fresh.data) setDraft({ ...listingToDraft(fresh.data), resumeStep: 8, files: [], savedAt: Date.now() }); }}>{Object.values(display.types).some(Boolean) ? icons : (level4Unlocked ? <Trophy className="h-3.5 w-3.5 text-lead-closing" aria-label="סגירת עסקה" /> : <span className="text-xs font-semibold text-primary underline underline-offset-2">הגדרת תגמולים</span>)}</Button>{draft && <PublicListingPublisher pricingOnly adminOnlyEdit={!!owned.data?.__adminOnly} resumeDraft={draft} onRecovered={() => { setDraft(undefined); void owned.refetch(); }} />}</>;
   return <LeadPricingDialog readOnly closingLevel={closingLevel} rewardTypes={types} listing={{ listing_id: listingId, broker_id: '', property_title: null, tier1_amount: tiers.tier1, tier2_amount: tiers.tier2, tier3_amount: tiers.tier3, tier4_amount: tiers.tier4, tier4_type: tiers.tier4Type }}>{icons}</LeadPricingDialog>;
 }

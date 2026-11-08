@@ -58,3 +58,4 @@
 - Broker upgrades require SMS evidence, registry+certificate and pre-registry account-name match; else pending review. Listing triggers recheck SMS/license/roles; names lock server-side. Why: no circular approval or client bypass.
 - Workspace handoffs hide cache, discard stale requests and remount publishers; tenant UI uses owner roles. Servers validate callers. Why: no leaks.
 - Inventory promotion uses server-backed owner roles, exact workspace/IDs and returned public flags, never membership-role labels or social/wallet gates. Why: approved brokers can publish without false success or tenant leaks.
+- Home advanced search consumes whitelisted property facts and server-authorized reward amounts from the same paginated board feed; full-feed net ILS bounds stay independent of display filters, and persisted board caches strip financial values. Why: exact matching without membership-only gaps, stale ranges or cross-account price leaks.
