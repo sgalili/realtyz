@@ -44,7 +44,7 @@ import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { profileFieldChange, type ProfileContacts, type ProfileSaveField } from '@/lib/profileFieldSave';
 import { workspaceDetailPatch, type OfficeField } from '@/lib/workspaceDetailSave';
-import { mayEditBrokerIdentityField } from '@/lib/brokerProfilePolicy';
+import { brokerLicenseState, mayEditBrokerIdentityField } from '@/lib/brokerProfilePolicy';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
@@ -234,6 +234,8 @@ function PersonalTab() {
   const [verifiedBrokerLicense, setVerifiedBrokerLicense] = useState<string | null>(null);
   const [storedLicense, setStoredLicense] = useState('');
   const [lockedBrokerName, setLockedBrokerName] = useState('');
+  const [evidenceLicense, setEvidenceLicense] = useState('');
+  const [identityLocked, setIdentityLocked] = useState(false);
   const [removeLicenseOpen, setRemoveLicenseOpen] = useState(false);
   const [removingLicense, setRemovingLicense] = useState(false);
   const [licenseSuspended, setLicenseSuspended] = useState(false);
@@ -262,7 +264,7 @@ function PersonalTab() {
     // Reset everything the moment the active workspace changes so nothing
     // from the previous tenant can linger on screen.
     setEmails([newRow('')]); setWhatsapps([newRow('')]); setPhones([newRow('')]);
-    setFullName(''); setCity(''); setGender(''); setBrokerLicense(''); setStoredLicense(''); setLockedBrokerName('');
+    setFullName(''); setCity(''); setGender(''); setBrokerLicense(''); setStoredLicense(''); setLockedBrokerName(''); setEvidenceLicense(''); setIdentityLocked(false);
     const meta = isOwnProfile ? (user.user_metadata ?? {}) as Record<string, any> : {};
     const contacts = isOwnProfile ? meta.profile_contacts ?? null : null;
     const userPhone = isOwnProfile ? ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString() : '';
@@ -307,6 +309,8 @@ function PersonalTab() {
         setWhatsapps(loadedWhatsapps);
         setPhones(loadedPhones);
         setFullName(serverName);
+        setEvidenceLicense(evidence?.license_number ?? '');
+        setIdentityLocked(server.locked_broker_name != null || server.locked_broker_city != null || (!!evidence?.license_number && evidence.license_number === server.broker_license_number));
         setLockedBrokerName(String(server.locked_broker_name ?? (evidence?.license_number === server.broker_license_number ? evidence?.registry_holder_name : '') ?? ''));
         setCity(String(server.city ?? extra?.city ?? ''));
         setGender(profileGender(server.gender) ?? '');
@@ -318,23 +322,20 @@ function PersonalTab() {
     return () => { cancelled = true; };
   }, [user, profileOwnerId, isOwnProfile, hydratedFor]);
 
-  const verifiedLicenseLocked = !!lockedBrokerName || (showBrokerFields && isOwnProfile && !licenseSuspended && !!storedLicense);
+  const verifiedLicenseLocked = identityLocked;
   const [licenseLiveVerified, setLicenseLiveVerified] = useState<boolean | null>(null);
   useEffect(() => {
     const ownerId = profileOwnerId;
     if (!ownerId || !storedLicense) { setLicenseLiveVerified(null); return; }
     let cancelled = false;
     (async () => {
-      const [{ data: roles }, { data: req }] = await Promise.all([
-        supabase.from('user_roles').select('role').eq('user_id', ownerId),
-        supabase.from('broker_upgrade_requests').select('status').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      ]);
+      const { data: entitled, error } = await supabase.rpc('partner_can_view_closing', { _user_id: ownerId });
       if (cancelled) return;
-      const brokerRole = (roles ?? []).some((r: any) => ['managing_broker', 'agent', 'lead_agent', 'junior_agent'].includes(String(r.role)));
-      setLicenseLiveVerified(brokerRole || (req as any)?.status === 'approved' || !!lockedBrokerName);
+      setLicenseLiveVerified(error ? null : entitled === true);
     })();
     return () => { cancelled = true; };
   }, [profileOwnerId, storedLicense, lockedBrokerName]);
+  const licenseState = brokerLicenseState({ evidenceLicense, storedLicense, active: licenseLiveVerified, suspended: licenseSuspended });
   const removeLicense = async () => {
     setRemovingLicense(true);
     try {
@@ -343,6 +344,7 @@ function PersonalTab() {
         : await supabase.rpc('admin_remove_broker_license' as any, { _user_id: profileOwnerId });
       if (error) throw error;
       setStoredLicense(''); setBrokerLicense(''); setVerifiedBrokerLicense(null);
+      setEvidenceLicense(''); setIdentityLocked(false); setLockedBrokerName('');
       setRemoveLicenseOpen(false);
       await queryClient.invalidateQueries();
       toast.success('רישיון התיווך הוסר. החשבון חזר להרשאות משתמש רגיל.');
@@ -361,7 +363,18 @@ function PersonalTab() {
     try {
       if (field === 'brokerLicense') {
         if (!showBrokerFields || !isOwnProfile || verifiedLicenseLocked || verifiedBrokerLicense !== brokerLicense) return false;
-        if (brokerLicense) await verifyBrokerLicense(brokerLicense, 'verify');
+        const result = await verifyBrokerLicense(brokerLicense, 'verify', true);
+        if (!result.profile || result.profile.id !== profileOwnerId || !mounted.current) return false;
+        const saved = result.profile;
+        setFullName(saved.full_name); setCity(saved.city ?? ''); setLockedBrokerName(saved.locked_broker_name);
+        setStoredLicense(saved.broker_license_number); setEvidenceLicense(saved.broker_license_number); setIdentityLocked(true);
+        setLicenseLiveVerified(result.active === true);
+        savedContacts.current = { ...savedContacts.current, fullName: saved.full_name, city: saved.city ?? '' };
+        window.dispatchEvent(new CustomEvent<ProfileSavedDetail>('realtyz:profile-saved', { detail: { profileOwnerId, profile: saved } }));
+        window.dispatchEvent(new Event('realtyz:license-verified'));
+        void queryClient.invalidateQueries();
+        toast.success(result.active ? 'הרישיון מאומת והחשבון פעיל כמתווך' : 'הרישיון אומת בפנקס המתווכים; יש להשלים את אישור החשבון');
+        return true;
       }
       if (field === 'emails') {
         const rows = value as Row[];
@@ -389,7 +402,6 @@ function PersonalTab() {
       setEditing(e => ({ ...e, [field]: false }));
       toast.success('השדה נשמר');
       void queryClient.invalidateQueries({ queryKey: ['app-header-user-profile'] });
-      if (field === 'brokerLicense') window.dispatchEvent(new Event('realtyz:license-verified'));
       return true;
     } catch (err: any) {
       if (mounted.current) toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
@@ -408,10 +420,7 @@ function PersonalTab() {
     if (verifiedBrokerLicense !== brokerLicense || brokerLicense === storedLicense || autoApprovedLicense.current === brokerLicense) return;
     autoApprovedLicense.current = brokerLicense;
     void saveField('brokerLicense', brokerLicense).then(ok => {
-      if (!ok || !mounted.current) return;
-      setStoredLicense(brokerLicense);
-      void queryClient.invalidateQueries();
-      toast.success('רישיון התיווך אומת מול פנקס המתווכים והחשבון אושר כמתווך');
+      if (!ok) autoApprovedLicense.current = '';
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verifiedBrokerLicense, brokerLicense, storedLicense, verifiedLicenseLocked, showBrokerFields, isOwnProfile]);
@@ -487,15 +496,17 @@ function PersonalTab() {
 
         {showBrokerFields && isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
         {verifiedLicenseLocked ? (
-          <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+          <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
             <div className="min-w-[90px] flex-1 basis-24">
               <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
             </div>
-            {licenseLiveVerified === false
-              ? <span role="status" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-muted-foreground"><Clock className="h-4 w-4" aria-hidden />ממתין לאימות</span>
-              : <span role="status" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-success"><BadgeCheck className="h-4 w-4" aria-hidden />מאומת</span>}
+            <span role="status" className={cn('flex flex-wrap items-center gap-1 text-sm font-semibold', licenseState.verified ? 'text-success' : 'text-muted-foreground')}>
+              {licenseState.verified ? <BadgeCheck className="h-4 w-4" aria-hidden /> : <Clock className="h-4 w-4" aria-hidden />}
+              {licenseState.verified ? 'מאומת' : 'ממתין לאימות'}
+              {licenseState.verified && <span className={licenseState.active ? 'text-success' : 'text-muted-foreground'}> · {licenseLiveVerified === null ? 'בודק פעילות…' : licenseState.active ? 'מתווך פעיל' : 'החשבון אינו פעיל כמתווך'}</span>}
+            </span>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

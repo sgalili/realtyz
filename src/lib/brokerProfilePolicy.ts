@@ -9,3 +9,8 @@ export function mayFetchRegistryInReview(input: { superAdmin: boolean; pending: 
 export function mayEditBrokerIdentityField(field: string, locked: boolean) {
   return !locked || (field !== 'fullName' && field !== 'city');
 }
+
+export function brokerLicenseState(input: { evidenceLicense?: string | null; storedLicense: string; active: boolean | null; suspended: boolean }) {
+  const verified = !!input.storedLicense && input.evidenceLicense === input.storedLicense;
+  return { verified, active: verified && input.active === true && !input.suspended };
+}

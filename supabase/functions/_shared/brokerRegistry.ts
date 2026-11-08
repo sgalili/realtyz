@@ -5,6 +5,18 @@ export const BROKER_LICENSE_PATTERN = /^[1-9][0-9]{0,9}$/;
 export const INVALID_BROKER_LICENSE = 'מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים';
 export const BROKER_REGISTRY_UNAVAILABLE = 'לא ניתן לאמת את הרישיון מול פנקס המתווכים כרגע. נסו שוב מאוחר יותר.';
 
+/** Only for the official surname-first registry, never arbitrary app/user names.
+ * Keep the raw registry name separately for certificate and identity checks.
+ */
+export function registryDisplayName(raw: string, accountName = '') {
+  const name = raw.trim().replace(/\s+/g, ' ');
+  const parts = name.split(' ');
+  const account = accountName.trim().replace(/\s+/g, ' ');
+  if (account && account !== name && account.split(' ').sort().join(' ') === [...parts].sort().join(' ')) return account;
+  if (parts.length < 2) return name;
+  return [...parts.slice(1), parts[0]].join(' ');
+}
+
 export function exactRegistryRecord(records: unknown[], license: string) {
   return records.find((row): row is Record<string, unknown> => {
     if (!row || typeof row !== 'object') return false;

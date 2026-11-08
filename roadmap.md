@@ -1,5 +1,10 @@
 # Roadmap
 
+## Broker registry identity November 8
+- [ ] Normalize official personal names to first-name last-name across saved profiles and registry outputs without reversing arbitrary names.
+- [ ] Correct automatic verification/readback and distinguish verified evidence from active broker permissions beside the license.
+- [ ] Preserve locked official name/city and restricted manual-review fetching; test deployed lookup and authenticated profile on mobile/desktop.
+
 ## Campaign entry and accessibility November 8
 - [x] Make every campaign plus action open the full channel picker, clearing only navigation context.
 - [x] Integrate a locally bundled MIT accessibility engine with a sidebar-only trigger and Hebrew keyboard-accessible preferences.

@@ -13,7 +13,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
-import { Trash2, Pencil, Check } from 'lucide-react';
+import { Trash2, Pencil, Check, BadgeCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -139,7 +139,7 @@ export function SuperAdminUsersTable() {
             <div key={k} className="grid gap-1"><Label htmlFor={`edit-${k}`}>{label}</Label>
               {draft.identityLocked && (k === 'full_name' || k === 'city') ? <span dir={dir} className="text-base font-semibold">{draft[k] || '—'}</span> : <Input id={`edit-${k}`} dir={dir} value={draft[k]} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />}</div>
           ))}
-          {draft.broker_license_number && <div className="grid gap-1"><Label htmlFor="edit-broker-license">מספר רישיון תיווך</Label><Input id="edit-broker-license" dir="ltr" readOnly value={draft.broker_license_number} /></div>}
+          {draft.broker_license_number && <div className="grid gap-1"><Label htmlFor="edit-broker-license">מספר רישיון תיווך</Label><div className="flex flex-wrap items-center gap-2"><Input id="edit-broker-license" className="min-w-0 flex-1" dir="ltr" readOnly value={draft.broker_license_number} /><span role="status" className="flex items-center gap-1 text-sm text-success">{draft.identityLocked && <BadgeCheck className="h-4 w-4" aria-hidden />}{draft.identityLocked ? 'מאומת בפנקס' : 'ממתין לאימות'}</span></div><span className="text-sm text-muted-foreground">{draft.roles.some(role => ['agent', 'lead_agent', 'managing_broker'].includes(role)) ? 'הרשאות מתווך פעילות' : 'ללא הרשאות מתווך פעילות'}</span></div>}
           <div className="grid gap-1"><Label>מגדר</Label>
             <Select value={draft.gender || undefined} onValueChange={v => setDraft({ ...draft, gender: v })}>
               <SelectTrigger dir="rtl"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>

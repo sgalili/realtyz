@@ -1,4 +1,4 @@
-import { BROKER_REGISTRY_DATASET, BROKER_REGISTRY_RESOURCE, BROKER_REGISTRY_SOURCE, BROKER_REGISTRY_UNAVAILABLE, INVALID_BROKER_LICENSE, exactRegistryRecord, registrySourceIsFresh } from '../_shared/brokerRegistry.ts';
+import { BROKER_REGISTRY_DATASET, BROKER_REGISTRY_RESOURCE, BROKER_REGISTRY_SOURCE, BROKER_REGISTRY_UNAVAILABLE, INVALID_BROKER_LICENSE, exactRegistryRecord, registrySourceIsFresh, registryDisplayName } from '../_shared/brokerRegistry.ts';
 
 export class RegistryNameError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message); }
@@ -27,7 +27,8 @@ export async function fetchRegistryName(license: string, fetcher: typeof fetch =
       record = exactRegistryRecord((await officialJson(search)).records ?? [], license);
     }
     if (!record) throw new RegistryNameError('license_not_found', INVALID_BROKER_LICENSE, 404);
-    return { fullName: String(record['שם המתווך']).trim(), city: String(record['עיר מגורים'] ?? '').trim(), updatedAt, source: BROKER_REGISTRY_SOURCE };
+    const rawName = String(record['שם המתווך']).trim();
+    return { fullName: registryDisplayName(rawName), rawName, city: String(record['עיר מגורים'] ?? '').trim(), updatedAt, source: BROKER_REGISTRY_SOURCE };
   } catch (error) {
     if (error instanceof RegistryNameError) throw error;
     throw new RegistryNameError('registry_unavailable', BROKER_REGISTRY_UNAVAILABLE, 503);
@@ -37,5 +38,5 @@ export async function fetchRegistryName(license: string, fetcher: typeof fetch =
 /** A lookup cannot assign a new identity/license or grant broker permissions. */
 export function assertRegistryNameTarget(profile: { broker_license_number: string | null; locked_broker_name: string | null }, license: string, name?: string) {
   if (profile.broker_license_number !== license) throw new RegistryNameError('license_changed', 'מספר הרישיון אינו תואם לרישיון השמור בפרופיל. רעננו את הפרטים ונסו שוב.', 409);
-  if (name && profile.locked_broker_name && profile.locked_broker_name !== name) throw new RegistryNameError('locked_identity_conflict', 'השם במאגר אינו תואם לזהות המאומתת הנעולה. לא שונו פרטי החשבון.', 409);
+  if (name && profile.locked_broker_name && profile.locked_broker_name.split(' ').sort().join(' ') !== name.split(' ').sort().join(' ')) throw new RegistryNameError('locked_identity_conflict', 'השם במאגר אינו תואם לזהות המאומתת הנעולה. לא שונו פרטי החשבון.', 409);
 }

@@ -33,13 +33,13 @@ Deno.serve(async req => {
     assertRegistryNameTarget(profile, license, registry.fullName);
     // Refresh official evidence so existing name/license triggers use the same current record.
     // This never writes verification evidence, broker roles, approval status or SMS state.
-    const { error: registryError } = await admin.from('official_brokers_registry').upsert({ license_number: license, holder_name: registry.fullName, source_url: registry.source, source_updated_at: registry.updatedAt, checked_at: new Date().toISOString() });
+    const { error: registryError } = await admin.from('official_brokers_registry').upsert({ license_number: license, holder_name: registry.rawName, display_name: registry.fullName, registry_city: registry.city, source_url: registry.source, source_updated_at: registry.updatedAt, checked_at: new Date().toISOString() });
     if (registryError) throw registryError;
     const { data: saved, error: saveError } = await admin.from('profiles').update({ full_name: registry.fullName, locked_broker_name: registry.fullName, city: registry.city || null, locked_broker_city: registry.city }).eq('id', userId).eq('broker_license_number', license).select('id,full_name,city,broker_license_number').single();
     if (saveError || !saved || saved.full_name !== registry.fullName) throw new RegistryNameError('save_failed', 'השם נשלף, אך לא ניתן היה לעדכן את הפרופיל. רעננו ונסו שוב.', 409);
     // Exact registry match confirmed by a Super Admin is official license evidence (no role grant).
     const { data: previous } = await admin.from('broker_license_verifications').select('account_name_before_verification').eq('user_id', userId).maybeSingle();
-    const { error: evidenceError } = await admin.from('broker_license_verifications').upsert({ user_id: userId, license_number: license, registry_holder_name: registry.fullName, account_name_before_verification: previous?.account_name_before_verification ?? profile.full_name ?? '', source_url: registry.source, source_updated_at: registry.updatedAt, verified_at: new Date().toISOString() });
+    const { error: evidenceError } = await admin.from('broker_license_verifications').upsert({ user_id: userId, license_number: license, registry_holder_name: registry.rawName, account_name_before_verification: previous?.account_name_before_verification ?? profile.full_name ?? '', source_url: registry.source, source_updated_at: registry.updatedAt, verified_at: new Date().toISOString() });
     if (evidenceError) throw evidenceError;
     await admin.from('audit_logs').insert({ action: 'admin_registry_name_refresh', actor_id: identity.user.id, target_table: 'profiles', target_id: userId, details: { source: registry.source } });
     return reply({ profile: saved, registry: { full_name: registry.fullName, city: registry.city, license_number: license }, message: 'השם המלא נשלף בהצלחה מהמאגר הממשלתי' });

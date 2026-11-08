@@ -6101,22 +6101,28 @@ export type Database = {
       official_brokers_registry: {
         Row: {
           checked_at: string
+          display_name: string | null
           holder_name: string
           license_number: string
+          registry_city: string | null
           source_updated_at: string
           source_url: string
         }
         Insert: {
           checked_at?: string
+          display_name?: string | null
           holder_name: string
           license_number: string
+          registry_city?: string | null
           source_updated_at: string
           source_url: string
         }
         Update: {
           checked_at?: string
+          display_name?: string | null
           holder_name?: string
           license_number?: string
+          registry_city?: string | null
           source_updated_at?: string
           source_url?: string
         }

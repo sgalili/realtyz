@@ -7,7 +7,7 @@ const json = (result: unknown) => ({ ok: true, json: async () => ({ success: tru
 vi.stubGlobal('AbortSignal', { timeout: () => new AbortController().signal });
 it('fetches the exact entered official license and returns its full name', async () => {
   const fetcher = vi.fn().mockImplementation(async (url: URL) => url.pathname.endsWith('package_show') ? json(metadata) : json({ records: [{ 'מס רשיון': 31927721, 'שם המתווך': 'אידלסון דולי' }] }));
-  expect(await fetchRegistryName('31927721', fetcher)).toMatchObject({ fullName: 'אידלסון דולי' });
+  expect(await fetchRegistryName('31927721', fetcher)).toMatchObject({ fullName: 'דולי אידלסון', rawName: 'אידלסון דולי' });
   expect(new URL(fetcher.mock.calls[1][0]).searchParams.get('filters')).toBe('{"מס רשיון":31927721}');
 });
 it('rejects unrelated search matches instead of updating the requested profile', async () => {

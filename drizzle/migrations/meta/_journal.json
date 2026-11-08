@@ -904,6 +904,13 @@
       "when": 1794179585998,
       "tag": "0128_protect_existing_official_broker_identities",
       "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1794181968439,
+      "tag": "0129_registry_canonical_display_identity",
+      "breakpoints": true
     }
   ]
 }
