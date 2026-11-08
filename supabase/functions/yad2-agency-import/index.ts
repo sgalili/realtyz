@@ -131,6 +131,7 @@ Deno.serve(async req => {
   let officeLogo: string | null = null;
   const agencyId = decodeURIComponent(pageUrl.pathname.split('/')[3]);
   let readable = false;
+  const rentIds = new Set<string>();
   try {
     // Agency pages split inventory by deal type; read each section with its pagination.
     for (const section of ['forsale', 'rent']) {
@@ -148,6 +149,7 @@ Deno.serve(async req => {
         const fresh = found.filter(id => !ids.includes(id));
         if (!fresh.length) break;
         ids.push(...fresh);
+        if (section === 'rent') fresh.forEach(id => rentIds.add(id));
         if (ids.length >= MAX_ITEMS) { partial = true; break; }
       }
       if (ids.length >= MAX_ITEMS) break;
@@ -170,6 +172,6 @@ Deno.serve(async req => {
     } catch (e) { console.error('office logo save failed', e instanceof Error ? e.message : e); }
   }
   if (!ids.length) return json({ error: readable ? 'no_listings' : 'unreadable_page', message: readable ? 'עמוד המשרד נקרא בהצלחה אך לא נמצאו בו מודעות פעילות למכירה או להשכרה.' : 'לא הצלחנו לקרוא את מבנה עמוד המשרד ביד2 (ייתכן שנדרש סבב פרוקסי חדש). נסו שוב בעוד כמה דקות.' }, 422);
-  const items = ids.slice(0, MAX_ITEMS).map(id => `https://www.yad2.co.il/realestate/item/${id}`);
+  const items = ids.slice(0, MAX_ITEMS).map(id => `https://www.yad2.co.il/realestate/item/${id}${rentIds.has(id) ? '?deal=rent' : ''}`);
   return json({ ok: true, source_url: pageUrl.href, pages_read: pages, partial, items });
 });

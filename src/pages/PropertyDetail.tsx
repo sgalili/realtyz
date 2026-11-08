@@ -198,11 +198,34 @@ type EditableFields = {
   ac: boolean;
   shelter: boolean;
   solar: boolean;
+  extra_features: string[];
   source_url: string;
   photos: string[];
   photo_url_draft: string;
 };
 
+
+// Amenity checkboxes shown in edit mode. Each entry maps a saved feature label
+// to the patterns that recognize it in imported labels/attributes.
+const AMENITY_LABEL_RE: Record<'elevator' | 'balcony' | 'ac' | 'shelter' | 'solar', RegExp> = {
+  elevator: /מעלית|elevator/i,
+  balcony: /מרפסת|balcony/i,
+  ac: /מיזוג|מזגן|air.?condition/i,
+  shelter: /ממ["״']?ד|מקלט|safe.?room|shelter/i,
+  solar: /דוד שמש|solar/i,
+};
+const EXTRA_FEATURES: ReadonlyArray<readonly [string, RegExp, string[]]> = [
+  ['מרוהטת', /מרוהט|ריהוט|furnish/i, ['furniture', 'furnished']],
+  ['מחסן', /מחסן|storage|warehouse/i, ['storage', 'warehouse']],
+  ['משופצת', /משופצ|שיפוץ|renovat/i, ['renovated']],
+  ['גישה לנכים', /נכים|נגיש|accessib|handicap/i, ['accessibility', 'handicapped']],
+  ['סורגים', /סורג|bars/i, ['bars']],
+  ['חיות מחמד', /חיות|pets/i, ['pets']],
+  ['מטבח כשר', /כשר|kosher/i, ['kosher']],
+  ['דלתות פנדור', /פנדור|pandor/i, ['pandor', 'pandorDoors']],
+  ['חניה', /^חני/i, []],
+];
+const isTruthyFlag = (v: unknown) => v === true || v === 1 || (typeof v === 'string' && /^(1|true|yes|כן)$/i.test(v.trim()));
 
 // Draft keys are namespaced per workspace as well as per property, so an
 // in-progress edit from one office can never be restored inside another.
@@ -608,8 +631,16 @@ export default function PropertyDetail() {
   // in-progress edits after an accidental close/reload.
   useEffect(() => {
     if (editMode && property && !form) {
+      const rowAny = (data?.row ?? {}) as any;
+      const rawFeatures = Array.isArray(rowAny.features) ? rowAny.features as unknown[] : rowAny.features ? [rowAny.features] : [];
+      const importedLabels = Array.from(new Set(rawFeatures.flatMap((f) => typeof f === 'string' ? [f] : f && typeof f === 'object' && Array.isArray((f as any).amenity_labels) ? (f as any).amenity_labels.filter((x: unknown): x is string => typeof x === 'string') : []).map((l) => l.trim()).filter(Boolean)));
+      const featureObj = (rawFeatures.find((f) => f && typeof f === 'object') ?? {}) as Record<string, any>;
+      const attrBag: Record<string, unknown> = { ...(featureObj.extras ?? {}), ...(rowAny.attributes && typeof rowAny.attributes === 'object' ? rowAny.attributes : {}), ...(meta as Record<string, unknown>) };
+      const hasLabel = (re: RegExp) => importedLabels.some((l) => re.test(l));
+      const isKnownLabel = (l: string) => Object.values(AMENITY_LABEL_RE).some((re) => re.test(l)) || EXTRA_FEATURES.some(([, re]) => re.test(l));
+      const customTitle = typeof (meta as any).custom_title === 'string' ? String((meta as any).custom_title) : '';
       const base: EditableFields = {
-        title: property.title || '',
+        title: customTitle || dynamicHeadline || property.title || '',
         city: property.city || '',
         neighborhood: neighborhood || '',
         address: property.address || '',
@@ -633,15 +664,14 @@ export default function PropertyDetail() {
         description: property.description || '',
         short_description: (data?.row as any)?.short_description ? String((data?.row as any).short_description) : '',
         long_description: (data?.row as any)?.long_description ? String((data?.row as any).long_description) : '',
-        features_text: Array.isArray(data?.row?.features)
-          ? (data.row.features as unknown[]).filter((f): f is string => typeof f === 'string').join(', ')
-          : '',
+        features_text: importedLabels.filter((l) => !isKnownLabel(l)).join(', '),
         parking: String(amenities?.parking ?? meta.parking ?? ''),
-        elevator: Boolean(amenities?.elevator),
-        balcony: Boolean(amenities?.balcony),
-        ac: Boolean(amenities?.ac),
-        shelter: Boolean(amenities?.shelter),
-        solar: Boolean(amenities?.solar),
+        elevator: Boolean(amenities?.elevator) || hasLabel(AMENITY_LABEL_RE.elevator),
+        balcony: Boolean(amenities?.balcony) || hasLabel(AMENITY_LABEL_RE.balcony),
+        ac: Boolean(amenities?.ac) || hasLabel(AMENITY_LABEL_RE.ac),
+        shelter: Boolean(amenities?.shelter) || hasLabel(AMENITY_LABEL_RE.shelter),
+        solar: Boolean(amenities?.solar) || hasLabel(AMENITY_LABEL_RE.solar),
+        extra_features: EXTRA_FEATURES.filter(([, re, keys]) => hasLabel(re) || keys.some((k) => isTruthyFlag(attrBag[k]))).map(([label]) => label),
         source_url: sourceUrl || (typeof meta.source_url === 'string' ? meta.source_url : ''),
         photos: dbPhotos,
         photo_url_draft: '',
@@ -703,6 +733,7 @@ export default function PropertyDetail() {
       clearDraft();
     }
     setEditMode(false);
+    navigate('/');
   };
 
 
@@ -734,6 +765,7 @@ export default function PropertyDetail() {
         photos: form.photos,
         images: form.photos,
         removed_photo_keys: removedPhotoKeys,
+        custom_title: form.title.trim() && form.title.trim() !== dynamicHeadline ? form.title.trim() : null,
         deal_type: form.deal_type || null,
         listing_type: form.deal_type || null,
         source_url: form.source_url || null,
@@ -749,6 +781,7 @@ export default function PropertyDetail() {
         form.ac ? 'מיזוג' : null,
         form.shelter ? 'ממ"ד' : null,
         form.solar ? 'דוד שמש' : null,
+        ...form.extra_features,
       ].filter((v): v is string => !!v);
       const { error } = await supabase.from('listings').update({
         property_title: form.title || null,
@@ -873,14 +906,16 @@ export default function PropertyDetail() {
   const propertyTypeHe = rawPropertyTypeSource || PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
   // Internal workspace headline keeps full operational address details.
-  const dynamicHeadline = formatInternalListingTitle({
+  const computedHeadline = formatInternalListingTitle({
     address: property.address,
     city: property.city,
     neighborhood,
     property_type: property.property_type,
     title: property.title,
     raw: data?.row,
-  }) || `${propertyTypeHe} ${transactionHe}`;
+  });
+  const customTitle = typeof (meta as any).custom_title === 'string' && (meta as any).custom_title.trim() ? String((meta as any).custom_title).trim() : '';
+  const dynamicHeadline = customTitle || computedHeadline || `${propertyTypeHe} ${transactionHe}`;
 
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
   const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 0) || 0;
@@ -1416,7 +1451,9 @@ export default function PropertyDetail() {
 
       {/* Headline · neighborhood · price */}
       <header className="space-y-2">
-        <PublicAdHeading title={dynamicHeadline} price={!editMode ? property.price > 0 ? formatPrice(property.price) : 'פרטים חסרים' : undefined} dealType={isRent ? 'rent' : 'sale'} />
+        {editMode && form ? (
+          <Textarea dir="rtl" rows={2} aria-label="כותרת הנכס" value={form.title} onChange={(e) => setField('title', e.target.value)} className="resize-y text-2xl font-bold" />
+        ) : <PublicAdHeading title={dynamicHeadline} price={!editMode ? property.price > 0 ? formatPrice(property.price) : 'פרטים חסרים' : undefined} dealType={isRent ? 'rent' : 'sale'} />}
         {editMode && form && <PriceInput value={form.price} onChange={(e) => setField('price', e.target.value)} className="max-w-xs" />}
         {pricePerMeter && <p className="text-sm text-muted-foreground">({pricePerMeter} ₪ למ״ר)</p>}
 
@@ -1619,7 +1656,6 @@ export default function PropertyDetail() {
           <Card className="p-4 sm:p-5">
             <h2 className="text-[19px] font-bold text-primary mb-4">מאפייני הנכס</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <Field label={<span className="inline-flex items-center gap-1"><Pencil className="h-3.5 w-3.5" />כותרת</span>}><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
                 <Field label="חדרים"><Input type="number" step="0.5" value={form.rooms} onChange={(e) => setField('rooms', e.target.value)} /></Field>
                 <Field label='שטח (מ"ר)'><Input type="number" value={form.sqm} onChange={(e) => setField('sqm', e.target.value)} /></Field>
                 <Field label="קומה"><Input type="number" value={form.floor} onChange={(e) => setField('floor', e.target.value)} /></Field>
@@ -1690,6 +1726,17 @@ export default function PropertyDetail() {
                         type="checkbox"
                         checked={Boolean(form[key])}
                         onChange={(e) => setBoolField(key, e.target.checked)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                  {EXTRA_FEATURES.map(([label]) => (
+                    <label key={label} className="flex items-center gap-2 rounded-md border px-3 py-2 text-xl cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.extra_features.includes(label)}
+                        onChange={(e) => setForm((f) => f ? { ...f, extra_features: e.target.checked ? [...f.extra_features, label] : f.extra_features.filter((x) => x !== label) } : f)}
                         className="h-4 w-4 accent-primary"
                       />
                       <span>{label}</span>

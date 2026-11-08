@@ -73,7 +73,21 @@ function json(body: unknown, status = 200) {
 
 function detectDealType(url: string): DealType {
   const u = url.toLowerCase();
-  if (/\/(forrent|rent)(\b|\/|\?)/.test(u) || /realestate\/rent/.test(u)) return "rent";
+  if (/\/(forrent|rent)(\b|\/|\?)/.test(u) || /realestate\/rent/.test(u) || /[?&#]deal=rent\b/.test(u)) return "rent";
+  return "sale";
+}
+
+// Yad2 item URLs (/realestate/item/<id>) carry no deal segment, so read the
+// ad's own data: explicit deal fields, rent breadcrumbs/links or monthly price.
+function detectItemDealType(html: string, srcUrl: string, ad?: any): DealType {
+  if (detectDealType(srcUrl) === "rent") return "rent";
+  const field = String(ad?.dealType ?? ad?.deal_type ?? ad?.adType ?? ad?.metaData?.dealType ?? ad?.categoryName ?? "").toLowerCase();
+  if (/rent|השכרה|שכירות/.test(field)) return "rent";
+  if (/sale|forsale|מכירה/.test(field)) return "sale";
+  if (/"(?:dealType|deal_type|adType)"\s*:\s*"(?:rent|forrent)"/i.test(html)) return "rent";
+  if (/"(?:dealType|deal_type|adType)"\s*:\s*"(?:sale|forsale)"/i.test(html)) return "sale";
+  if (/realestate\/(?:for)?rent[/"?]/i.test(html) && !/realestate\/forsale[/"?]/i.test(html)) return "rent";
+  if (/להשכרה|₪\s*\/?\s*לחודש|שכר דירה/.test(html) && !/למכירה/.test(html)) return "rent";
   return "sale";
 }
 
@@ -1153,9 +1167,9 @@ function parseSearchJson(body: string, srcUrl: string, limit: number): Scraped[]
 function parseItemJson(body: string, srcUrl: string): Scraped | null {
   let payload: any;
   try { payload = JSON.parse(body); } catch { return null; }
-  const dealType = detectDealType(srcUrl);
   const ad = payload?.data ?? payload?.ad ?? payload;
   if (!ad || typeof ad !== "object") return null;
+  const dealType = detectItemDealType(body, srcUrl, ad);
   const base = feedItemToScraped(ad, dealType);
   if (!base) return null;
   // Item endpoint carries richer contact info
@@ -1423,7 +1437,7 @@ function parseItem(html: string, srcUrl: string): Scraped | null {
   // shell row here incorrectly stopped the Scraping Browser fallback.
   if (isBlockedItemPage(html)) return null;
   const $ = cheerio.load(html);
-  const dealType = detectDealType(srcUrl);
+  let dealType = detectDealType(srcUrl);
   const text = $("body").text();
 
   // Next.js JSON usually contains the full ad object under pageProps/RSC chunks.
@@ -1486,6 +1500,7 @@ function parseItem(html: string, srcUrl: string): Scraped | null {
   }
 
   const idMatch = srcUrl.match(/\/item\/([^/?#]+)/);
+  dealType = detectItemDealType(html, srcUrl, ad);
   const priceText = clean($("[data-testid=price]").first().text()) ?? (text.match(/([\d,]{4,})\s*₪/)?.[1] ?? null);
   const roomsText = ad?.rooms ?? ad?.rooms_ts ?? text.match(/(\d+(?:[.,]\d)?)\s*חדרים/)?.[1];
   const sqmText = ad?.square_meters ?? text.match(/(\d{2,4})\s*מ["״]?ר/)?.[1];
