@@ -1,5 +1,10 @@
 # Roadmap
 
+## Campaign entry and accessibility November 8
+- [x] Make every campaign plus action open the full channel picker, clearing only navigation context.
+- [x] Integrate a locally bundled MIT accessibility engine with a sidebar-only trigger and Hebrew keyboard-accessible preferences.
+- [x] Nine focused tests passed; authenticated SMS subpage plus opened all six channels. Mobile/desktop verified all preferences, keyboard Space/Escape, 200% bound, reset and hidden sidebar-only trigger without page errors. Build OK. Accessibility Review identified missing baseline input focus indicators (fixed); full-site semantic/screen-reader audit and Israeli/WCAG certification remain unverified, not implied by the widget.
+
 ## Profile completion warning November 8
 - [x] Validate the displayed profile owner's saved name, city and phone without account/workspace mixing; absent/error/stale reads never generate missing-field claims.
 - [x] Consume scoped confirmed-save readback immediately, refresh on focus and visible 30-second checks, and automatically remove completed warnings.

@@ -3,6 +3,69 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Accessibility overrides intentionally outrank normal presentation choices. */
+:root {
+  --a11y-scale: 1;
+  --a11y-surface: 0 0% 0%;
+  --a11y-ink: 0 0% 100%;
+  --a11y-link: 52 100% 60%;
+  --a11y-focus: 205 100% 45%;
+  --a11y-readable-font: Arial, "Assistant", sans-serif;
+}
+html [data-a11y-text] { font-size: calc(var(--a11y-base-size) * var(--a11y-scale)) !important; }
+html[data-a11y-readable] body :not(svg):not(svg *) { font-family: var(--a11y-readable-font) !important; }
+html[data-a11y-links] body :is(a, a *, [role="link"]) {
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 3px;
+  font-weight: 700 !important;
+}
+html[data-a11y-motion] *, html[data-a11y-motion] *::before, html[data-a11y-motion] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+html[data-a11y-contrast] {
+  --background: var(--a11y-surface); --foreground: var(--a11y-ink);
+  --card: var(--a11y-surface); --card-foreground: var(--a11y-ink);
+  --popover: var(--a11y-surface); --popover-foreground: var(--a11y-ink);
+  --muted: var(--a11y-surface); --muted-foreground: var(--a11y-ink);
+  --accent: var(--a11y-surface); --accent-foreground: var(--a11y-ink);
+  --border: var(--a11y-ink); --input: var(--a11y-ink);
+}
+html[data-a11y-contrast] body :not(svg):not(svg *):not(img):not(video):not(canvas) {
+  color: hsl(var(--a11y-ink)) !important;
+  background-color: hsl(var(--a11y-surface)) !important;
+  background-image: none !important;
+  border-color: hsl(var(--a11y-ink)) !important;
+  text-shadow: none !important;
+}
+html[data-a11y-contrast] body :is(a, a *) { color: hsl(var(--a11y-link)) !important; }
+html[data-a11y-contrast] body svg { color: hsl(var(--a11y-ink)) !important; }
+html[data-a11y-contrast] body [role="switch"][data-state="checked"] {
+  background-color: hsl(var(--a11y-ink)) !important;
+}
+html[data-a11y-contrast] body [role="switch"] > span {
+  background-color: hsl(var(--a11y-ink)) !important;
+}
+html[data-a11y-contrast] body [role="switch"][data-state="checked"] > span {
+  background-color: hsl(var(--a11y-surface)) !important;
+}
+/* Keyboard focus is available without opting into the toolbar. */
+html body :is(a, button, input, textarea, select, [tabindex], [role="combobox"]):focus-visible {
+  outline: 2px solid hsl(var(--a11y-focus)) !important;
+  outline-offset: 2px;
+}
+html[data-a11y-keyboard] body :focus-visible {
+  outline: 4px solid hsl(var(--a11y-focus)) !important;
+  outline-offset: 3px;
+}
+html body [data-accessibility-menu] {
+  width: min(440px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+}
+html body [data-accessibility-menu] > button:last-child { min-width: 44px; min-height: 44px; }
+
 /* Link emphasis uses color/weight, never underlines, including hover states. */
 a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *, .welcome-dismiss {
   text-decoration-line: none !important;

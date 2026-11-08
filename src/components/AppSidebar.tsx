@@ -55,6 +55,7 @@ import { useAppMode } from '@/hooks/useAppMode';
 import { AffiliateFlowchartIcon } from '@/components/icons/AffiliateFlowchartIcon';
 import { useAccountIdentity } from '@/hooks/useAccountIdentity';
 import { SidebarRitaChat } from '@/components/sidebar/SidebarRitaChat';
+import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu';
 import { usePersonalLanguage } from '@/i18n/personalLanguage';
 import { Megaphone as MyAdsIcon } from 'lucide-react';
 
@@ -438,7 +439,10 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         )}
 
       </SidebarContent>
-      {user && !collapsed && <SidebarFooter className="shrink-0 border-t border-border bg-background p-0 shadow-none"><SidebarRitaChat /></SidebarFooter>}
+      {!collapsed && <SidebarFooter className="shrink-0 gap-0 border-t border-border bg-background p-0 shadow-none">
+        {user && <SidebarRitaChat />}
+        <AccessibilityMenu />
+      </SidebarFooter>}
     </Sidebar>
   );
 }

@@ -40,6 +40,7 @@ import { activityAudience } from '@/lib/activityAudience';
 import { rolePageAllowed, PERSONAL_PATHS } from '@/lib/roleNavigation';
 import { usePartnerConsent } from '@/hooks/usePartnerConsent';
 import { PartnerOnboarding } from '@/components/affiliate/PartnerOnboarding';
+import { AccessibilityEffects } from '@/components/accessibility/AccessibilityEffects';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -437,6 +438,7 @@ const App = () => (
     <DirectionProvider dir="rtl">
       <TooltipProvider>
         <BrowserRouter>
+          <AccessibilityEffects />
           <RouteScrollRestoration />
           <AuthProvider>
           <PersonalLanguageProvider>

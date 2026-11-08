@@ -41,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { UsagePriceListButton } from '@/components/billing/UsagePriceListButton';
 import { AffiliateProgramHelp } from '@/components/affiliate/AffiliateProgramHelp';
 import { cn } from "@/lib/utils";
+import { newCampaignSearch } from '@/lib/campaignEntry';
 import { readReturn, type ReturnState } from "@/lib/returnNav";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -165,61 +166,19 @@ function LeadsHeroAddButton() {
   );
 }
 
-function CampaignsHeroAddButton({ onBackToOrigin }: { onBackToOrigin?: () => void }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get("tab") ?? "published";
-  const isCreate = tab === "create";
-  const isCalendar = tab === "calendar";
-  // When the composer was launched from the calendar, the back arrow must
-  // strictly return there instead of the default sent feed.
-  const cameFromCalendar = isCreate && (searchParams.has("schedule") || searchParams.has("properties"));
-  const handleClick = () => {
-    if (isCreate && onBackToOrigin) {
-      onBackToOrigin();
-      return;
-    }
-    if (isCalendar) {
-      const next = new URLSearchParams(searchParams);
-      next.set("tab", "published");
-      next.delete("sub");
-      setSearchParams(next, { replace: true });
-      return;
-    }
-    const next = new URLSearchParams(searchParams);
-    if (isCreate && cameFromCalendar) {
-      next.set("tab", "calendar");
-      // Strip composer-only params so the calendar doesn't re-trigger.
-      ["schedule", "listing", "properties", "variant", "variants"].forEach((k) => next.delete(k));
-    } else {
-      next.set("tab", isCreate ? "published" : "create");
-    }
-    next.delete("sub");
-    setSearchParams(next, { replace: true });
-  };
-  const label = isCalendar
-    ? "חזרה לדשבורד"
-    : isCreate
-      ? onBackToOrigin
-        ? "חזרה למסך הקודם"
-        : cameFromCalendar
-        ? "חזרה ללוח השנה"
-        : "חזרה לקמפיינים"
-      : "יצירת קמפיין חדש";
-
+function CampaignsHeroAddButton() {
+  const [, setSearchParams] = useSearchParams();
+  const label = 'יצירת קמפיין חדש';
   return (
     <Button
       size="icon"
       variant="ghost"
-      onClick={handleClick}
+      onClick={() => setSearchParams(newCampaignSearch(), { replace: true })}
       aria-label={label}
       title={label}
-      className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+      className="min-h-11 min-w-11 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
     >
-      {isCreate || isCalendar ? (
-        <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
-      ) : (
-        <Plus className="!h-5 !w-5" strokeWidth={2.5} />
-      )}
+      <Plus className="!h-5 !w-5" strokeWidth={2.5} />
     </Button>
   );
 }
@@ -473,7 +432,7 @@ export function PageHero() {
             </Button>
           )}
           {location.pathname.startsWith("/lead-crm") && <LeadsHeroAddButton />}
-          {isPostsPage && <CampaignsHeroAddButton onBackToOrigin={origin ? goBackToOrigin : undefined} />}
+          {isPostsPage && <CampaignsHeroAddButton />}
           {origin && !isPropertyDetail && !isPostsPage && (
             <Button
               size="icon"
