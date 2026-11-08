@@ -35,7 +35,7 @@ Deno.serve(async req => {
     // This never writes verification evidence, broker roles, approval status or SMS state.
     const { error: registryError } = await admin.from('official_brokers_registry').upsert({ license_number: license, holder_name: registry.fullName, source_url: registry.source, source_updated_at: registry.updatedAt, checked_at: new Date().toISOString() });
     if (registryError) throw registryError;
-    const { data: saved, error: saveError } = await admin.from('profiles').update({ full_name: registry.fullName, ...(registry.city && !profile.city ? { city: registry.city } : {}) }).eq('id', userId).eq('broker_license_number', license).select('id,full_name,city,broker_license_number').single();
+    const { data: saved, error: saveError } = await admin.from('profiles').update({ full_name: registry.fullName, locked_broker_name: registry.fullName, ...(registry.city ? { city: registry.city } : {}) }).eq('id', userId).eq('broker_license_number', license).select('id,full_name,city,broker_license_number').single();
     if (saveError || !saved || saved.full_name !== registry.fullName) throw new RegistryNameError('save_failed', 'השם נשלף, אך לא ניתן היה לעדכן את הפרופיל. רעננו ונסו שוב.', 409);
     // Exact registry match confirmed by a Super Admin is official license evidence (no role grant).
     const { data: previous } = await admin.from('broker_license_verifications').select('account_name_before_verification').eq('user_id', userId).maybeSingle();

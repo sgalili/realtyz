@@ -89,7 +89,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
       <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto p-2 [&>button]:hidden" onInteractOutside={(e) => e.preventDefault()}>
         <DialogTitle className="sr-only">הצטרפות לתוכנית השותפים</DialogTitle>
         <DialogDescription className="sr-only">היכרות עם התוכנית ואישור התקנון</DialogDescription>
-        <PartnerOnboarding onCancel={() => setOnboarding(false)} onComplete={() => { setOnboarding(false); setMode('partner'); navigate('/affiliate-network'); }} />
+        <PartnerOnboarding onCancel={() => setOnboarding(false)} onComplete={() => { setOnboarding(false); void consent.refetch().then(() => activation.mutate('partner')); }} />
       </DialogContent>
     </Dialog></>
   );
