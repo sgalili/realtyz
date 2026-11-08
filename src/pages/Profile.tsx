@@ -2,7 +2,7 @@ import { DeleteAccountButton } from '@/components/profile/DeleteAccountButton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { CompleteProfileBanner } from '@/components/profile/CompleteProfileBanner';
+import { CompleteProfileBanner, type ProfileSavedDetail } from '@/components/profile/CompleteProfileBanner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import KnowledgeBase from '@/pages/KnowledgeBase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -371,10 +371,13 @@ function PersonalTab() {
       const { data: savedProfile, error: profErr } = await supabase
         .from('profiles')
         .update(patch as any)
-        .eq('id', profileOwnerId).select('id,gender').single();
+        .eq('id', profileOwnerId).select('id,gender,full_name,city,phone').single();
       if (profErr) throw profErr;
       if (!savedProfile || savedProfile.id !== profileOwnerId) throw new Error('הפרופיל לא נשמר');
       if (!mounted.current) return false;
+      window.dispatchEvent(new CustomEvent<ProfileSavedDetail>('realtyz:profile-saved', {
+        detail: { profileOwnerId, profile: savedProfile },
+      }));
       savedContacts.current = payload;
       if (field === 'gender' && isOwnProfile && user) queryClient.setQueryData(personalGenderKey(user.id), profileGender(savedProfile.gender));
       try { window.localStorage.setItem(profileStorageKey(profileOwnerId), JSON.stringify(payload)); } catch {}
@@ -387,7 +390,6 @@ function PersonalTab() {
       toast.success('השדה נשמר');
       void queryClient.invalidateQueries({ queryKey: ['app-header-user-profile'] });
       if (field === 'brokerLicense') window.dispatchEvent(new Event('realtyz:license-verified'));
-      window.dispatchEvent(new Event('realtyz:profile-saved'));
       return true;
     } catch (err: any) {
       if (mounted.current) toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
@@ -838,7 +840,7 @@ export default function Profile() {
       </Dialog>
 
       <div className="mb-3">
-        <CompleteProfileBanner force={params.get('welcome') === 'developer'} />
+        <CompleteProfileBanner profileOwnerId={activeWorkspaceId} force={params.get('welcome') === 'developer'} />
       </div>
 
       <Tabs value={tab} onValueChange={handleTabChange} dir="rtl">

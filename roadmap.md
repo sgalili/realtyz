@@ -1,5 +1,10 @@
 # Roadmap
 
+## Profile completion warning November 8
+- [x] Validate the displayed profile owner's saved name, city and phone without account/workspace mixing; absent/error/stale reads never generate missing-field claims.
+- [x] Consume scoped confirmed-save readback immediately, refresh on focus and visible 30-second checks, and automatically remove completed warnings.
+- [x] 12 focused tests passed; authenticated mobile/desktop profile showed saved הרצליה without a missing-city warning, unchanged city saved with 200 and persisted after reload without warnings or page errors. Incomplete-to-complete transitions covered by regression tests, not by clearing real personal data; build OK.
+
 ## Broker profile and partner switching November 8
 - [x] Auth-bound partner activation requires current terms, retains identity and uses account affiliate roles; provisioning skips existing profiles and unrelated updates do not retrigger license freshness validation.
 - [x] Lock official name/city for all viewers with server enforcement and existing verification evidence; registry fetching is only in failed automatic-fetch Super Admin pending review. Verification functions deployed.
