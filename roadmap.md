@@ -1,5 +1,10 @@
 # Roadmap
 
+## Super Admin registry name lookup November 8
+- [x] Add registry action beside broker license fields in selected-workspace Profile and Super Admin user editing, with wrapping mobile controls.
+- [x] Deploy Super Admin-only official-registry lookup with exact stored-license checks, locked-identity protection, current registry evidence and persisted profile-name readback; no license approval or role changes.
+- [x] Live admin button fetched license 31927721 as אידלסון דולי; UI and database persisted it after refresh. Invalid auth returned 401, invalid input 400; 15 tests passed including not-found and scope-switch cases. Desktop and 442×728 dialogs/profile inspected; build OK.
+
 ## Advanced search and shekel rewards November 8
 - [x] Fix homepage dropdown and slider matching against whitelisted property facts and authorized reward data in the same paginated board feed; remove split deal state and skip no later pages after an empty eligible page.
 - [x] Derive closing search bounds from current full-board net ILS values, independent of selected filters; no fabricated bounds when data is unavailable.

@@ -15,6 +15,7 @@ import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-contro
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { Trash2, Pencil, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -24,7 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_ORDER = Object.keys(ROLE_LABELS) as AppRole[];
 const primaryRole = (roles: string[]) => ROLE_ORDER.find(r => roles.includes(r));
 
-type EditDraft = { id: string; full_name: string; email: string; phone: string; city: string; gender: string; roles: AppRole[]; originalRoles: AppRole[] };
+type EditDraft = { id: string; full_name: string; email: string; phone: string; city: string; gender: string; broker_license_number: string; roles: AppRole[]; originalRoles: AppRole[] };
 
 export function SuperAdminUsersTable() {
   const { isSuperAdmin } = useUserRole();
@@ -90,7 +91,7 @@ export function SuperAdminUsersTable() {
   const eligible = rows.filter(p => !protectedId(p.id)).map(p => p.id);
   const toggle = (id: string) => setSelected(current => current.includes(id) ? current.filter(v => v !== id) : [...current, id]);
   const rolesOf = (id: string) => (roles.data ?? []).filter(r => r.user_id === id).map(r => r.role as AppRole);
-  const openEdit = (p: any) => { const r = rolesOf(p.id); setDraft({ id: p.id, full_name: p.full_name ?? '', email: p.email ?? '', phone: p.phone ?? '', city: p.city ?? '', gender: p.gender ?? '', roles: r, originalRoles: r }); };
+  const openEdit = (p: any) => { const r = rolesOf(p.id); setDraft({ id: p.id, full_name: p.full_name ?? '', email: p.email ?? '', phone: p.phone ?? '', city: p.city ?? '', gender: p.gender ?? '', broker_license_number: p.broker_license_number ?? '', roles: r, originalRoles: r }); };
   return <section dir="rtl" className="space-y-3">
     <h2 className="text-lg font-bold">כל המשתמשים</h2>
     <div className="flex flex-wrap items-center gap-2">
@@ -127,13 +128,14 @@ export function SuperAdminUsersTable() {
       })}{!rows.length && <TableRow><TableCell colSpan={selecting ? 9 : 8} className="text-center">לא נמצאו משתמשים</TableCell></TableRow>}</TableBody>
     </Table></div>}
     <Dialog open={!!draft} onOpenChange={open => { if (!open && !saveDraft.isPending) setDraft(null); }}>
-      <DialogContent dir="rtl" className="max-w-lg text-right">
+      <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] min-w-0 w-[calc(100%-2rem)] max-w-lg overflow-x-hidden overflow-y-auto text-right">
         <DialogHeader className="text-right"><DialogTitle>עריכת משתמש</DialogTitle></DialogHeader>
         {draft && <div className="grid gap-3">
           {([['full_name', 'שם מלא', 'rtl'], ['email', 'אימייל', 'ltr'], ['phone', 'טלפון', 'ltr'], ['city', 'עיר', 'rtl']] as const).map(([k, label, dir]) => (
             <div key={k} className="grid gap-1"><Label htmlFor={`edit-${k}`}>{label}</Label>
               <Input id={`edit-${k}`} dir={dir} value={draft[k]} onChange={e => setDraft({ ...draft, [k]: e.target.value })} /></div>
           ))}
+          {draft.broker_license_number && <div className="grid gap-1"><Label htmlFor="edit-broker-license">מספר רישיון תיווך</Label><div className="flex flex-wrap items-start gap-2"><Input id="edit-broker-license" dir="ltr" readOnly value={draft.broker_license_number} className="min-w-0 flex-1 basis-28" /><BrokerRegistryNameButton userId={draft.id} license={draft.broker_license_number} disabled={saveDraft.isPending} onUpdated={profile => setDraft(current => current?.id === profile.id ? { ...current, full_name: profile.full_name } : current)} /></div></div>}
           <div className="grid gap-1"><Label>מגדר</Label>
             <Select value={draft.gender || undefined} onValueChange={v => setDraft({ ...draft, gender: v })}>
               <SelectTrigger dir="rtl"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>

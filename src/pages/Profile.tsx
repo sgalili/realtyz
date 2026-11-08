@@ -44,6 +44,7 @@ import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { profileFieldChange, type ProfileContacts, type ProfileSaveField } from '@/lib/profileFieldSave';
 import { workspaceDetailPatch, type OfficeField } from '@/lib/workspaceDetailSave';
+import { BrokerRegistryNameButton, type RegistryProfile } from '@/components/admin/BrokerRegistryNameButton';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
@@ -351,6 +352,13 @@ function PersonalTab() {
   };
 
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
+  const registryNameUpdated = (profile: RegistryProfile) => {
+    if (!mounted.current || profile.id !== profileOwnerId) return;
+    setFullName(profile.full_name);
+    savedContacts.current = { ...savedContacts.current, fullName: profile.full_name };
+    setEditing(previous => ({ ...previous, fullName: false }));
+    try { window.localStorage.setItem(profileStorageKey(profile.id), JSON.stringify(savedContacts.current)); } catch { /* storage unavailable */ }
+  };
 
   const saveField = async (field: ProfileSaveField, value: string | Row[]): Promise<boolean> => {
     if (!profileOwnerId || hydratedFor !== profileOwnerId || savingRef.current) return false;
@@ -412,7 +420,7 @@ function PersonalTab() {
         <ProfileAvatarUploader profileOwnerId={profileOwnerId} gender={gender === 'female' ? 'female' : gender === 'male' ? 'male' : null} />
 
         {verifiedLicenseLocked ? (
-          <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+          <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 text-base font-semibold text-muted-foreground">שם מלא:</span>
             <span className="min-w-0 flex-1 break-words text-base font-bold" aria-label="שם מלא לפי פנקס המתווכים">{fullName}</span>
@@ -477,9 +485,10 @@ function PersonalTab() {
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
+            {isSuperAdmin && profileOwnerId && <BrokerRegistryNameButton userId={profileOwnerId} license={storedLicense} disabled={savingField !== null || removingLicense} onUpdated={registryNameUpdated} />}
           </div>
         ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : (
-          <div dir="rtl" className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+          <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
             <div className="min-w-0 flex-1">
@@ -490,6 +499,7 @@ function PersonalTab() {
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
+            {isSuperAdmin && profileOwnerId && <BrokerRegistryNameButton userId={profileOwnerId} license={brokerLicense} disabled={savingField !== null || removingLicense} onUpdated={registryNameUpdated} />}
           </div>
         ))}
         {showBrokerFields && isOwnProfile && !verifiedLicenseLocked && brokerLicense !== storedLicense && <Button type="button" variant="outline" size="icon" aria-label="שמירת רישיון תיווך" disabled={savingField !== null || verifiedBrokerLicense !== brokerLicense} onClick={() => void saveField('brokerLicense', brokerLicense)}><Check className="h-4 w-4" /></Button>}
