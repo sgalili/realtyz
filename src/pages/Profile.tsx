@@ -44,7 +44,7 @@ import { verifyBrokerLicense } from '@/lib/brokerLicense';
 import { friendlyUserDisplayName } from '@/lib/friendlyUserDisplayName';
 import { profileFieldChange, type ProfileContacts, type ProfileSaveField } from '@/lib/profileFieldSave';
 import { workspaceDetailPatch, type OfficeField } from '@/lib/workspaceDetailSave';
-import { BrokerRegistryNameButton, type RegistryProfile } from '@/components/admin/BrokerRegistryNameButton';
+import { mayEditBrokerIdentityField } from '@/lib/brokerProfilePolicy';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
@@ -273,11 +273,11 @@ function PersonalTab() {
     };
     (async () => {
       try {
-        const { data } = await supabase
+        const [{ data }, { data: evidence }] = await Promise.all([supabase
           .from('profiles')
-          .select('id, email, full_name, phone, city, gender, broker_license_number, locked_broker_name')
+          .select('id, email, full_name, phone, city, gender, broker_license_number, locked_broker_name,locked_broker_city')
           .eq('id', ownerId)
-          .maybeSingle();
+          .maybeSingle(), supabase.from('broker_license_verifications').select('license_number,registry_holder_name').eq('user_id', ownerId).maybeSingle()]);
         if (cancelled) return;
         if ((data as any)?.id && (data as any).id !== ownerId) return;
         const server: any = data ?? {};
@@ -307,7 +307,7 @@ function PersonalTab() {
         setWhatsapps(loadedWhatsapps);
         setPhones(loadedPhones);
         setFullName(serverName);
-        setLockedBrokerName(String(server.locked_broker_name ?? ''));
+        setLockedBrokerName(String(server.locked_broker_name ?? (evidence?.license_number === server.broker_license_number ? evidence?.registry_holder_name : '') ?? ''));
         setCity(String(server.city ?? extra?.city ?? ''));
         setGender(profileGender(server.gender) ?? '');
         setBrokerLicense(String(server.broker_license_number ?? ''));
@@ -352,19 +352,10 @@ function PersonalTab() {
   };
 
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
-  const registryNameUpdated = (profile: RegistryProfile) => {
-    if (!mounted.current || profile.id !== profileOwnerId) return;
-    setFullName(profile.full_name);
-    if (profile.city) setCity(profile.city);
-    savedContacts.current = { ...savedContacts.current, fullName: profile.full_name, ...(profile.city ? { city: profile.city } : {}) };
-    void queryClient.invalidateQueries();
-    setEditing(previous => ({ ...previous, fullName: false }));
-    try { window.localStorage.setItem(profileStorageKey(profile.id), JSON.stringify(savedContacts.current)); } catch { /* storage unavailable */ }
-  };
 
   const saveField = async (field: ProfileSaveField, value: string | Row[]): Promise<boolean> => {
     if (!profileOwnerId || hydratedFor !== profileOwnerId || savingRef.current) return false;
-    if (field === 'fullName' && verifiedLicenseLocked) return false;
+    if (!mayEditBrokerIdentityField(field, verifiedLicenseLocked)) return false;
     savingRef.current = true;
     setSavingField(field);
     try {
@@ -452,7 +443,11 @@ function PersonalTab() {
         <ProfileArrayRows rows={whatsapps} setRows={setWhatsapps} icon={MessageCircle} label="וואטסאפ" formatter={formatIsraeliPhone} onSave={rows => saveField('whatsapps', rows)} saving={savingField !== null} />
         <ProfileArrayRows rows={phones} setRows={setPhones} icon={Phone} label="טלפון" formatter={formatIsraeliPhone} onSave={rows => saveField('phones', rows)} saving={savingField !== null} />
 
-        <ProfileFieldRow
+        {verifiedLicenseLocked ? <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
+          <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+          <span className="shrink-0 text-base font-semibold text-muted-foreground">עיר:</span>
+          <span className="min-w-0 flex-1 break-words text-base font-bold" aria-label="עיר לפי פנקס המתווכים">{city || '—'}</span>
+        </div> : <ProfileFieldRow
           icon={MapPin}
           label="עיר"
           value={city}
@@ -465,7 +460,7 @@ function PersonalTab() {
           placeholder="בחר עיר"
         >
           <IsraeliCityPicker value={city} onChange={setCity} placeholder="בחר עיר" className="text-base" itemClassName="text-base" />
-        </ProfileFieldRow>
+        </ProfileFieldRow>}
 
         <ProfileFieldRow
           icon={UserIcon}
@@ -502,7 +497,6 @@ function PersonalTab() {
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
-            {isSuperAdmin && profileOwnerId && <BrokerRegistryNameButton userId={profileOwnerId} license={storedLicense} disabled={savingField !== null || removingLicense} onUpdated={registryNameUpdated} />}
           </div>
         ) : showBrokerFields && (isOwnProfile ? <BrokerLicenseField value={brokerLicense} onChange={setBrokerLicense} onVerified={setVerifiedBrokerLicense} /> : (
           <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
@@ -516,7 +510,6 @@ function PersonalTab() {
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
-            {isSuperAdmin && profileOwnerId && <BrokerRegistryNameButton userId={profileOwnerId} license={brokerLicense} disabled={savingField !== null || removingLicense} onUpdated={registryNameUpdated} />}
           </div>
         ))}
         {showBrokerFields && isOwnProfile && !verifiedLicenseLocked && brokerLicense !== storedLicense && <Button type="button" variant="outline" size="icon" aria-label="שמירת רישיון תיווך" disabled={savingField !== null || verifiedBrokerLicense !== brokerLicense} onClick={() => void saveField('brokerLicense', brokerLicense)}><Check className="h-4 w-4" /></Button>}

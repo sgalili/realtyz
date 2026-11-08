@@ -6689,6 +6689,7 @@ export type Database = {
           is_suspended: boolean
           is_unlimited: boolean
           last_sign_in_at: string | null
+          locked_broker_city: string | null
           locked_broker_name: string | null
           partner_terms_accepted_at: string | null
           partner_terms_version: string | null
@@ -6726,6 +6727,7 @@ export type Database = {
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
+          locked_broker_city?: string | null
           locked_broker_name?: string | null
           partner_terms_accepted_at?: string | null
           partner_terms_version?: string | null
@@ -6763,6 +6765,7 @@ export type Database = {
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
+          locked_broker_city?: string | null
           locked_broker_name?: string | null
           partner_terms_accepted_at?: string | null
           partner_terms_version?: string | null
@@ -8752,6 +8755,7 @@ export type Database = {
         Args: { _job: string; _lease_seconds?: number; _worker?: string }
         Returns: boolean
       }
+      activate_partner_mode: { Args: never; Returns: Json }
       add_business_days: {
         Args: { _days: number; _from: string }
         Returns: string

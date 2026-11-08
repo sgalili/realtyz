@@ -1,5 +1,10 @@
 # Roadmap
 
+## Broker profile and partner switching November 8
+- [x] Auth-bound partner activation requires current terms, retains identity and uses account affiliate roles; provisioning skips existing profiles and unrelated updates do not retrigger license freshness validation.
+- [x] Lock official name/city for all viewers with server enforcement and existing verification evidence; registry fetching is only in failed automatic-fetch Super Admin pending review. Verification functions deployed.
+- [x] 32 focused tests passed; authenticated mobile/desktop selected-broker profile has no name/city editors or registry button, partner activation returned 200 and selected partner menus without broker property tools, and switching back succeeded. Server rejected selected verified-profile identity overrides; build OK. Fresh registry scraping and first-time consent were covered by tests, not exercised live.
+
 ## Step 8 feedback November 8
 - [x] Restore closing partner estimate and icons only in the publisher; retain other editors and price bounds.
 - [x] Add interaction-only live encouragement for the three publisher lead sliders.

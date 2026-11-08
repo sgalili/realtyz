@@ -75,6 +75,8 @@ Deno.serve(async req => {
       if (error) throw new Error('verification_not_saved');
       const { error: completeError } = await admin.rpc('complete_official_license_verification', { _uid: userId, _number: licenseNumber });
       if (completeError) throw new Error('verification_not_completed');
+      const { error: cityError } = await admin.from('profiles').update({ full_name: String(record['שם המתווך']).trim(), locked_broker_name: String(record['שם המתווך']).trim(), city: String(record['עיר מגורים'] ?? '').trim() || null, locked_broker_city: String(record['עיר מגורים'] ?? '').trim() }).eq('id', userId).eq('broker_license_number', licenseNumber);
+      if (cityError) throw new Error('registry_city_not_saved');
       const { error: affiliateError } = await admin.from('affiliate_profiles').update({ license_number: licenseNumber, license_holder_name: record['שם המתווך'], license_status: 'verified', license_verified_at: new Date().toISOString(), license_rejection_reason: null }).eq('user_id', userId);
       if (affiliateError) throw new Error('affiliate_verification_not_completed');
     }

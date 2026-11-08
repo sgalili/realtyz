@@ -43,8 +43,8 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
       if (!user || roleError || loading) throw new Error('לא ניתן להחליף מצב כרגע');
       if (next === 'partner') {
         if (consent.data !== true) { setOnboarding(true); return; }
-        if (!isAffiliate) {
-          const { data, error } = await supabase.rpc('register_as_affiliate', { _display_name: null, _phone: null });
+        {
+          const { data, error } = await supabase.rpc('activate_partner_mode');
           if (error) throw error;
           if (!(data as { ok?: boolean } | null)?.ok) throw new Error('הפעלת מצב שותף נכשלה');
           await queryClient.invalidateQueries({ queryKey: userRolesQueryKey(user.id) });
@@ -62,7 +62,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
         requestAnimationFrame(() => isMobile ? setOpenMobile(true) : setOpen(true));
       } else { setOpenMobile(false); setOpen(false); }
     },
-    onError: () => toast.error('החלפת המצב נכשלה. אפשר לנסות שוב.'),
+    onError: (error) => { console.warn('[partner-mode]', { code: (error as { code?: string }).code ?? 'activation_failed' }); toast.error('לא ניתן להפעיל מצב שותף כרגע. נסו שוב או אשרו מחדש את התקנון.'); },
   });
 
   if (!user) return null;
@@ -89,7 +89,7 @@ export function AppModeSwitcher({ keepSidebarOpen = false, className }: { keepSi
       <DialogContent dir="rtl" className="max-h-[85dvh] overflow-y-auto p-2 [&>button]:hidden" onInteractOutside={(e) => e.preventDefault()}>
         <DialogTitle className="sr-only">הצטרפות לתוכנית השותפים</DialogTitle>
         <DialogDescription className="sr-only">היכרות עם התוכנית ואישור התקנון</DialogDescription>
-        <PartnerOnboarding onCancel={() => setOnboarding(false)} onComplete={() => { setOnboarding(false); void consent.refetch().then(() => activation.mutate('partner')); }} />
+        <PartnerOnboarding onCancel={() => setOnboarding(false)} onComplete={() => { setOnboarding(false); void consent.refetch().then(result => { if (result.data === true) activation.mutate('partner'); }); }} />
       </DialogContent>
     </Dialog></>
   );

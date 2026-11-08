@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { AFFILIATE_TERMS_VERSION } from '@/hooks/useAffiliateLicense';
 
 export function usePartnerConsent() {
   const { user } = useAuth();
@@ -10,9 +11,9 @@ export function usePartnerConsent() {
     staleTime: 30_000,
     queryFn: async () => {
       if (!user) return false;
-      const { data, error } = await supabase.from('profiles').select('partner_terms_accepted_at').eq('id', user.id).maybeSingle();
+      const { data, error } = await supabase.from('profiles').select('partner_terms_accepted_at,partner_terms_version').eq('id', user.id).maybeSingle();
       if (error) throw error;
-      return !!data?.partner_terms_accepted_at;
+      return !!data?.partner_terms_accepted_at && data.partner_terms_version === AFFILIATE_TERMS_VERSION;
     },
   });
 }

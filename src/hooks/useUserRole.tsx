@@ -75,7 +75,7 @@ export function useUserRole() {
   const isAgent = roles.includes('agent') || isLeadAgent;
   const isAssistant = roles.includes('assistant');
   const isJuniorAgent = roles.includes('junior_agent');
-  const isAffiliate = roles.includes('affiliate');
+  const isAffiliate = ownRoles.includes('affiliate');
   const isPropertyOwner = roles.includes('property_owner');
   const isPropertySeeker = roles.includes('property_seeker');
   const isDeveloper = roles.includes('developer');

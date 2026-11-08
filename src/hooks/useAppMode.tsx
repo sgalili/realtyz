@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
+import { isAffiliateOnlyAccount } from '@/lib/accountMode';
 
 /**
  * Dual-role app mode: one account can act as a broker (מצב מתווך) with the full
@@ -65,7 +66,9 @@ export function isPartnerModePath(pathname: string): boolean {
 export function useAppMode() {
   const { user } = useAuth();
   const userId = user?.id;
-  const { isAffiliate, isAffiliateOnly } = useUserRole();
+  const { accountRoles } = useUserRole();
+  const isAffiliate = accountRoles.includes('affiliate');
+  const isAffiliateOnly = isAffiliateOnlyAccount(accountRoles);
   const [state, setModeState] = useState(() => ({ userId, mode: readAppMode(userId) }));
   const mode = state.userId === userId ? state.mode : readAppMode(userId);
 
