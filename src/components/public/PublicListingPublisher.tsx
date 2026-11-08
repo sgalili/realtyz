@@ -286,6 +286,15 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     if (knownPublisherRole) { setRolePicked(true); setImportSlide(true); }
     setOpen(true);
   };
+  // The header-mounted instance also opens from other entry points (e.g. the + menu on My Properties).
+  const openNewRef = useRef(openNewPublication);
+  openNewRef.current = openNewPublication;
+  useEffect(() => {
+    if (!autoResume || pricingOnly) return;
+    const handler = () => openNewRef.current();
+    window.addEventListener('public-publisher:open', handler);
+    return () => window.removeEventListener('public-publisher:open', handler);
+  }, [autoResume, pricingOnly]);
   // Roles can finish loading after the dialog opens: once a known role (e.g. verified broker) arrives, skip "מי מפרסם?" automatically.
   useEffect(() => {
     if (!open || !knownPublisherRole || rolePicked || step !== 0 || importSlide || reviewMode) return;

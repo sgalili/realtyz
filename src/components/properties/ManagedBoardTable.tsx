@@ -10,6 +10,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
 import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
+import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
 import PublicCardSummary from '@/components/public/PublicCardSummary';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
@@ -93,7 +94,8 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                     : card.floor != null ? `${card.floor}` : ''}
                   </td>)}
                   <td className="p-2 align-bottom" onClick={e => e.stopPropagation()}><div className="flex items-center justify-end gap-1">
-                                        {localId && quickPromotion(result)}
+                    {localId && quickPromotion(result)}
+                    {localId && <OwnerListingActions listingId={localId} />}
                     {localId && <Button type="button" size="icon" variant="ghost" onClick={() => onFavorite(localId)} aria-label={favoriteIds.has(localId) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favoriteIds.has(localId)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favoriteIds.has(localId) && 'fill-current')} /></Button>}
                   </div></td>
                 </tr>,

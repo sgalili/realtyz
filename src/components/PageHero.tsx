@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Wallet,
   Bot,
+  Megaphone,
 } from "lucide-react";
 import { useAffiliatePreferences } from "@/hooks/useAffiliate";
 import { useAppMode } from "@/hooks/useAppMode";
@@ -93,6 +94,9 @@ function PropertiesHeroAddButton() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent("public-publisher:open"))} className="gap-2">
+          <Megaphone className="h-4 w-4" /> הוספה מיד2 או ידנית (פרסום חינם)
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch("manual")} className="gap-2">
           <Plus className="h-4 w-4" /> הוספת נכס ידנית
         </DropdownMenuItem>
