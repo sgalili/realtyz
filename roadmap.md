@@ -1,5 +1,10 @@
 # Roadmap
 
+## Step 8 feedback November 8
+- [x] Restore closing partner estimate and icons only in the publisher; retain other editors and price bounds.
+- [x] Add interaction-only live encouragement for the three publisher lead sliders.
+- [x] Focused pricing tests passed; signed-in shared Step 8 editor verified all three interaction-only messages and closing maximum estimate 100 on mobile, with desktop capture. Cancelled all price changes; build OK.
+
 ## Unavailable listing details November 8
 - [x] Confirm reported owner slug is absent from saved listings; preserve the server's publication and workspace access checks.
 - [x] Use immutable saved IDs for homepage expansion and show an explicit unavailable/retry state instead of empty expanded content.

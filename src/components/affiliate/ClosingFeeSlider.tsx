@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, CircleHelp, Trophy } from 'lucide-react';
+import { ChevronDown, CircleHelp, Trophy, Users, Zap } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { PricingCardHeader } from '@/components/public/PricingCardHeader';
 import { CollapsedOffer } from '@/components/public/CollapsedOffer';
 import { thresholdOffer, offerScale } from '@/lib/offerThreshold';
 import { LeadPopularityNote } from '@/components/public/LeadPopularityNote';
+import { partnerPotential } from '@/lib/partnerPotential';
 
 export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange, unrestricted = false, zeroMin = false, publisherCard = false }: {
   className?: string;
@@ -40,6 +41,7 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
 
   const progress = Math.max(0, Math.min(1, (percent - range.min) / (range.max - range.min)));
   const level = Math.min(3, Math.floor(progress * 4));
+  const potential = partnerPotential(progress);
   const [editing, setEditing] = useState(false);
   const [editingPercent, setEditingPercent] = useState(false);
   const [internalOpen, setInternalOpen] = useState(true);
@@ -97,7 +99,12 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
       <Slider dir="ltr" aria-label="עמלת סגירה" aria-valuetext={selectedLabel} min={zeroMin ? 0 : minimum} max={zeroMin ? scale.max : maximum} disabled={!displayAmount} step={zeroMin ? 1 : amountScale ? 0.01 : range.step} value={[zeroMin ? scale.position(percent) : amountScale ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(zeroMin ? scale.amount(next) : amountScale && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
       <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{money(closingFeeAmount(zeroMin ? 0 : range.min, range.price))}</span><span>{money(closingFeeAmount(range.max, range.price))}</span></div>
     </div>
-    <LeadPopularityNote />
+    {publisherCard ? <div className="space-y-2 text-center">
+      <p className="flex items-center justify-center gap-1 text-xs closing-tone" dir="rtl"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p>
+      <p className="text-sm font-semibold" aria-live="polite">פוטנציאל שיתוף: כ־{potential.count} שותפים</p>
+      <div className="flex h-8 flex-row-reverse items-center justify-center gap-2 closing-tone" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <Users key={index} className={`h-6 w-6 transition-all duration-300 motion-reduce:transition-none ${index < potential.icons ? 'scale-100 opacity-100' : 'scale-75 opacity-20'}`} />)}</div>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">*ההפצה תלויה בשותפים ובקבוצות הזמינות; אין התחייבות לכמות פרסומים או לסגירה.</p>
+    </div> : <LeadPopularityNote />}
     </div>}
   </section>;
 }

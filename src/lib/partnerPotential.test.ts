@@ -6,4 +6,9 @@ describe('potential partners', () => {
     expect(partnerPotential(0.5).count).toBe(51);
     expect(partnerPotential(1).count).toBe(100);
   });
+  it('restores the original one-to-six partner icon scale', () => {
+    expect(partnerPotential(0).icons).toBe(1);
+    expect(partnerPotential(0.5).icons).toBe(4);
+    expect(partnerPotential(1).icons).toBe(6);
+  });
 });

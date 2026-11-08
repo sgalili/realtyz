@@ -1045,7 +1045,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                       controls={<><Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 p-0 text-muted-foreground" aria-label={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} title={`${expanded ? 'כווץ' : 'הרחב'} ${label}`} aria-expanded={expanded} onClick={toggle}><ChevronDown className={cn('h-6 w-6 transition-transform motion-reduce:transition-none', expanded && 'rotate-180')} /></Button></>}
                     />
                     {expanded && <div className="space-y-2">
-                    <LeadPriceSlider tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
+                    <LeadPriceSlider dynamicFeedback tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
                     <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-[18px] md:text-[18px] placeholder:text-[14px] md:placeholder:text-[14px]" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
                     {key === 'Form' && (() => {
