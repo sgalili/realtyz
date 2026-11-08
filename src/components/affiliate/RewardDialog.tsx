@@ -205,6 +205,8 @@ export function RewardDialog({
                 <div className="text-sm font-semibold text-foreground">{"\n"}</div>
                 <p className="text-[11px] text-muted-foreground"></p>
 
+                <ClosingFeeSlider dealType={listing.deal_type} price={Number(listing.asking_price) || 0} value={num(tier4)} valueType={tier4Type} onChange={(percent) => { setTier4Type("fixed"); setTier4(String(closingFeeAmount(percent, Number(listing.asking_price) || 0))); }} />
+
                 {tiers.map((tier) => (
                   <div key={tier.key} className="space-y-1.5 rounded-md border border-border p-2.5">
                     <div className="flex items-center gap-2">
@@ -249,7 +251,6 @@ export function RewardDialog({
                   </div>
                 ))}
 
-                <ClosingFeeSlider dealType={listing.deal_type} price={Number(listing.asking_price) || 0} value={num(tier4)} valueType={tier4Type} onChange={(percent) => { setTier4Type("fixed"); setTier4(String(closingFeeAmount(percent, Number(listing.asking_price) || 0))); }} />
               </div>
             </>
           ) : null}
@@ -290,7 +291,10 @@ export function RewardDialog({
                       if (listing) { try { localStorage.removeItem(draftKey); } catch { /* noop */ } }
                       onOpenChange(false);
                     },
-                    onError: () => toast.error("השמירה נכשלה"),
+                    onError: (error) => {
+                      console.warn('reward_price_save_failed', { listingId: listing.id, code: (error as { code?: string })?.code });
+                      toast.error("לא ניתן לשמור את התגמולים", { description: error.message });
+                    },
                   },
                 )
               }

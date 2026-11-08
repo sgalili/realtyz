@@ -1,5 +1,10 @@
 # Roadmap
 
+## Price controls and saving November 8
+- [x] Add a visible semantic border to slider thumbs and place closing pricing before all other lead settings.
+- [x] Reproduced HTTP 406 from the wrong workspace predicate; reward saves now resolve the authorized listing's saved workspace without weakening RLS.
+- [x] 29 focused tests passed; authenticated mobile save returned 200, changed price persisted after reload, original price restored, and mobile/desktop slider borders and closing-first layout checked.
+
 ## Super Admin registry name lookup November 8
 - [x] Add registry action beside broker license fields in selected-workspace Profile and Super Admin user editing, with wrapping mobile controls.
 - [x] Deploy Super Admin-only official-registry lookup with exact stored-license checks, locked-identity protection, current registry evidence and persisted profile-name readback; no license approval or role changes.

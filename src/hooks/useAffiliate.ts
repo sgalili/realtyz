@@ -17,6 +17,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { publicUrl } from '@/lib/publicUrl';
 import { fmtILS } from '@/lib/formatCurrency';
 import { partnerNetReward } from '@/lib/affiliatePlans';
+import { pricingEditWorkspace } from '@/lib/pricingSave';
 
 export type RewardType = 'fixed' | 'percent';
 
@@ -433,6 +434,8 @@ export function useAffiliateConfigs(listingIds: string[]) {
 export function useSetAffiliateReward() {
   const queryClient = useQueryClient();
   const ownerId = useActiveWorkspaceOwnerId();
+  const { user } = useAuth();
+  const { isSuperAdmin } = useUserRole();
   return useMutation({
     mutationFn: async (input: {
       listingId: string;
@@ -448,7 +451,13 @@ export function useSetAffiliateReward() {
       contactOptions?: Record<string, unknown>;
       dailyLeadCap?: number | null;
     }) => {
-      if (!ownerId) throw new Error('workspace_required');
+      if (!ownerId || !user) throw new Error('יש להתחבר ולבחור סביבת עבודה לפני שמירה');
+      const { data: listing, error: readError } = await supabase.from('listings')
+        .select('id, workspace_owner_id, user_id, owner_id')
+        .eq('id', input.listingId).single();
+      if (readError) throw readError;
+      const targetWorkspace = listing ? pricingEditWorkspace(listing, user.id, ownerId, isSuperAdmin) : null;
+      if (!targetWorkspace) throw new Error('אין הרשאה לערוך את התגמולים של מודעה זו');
       const patch: Record<string, unknown> = {
         affiliate_enabled: input.enabled,
         affiliate_reward_type: input.rewardType,
@@ -468,13 +477,15 @@ export function useSetAffiliateReward() {
         .from('listings')
         .update(patch as never)
         .eq('id', input.listingId)
-        .eq('workspace_owner_id', ownerId)
+        .eq('workspace_owner_id', targetWorkspace)
         .select('id').single();
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['broker-affiliate-listings'] });
       queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
+      queryClient.invalidateQueries({ queryKey: ['public-commission-pricing'] });
+      queryClient.invalidateQueries({ queryKey: ['public-listing-expanded'] });
     },
   });
 }

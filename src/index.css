@@ -1924,7 +1924,7 @@ a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *,
 .closing-level-3 { color: hsl(var(--closing-max)); }
 .closing-slider [data-orientation="horizontal"] { height: 8px; background: var(--closing-track); }
 .closing-slider [data-orientation="horizontal"] > span { background: hsl(var(--closing-current) / .15); }
-.closing-slider [role="slider"] { height: 22px; width: 22px; background: hsl(var(--card)); border: 3px solid hsl(var(--closing-current)); }
+.closing-slider [role="slider"] { height: 22px; width: 22px; background: hsl(var(--card)); border: 2px solid hsl(var(--border)); }
 @media (prefers-reduced-motion: reduce) { .closing-tone { transition: none; } }
 .welcome-slide[data-theme="3"] .welcome-content { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto; row-gap: 6px; }
 .welcome-slide[data-theme="3"] .welcome-title, .welcome-slide[data-theme="3"] .welcome-copy { position: relative; z-index: 2; }
