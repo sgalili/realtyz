@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, CircleHelp, Trophy, Users, Zap } from 'lucide-react';
+import { ChevronDown, CircleHelp, Trophy } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { PricingCardHeader } from '@/components/public/PricingCardHeader';
 import { CollapsedOffer } from '@/components/public/CollapsedOffer';
 import { thresholdOffer, offerScale } from '@/lib/offerThreshold';
+import { LeadPopularityNote } from '@/components/public/LeadPopularityNote';
 
 export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent', onChange, dualMode = false, onValueChange, className, open: openProp, onOpenChange, unrestricted = false, zeroMin = false, publisherCard = false }: {
   className?: string;
@@ -94,13 +95,9 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
       {publisherCard && <div className="flex min-h-9 flex-wrap items-center justify-center gap-2"><span dir="rtl" className="text-sm font-medium text-muted-foreground"><span className="text-destructive">* </span>ההצעה שלך:</span>{priceControl}{displayAmount && <>{editing && editingPercent ? <Input autoFocus aria-label="עריכת אחוז עמלת סגירה" inputMode="decimal" dir="ltr" className="h-8 w-20 text-center text-[13px]" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') { setEditing(false); setEditingPercent(false); } }} /> : <Button type="button" variant="ghost" aria-label="עריכת אחוז עמלת סגירה" className="h-8 px-1 text-[13px] font-normal text-muted-foreground" onClick={() => { setDraft(String(Number(percent.toFixed(2)))); setEditingPercent(true); setEditing(true); }}>{percentageLabel}</Button>}</>}</div>}
       {!publisherCard && !range.rent && displayAmount && <p className="text-center text-xs text-muted-foreground">({Number(percent.toFixed(2))}%)</p>}
       <Slider dir="ltr" aria-label="עמלת סגירה" aria-valuetext={selectedLabel} min={zeroMin ? 0 : minimum} max={zeroMin ? scale.max : maximum} disabled={!displayAmount} step={zeroMin ? 1 : amountScale ? 0.01 : range.step} value={[zeroMin ? scale.position(percent) : amountScale ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(zeroMin ? scale.amount(next) : amountScale && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
-      <div className="relative flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{money(closingFeeAmount(zeroMin ? 0 : range.min, range.price))}</span><span>{money(closingFeeAmount(range.max, range.price))}</span><p dir="rtl" className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap closing-tone"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p></div>
+      <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{money(closingFeeAmount(zeroMin ? 0 : range.min, range.price))}</span><span>{money(closingFeeAmount(range.max, range.price))}</span></div>
     </div>
-    <div className="space-y-2 text-center">
-      <p className="text-sm font-semibold" aria-live="polite">פוטנציאל שיתוף: כ־{1 + Math.round(progress * 99)} שותפים</p>
-      <div className="flex h-8 flex-row-reverse items-center justify-center gap-2 closing-tone" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <Users key={index} className={`h-6 w-6 transition-all duration-300 motion-reduce:transition-none ${index < 1 + Math.round(progress * 5) ? 'scale-100 opacity-100' : 'scale-75 opacity-20'}`} />)}</div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">*ההפצה תלויה בשותפים ובקבוצות הזמינות; אין התחייבות לכמות פרסומים או לסגירה.</p>
-    </div>
+    <LeadPopularityNote />
     </div>}
   </section>;
 }

@@ -36,4 +36,16 @@ describe('expanded property table scrolling', () => {
     revealExpanded(document.getElementById('content'));
     expect(scrollTo).toHaveBeenCalledExactlyOnceWith({ top: 0, behavior: 'smooth' });
   });
+  it('anchors a card below its own scrolling container instead of moving the document', () => {
+    document.body.innerHTML = '<main style="overflow-y:auto"><article><h2>Property title</h2><div id="content">Details</div></article></main>';
+    const owner = document.querySelector('main');
+    const card = document.querySelector('article');
+    if (!owner || !card) throw new Error('Missing card fixture');
+    vi.spyOn(owner, 'getBoundingClientRect').mockReturnValue({ top: 90 } as DOMRect);
+    vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({ top: 330 } as DOMRect);
+    owner.scrollTop = 120;
+    owner.scrollTo = vi.fn();
+    revealExpanded(document.getElementById('content'));
+    expect(owner.scrollTo).toHaveBeenCalledWith({ top: 352, behavior: 'smooth' });
+  });
 });

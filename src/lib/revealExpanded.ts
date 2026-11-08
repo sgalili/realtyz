@@ -30,6 +30,16 @@ export function revealExpanded(content: Element | null) {
     tableScroll.scrollTo({ top: Math.max(0, tableScroll.scrollTop + delta), behavior: reducedH ? 'auto' : 'smooth' });
     return;
   }
+  // Non-table cards must scroll only their nearest vertical owner, never the
+  // document behind the shell or dialog. Anchor the card's title with a gutter.
+  let owner: HTMLElement | null = card.parentElement;
+  while (owner && !/(auto|scroll)/.test(getComputedStyle(owner).overflowY)) owner = owner.parentElement;
+  if (owner) {
+    const visibleTop = owner.getBoundingClientRect().top + owner.clientTop + 8;
+    const delta = card.getBoundingClientRect().top - visibleTop;
+    owner.scrollTo({ top: Math.max(0, owner.scrollTop + delta), behavior: reducedH ? 'auto' : 'smooth' });
+    return;
+  }
   // Sticky table headings cover the top of the card; keep it fully below them.
   const head = card.closest('table')?.querySelector('thead');
   const headBottom = head ? Math.max(0, head.getBoundingClientRect().bottom) : 0;

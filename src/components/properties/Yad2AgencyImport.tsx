@@ -10,11 +10,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { importCommissionPayload, readImportRule, saveImportRule, runPool, type ImportCommissionRule } from '@/lib/importCommissionDefaults';
+import { importCommissionPayload, importBatchDealTypes, canApplyImportRule, readImportRule, saveImportRule, runPool, type ImportCommissionRule, type ImportDealType } from '@/lib/importCommissionDefaults';
 import { agencyUrlForRequest, isYad2AgencyUrl } from '@/lib/yad2ImportLinks';
+import { ImportCommissionDialog } from './ImportCommissionDialog';
 
 
 const BROKER_ROLES = ['managing_broker', 'agent', 'lead_agent', 'junior_agent', 'super_admin'];
@@ -28,14 +27,16 @@ async function errorText(error: unknown) {
 }
 
 /** Applies a commission rule to one workspace listing, merging the closing fee into its features. */
-async function applyRule(listingId: string, workspaceId: string, rule: ImportCommissionRule, onlyIfUnset: boolean) {
-  const { data: row } = await supabase.from('listings').select('id, deal_type, asking_price, features, affiliate_tier1_amount, affiliate_tier2_amount, affiliate_tier3_amount, affiliate_tier4_amount').eq('id', listingId).eq('workspace_owner_id', workspaceId).maybeSingle();
-  if (!row) return;
-  if (onlyIfUnset && (row.affiliate_tier1_amount || row.affiliate_tier2_amount || row.affiliate_tier3_amount || row.affiliate_tier4_amount)) return;
+async function applyRule(listingId: string, workspaceId: string, rule: ImportCommissionRule, acceptedAt: string) {
+  const { data: row, error: readError } = await supabase.from('listings').select('id, deal_type, asking_price, features').eq('id', listingId).eq('workspace_owner_id', workspaceId).maybeSingle();
+  if (readError) throw readError;
+  if (!row) throw new Error('לא ניתן לעדכן נכס שאינו משויך למשרד הנבחר');
   const feature = Array.isArray(row.features) ? (row.features[0] ?? {}) : (row.features ?? {});
   const dealType = (feature as { listing_type?: string }).listing_type ?? row.deal_type;
   const { closing, ...columns } = importCommissionPayload(dealType, Number(row.asking_price) || 0, rule);
-  await supabase.from('listings').update({ ...columns, features: { ...(feature as object), deal_closing_commission: closing } } as never).eq('id', listingId).eq('workspace_owner_id', workspaceId);
+  const { data: saved, error } = await supabase.from('listings').update({ ...columns, features: { ...(feature as object), deal_closing_commission: closing, commission_terms_accepted_at: acceptedAt } } as never).eq('id', listingId).eq('workspace_owner_id', workspaceId).select('id').maybeSingle();
+  if (error) throw error;
+  if (!saved) throw new Error('שמירת העמלות לא הושלמה');
 }
 
 
@@ -53,11 +54,13 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
   const [progress, setProgress] = useState<ImportProgress>({ total: 0, done: 0, failed: 0, running: 0 });
   const [imported, setImported] = useState<string[]>([]);
   const [ruleOpen, setRuleOpen] = useState(false);
+  const [dealTypes, setDealTypes] = useState<ImportDealType[]>([]);
+  const [saving, setSaving] = useState(false);
   const [rule, setRule] = useState<ImportCommissionRule>(() => (user && activeWorkspaceId ? readImportRule(user.id, activeWorkspaceId) : readImportRule('', '')));
   const scope = useRef(0);
 
   useEffect(() => {
-    scope.current++; setPhase('idle'); setImported([]); setProgress({ total: 0, done: 0, failed: 0, running: 0 });
+    scope.current++; setPhase('idle'); setImported([]); setRuleOpen(false); setDealTypes([]); setSaving(false); setProgress({ total: 0, done: 0, failed: 0, running: 0 });
     if (user && activeWorkspaceId) setRule(readImportRule(user.id, activeWorkspaceId));
   }, [user?.id, activeWorkspaceId]);
 
@@ -82,8 +85,10 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
   const start = async (value: string = url) => {
     if (!user || !activeWorkspaceId) { savePendingYad2Import({ kind: 'agency', url: value.trim(), publisherType }); navigate('/auth', { state: { returnTo: window.location.pathname } }); return; }
     clearPendingYad2Import();
-    const run = ++scope.current, ws = activeWorkspaceId, activeRule = rule;
-    setPhase('discovering'); setImported([]);
+    const run = ++scope.current, ws = activeWorkspaceId;
+    const completed: string[] = [];
+    const types: string[] = [];
+    setPhase('discovering'); setImported([]); setDealTypes([]);
     const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(value) } });
     if (run !== scope.current) return;
     if (error || !data?.ok) { toast.error(await errorText(error) || 'לא נמצאו מודעות'); setPhase('idle'); return; }
@@ -97,27 +102,42 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
       let id: string | null = null;
       try {
         const { data: res, error: e } = await supabase.functions.invoke('yad2-unlocker', { body: { url: item, limit: 1, pages: 1, import_item: true } });
-        if (!e && res?.listing_id) { id = res.listing_id; await applyRule(id!, ws, activeRule, true); }
+        if (!e && typeof res?.listing_id === 'string') {
+          const { data: row, error: readError } = await supabase.from('listings').select('id, deal_type, features').eq('id', res.listing_id).eq('workspace_owner_id', ws).maybeSingle();
+          if (readError || !row) throw readError ?? new Error('הנכס לא נשמר במשרד הנבחר');
+          id = row.id;
+          const feature = Array.isArray(row.features) ? row.features[0] : row.features;
+          types.push((feature as { listing_type?: string } | null)?.listing_type ?? row.deal_type ?? 'sale');
+        }
       } catch { id = null; }
       if (run !== scope.current) return;
       setProgress(p => ({ ...p, running: p.running - 1, done: p.done + (id ? 1 : 0), failed: p.failed + (id ? 0 : 1) }));
-      if (id) { setImported(list => [...list, id!]); refresh(); }
+      if (id) { const savedId = id; completed.push(savedId); setImported(list => [...list, savedId]); refresh(); }
     });
     if (run !== scope.current) return;
-    setPhase('done'); setRuleOpen(true);
+    setPhase('done'); setDealTypes(importBatchDealTypes(types)); setRuleOpen(completed.length > 0);
   };
 
-  const applyGlobal = async () => {
-    if (!user || !activeWorkspaceId) return;
-    saveImportRule(user.id, activeWorkspaceId, rule);
-    await runPool(imported, PARALLEL, id => applyRule(id, activeWorkspaceId, rule, false));
-    refresh(); setRuleOpen(false);
+  const applyGlobal = async (accepted: boolean) => {
+    if (!user || !activeWorkspaceId || saving || !canApplyImportRule(rule, dealTypes, accepted)) return;
+    const run = scope.current, ws = activeWorkspaceId, accountId = user.id;
+    const acceptedAt = new Date().toISOString();
+    setSaving(true);
+    let failed = 0;
+    await runPool(imported, PARALLEL, async id => {
+      if (run !== scope.current) return;
+      try { await applyRule(id, ws, rule, acceptedAt); }
+      catch (error) { failed++; console.error('[yad2-import-commissions]', { listingId: id, message: error instanceof Error ? error.message : 'save_failed' }); }
+    });
+    if (run !== scope.current) return;
+    setSaving(false); refresh();
+    if (failed) { toast.error(`שמירת העמלות נכשלה ב-${failed} נכסים. אפשר לנסות שוב.`); return; }
+    saveImportRule(accountId, ws, rule); setRuleOpen(false);
     toast.success(`העמלות עודכנו ב-${imported.length} נכסים`);
   };
 
   const busy = phase === 'discovering' || phase === 'importing';
   const pending = progress.total - progress.done - progress.failed;
-  const num = (k: keyof ImportCommissionRule) => (e: React.ChangeEvent<HTMLInputElement>) => setRule(r => ({ ...r, [k]: Math.max(0, Number(e.target.value.replace(/[^\d.]/g, '')) || 0) }));
 
   return <CollapsibleCard title="יבוא כל המודעות שלי מיד 2" open={open || busy || phase === 'done'} onToggle={() => onToggle?.()}>
     <p className="text-[15.5px] leading-6 text-muted-foreground">יש לכם עמוד משרד ביד שתיים? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם יובאו בלחיצה אחת.</p>
@@ -139,24 +159,6 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
       <p className="text-xs text-muted-foreground">הנכסים נשמרים כטיוטות בלשונית הטיוטות. אפשר לערוך עמלה ומחיר לכל נכס בנפרד ולפרסם.</p>
       {unverifiedBroker && <p className="text-xs font-medium text-foreground">הנכסים יישארו ממתינים לפרסום עד לאימות רישיון התיווך בשלב פרטי ההתקשרות.</p>}
     </div>}
-    <Dialog open={ruleOpen} onOpenChange={setRuleOpen}>
-      <DialogContent dir="rtl" className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>הייבוא הסתיים: {progress.done} נכסים</DialogTitle>
-          <DialogDescription>הגדירו כלל עמלות אחד לכל הנכסים שיובאו ולייבואים הבאים. אפשר לשנות כל נכס בנפרד בהמשך.</DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1"><Label>עמלת סגירה במכירה (%)</Label><Input inputMode="decimal" value={rule.salePercent} onChange={num('salePercent')} /></div>
-          <div className="space-y-1"><Label>עמלת סגירה בשכירות (% משכר דירה חודשי)</Label><Input inputMode="decimal" value={rule.rentMonthlyPercent} onChange={num('rentMonthlyPercent')} /></div>
-          <div className="space-y-1"><Label>פנייה בטופס (₪)</Label><Input inputMode="numeric" value={rule.form} onChange={num('form')} /></div>
-          <div className="space-y-1"><Label>פנייה בוואטסאפ (₪)</Label><Input inputMode="numeric" value={rule.whatsapp} onChange={num('whatsapp')} /></div>
-          <div className="space-y-1"><Label>שיחת טלפון (₪)</Label><Input inputMode="numeric" value={rule.phone} onChange={num('phone')} /></div>
-        </div>
-        <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
-          <Button variant="outline" onClick={() => setRuleOpen(false)}>אחר כך</Button>
-          <Button onClick={() => void applyGlobal()} disabled={!imported.length}>החלה על כל הנכסים</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ImportCommissionDialog open={ruleOpen} onOpenChange={setRuleOpen} count={imported.length} types={dealTypes} rule={rule} onRuleChange={setRule} saving={saving} onApply={accepted => void applyGlobal(accepted)} />
   </CollapsibleCard>;
 }

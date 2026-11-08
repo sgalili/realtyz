@@ -77,7 +77,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
               const localId = result.localId;
               const toggle = () => setExpandedId(open ? null : result.key);
               return [
-                <tr key={result.key} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <tr key={result.key} data-row-id={result.key} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   {selectionMode && <td className="p-2" onClick={e => e.stopPropagation()}>{localId ? <Checkbox checked={selectedIds.has(localId)} onCheckedChange={() => onToggleSelected(localId)} aria-label="בחירת נכס" /> : null}</td>}
                   {visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
                     {id === 'photo' ? (

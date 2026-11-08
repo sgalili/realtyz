@@ -1,5 +1,11 @@
 # Roadmap
 
+## Import commission modes and expansion November 8
+- [x] Remove Step 8 partner-count scaling and replace it with concise popularity text, preserving slider bounds.
+- [x] Anchor expanded My Properties titles below stationary headers within the existing scroller; managed summary rows now identify their expansion anchor.
+- [x] Split batch import commissions by actual sale/rent inventory, apply requested bounds/defaults and require legal acceptance before fee writes; preserve drafts on cancel and surface partial save failures.
+- [x] 41 focused tests passed. Signed-in mobile/desktop expansion title sits 8px below the heading without document movement; import modal acceptance and real 0.21% fee readback verified with original values restored. Discovery/extraction were simulated using an existing authorized listing, not a fresh Yad2 scrape; batch/rental mode rules covered by tests. Build OK.
+
 ## Price controls and saving November 8
 - [x] Add a visible semantic border to slider thumbs and place closing pricing before all other lead settings.
 - [x] Reproduced HTTP 406 from the wrong workspace predicate; reward saves now resolve the authorized listing's saved workspace without weakening RLS.
