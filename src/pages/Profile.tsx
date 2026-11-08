@@ -309,7 +309,7 @@ function PersonalTab() {
         setWhatsapps(loadedWhatsapps);
         setPhones(loadedPhones);
         setFullName(serverName);
-        setEvidenceLicense(evidence?.license_number ?? '');
+        setEvidenceLicense(evidence?.license_number ?? (server.locked_broker_name != null ? String(server.broker_license_number ?? '') : ''));
         setIdentityLocked(server.locked_broker_name != null || server.locked_broker_city != null || (!!evidence?.license_number && evidence.license_number === server.broker_license_number));
         setLockedBrokerName(String(server.locked_broker_name ?? (evidence?.license_number === server.broker_license_number ? evidence?.registry_holder_name : '') ?? ''));
         setCity(String(server.city ?? extra?.city ?? ''));

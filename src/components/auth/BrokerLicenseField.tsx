@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BadgeCheck, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,9 +10,11 @@ export function BrokerLicenseField({ value, onChange, onVerified, compact = fals
   const [status, setStatus] = useState<'idle' | 'checking' | 'valid' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [holderName, setHolderName] = useState('');
+  const onVerifiedRef = useRef(onVerified);
+  onVerifiedRef.current = onVerified;
   useEffect(() => {
     let cancelled = false;
-    onVerified(null);
+    onVerifiedRef.current(null);
     setMessage('');
     setHolderName('');
     if (!value) { setStatus('idle'); return; }
@@ -21,14 +23,14 @@ export function BrokerLicenseField({ value, onChange, onVerified, compact = fals
     const timer = window.setTimeout(() => {
       void verifyBrokerLicense(value, 'check', true).then(result => {
         if (cancelled) return;
-        setStatus('valid'); setHolderName(result.holderName ?? ''); onVerified(value, result.holderName);
+        setStatus('valid'); setHolderName(result.holderName ?? ''); onVerifiedRef.current(value, result.holderName);
       }).catch((error: unknown) => {
         if (cancelled) return;
         setStatus('error'); setMessage(error instanceof Error ? error.message : INVALID_BROKER_LICENSE);
       });
     }, 600);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [value, onVerified]);
+  }, [value]);
   useEffect(() => { onChecking?.(status === 'checking'); }, [status, onChecking]);
   return <div className="space-y-2">
     <Label className={compact || signup || bare ? 'sr-only' : 'font-semibold'} htmlFor="signup-broker-license">מספר רישיון תיווך ממשלתי *</Label>

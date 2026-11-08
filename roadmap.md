@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Broker registry identity November 8
-- [ ] Normalize official personal names to first-name last-name across saved profiles and registry outputs without reversing arbitrary names.
-- [ ] Correct automatic verification/readback and distinguish verified evidence from active broker permissions beside the license.
-- [ ] Preserve locked official name/city and restricted manual-review fetching; test deployed lookup and authenticated profile on mobile/desktop.
+- [x] Canonicalize official names separately from raw certificate evidence; update matching saved profiles, registry responses/review names and two matching ad contact names, leaving arbitrary people/office names unchanged.
+- [x] Return confirmed profile/activation state, stop redundant post-verification writes, stabilize input callbacks and end checking on failure; distinguish locked verified evidence from server-confirmed active entitlement.
+- [x] 26 focused tests passed, build OK. Live 31927721 lookup returned דולי אידלסון/הרצליה; authenticated mobile/desktop selected-owner profile showed מאומת · מתווך פעיל without identity editors or duplicate upgrade card. Server ignored attempted name/city edits. Fresh SMS/certificate-to-role onboarding was not exercised; existing ownership protections remain required.
 
 ## Campaign entry and accessibility November 8
 - [x] Make every campaign plus action open the full channel picker, clearing only navigation context.

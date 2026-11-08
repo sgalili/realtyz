@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { useUserRole } from '@/hooks/useUserRole';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 import { mayFetchRegistryInReview } from '@/lib/brokerProfilePolicy';
+import { registryDisplayName } from '../../../supabase/functions/_shared/brokerRegistry';
 
 type Req = { id: string; user_id: string; license_number: string; registry_holder_name: string | null; certificate_name: string | null; certificate_path: string | null; created_at: string };
 
@@ -56,7 +57,7 @@ export function BrokerUpgradeRequestsCard() {
           <p className="font-semibold">{r.profile?.full_name || r.profile?.email || r.user_id}</p>
           <p className="text-sm">טלפון נייד: <span dir="ltr">{r.profile?.phone ? r.profile.phone.replace(/^972/, '0').replace(/^(\d{3})(\d+)$/, '$1-$2') : '—'}</span></p>
           {r.certUrl ? <a href={r.certUrl} target="_blank" rel="noopener noreferrer"><img src={r.certUrl} alt="תעודת רישיון" className="max-h-60 w-full rounded border border-border object-contain" /></a> : <p className="text-sm text-muted-foreground">לא הועלתה תמונת תעודה (אומתה אוטומטית מול התעודה בעת ההגשה)</p>}
-          <p className="text-sm">רישיון <span dir="ltr" className="tabular-nums">{r.license_number}</span> · שם בפנקס: {r.registry_holder_name ?? '—'} · שם בתעודה: {r.certificate_name ?? '—'}</p>
+          <p className="text-sm">רישיון <span dir="ltr" className="tabular-nums">{r.license_number}</span> · שם בפנקס: {r.registry_holder_name ? registryDisplayName(r.registry_holder_name, r.profile?.full_name) : '—'} · שם בתעודה: {r.certificate_name ?? '—'}</p>
           {mayFetchRegistryInReview({ superAdmin: isSuperAdmin, pending: true, registryHolderName: r.registry_holder_name, identityLocked: !!data.find(row => row.id === r.id)?.registryFetched || fetchedIds.includes(r.id) }) && <BrokerRegistryNameButton userId={r.user_id} license={r.license_number} disabled={busy === r.id} onUpdated={() => { setFetchedIds(ids => [...ids, r.id]); void qc.invalidateQueries({ queryKey: ['admin-broker-upgrade-requests'] }); }} />}
           <p className="text-xs text-muted-foreground">{format(new Date(r.created_at), 'dd/MM/yyyy HH:mm')}</p>
           <div className="flex justify-between gap-2">
