@@ -53,7 +53,9 @@ export function extractYad2Publisher(ad: any, sourceUrl: string): Record<string,
   const office = txt(ad?.agency_name, ad?.office_name, agency.name, agency.title, ad?.merchant_name);
   const name = txt(ad?.broker_name, ad?.contact_name, broker.name, broker.fullName);
   const number = licenseNumber(ad?.broker_license_number ?? ad?.broker_license ?? broker.licenseNumber ?? broker.license_number ?? broker.brokerLicenseNumber);
-  const logo = [ad?.office_logo_url, ad?.office_logo, ad?.merchant_logo, ad?.agency_logo_url, ad?.agencyLogo, agency.logo, agency.logoUrl, agency.image, broker.logo, broker.logoUrl, ad?.contact_info?.logo, ad?.merchant?.logo_url, ad?.metaData?.agencyLogo].map(publisherImageUrl).find(Boolean);
+  const logo = [ad?.office_logo_url, ad?.office_logo, ad?.merchant_logo, ad?.agency_logo_url, ad?.agencyLogo, agency.logo, agency.logoUrl, agency.image, broker.logo, broker.logoUrl, ad?.contact_info?.logo, ad?.merchant?.logo_url, ad?.metaData?.agencyLogo].map(publisherImageUrl).find(Boolean)
+    // Fallback: Yad2 office logos live under the agency mini-site image path inside the ad's own payload.
+    ?? publisherImageUrl(JSON.stringify(ad ?? {}).match(/https?:\\?\/\\?\/images\.yad2\.co\.il\\?\/Pic\\?\/TivMiniSite\\?\/[^"\\]+/i)?.[0]?.replace(/\\\//g, '/'));
   const sourceKind = ad?._source_bucket ?? ad?.publisher_kind ?? ad?.publisherType;
   // Exclusivity on the ad's OWN labels/text only (never related ads).
   const ownTags = JSON.stringify([ad?.tags, ad?.labels, ad?.highlightText, ad?.title_tags, ad?.title, ad?.description, ad?.searchText, ad?.metaData?.description]);
@@ -81,7 +83,7 @@ export function extractYad2PublisherHtml($: any, sourceUrl: string): Record<stri
   if (office) result.office_name = office;
   if (name) result.broker_name = name;
   const number = licenseNumber(text.match(/(?:מספר\s*)?רישיון\s*(?:תיווך|מתווך)?\s*[:#]?\s*(\d{1,8})(?!\d)/)?.[1]);
-  const logoElement = section.find('img').filter((_: number, el: any) => /logo|לוגו|agency|office|משרד/i.test([$(el).attr('alt'), $(el).attr('class'), $(el).attr('data-testid')].join(' '))).first();
+  const logoElement = section.find('img').filter((_: number, el: any) => /logo|לוגו|agency|office|משרד|TivMiniSite/i.test([$(el).attr('alt'), $(el).attr('class'), $(el).attr('data-testid'), $(el).attr('src')].join(' '))).first();
   const logo = publisherImageUrl(logoElement.attr('src') ?? logoElement.attr('data-src') ?? logoElement.attr('srcset')?.split(',')[0]?.trim().split(/\s+/)[0]);
   if (logo) Object.assign(result, { office_logo_url: logo, office_logo_source_url: logo, office_logo_evidence: { source: 'source_ad', source_url: sourceUrl } });
   if (number) Object.assign(result, { broker_license_number: number, broker_license_evidence: { source: 'source_ad', source_url: sourceUrl, number }, publisher_kind: 'broker' });
