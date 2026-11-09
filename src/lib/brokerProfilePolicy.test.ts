@@ -2,12 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { brokerLicenseState, mayEditBrokerIdentityField, mayFetchRegistryInReview, registryIdentityLocked } from './brokerProfilePolicy';
 describe('official broker identity', () => {
   it('shows matching 31927721 evidence as verified and active only with server entitlement', () => {
-    expect(brokerLicenseState({ evidenceLicense: '31927721', storedLicense: '31927721', active: true, suspended: false })).toEqual({ verified: true, active: true });
-    expect(brokerLicenseState({ evidenceLicense: '31927721', storedLicense: '31927721', active: false, suspended: false })).toEqual({ verified: true, active: false });
+    expect(brokerLicenseState({ evidenceLicense: '31927721', storedLicense: '31927721', active: true, suspended: false })).toEqual({ verified: true, approved: false, active: true });
+    expect(brokerLicenseState({ evidenceLicense: '31927721', storedLicense: '31927721', active: false, suspended: false })).toEqual({ verified: true, approved: false, active: false });
   });
   it('does not mark unmatched or suspended licenses active', () => {
-    expect(brokerLicenseState({ evidenceLicense: '31927722', storedLicense: '31927721', active: true, suspended: false })).toEqual({ verified: false, active: false });
-    expect(brokerLicenseState({ evidenceLicense: '31927721', storedLicense: '31927721', active: true, suspended: true })).toEqual({ verified: true, active: false });
+    expect(brokerLicenseState({ evidenceLicense: '31927722', storedLicense: '31927721', active: true, suspended: false })).toEqual({ verified: false, approved: false, active: false });
+    expect(brokerLicenseState({ evidenceLicense: '31927721', storedLicense: '31927721', active: true, suspended: true })).toEqual({ verified: true, approved: false, active: false });
+  });
+  it('grants identical active state to manually approved 30625911 without claiming registry verification', () => {
+    expect(brokerLicenseState({ approvedLicense: '30625911', storedLicense: '30625911', active: true, suspended: false })).toEqual({ verified: false, approved: true, active: true });
+  });
+  it('rejects an approval for a different current license', () => {
+    expect(brokerLicenseState({ approvedLicense: '30625911', storedLicense: '30625912', active: true, suspended: false }).active).toBe(false);
   });
   it('locks full name after registry retrieval', () => {
     expect(mayEditBrokerIdentityField('fullName', registryIdentityLocked({ locked_broker_name: 'אידלסון דולי' }))).toBe(false);

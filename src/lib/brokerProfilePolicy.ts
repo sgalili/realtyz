@@ -10,7 +10,8 @@ export function mayEditBrokerIdentityField(field: string, locked: boolean) {
   return !locked || (field !== 'fullName' && field !== 'city');
 }
 
-export function brokerLicenseState(input: { evidenceLicense?: string | null; storedLicense: string; active: boolean | null; suspended: boolean }) {
+export function brokerLicenseState(input: { evidenceLicense?: string | null; storedLicense: string; active: boolean | null; suspended: boolean; approvedLicense?: string | null }) {
   const verified = !!input.storedLicense && input.evidenceLicense === input.storedLicense;
-  return { verified, active: verified && input.active === true && !input.suspended };
+  const approved = !verified && !!input.storedLicense && input.approvedLicense === input.storedLicense;
+  return { verified, approved, active: (verified || approved) && input.active === true && !input.suspended };
 }

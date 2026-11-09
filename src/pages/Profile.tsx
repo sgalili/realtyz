@@ -235,6 +235,7 @@ function PersonalTab() {
   const [storedLicense, setStoredLicense] = useState('');
   const [lockedBrokerName, setLockedBrokerName] = useState('');
   const [evidenceLicense, setEvidenceLicense] = useState('');
+  const [approvedLicense, setApprovedLicense] = useState('');
   const [identityLocked, setIdentityLocked] = useState(false);
   const [removeLicenseOpen, setRemoveLicenseOpen] = useState(false);
   const [removingLicense, setRemovingLicense] = useState(false);
@@ -329,13 +330,16 @@ function PersonalTab() {
     if (!ownerId || !storedLicense) { setLicenseLiveVerified(null); return; }
     let cancelled = false;
     (async () => {
-      const { data: entitled, error } = await supabase.rpc('partner_can_view_closing', { _user_id: ownerId });
+      const { data, error } = await supabase.rpc('get_broker_license_state', { _user_id: ownerId });
       if (cancelled) return;
-      setLicenseLiveVerified(error ? null : entitled === true);
+      const state = data as { license_number?: string; status?: string; active?: boolean } | null;
+      setLicenseLiveVerified(error ? null : state?.active === true);
+      setEvidenceLicense(state?.status === 'verified' ? state.license_number ?? '' : '');
+      setApprovedLicense(state?.status === 'approved' ? state.license_number ?? '' : '');
     })();
     return () => { cancelled = true; };
   }, [profileOwnerId, storedLicense, lockedBrokerName]);
-  const licenseState = brokerLicenseState({ evidenceLicense, storedLicense, active: licenseLiveVerified, suspended: licenseSuspended });
+  const licenseState = brokerLicenseState({ evidenceLicense, approvedLicense, storedLicense, active: licenseLiveVerified, suspended: licenseSuspended });
   const removeLicense = async () => {
     setRemovingLicense(true);
     try {
@@ -344,7 +348,7 @@ function PersonalTab() {
         : await supabase.rpc('admin_remove_broker_license' as any, { _user_id: profileOwnerId });
       if (error) throw error;
       setStoredLicense(''); setBrokerLicense(''); setVerifiedBrokerLicense(null);
-      setEvidenceLicense(''); setIdentityLocked(false); setLockedBrokerName('');
+      setEvidenceLicense(''); setApprovedLicense(''); setIdentityLocked(false); setLockedBrokerName('');
       setRemoveLicenseOpen(false);
       await queryClient.invalidateQueries();
       toast.success('רישיון התיווך הוסר. החשבון חזר להרשאות משתמש רגיל.');
@@ -495,17 +499,17 @@ function PersonalTab() {
         </ProfileFieldRow>
 
         {showBrokerFields && isOwnProfile && licenseSuspended && <div role="alert" className="border border-destructive bg-destructive/10 p-3 text-destructive">מספר הרישיון אינו תקף או אינו מופיע בפנקס המתווכים המורשים. הרשאות התיווך הושעו עד לאימות רישיון תקף.</div>}
-        {verifiedLicenseLocked ? (
+        {verifiedLicenseLocked || licenseState.approved ? (
           <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">
             <BadgeCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 text-base font-semibold text-muted-foreground">מספר רישיון תיווך:</span>
             <div className="min-w-[90px] flex-1 basis-24">
-              <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label="מספר רישיון תיווך מאומת">{storedLicense}</span>
+              <span className="block truncate rounded px-1 py-0.5 text-left text-base font-bold tabular-nums" dir="ltr" aria-label={licenseState.approved ? 'מספר רישיון תיווך מאושר' : 'מספר רישיון תיווך מאומת'}>{storedLicense}</span>
             </div>
-            <span role="status" className={cn('flex flex-wrap items-center gap-1 text-sm font-semibold', licenseState.verified ? 'text-success' : 'text-muted-foreground')}>
-              {licenseState.verified ? <BadgeCheck className="h-4 w-4" aria-hidden /> : <Clock className="h-4 w-4" aria-hidden />}
-              {licenseState.verified ? 'מאומת' : 'ממתין לאימות'}
-              {licenseState.verified && <span className={licenseState.active ? 'text-success' : 'text-muted-foreground'}> · {licenseLiveVerified === null ? 'בודק פעילות…' : licenseState.active ? 'מתווך פעיל' : 'החשבון אינו פעיל כמתווך'}</span>}
+            <span role="status" className={cn('flex flex-wrap items-center gap-1 text-sm font-semibold', licenseState.verified || licenseState.approved ? 'text-success' : 'text-muted-foreground')}>
+              {licenseState.verified || licenseState.approved ? <BadgeCheck className="h-4 w-4" aria-hidden /> : <Clock className="h-4 w-4" aria-hidden />}
+              {licenseState.verified ? 'מאומת' : licenseState.approved ? 'מאושר' : 'ממתין לאימות'}
+              {(licenseState.verified || licenseState.approved) && <span className={licenseState.active ? 'text-success' : 'text-muted-foreground'}> · {licenseLiveVerified === null ? 'בודק פעילות…' : licenseState.active ? 'מתווך פעיל' : 'החשבון אינו פעיל כמתווך'}</span>}
             </span>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10" aria-label="הסרת רישיון התיווך" onClick={() => setRemoveLicenseOpen(true)}>
               <Trash2 className="h-3.5 w-3.5" />
@@ -542,8 +546,8 @@ function PersonalTab() {
             <AlertDialogTitle>להסיר את רישיון התיווך?</AlertDialogTitle>
             <AlertDialogDescription>
               {isOwnProfile
-                ? 'הסרת הרישיון תבטל מיד את סטטוס המתווך המאומת שלך. החשבון יחזור לתצוגה ולהרשאות של משתמש רגיל, כולל אובדן הגישה לעמלות סגירה ולכלי התיווך. כדי לחזור תצטרך לאמת רישיון מחדש.'
-                : 'הסרת הרישיון תבטל מיד את סטטוס המתווך המאומת של משתמש זה. החשבון יחזור לתצוגה ולהרשאות של משתמש רגיל, כולל אובדן הגישה לעמלות סגירה ולכלי התיווך. כדי לחזור יידרש לאמת רישיון מחדש.'}
+                ? 'הסרת הרישיון תבטל מיד את אישור המתווך שלך. החשבון יחזור להרשאות משתמש רגיל ללא עמלות סגירה וכלי תיווך. חזרה מחייבת אימות רישיון או אישור מנהל מחדש.'
+                : 'הסרת הרישיון תבטל מיד את אישור המתווך של משתמש זה. החשבון יחזור להרשאות משתמש רגיל ללא עמלות סגירה וכלי תיווך. חזרה מחייבת אימות רישיון או אישור מנהל מחדש.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row justify-between gap-2 sm:justify-between">

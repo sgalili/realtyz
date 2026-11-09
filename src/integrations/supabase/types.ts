@@ -8826,6 +8826,10 @@ export type Database = {
         }
         Returns: Json
       }
+      broker_license_approved_for: {
+        Args: { _number: string; _uid: string }
+        Returns: boolean
+      }
       broker_name_tokens: { Args: { _n: string }; Returns: string[] }
       bulk_update_leads: {
         Args: {
@@ -9407,6 +9411,7 @@ export type Database = {
           tier4_type: string
         }[]
       }
+      get_broker_license_state: { Args: { _user_id: string }; Returns: Json }
       get_business_performance: {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json
@@ -9917,6 +9922,7 @@ export type Database = {
         Returns: Json
       }
       review_lead_dispute: { Args: { _id: string }; Returns: Json }
+      revoke_broker_license: { Args: { _uid: string }; Returns: Json }
       run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
       rz_phone_label: { Args: { _p: string }; Returns: string }

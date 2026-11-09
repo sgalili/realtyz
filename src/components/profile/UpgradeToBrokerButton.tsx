@@ -56,8 +56,8 @@ export function UpgradeToBrokerButton({ profileOwnerId, publisher = false, onApp
     ]);
     for (const result of [verification, profile, request, affiliate]) if (result.error) throw result.error;
     return {
-      // A Super Admin approval is the verified state even when the registry has no record.
-      verified: verification.data === true || request.data?.status === 'approved',
+      // The exact current license must retain server-confirmed entitlement, not a historical request.
+      verified: verification.data === true,
       pending: request.data?.status === 'pending',
       license: request.data?.license_number || profile.data?.broker_license_number || affiliate.data?.license_number || '',
       rejected: affiliate.data?.license_status === 'rejected',

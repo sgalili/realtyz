@@ -1,5 +1,11 @@
 # Roadmap
 
+## Manual broker approval November 9
+- [x] Profile/admin distinguish registry מאומת from user+license-bound manual מאושר; historical approvals do not keep a removed license active.
+- [x] Shared entitlement grants manual approvals closing/property access; broker registration accepts manual evidence without registry lookup. Removal deletes broker roles before clearing license and revokes manual/affiliate evidence; transfer trigger rejects borrowing approval.
+- [x] 29 tests passed, build OK; authenticated mobile/desktop חגי אורן shows מאושר · מתווך פעיל, closing entitlement true and My Properties accessible. Another account cannot use 30625911. No page errors.
+- [ ] Removal rollback SQL test is retained but blocked by the provided connection's function permissions; no real license removed. Partner Mode as the broker himself and a completed removal remain unverified without an approved broker session/privileged test connection; consent and account isolation unchanged.
+
 ## Broker registry identity November 8
 - [x] Canonicalize official names separately from raw certificate evidence; update matching saved profiles, registry responses/review names and two matching ad contact names, leaving arbitrary people/office names unchanged.
 - [x] Return confirmed profile/activation state, stop redundant post-verification writes, stabilize input callbacks and end checking on failure; distinguish locked verified evidence from server-confirmed active entitlement.

@@ -24,7 +24,7 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_ORDER = Object.keys(ROLE_LABELS) as AppRole[];
 const primaryRole = (roles: string[]) => ROLE_ORDER.find(r => roles.includes(r));
 
-type EditDraft = { id: string; full_name: string; email: string; phone: string; city: string; gender: string; broker_license_number: string; identityLocked: boolean; roles: AppRole[]; originalRoles: AppRole[] };
+type EditDraft = { id: string; full_name: string; email: string; phone: string; city: string; gender: string; broker_license_number: string; identityLocked: boolean; manualApproved: boolean; roles: AppRole[]; originalRoles: AppRole[] };
 
 export function SuperAdminUsersTable() {
   const { isSuperAdmin } = useUserRole();
@@ -47,6 +47,11 @@ export function SuperAdminUsersTable() {
   }});
   const registryEvidence = useQuery({ queryKey: ['admin-registry-evidence'], enabled: isSuperAdmin, queryFn: async () => {
     const { data, error } = await supabase.from('broker_license_verifications').select('user_id,license_number');
+    if (error) throw error;
+    return data ?? [];
+  }});
+  const approvals = useQuery({ queryKey: ['admin-broker-approvals'], enabled: isSuperAdmin, queryFn: async () => {
+    const { data, error } = await supabase.from('admin_approved_broker_licenses').select('user_id,license_number');
     if (error) throw error;
     return data ?? [];
   }});
@@ -95,7 +100,7 @@ export function SuperAdminUsersTable() {
   const eligible = rows.filter(p => !protectedId(p.id)).map(p => p.id);
   const toggle = (id: string) => setSelected(current => current.includes(id) ? current.filter(v => v !== id) : [...current, id]);
   const rolesOf = (id: string) => (roles.data ?? []).filter(r => r.user_id === id).map(r => r.role as AppRole);
-  const openEdit = (p: any) => { const r = rolesOf(p.id); setDraft({ id: p.id, full_name: p.full_name ?? '', email: p.email ?? '', phone: p.phone ?? '', city: p.city ?? '', gender: p.gender ?? '', broker_license_number: p.broker_license_number ?? '', identityLocked: !!p.locked_broker_name || registryEvidence.isLoading || registryEvidence.isError || (registryEvidence.data ?? []).some(v => v.user_id === p.id && v.license_number === p.broker_license_number), roles: r, originalRoles: r }); };
+  const openEdit = (p: any) => { const r = rolesOf(p.id); setDraft({ id: p.id, full_name: p.full_name ?? '', email: p.email ?? '', phone: p.phone ?? '', city: p.city ?? '', gender: p.gender ?? '', broker_license_number: p.broker_license_number ?? '', identityLocked: !!p.locked_broker_name || registryEvidence.isLoading || registryEvidence.isError || (registryEvidence.data ?? []).some(v => v.user_id === p.id && v.license_number === p.broker_license_number), manualApproved: (approvals.data ?? []).some(a => a.user_id === p.id && a.license_number === p.broker_license_number), roles: r, originalRoles: r }); };
   return <section dir="rtl" className="space-y-3">
     <h2 className="text-lg font-bold">כל המשתמשים</h2>
     <div className="flex flex-wrap items-center gap-2">
@@ -139,7 +144,7 @@ export function SuperAdminUsersTable() {
             <div key={k} className="grid gap-1"><Label htmlFor={`edit-${k}`}>{label}</Label>
               {draft.identityLocked && (k === 'full_name' || k === 'city') ? <span dir={dir} className="text-base font-semibold">{draft[k] || '—'}</span> : <Input id={`edit-${k}`} dir={dir} value={draft[k]} onChange={e => setDraft({ ...draft, [k]: e.target.value })} />}</div>
           ))}
-          {draft.broker_license_number && <div className="grid gap-1"><Label htmlFor="edit-broker-license">מספר רישיון תיווך</Label><div className="flex flex-wrap items-center gap-2"><Input id="edit-broker-license" className="min-w-0 flex-1" dir="ltr" readOnly value={draft.broker_license_number} /><span role="status" className="flex items-center gap-1 text-sm text-success">{draft.identityLocked && <BadgeCheck className="h-4 w-4" aria-hidden />}{draft.identityLocked ? 'מאומת בפנקס' : 'ממתין לאימות'}</span></div><span className="text-sm text-muted-foreground">{draft.roles.some(role => ['agent', 'lead_agent', 'managing_broker'].includes(role)) ? 'הרשאות מתווך פעילות' : 'ללא הרשאות מתווך פעילות'}</span></div>}
+          {draft.broker_license_number && <div className="grid gap-1"><Label htmlFor="edit-broker-license">מספר רישיון תיווך</Label><div className="flex flex-wrap items-center gap-2"><Input id="edit-broker-license" className="min-w-0 flex-1" dir="ltr" readOnly value={draft.broker_license_number} /><span role="status" className="flex items-center gap-1 text-sm text-success">{(draft.identityLocked || draft.manualApproved) && <BadgeCheck className="h-4 w-4" aria-hidden />}{draft.identityLocked ? 'מאומת' : draft.manualApproved ? 'מאושר' : 'ממתין לאימות'}</span></div><span className="text-sm text-muted-foreground">{draft.roles.some(role => ['agent', 'lead_agent', 'managing_broker'].includes(role)) ? 'הרשאות מתווך פעילות' : 'ללא הרשאות מתווך פעילות'}</span></div>}
           <div className="grid gap-1"><Label>מגדר</Label>
             <Select value={draft.gender || undefined} onValueChange={v => setDraft({ ...draft, gender: v })}>
               <SelectTrigger dir="rtl"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>
