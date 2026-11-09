@@ -13,6 +13,7 @@
  * Every event patches the matching `wa_providers` (WBA) row so the UI reflects
  * authorization immediately, and roadblocks are written to integration_error_logs.
  */
+import { verifyMetaSignature } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
@@ -60,7 +61,11 @@ Deno.serve(async (req) => {
 
   let payload: any = null;
   try {
-    payload = await req.json();
+    const __raw = await req.text();
+    if (!(await verifyMetaSignature(req, __raw))) {
+      return new Response(JSON.stringify({ error: "invalid_signature" }), { status: 401, headers: { "Content-Type": "application/json" } });
+    }
+    payload = JSON.parse(__raw);
   } catch {
     return json({ received: true });
   }

@@ -12,6 +12,7 @@
 //   reply  → { ok, reply_id }   POST /{comment-id}/comments
 //   delete → { ok, deleted_ids } DELETE /{comment-id}, then archive locally
 //   status → { connected, page }
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   graphCall,
@@ -72,6 +73,10 @@ async function archiveCommentTree(admin: any, ownerId: string, nativeId: string)
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   try {

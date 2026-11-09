@@ -5,6 +5,7 @@
 // (Clearbit / PeopleDataLabs / etc.) can be plugged in here later without
 // touching callers.
 
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -20,6 +21,8 @@ function json(body: unknown, status = 200) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
   try {
     const { owner_id } = await req.json().catch(() => ({}));
     if (!owner_id) return json({ error: "owner_id required" }, 400);

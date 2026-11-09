@@ -2,6 +2,7 @@
 // every stored Facebook post published since a given date, and returns an
 // explicit per-post report so the UI can show the user exactly what failed and
 // why (missing page, missing permission, expired token, rate limit).
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { metaAdminClient, resolveMetaPage } from "../_shared/metaPage.ts";
 import {
@@ -37,6 +38,10 @@ const isUnsupportedGraphError = (err: unknown): boolean => {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   if (req.method !== "POST") return json({ ok: false, error: "method" }, 405);
 
   try {

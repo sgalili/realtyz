@@ -9680,6 +9680,7 @@ export type Database = {
       }
       in_current_workspace: { Args: { _row_owner: string }; Returns: boolean }
       inquiry_is_suspicious: { Args: { _phone: string }; Returns: boolean }
+      internal_call_headers: { Args: never; Returns: Json }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
       is_affiliate: { Args: { _user_id?: string }; Returns: boolean }
       is_ai_autopilot_enabled: { Args: { _user_id: string }; Returns: boolean }
@@ -10079,6 +10080,7 @@ export type Database = {
         Returns: string
       }
       valid_signup_full_name: { Args: { _full_name: string }; Returns: boolean }
+      verify_internal_secret: { Args: { _secret: string }; Returns: boolean }
       wipe_demo_data: { Args: never; Returns: Json }
       ws_current_access: { Args: { _ws: string }; Returns: boolean }
       ws_fb_comment_access: { Args: { _comment_id: string }; Returns: boolean }

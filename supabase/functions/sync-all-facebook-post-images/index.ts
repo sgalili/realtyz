@@ -1,3 +1,4 @@
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { postMediaIdentity } from '../_shared/postMediaIdentity.ts';
 // Bulk media re-sync for every stored Facebook campaign post.
 //
@@ -177,6 +178,10 @@ function collectDeep(node: any, acc: Set<string>, seen = new Set<any>()) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   try {
     const body = await req.json().catch(() => ({}));
     const limit = Math.min(1000, Math.max(1, Number(body?.limit) || 500));

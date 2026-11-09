@@ -5,6 +5,7 @@
 // length while preserving the user's facts, numbers, names and language.
 // Injects the workspace's learned-edit lexicon so polish reflects every
 // prior correction the broker has made.
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
@@ -40,6 +41,10 @@ function detectLang(s: string): "he" | "en" | "auto" {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   try {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
     const body = await req.json().catch(() => ({}));

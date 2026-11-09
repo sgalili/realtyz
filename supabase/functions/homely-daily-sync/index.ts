@@ -1,3 +1,4 @@
+import { isCronCall } from "../_shared/authz.ts";
 // Homely daily sync — pulls properties + leads for every broker with stored
 // credentials. Intended to be invoked by pg_cron once per day, but also
 // callable manually with a Bearer JWT to sync the current user only.
@@ -291,7 +292,7 @@ Deno.serve(async (req) => {
     // Determine target user(s)
     let targetUserId: string | null = null;
     let isCron = false;
-    if (cronSecret && expectedCron && cronSecret === expectedCron) {
+    if (await isCronCall(req)) {
       isCron = true;
     } else {
       const auth = req.headers.get("Authorization") || "";

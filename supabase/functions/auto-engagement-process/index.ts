@@ -7,6 +7,7 @@
 //     matches, ALSO auto-publish the public reply via meta-comments-sync.
 //     Otherwise leave the row in `pending_approval` for the human queue.
 // Strict tenant isolation: user_id is required and scopes every DB query.
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText } from "../_shared/textSanitize.ts";
@@ -116,6 +117,8 @@ const json = (b: unknown, s = 200) =>
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   try {

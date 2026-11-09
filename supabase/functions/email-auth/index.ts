@@ -38,6 +38,18 @@ Deno.serve(async (req) => {
     if (action === "send") {
       try { await admin.rpc("cleanup_expired_email_login_otps"); } catch { /* ignore */ }
 
+      // Throttle: at most 3 codes per address per 15 minutes, and retire any
+      // previous unused code so attempts never accumulate across many codes.
+      const windowStart = new Date(Date.now() - 15 * 60_000).toISOString();
+      const { count: recentSends } = await admin
+        .from("email_login_otps")
+        .select("id", { count: "exact", head: true })
+        .eq("email", email)
+        .gt("created_at", windowStart);
+      if ((recentSends ?? 0) >= 3) return json({ error: "נשלחו יותר מדי קודים. נסו שוב בעוד כמה דקות." }, 429);
+      await admin.from("email_login_otps").update({ consumed_at: new Date().toISOString() })
+        .eq("email", email).is("consumed_at", null);
+
       const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
       const codeHash = await hashCode(email, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
@@ -99,13 +111,30 @@ Deno.serve(async (req) => {
       if (otpError) throw otpError;
       if (!otpRow || otpRow.attempts >= MAX_ATTEMPTS) return json({ error: "הקוד פג או לא נמצא" }, 400);
 
+      // Lockout across all codes for this address in the last hour.
+      const { data: recentRows } = await admin
+        .from("email_login_otps")
+        .select("attempts")
+        .eq("email", email)
+        .gt("created_at", new Date(Date.now() - 60 * 60_000).toISOString());
+      const recentFailures = (recentRows ?? []).reduce((n, r) => n + Number(r.attempts ?? 0), 0);
+      if (recentFailures >= 10) return json({ error: "יותר מדי ניסיונות. נסו שוב בעוד שעה." }, 429);
+
       const expectedHash = await hashCode(email, code);
       if (expectedHash !== otpRow.code_hash) {
-        await admin.from("email_login_otps").update({ attempts: otpRow.attempts + 1 }).eq("id", otpRow.id);
+        const nextAttempts = otpRow.attempts + 1;
+        await admin.from("email_login_otps").update({
+          attempts: nextAttempts,
+          ...(nextAttempts >= MAX_ATTEMPTS ? { consumed_at: new Date().toISOString() } : {}),
+        }).eq("id", otpRow.id);
         return json({ error: "קוד שגוי" }, 400);
       }
 
-      await admin.from("email_login_otps").update({ consumed_at: new Date().toISOString() }).eq("id", otpRow.id);
+      // Atomic single use: only the request that flips consumed_at may continue.
+      const { data: claimed } = await admin.from("email_login_otps")
+        .update({ consumed_at: new Date().toISOString() })
+        .eq("id", otpRow.id).is("consumed_at", null).select("id");
+      if (!claimed?.length) return json({ error: "הקוד פג או לא נמצא" }, 400);
 
       // Ensure the user exists (create on first login), then issue a magic link token to sign them in.
       try {

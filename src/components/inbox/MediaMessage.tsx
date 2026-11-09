@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play, Download, FileText, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 type MediaKind = 'audio' | 'video' | 'image' | 'document' | 'sticker';
 
@@ -68,7 +69,25 @@ const kindLabel: Record<MediaKind, string> = {
 
 /** Media bubble body with a play/pause icon button for any playable file. */
 export function MediaMessage({ media }: { media: ChatMedia }) {
-  const src = useMemo(() => proxyUrl(media), [media]);
+  const rawSrc = useMemo(() => proxyUrl(media), [media]);
+  // Proxied WhatsApp media requires the signed-in session, so fetch it with
+  // the access token and play it from a local object URL.
+  const [src, setSrc] = useState<string | null>(media.directUrl ?? null);
+  useEffect(() => {
+    if (!rawSrc || rawSrc === media.directUrl) { setSrc(rawSrc); return; }
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      const res = await fetch(rawSrc, { headers: { Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } });
+      if (!res.ok || cancelled) return;
+      objectUrl = URL.createObjectURL(await res.blob());
+      if (!cancelled) setSrc(objectUrl);
+    })().catch(() => undefined);
+    return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [rawSrc, media.directUrl]);
   const ref = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);

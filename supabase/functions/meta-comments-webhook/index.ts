@@ -10,6 +10,7 @@
 //
 // Public endpoint: Meta cannot send an Authorization header, so this function
 // authenticates the payload with the verify token / app secret instead.
+import { verifyMetaSignature } from "../_shared/authz.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { graphCall, metaAdminClient, ownerForPage } from "../_shared/metaPage.ts";
@@ -135,7 +136,11 @@ Deno.serve(async (req) => {
 
   // Always ACK fast: Meta retries and disables endpoints that error or stall.
   let payload: any = null;
-  try { payload = await req.json(); } catch { payload = null; }
+  const __raw = await req.text();
+  if (!(await verifyMetaSignature(req, __raw))) {
+    return new Response(JSON.stringify({ error: "invalid_signature" }), { status: 401, headers: { "Content-Type": "application/json" } });
+  }
+  try { payload = JSON.parse(__raw); } catch { payload = null; }
 
   const process = async () => {
     try {

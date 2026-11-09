@@ -10,6 +10,7 @@
  * Called by AFTER INSERT/UPDATE database triggers (pg_net) and directly from
  * the app. Idempotent: a row that already carries a Google event id is skipped.
  */
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   createCalendarEvent,
@@ -211,6 +212,8 @@ function detailLines(value: string): string[] {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
 
   try {
     const body = (await req.json().catch(() => ({}))) as { table?: string; record_id?: string; notify?: boolean };

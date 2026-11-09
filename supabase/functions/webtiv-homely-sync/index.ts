@@ -1,3 +1,4 @@
+import { isCronCall } from "../_shared/authz.ts";
 // Webtiv → Homely background sync.
 //
 // Pulls live JSON from Webtiv "outJson.ashx" buyer + seller streams,
@@ -295,7 +296,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const cronSecret = req.headers.get("x-cron-secret");
     const expectedCron = Deno.env.get("CRON_SECRET");
-    const isCron = !!(cronSecret && expectedCron && cronSecret === expectedCron);
+    const isCron = await isCronCall(req);
 
     let targetUserId: string | null = null;
     if (!isCron) {

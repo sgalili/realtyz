@@ -8,6 +8,7 @@
 //
 // Public endpoint: Meta cannot send an Authorization header, so the verify
 // token guards the subscription and the Page binding guards the routing.
+import { verifyMetaSignature } from "../_shared/authz.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { graphCall, metaAdminClient, ownerForPage } from "../_shared/metaPage.ts";
 import { dmText, type InboundDm, persistInboundDm } from "../_shared/metaDm.ts";
@@ -58,7 +59,11 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("method", { status: 405 });
 
   let payload: any = null;
-  try { payload = await req.json(); } catch { payload = null; }
+  const __raw = await req.text();
+  if (!(await verifyMetaSignature(req, __raw))) {
+    return new Response(JSON.stringify({ error: "invalid_signature" }), { status: 401, headers: { "Content-Type": "application/json" } });
+  }
+  try { payload = JSON.parse(__raw); } catch { payload = null; }
 
   const process = async () => {
     try {

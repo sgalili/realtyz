@@ -1,6 +1,7 @@
 // Knowledge Base query: keyword-based retrieval over knowledge_chunks.
 // Embeddings are disabled because the Lovable AI Gateway no longer exposes an
 // embedding model. We tokenize the query and rank chunks by token overlap.
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 
@@ -25,6 +26,10 @@ function tokenize(s: string): string[] {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -41,13 +46,13 @@ Deno.serve(async (req) => {
 
     let userId: string | null = null;
     const authHeader = req.headers.get("Authorization") ?? "";
-    if (authHeader.startsWith("Bearer ") && !target_user_id) {
+    if (__caller.kind === "user") {
       const userClient = createClient(SUPABASE_URL, ANON_KEY, {
         global: { headers: { Authorization: authHeader } },
       });
       const { data: { user } } = await userClient.auth.getUser();
       userId = user?.id ?? null;
-    } else if (target_user_id) {
+    } else if (target_user_id && __caller.kind !== "user") {
       userId = target_user_id;
     }
     if (!userId) {

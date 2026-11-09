@@ -6,12 +6,17 @@
 //
 // mode: "balance" (default) reads the account balance; "send" additionally
 // dispatches a real test SMS to the workspace's approved sender number.
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { resolveSms019Config, sendSms019, sms019Balance, toLocalIL } from "../_shared/sms019.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), {

@@ -1,3 +1,4 @@
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { postMediaIdentity } from '../_shared/postMediaIdentity.ts';
 // Mirrors social post images (Facebook CDN URLs that expire via `oe=`/`oh=`
 // signatures) into the public `post-media-cache` storage bucket and re-links
@@ -113,6 +114,10 @@ async function mirror(url: string): Promise<string | null> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   try {
     const body = await req.json().catch(() => ({}));
     const campaignLogId = typeof body?.campaign_log_id === "string" ? body.campaign_log_id : null;

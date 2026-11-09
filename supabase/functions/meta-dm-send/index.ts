@@ -5,6 +5,7 @@
 //   → { ok: true, message_id }                       on success
 //   → 422 { error: "no_recipient_psid", details }     when the lead never wrote us
 //   → 200 { ok: false, error }                        on a Graph rejection
+import { requireCaller } from "../_shared/authz.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { metaAdminClient, resolveMetaPage, resolveTenant } from "../_shared/metaPage.ts";
@@ -23,6 +24,8 @@ const Body = z.object({
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   try {

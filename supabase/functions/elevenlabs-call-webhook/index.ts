@@ -25,7 +25,7 @@ function digitsOnly(s: string) {
 }
 
 async function verifySignature(rawBody: string, signature: string | null): Promise<boolean> {
-  if (!WEBHOOK_SECRET) return true; // not enforced if secret not set
+  if (!WEBHOOK_SECRET) return false; // fail closed until the signing secret is configured
   if (!signature) return false;
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(

@@ -1,5 +1,6 @@
 // Match a lead's preferences against listings and, if a hot match is found,
 // insert a row in deal_room_matches. The DB trigger fires the broker alert.
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
@@ -42,6 +43,8 @@ function score(listing: any, p: Prefs): { score: number; reasons: string[] } {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

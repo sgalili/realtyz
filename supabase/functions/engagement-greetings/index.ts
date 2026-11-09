@@ -5,6 +5,7 @@
  * today, and dispatches festive greetings when today matches an active row in
  * holiday_greetings.
  */
+import { requireCaller } from "../_shared/authz.ts";
 import { corsHeaders, dispatchOnce, firstName, israelToday, runJob } from "../_shared/engagementJobs.ts";
 
 const JOB = "engagement-greetings";
@@ -13,6 +14,8 @@ const HOLIDAY_BATCH = 300;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
 
   return await runJob(JOB, 300, async (admin) => {
     const today = israelToday();

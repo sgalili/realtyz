@@ -10,6 +10,7 @@
 //        headers: x-worker-secret: CLOUD_WORKER_SHARED_SECRET
 //        body: { job_id, status: "completed" | "failed", error?, post_url? }
 
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { decryptSession } from "../_shared/sessionCrypto.ts";
@@ -34,6 +35,8 @@ const json = (body: unknown, status = 200) =>
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 

@@ -1,6 +1,7 @@
 // Generate 3 distinct Hebrew reply drafts for a FB comment, in the voice of the
 // workspace owner that owns the Facebook Page. The broker name is resolved from
 // that owner's profile — never hardcoded. NO titles, no role emojis.
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { fetchSystemRulesBlock } from '../_shared/system-rules.ts';
 
@@ -23,6 +24,10 @@ const buildSystem = (broker: string, brokerFirst: string) => `אתה כותב ב
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   try {
     const URL_ = Deno.env.get('SUPABASE_URL')!;
     const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

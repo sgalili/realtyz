@@ -1,5 +1,6 @@
 // Knowledge Base ingest: chunk + embed text and store for RAG retrieval.
 // Accepts { title, raw_text, source_type?, source_metadata? } OR { document_id } to re-embed.
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { maskPii } from "../_shared/pii.ts";
@@ -78,6 +79,10 @@ File name: ${title}. MIME type: ${mimeType ?? "unknown"}.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

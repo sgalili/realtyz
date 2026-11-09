@@ -7,6 +7,7 @@
 // The Google Calendar event itself also has 60-minute popup + email reminders
 // (configured in createCalendarEvent), so the lead/agent get both.
 
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -48,6 +49,8 @@ async function sendWA(payload: { phone_number: string; message: string; user_id:
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
   try {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const now = new Date();

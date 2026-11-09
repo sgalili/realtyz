@@ -11,6 +11,7 @@
 //         workspace_owner_id?: string (service-mode only),
 //         persist?: boolean (default true) }
 
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -128,6 +129,10 @@ ${sourcesBlock || "(לא נמצאו מקורות חיים. תן את התקצי�
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   try {
     const body = await req.json().catch(() => ({} as any));
     const query = String(body?.query ?? "").trim();
@@ -144,7 +149,7 @@ Deno.serve(async (req) => {
     const jwt = authHeader.replace(/^Bearer\s+/i, "");
     let workspaceOwnerId: string | null = null;
     let actorUserId: string | null = null;
-    if (jwt && jwt !== SERVICE_KEY) {
+    if (__caller.kind === "user") {
       const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: { headers: { Authorization: `Bearer ${jwt}` } },
       });

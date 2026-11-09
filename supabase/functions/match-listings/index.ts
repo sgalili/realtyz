@@ -1,5 +1,6 @@
 // Given a lead_id, build a query string from leads.preferences (jsonb),
 // embed it via the Lovable AI Gateway, and call match_listings_to_lead RPC.
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -80,6 +81,8 @@ function listingInServiceAreas(listing: any, areas: string[]): boolean {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
 
   try {
     const { lead_id, match_count } = await req.json();

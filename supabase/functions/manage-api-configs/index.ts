@@ -1,3 +1,4 @@
+import { requireCaller, denied } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -10,6 +11,14 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Platform API configs are global: only signed-in admins / Super Admins.
+    const caller = await requireCaller(req, ["user"]);
+    if (caller instanceof Response) return caller;
+    if (caller.kind !== "user") return denied(403);
+    const { data: roleRows } = await supabase.from("user_roles").select("role")
+      .eq("user_id", caller.userId).in("role", ["admin", "super_admin"]).limit(1);
+    if (!roleRows?.length) return denied(403);
 
     const method = req.method;
 

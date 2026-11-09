@@ -3,6 +3,7 @@
 //   - multipart/form-data with a `file` part (+ optional `language`)
 //   - JSON { audio_data_url: string, mime_type?: string, language?: string }
 // Returns { text: string }
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
@@ -70,6 +71,10 @@ function dataUrlToBlob(dataUrl: string, fallbackMime?: string): Blob {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

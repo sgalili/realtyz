@@ -7,6 +7,7 @@
 // Messages are ENQUEUED into `autopilot_queue`, never sent directly, so the
 // existing drain worker keeps enforcing the kill switch, the per-tenant
 // autopilot toggle and retry/back-off.
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import {
@@ -52,6 +53,8 @@ const DONE_STAGES = new Set(["closed", "won", "lost", "ghosted"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
 
   const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 

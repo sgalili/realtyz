@@ -4,6 +4,7 @@
  * Daily job. Finds contacts whose lease ends in exactly 60 days and has Rita
  * ask, on WhatsApp, whether they want help finding a new rental.
  */
+import { requireCaller } from "../_shared/authz.ts";
 import { corsHeaders, dispatchOnce, firstName, israelToday, addDaysIso, runJob } from "../_shared/engagementJobs.ts";
 
 const JOB = "lease-expiry-reminders";
@@ -12,6 +13,8 @@ const DAYS_AHEAD = 60;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
 
   return await runJob(JOB, 240, async (admin) => {
     const today = israelToday();

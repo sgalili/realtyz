@@ -10,6 +10,7 @@
 //
 // Callable with { listing_id } (single, used right after import) or
 // { limit } for a batch sweep / cron run.
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
@@ -116,6 +117,10 @@ async function enrichFromWhatsApp(creds: WaCreds, phone: string): Promise<WaEnri
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   const started = Date.now();
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });

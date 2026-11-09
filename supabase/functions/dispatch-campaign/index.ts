@@ -1,3 +1,4 @@
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveSms019Config, sendSms019 } from "../_shared/sms019.ts";
 import { canUseWaTemplate } from '../_shared/waTemplateAccess.ts';
@@ -552,6 +553,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     const body = await req.json();

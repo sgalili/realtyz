@@ -10,6 +10,7 @@
 //   /api/report/getSearchSummaries/{hash}
 //   /api/report/getRounds/{hash}
 //   /api/hashData/getAllKeys/{hash}                              (POST)
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
 import { sanitizeDescription } from "../_shared/descriptionFilter.ts";
 
@@ -2068,6 +2069,10 @@ function detectMismatchedIdInUrl(url: string, externalId: string): string | null
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     const auth = req.headers.get("Authorization") || "";

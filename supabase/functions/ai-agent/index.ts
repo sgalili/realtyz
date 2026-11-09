@@ -1,3 +1,4 @@
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { safeTool, logToolFailure, GRACEFUL_TOOL_FALLBACK_HE, GRACEFUL_ACTION_FALLBACK_HE } from "../_shared/safeToolError.ts";
 import { fetchWorkspaceCrmCounts, renderCrmCountsAnswer } from "../_shared/crmCounts.ts";
 import { cleanSqm } from "../_shared/measures.ts";
@@ -374,6 +375,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     const body = await req.json();

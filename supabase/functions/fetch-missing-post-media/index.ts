@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/authz.ts";
 import { postMediaIdentity } from '../_shared/postMediaIdentity.ts';
 // Safe, rate-limit-compliant media recovery worker.
 //
@@ -184,6 +185,8 @@ async function resolveGraphToken(ownerId?: string | null): Promise<string> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
   try {
     const body = await req.json().catch(() => ({}));
     // HARD CAP: never process more than 25 posts in a single invocation.

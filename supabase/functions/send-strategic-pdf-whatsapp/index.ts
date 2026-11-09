@@ -1,4 +1,5 @@
 // createClient no longer needed — all WhatsApp sends route through send-whatsapp.
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -21,6 +22,10 @@ const normalizeIsraeliPhone = (value: string) => {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {

@@ -22,6 +22,7 @@
  *   details?: unknown
  * }
  */
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { resolveGreenCreds } from "../_shared/greenApiCreds.ts";
 import { sendGreenApiText } from "../_shared/greenApi.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -776,6 +777,10 @@ function humanizeWaError(raw: string, meta: MetaError = {}): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }

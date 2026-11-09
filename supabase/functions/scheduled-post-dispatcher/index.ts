@@ -11,6 +11,7 @@
 // SKIP LOCKED via a small RPC-style claim update) so parallel dispatcher runs
 // never fire the same slot twice.
 
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { enforceSingleEmojis, ensureLeadingEmojiBullets, EMOJI_BULLET_LAW, RICH_TEMPLATE_CONTRACT } from "../_shared/emoji.ts";
@@ -244,6 +245,8 @@ async function enqueueNextVersion(admin: any, row: any): Promise<void> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
 
   const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
   const workerId = `disp-${crypto.randomUUID().slice(0, 8)}-${Date.now()}`;

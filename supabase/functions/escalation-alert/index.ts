@@ -14,6 +14,7 @@
 // over HTTP with a Service Role bearer token (when running server-side from
 // `trial-inbound-webhook`) or with the user's JWT (when invoked from the UI).
 
+import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -47,6 +48,10 @@ function json(body: unknown, status = 200) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron", "user"]);
+  if (__caller instanceof Response) return __caller;
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) return __scope;
 
   try {
     const auth = req.headers.get("Authorization") || "";
@@ -58,7 +63,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     // Resolve user_id either from the forwarded JWT or from override.
-    let userId: string | null = body.override_user_id ?? null;
+    let userId: string | null = __caller.kind === "user" ? __caller.userId : (body.override_user_id ?? null);
     if (!userId && auth.startsWith("Bearer ")) {
       const userClient = createClient(SUPABASE_URL, ANON_KEY, {
         global: { headers: { Authorization: auth } },

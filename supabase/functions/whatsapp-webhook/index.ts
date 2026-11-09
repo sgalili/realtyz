@@ -24,6 +24,7 @@
 // API key. This keeps the flow fully automated and self-contained.
 // ============================================================
 
+import { requireCaller } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
@@ -1677,6 +1678,8 @@ async function persistCompanionBubble(
 Deno.serve(async (req) => {
   console.log("whatsapp-webhook hit", { method: req.method, contentType: req.headers.get("content-type") });
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const __caller = await requireCaller(req, ["service", "cron"]);
+  if (__caller instanceof Response) return __caller;
   if (req.method === "GET") {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
     // Meta Cloud API webhook verification handshake.
