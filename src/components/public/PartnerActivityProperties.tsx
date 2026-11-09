@@ -31,7 +31,7 @@ export default function PartnerActivityProperties({ favoritesOnly = false }: { f
   return <div className="space-y-3 py-2">
     {!favoritesOnly && <div className="flex flex-wrap items-center justify-between gap-2">
       <SelectModeToggle active={selectMode} onToggle={() => { setSelectMode(!selectMode); setSelected(new Set()); }} count={chosen.length} total={cards.length} onSelectAll={() => setSelected(selected.size === cards.length ? new Set() : new Set(cards.map(card => card.id)))} />
-      <PropertyShareMenu results={chosen} label="שיווק מיידי" hideOpenPage disabled={!chosen.length} />
+      {chosen.length > 0 && <PropertyShareMenu results={chosen} label="שיווק מיידי" hideOpenPage />}
     </div>}
     {!cards.length && <p className="py-8 text-center text-muted-foreground">אין כרגע נכסים פתוחים לשיתוף</p>}
     {cards.map(card => <div key={card.id} className="flex items-start gap-2">

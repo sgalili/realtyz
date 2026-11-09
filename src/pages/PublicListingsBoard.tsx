@@ -46,6 +46,8 @@ import type { UnifiedResult } from '@/lib/propertySearch';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { visibleToListingAudience } from '@/lib/listingAudience';
+import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
+import { selectedMarketingCards } from '@/lib/marketingSelection';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -90,13 +92,21 @@ function cardResult(card: PublicCard): UnifiedResult {
   };
 }
 
-export default function PublicListingsBoard({ embedded = false }: { embedded?: boolean } = {}) {
+export default function PublicListingsBoard({ embedded = false, marketingOnly = false }: { embedded?: boolean; marketingOnly?: boolean } = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const { level4Unlocked } = useAffiliateLicense();
   const [cards, setCards] = useState<PublicCard[]>(() => boardCache.get<PublicCard>() ?? []);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSelected = (id: string) => setSelected(previous => {
+    const next = new Set(previous);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  useEffect(() => { setSelected(new Set()); setSelectMode(false); }, [user?.id, activeWorkspaceId, marketingOnly]);
   const [visibleCount, setVisibleCount] = useState(24);
   // Listings the signed-in poster owns (marked with the "שלי" badge on the card image).
   const [ownedIds, setOwnedIds] = useState<Set<string>>(() => new Set());
@@ -145,6 +155,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [sortBy, setSortBy] = useState<ListingSortValue>('newest');
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
+    if (marketingOnly) return;
     const openSearch = () => setSearchOpen((v) => !v);
     const toggle = () => toggleGrid();
     // A buyer/renter picked in "מי מפרסם?" opens the search already limited to their deal type.
@@ -157,8 +168,8 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     window.addEventListener(BOARD_VIEW_TOGGLE_EVENT, toggle);
     window.addEventListener('toraff:board-seeker-intent', seekerIntent);
     return () => { window.removeEventListener(BOARD_SEARCH_OPEN_EVENT, openSearch); window.removeEventListener(BOARD_VIEW_TOGGLE_EVENT, toggle); window.removeEventListener('toraff:board-seeker-intent', seekerIntent); };
-  }, []);
-  useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_VIEW_STATE_EVENT, { detail: { grid } })); }, [grid]);
+  }, [marketingOnly]);
+  useEffect(() => { if (!marketingOnly) window.dispatchEvent(new CustomEvent(BOARD_VIEW_STATE_EVENT, { detail: { grid } })); }, [grid, marketingOnly]);
   // Favorite listings of the signed-in user. The card heart, the table heart and
   // the "ניהול המודעה שלי" menu all read this one cached list.
   const { favoriteIds: favIds, toggleFavorite: saveFavorite } = useListingFavorites();
@@ -186,7 +197,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   const [propFilter, setPropFilter] = useState<PropertyFilterState>(EMPTY_PROPERTY_FILTER);
   const appliedFilterCount = leadFilterActiveCount(leadFilter) + propertyFilterActiveCount(propFilter);
   const resetFilters = () => { setLeadFilter(EMPTY_LEAD_FILTER); setPropFilter(EMPTY_PROPERTY_FILTER); setQuery(''); };
-  useEffect(() => { window.dispatchEvent(new CustomEvent(BOARD_SEARCH_STATE_EVENT, { detail: { open: searchOpen, count: appliedFilterCount } })); }, [searchOpen, appliedFilterCount]);
+  useEffect(() => { if (!marketingOnly) window.dispatchEvent(new CustomEvent(BOARD_SEARCH_STATE_EVENT, { detail: { open: searchOpen, count: appliedFilterCount } })); }, [searchOpen, appliedFilterCount, marketingOnly]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
 
@@ -243,22 +254,25 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
     }
   };
 
-  const [showWelcome, setShowWelcome] = useState(() => !readPostSignupWelcome() && shouldShowWelcome('home'));
+  const [showWelcome, setShowWelcome] = useState(() => !marketingOnly && !readPostSignupWelcome() && shouldShowWelcome('home'));
   const [welcomeKey, setWelcomeKey] = useState(0);
   useEffect(() => {
-    setShowWelcome(!readPostSignupWelcome() && shouldShowWelcome('home'));
+    setShowWelcome(!marketingOnly && !readPostSignupWelcome() && shouldShowWelcome('home'));
     setWelcomeKey((key) => key + 1);
-  }, [location.key]);
+  }, [location.key, marketingOnly]);
   useEffect(() => {
+    if (marketingOnly) return;
     const reopen = () => { if (!shouldShowWelcome('logo')) return; setWelcomeKey((key) => key + 1); setShowWelcome(true); };
     window.addEventListener(WELCOME_REOPEN_EVENT, reopen);
     return () => window.removeEventListener(WELCOME_REOPEN_EVENT, reopen);
-  }, []);
-  const filtered = useMemo(() => cards.filter((card) => {
+  }, [marketingOnly]);
+  const eligibleCards = useMemo(() => marketingOnly ? cards.filter(card => card.affiliate_enabled === true) : cards, [cards, marketingOnly]);
+  const filtered = useMemo(() => eligibleCards.filter((card) => {
     if (!visibleToListingAudience(card.reward_types, !!user, level4Unlocked)) return false;
     if (query.trim() && ![card.title, card.street, card.city, card.neighborhood].some(value => value?.toLowerCase().includes(query.trim().toLowerCase()))) return false;
     return matchesPropertyFilter(card as unknown as Record<string, unknown>, propFilter) && matchesLeadFilter(leadTierAmounts(card as unknown as Record<string, unknown>), leadFilter);
-  }), [cards, propFilter, query, leadFilter, user, level4Unlocked]);
+  }), [eligibleCards, propFilter, query, leadFilter, user, level4Unlocked]);
+  const chosen = selectedMarketingCards(filtered, selected, selectMode).map(cardResult);
   // Custom row order chosen with the drag handle, saved per user/workspace on this device.
   const rowOrderKey = `public-board-row-order:v1:${user?.id || 'guest'}:${activeWorkspaceId || 'public'}`;
   const [rowOrder, setRowOrder] = useState<string[]>([]);
@@ -302,10 +316,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
   useEffect(() => { setVisibleCount(24); }, [query, propFilter, leadFilter, grid, sortBy]);
   // Guest reward indicators disclose configured types, never prices.
   const visibleColumns = columns.visible;
-  const priceBounds = useMemo(() => { const p = cards.map(c => Number(c.price)).filter(v => Number.isFinite(v) && v > 0); return p.length ? { min: Math.min(...p), max: Math.max(...p) } : null; }, [cards]);
-  const rewardBounds = useMemo(() => boardLeadPriceBounds(cards as unknown as Record<string, unknown>[]), [cards]);
-  const cities = useMemo(() => [...new Set(cards.map((c) => c.city).filter(Boolean) as string[])].sort(), [cards]);
-  const neighborhoods = useMemo(() => [...new Set(cards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [cards]);
+  const priceBounds = useMemo(() => { const p = eligibleCards.map(c => Number(c.price)).filter(v => Number.isFinite(v) && v > 0); return p.length ? { min: Math.min(...p), max: Math.max(...p) } : null; }, [eligibleCards]);
+  const rewardBounds = useMemo(() => boardLeadPriceBounds(eligibleCards as unknown as Record<string, unknown>[]), [eligibleCards]);
+  const cities = useMemo(() => [...new Set(eligibleCards.map((c) => c.city).filter(Boolean) as string[])].sort(), [eligibleCards]);
+  const neighborhoods = useMemo(() => [...new Set(eligibleCards.map((c) => c.neighborhood).filter(Boolean) as string[])].sort(), [eligibleCards]);
 
   return (
     <div dir="rtl" className={cn('flex min-h-0 flex-col overflow-hidden bg-background', embedded ? 'h-full' : 'public-board-page h-[100dvh]')}>
@@ -345,7 +359,11 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
               so this row never moves when the panel opens. */}
           {embedded && (
             <div className="flex shrink-0 items-center justify-between gap-0" style={{ marginInlineEnd: '-5px' }}>
-              <div className="relative shrink-0">
+              {marketingOnly && <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <SelectModeToggle active={selectMode} count={chosen.length} total={filtered.length} onToggle={() => { setSelectMode(value => !value); setSelected(new Set()); }} />
+                {chosen.length > 0 && <PropertyShareMenu results={chosen} label="שיווק מיידי" hideOpenPage />}
+              </div>}
+              {!marketingOnly && <div className="relative shrink-0">
                 <Button
                   type="button"
                   variant="ghost"
@@ -361,9 +379,10 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                     <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
                   </button>
                 ) : appliedFilterCount > 0 ? <span aria-label={`${appliedFilterCount} סינונים פעילים`} className="pointer-events-none absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">{appliedFilterCount}</span> : null}
-              </div>
+              </div>}
               <div className="flex shrink-0 items-center gap-0">
-                <SortDropdown value={sortBy} onChange={setSortBy} />
+                {marketingOnly && <Button type="button" size="icon" variant="ghost" className="h-8 w-9 text-muted-foreground" aria-label="חיפוש" title="חיפוש" aria-expanded={searchOpen} onClick={() => setSearchOpen(value => !value)}>{searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}</Button>}
+                {!marketingOnly && <SortDropdown value={sortBy} onChange={setSortBy} />}
                 <ViewModeSwitch isGrid={grid} onToggle={toggleGrid} />
               </div>
             </div>
@@ -376,7 +395,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
         {loading ? <p className="py-16 text-center text-sm text-muted-foreground">טוען נכסים…</p> : filtered.length === 0 ? <div className="flex flex-col items-center justify-center gap-4 py-16 text-center"><p className="text-sm text-muted-foreground">לא נמצאו נכסים מתאימים</p>{(appliedFilterCount > 0 || query.trim()) && <Button type="button" onClick={resetFilters}>איפוס סינונים</Button>}</div> : (
           grid ? (
           <div className="property-card-grid">
-            {sortedRows.slice(0, visibleCount).map(card => <StandardPropertyCard key={card.id} card={card} signedIn={!!user} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} />)}
+            {sortedRows.slice(0, visibleCount).map(card => <StandardPropertyCard key={card.id} card={card} signedIn={!!user} isMine={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} selection={marketingOnly && selectMode ? <SelectBox checked={selected.has(card.id)} label={`בחירת ${cleanTitle(card)}`} onChange={() => toggleSelected(card.id)} className="mt-1 me-1" /> : undefined} />)}
           </div>
           ) : (
             <BoardColumnDragArea controls={columns}>
@@ -418,6 +437,7 @@ export default function PublicListingsBoard({ embedded = false }: { embedded?: b
                           : card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}
                         </td>)}
                         <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
+                          {marketingOnly && selectMode && <SelectBox checked={selected.has(card.id)} label={`בחירת ${title}`} onChange={() => toggleSelected(card.id)} />}
                           {user ? <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage /> : <PropertyContactActions listingId={card.id} title={title} compact shareOnly shareUrl={publicUrl(propertyPath)} shareButtonClassName="h-8 w-8 border-0 bg-transparent shadow-none" />}
                           <BoardPublishButton result={cardResult(card)} />
                           <BoardOpenPageButton result={cardResult(card)} publicPath={propertyPath} />

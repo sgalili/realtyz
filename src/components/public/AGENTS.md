@@ -1,4 +1,5 @@
 # Public listing publisher
+- Open marketing properties reuse PublicListingsBoard with an affiliate-enabled feed predicate and selection-only marketing controls; cards/search/tables stay shared and existing actions retain server authorization. Why: exact home presentation without a second inventory or permission bypass.
 - Internal card-detail queries share listingDetailIdentifier and immutable IDs; missing/deleted links show unavailable states without fallback to other rows or wider access. Why: stale slugs cannot blank cards or reveal unrelated listings.
 - Publisher pricing completion derives from live draft prices independently of legal consent; publication validation keeps its consent requirements. Collapsed Card 8 summarizes the current draft. Why: immediate truthful pricing status without weakening publication.
 - Publisher lead-price controls opt into interaction-only amount-dependent feedback with shared bounds/colors; closing alone uses partnerPotential estimates with a disclaimer. Disabled fees retain limits/questions and closing callbacks persist value/unit. Why: isolate wizard presentation without changing other editors or fee semantics.

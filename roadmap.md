@@ -1,5 +1,10 @@
 # Roadmap
 
+## Open marketing properties November 9
+- [x] Instant marketing appears only for actively selected visible properties; existing public-safe feed and authorized share actions retained.
+- [x] Sharing Pool reuses home board cards/table, search and role-aware advanced filters; view/search controls opposite multi-select.
+- [x] Authenticated internal navigation verified selection/deselection, no-match search, advanced panel and both views at desktop/mobile; 18 focused tests passed and build OK. Direct reload resets Partner Mode via existing workspace behavior; no permission bypass or change made.
+
 ## Automation pacing audit November 9
 - [x] Inspected browser actions, messaging queues, claims/leases, retries and safety gates; read live schedules, post caps and aggregate activity. No production sends.
 - [x] Prepared source-cited report with prioritized recommendations, live-vs-static evidence and runtime limitations. No automation changed; 15 existing group policy/discovery tests passed.
