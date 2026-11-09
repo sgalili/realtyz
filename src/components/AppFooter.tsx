@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
-import { UserPlus } from 'lucide-react';
+import { Accessibility, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu';
 
 /** Canonical legal footer shared by public, account and administration pages. */
 export function AppFooter() {
@@ -19,6 +21,8 @@ export function AppFooter() {
           <Link to="/terms">תנאים</Link>
           <Link to="/privacy-policy">פרטיות</Link>
           <Link to="/commission-mechanism">עמלות</Link>
+          <span className="auth-footer-separator" aria-hidden="true" />
+          <AccessibilityMenu trigger={<Button type="button" variant="ghost" className="auth-footer-accessibility" aria-label="פתיחת תפריט נגישות"><Accessibility aria-hidden="true" /><span>נגישות</span></Button>} />
         </div>
       </div>
     </footer>

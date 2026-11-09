@@ -1147,7 +1147,8 @@ a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *,
     flex-shrink: 0;
   }
 
-  .auth-footer-links a {
+  .auth-footer-links a,
+  .auth-footer-links .auth-footer-accessibility {
     font-size: calc(0.68rem + 1px);
     font-weight: 400;
     color: hsl(var(--muted-foreground));
@@ -1165,10 +1166,29 @@ a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *,
     color: hsl(var(--foreground) / 0.86);
   }
 
+  .auth-footer-separator {
+    height: 11px;
+    border-inline-start: 1px solid hsl(var(--muted-foreground) / 0.5);
+    margin-inline: 4px;
+  }
+
+  .auth-footer-links .auth-footer-accessibility {
+    height: auto;
+    padding: 0;
+    gap: 3px;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .auth-footer-accessibility svg {
+    color: hsl(var(--deal-blue));
+    width: 14px;
+    height: 14px;
+  }
+
   .auth-footer-signup {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    position: static;
+    order: 1;
     z-index: 10;
     display: inline-flex;
     align-items: center;
@@ -1189,6 +1209,13 @@ a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *,
     .auth-footer-legal { gap: 3px; }
     .auth-footer-links { gap: 4px; }
     .auth-footer-copyright { font-size: 9px; }
+  }
+
+  @media (max-width: 360px) {
+    .auth-page-footer { padding-inline: 8px; }
+    .auth-footer-signup { font-size: 10px; gap: 2px; }
+    .auth-footer-signup svg { width: 12px; height: 12px; }
+    .auth-footer-copyright { font-size: 8px; }
   }
 
   @media (min-width: 768px) {

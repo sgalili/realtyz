@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState, type ReactElement } from 'react';
 import { Accessibility, Contrast, Link, Type, Pause, Keyboard, RotateCcw, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -13,7 +13,8 @@ const options = [
   { key: 'keyboard', label: 'הדגשת ניווט במקלדת', icon: Keyboard },
 ] as const;
 
-export function AccessibilityMenu() {
+export function AccessibilityMenu({ trigger }: { trigger?: ReactElement } = {}) {
+  const id = useId();
   const [preferences, setPreferences] = useState(readAccessibility);
   const update = (patch: Partial<AccessibilityPreferences>) => {
     const next = { ...preferences, ...patch };
@@ -22,9 +23,9 @@ export function AccessibilityMenu() {
   };
   return <Dialog onOpenChange={open => { if (open) setPreferences(readAccessibility()); }}>
     <DialogTrigger asChild>
-      <Button variant="ghost" className="min-h-11 w-full justify-start gap-3 rounded-none px-4 text-foreground" aria-label="פתיחת תפריט נגישות">
+      {trigger ?? <Button variant="ghost" className="min-h-11 w-full justify-start gap-3 rounded-none px-4 text-foreground" aria-label="פתיחת תפריט נגישות">
         <Accessibility className="h-5 w-5" aria-hidden="true" />נגישות
-      </Button>
+      </Button>}
     </DialogTrigger>
     <DialogContent dir="rtl" data-accessibility-menu overlayClassName="z-[70]" className="z-[71] max-h-[85dvh] overflow-y-auto rounded-lg">
       <DialogHeader><DialogTitle>נגישות</DialogTitle><DialogDescription>התאמות תצוגה אישיות</DialogDescription></DialogHeader>
@@ -38,8 +39,8 @@ export function AccessibilityMenu() {
       </div>
       <div className="divide-y divide-border">
         {options.map(({ key, label, icon: Icon }) => <div key={key} className="flex min-h-14 items-center justify-between gap-4 py-2">
-          <label htmlFor={`accessibility-${key}`} className="flex cursor-pointer items-center gap-2"><Icon className="h-5 w-5 shrink-0" aria-hidden="true" />{label}</label>
-          <Switch id={`accessibility-${key}`} checked={preferences[key]} onCheckedChange={checked => update({ [key]: checked })} className="min-h-11 shrink-0" />
+          <label htmlFor={`${id}-accessibility-${key}`} className="flex cursor-pointer items-center gap-2"><Icon className="h-5 w-5 shrink-0" aria-hidden="true" />{label}</label>
+          <Switch id={`${id}-accessibility-${key}`} checked={preferences[key]} onCheckedChange={checked => update({ [key]: checked })} className="min-h-11 shrink-0" />
         </div>)}
       </div>
       <Button variant="outline" className="min-h-11 gap-2" onClick={() => update(DEFAULT_ACCESSIBILITY)}><RotateCcw className="h-4 w-4" />איפוס התאמות</Button>
