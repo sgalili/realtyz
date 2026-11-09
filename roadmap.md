@@ -1,5 +1,10 @@
 # Roadmap
 
+## Automation pacing audit November 9
+- [x] Inspected browser actions, messaging queues, claims/leases, retries and safety gates; read live schedules, post caps and aggregate activity. No production sends.
+- [x] Prepared source-cited report with prioritized recommendations, live-vs-static evidence and runtime limitations. No automation changed; 15 existing group policy/discovery tests passed.
+- [x] Included quick scan results (12 warnings/11 informational) and explicitly excluded the pending deep scan from conclusions; its notification will arrive separately.
+
 ## Manual broker approval November 9
 - [x] Profile/admin distinguish registry מאומת from user+license-bound manual מאושר; historical approvals do not keep a removed license active.
 - [x] Shared entitlement grants manual approvals closing/property access; broker registration accepts manual evidence without registry lookup. Removal deletes broker roles before clearing license and revokes manual/affiliate evidence; transfer trigger rejects borrowing approval.
