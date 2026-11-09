@@ -95,6 +95,9 @@
   const pendingPageResults = new Map();
   window.addEventListener('message', (e) => {
     if (e.source !== window || e.origin !== window.location.origin) return;
+    if (!/^(?:www\.)?(?:toraff\.co\.il|realtyz\.co\.il|toraff\.lovable\.app|id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b\.lovable\.app|localhost)$/.test(window.location.hostname)) return;
+    if (e.source !== window || e.origin !== window.location.origin) return;
+    if (!/^(?:www\.)?(?:toraff\.co\.il|realtyz\.co\.il|toraff\.lovable\.app|id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b\.lovable\.app|localhost)$/.test(window.location.hostname)) return;
     const d = e.data;
     if (!d || typeof d !== 'object' || d.source !== 'realtyz-app') return;
     if (d.type === 'RZ_FB_PAGE_SCRAPE_ACK') {
@@ -133,6 +136,8 @@
 
   /* ── Group discovery (keyword search) + auto-join bridge ─────────────── */
   window.addEventListener('message', (e) => {
+    if (e.source !== window || e.origin !== window.location.origin) return;
+    if (!/^(?:www\.)?(?:toraff\.co\.il|realtyz\.co\.il|toraff\.lovable\.app|id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b\.lovable\.app|localhost)$/.test(window.location.hostname)) return;
     if (e.source !== window) return;
     const d = e.data;
     if (!d || typeof d !== 'object' || d.source !== 'realtyz-app') return;
@@ -154,6 +159,8 @@
   });
   /* ── Posting-runner bridge (pairing + status) ─────────────────────────── */
   window.addEventListener('message', (e) => {
+    if (e.source !== window || e.origin !== window.location.origin) return;
+    if (!/^(?:www\.)?(?:toraff\.co\.il|realtyz\.co\.il|toraff\.lovable\.app|id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b\.lovable\.app|localhost)$/.test(window.location.hostname)) return;
     const d = e.data;
     if (!d || typeof d !== 'object' || d.source !== 'realtyz-app') return;
 
@@ -196,6 +203,8 @@
   };
 
   window.addEventListener('message', (e) => {
+    if (e.source !== window || e.origin !== window.location.origin) return;
+    if (!/^(?:www\.)?(?:toraff\.co\.il|realtyz\.co\.il|toraff\.lovable\.app|id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b\.lovable\.app|localhost)$/.test(window.location.hostname)) return;
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     if (d.type !== 'RZ_START_POSTING') return;
@@ -326,6 +335,8 @@
   } catch (err) { /* noop */ }
 
   window.addEventListener('message', (e) => {
+    if (e.source !== window || e.origin !== window.location.origin) return;
+    if (!/^(?:www\.)?(?:toraff\.co\.il|realtyz\.co\.il|toraff\.lovable\.app|id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b\.lovable\.app|localhost)$/.test(window.location.hostname)) return;
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     // Both the internal name and the public REALTYZ_* broadcast are accepted.
@@ -338,6 +349,8 @@
 
   // The app deleted posts — purge those jobs from the extension queue too.
   window.addEventListener('message', (e) => {
+    if (e.source !== window || e.origin !== window.location.origin) return;
+    if (!/^(?:www\.)?(?:toraff\.co\.il|realtyz\.co\.il|toraff\.lovable\.app|id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b\.lovable\.app|localhost)$/.test(window.location.hostname)) return;
     const d = e.data;
     if (!d || typeof d !== 'object' || d.type !== 'RZ_QUEUE_REMOVE') return;
     if (d.source === 'realtyz-extension') return;

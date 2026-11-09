@@ -33,15 +33,8 @@ serve(async (req) => {
       .update({ click_count: (link.click_count || 0) + 1 })
       .eq("id", link.id);
 
-    // 3. If the link has a tag, try to update the voter's interest_tag
-    // We use the referrer or a lead_id query param if provided
-    const voterId = url.searchParams.get("v");
-    if (voterId && link.tag) {
-      await supabase
-        .from("leads")
-        .update({ interest_tag: link.tag, last_interaction_at: new Date().toISOString() })
-        .eq("id", voterId);
-    }
+    // Lead tagging from an unauthenticated query parameter was removed: anyone
+    // could rewrite any lead by guessing its ID. Clicks are still counted.
 
     // 4. Check if target_url is a WhatsApp link with pre-filled text
     const targetUrl = link.target_url;

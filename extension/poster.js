@@ -602,6 +602,8 @@
  * runs on a page that receives it (or the app is embedded), sync the jobs into
  * chrome.storage.local directly so the queue is never lost. */
 window.addEventListener('message', (e) => {
+    if (e.source !== window || e.origin !== window.location.origin) return;
+    if (!/^(?:www\.)?(?:toraff\.co\.il|realtyz\.co\.il|toraff\.lovable\.app|id-preview--e78b5aff-2ec6-4db9-b7ff-db4fe711619b\.lovable\.app|localhost)$/.test(window.location.hostname)) return;
   const d = e && e.data;
   if (!d || typeof d !== 'object') return;
   if (d.type !== 'REALTYZ_QUEUE_UPDATE' && d.type !== 'RZ_QUEUE_UPDATE') return;
