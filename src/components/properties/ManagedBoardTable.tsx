@@ -66,9 +66,9 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
           <thead className="bg-muted/40 text-[14px] text-muted-foreground">
             <tr>
               {selectionMode && <th className="w-8 p-2" aria-label="בחירה" />}
-              <th className="whitespace-nowrap p-2 text-start font-medium">פרסום בלוח ציבורי</th>
               {visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
               <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
+              <th className="sticky left-0 z-[4] whitespace-nowrap bg-muted p-2 text-start font-medium">פרסום בלוח ציבורי</th>
             </tr>
           </thead>
           <tbody>
@@ -80,14 +80,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
               return [
                 <tr key={result.key} data-row-id={result.key} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   {selectionMode && <td className="p-2" onClick={e => e.stopPropagation()}>{localId ? <Checkbox checked={selectedIds.has(localId)} onCheckedChange={() => onToggleSelected(localId)} aria-label="בחירת נכס" /> : null}</td>}
-                  <td className="p-2">{(() => {
-                      const raw = (result.raw ?? {}) as Record<string, unknown>;
-                      const live = raw.is_published === true && raw.affiliate_enabled !== false && (raw.status == null || raw.status === 'live');
-                      return <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold', live ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground')}>
-                        {live ? <Globe className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}{live ? 'מפורסם' : 'לא מפורסם'}
-                      </span>;
-                    })()}</td>
-                  {visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
+                  {visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
                     {id === 'photo' ? (
                       <div className="relative w-12">
                         {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
@@ -102,9 +95,15 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                     : card.floor != null ? `${card.floor}` : ''}
                   </td>)}
                   <td className="p-2 align-bottom" onClick={e => e.stopPropagation()}><div className="flex items-center justify-end gap-1">
-                    {localId && quickPromotion(result)}
                     {localId && <OwnerListingActions listingId={localId} />}
                   </div></td>
+                  <td className="sticky left-0 z-[3] bg-card p-2" onClick={e => e.stopPropagation()}><div className="flex items-center gap-1">{(() => {
+                      const raw = (result.raw ?? {}) as Record<string, unknown>;
+                      const live = raw.is_published === true && raw.affiliate_enabled !== false && (raw.status == null || raw.status === 'live');
+                      return <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold', live ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground')}>
+                        {live ? <Globe className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}{live ? 'מפורסם' : 'לא מפורסם'}
+                      </span>;
+                    })()}{localId && quickPromotion(result)}</div></td>
                 </tr>,
                 <tr key={`${result.key}-x`} className="bg-muted/10">
                   <td colSpan={visible.length + 2 + (selectionMode ? 1 : 0)} className="p-0">
