@@ -17,6 +17,22 @@ vi.mock('@/lib/publishInventory', () => ({ publishInventory: mocks.publish, paus
 vi.mock('./AccountLeadBudget', () => ({ AccountLeadBudget: () => null }));
 
 describe('broker approval publication access', () => {
+  it('saves edited questions independently under the authorized listing scope', async () => {
+    const property = { id: 'property-1', address: 'הרצל 10', city: 'חיפה', asking_price: 1000000, status: 'pending', is_published: false, affiliate_enabled: false, affiliate_tier4_amount: 1, affiliate_tier4_type: 'percent', contact_options: { questions: ['תקציב?', 'משכנתה?', 'מועד מעבר?'], questions_phone: ['מתי להתקשר?'] } };
+    const query = { select: vi.fn(), eq: vi.fn(), in: vi.fn().mockResolvedValue({ data: [property], error: null }), update: vi.fn(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'property-1' }, error: null }) };
+    query.select.mockReturnValue(query); query.eq.mockReturnValue(query); query.update.mockReturnValue(query); mocks.from.mockReturnValue(query);
+    mocks.publish.mockResolvedValue(['property-1']);
+    render(<QueryClientProvider client={new QueryClient()}><TooltipProvider><QuickPublicPromotion ids={['property-1']} onPublished={vi.fn()} /></TooltipProvider></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'פרסום בלוח הציבורי' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'עריכת עמלות ותמחור לידים' }));
+    fireEvent.click(screen.getByRole('button', { name: 'שאלות סינון בוואטסאפ (3)' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'שאלה 1' }), { target: { value: 'יש נכס למכור?' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'אישור התקנון והעמלות' }));
+    fireEvent.click(screen.getByRole('button', { name: 'אישור ופרסום' }));
+    await waitFor(() => expect(query.update).toHaveBeenCalledWith(expect.objectContaining({ contact_options: expect.objectContaining({ questions: ['יש נכס למכור?', 'משכנתה?', 'מועד מעבר?'], questions_phone: ['מתי להתקשר?'] }) })));
+    expect(query.eq).toHaveBeenCalledWith('workspace_owner_id', 'workspace-1');
+    expect(query.eq).toHaveBeenCalledWith('id', 'property-1');
+  });
   it('completes saved pause without waiting for unrelated feed refreshes', async () => {
     const property = { id: 'property-1', address: 'הרצל 10', city: 'חיפה', asking_price: 1000000, status: 'live', is_published: true, affiliate_enabled: true, affiliate_tier4_amount: 1, affiliate_tier4_type: 'percent' };
     const query = { select: vi.fn(), eq: vi.fn(), in: vi.fn().mockResolvedValue({ data: [property], error: null }) };

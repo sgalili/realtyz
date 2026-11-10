@@ -11,17 +11,11 @@ import { EXTRA_QUESTION_COST, FORM_FIELD_TYPE_LABELS, type LeadFormField, type L
 const newField = (): LeadFormField => ({ id: crypto.randomUUID().slice(0, 8), label: '', type: 'text', required: true, options: [] });
 const needsOptions = (t: LeadFormFieldType) => t === 'single' || t === 'multi';
 
-export function LeadFormFieldsDialog({ open, onOpenChange, fields, onChange }: {
-  open: boolean; onOpenChange: (v: boolean) => void; fields: LeadFormField[]; onChange: (next: LeadFormField[]) => void;
-}) {
+export function LeadFormFieldsEditor({ fields, onChange }: { fields: LeadFormField[]; onChange: (next: LeadFormField[]) => void }) {
   const update = (i: number, patch: Partial<LeadFormField>) => onChange(fields.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
   const count = fields.filter((f) => f.label.trim()).length;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader><DialogTitle className="text-right">שדות טופס הפנייה</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+  return (<div className="space-y-3">
           <div className="rounded-lg border bg-muted/40 p-2.5 text-xs text-muted-foreground">שם מלא ומספר טלפון הם שדות חובה קבועים וכלולים במחיר.</div>
           {fields.map((f, i) => (
             <div key={f.id} className="space-y-2 rounded-lg border p-2.5">
@@ -47,14 +41,24 @@ export function LeadFormFieldsDialog({ open, onOpenChange, fields, onChange }: {
                       <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" aria-label="מחיקת אפשרות" onClick={() => update(i, { options: (f.options ?? []).filter((_, xi) => xi !== oi) })}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   ))}
-                  <button type="button" className="text-xs font-semibold text-primary" onClick={() => update(i, { options: [...(f.options ?? []), ''] })}>+ הוספת אפשרות</button>
+                  <Button type="button" variant="link" className="h-auto p-0 text-xs font-semibold" onClick={() => update(i, { options: [...(f.options ?? []), ''] })}>+ הוספת אפשרות</Button>
                 </div>
               )}
             </div>
           ))}
           <Button variant="outline" size="sm" onClick={() => onChange([...fields, newField()])}><Plus className="h-4 w-4" />הוספת שדה</Button>
           <p className="text-xs text-muted-foreground">כל שדה נוסף מוסיף ₪{EXTRA_QUESTION_COST} למחיר הפנייה{count > 0 ? ` (כרגע ${count} שדות · ₪${count * EXTRA_QUESTION_COST})` : ''}.</p>
-        </div>
+        </div>);
+}
+
+export function LeadFormFieldsDialog({ open, onOpenChange, fields, onChange }: {
+  open: boolean; onOpenChange: (v: boolean) => void; fields: LeadFormField[]; onChange: (next: LeadFormField[]) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader><DialogTitle className="text-right">שדות טופס הפנייה</DialogTitle></DialogHeader>
+        <LeadFormFieldsEditor fields={fields} onChange={onChange} />
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
           <Button variant="outline" onClick={() => onOpenChange(false)}>סגירה</Button>
           <Button onClick={() => onOpenChange(false)}>אישור</Button>

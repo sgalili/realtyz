@@ -3,7 +3,7 @@ import { ImageDeleteConfirmation } from '@/components/properties/ImageDeleteConf
 import { PricingCardHeader } from './PricingCardHeader';
 import { CollapsedOffer } from './CollapsedOffer';
 import { PublisherWhatsAppIcon } from './PublisherWhatsAppIcon';
-import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
+import { LeadQuestionConfigurator } from '@/components/affiliate/LeadQuestionConfigurator';
 import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
 import { pricingCardComplete, pricingCardMissing } from '@/lib/pricingCardSummary';
 import { publisherClosingDefault } from '@/lib/publisherPricing';
@@ -16,8 +16,7 @@ import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { brokerInventoryChoices, publisherEntryNavigation, publisherRequiresOwnership } from '@/lib/publisherEligibility';
 import { workspacePublisherIdentity } from '@/lib/workspacePublisherIdentity';
 import { closingFeeAmount } from '@/lib/closingFee';
-import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
-import { cleanFormFields, defaultQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
+import { cleanFormFields, resolveLeadQuestions, EXTRA_QUESTION_COST } from '@/lib/leadTiers';
 import { MyPropertiesPicker } from "@/components/public/MyPropertiesPicker";
 import { PriceInput } from "@/components/ui/price-input";
 import { LeadPriceSlider } from './LeadPriceSlider';
@@ -361,8 +360,6 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const previews = useMemo(() => [...files, ...videos].map((file) => ({ file, url: URL.createObjectURL(file) })), [files, videos]);
   useEffect(() => () => previews.forEach(({ url }) => URL.revokeObjectURL(url)), [previews]);
 
-  const [questionsOpen, setQuestionsOpen] = useState<'questionsWhatsapp' | 'questionsPhone' | null>(null);
-  const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const [openLeads, setOpenLeads] = useState<Record<string, boolean>>(() => pricingOnly ? { Form: true, Whatsapp: true, Phone: true } : {});
   const [closingOpen, setClosingOpen] = useState(pricingOnly);
   // Lead cards always render under the price (rent prices have ≤4 digits).
@@ -1044,7 +1041,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                   const price = Number(fields[`commission${key}`]) || 0;
                   const active = price > 0;
                   const expanded = openLeads[key] ?? false;
-                  const qList = key === 'Form' ? [] : ((((fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] as string[] | undefined)?.length ? (fields as any)[key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone'] : defaultQuestions(fields.dealType)) as string[]);
+                  const qList = key === 'Form' ? [] : resolveLeadQuestions(key === 'Whatsapp' ? fields.questionsWhatsapp : fields.questionsPhone, fields.dealType);
                   const extraCost = (key === 'Form' ? cleanFormFields(fields.formFields).length : Math.max(qList.filter(q => q.trim()).length - 3, 0)) * EXTRA_QUESTION_COST;
                   const toggle = () => setOpenLeads((next) => ({ ...next, [key]: !expanded }));
                   return (
@@ -1069,39 +1066,13 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                     <LeadPriceSlider dynamicFeedback tier={tier} label={label} value={fields[`commission${key}`] || ''} unrestricted={pricingOnly && isSuperAdmin} onChange={value => set(`commission${key}`, value)} />
                     {extraCost > 0 && <p className="text-xs font-semibold" aria-live="polite">סה״כ לפנייה כולל שדות נוספים: <bdi dir="ltr">₪{price + extraCost}</bdi></p>}
                     <div className="flex items-center gap-2"><label htmlFor={`daily-limit-${key}`} className="text-xs font-semibold">הגבלת מספר הפניות בכל 24 שעות:</label><Input id={`daily-limit-${key}`} inputMode="numeric" maxLength={2} placeholder="ללא הגבלה" aria-label={`מגבלה יומית עבור ${label}`} className="h-9 w-24 px-1 text-center text-[18px] md:text-[18px] placeholder:text-[14px] md:placeholder:text-[14px]" value={fields[`limit${key}`] || ''} onChange={event => set(`limit${key}`, event.target.value.replace(/\D/g, ''))} /></div>
-                    {key === 'Form' && (() => {
-                      const n = cleanFormFields(fields.formFields).length;
-                      return (
-                        <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setFormFieldsOpen(true)}>
-                          שדות מטופס בעמוד נחיתה (שם + טלפון{n > 0 ? ` + ${cleanFormFields(fields.formFields).map(field => field.label).join(', ')}` : ''})<ChevronLeft className="ms-1 inline h-4 w-4" aria-hidden />
-                        </Button>
-                      );
-                    })()}
-                    {(key === 'Whatsapp' || key === 'Phone') && (() => {
-                      const fk = key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone';
-                      const qs = (fields as any)[fk] as string[] | undefined;
-                      const list = qs && qs.length ? qs : defaultQuestions(fields.dealType);
-                      const extra = Math.max(list.filter(q => q.trim()).length - 3, 0);
-                      return (
-                        <Button type="button" variant="link" className="h-auto w-full justify-start whitespace-normal p-0 text-start text-xs font-semibold underline underline-offset-2" onClick={() => setQuestionsOpen(fk)}>
-                          שאלות סינון ({list.filter(q => q.trim()).length})<ChevronLeft className="ms-1 inline h-4 w-4" aria-hidden />
-                        </Button>
-                      );
-                    })()}
+                    <LeadQuestionConfigurator tier={tier} dealType={fields.dealType} fields={fields.formFields ?? []} questions={key === 'Whatsapp' ? fields.questionsWhatsapp : fields.questionsPhone} onFieldsChange={next => set('formFields', next)} onQuestionsChange={next => set(key === 'Whatsapp' ? 'questionsWhatsapp' : 'questionsPhone', next)} />
                     </div>}
                   </Card>
                   );
                 })}
               </div>
               </>}
-              <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={fields.formFields ?? []} onChange={(next) => set('formFields', next)} />
-              <LeadQuestionsDialog
-                open={questionsOpen !== null}
-                onOpenChange={(v) => { if (!v) setQuestionsOpen(null); }}
-                title={questionsOpen === 'questionsPhone' ? 'שאלות סינון בשיחת טלפון' : 'שאלות סינון בשיחת ווטסאפ'}
-                questions={questionsOpen ? (((fields as any)[questionsOpen] as string[] | undefined)?.length ? (fields as any)[questionsOpen] : defaultQuestions(fields.dealType)) : []}
-                onChange={(next) => questionsOpen && set(questionsOpen, next)}
-              />
               <p className="text-xs text-muted-foreground">{"\n"}</p>
             </div>
           )}

@@ -20,6 +20,8 @@ import { WhatsAppIcon } from './WhatsAppIcon';
 import { PublicationLeadHelp } from './PublicationLeadHelp';
 import { brokerOnlyPricing, isTerminalListing, parseDailyLimit, validPublicationFees } from '@/lib/publicationSettings';
 import { pauseInventory } from '@/lib/publishInventory';
+import { LeadQuestionConfigurator } from '@/components/affiliate/LeadQuestionConfigurator';
+import { cleanFormFields, resolveLeadQuestions, type LeadFormField } from '@/lib/leadTiers';
 
 /** Shared square publication control; status remains accessible and tooltip-only. */
 export function PublishStatusGlobe({ live, busy = false, actionable = false, onClick }: { live: boolean; busy?: boolean; actionable?: boolean; onClick?: (event: ReactMouseEvent) => void }) {
@@ -42,7 +44,7 @@ export function PublishStatusGlobe({ live, busy = false, actionable = false, onC
 }
 
 type PromotionRow = { id: string; property_title: string | null; address: string | null; house_number: string | null; city: string | null; asking_price: number | null; status: string | null; is_published: boolean | null; affiliate_enabled: boolean | null; deal_type?: string | null; affiliate_tier1_amount?: number | null; affiliate_tier2_amount?: number | null; affiliate_tier3_amount?: number | null; affiliate_tier4_amount?: number | null; affiliate_tier4_type?: string | null; canonical_duplicate_of?: string | null; contact_options?: Record<string, unknown>; features?: Record<string, unknown> };
-type FeeDraft = { t1: string; t2: string; t3: string; t4: string; unit: 'fixed' | 'percent'; form: string; whatsapp: string; phone: string };
+type FeeDraft = { t1: string; t2: string; t3: string; t4: string; unit: 'fixed' | 'percent'; form: string; whatsapp: string; phone: string; questions: string[]; questionsPhone: string[]; formFields: LeadFormField[] };
 const FEE_FIELDS = [
   { key: 't4', label: 'אומדן סגירה', Icon: Trophy, tone: 'text-primary', tier: null },
   { key: 't1', label: 'ליד טופס', Icon: ClipboardList, tone: 'text-lead-form', tier: 'form' },
@@ -51,7 +53,7 @@ const FEE_FIELDS = [
 ] as const;
 const feeDraft = (r: PromotionRow): FeeDraft => {
   const limits = r.contact_options?.lead_daily_limits as Record<string, number | null> | undefined;
-  return { t1: String(r.affiliate_tier1_amount ?? 0), t2: String(r.affiliate_tier2_amount ?? 0), t3: String(r.affiliate_tier3_amount ?? 0), t4: String(r.affiliate_tier4_amount ?? 0), unit: r.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed', form: String(limits?.form ?? ''), whatsapp: String(limits?.whatsapp ?? ''), phone: String(limits?.phone ?? '') };
+  return { t1: String(r.affiliate_tier1_amount ?? 0), t2: String(r.affiliate_tier2_amount ?? 0), t3: String(r.affiliate_tier3_amount ?? 0), t4: String(r.affiliate_tier4_amount ?? 0), unit: r.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed', form: String(limits?.form ?? ''), whatsapp: String(limits?.whatsapp ?? ''), phone: String(limits?.phone ?? ''), questions: resolveLeadQuestions(r.contact_options?.questions, r.deal_type), questionsPhone: resolveLeadQuestions(r.contact_options?.questions_phone ?? r.contact_options?.questions, r.deal_type), formFields: (r.contact_options?.form_fields as LeadFormField[] | undefined) ?? [] };
 };
 /** Commission text: shekels first with the percentage in parentheses; a bare percentage stays only when no price is known. */
 const feeText = (row: PromotionRow, k: string, raw: string): string => {
@@ -107,8 +109,10 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
         if (!validPublicationFees(row.deal_type, Number(row.asking_price), nums.slice(0, 3), nums[3], d.unit)) throw new Error('יש לבחור עמלות בטווחים המותרים ולהגדיר עמלת סגירה.');
         const lead_daily_limits = { form: parseDailyLimit(d.form, 50), whatsapp: parseDailyLimit(d.whatsapp, 50), phone: parseDailyLimit(d.phone, 50) };
         const orig = feeDraft(row);
-        if ((Object.keys(d) as (keyof FeeDraft)[]).every(k => d[k] === orig[k])) continue;
-        const { data: upd, error: updError } = await supabase.from('listings').update({ affiliate_tier1_amount: nums[0], affiliate_tier2_amount: nums[1], affiliate_tier3_amount: nums[2], affiliate_tier4_amount: nums[3], affiliate_tier4_type: d.unit, contact_options: { ...row.contact_options, lead_daily_limits }, features: { ...row.features, deal_closing_commission: { value: nums[3], type: d.unit }, commission_terms_accepted_at: new Date().toISOString() } } as never).eq('workspace_owner_id', workspaceId).eq('id', row.id).select('id').maybeSingle();
+        if (JSON.stringify(d) === JSON.stringify(orig)) continue;
+        const questions = d.questions.map(question => question.trim()).filter(Boolean);
+        const questions_phone = d.questionsPhone.map(question => question.trim()).filter(Boolean);
+        const { data: upd, error: updError } = await supabase.from('listings').update({ affiliate_tier1_amount: nums[0], affiliate_tier2_amount: nums[1], affiliate_tier3_amount: nums[2], affiliate_tier4_amount: nums[3], affiliate_tier4_type: d.unit, contact_options: { ...row.contact_options, lead_daily_limits, questions, questions_phone, form_fields: cleanFormFields(d.formFields) }, features: { ...row.features, screening_questions: { whatsapp: questions, phone: questions_phone }, deal_closing_commission: { value: nums[3], type: d.unit }, commission_terms_accepted_at: new Date().toISOString() } } as never).eq('workspace_owner_id', workspaceId).eq('id', row.id).select('id').maybeSingle();
         if (updError || !upd) throw updError ?? new Error('לא ניתן לשמור את העמלות לנכס.');
       }
       void qc.invalidateQueries({ queryKey: ['affiliate-configs'] });
@@ -188,6 +192,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
                       <Tooltip><TooltipTrigger asChild><h3 aria-label={label} className="flex items-center gap-2 font-semibold"><Icon className={cn('h-7 w-7 shrink-0', Number(d[key]) > 0 ? tone : 'text-muted-foreground')} /></h3></TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>
                       <LeadPriceSlider tier={tier} label={label} value={d[key]} dynamicFeedback onChange={value => updateDraft(row.id, { [key]: value })} />
                       {limitControl(row, tier, label)}
+                      <LeadQuestionConfigurator tier={tier} dealType={row.deal_type} fields={d.formFields} questions={tier === 'phone' ? d.questionsPhone : d.questions} onFieldsChange={next => updateDraft(row.id, { formFields: next })} onQuestionsChange={next => updateDraft(row.id, tier === 'phone' ? { questionsPhone: next } : { questions: next })} disabled={busy} />
                     </section>)}
                   </fieldset>
                 </div>); })}

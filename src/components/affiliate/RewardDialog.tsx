@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, ListChecks, Phone, Plus, TrendingUp } from 'lucide-react';
+import { ClipboardList, Phone, TrendingUp } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
-import LeadFormFieldsDialog from '@/components/affiliate/LeadFormFieldsDialog';
+import { LeadQuestionConfigurator } from './LeadQuestionConfigurator';
 import { formatPrice } from '@/pages/PublicListingPage';
 import type { LeadFormField } from '@/lib/leadTiers';
 import { LEAD_PRICE_RANGES, clampLeadPrice, DAILY_UNLIMITED } from '@/lib/leadPriceRanges';
@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { ClosingFeeSlider } from './ClosingFeeSlider';
 import { activeLeadLimits, closingFeeAmount, clampClosingPercent, type LeadDailyLimits } from '@/lib/closingFee';
 import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
-import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { defaultQuestions, deriveContactOptions, leadCost } from '@/lib/leadTiers';
 import { useSetAffiliateReward, type BrokerAffiliateListing, type RewardType } from '@/hooks/useAffiliate';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,9 +44,7 @@ export function RewardDialog({
   const [dailyCaps, setDailyCaps] = useState<Record<string, string>>({});
   const [questions, setQuestions] = useState<string[]>([]);
   const [questionsPhone, setQuestionsPhone] = useState<string[]>([]);
-  const [editingQuestions, setEditingQuestions] = useState<null | "chat" | "phone">(null);
   const [formFields, setFormFields] = useState<LeadFormField[]>([]);
-  const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const [recommendation, setRecommendation] = useState<{
     tier1_median?: number;
     tier2_median?: number;
@@ -95,6 +92,7 @@ export function RewardDialog({
         if (d.dailyCaps && typeof d.dailyCaps === "object") setDailyCaps(d.dailyCaps);
         if (Array.isArray(d.questions)) setQuestions(d.questions);
         if (Array.isArray(d.questionsPhone)) setQuestionsPhone(d.questionsPhone);
+        if (Array.isArray(d.formFields)) setFormFields(d.formFields);
       }
     } catch { /* ignore corrupt draft */ }
     void supabase
@@ -111,10 +109,10 @@ export function RewardDialog({
     try {
       localStorage.setItem(
         draftKey,
-        JSON.stringify({ enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone }),
+        JSON.stringify({ enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone, formFields }),
       );
     } catch { /* storage full / disabled */ }
-  }, [listing, hydratedFor, draftKey, user, activeWorkspaceId, enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone]);
+  }, [listing, hydratedFor, draftKey, user, activeWorkspaceId, enabled, rewardType, amount, tier1, tier2, tier3, tier4Type, tier4, dailyCaps, questions, questionsPhone, formFields]);
 
   const num = (v: string) => Number(v) || 0;
   const clean = (v: string) => v.replace(/[^\d.]/g, "");
@@ -212,18 +210,6 @@ export function RewardDialog({
                     <div className="flex items-center gap-2">
                       <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? (tier.capKey === "form" ? "text-lead-form" : tier.capKey === "whatsapp" ? "text-lead-whatsapp" : "text-lead-phone") : "text-muted-foreground"}`} />
                       <div className="text-[12px] font-semibold text-foreground">{tier.title}</div>
-                      {tier.questionsKey ? (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="ms-auto h-8 w-8"
-                          title="עריכת שאלות הסינון"
-                          aria-label="עריכת שאלות הסינון"
-                          onClick={() => setEditingQuestions(tier.questionsKey)}
-                        >
-                          <ListChecks className="h-4 w-4" />
-                        </Button>
-                      ) : null}
                     </div>
                     <Label className="text-[11px] font-normal text-muted-foreground">{tier.hint}</Label>
                     <div className="flex items-center justify-between gap-2">
@@ -240,14 +226,8 @@ export function RewardDialog({
                         <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">מקס׳ לידים ב־24 שעות</span><strong>{num(dailyCaps[tier.capKey] ?? "") > 0 ? num(dailyCaps[tier.capKey] ?? "") : "ללא הגבלה"}</strong></div>
                         <div dir="ltr" className="px-2"><Slider dir="ltr" aria-label={`מגבלה יומית עבור ${tier.title}`} min={1} max={DAILY_UNLIMITED} step={1} value={[num(dailyCaps[tier.capKey] ?? "") > 0 ? Math.min(DAILY_UNLIMITED - 1, num(dailyCaps[tier.capKey] ?? "")) : DAILY_UNLIMITED]} onValueChange={(v) => setDailyCaps(c => ({ ...c, [tier.capKey]: v[0] === undefined || v[0] >= DAILY_UNLIMITED ? "" : String(v[0]) }))} className="h-6" /></div>
                       </div>
-                      {tier.questionsKey ? <div className="space-y-1 rounded-md bg-muted/40 p-2">
-                        <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">שאלות הסינון</span><Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => setEditingQuestions(tier.questionsKey)}><ListChecks className="h-3.5 w-3.5" />עריכה</Button></div>
-                        {(tier.questionsKey === "phone" ? questionsPhone : questions).length ? <ol className="list-inside list-decimal space-y-0.5 text-xs">{(tier.questionsKey === "phone" ? questionsPhone : questions).map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol> : <p className="text-xs text-muted-foreground">לא הוגדרו שאלות</p>}
-                      </div> : <div className="space-y-1 rounded-md bg-muted/40 p-2">
-                        <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">שדות מטופס בעמוד נחיתה</span><Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => setFormFieldsOpen(true)}><Plus className="h-3.5 w-3.5" />הוספת שדה</Button></div>
-                        <ol className="list-inside list-decimal space-y-0.5 text-xs"><li>שם מלא · חובה</li><li>טלפון · חובה</li>{formFields.filter(f => f.label.trim()).map(f => <li key={f.id}>{f.label} · {f.required ? "חובה" : "רשות"}</li>)}</ol>
-                      </div>}
                     </>}
+                    <LeadQuestionConfigurator tier={tier.capKey} dealType={listing.deal_type} fields={formFields} questions={tier.capKey === 'phone' ? questionsPhone : questions} onFieldsChange={setFormFields} onQuestionsChange={tier.capKey === 'phone' ? setQuestionsPhone : setQuestions} disabled={save.isPending} />
                   </div>
                 ))}
 
@@ -304,22 +284,6 @@ export function RewardDialog({
           </DialogFooter>
         ) : null}
 
-        <LeadFormFieldsDialog open={formFieldsOpen} onOpenChange={setFormFieldsOpen} fields={formFields} onChange={setFormFields} />
-        <LeadQuestionsDialog
-          open={editingQuestions !== null}
-          onOpenChange={(v) => setEditingQuestions(v ? editingQuestions : null)}
-          title={editingQuestions === "phone" ? "שאלות סינון · שיחת טלפון" : "שאלות סינון · שיחת WhatsApp"}
-          questions={editingQuestions === "phone" ? questionsPhone : questions}
-          onChange={(next) => {
-            if (editingQuestions === "phone") {
-              setQuestionsPhone(next);
-              return;
-            }
-            setQuestions(next);
-            // Level 3 mirrors the chat questions by default, still editable on its own.
-            if (questionsPhone.join("|") === questions.join("|")) setQuestionsPhone(next);
-          }}
-        />
       </DialogContent>
     </Dialog>
   );

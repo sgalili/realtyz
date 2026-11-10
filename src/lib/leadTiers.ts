@@ -40,6 +40,11 @@ export function defaultQuestions(dealType: string | null | undefined): string[] 
     : ['מה התקציב שלכם לרכישה?', 'האם יש לכם אישור עקרוני למשכנתה?', 'מתי תרצו להיכנס לנכס?'];
 }
 
+/** Missing configuration gets defaults; an explicitly emptied list stays empty. */
+export function resolveLeadQuestions(questions: unknown, dealType: string | null | undefined): string[] {
+  return Array.isArray(questions) ? questions.filter((question): question is string => typeof question === 'string') : defaultQuestions(dealType);
+}
+
 /** How much a lead of this tier costs the publisher, questions included. */
 export function leadCost(base: number, questions: string[]): number {
   const extra = Math.max(questions.filter((q) => q.trim()).length - 3, 0);

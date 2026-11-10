@@ -1,5 +1,10 @@
 # Roadmap
 
+## Shared lead question configuration November 10
+- [x] Shared expandable question/form-field builder added to publisher, reward and quick-publication lead cards.
+- [x] Preserve per-channel defaults, explicit removals and custom field types in scoped saves and reward drafts.
+- [x] Authenticated mobile/desktop verified form addition and WhatsApp/phone edit/add/delete with no page errors or real publication. Focused save-payload tests cover persistence; real question save/capture not exercised.
+
 ## Compact publication pricing November 10
 - [x] Replace fee summary labels with icons and pencil expansion; remove account-limit editor and requested publication paragraph from this dialog only.
 - [x] Per-tier limits default to blue underlined links, edit on click and return selected numbers to links; smaller input placeholder.
