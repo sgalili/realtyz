@@ -10,6 +10,7 @@
 import { Card } from '@/components/ui/card';
 import { Home } from 'lucide-react';
 import { LABELS, ICONS, normalizeKey } from '@/components/properties/PropertyRichDetailsCard';
+import { ALL_FEATURE_LABELS } from '@/lib/propertyFeatureCatalog';
 
 type Bag = Record<string, unknown> | null | undefined;
 
@@ -57,8 +58,9 @@ export function PropertyFeatureBadges({
   const collected = new Map<string, boolean>();
 
   const consume = (key: string, value: unknown) => {
-    const name = LABELS[normalizeKey(key)];
-    if (!name || !AMENITY_LABELS.has(name)) return;
+    const trimmed = String(key).trim();
+    const name = ALL_FEATURE_LABELS.has(trimmed) ? trimmed : LABELS[normalizeKey(key)];
+    if (!name || !(AMENITY_LABELS.has(name) || ALL_FEATURE_LABELS.has(name))) return;
     const state = classify(value);
     if (state === null) return;
     // A positive signal from any source wins.

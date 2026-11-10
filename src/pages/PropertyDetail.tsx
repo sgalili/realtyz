@@ -42,6 +42,8 @@ import SmartTimelineCard from '@/components/SmartTimelineCard';
 import QuickMessageCard from '@/components/messaging/QuickMessageCard';
 
 import PropertyFeatureBadges from '@/components/properties/PropertyFeatureBadges';
+import PropertyFeatureMenus from '@/components/properties/PropertyFeatureMenus';
+import { BASE_FEATURE_LABELS, EXTRA_FEATURE_OPTIONS, toggleFeature } from '@/lib/propertyFeatureCatalog';
 import { Yad2Icon } from '@/components/properties/Yad2Icon';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
@@ -216,17 +218,7 @@ const AMENITY_LABEL_RE: Record<'elevator' | 'balcony' | 'ac' | 'shelter' | 'sola
   shelter: /ממ["״']?ד|מקלט|safe.?room|shelter/i,
   solar: /דוד שמש|solar/i,
 };
-const EXTRA_FEATURES: ReadonlyArray<readonly [string, RegExp, string[]]> = [
-  ['מרוהטת', /מרוהט|ריהוט|furnish/i, ['furniture', 'furnished']],
-  ['מחסן', /מחסן|storage|warehouse/i, ['storage', 'warehouse']],
-  ['משופצת', /משופצ|שיפוץ|renovat/i, ['renovated']],
-  ['גישה לנכים', /נכים|נגיש|accessib|handicap/i, ['accessibility', 'handicapped']],
-  ['סורגים', /סורג|bars/i, ['bars']],
-  ['חיות מחמד', /חיות|pets/i, ['pets']],
-  ['מטבח כשר', /כשר|kosher/i, ['kosher']],
-  ['דלתות פנדור', /פנדור|pandor/i, ['pandor', 'pandorDoors']],
-  ['חניה', /^חני/i, []],
-];
+const EXTRA_FEATURES = EXTRA_FEATURE_OPTIONS;
 const isTruthyFlag = (v: unknown) => v === true || v === 1 || (typeof v === 'string' && /^(1|true|yes|כן)$/i.test(v.trim()));
 
 // Draft keys are namespaced per workspace as well as per property, so an
@@ -1719,35 +1711,18 @@ export default function PropertyDetail() {
                   </Field>
                 </div>
 
-                <div className="col-span-2 sm:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-2 border-t pt-3">
-                  {([
-                    ['מעלית', 'elevator'],
-                    ['מרפסת', 'balcony'],
-                    ['מיזוג', 'ac'],
-                    ['ממ"ד / מקלט', 'shelter'],
-                    ['דוד שמש', 'solar'],
-                  ] as const).map(([label, key]) => (
-                    <label key={key} className="flex items-center gap-2 rounded-md border px-3 py-2 text-xl cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(form[key])}
-                        onChange={(e) => setBoolField(key, e.target.checked)}
-                        className="h-4 w-4 accent-primary"
-                      />
-                      <span>{label}</span>
-                    </label>
-                  ))}
-                  {EXTRA_FEATURES.map(([label]) => (
-                    <label key={label} className="flex items-center gap-2 rounded-md border px-3 py-2 text-xl cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.extra_features.includes(label)}
-                        onChange={(e) => setForm((f) => f ? { ...f, extra_features: e.target.checked ? [...f.extra_features, label] : f.extra_features.filter((x) => x !== label) } : f)}
-                        className="h-4 w-4 accent-primary"
-                      />
-                      <span>{label}</span>
-                    </label>
-                  ))}
+                <div className="col-span-2 sm:col-span-3 border-t pt-3">
+                  <PropertyFeatureMenus
+                    selected={[
+                      ...(Object.entries(BASE_FEATURE_LABELS) as [keyof typeof BASE_FEATURE_LABELS, string][]).filter(([k]) => form[k]).map(([, l]) => l),
+                      ...form.extra_features,
+                    ]}
+                    onToggle={(label, on) => {
+                      const baseKey = (Object.entries(BASE_FEATURE_LABELS) as [keyof typeof BASE_FEATURE_LABELS, string][]).find(([, l]) => l === label)?.[0];
+                      if (baseKey) setBoolField(baseKey, on);
+                      else setForm((f) => f ? { ...f, extra_features: toggleFeature(f.extra_features, label, on) } : f);
+                    }}
+                  />
                 </div>
               </div>
           </Card>
