@@ -43,6 +43,7 @@ import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { sortListingRows, type ListingSortValue } from '@/lib/listingSortOptions';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
 import { BoardPublishButton, BoardOpenPageButton } from '@/components/properties/BoardRowButtons';
+import { PublishStatusGlobe } from '@/components/properties/QuickPublicPromotion';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
@@ -423,7 +424,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                     return [
                       <tr key={card.id} id={`row-${card.id}`} data-row-id={card.id} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className={cn('cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', dragGhost?.overId === card.id && 'bg-primary/10 ring-1 ring-inset ring-primary/50')}>
                         {visibleColumns.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'price' && 'max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
-                          {id === 'photo' ? (
+                          {id === 'publish' ? <PublishStatusGlobe live /> : id === 'photo' ? (
                           <div className="relative w-12">
                             {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
                             {(card.photos?.length ?? 0) > 1 && <span aria-label={`${card.photos!.length} תמונות`} className="absolute right-0.5 top-0.5 rounded bg-foreground/70 px-1 text-[9px] font-semibold leading-tight text-background">{card.photos!.length}</span>}
