@@ -66,7 +66,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
         <table data-column-managed="true" className="w-max min-w-full text-sm">
           <thead className="bg-muted/40 text-[14px] text-muted-foreground">
             <tr>
-              <th className="sticky right-0 z-[4] whitespace-nowrap bg-muted p-2 text-start font-medium">פרסום בלוח ציבורי</th>
+              <th className="whitespace-nowrap bg-muted p-2 text-start font-medium">פרסום</th>
               {selectionMode && (() => { const ids = results.map(r => r.localId).filter(Boolean) as string[]; const all = ids.length > 0 && ids.every(id => selectedIds.has(id)); return <th className="w-8 p-2"><Checkbox checked={all} aria-label={all ? 'ביטול בחירת הכל' : 'בחירת הכל'} onCheckedChange={() => onSetSelected ? onSetSelected(all ? new Set() : new Set(ids)) : ids.forEach(id => { if (all || !selectedIds.has(id)) onToggleSelected(id); })} /></th>; })()}
               {visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
               <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
@@ -82,7 +82,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
               const live = raw.is_published === true && raw.affiliate_enabled !== false && (raw.status == null || raw.status === 'live');
               return [
                 <tr key={result.key} data-row-id={result.key} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <td className="sticky right-0 z-[3] bg-card p-2" onClick={e => e.stopPropagation()}>
+                  <td className="p-2" onClick={e => e.stopPropagation()}>
                     <QuickPublicPromotion ids={localId ? [localId] : []} compact statusLive={live} onPublished={onPublished} fallback={<PublishStatusGlobe live={live} />} />
                   </td>
                   {selectionMode && <td className="p-2" onClick={e => e.stopPropagation()}>{localId ? <Checkbox checked={selectedIds.has(localId)} onCheckedChange={() => onToggleSelected(localId)} aria-label="בחירת נכס" /> : null}</td>}
