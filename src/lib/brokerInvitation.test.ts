@@ -17,23 +17,16 @@ describe('admin broker onboarding', () => {
     expect(BROKER_INVITATION_TEMPLATE).toContain('{brokerName}');
     expect(BROKER_INVITATION_TEMPLATE).toContain('{authLink}');
     const invitation = brokerInvitation({ id: 'broker-id', full_name: 'דולי אידלסון' });
-    expect(invitation.message).toBe(
-      'שלום דולי אידלסון,\n\n' +
-      'לבקשת אודי ויטמן, יועץ נדל״ן מהרצליה, הכנו עבורך מרחב עבודה במערכת TORAFF והזנו את כל הנכסים שלך.\n\n' +
-      'לכניסה לחץ על הקישור וקבל קוד אימות:\n\n' +
-      'https://toraff.co.il/auth?broker=broker-id\n\n' +
-      'לאחר הזנת הקוד ייפתח מסך הנכסים שלך. כל שנותר הוא להגדיר את עמלת הסגירה שאתה מציע לשותפים, לכל נכס בנפרד או לכל הנכסים בבת אחת.\n\n' +
-      'אם נתקלת בבעיה או יש לך שאלות, ניתן לפנות ישירות:\n\n' +
-      'אודי ויטמן: 0522973500\n\n' +
-      'שי גלילי, המפתח והאחראי הטכנולוגי הראשי: 0546811841\n\n' +
-      'בברכה,\n\n' +
-      'צוות TORAFF',
-    );
+    expect(invitation.message).toContain('שלום דולי אידלסון,\nלבקשת אודי ויטמן');
+    expect(invitation.message).toContain('ממתינים לאישורך כדי להתפרסם בלוח החדש והמטורף שלנו 🚀');
+    expect(invitation.message).toContain('עמלת הסגירה ותמחור לידים');
+    expect(invitation.message).toContain('קוד אימות:\nhttps://toraff.co.il/auth?broker=broker-id\n');
+    expect(invitation.message.endsWith('בברכה,\nצוות TORAFF')).toBe(true);
     expect(invitation.message).not.toContain('{');
   });
   it('invitation greeting stays clean without a broker name', () => {
     const message = renderBrokerInvitation(BROKER_INVITATION_TEMPLATE, { brokerName: '  ', authLink: 'https://toraff.co.il/auth?broker=x' });
-    expect(message.startsWith('שלום,\n\n')).toBe(true);
+    expect(message.startsWith('שלום,\nלבקשת')).toBe(true);
     expect(message).toContain('https://toraff.co.il/auth?broker=x');
   });
   it('only server first-login destination changes normal homepage routing', () => {

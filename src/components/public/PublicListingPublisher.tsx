@@ -6,7 +6,7 @@ import { PublisherWhatsAppIcon } from './PublisherWhatsAppIcon';
 import LeadQuestionsDialog from '@/components/affiliate/LeadQuestionsDialog';
 import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
 import { pricingCardComplete, pricingCardMissing } from '@/lib/pricingCardSummary';
-import { publisherClosingDefault, showPublisherRewards } from '@/lib/publisherPricing';
+import { publisherClosingDefault } from '@/lib/publisherPricing';
 import { publisherMarketingDecision } from '@/lib/publisherMarketing';
 import { fmtILS } from '@/lib/formatCurrency';
 import type { RewardTypes } from '@/components/affiliate/CommissionTierBadges';
@@ -361,7 +361,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const [formFieldsOpen, setFormFieldsOpen] = useState(false);
   const [openLeads, setOpenLeads] = useState<Record<string, boolean>>({});
   const [closingOpen, setClosingOpen] = useState(false);
-  const showRewards = showPublisherRewards(fields.price);
+  // Lead cards always render under the price (rent prices have ≤4 digits).
+  const showRewards = true;
   useEffect(() => {
     if (!fields.dealType || fields.listingId || pricingOnly) return;
     if (fields.dealType === 'sale' && !(Number(fields.commissionDeal) > 0)) {
@@ -393,7 +394,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
   const set = <K extends keyof PublicListingDraftFields>(key: K, value: PublicListingDraftFields[K]) =>
     setFields((current) => ({ ...current, [key]: value }));
   useEffect(() => {
-    if (fields.floor && fields.totalFloors && !validFloorPair(fields.floor, fields.totalFloors)) {
+    if (fields.floor && fields.totalFloors && !(fields.totalFloors ? validFloorPair(fields.floor, fields.totalFloors) : Boolean(fields.floor))) {
       setFields(current => updateFloorSelection(current, 'totalFloors', current.totalFloors));
     }
   }, [fields.floor, fields.totalFloors]);
@@ -597,7 +598,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const stepValid = () => {
     if (step === 2) return Boolean(fields.propertyType);
-    if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()) && validFloorPair(fields.floor, fields.totalFloors));
+    if (step === 3) return Boolean(fields.city.trim() && (fields.street.trim() || fields.address.trim()) && (fields.totalFloors ? validFloorPair(fields.floor, fields.totalFloors) : Boolean(fields.floor)));
     if (step === 4) return Boolean(fields.rooms);
     if (step === 5) return Boolean(fields.sqm || fields.builtSqm);
     if (step === 8) return Boolean(Number(fields.price) > 0 && fields.commissionTermsAccepted);
@@ -818,7 +819,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       case 0: return Boolean(f.publisherType);
       case 1: return Boolean(f.dealType);
       case 2: return Boolean(f.propertyType);
-      case 3: return Boolean(f.city.trim() && (f.street.trim() || f.address.trim()) && validFloorPair(f.floor, f.totalFloors));
+      case 3: return Boolean(f.city.trim() && (f.street.trim() || f.address.trim()) && (f.totalFloors ? validFloorPair(f.floor, f.totalFloors) : Boolean(f.floor)));
       case 4: return Boolean(f.rooms);
       case 5: return Boolean(f.sqm || f.builtSqm);
       case 6: return photos > 0 || files.length > 0 || videos.length > 0;

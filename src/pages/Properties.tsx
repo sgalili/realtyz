@@ -1,3 +1,5 @@
+import { Building2 } from 'lucide-react';
+import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { Table } from '@/components/ui/table';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
 import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
@@ -1190,10 +1192,13 @@ export default function Properties() {
             ))}
           </div>
         ) : sortedResults.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-72 w-full rounded-lg" />
-            ))}
+          <div role="status" className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center">
+            <Building2 className="h-12 w-12 text-muted-foreground" strokeWidth={1.25} aria-hidden="true" />
+            <div className="space-y-1">
+              <p className="text-lg font-semibold text-foreground">אין עדיין נכסים להצגה</p>
+              <p className="text-sm text-muted-foreground">הוסיפו נכס חדש למאגר כדי להתחיל לשווק אותו.</p>
+            </div>
+            <PublicListingPublisher label="הוספת נכס" triggerClassName="!h-11 !min-w-[180px] !rounded-md !px-8 !text-[17px] !font-semibold" />
           </div>
         ) : (
           <>
