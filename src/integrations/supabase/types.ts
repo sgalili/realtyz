@@ -38,6 +38,35 @@ export type Database = {
         }
         Relationships: []
       }
+      account_lead_limits: {
+        Row: {
+          daily_count: number | null
+          daily_spend_ils: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          daily_count?: number | null
+          daily_spend_ils?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          daily_count?: number | null
+          daily_spend_ils?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_lead_limits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       action_pricing: {
         Row: {
           action_key: string
@@ -5161,6 +5190,24 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_source_tombstones: {
+        Row: {
+          removed_at: string
+          source_key: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          removed_at?: string
+          source_key: string
+          workspace_owner_id: string
+        }
+        Update: {
+          removed_at?: string
+          source_key?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       listing_stat_events: {
         Row: {
           affiliate_id: string | null
@@ -5224,6 +5271,7 @@ export type Database = {
           availability_check_sent_at: string | null
           availability_confirmed_at: string | null
           available_from: string | null
+          canonical_duplicate_of: string | null
           city: string | null
           contact_options: Json
           created_at: string
@@ -5301,6 +5349,7 @@ export type Database = {
           availability_check_sent_at?: string | null
           availability_confirmed_at?: string | null
           available_from?: string | null
+          canonical_duplicate_of?: string | null
           city?: string | null
           contact_options?: Json
           created_at?: string
@@ -5378,6 +5427,7 @@ export type Database = {
           availability_check_sent_at?: string | null
           availability_confirmed_at?: string | null
           available_from?: string | null
+          canonical_duplicate_of?: string | null
           city?: string | null
           contact_options?: Json
           created_at?: string
@@ -9762,6 +9812,10 @@ export type Database = {
         Returns: string
       }
       listing_photo_pool: { Args: { _listing_id: string }; Returns: string[] }
+      listing_source_identity: {
+        Args: { _external: string; _source: string; _url: string }
+        Returns: string
+      }
       listing_tier_cap_reached: {
         Args: { _listing_id: string; _tier: number }
         Returns: boolean

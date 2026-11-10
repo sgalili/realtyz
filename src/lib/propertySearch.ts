@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { normalizeImageUrls } from '@/lib/imageHealth';
 import type { PropertySource } from '@/components/properties/SourceBadge';
 import { sanitizeSqm } from '@/lib/propertyMeasures';
+import { TERMINAL_LISTING_STATUSES } from '@/lib/publicationSettings';
 
 
 export type UnifiedResult = {
@@ -180,6 +181,7 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   // Tokenize free-text so "דירה בהרצליה 4 חדרים" matches on any word,
   if (f.workspace_owner_id) q = q.eq('workspace_owner_id', f.workspace_owner_id);
   q = q.neq('status', 'discarded');
+  q = q.is('canonical_duplicate_of', null).not('status', 'in', `(${TERMINAL_LISTING_STATUSES.join(',')})`);
   // not the whole phrase. Each token must appear in at least one text field.
   const tokens = tokenize(f.q);
   for (const t of tokens) {

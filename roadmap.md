@@ -1,5 +1,12 @@
 # Roadmap
 
+## Publication controls and permanent inventory protection November 10
+- [ ] Accurate public/broker-only confirmation, pause action, opposite footer actions and lead help.
+- [ ] Closing-first sliders, three lead icons, interaction-only encouragement and per-tier daily caps.
+- [ ] Account-wide daily paid-lead count and spend limits enforced at charging.
+- [ ] Exact-source duplicate prevention and terminal inventory protection across import/publication.
+- [ ] Focused regression tests and authenticated desktop/mobile verification.
+
 ## Property presentation November 10
 - [x] Restyle shared publication globes and remove visible publication heading while retaining reorder controls.
 - [x] Place multi-select immediately before search without an adjacent selection checkbox.

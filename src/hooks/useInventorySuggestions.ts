@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { mapLocalListingRow } from '@/lib/propertySearch';
+import { TERMINAL_LISTING_STATUSES } from '@/lib/publicationSettings';
 
 export function useInventorySuggestions(term: string, workspaceId: string | null) {
   const [debounced, setDebounced] = useState('');
@@ -13,7 +14,7 @@ export function useInventorySuggestions(term: string, workspaceId: string | null
       if (!workspaceId) return [];
       const words = debounced.replace(/[,()%_*\\"']/g, ' ').split(/\s+/).filter(Boolean).slice(0, 6);
       if (!words.length) return [];
-      let query = supabase.from('listings').select('id,property_title,address,city,house_number,asking_price,deal_type,rooms,source,source_url,media_photos,created_at').eq('workspace_owner_id', workspaceId).neq('status', 'discarded');
+      let query = supabase.from('listings').select('id,property_title,address,city,house_number,asking_price,deal_type,rooms,source,source_url,media_photos,created_at').eq('workspace_owner_id', workspaceId).is('canonical_duplicate_of', null).not('status', 'in', `(${TERMINAL_LISTING_STATUSES.join(',')})`);
       for (const word of words) query = query.or(`property_title.ilike.%${word}%,address.ilike.%${word}%,city.ilike.%${word}%`);
       const { data, error } = await query.order('created_at', { ascending: false }).limit(8);
       if (error) throw error;

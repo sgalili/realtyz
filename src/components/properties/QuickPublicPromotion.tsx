@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, Globe, Loader2 } from 'lucide-react';
+import { BadgeCheck, ClipboardList, Globe, Loader2, Pause, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { isReadyForBoard } from '@/lib/readyForBoard';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { commissionOfferFromPrice } from '@/lib/commissionDisplay';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ClosingFeeSlider } from '@/components/affiliate/ClosingFeeSlider';
+import { LeadPriceSlider } from '@/components/public/LeadPriceSlider';
+import { WhatsAppIcon } from './WhatsAppIcon';
+import { AccountLeadBudget } from './AccountLeadBudget';
+import { PublicationLeadHelp } from './PublicationLeadHelp';
+import { brokerOnlyPricing, isTerminalListing, parseDailyLimit, validPublicationFees } from '@/lib/publicationSettings';
+import { pauseInventory } from '@/lib/publishInventory';
 
 /** Shared square publication control; status remains accessible and tooltip-only. */
 export function PublishStatusGlobe({ live, busy = false, actionable = false, onClick }: { live: boolean; busy?: boolean; actionable?: boolean; onClick?: (event: ReactMouseEvent) => void }) {
@@ -35,17 +42,20 @@ export function PublishStatusGlobe({ live, busy = false, actionable = false, onC
   );
 }
 
-type PromotionRow = { id: string; property_title: string | null; address: string | null; house_number: string | null; city: string | null; asking_price: number | null; status: string | null; is_published: boolean | null; affiliate_enabled: boolean | null; deal_type?: string | null; affiliate_tier1_amount?: number | null; affiliate_tier2_amount?: number | null; affiliate_tier3_amount?: number | null; affiliate_tier4_amount?: number | null; affiliate_tier4_type?: string | null };
-type FeeDraft = { t1: string; t2: string; t3: string; t4: string };
+type PromotionRow = { id: string; property_title: string | null; address: string | null; house_number: string | null; city: string | null; asking_price: number | null; status: string | null; is_published: boolean | null; affiliate_enabled: boolean | null; deal_type?: string | null; affiliate_tier1_amount?: number | null; affiliate_tier2_amount?: number | null; affiliate_tier3_amount?: number | null; affiliate_tier4_amount?: number | null; affiliate_tier4_type?: string | null; canonical_duplicate_of?: string | null; contact_options?: Record<string, unknown>; features?: Record<string, unknown> };
+type FeeDraft = { t1: string; t2: string; t3: string; t4: string; unit: 'fixed' | 'percent'; form: string; whatsapp: string; phone: string };
 const FEE_FIELDS = [['t4', 'אומדן סגירה'], ['t1', 'ליד טופס'], ['t2', 'ליד וואטסאפ'], ['t3', 'ליד שיחה']] as const;
-const feeDraft = (r: PromotionRow): FeeDraft => ({ t1: String(r.affiliate_tier1_amount ?? 0), t2: String(r.affiliate_tier2_amount ?? 0), t3: String(r.affiliate_tier3_amount ?? 0), t4: String(r.affiliate_tier4_amount ?? 0) });
+const feeDraft = (r: PromotionRow): FeeDraft => {
+  const limits = r.contact_options?.lead_daily_limits as Record<string, number | null> | undefined;
+  return { t1: String(r.affiliate_tier1_amount ?? 0), t2: String(r.affiliate_tier2_amount ?? 0), t3: String(r.affiliate_tier3_amount ?? 0), t4: String(r.affiliate_tier4_amount ?? 0), unit: r.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed', form: String(limits?.form ?? ''), whatsapp: String(limits?.whatsapp ?? ''), phone: String(limits?.phone ?? '') };
+};
 /** Commission text: shekels first with the percentage in parentheses; a bare percentage stays only when no price is known. */
 const feeText = (row: PromotionRow, k: string, raw: string): string => {
   const value = Number(raw) || 0;
   if (k === 't4' && row.affiliate_tier4_type === 'percent') return commissionOfferFromPrice(Number(row.asking_price) || 0, value);
   return `₪${value.toLocaleString('he-IL')}`;
 };
-export function QuickPublicPromotion({ ids, onPublished, compact = false, statusLive, fallback }: { ids: string[]; onPublished: (ids: string[]) => void; compact?: boolean; statusLive?: boolean; fallback?: ReactNode }) {
+export function QuickPublicPromotion({ ids, onPublished, compact = false, statusLive, fallback }: { ids: string[]; onPublished: (ids: string[], live?: boolean) => void; compact?: boolean; statusLive?: boolean; fallback?: ReactNode }) {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { roles, loading: rolesLoading } = useUserRole();
   const scopeRef = useRef(activeWorkspaceId);
@@ -61,12 +71,15 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
   const allowed = !rolesLoading && roles.some(role => ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin', 'affiliate'].includes(role));
   useEffect(() => { setOpen(false); setRows([]); setAccepted(false); setBusy(false); }, [activeWorkspaceId]);
   if (!allowed || !activeWorkspaceId || !ids.length) return <>{fallback ?? null}</>;
-  const eligible = rows.filter(isReadyForBoard);
+  const eligible = rows.filter(row => !row.canonical_duplicate_of && !isTerminalListing(row.status) && (isReadyForBoard(row) || (row.status === 'live' && (row.is_published || row.affiliate_enabled))));
+  const published = eligible.filter(row => row.is_published || row.affiliate_enabled);
+  const zeroRows = eligible.filter(row => { const d = drafts[row.id] ?? feeDraft(row); return brokerOnlyPricing([d.t1, d.t2, d.t3]); });
+  const updateDraft = (id: string, patch: Partial<FeeDraft>) => setDrafts(previous => ({ ...previous, [id]: { ...previous[id], ...patch } as FeeDraft }));
   const prepare = async () => {
     const workspaceId = activeWorkspaceId;
     setBusy(true); setAccepted(false);
     try {
-      const { data, error } = await supabase.from('listings').select('id,property_title,address,house_number,city,asking_price,status,is_published,affiliate_enabled,deal_type,affiliate_tier1_amount,affiliate_tier2_amount,affiliate_tier3_amount,affiliate_tier4_amount,affiliate_tier4_type').eq('workspace_owner_id', activeWorkspaceId).in('id', [...new Set(ids)]);
+      const { data, error } = await supabase.from('listings').select('id,property_title,address,house_number,city,asking_price,status,is_published,affiliate_enabled,deal_type,affiliate_tier1_amount,affiliate_tier2_amount,affiliate_tier3_amount,affiliate_tier4_amount,affiliate_tier4_type,contact_options,features,canonical_duplicate_of').eq('workspace_owner_id', activeWorkspaceId).in('id', [...new Set(ids)]);
       if (error) throw error;
       if (scopeRef.current !== workspaceId) return;
       if (!data?.length) throw new Error('הנכס לא נמצא במשרד הפעיל או שאין הרשאה לצפות בו.');
@@ -84,11 +97,12 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
     try {
       for (const row of eligible) {
         const d = drafts[row.id]; if (!d) continue;
-        const orig = feeDraft(row);
-        if ((Object.keys(d) as (keyof FeeDraft)[]).every(k => Number(d[k]) === Number(orig[k]))) continue;
         const nums = [d.t1, d.t2, d.t3, d.t4].map(Number);
-        if (nums.some(n => !Number.isFinite(n) || n < 0) || nums[3] <= 0) throw new Error('יש להזין עמלות תקינות. אומדן הסגירה חייב להיות גדול מאפס.');
-        const { data: upd, error: updError } = await supabase.from('listings').update({ affiliate_tier1_amount: nums[0], affiliate_tier2_amount: nums[1], affiliate_tier3_amount: nums[2], affiliate_tier4_amount: nums[3] }).eq('workspace_owner_id', workspaceId).eq('id', row.id).select('id').maybeSingle();
+        if (!validPublicationFees(row.deal_type, Number(row.asking_price), nums.slice(0, 3), nums[3], d.unit)) throw new Error('יש לבחור עמלות בטווחים המותרים ולהגדיר עמלת סגירה.');
+        const lead_daily_limits = { form: parseDailyLimit(d.form, 50), whatsapp: parseDailyLimit(d.whatsapp, 50), phone: parseDailyLimit(d.phone, 50) };
+        const orig = feeDraft(row);
+        if ((Object.keys(d) as (keyof FeeDraft)[]).every(k => d[k] === orig[k])) continue;
+        const { data: upd, error: updError } = await supabase.from('listings').update({ affiliate_tier1_amount: nums[0], affiliate_tier2_amount: nums[1], affiliate_tier3_amount: nums[2], affiliate_tier4_amount: nums[3], affiliate_tier4_type: d.unit, contact_options: { ...row.contact_options, lead_daily_limits }, features: { ...row.features, deal_closing_commission: { value: nums[3], type: d.unit }, commission_terms_accepted_at: new Date().toISOString() } } as never).eq('workspace_owner_id', workspaceId).eq('id', row.id).select('id').maybeSingle();
         if (updError || !upd) throw updError ?? new Error('לא ניתן לשמור את העמלות לנכס.');
       }
       void qc.invalidateQueries({ queryKey: ['affiliate-configs'] });
@@ -100,13 +114,26 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
       void qc.invalidateQueries({ queryKey: ['ready-board-properties'] });
       void qc.invalidateQueries({ queryKey: ['properties-total-count'] });
       void qc.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
-      toast.success(`${saved.length} נכסים פורסמו בלוח הציבורי`);
+      toast.success(zeroRows.length === saved.length ? `${saved.length} נכסים פורסמו למתווכים שותפים מורשים בלבד` : `${saved.length} נכסים פורסמו בהתאם לקהל שהוגדר`);
       if (saved.length !== eligible.length) toast.warning('חלק מהנכסים לא פורסמו. יש לבדוק הרשאות.');
       setOpen(false);
     } catch (error) {
       console.error('[QuickPublicPromotion] publish failed', { workspaceId, listingIds: eligible.map(row => row.id), error });
       if (scopeRef.current === workspaceId) toast.error(publicationErrorMessage(error));
     }
+    finally { if (scopeRef.current === workspaceId) setBusy(false); }
+  };
+  const pause = async () => {
+    if (busy || !published.length) return;
+    const workspaceId = activeWorkspaceId;
+    setBusy(true);
+    try {
+      const saved = await pauseInventory(supabase, workspaceId, published.map(row => row.id));
+      if (scopeRef.current !== workspaceId) return;
+      onPublished(saved, false);
+      void Promise.all(['properties-search', 'affiliate-configs', 'owner-listings', 'ready-board-properties', 'my-ads-stats', 'affiliate-marketplace', 'public-listings'].map(key => qc.invalidateQueries({ queryKey: [key] })));
+      toast.success('הפרסום הושהה. הנכס נשאר בנכסים שלי'); setOpen(false);
+    } catch (error) { if (scopeRef.current === workspaceId) toast.error(publicationErrorMessage(error)); }
     finally { if (scopeRef.current === workspaceId) setBusy(false); }
   };
   return <>
@@ -118,18 +145,19 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
       </Button>
     )}
     <Dialog open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}>
-      <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg" onClick={event => event.stopPropagation()}>
-        <DialogHeader><DialogTitle className="text-right">פרסום בלוח הציבורי</DialogTitle><DialogDescription className="text-right">{eligible.length} נכסים מוכנים לפרסום במשרד {activeWorkspace?.workspace_name}</DialogDescription></DialogHeader>
-        <div role="alert" className="rounded-md border border-destructive bg-destructive/10 p-3 text-right text-sm font-semibold text-destructive">למרות שזה לא חובה, מומלץ מאוד להגדיר מחיר לפחות לאחד משלושת סוגי הלידים. השארת כל מחירי הלידים על 0 תפרסם את הנכס אך ורק בקרב רשת המתווכים המורשים לחלוקת עמלת סגירה, ללא כפתורי יצירת קשר פתוחים.</div>
+      <DialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl" onClick={event => event.stopPropagation()}>
+        <PublicationLeadHelp />
+        <DialogHeader className="px-6"><DialogTitle className="text-right">אישור וניהול פרסום</DialogTitle><DialogDescription className="text-right">{eligible.length} נכסים במשרד {activeWorkspace?.workspace_name}</DialogDescription></DialogHeader>
+        {zeroRows.length > 0 && <div role="alert" className="rounded-md border border-warning/50 bg-warning/10 p-3 text-right text-sm leading-relaxed"><strong>כל מחירי הפניות הם ₪0{eligible.length > 1 ? ` ב־${zeroRows.length} נכסים` : ''}.</strong> הנכסים האלה יופצו רק בקרב מתווכים שותפים מורשים ולא בלוח הציבורי לכל השותפים. התמחור אינו חובה, אך מומלץ מאוד לתמחר לפחות סוג פנייה אחד. ניתן להגביל את מספר הפניות וההוצאה ב־24 שעות.</div>}
         <div className="max-h-64 overflow-y-auto divide-y divide-border">
-          {rows.map(row => <div key={row.id} className="flex items-center gap-2 py-2 text-sm"><BadgeCheck className={`h-4 w-4 shrink-0 ${eligible.some(item => item.id === row.id) ? 'text-success' : 'text-muted-foreground'}`} /><span className="min-w-0 flex-1 break-words">{row.property_title || row.address}</span><span className="shrink-0 text-xs text-muted-foreground">{eligible.some(item => item.id === row.id) ? 'מוכן' : row.is_published && row.affiliate_enabled && row.status === 'live' ? 'כבר פורסם' : 'לא ניתן לפרסם'}</span></div>)}
+          {rows.map(row => <div key={row.id} className="flex items-center gap-2 py-2 text-sm"><BadgeCheck className={`h-4 w-4 shrink-0 ${eligible.some(item => item.id === row.id) ? 'text-success' : 'text-muted-foreground'}`} /><span className="min-w-0 flex-1 break-words">{row.property_title || row.address}</span><span className="max-w-[45%] text-xs text-muted-foreground">{isTerminalListing(row.status) || row.canonical_duplicate_of ? 'הוסר או אינו פעיל' : row.is_published || row.affiliate_enabled ? brokerOnlyPricing([row.affiliate_tier1_amount, row.affiliate_tier2_amount, row.affiliate_tier3_amount]) ? 'מפורסם למתווכים מורשים בלבד; לא בלוח הציבורי' : 'מפורסם בלוח הציבורי' : 'טרם פורסם'}</span></div>)}
         </div>
-        {eligible.length > 0 && <div className="space-y-2 rounded-md border p-3 text-sm">
+        {eligible.length > 0 && <div className="space-y-2 text-sm">
           <div className="font-medium">עמלות ותמחור לידים</div>
           {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
             <div key={row.id} className="space-y-1">
               {eligible.length > 1 && <div className="text-xs text-muted-foreground">{row.property_title || row.address}</div>}
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">{FEE_FIELDS.map(([k, label]) => <span key={k}>{label}: <b>{feeText(row, k, d[k])}</b></span>)}</div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">{FEE_FIELDS.map(([k, label]) => <span key={k}>{label}: <b>{feeText({ ...row, affiliate_tier4_type: d.unit }, k, d[k])}</b></span>)}</div>
             </div>); })}
           <details className="group rounded-md bg-muted/40 px-2 py-1">
             <summary className="cursor-pointer select-none py-1 text-primary">עריכת עמלת סגירה ומחירי לידים</summary>
@@ -137,13 +165,23 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
               {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
                 <div key={row.id} className="space-y-1">
                   {eligible.length > 1 && <div className="text-xs font-medium">{row.property_title || row.address}</div>}
-                  <div className="grid grid-cols-2 gap-2">{FEE_FIELDS.map(([k, label]) => <label key={k} className="space-y-0.5 text-xs"><span>{label}{k === 't4' && row.affiliate_tier4_type === 'percent' ? ' (%)' : ' (₪)'}</span><Input type="number" min={0} step={k === 't4' && row.affiliate_tier4_type === 'percent' ? 0.01 : 1} dir="ltr" value={d[k]} disabled={busy} onChange={e => setDrafts(prev => ({ ...prev, [row.id]: { ...d, [k]: e.target.value } }))} />{k === 't4' && row.affiliate_tier4_type === 'percent' && Number(row.asking_price) > 0 && <span className="block text-[11px] text-muted-foreground" dir="ltr">= {commissionOfferFromPrice(Number(row.asking_price) || 0, Number(d[k]) || 0)}</span>}</label>)}</div>
+                  <fieldset disabled={busy} className="space-y-3">
+                    <ClosingFeeSlider publisherCard dealType={row.deal_type} price={Number(row.asking_price)} value={Number(d.t4)} valueType={d.unit} dualMode onChange={value => updateDraft(row.id, { t4: String(value) })} onValueChange={(value, unit) => updateDraft(row.id, { t4: String(value), unit })} />
+                    {([{ key: 't1', tier: 'form', label: 'פנייה דרך טופס', Icon: ClipboardList, tone: 'text-lead-form' }, { key: 't2', tier: 'whatsapp', label: 'פנייה מסוננת בוואטסאפ עם ריטה AI', Icon: WhatsAppIcon, tone: 'text-lead-whatsapp' }, { key: 't3', tier: 'phone', label: 'פנייה מסוננת טלפונית עם ריטה AI', Icon: Phone, tone: 'text-lead-phone' }] as const).map(({ key, tier, label, Icon, tone }) => <section key={key} className="space-y-2 rounded-md border border-border bg-background p-3">
+                      <h3 className="flex items-center gap-2 font-semibold"><Icon className={cn('h-7 w-7 shrink-0', Number(d[key]) > 0 ? tone : 'text-muted-foreground')} />{label}</h3>
+                      <LeadPriceSlider tier={tier} label={label} value={d[key]} dynamicFeedback onChange={value => updateDraft(row.id, { [key]: value })} />
+                      <label className="flex flex-wrap items-center gap-2 text-xs"><span>מקסימום פניות ב־24 שעות</span><Input className="h-8 w-24" aria-label={`מגבלה יומית: ${label}`} type="number" inputMode="numeric" min={1} max={50} placeholder="ללא הגבלה" value={d[tier]} onChange={event => updateDraft(row.id, { [tier]: event.target.value })} /></label>
+                    </section>)}
+                  </fieldset>
                 </div>); })}
             </div>
           </details>
         </div>}
-        {eligible.length > 0 && <label className="flex items-start gap-2 text-sm"><Checkbox checked={accepted} onCheckedChange={value => setAccepted(value === true)} /><span>אני מורשה לפרסם את הנכסים ומאשר את פרסומם בלוח הציבורי בהתאם לתקנון.</span></label>}
-        <div className="flex items-center justify-between gap-2"><Button disabled={busy || !accepted || !eligible.length} onClick={() => void publish()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'אישור ופרסום'}</Button><Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>ביטול</Button></div>
+        <AccountLeadBudget key={activeWorkspaceId} ownerId={activeWorkspaceId} />
+        <p className="text-sm leading-relaxed text-muted-foreground">אישור מפרסם מיד בהתאם לתמחור: פניות במחיר חיובי בלוח הציבורי; שלושה מחירים של ₪0 למתווכים שותפים מורשים בלבד. הנכס נשאר בנכסים שלי.</p>
+        {eligible.length > 0 && <label className="flex items-start gap-2 text-sm"><Checkbox aria-label="אישור התקנון והעמלות" checked={accepted} onCheckedChange={value => setAccepted(value === true)} /><span>אני מורשה לפרסם את הנכסים. קראתי ואישרתי את פרטי <a className="text-primary" href="/terms" target="_blank" rel="noopener noreferrer">התקנון</a>, מנגנון העמלות ואת תנאי התיווך.</span></label>}
+        {published.length > 0 && <Button variant="outline" className="justify-self-start gap-2 text-destructive" disabled={busy} onClick={() => void pause()}><Pause className="h-4 w-4" />השעיית פרסום</Button>}
+        <div className="flex items-center justify-between gap-2"><Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>ביטול</Button><Button disabled={busy || !accepted || !eligible.length} onClick={() => void publish()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'אישור ופרסום'}</Button></div>
       </DialogContent>
     </Dialog>
   </>;

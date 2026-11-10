@@ -2,6 +2,12 @@ export function isFeedEligible(row: { status?: string; is_published?: boolean; a
   return row.status !== 'discarded' && (row.is_published === true || row.affiliate_enabled === true);
 }
 
+/** Closing-only distribution is restricted to the existing server-verified broker gate. */
+export function audienceCanSeeListing(row: Record<string, unknown>, closingAllowed: boolean): boolean {
+  const pricedLead = [row.affiliate_tier1_amount, row.affiliate_tier2_amount, row.affiliate_tier3_amount].some(value => Number(value) > 0);
+  return pricedLead || closingAllowed;
+}
+
 /** Coarse 0-3 closing-reward color level, matching the publisher's closing slider (no amount is revealed). */
 export function closingRewardLevel(value: unknown, type: unknown, dealType: unknown, price: unknown): number | null {
   const amount = Number(value);

@@ -7,7 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { PUBLIC_CARD_COLUMNS, toPublicCard } from "../_shared/publicMask.ts";
-import { isFeedEligible, meetsBoardRules, boardPublisherName, publisherDisplayKind, closingRewardLevel, privatePublisherAvatar } from '../_shared/publicListingVisibility.ts';
+import { isFeedEligible, audienceCanSeeListing, meetsBoardRules, boardPublisherName, publisherDisplayKind, closingRewardLevel, privatePublisherAvatar } from '../_shared/publicListingVisibility.ts';
 import { verifiedSourceLicense } from '../_shared/yad2Publisher.ts';
 import { publicPricing } from '../_shared/publicListingVisibility.ts';
 import { boardFilterFacts } from '../_shared/boardFilterFacts.ts';
@@ -62,11 +62,13 @@ Deno.serve(async (req) => {
       .from("listings")
       .select(`${PUBLIC_CARD_COLUMNS},affiliate_tier4_type,source,source_metadata,workspace_owner_id,user_id,owner_id,attributes,additional_details,available_from,elevator,parking`)
       .eq("is_published", true)
+      .is('canonical_duplicate_of', null)
       .neq("status", "discarded")
       .gt("asking_price", 0)
       .or("affiliate_tier1_amount.gt.0,affiliate_tier2_amount.gt.0,affiliate_tier3_amount.gt.0,affiliate_tier4_amount.gt.0,features->deal_closing_commission->>value.gt.0")
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1);
+    if (!closingAllowed) query = query.or('affiliate_tier1_amount.gt.0,affiliate_tier2_amount.gt.0,affiliate_tier3_amount.gt.0');
 
     const city = text("city");
     if (city) query = query.ilike("city", `%${city}%`);
@@ -125,7 +127,7 @@ Deno.serve(async (req) => {
       const { data: reached } = await admin.rpc("listing_daily_cap_reached", { _listing_id: r.id });
       if (reached === true) capped.add(r.id);
     }));
-    const properties = rows.filter((r) => isFeedEligible(r) && !capped.has(r.id)).flatMap((row) => {
+    const properties = rows.filter((r) => isFeedEligible(r) && audienceCanSeeListing(r, closingAllowed) && !capped.has(r.id)).flatMap((row) => {
       const base = attribution(row);
       const name = boardPublisherName(base.broker_name, base.publisher_kind);
       if (!meetsBoardRules(row, name)) return [];

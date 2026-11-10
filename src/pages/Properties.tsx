@@ -175,7 +175,7 @@ export default function Properties() {
         .from('listings')
         .select('*', { count: 'exact', head: true })
         .eq('workspace_owner_id', activeWorkspaceId as string)
-        .neq('status', 'discarded');
+        .neq('status', 'discarded').is('canonical_duplicate_of', null).not('status', 'in', '(sold,removed,deleted,closed,archived,off_market,נמכר,הוסר)');
       if (error) return null;
       return (count as number) ?? 0;
     },
@@ -592,8 +592,8 @@ export default function Properties() {
   const suggestions = inventorySuggestions.data ?? [];
   useEffect(() => { setSuggestionIndex(-1); }, [q]);
   useEffect(() => { setQ(''); setResults([]); defaultPoolRef.current.clear(); setSuggestionsOpen(false); setSelectedListingIds(new Set()); }, [activeWorkspaceId]);
-  const markPublished = useCallback((ids: string[]) => {
-    setResults(current => current.map(row => row.localId && ids.includes(row.localId) ? { ...row, raw: { ...row.raw, is_published: true, status: 'live', affiliate_enabled: true } } : row));
+  const markPublished = useCallback((ids: string[], live = true) => {
+    setResults(current => current.map(row => row.localId && ids.includes(row.localId) ? { ...row, raw: { ...row.raw, is_published: live, status: live ? 'live' : 'hold', affiliate_enabled: live } } : row));
     setSelectedListingIds(current => new Set([...current].filter(id => !ids.includes(id))));
     defaultPoolRef.current.clear();
   }, []);

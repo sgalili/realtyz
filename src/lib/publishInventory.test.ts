@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { publishInventory } from './publishInventory';
+import { pauseInventory, publishInventory } from './publishInventory';
 
 function clientWith(data: unknown[], error: unknown = null) {
   const query = { update: vi.fn(), eq: vi.fn(), in: vi.fn(), neq: vi.fn(), select: vi.fn().mockResolvedValue({ data, error }) };
@@ -8,6 +8,12 @@ function clientWith(data: unknown[], error: unknown = null) {
 }
 const row = { id: 'property-1', workspace_owner_id: 'workspace-1', is_published: true, status: 'live', affiliate_enabled: true };
 describe('direct workspace inventory publication', () => {
+  it('pauses both public and partner distribution while retaining the inventory row', async () => {
+    const { client, query } = clientWith([{ ...row, is_published: false, affiliate_enabled: false, status: 'hold' }]);
+    expect(await pauseInventory(client, 'workspace-1', ['property-1'])).toEqual(['property-1']);
+    expect(query.update).toHaveBeenCalledWith({ is_published: false, affiliate_enabled: false, status: 'hold' });
+    expect(query.eq).toHaveBeenCalledWith('workspace_owner_id', 'workspace-1');
+  });
   it('publishes the exact IDs and workspace with public flags, without any social or wallet dependency', async () => {
     const { client, query } = clientWith([row]);
     expect(await publishInventory(client, 'workspace-1', ['property-1', 'property-1'])).toEqual(['property-1']);

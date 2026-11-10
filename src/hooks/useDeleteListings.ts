@@ -28,6 +28,10 @@ export function useDeleteListings() {
       queryClient.invalidateQueries({ queryKey: ['affiliate-configs'] });
       queryClient.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
       queryClient.invalidateQueries({ queryKey: ['affiliate-referral-listings'] });
+      queryClient.invalidateQueries({ queryKey: ['properties-total-count'] });
+      queryClient.invalidateQueries({ queryKey: ['ready-board-properties'] });
+      queryClient.invalidateQueries({ queryKey: ['owner-listings'] });
+      queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
     },
   });
 }

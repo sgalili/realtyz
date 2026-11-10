@@ -28,6 +28,9 @@ import { commitPricingEdit, pricingEditWorkspace } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
 import { leadPriceLevel, closingLevelClass, closingRewardLevel } from '@/lib/leadPriceRanges';
 import { allLeadPricesZero } from '@/lib/leadPricesZero';
+import { AccountLeadBudget } from '@/components/properties/AccountLeadBudget';
+import { PublicationLeadHelp } from '@/components/properties/PublicationLeadHelp';
+import { isTerminalListing } from '@/lib/publicationSettings';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
@@ -487,7 +490,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
          deal_type: draftFields.dealType, rooms: toNum(draftFields.rooms),
         sqm: toNum(draftFields.sqm) ?? toNum(draftFields.builtSqm),
          floor: draftFields.floor === 'קרקע' ? 0 : toInt(draftFields.floor),
-         source_url: source?.source_url || null,
+          source_url: source?.source_url || null,
+          external_id: source?.external_id || null,
          source_metadata: source?.source_metadata || {},
          additional_details: source || {},
          features: {
@@ -540,8 +544,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
         }
       }
       if (targetListingId && activeWorkspaceId) {
-        const { data: existing, error: readError } = await supabase.from('listings').select('features, contact_options, source_metadata, additional_details').eq('id', targetListingId).eq('workspace_owner_id', activeWorkspaceId).single();
+        const { data: existing, error: readError } = await supabase.from('listings').select('features, contact_options, source_metadata, additional_details,status,canonical_duplicate_of').eq('id', targetListingId).eq('workspace_owner_id', activeWorkspaceId).single();
         if (readError) throw readError;
+        if (isTerminalListing(existing.status) || existing.canonical_duplicate_of) throw new Error('נכס שנמכר או הוסר אינו זמין לפרסום מחדש');
         const { slug, user_id, owner_id, workspace_owner_id, affiliate_enabled, ...updates } = payload;
         request = supabase.from('listings').update({ ...updates, contact_options: { ...(existing.contact_options as object || {}), ...pricing.contact_options }, features: { ...(existing.features as object || {}), ...payload.features }, source_metadata: { ...(existing.source_metadata as object || {}), publication_error: null }, additional_details: existing.additional_details } as never).eq('id', targetListingId).eq('workspace_owner_id', activeWorkspaceId);
       } else request = supabase.from('listings').insert(payload as never);
@@ -555,7 +560,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       void queryClient.invalidateQueries({ queryKey: ['ready-board-properties'] });
        void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] });
       if (draftFields.brokerLicenseReview) toast.success(BROKER_LICENSE_REVIEW_MESSAGE, { duration: 10000, description: 'המודעה נשמרה וממתינה לאישור מנהל.' });
-      else { toast.success('הנכס פורסם בלוח השיתופי');
+      else { toast.success(allLeadPricesZero(draftFields) ? 'הנכס פורסם למתווכים שותפים מורשים בלבד' : 'הנכס פורסם בלוח השיתופי');
        celebratePublication(publicationAudio.current); }
        publicationAudio.current = null;
        initializedPublisher.current = '';
@@ -569,7 +574,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           localStorage.setItem(welcomeKey, '1');
           const name = draftFields.contactName.trim() || 'שלום';
           const address = [street, draftFields.city].filter(Boolean).join(', ');
-          const message = `היי ${name}, ברוכים הבאים ל-TORAFF!\n\nהנכס שלך${address ? ` ב${address}` : ''} פורסם וכבר מופיע בלוח הנדל״ן השיתופי.\n\nסטטוס פרסום ראשוני:\n• לוח שיתופי: פעיל\n• שותפים: הנכס פתוח לקידום על ידי שותפים\n• הפצה לקבוצות: ממתין לתור ההפצה לאחר חיבור קבוצות הפייסבוק בחשבון\n\nלכל שאלה אפשר לענות כאן. ריטה, TORAFF`;
+          const audience = allLeadPricesZero(draftFields) ? 'פורסם למתווכים שותפים מורשים בלבד ואינו מוצג בלוח הציבורי לכל השותפים' : 'פורסם בלוח הנדל״ן השיתופי';
+          const message = `היי ${name}, ברוכים הבאים ל-TORAFF!\n\nהנכס שלך${address ? ` ב${address}` : ''} ${audience}.\n\nהפצה לקבוצות תלויה בחיבור הקבוצות ובהרשאות הפרסום בחשבון.\n\nלכל שאלה אפשר לענות כאן. ריטה, TORAFF`;
           void supabase.functions.invoke('send-whatsapp', { body: { phone_number: phone, message, listing_id: publishedListingId } })
             .then(({ error: waErr }) => { if (waErr) console.warn('welcome whatsapp failed', waErr); });
         }
@@ -1271,7 +1277,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader>
+      <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><PublicationLeadHelp /><DialogHeader className="px-6"><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader>
         <div className="space-y-3">
           {primaryPhoto && <img src={primaryPhoto} alt="תמונת הנכס הראשית" className="aspect-video w-full rounded-md object-cover" />}
           <p className="text-xs font-semibold text-muted-foreground">{fields.dealType === 'rent' ? 'להשכרה' : 'למכירה'} · {fields.propertyType}</p>
@@ -1284,7 +1290,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             {(fields.sqm || fields.builtSqm) && <div><dt className="text-xs text-muted-foreground">שטח</dt><dd className="mt-1 font-semibold">{fields.sqm || fields.builtSqm} מ״ר</dd></div>}
           </dl>
         </div>
-        <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-[16px] font-medium leading-relaxed text-foreground">לאחר האישור הנכס יפורסם <strong>מיד</strong> בלוח הנכסים הציבורי ובעמוד "הנכסים שלי" שלך.</p>
+        <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-[16px] font-medium leading-relaxed text-foreground">{fields.brokerLicenseReview ? 'הנכס יישמר וימתין לאישור הרישיון לפני פרסום.' : allLeadPricesZero(fields) ? 'לאחר האישור הנכס יפורסם מיד למתווכים שותפים מורשים בלבד. הוא לא יוצג בלוח הציבורי לכל השותפים ויישאר בנכסים שלי.' : 'לאחר האישור הנכס יפורסם מיד בלוח הנכסים הציבורי ובעמוד הנכסים שלי שלך.'}</p>
         {allLeadPricesZero(fields) && (
           <div role="alert" className="space-y-2 rounded-md border border-warning/50 bg-warning/10 p-3 text-[16px] leading-relaxed text-foreground">
             <p className="font-bold">שימו לב: כל סוגי הפניות מתומחרים ב-₪0</p>
@@ -1293,7 +1299,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             <p>ניתן להגדיר מגבלת פניות יומית (24 שעות) לכל סוג פנייה, כדי לשלוט בהוצאות ולמנוע חיובים לא צפויים.</p>
           </div>
         )}
-        <div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div>
+        {user && <AccountLeadBudget key={activeWorkspaceId} ownerId={activeWorkspaceId} />}
+        <div className="flex justify-between gap-2"><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button><Button variant="outline" onClick={() => setConfirming(false)}>ביטול</Button></div>
       </DialogContent></Dialog>
     </Dialog>
     </>

@@ -27,3 +27,15 @@ export async function publishInventory(client: InventoryPublicationClient, works
   if (!saved.length) throw new Error('לא נשמרו שינויים. יש לבדוק הרשאות לפרסום במשרד הפעיל.');
   return saved;
 }
+
+/** Pause distribution, not inventory ownership or the underlying property. */
+export async function pauseInventory(client: InventoryPublicationClient, workspaceId: string, ids: string[]): Promise<string[]> {
+  const uniqueIds = [...new Set(ids)];
+  if (!workspaceId || !uniqueIds.length) throw new Error('יש לבחור נכס ומשרד פעיל.');
+  const { data, error } = await client.from('listings').update({ is_published: false, affiliate_enabled: false, status: 'hold' })
+    .eq('workspace_owner_id', workspaceId).in('id', uniqueIds).select('id,workspace_owner_id,is_published,affiliate_enabled,status');
+  if (error) throw error;
+  const saved = (data ?? []).filter((row: { id: string; workspace_owner_id: string; is_published: boolean; affiliate_enabled: boolean; status: string }) => uniqueIds.includes(row.id) && row.workspace_owner_id === workspaceId && !row.is_published && !row.affiliate_enabled && row.status === 'hold').map((row: { id: string }) => row.id);
+  if (saved.length !== uniqueIds.length) throw new Error('לא ניתן להשהות את כל הנכסים שנבחרו.');
+  return saved;
+}

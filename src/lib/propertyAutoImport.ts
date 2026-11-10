@@ -4,24 +4,29 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { UnifiedResult } from '@/lib/propertySearch';
+import { isTerminalListing } from './publicationSettings';
 
-async function findLocalBySourceUrl(url: string | null): Promise<string | null> {
+async function findLocalBySourceUrl(url: string | null, workspaceId: string): Promise<string | null> {
   if (!url) return null;
   const { data } = await supabase
     .from('listings')
-    .select('id')
+    .select('id,status,canonical_duplicate_of')
+    .eq('workspace_owner_id', workspaceId)
     .eq('source_url', url)
     .maybeSingle();
+  if (data && (isTerminalListing(data.status) || data.canonical_duplicate_of)) throw new Error('הנכס הוסר או נמכר ואינו זמין לייבוא מחדש');
   return (data?.id as string | undefined) ?? null;
 }
 
-async function findLocalByExternalId(externalId: string | null): Promise<string | null> {
+async function findLocalByExternalId(externalId: string | null, workspaceId: string): Promise<string | null> {
   if (!externalId) return null;
   const { data } = await supabase
     .from('listings')
-    .select('id')
+    .select('id,status,canonical_duplicate_of')
+    .eq('workspace_owner_id', workspaceId)
     .eq('external_id', externalId)
     .maybeSingle();
+  if (data && (isTerminalListing(data.status) || data.canonical_duplicate_of)) throw new Error('הנכס הוסר או נמכר ואינו זמין לייבוא מחדש');
   return (data?.id as string | undefined) ?? null;
 }
 
@@ -58,20 +63,20 @@ function extractHomelyId(result: UnifiedResult): string | null {
 
 export async function autoImportResult(result: UnifiedResult): Promise<string> {
   if (result.localId) return result.localId;
+  const { data: workspaceId, error: workspaceError } = await supabase.rpc('current_workspace_owner');
+  if (workspaceError || !workspaceId) throw new Error('יש לבחור משרד פעיל לפני הייבוא');
 
   // 1) Try by source URL when we have one.
-  const existingByUrl = await findLocalBySourceUrl(result.url);
+  const existingByUrl = await findLocalBySourceUrl(result.url, workspaceId);
   if (existingByUrl) {
-    await supabase.from('listings').update({ source: 'local' }).eq('id', existingByUrl);
     return existingByUrl;
   }
 
   // 2) Fall back to external_id (Homely/Webtiv rows regularly arrive without a URL —
   //    the Webtiv outJson feed doesn't emit one — so we must accept them via serial).
   const homelyId = extractHomelyId(result);
-  const existingByExt = await findLocalByExternalId(homelyId);
+  const existingByExt = await findLocalByExternalId(homelyId, workspaceId);
   if (existingByExt) {
-    await supabase.from('listings').update({ source: 'local' }).eq('id', existingByExt);
     return existingByExt;
   }
 
@@ -109,17 +114,9 @@ export async function autoImportResult(result: UnifiedResult): Promise<string> {
 
   // Poll: prefer external_id (works for URL-less Homely rows), then source_url.
   const localId = await pollForListing(async () =>
-    (await findLocalByExternalId(homelyId)) ?? (await findLocalBySourceUrl(result.url)),
+    (await findLocalByExternalId(homelyId, workspaceId)) ?? (await findLocalBySourceUrl(result.url, workspaceId)),
   );
   if (!localId) throw new Error('import_not_visible');
-
-  const { error: stampErr } = await supabase
-    .from('listings')
-    .update({ source: 'local' })
-    .eq('id', localId);
-  if (stampErr) {
-    console.warn('[autoImportResult] failed to stamp source=local', stampErr.message);
-  }
 
   return localId;
 }
