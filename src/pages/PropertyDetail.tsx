@@ -1380,7 +1380,7 @@ export default function PropertyDetail() {
           while the property content scrolls underneath. */}
       <div className={`property-action-bar sticky ${editMode ? 'top-3' : 'top-[-10px]'} z-30 flex min-h-10 items-center justify-between gap-2 pointer-events-none`}>
         <span aria-hidden className="flex-1" />
-        <div className="pointer-events-auto flex max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border/70 bg-background/95 px-2 py-1 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        <div className="relative top-[15px] pointer-events-auto flex max-w-full flex-wrap items-center justify-end gap-2 rounded-md border border-border/70 bg-background/95 px-2 py-1 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
         {!editMode ? (
           <>
 
