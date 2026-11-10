@@ -878,7 +878,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           {step === 0 && importSlide && (
             <div className="flex h-full min-h-[55dvh] flex-col justify-center space-y-4">
               <div className="space-y-4 pt-1">
-                  {showImportChoices && <div className="grid grid-cols-2 gap-2">
+                  {showImportChoices && !importOption && <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'yad2'} onClick={() => setImportOption('yad2')}>ייבוא מיד2</Button>
                     <Button type="button" variant="outline" className="h-16 text-base font-bold" aria-expanded={importOption === 'mine'} onClick={() => setImportOption('mine')}>הנכסים שלי ({readyProperties?.length ?? 0})</Button>
                   </div>}
@@ -1145,11 +1145,13 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 !text-center">
           {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תגמולים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
-          {!pricingOnly && (reviewMode || step > 0 || manualDeal || seeker || (importSlide && !knownPublisherRole)) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => {
+          {!pricingOnly && (reviewMode || step > 0 || manualDeal || seeker || importOption || (importSlide && !knownPublisherRole)) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => {
             setConfirming(false);
             // Back walks: form → sale/rent → import options → role choice (only when the role was asked).
             if (reviewMode || step > 0) { setReviewMode(false); setStep(0); setImportSlide(false); setManualDeal(true); return; }
             if (manualDeal) { setManualDeal(false); setImportSlide(true); return; }
+            // A chosen import source hides its two buttons: back reopens them.
+            if (importOption) { setImportOption(null); setImportCard(null); return; }
             if (importSlide && !knownPublisherRole) { setImportSlide(false); setRolePicked(false); return; }
             setSeeker(false); setRolePicked(false); setImportSlide(false);
           }}><ArrowRight className="h-5 w-5" /></Button>}
