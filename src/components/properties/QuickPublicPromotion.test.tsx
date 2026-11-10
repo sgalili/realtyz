@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { QuickPublicPromotion } from './QuickPublicPromotion';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
@@ -24,7 +25,7 @@ describe('broker approval publication access', () => {
     const client = new QueryClient();
     vi.spyOn(client, 'invalidateQueries').mockImplementation(() => new Promise(() => {}));
     const onPublished = vi.fn();
-    render(<QueryClientProvider client={client}><QuickPublicPromotion ids={['property-1']} onPublished={onPublished} /></QueryClientProvider>);
+    render(<QueryClientProvider client={client}><TooltipProvider><QuickPublicPromotion ids={['property-1']} onPublished={onPublished} /></TooltipProvider></QueryClientProvider>);
     fireEvent.click(screen.getByRole('button', { name: 'פרסום בלוח הציבורי' }));
     fireEvent.click(await screen.findByRole('button', { name: 'השעיית פרסום' }));
     await waitFor(() => expect(onPublished).toHaveBeenCalledWith(['property-1'], false));
@@ -37,7 +38,7 @@ describe('broker approval publication access', () => {
     mocks.from.mockReturnValue(query);
     mocks.publish.mockResolvedValue(['property-1']);
     const onPublished = vi.fn();
-    render(<QueryClientProvider client={new QueryClient()}><QuickPublicPromotion ids={['property-1']} onPublished={onPublished} /></QueryClientProvider>);
+    render(<QueryClientProvider client={new QueryClient()}><TooltipProvider><QuickPublicPromotion ids={['property-1']} onPublished={onPublished} /></TooltipProvider></QueryClientProvider>);
     fireEvent.click(screen.getByRole('button', { name: 'פרסום בלוח הציבורי' }));
     fireEvent.click(await screen.findByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'אישור ופרסום' }));

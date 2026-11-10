@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, ClipboardList, Globe, Loader2, Pause, Phone } from 'lucide-react';
+import { BadgeCheck, ClipboardList, Globe, Loader2, Pause, Pencil, Phone, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { isReadyForBoard } from '@/lib/readyForBoard';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ClosingFeeSlider } from '@/components/affiliate/ClosingFeeSlider';
 import { LeadPriceSlider } from '@/components/public/LeadPriceSlider';
 import { WhatsAppIcon } from './WhatsAppIcon';
-import { AccountLeadBudget } from './AccountLeadBudget';
 import { PublicationLeadHelp } from './PublicationLeadHelp';
 import { brokerOnlyPricing, isTerminalListing, parseDailyLimit, validPublicationFees } from '@/lib/publicationSettings';
 import { pauseInventory } from '@/lib/publishInventory';
@@ -44,7 +43,12 @@ export function PublishStatusGlobe({ live, busy = false, actionable = false, onC
 
 type PromotionRow = { id: string; property_title: string | null; address: string | null; house_number: string | null; city: string | null; asking_price: number | null; status: string | null; is_published: boolean | null; affiliate_enabled: boolean | null; deal_type?: string | null; affiliate_tier1_amount?: number | null; affiliate_tier2_amount?: number | null; affiliate_tier3_amount?: number | null; affiliate_tier4_amount?: number | null; affiliate_tier4_type?: string | null; canonical_duplicate_of?: string | null; contact_options?: Record<string, unknown>; features?: Record<string, unknown> };
 type FeeDraft = { t1: string; t2: string; t3: string; t4: string; unit: 'fixed' | 'percent'; form: string; whatsapp: string; phone: string };
-const FEE_FIELDS = [['t4', 'אומדן סגירה'], ['t1', 'ליד טופס'], ['t2', 'ליד וואטסאפ'], ['t3', 'ליד שיחה']] as const;
+const FEE_FIELDS = [
+  { key: 't4', label: 'אומדן סגירה', Icon: Trophy, tone: 'text-primary', tier: null },
+  { key: 't1', label: 'ליד טופס', Icon: ClipboardList, tone: 'text-lead-form', tier: 'form' },
+  { key: 't2', label: 'ליד וואטסאפ', Icon: WhatsAppIcon, tone: 'text-lead-whatsapp', tier: 'whatsapp' },
+  { key: 't3', label: 'ליד שיחה', Icon: Phone, tone: 'text-lead-phone', tier: 'phone' },
+] as const;
 const feeDraft = (r: PromotionRow): FeeDraft => {
   const limits = r.contact_options?.lead_daily_limits as Record<string, number | null> | undefined;
   return { t1: String(r.affiliate_tier1_amount ?? 0), t2: String(r.affiliate_tier2_amount ?? 0), t3: String(r.affiliate_tier3_amount ?? 0), t4: String(r.affiliate_tier4_amount ?? 0), unit: r.affiliate_tier4_type === 'percent' ? 'percent' : 'fixed', form: String(limits?.form ?? ''), whatsapp: String(limits?.whatsapp ?? ''), phone: String(limits?.phone ?? '') };
@@ -66,6 +70,8 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
   const [rows, setRows] = useState<PromotionRow[]>([]);
   const [accepted, setAccepted] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, FeeDraft>>({});
+  const [expanded, setExpanded] = useState(false);
+  const [editingLimit, setEditingLimit] = useState<string | null>(null);
   // Membership roles may remain "user" after the owner's broker approval.
   // Use server-backed owner/account roles; RLS remains the write boundary.
   const allowed = !rolesLoading && roles.some(role => ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin', 'affiliate'].includes(role));
@@ -77,7 +83,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
   const updateDraft = (id: string, patch: Partial<FeeDraft>) => setDrafts(previous => ({ ...previous, [id]: { ...previous[id], ...patch } as FeeDraft }));
   const prepare = async () => {
     const workspaceId = activeWorkspaceId;
-    setBusy(true); setAccepted(false);
+    setBusy(true); setAccepted(false); setExpanded(false); setEditingLimit(null);
     try {
       const { data, error } = await supabase.from('listings').select('id,property_title,address,house_number,city,asking_price,status,is_published,affiliate_enabled,deal_type,affiliate_tier1_amount,affiliate_tier2_amount,affiliate_tier3_amount,affiliate_tier4_amount,affiliate_tier4_type,contact_options,features,canonical_duplicate_of').eq('workspace_owner_id', activeWorkspaceId).in('id', [...new Set(ids)]);
       if (error) throw error;
@@ -136,6 +142,18 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
     } catch (error) { if (scopeRef.current === workspaceId) toast.error(publicationErrorMessage(error)); }
     finally { if (scopeRef.current === workspaceId) setBusy(false); }
   };
+  const limitControl = (row: PromotionRow, tier: 'form' | 'whatsapp' | 'phone', label: string) => {
+    const value = (drafts[row.id] ?? feeDraft(row))[tier];
+    const controlId = `${row.id}-${tier}`;
+    return editingLimit === controlId ? (
+      <Input autoFocus className="h-8 w-24 text-center placeholder:text-[12px]" aria-label={`מגבלה יומית: ${label}`} type="number" inputMode="numeric" min={1} max={50} placeholder="ללא הגבלה" value={value}
+        onChange={event => updateDraft(row.id, { [tier]: event.target.value })}
+        onBlur={() => setEditingLimit(null)}
+        onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); setEditingLimit(null); } }} />
+    ) : (
+      <Button type="button" variant="link" className="publication-limit-link h-auto p-0 text-xs underline" disabled={busy} aria-label={`מגבלה יומית: ${label}`} title="מקסימום פניות ב־24 שעות" onClick={() => setEditingLimit(controlId)}>{value ? `${value} / 24 שעות` : 'ללא הגבלה'}</Button>
+    );
+  };
   return <>
     {compact && statusLive !== undefined ? (
       <PublishStatusGlobe live={statusLive} busy={busy} actionable={!statusLive} onClick={(event) => { event.stopPropagation(); void prepare(); }} />
@@ -153,14 +171,13 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
           {rows.map(row => <div key={row.id} className="flex items-center gap-2 py-2 text-sm"><BadgeCheck className={`h-4 w-4 shrink-0 ${eligible.some(item => item.id === row.id) ? 'text-success' : 'text-muted-foreground'}`} /><span className="min-w-0 flex-1 break-words">{row.property_title || row.address}</span><span className="max-w-[45%] text-xs text-muted-foreground">{isTerminalListing(row.status) || row.canonical_duplicate_of ? 'הוסר או אינו פעיל' : row.is_published || row.affiliate_enabled ? brokerOnlyPricing([row.affiliate_tier1_amount, row.affiliate_tier2_amount, row.affiliate_tier3_amount]) ? 'מפורסם למתווכים מורשים בלבד; לא בלוח הציבורי' : 'מפורסם בלוח הציבורי' : 'טרם פורסם'}</span></div>)}
         </div>
         {eligible.length > 0 && <div className="space-y-2 text-sm">
-          <div className="font-medium">עמלות ותמחור לידים</div>
+          <div className="flex justify-end"><Button type="button" variant="ghost" size="icon" aria-label="עריכת עמלות ותמחור לידים" title="עריכת עמלות ותמחור לידים" aria-expanded={expanded} disabled={busy} onClick={() => setExpanded(value => !value)}><Pencil className="h-4 w-4" /></Button></div>
           {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
             <div key={row.id} className="space-y-1">
               {eligible.length > 1 && <div className="text-xs text-muted-foreground">{row.property_title || row.address}</div>}
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">{FEE_FIELDS.map(([k, label]) => <span key={k}>{label}: <b>{feeText({ ...row, affiliate_tier4_type: d.unit }, k, d[k])}</b></span>)}</div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{FEE_FIELDS.map(({ key, label, Icon, tone, tier }) => <div key={key} className="flex min-w-0 flex-col items-start gap-1 text-xs"><Tooltip><TooltipTrigger asChild><span className="flex items-center gap-1.5" aria-label={label}><Icon className={cn('h-5 w-5 shrink-0', tone)} /><b>{feeText({ ...row, affiliate_tier4_type: d.unit }, key, d[key])}</b></span></TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>{tier && limitControl(row, tier, label)}</div>)}</div>
             </div>); })}
-          <details className="group rounded-md bg-muted/40 px-2 py-1">
-            <summary className="cursor-pointer select-none py-1 text-primary">עריכת עמלת סגירה ומחירי לידים</summary>
+          {expanded && <div>
             <div className="space-y-3 py-2">
               {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
                 <div key={row.id} className="space-y-1">
@@ -168,17 +185,15 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
                   <fieldset disabled={busy} className="space-y-3">
                     <ClosingFeeSlider publisherCard dealType={row.deal_type} price={Number(row.asking_price)} value={Number(d.t4)} valueType={d.unit} dualMode onChange={value => updateDraft(row.id, { t4: String(value) })} onValueChange={(value, unit) => updateDraft(row.id, { t4: String(value), unit })} />
                     {([{ key: 't1', tier: 'form', label: 'פנייה דרך טופס', Icon: ClipboardList, tone: 'text-lead-form' }, { key: 't2', tier: 'whatsapp', label: 'פנייה מסוננת בוואטסאפ עם ריטה AI', Icon: WhatsAppIcon, tone: 'text-lead-whatsapp' }, { key: 't3', tier: 'phone', label: 'פנייה מסוננת טלפונית עם ריטה AI', Icon: Phone, tone: 'text-lead-phone' }] as const).map(({ key, tier, label, Icon, tone }) => <section key={key} className="space-y-2 rounded-md border border-border bg-background p-3">
-                      <h3 className="flex items-center gap-2 font-semibold"><Icon className={cn('h-7 w-7 shrink-0', Number(d[key]) > 0 ? tone : 'text-muted-foreground')} />{label}</h3>
+                      <Tooltip><TooltipTrigger asChild><h3 aria-label={label} className="flex items-center gap-2 font-semibold"><Icon className={cn('h-7 w-7 shrink-0', Number(d[key]) > 0 ? tone : 'text-muted-foreground')} /></h3></TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>
                       <LeadPriceSlider tier={tier} label={label} value={d[key]} dynamicFeedback onChange={value => updateDraft(row.id, { [key]: value })} />
-                      <label className="flex flex-wrap items-center gap-2 text-xs"><span>מקסימום פניות ב־24 שעות</span><Input className="h-8 w-24" aria-label={`מגבלה יומית: ${label}`} type="number" inputMode="numeric" min={1} max={50} placeholder="ללא הגבלה" value={d[tier]} onChange={event => updateDraft(row.id, { [tier]: event.target.value })} /></label>
+                      {limitControl(row, tier, label)}
                     </section>)}
                   </fieldset>
                 </div>); })}
             </div>
-          </details>
+          </div>}
         </div>}
-        <AccountLeadBudget key={activeWorkspaceId} ownerId={activeWorkspaceId} />
-        <p className="text-sm leading-relaxed text-muted-foreground">אישור מפרסם מיד בהתאם לתמחור: פניות במחיר חיובי בלוח הציבורי; שלושה מחירים של ₪0 למתווכים שותפים מורשים בלבד. הנכס נשאר בנכסים שלי.</p>
         {eligible.length > 0 && <label className="flex items-start gap-2 text-sm"><Checkbox aria-label="אישור התקנון והעמלות" checked={accepted} onCheckedChange={value => setAccepted(value === true)} /><span>אני מורשה לפרסם את הנכסים. קראתי ואישרתי את פרטי <a className="text-primary" href="/terms" target="_blank" rel="noopener noreferrer">התקנון</a>, מנגנון העמלות ואת תנאי התיווך.</span></label>}
         {published.length > 0 && <Button variant="outline" className="justify-self-start gap-2 text-destructive" disabled={busy} onClick={() => void pause()}><Pause className="h-4 w-4" />השעיית פרסום</Button>}
         <div className="flex items-center justify-between gap-2"><Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>ביטול</Button><Button disabled={busy || !accepted || !eligible.length} onClick={() => void publish()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'אישור ופרסום'}</Button></div>

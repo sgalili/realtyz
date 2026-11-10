@@ -75,6 +75,13 @@ a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *,
   color: hsl(var(--brand-navy)) !important;
   text-decoration-line: none !important;
 }
+button.publication-limit-link,
+button.publication-limit-link:hover,
+button.publication-limit-link:focus-visible {
+  color: hsl(var(--deal-blue));
+  text-decoration-line: underline !important;
+  text-underline-offset: 3px;
+}
 
 /* Fields never gain an extra border, ring or outline when focused or typed in. */
 :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, [role="combobox"]):is(:focus, :focus-visible, :active, [data-state="open"]) {

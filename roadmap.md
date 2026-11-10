@@ -1,5 +1,10 @@
 # Roadmap
 
+## Compact publication pricing November 10
+- [x] Replace fee summary labels with icons and pencil expansion; remove account-limit editor and requested publication paragraph from this dialog only.
+- [x] Per-tier limits default to blue underlined links, edit on click and return selected numbers to links; smaller input placeholder.
+- [x] Seven focused tests passed; authenticated mobile verified draft limit 7 and four expanded sliders without saving or publishing.
+
 ## Property editing and expanded-card polish November 10
 - [x] Authorized table pricing opens the existing editor with all four sliders and caps expanded; Super Admin read-first unlock preserved.
 - [x] Shared advertiser evidence rejects generic names; original office branding replaces importing-workspace fallbacks, including established Anglo Saxon affiliation.
