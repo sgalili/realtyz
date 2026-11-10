@@ -1,11 +1,12 @@
 # Roadmap
 
 ## Publication controls and permanent inventory protection November 10
-- [ ] Accurate public/broker-only confirmation, pause action, opposite footer actions and lead help.
-- [ ] Closing-first sliders, three lead icons, interaction-only encouragement and per-tier daily caps.
-- [ ] Account-wide daily paid-lead count and spend limits enforced at charging.
-- [ ] Exact-source duplicate prevention and terminal inventory protection across import/publication.
-- [ ] Focused regression tests and authenticated desktop/mobile verification.
+- [x] Accurate public/broker-only confirmation, pause action, opposite footer actions and lead help; server feed restricts zero-lead offers to authorized brokers.
+- [x] Closing-first sliders, three lead icons, interaction-only encouragement and per-tier daily caps.
+- [x] Account-wide rolling-day paid-lead count and spend guard implemented; authenticated limit save/readback checked and test limits removed.
+- [x] Exact-source duplicate prevention and terminal inventory protection; repaired search-URL overmatching and restored affected publication flags, retaining historical records.
+- [x] 43 focused tests passed; authenticated desktop/mobile dialogs and help checked without page errors; build OK. Pause refresh deadlock covered by regression test.
+- [ ] Transactional charging/tombstone SQL tests require privileged function execution unavailable to the sandbox connection; fresh import and publication cycle not verified end-to-end.
 
 ## Property presentation November 10
 - [x] Restyle shared publication globes and remove visible publication heading while retaining reorder controls.
