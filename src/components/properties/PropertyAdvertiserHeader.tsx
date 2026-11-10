@@ -13,7 +13,8 @@ export default function PropertyAdvertiserHeader({ listingId }: { listingId: str
     enabled: !!listingId && !!user && !loading,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(listingId)}`, { method: 'GET' });
-      if (error) throw error;
+      // Unpublished/private listings have no public projection (404): show no header instead of crashing.
+      if (error) return null;
       return data?.property ? normalizeListing(data.property, data.attribution) : null;
     },
   });

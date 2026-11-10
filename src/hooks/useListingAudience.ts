@@ -20,7 +20,8 @@ export function useListingAudience(listingIds: string[]) {
       for (let offset = 0; offset < ids.length; offset += 8) {
         await Promise.all(ids.slice(offset, offset + 8).map(async id => {
           const { data, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(id)}`, { method: 'GET' });
-          if (error) throw error;
+          // 404 = no public projection; treat as outside the audience instead of failing the page.
+          if (error) { if ((error as { context?: Response }).context?.status === 404) { hidden.push(id); return; } throw error; }
           const rewards = data?.property?.reward_types as RewardPresence | undefined;
           if (!visibleToListingAudience(rewards, true, false)) hidden.push(id);
         }));
