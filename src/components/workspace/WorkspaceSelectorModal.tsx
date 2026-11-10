@@ -138,18 +138,25 @@ export function WorkspaceSelectorModal() {
                   <div className="text-sm font-semibold truncate">{card.title}</div>
                   <div className="text-xs text-muted-foreground truncate">{roleLabel(w.role, w.is_self)}</div>
                 </div>
-                <Avatar className="h-10 w-10 shrink-0 border bg-background">
-                  {rowImage.url ? (
-                    <AvatarImage
-                      src={rowImage.url}
-                      className={rowImage.isAvatar ? 'object-cover' : 'object-contain p-1'}
-                    />
-                  ) : (
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {card.isOffice ? <Building2 className="h-5 w-5" /> : <User className="h-5 w-5" />}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
+                {rowImage.isAvatar ? (
+                  <Avatar className="h-10 w-10 shrink-0 border bg-background">
+                    {rowImage.url ? (
+                      <AvatarImage src={rowImage.url} className="object-cover" />
+                    ) : (
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {card.isOffice ? <Building2 className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                ) : (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background p-1">
+                    {rowImage.url ? (
+                      <img src={rowImage.url} alt={card.title} className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <Building2 className="h-5 w-5 text-primary" />
+                    )}
+                  </div>
+                )}
               </button>
             );
           })}

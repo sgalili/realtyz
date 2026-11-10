@@ -101,21 +101,25 @@ export type WorkspaceCardImage = {
 
 /**
  * Account-card image rules (workspace switcher + picker):
- * - A private person (property owner / buyer / renter / partner-only) always
- *   shows their personal profile picture.
- * - A company/office shows its square logo, then the rectangular (landscape)
- *   logo, and only then the owner's personal profile picture.
+ * - A real office logo ALWAYS wins: square logo, then the rectangular
+ *   (landscape) logo, then the stored membership logo — even when the workspace
+ *   row isn't flagged as an office (e.g. an imported mini-site logo).
+ * - Only a workspace with no office branding at all falls back to the owner's
+ *   personal profile picture.
  */
 export function resolveWorkspaceCardImage(
   workspace: Workspace | null | undefined,
   brand?: BrandLike,
 ): WorkspaceCardImage {
   const avatar = norm(workspace?.owner_avatar_url) || null;
-  const brandName = norm(brand?.agency_name);
-  const isOffice = workspace?.is_office ?? (!!brandName && brandName !== DEFAULT_NAME);
-  if (!isOffice) return { url: avatar, isAvatar: true };
-  const square = officeLogoOnly(norm(workspace?.workspace_logo_square_url) || null, avatar ?? '');
-  const landscape = officeLogoOnly(norm(workspace?.workspace_logo_landscape_url) || null, avatar ?? '');
+  const square = officeLogoOnly(
+    norm(workspace?.workspace_logo_square_url) || norm(brand?.logo_url) || null,
+    avatar ?? '',
+  );
+  const landscape = officeLogoOnly(
+    norm(workspace?.workspace_logo_landscape_url) || norm(brand?.landscape_logo_url) || null,
+    avatar ?? '',
+  );
   const merged = officeLogoOnly(norm(workspace?.workspace_logo_url) || null, avatar ?? '');
   const logo = square || landscape || merged;
   if (logo) return { url: logo, isAvatar: false };

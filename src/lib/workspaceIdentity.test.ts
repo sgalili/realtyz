@@ -114,4 +114,23 @@ describe('workspace account card image', () => {
     const company = { ...base, is_office: true } as Workspace;
     expect(resolveWorkspaceCardImage(company)).toEqual({ url: 'https://cdn.example.com/avatars/person.jpg', isAvatar: true });
   });
+
+  it('shows the office logo instead of the personal picture when the row is not flagged as an office', () => {
+    const personWithOfficeLogo = {
+      ...base,
+      is_office: false,
+      workspace_logo_square_url: 'https://img.yad2.co.il/Pic/TivMiniSite/office-logo.jpeg',
+    } as Workspace;
+    expect(resolveWorkspaceCardImage(personWithOfficeLogo)).toEqual({
+      url: 'https://img.yad2.co.il/Pic/TivMiniSite/office-logo.jpeg',
+      isAvatar: false,
+    });
+  });
+
+  it('uses the configured office square logo when the workspace row carries no logo', () => {
+    const noLogo = { ...base, is_office: false } as Workspace;
+    expect(
+      resolveWorkspaceCardImage(noLogo, { logo_url: 'https://cdn.example.com/logos/brand-square.png' }),
+    ).toEqual({ url: 'https://cdn.example.com/logos/brand-square.png', isAvatar: false });
+  });
 });

@@ -195,7 +195,10 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
                       active && 'bg-primary/5 font-semibold text-primary',
                     )}
                   >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
+                    <span className={cn(
+                      'flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden border bg-background',
+                      rowImage.isAvatar ? 'rounded-full' : 'rounded-md',
+                    )}>
                       {rowImage.url
                         ? <img src={rowImage.url} alt={label} className={rowImage.isAvatar ? 'h-full w-full object-cover' : 'h-full w-full object-contain p-0.5'} />
                         : workspaceCard.isOffice
