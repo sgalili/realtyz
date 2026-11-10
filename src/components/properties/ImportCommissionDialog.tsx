@@ -32,7 +32,7 @@ export function ImportCommissionDialog({ open, onOpenChange, count, types, rule,
   return <>
     <Dialog open={open} onOpenChange={next => { if (!saving) onOpenChange(next); }}>
       <DialogContent dir="rtl" className="max-h-[90dvh] max-w-md overflow-y-auto">
-        <DialogHeader><DialogTitle>הגדרת עמלות ל־{count} נכסים {closingOnly ? 'נבחרים' : 'שיובאו'}</DialogTitle><DialogDescription>העמלות יחולו על הנכסים {closingOnly ? 'הנבחרים' : 'שיובאו'}. ניתן לעדכן כל נכס בנפרד בהמשך.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>הגדרת עמלות ל־{count} נכסים {closingOnly ? 'נבחרים' : 'שיובאו'}</DialogTitle><DialogDescription className="sr-only">העמלות יחולו על הנכסים {closingOnly ? 'הנבחרים' : 'שיובאו'}. ניתן לעדכן כל נכס בנפרד בהמשך.</DialogDescription></DialogHeader>
         <div role="note" className="flex items-start gap-2 rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm font-semibold text-primary"><Zap className="mt-0.5 h-4 w-4 shrink-0" />השינויים בחלון זה יחולו מיד על כל {count} הנכסים {closingOnly ? 'הנבחרים' : 'שיובאו'}.</div>
         {types.length > 1 && <Tabs value={selected} onValueChange={next => { if (next === 'sale' || next === 'rent') setMode(next); }} dir="rtl">
           <TabsList className="flex w-full">{types.map(type => <TabsTrigger className="flex-1" key={type} value={type}>{type === 'sale' ? 'מכירה' : 'השכרה'}</TabsTrigger>)}</TabsList>
