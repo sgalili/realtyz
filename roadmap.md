@@ -1,5 +1,9 @@
 # Roadmap
 
+## Open marketing table scrolling November 10
+- [x] Bound the marketing page to the existing shell and shared native two-axis table scroller, keeping title/controls/footer stationary.
+- [x] Seven scrolling tests passed; authenticated 1280×1800 and 411×801 table wheel scrolling moved both axes while shell/document stayed at zero; native mobile touch swipes passed both axes with real rows.
+
 ## Inventory collection phase November 10
 - [x] Add dismissible shared home/public-board notice with browser-persisted dismissal.
 - [x] Keep social connections, GoLogin and network marketing visible with preparation dialogs; inventory import/edit/publication and existing server jobs unchanged.
