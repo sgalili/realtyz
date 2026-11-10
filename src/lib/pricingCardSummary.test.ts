@@ -12,6 +12,9 @@ describe('Card 8 pricing completion', () => {
   it('stays incomplete until the publisher sets the closing fee', () => {
     expect(pricingCardComplete({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '7000', commissionDeal: '10' })).toBe(false);
   });
+  it('treats filled imported prices as complete without re-confirmation', () => {
+    expect(pricingCardComplete({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '7000', commissionDeal: '10', closingConfirmed: false, importedListing: { id: 'x' } as any })).toBe(true);
+  });
   it('requires positive property and closing prices', () => {
     expect(pricingCardComplete({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '7000', commissionDeal: '0' })).toBe(false);
     expect(pricingCardComplete({ ...EMPTY_PUBLIC_LISTING_DRAFT, price: '0', commissionDeal: '10' })).toBe(false);
