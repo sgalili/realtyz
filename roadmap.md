@@ -438,4 +438,4 @@
 - [ ] Facebook cloud connect: service key saved; actual remote browser launch remains dependent on GoLogin account Cloud Browser access.
 - [x] Consent-only broker invitation emails in batches of 25, with unsubscribe
 - [x] Link-free official WhatsApp invitation wording (needs Meta approval)
-- [ ] Group import of Bright Data brokers with their listings as drafts
+- [x] Group import of Bright Data brokers with their listings as drafts

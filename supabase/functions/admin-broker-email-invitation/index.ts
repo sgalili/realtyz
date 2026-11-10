@@ -41,7 +41,7 @@ Deno.serve(async req => {
   if (error) return json({ error: 'קריאת רשימת המתווכים נכשלה' }, 500);
   const ids = (rows ?? []).map(r => r.user_id);
   const { data: profiles } = ids.length ? await admin.from('profiles').select('id,full_name,email').in('id', ids) : { data: [] };
-  const eligible = (rows ?? []).map(r => ({ ...r, p: profiles?.find(p => p.id === r.user_id) })).filter(r => r.p?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.p.email));
+  const eligible = (rows ?? []).map(r => ({ ...r, p: profiles?.find(p => p.id === r.user_id) })).filter(r => r.p?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.p.email) && !r.p.email.endsWith('.invalid'));
   if (input.action === 'summary') return json({ eligible: eligible.length, batch_max: BROKER_EMAIL_BATCH_MAX });
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY'); const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
