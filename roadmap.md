@@ -1,5 +1,11 @@
 # Roadmap
 
+## Official broker invitations November 10
+- [x] Add Super Admin official-send preview and editable template submission/status from the official number.
+- [x] Track accepted invitation, authenticated entry and pending inventory approval; My Properties shows the current stage.
+- [x] 13 focused tests passed; deployed authorization rejects invalid sessions; mobile admin dialog verified. Default template submitted and Meta returned REJECTED, so no invitation was sent.
+- [ ] Real official sending needs a Meta-approved wording and a consenting broker.
+
 ## Inactive Yad2 imports November 10
 - [x] Shared preflight and queued draft/skip prompt across pasted link, publisher, agency and search-result imports.
 - [x] Manual inactive-listing saves allowed; exact-source deduplication and publication-transition safeguards retained in migrations 0140/0141.

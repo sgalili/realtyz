@@ -126,18 +126,24 @@ export type Database = {
           created_at: string
           created_by: string
           first_login_at: string | null
+          invitation_message_id: string | null
+          invited_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           created_by: string
           first_login_at?: string | null
+          invitation_message_id?: string | null
+          invited_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           created_by?: string
           first_login_at?: string | null
+          invitation_message_id?: string | null
+          invited_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1254,6 +1260,44 @@ export type Database = {
           {
             foreignKeyName: "broker_certificate_checks_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_invitation_sends: {
+        Row: {
+          broker_id: string
+          created_at: string
+          created_by: string
+          message_id: string | null
+          request_id: string
+          status: string
+          template_name: string
+        }
+        Insert: {
+          broker_id: string
+          created_at?: string
+          created_by: string
+          message_id?: string | null
+          request_id: string
+          status?: string
+          template_name: string
+        }
+        Update: {
+          broker_id?: string
+          created_at?: string
+          created_by?: string
+          message_id?: string | null
+          request_id?: string
+          status?: string
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_invitation_sends_broker_id_fkey"
+            columns: ["broker_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -8914,6 +8958,7 @@ export type Database = {
         Returns: boolean
       }
       broker_name_tokens: { Args: { _n: string }; Returns: string[] }
+      broker_onboarding_status: { Args: { _broker: string }; Returns: Json }
       bulk_update_leads: {
         Args: {
           lead_ids: string[]

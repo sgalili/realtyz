@@ -995,6 +995,20 @@
       "when": 1794332775210,
       "tag": "0141_keep_existing_publication_flags_editable",
       "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1794334033749,
+      "tag": "0142_official_broker_invitation_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1794334203819,
+      "tag": "0143_broker_onboarding_actual_publication_state",
+      "breakpoints": true
     }
   ]
 }

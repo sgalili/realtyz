@@ -16,6 +16,8 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Trash2, Pencil, Check, BadgeCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrokerInvitationDialog } from './BrokerInvitationDialog';
+import { OfficialBrokerInvitationDialog } from './OfficialBrokerInvitationDialog';
+import { BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOnboarding';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -36,6 +38,15 @@ export function SuperAdminUsersTable() {
   const [selected, setSelected] = useState<string[]>([]);
   const [pendingIds, setPendingIds] = useState<string[]>([]);
   const [draft, setDraft] = useState<EditDraft | null>(null);
+  const onboarding = useQuery({ queryKey: ['broker-onboarding', 'admin-list'], enabled: isSuperAdmin, refetchInterval: 30000, queryFn: async () => {
+    const { data, error } = await supabase.from('admin_broker_onboarding').select('user_id');
+    if (error) throw error;
+    return Object.fromEntries(await Promise.all((data ?? []).map(async row => {
+      const result = await supabase.rpc('broker_onboarding_status', { _broker: row.user_id });
+      if (result.error) throw result.error;
+      return [row.user_id, result.data as BrokerOnboardingStatus | null];
+    })));
+  } });
   const profiles = useQuery({ queryKey: ['admin-profiles'], enabled: isSuperAdmin, queryFn: async () => {
     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (error) throw error;
@@ -116,7 +127,7 @@ export function SuperAdminUsersTable() {
         const main = primaryRole(userRoles);
         return <TableRow key={p.id}>
           {selecting && <TableCell>{!protectedId(p.id) && <SelectBox label={`בחירת ${p.full_name || p.email}`} checked={selected.includes(p.id)} onChange={() => toggle(p.id)} />}</TableCell>}
-          <TableCell className="whitespace-nowrap">{p.full_name || '—'}</TableCell>
+          <TableCell className="whitespace-nowrap">{p.full_name || '—'}{onboarding.data?.[p.id] && <p className="whitespace-normal text-xs text-primary">{BROKER_STAGE_LABELS[onboarding.data[p.id]?.stage ?? '']}{onboarding.data[p.id]?.pending_properties ? ` · ${onboarding.data[p.id]?.pending_properties} נכסים` : ''}</p>}</TableCell>
           <TableCell dir="ltr" className="text-xs">{p.email || '—'}</TableCell>
           <TableCell dir="ltr" className="text-xs whitespace-nowrap">{p.phone || '—'}</TableCell>
           <TableCell><Badge variant="secondary" className="whitespace-nowrap">{main ? ROLE_LABELS[main] : '—'}</Badge></TableCell>
@@ -130,8 +141,9 @@ export function SuperAdminUsersTable() {
           </TableCell>
           <TableCell className="whitespace-nowrap">{new Date(p.created_at).toLocaleDateString('he-IL')}</TableCell>
           <TableCell><Switch aria-label={`גישה עבור ${p.full_name}`} checked={!p.is_suspended} disabled={edit.isPending} onCheckedChange={v => edit.mutate({ id: p.id, suspend: !v })} /></TableCell>
-          <TableCell><div className="flex gap-1">
+          <TableCell><div className="flex gap-1 items-center">
             {userRoles.some(role => ['agent', 'lead_agent', 'managing_broker', 'junior_agent'].includes(role)) && <BrokerInvitationDialog broker={p} />}
+            {onboarding.data?.[p.id] && userRoles.some(role => ['agent', 'lead_agent', 'managing_broker', 'junior_agent'].includes(role)) && <OfficialBrokerInvitationDialog key={p.id} broker={p} />}
             <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`עריכת ${p.full_name || p.email}`} onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" aria-label={`מחיקת ${p.full_name || p.email}`} disabled={protectedId(p.id)} onClick={() => setPendingIds([p.id])}><Trash2 className="h-4 w-4" /></Button>
           </div></TableCell>

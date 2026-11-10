@@ -92,6 +92,7 @@ import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
 import { PropertyRowActions } from '@/components/properties/PropertyRowActions';
 import { BulkClosingCommission } from '@/components/properties/BulkClosingCommission';
+import { BrokerOnboardingCue } from '@/components/properties/BrokerOnboardingCue';
 
 
 const PRICE_MIN = 0;
@@ -939,6 +940,8 @@ export default function Properties() {
       <header className="hidden">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
       </header>
+
+      <BrokerOnboardingCue key={activeWorkspaceId} workspaceId={activeWorkspaceId} />
 
       {/* Compact unified control bar */}
       <div className="relative z-40 !mt-0 shrink-0">
