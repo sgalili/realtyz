@@ -1,0 +1,3 @@
+# Broker invitation safety
+- Super Admin invitations use the configured official platform WABA, never the recipient workspace's number; template text is content-addressed and live approval gates sending. Why: exact preview and Meta compliance.
+- Track acceptance separately from delivery; request IDs prevent retries duplicating an uncertain send and onboarding remains auth-bound. Why: no false delivery or OTP bypass.
