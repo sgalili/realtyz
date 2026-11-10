@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { BadgeCheck, EyeOff, Globe } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { BadgeCheck } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
@@ -11,6 +10,7 @@ import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails
 import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
+import { QuickPublicPromotion, PublishStatusGlobe } from '@/components/properties/QuickPublicPromotion';
 import PublicCardSummary from '@/components/public/PublicCardSummary';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 import { usePublicBoardColumns, BoardColumnDragArea, BoardColumnHeader, BoardColumnMenu } from '@/components/public/PublicBoardTableControls';
@@ -25,7 +25,7 @@ type Row = { card: PublicCard; result: UnifiedResult };
 const shekel = (n?: number | null) => (n ? `₪${Number(n).toLocaleString('he-IL')}` : '');
 
 /** /properties table: same columns, headers, rows and expansion as the homepage board, plus management tools. */
-export default function ManagedBoardTable({ results, toCard, selectionMode, selectedIds, onToggleSelected, onSetSelected, favoriteIds, onFavorite, quickPromotion }: {
+export default function ManagedBoardTable({ results, toCard, selectionMode, selectedIds, onToggleSelected, onSetSelected, favoriteIds, onFavorite, onPublished }: {
   results: UnifiedResult[];
   toCard: (r: UnifiedResult) => PublicCard;
   selectionMode: boolean;
@@ -34,7 +34,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
   onSetSelected?: (ids: Set<string>) => void;
   favoriteIds: Set<string>;
   onFavorite: (id: string) => void;
-  quickPromotion: (r: UnifiedResult) => ReactNode;
+  onPublished: (ids: string[]) => void;
 }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
@@ -66,10 +66,10 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
         <table data-column-managed="true" className="w-max min-w-full text-sm">
           <thead className="bg-muted/40 text-[14px] text-muted-foreground">
             <tr>
+              <th className="sticky right-0 z-[4] whitespace-nowrap bg-muted p-2 text-start font-medium">פרסום בלוח ציבורי</th>
               {selectionMode && (() => { const ids = results.map(r => r.localId).filter(Boolean) as string[]; const all = ids.length > 0 && ids.every(id => selectedIds.has(id)); return <th className="w-8 p-2"><Checkbox checked={all} aria-label={all ? 'ביטול בחירת הכל' : 'בחירת הכל'} onCheckedChange={() => onSetSelected ? onSetSelected(all ? new Set() : new Set(ids)) : ids.forEach(id => { if (all || !selectedIds.has(id)) onToggleSelected(id); })} /></th>; })()}
               {visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
               <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
-              <th className="sticky left-0 z-[4] whitespace-nowrap bg-muted p-2 text-start font-medium">פרסום בלוח ציבורי</th>
             </tr>
           </thead>
           <tbody>
@@ -78,8 +78,13 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
               const open = expandedId === result.key;
               const localId = result.localId;
               const toggle = () => setExpandedId(open ? null : result.key);
+              const raw = (result.raw ?? {}) as Record<string, unknown>;
+              const live = raw.is_published === true && raw.affiliate_enabled !== false && (raw.status == null || raw.status === 'live');
               return [
                 <tr key={result.key} data-row-id={result.key} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <td className="sticky right-0 z-[3] bg-card p-2" onClick={e => e.stopPropagation()}>
+                    <QuickPublicPromotion ids={localId ? [localId] : []} compact statusLive={live} onPublished={onPublished} fallback={<PublishStatusGlobe live={live} />} />
+                  </td>
                   {selectionMode && <td className="p-2" onClick={e => e.stopPropagation()}>{localId ? <Checkbox checked={selectedIds.has(localId)} onCheckedChange={() => onToggleSelected(localId)} aria-label="בחירת נכס" /> : null}</td>}
                   {visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
                     {id === 'photo' ? (
@@ -98,13 +103,6 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                   <td className="p-2 align-bottom" onClick={e => e.stopPropagation()}><div className="flex items-center justify-end gap-1">
                     {localId && <OwnerListingActions listingId={localId} />}
                   </div></td>
-                  <td className="sticky left-0 z-[3] bg-card p-2" onClick={e => e.stopPropagation()}><div className="flex items-center gap-1">{(() => {
-                      const raw = (result.raw ?? {}) as Record<string, unknown>;
-                      const live = raw.is_published === true && raw.affiliate_enabled !== false && (raw.status == null || raw.status === 'live');
-                      return <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold', live ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground')}>
-                        {live ? <Globe className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}{live ? 'מפורסם' : 'לא מפורסם'}
-                      </span>;
-                    })()}{localId && quickPromotion(result)}</div></td>
                 </tr>,
                 <tr key={`${result.key}-x`} className="bg-muted/10">
                   <td colSpan={visible.length + 2 + (selectionMode ? 1 : 0)} className="p-0">

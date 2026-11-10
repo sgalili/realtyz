@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { BadgeCheck, Globe, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,10 +9,32 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { publishInventory, publicationErrorMessage } from '@/lib/publishInventory';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+/** Public-board status as a bare globe: green when live, gray with a diagonal slash when not. The label is hover-only. */
+export function PublishStatusGlobe({ live, busy = false, actionable = false, onClick }: { live: boolean; busy?: boolean; actionable?: boolean; onClick?: (event: ReactMouseEvent) => void }) {
+  const label = live ? 'מפורסם בלוח הציבורי' : actionable ? 'לא מפורסם בלוח הציבורי — לחיצה תפתח את חלון הפרסום' : 'לא מפורסם בלוח הציבורי';
+  const icon = (
+    <span className={cn('relative inline-flex h-5 w-5 shrink-0 items-center justify-center', live ? 'text-success' : 'text-muted-foreground opacity-60')}>
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Globe className="h-4 w-4" aria-hidden="true" />}
+      {!live && !busy && <span aria-hidden="true" className="pointer-events-none absolute h-[1.5px] w-[19px] -rotate-45 rounded-full bg-current" />}
+    </span>
+  );
+  const body = onClick
+    ? <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label={label} onClick={onClick}>{icon}</Button>
+    : <span role="img" aria-label={label} className="inline-flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>;
+  return (
+    <Tooltip delayDuration={150}>
+      <TooltipTrigger asChild>{body}</TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 type PromotionRow = { id: string; property_title: string | null; address: string | null; house_number: string | null; city: string | null; asking_price: number | null; status: string | null; is_published: boolean | null; affiliate_enabled: boolean | null };
-export function QuickPublicPromotion({ ids, onPublished, compact = false }: { ids: string[]; onPublished: (ids: string[]) => void; compact?: boolean }) {
+export function QuickPublicPromotion({ ids, onPublished, compact = false, statusLive, fallback }: { ids: string[]; onPublished: (ids: string[]) => void; compact?: boolean; statusLive?: boolean; fallback?: ReactNode }) {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { roles, loading: rolesLoading } = useUserRole();
   const scopeRef = useRef(activeWorkspaceId);
@@ -26,7 +48,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false }: { id
   // Use server-backed owner/account roles; RLS remains the write boundary.
   const allowed = !rolesLoading && roles.some(role => ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin', 'affiliate'].includes(role));
   useEffect(() => { setOpen(false); setRows([]); setAccepted(false); setBusy(false); }, [activeWorkspaceId]);
-  if (!allowed || !activeWorkspaceId || !ids.length) return null;
+  if (!allowed || !activeWorkspaceId || !ids.length) return <>{fallback ?? null}</>;
   const eligible = rows.filter(isReadyForBoard);
   const prepare = async () => {
     const workspaceId = activeWorkspaceId;
@@ -66,9 +88,13 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false }: { id
     finally { if (scopeRef.current === workspaceId) setBusy(false); }
   };
   return <>
-    <Button variant="outline" size={compact ? 'icon' : 'sm'} className={compact ? 'h-8 w-8 text-primary' : 'gap-1.5'} disabled={busy} title="פרסום בלוח הציבורי" aria-label="פרסום בלוח הציבורי" onClick={(event) => { event.stopPropagation(); void prepare(); }}>
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}{!compact && 'פרסום בלוח הציבורי'}
-    </Button>
+    {compact && statusLive !== undefined ? (
+      <PublishStatusGlobe live={statusLive} busy={busy} actionable={!statusLive} onClick={(event) => { event.stopPropagation(); void prepare(); }} />
+    ) : (
+      <Button variant="outline" size={compact ? 'icon' : 'sm'} className={compact ? 'h-8 w-8 text-primary' : 'gap-1.5'} disabled={busy} title="פרסום בלוח הציבורי" aria-label="פרסום בלוח הציבורי" onClick={(event) => { event.stopPropagation(); void prepare(); }}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}{!compact && 'פרסום בלוח הציבורי'}
+      </Button>
+    )}
     <Dialog open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}>
       <DialogContent dir="rtl" className="sm:max-w-lg" onClick={event => event.stopPropagation()}>
         <DialogHeader><DialogTitle className="text-right">פרסום בלוח הציבורי</DialogTitle><DialogDescription className="text-right">{eligible.length} נכסים מוכנים לפרסום במשרד {activeWorkspace?.workspace_name}</DialogDescription></DialogHeader>

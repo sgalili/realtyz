@@ -1208,7 +1208,7 @@ export default function Properties() {
                 onSetSelected={setSelectedListingIds}
                 favoriteIds={favoriteIds}
                 onFavorite={(id) => void toggleFavorite(id)}
-                quickPromotion={(row) => row.localId ? <QuickPublicPromotion ids={[row.localId]} compact onPublished={markPublished} /> : null}
+                onPublished={markPublished}
               />
             ) : (
               <div className="property-card-grid">
