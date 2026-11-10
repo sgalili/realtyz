@@ -16,7 +16,7 @@ export function BrokerInvitationDialog({ broker }: { broker: { id: string; full_
   return <>
     <Button type="button" size="icon" variant="ghost" aria-label={`הזמנת ${broker.full_name || 'מתווך'} ל-WhatsApp`} title="העתקת הזמנה ל-WhatsApp" onClick={() => setOpen(true)}><MessageCircle className="h-4 w-4 text-primary" /></Button>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-w-lg"><DialogHeader><DialogTitle>הזמנה ל-TORAFF</DialogTitle></DialogHeader>
-      <Textarea aria-label="הודעת הזמנה ל-WhatsApp" readOnly value={invitation.message} className="min-h-56" />
+      <Textarea aria-label="הודעת הזמנה ל-WhatsApp" readOnly value={invitation.message} rows={invitation.message.split('\n').length + 2} className="min-h-56 max-h-[62vh] leading-6" />
       <div className="flex flex-wrap justify-between gap-2"><Button variant="outline" onClick={() => void copy(invitation.link)}><Copy className="h-4 w-4" />העתקת קישור</Button><Button onClick={() => void copy(invitation.message)}><Copy className="h-4 w-4" />העתקת הודעה</Button></div>
     </DialogContent></Dialog>
   </>;
