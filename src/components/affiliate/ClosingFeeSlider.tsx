@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { clampClosingPercent, closingFeeAmount, closingFeeRange } from '@/lib/closingFee';
+import { commissionOfferLabel, commissionPercentLabel } from '@/lib/commissionDisplay';
 import { ClosingSplitNote } from './ClosingSplitNote';
 import { BrokerTestLinks } from './BrokerClosingInfo';
 import { fmtILS } from '@/lib/formatCurrency';
@@ -60,8 +61,9 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
   const maximum = amountScale ? range.price * range.max / 100 : range.max;
   const exactAmount = range.price * percent / 100;
   const money = (n: number) => fmtILS(Math.round(n));
-  const selectedLabel = money(exactAmount);
-  const percentageLabel = `(${Number(percent.toFixed(2))}%)`;
+  // Shekels lead and the percentage follows in parentheses; publisher cards keep the two parts as separate editable controls.
+  const selectedLabel = publisherCard ? money(exactAmount) : commissionOfferLabel(exactAmount, percent);
+  const percentageLabel = commissionPercentLabel(percent);
   const changePercent = (next: number) => {
     if (dualMode && onValueChange) onValueChange(outType === 'fixed' ? Math.round(range.price * next / 100) : next, outType);
     else onChange(next);
@@ -93,11 +95,10 @@ export function ClosingFeeSlider({ dealType, price, value, valueType = 'percent'
       </div>}
       {!publisherCard && !displayAmount && <p className="text-xs text-muted-foreground">מחיר הנכס טרם הוזן</p>}
     </div>
-    <div dir="ltr" className={cn("space-y-2", !publisherCard && "px-2")}>
+      <div dir="ltr" className={cn("space-y-2", !publisherCard && "px-2")}>
       {publisherCard && <div className="flex min-h-9 flex-wrap items-center justify-center gap-2"><span dir="rtl" className="text-sm font-medium text-muted-foreground"><span className="text-destructive">* </span>ההצעה שלך:</span>{priceControl}{displayAmount && <>{editing && editingPercent ? <Input autoFocus aria-label="עריכת אחוז עמלת סגירה" inputMode="decimal" dir="ltr" className="h-8 w-20 text-center text-[13px]" value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit} onKeyDown={event => { if (event.key === 'Enter') commit(); if (event.key === 'Escape') { setEditing(false); setEditingPercent(false); } }} /> : <Button type="button" variant="ghost" aria-label="עריכת אחוז עמלת סגירה" className="h-8 px-1 text-[13px] font-normal text-muted-foreground" onClick={() => { setDraft(String(Number(percent.toFixed(2)))); setEditingPercent(true); setEditing(true); }}>{percentageLabel}</Button>}</>}</div>}
-      {!publisherCard && !range.rent && displayAmount && <p className="text-center text-xs text-muted-foreground">({Number(percent.toFixed(2))}%)</p>}
       <Slider dir="ltr" aria-label="עמלת סגירה" aria-valuetext={selectedLabel} min={zeroMin ? 0 : minimum} max={zeroMin ? scale.max : maximum} disabled={!displayAmount} step={zeroMin ? 1 : amountScale ? 0.01 : range.step} value={[zeroMin ? scale.position(percent) : amountScale ? exactAmount : percent]} onValueChange={values => { const next = values[0]; if (next !== undefined) changePercent(zeroMin ? scale.amount(next) : amountScale && range.price > 0 ? next / range.price * 100 : next); }} className="closing-slider h-6" />
-      <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground"><span>{money(closingFeeAmount(zeroMin ? 0 : range.min, range.price))}</span><span>{money(closingFeeAmount(range.max, range.price))}</span></div>
+      <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground" dir="ltr"><span>{commissionOfferLabel(closingFeeAmount(zeroMin ? 0 : range.min, range.price), zeroMin ? 0 : range.min)}</span><span>{commissionOfferLabel(closingFeeAmount(range.max, range.price), range.max)}</span></div>
     </div>
     {publisherCard ? <div className="space-y-2 text-center">
       <p className="flex items-center justify-center gap-1 text-xs closing-tone" dir="rtl"><Zap className="h-3.5 w-3.5" />{['תחילת הדרך', 'יותר תמריץ לשותפים', 'פוטנציאל חשיפה מוגבר', 'תמריץ מרבי לרשת השותפים'][level]}</p>

@@ -127,7 +127,7 @@ describe('closing fee interaction', () => {
   });
   it('closing amounts always display as whole shekels without decimals', () => {
     render(<ClosingFeeSlider dualMode dealType="rent" price={5333} value={50} valueType="percent" onChange={vi.fn()} onValueChange={vi.fn()} />);
-    expect(screen.getByText('₪2,667')).toBeTruthy();
+    expect(screen.getByText('₪2,667 (50%)')).toBeTruthy();
     expect(screen.queryByText(/2,666\.5/)).toBeNull();
   });
   it('publisher closing fees start at zero with no automatic minimum', () => {
@@ -135,7 +135,24 @@ describe('closing fee interaction', () => {
     const slider = screen.getByRole('slider');
     expect(slider.getAttribute('aria-valuemin')).toBe('0');
     expect(slider.getAttribute('aria-valuenow')).toBe('0');
-    expect(screen.getAllByText('₪0').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^₪0 \(/).length).toBeGreaterThan(0);
+  });
+  it('sale closing fee shows shekels first with the percentage in parentheses, including both slider bounds', () => {
+    render(<ClosingFeeSlider dealType="sale" price={2000000} value={1} onChange={vi.fn()} />);
+    expect(screen.getByText('₪20,000 (1%)')).toBeTruthy();
+    expect(screen.getByText('₪4,000 (0.2%)')).toBeTruthy();
+    expect(screen.getByText('₪40,000 (2%)')).toBeTruthy();
+  });
+  it('rent closing fee shows shekels first with the percentage in parentheses, including both slider bounds', () => {
+    render(<ClosingFeeSlider dealType="rent" price={6000} value={50} onChange={vi.fn()} />);
+    expect(screen.getByText('₪3,000 (50%)')).toBeTruthy();
+    expect(screen.getByText('₪600 (10%)')).toBeTruthy();
+    expect(screen.getByText('₪6,000 (100%)')).toBeTruthy();
+  });
+  it('publisher closing card keeps shekels first with the percentage beside it', () => {
+    render(<ClosingFeeSlider publisherCard dualMode dealType="rent" price={12000} value={50} onChange={vi.fn()} onValueChange={vi.fn()} />);
+    expect(screen.getByText('₪6,000')).toBeTruthy();
+    expect(screen.getByText('(50%)')).toBeTruthy();
   });
 
 });

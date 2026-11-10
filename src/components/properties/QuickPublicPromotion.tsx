@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { commissionOfferFromPrice } from '@/lib/commissionDisplay';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 /** Shared square publication control; status remains accessible and tooltip-only. */
@@ -38,6 +39,12 @@ type PromotionRow = { id: string; property_title: string | null; address: string
 type FeeDraft = { t1: string; t2: string; t3: string; t4: string };
 const FEE_FIELDS = [['t4', 'אומדן סגירה'], ['t1', 'ליד טופס'], ['t2', 'ליד וואטסאפ'], ['t3', 'ליד שיחה']] as const;
 const feeDraft = (r: PromotionRow): FeeDraft => ({ t1: String(r.affiliate_tier1_amount ?? 0), t2: String(r.affiliate_tier2_amount ?? 0), t3: String(r.affiliate_tier3_amount ?? 0), t4: String(r.affiliate_tier4_amount ?? 0) });
+/** Commission text: shekels first with the percentage in parentheses; a bare percentage stays only when no price is known. */
+const feeText = (row: PromotionRow, k: string, raw: string): string => {
+  const value = Number(raw) || 0;
+  if (k === 't4' && row.affiliate_tier4_type === 'percent') return commissionOfferFromPrice(Number(row.asking_price) || 0, value);
+  return `₪${value.toLocaleString('he-IL')}`;
+};
 export function QuickPublicPromotion({ ids, onPublished, compact = false, statusLive, fallback }: { ids: string[]; onPublished: (ids: string[]) => void; compact?: boolean; statusLive?: boolean; fallback?: ReactNode }) {
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { roles, loading: rolesLoading } = useUserRole();
@@ -119,10 +126,10 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
         </div>
         {eligible.length > 0 && <div className="space-y-2 rounded-md border p-3 text-sm">
           <div className="font-medium">עמלות ותמחור לידים</div>
-          {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); const unit = (k: string) => k === 't4' && row.affiliate_tier4_type === 'percent' ? '%' : '₪'; return (
+          {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
             <div key={row.id} className="space-y-1">
               {eligible.length > 1 && <div className="text-xs text-muted-foreground">{row.property_title || row.address}</div>}
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">{FEE_FIELDS.map(([k, label]) => <span key={k}>{label}: <b>{unit(k) === '%' ? `${d[k]}%` : `₪${Number(d[k] || 0).toLocaleString('he-IL')}`}</b></span>)}</div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">{FEE_FIELDS.map(([k, label]) => <span key={k}>{label}: <b>{feeText(row, k, d[k])}</b></span>)}</div>
             </div>); })}
           <details className="group rounded-md bg-muted/40 px-2 py-1">
             <summary className="cursor-pointer select-none py-1 text-primary">עריכת עמלת סגירה ומחירי לידים</summary>
@@ -130,7 +137,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
               {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
                 <div key={row.id} className="space-y-1">
                   {eligible.length > 1 && <div className="text-xs font-medium">{row.property_title || row.address}</div>}
-                  <div className="grid grid-cols-2 gap-2">{FEE_FIELDS.map(([k, label]) => <label key={k} className="space-y-0.5 text-xs"><span>{label}{k === 't4' && row.affiliate_tier4_type === 'percent' ? ' (%)' : ' (₪)'}</span><Input type="number" min={0} step={k === 't4' && row.affiliate_tier4_type === 'percent' ? 0.01 : 1} dir="ltr" value={d[k]} disabled={busy} onChange={e => setDrafts(prev => ({ ...prev, [row.id]: { ...d, [k]: e.target.value } }))} /></label>)}</div>
+                  <div className="grid grid-cols-2 gap-2">{FEE_FIELDS.map(([k, label]) => <label key={k} className="space-y-0.5 text-xs"><span>{label}{k === 't4' && row.affiliate_tier4_type === 'percent' ? ' (%)' : ' (₪)'}</span><Input type="number" min={0} step={k === 't4' && row.affiliate_tier4_type === 'percent' ? 0.01 : 1} dir="ltr" value={d[k]} disabled={busy} onChange={e => setDrafts(prev => ({ ...prev, [row.id]: { ...d, [k]: e.target.value } }))} />{k === 't4' && row.affiliate_tier4_type === 'percent' && Number(row.asking_price) > 0 && <span className="block text-[11px] text-muted-foreground" dir="ltr">= {commissionOfferFromPrice(Number(row.asking_price) || 0, Number(d[k]) || 0)}</span>}</label>)}</div>
                 </div>); })}
             </div>
           </details>

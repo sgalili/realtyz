@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { importCommissionPayload, importBatchDealTypes, canApplyImportRule, readImportRule, saveImportRule, runPool, type ImportCommissionRule, type ImportDealType } from '@/lib/importCommissionDefaults';
+import { importCommissionPayload, importBatchDealTypes, canApplyImportRule, readImportRule, saveImportRule, runPool, averagePricesByDealType, type ImportCommissionRule, type ImportDealType } from '@/lib/importCommissionDefaults';
 import { agencyUrlForRequest, isYad2AgencyUrl } from '@/lib/yad2ImportLinks';
 import { ImportCommissionDialog } from './ImportCommissionDialog';
 import { Yad2ImportStatus } from './Yad2ImportStatus';
@@ -58,12 +58,29 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
   const [dealTypes, setDealTypes] = useState<ImportDealType[]>(() => importBatchDealTypes(job.types));
   const [saving, setSaving] = useState(false);
   const [rule, setRule] = useState<ImportCommissionRule>(() => (user && activeWorkspaceId ? readImportRule(user.id, activeWorkspaceId) : readImportRule('', '')));
+  const [prices, setPrices] = useState<Partial<Record<ImportDealType, number>>>({});
+  const priceRun = useRef(0);
   const scope = useRef(0);
 
   useEffect(() => {
-    scope.current++; setRuleOpen(false); setSaving(false);
+    scope.current++; setRuleOpen(false); setSaving(false); setPrices({});
     if (user && activeWorkspaceId) setRule(readImportRule(user.id, activeWorkspaceId));
   }, [user?.id, activeWorkspaceId]);
+
+  // Shekel amounts in the commission window need the base price of every imported ad.
+  useEffect(() => {
+    if (!ruleOpen || !activeWorkspaceId || !imported.length) return;
+    const run = ++priceRun.current, ws = activeWorkspaceId, ids = [...imported];
+    void (async () => {
+      const rows: Array<{ deal_type: string | null; asking_price: number | null }> = [];
+      for (let index = 0; index < ids.length; index += 60) {
+        const { data } = await supabase.from('listings').select('id, deal_type, asking_price').eq('workspace_owner_id', ws).in('id', ids.slice(index, index + 60));
+        rows.push(...(data ?? []));
+      }
+      if (run !== priceRun.current || ws !== activeWorkspaceId) return;
+      setPrices(averagePricesByDealType(rows));
+    })();
+  }, [ruleOpen, activeWorkspaceId, imported]);
 
   const prevPhase = useRef(job.phase);
   useEffect(() => {
@@ -168,6 +185,6 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
       <p className="text-xs text-muted-foreground">הנכסים נשמרים כטיוטות בלשונית הטיוטות. אפשר לערוך עמלה ומחיר לכל נכס בנפרד ולפרסם.</p>
       {unverifiedBroker && <p className="text-xs font-medium text-foreground">הנכסים יישארו ממתינים לפרסום עד לאימות רישיון התיווך בשלב פרטי ההתקשרות.</p>}
     </div>}
-    <ImportCommissionDialog open={ruleOpen} onOpenChange={setRuleOpen} count={imported.length} types={dealTypes} rule={rule} onRuleChange={setRule} saving={saving} onApply={accepted => void applyGlobal(accepted)} />
+    <ImportCommissionDialog open={ruleOpen} onOpenChange={setRuleOpen} count={imported.length} types={dealTypes} rule={rule} onRuleChange={setRule} saving={saving} onApply={accepted => void applyGlobal(accepted)} prices={prices} />
   </CollapsibleCard>;
 }

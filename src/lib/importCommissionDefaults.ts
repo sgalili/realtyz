@@ -21,6 +21,24 @@ export function importDealType(dealType?: string | null): ImportDealType {
 export function importBatchDealTypes(types: Array<string | null | undefined>): ImportDealType[] {
   return (['sale', 'rent'] as const).filter(type => types.some(value => importDealType(value) === type));
 }
+
+/**
+ * Average base price per deal type across a batch: asking price for sale ads, one month's rent for rental ads.
+ * Used only to show the shekel equivalent of a percentage commission; stored rules stay in percent.
+ */
+export function averagePricesByDealType(rows: Array<{ deal_type?: string | null; asking_price?: number | null }>): Partial<Record<ImportDealType, number>> {
+  const totals: Record<ImportDealType, { sum: number; count: number }> = { sale: { sum: 0, count: 0 }, rent: { sum: 0, count: 0 } };
+  for (const row of rows) {
+    const price = Math.max(0, Number(row.asking_price) || 0);
+    if (!price) continue;
+    const type = importDealType(row.deal_type);
+    totals[type].sum += price;
+    totals[type].count += 1;
+  }
+  const averages: Partial<Record<ImportDealType, number>> = {};
+  for (const type of ['sale', 'rent'] as const) if (totals[type].count) averages[type] = totals[type].sum / totals[type].count;
+  return averages;
+}
 export function canApplyImportRule(rule: ImportCommissionRule, types: ImportDealType[], accepted: boolean) {
   return accepted && types.length > 0 && types.every(type => {
     const value = type === 'sale' ? rule.salePercent : rule.rentMonthlyPercent;

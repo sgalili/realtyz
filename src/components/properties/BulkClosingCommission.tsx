@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ImportCommissionDialog } from './ImportCommissionDialog';
-import { DEFAULT_IMPORT_RULE, importBatchDealTypes, importCommissionPayload, canApplyImportRule, type ImportCommissionRule } from '@/lib/importCommissionDefaults';
+import { DEFAULT_IMPORT_RULE, importBatchDealTypes, importCommissionPayload, canApplyImportRule, averagePricesByDealType, type ImportCommissionRule } from '@/lib/importCommissionDefaults';
 
 export function BulkClosingCommission({ ids, workspaceId, autoOpenKey, trigger, onSaved }: { ids: string[]; workspaceId: string; autoOpenKey?: string | null; trigger?: (open: () => void) => React.ReactNode; onSaved?: () => void }) {
   const qc = useQueryClient();
@@ -48,5 +48,5 @@ export function BulkClosingCommission({ ids, workspaceId, autoOpenKey, trigger, 
     if (failed) toast.error(`לא נשמרו עמלות ב-${failed} נכסים. אפשר לנסות שוב.`);
     else { setOpen(false); toast.success(`העמלות נשמרו ב-${rows.length} נכסים`); void qc.invalidateQueries(); onSaved?.(); }
   };
-  return <>{trigger ? trigger(() => void show()) : <Button variant="ghost" size="icon" title="הגדרת עמלות לנבחרים" aria-label="הגדרת עמלות לנבחרים" onClick={() => void show()}><Settings2 className="h-4 w-4" /></Button>}<ImportCommissionDialog closingOnly open={open} onOpenChange={setOpen} count={rows.length} types={types} rule={rule} onRuleChange={setRule} saving={saving} onApply={accepted => void apply(accepted)} /></>;
+  return <>{trigger ? trigger(() => void show()) : <Button variant="ghost" size="icon" title="הגדרת עמלות לנבחרים" aria-label="הגדרת עמלות לנבחרים" onClick={() => void show()}><Settings2 className="h-4 w-4" /></Button>}<ImportCommissionDialog closingOnly open={open} onOpenChange={setOpen} count={rows.length} types={types} rule={rule} onRuleChange={setRule} saving={saving} onApply={accepted => void apply(accepted)} prices={averagePricesByDealType(rows)} /></>;
 }

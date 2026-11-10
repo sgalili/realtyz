@@ -9,15 +9,18 @@ import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { canApplyImportRule, IMPORT_CLOSING_RANGES, type ImportCommissionRule, type ImportDealType } from '@/lib/importCommissionDefaults';
+import { commissionOfferFromPrice } from '@/lib/commissionDisplay';
 import { LeadPopularityNote } from '@/components/public/LeadPopularityNote';
 import BrokerageTermsContent from '@/components/public/BrokerageTermsContent';
 import Terms from '@/pages/Terms';
 
-export function ImportCommissionDialog({ open, onOpenChange, count, types, rule, onRuleChange, onApply, saving, closingOnly = false }: {
+export function ImportCommissionDialog({ open, onOpenChange, count, types, rule, onRuleChange, onApply, saving, closingOnly = false, prices }: {
   open: boolean; onOpenChange: (open: boolean) => void; count: number; types: ImportDealType[];
   rule: ImportCommissionRule; onRuleChange: (rule: ImportCommissionRule) => void;
   onApply: (accepted: boolean) => void; saving: boolean;
   closingOnly?: boolean;
+  /** Average base price per deal type (asking price / one month's rent), used to show shekel amounts. */
+  prices?: Partial<Record<ImportDealType, number>>;
 }) {
   const [mode, setMode] = useState<ImportDealType>('sale');
   const [accepted, setAccepted] = useState(false);
@@ -27,6 +30,8 @@ export function ImportCommissionDialog({ open, onOpenChange, count, types, rule,
   const range = IMPORT_CLOSING_RANGES[selected];
   const value = selected === 'sale' ? rule.salePercent : rule.rentMonthlyPercent;
   const level = Math.min(3, Math.max(0, Math.floor((value - range.min) / (range.max - range.min) * 4)));
+  const basePrice = Math.max(0, Number(prices?.[selected]) || 0);
+  const offer = (percent: number) => commissionOfferFromPrice(basePrice, percent);
   const num = (key: 'form' | 'whatsapp' | 'phone', value: string) => onRuleChange({ ...rule, [key]: Math.max(0, Number(value) || 0) });
   const valid = count > 0 && canApplyImportRule(rule, types, accepted);
   return <>
@@ -39,9 +44,10 @@ export function ImportCommissionDialog({ open, onOpenChange, count, types, rule,
         </Tabs>}
         <section className="closing-fee space-y-3 rounded-lg border p-3" data-level={level}>
           <Label className="flex items-center gap-1.5"><Trophy className="h-4 w-4 text-lead-closing" />אומדן סגירה ({selected === 'sale' ? 'ממחיר הנכס' : 'משכר הדירה החודשי'})</Label>
-          <p className="text-center text-3xl font-bold closing-tone" dir="ltr">{value}%</p>
+          <p className="text-center text-3xl font-bold closing-tone" dir="ltr">{offer(value)}</p>
           <Slider dir="ltr" className="closing-slider h-6" aria-label={selected === 'sale' ? 'עמלת סגירה במכירה' : 'עמלת סגירה בהשכרה'} min={range.min} max={range.max} step={range.step} value={[value]} disabled={saving} onValueChange={values => { const next = values[0]; if (next !== undefined) onRuleChange({ ...rule, [selected === 'sale' ? 'salePercent' : 'rentMonthlyPercent']: next }); }} />
-          <div dir="ltr" className="flex justify-between text-xs text-muted-foreground"><span>{range.min}%</span><span>{range.max}%</span></div>
+          <div dir="ltr" className="flex justify-between text-xs text-muted-foreground"><span>{offer(range.min)}</span><span>{offer(range.max)}</span></div>
+          {basePrice > 0 && count > 1 && <p className="text-center text-[11px] leading-relaxed text-muted-foreground">הסכום בשקלים מחושב לפי {selected === 'sale' ? 'מחיר הנכס הממוצע' : 'שכר הדירה החודשי הממוצע'} של {count} הנכסים {closingOnly ? 'הנבחרים' : 'שיובאו'}.</p>}
           <LeadPopularityNote />
           <p className="text-sm leading-relaxed text-muted-foreground">{selected === 'sale' ? 'עמלת הסגירה תחושב לפי מחיר הנכס המפורסם ותשולם לאחר סגירת העסקה.' : 'עמלת הסגירה תחושב מתוך שכר דירה של חודש אחד ותשולם לאחר חתימת הסכם השכירות.'}</p>
         </section>
