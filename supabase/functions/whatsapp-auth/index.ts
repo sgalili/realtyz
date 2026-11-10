@@ -405,7 +405,7 @@ Deno.serve(async (req) => {
       const codeHash = await hashCode(phone, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
       const owner = await resolveWorkspaceOwnerForPhone(admin, phone);
-      const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-TORAFF: ${code}`, owner);
+      const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-TORAFF: ${code}`, owner, 'authentication');
       if (!sms.ok) {
         console.error("whatsapp-auth SMS OTP send failed", { phone_last4: phone.slice(-4), error: sms.error, scope: sms.scope ?? null });
         await logIntegrationError({
@@ -544,7 +544,7 @@ Deno.serve(async (req) => {
         // to the workspace's own 019 SMS number (isolated per workspace, with
         // the shared platform 019 account as a last resort).
         const owner = await resolveWorkspaceOwnerForPhone(admin, phone);
-        const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-TORAFF: ${code}`, owner);
+        const sms = await sendSms019(admin, phone, `קוד האימות שלך ל-TORAFF: ${code}`, owner, 'authentication');
 
         if (sms.ok) {
           const { error: smsInsertError } = await admin.from("whatsapp_login_otps").insert({

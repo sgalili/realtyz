@@ -1,5 +1,11 @@
 # Roadmap
 
+## Admin-led broker onboarding November 10
+- [x] Admin broker setup requires explicit license approval, records service-owned silence, and never sends credentials; SMS/WhatsApp dispatch guards suppress recipient delivery before first authenticated entry (requested SMS OTP excepted).
+- [x] Broker-specific public OTP invitation preview/copy available after creation and beside brokers in the users table; no login tokens/passwords in invitations.
+- [x] First authenticated entry atomically selects own workspace and opens My Properties; later entries go home. Added selected-property closing-only batch editor using existing sale/rent dialog without overwriting other lead amounts.
+- [x] 27 focused tests passed, build OK; real temporary broker created silently, authenticated via password without SMS, first entry reached /properties and subsequent entry /; temporary account deleted. Admin copy and authorized batch dialog checked. No real SMS OTP, fresh Yad2 scrape or batch price save performed.
+
 ## Open marketing properties November 9
 - [x] Instant marketing appears only for actively selected visible properties; existing public-safe feed and authorized share actions retained.
 - [x] Sharing Pool reuses home board cards/table, search and role-aware advanced filters; view/search controls opposite multi-select.

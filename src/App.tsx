@@ -18,6 +18,7 @@ import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
 import { WorkspaceProvider, useWorkspace } from "@/hooks/useWorkspace";
+import { writeAppMode } from '@/hooks/useAppMode';
 import { ReferralCapture } from '@/components/referrals/ReferralCapture';
 import { WorkspaceSelectorModal } from "@/components/workspace/WorkspaceSelectorModal";
 import { RouteScrollRestoration } from "@/components/navigation/RouteScrollRestoration";
@@ -431,6 +432,35 @@ function AuthRoute() {
   return <Auth />;
 }
 
+function AdminBrokerFirstEntry({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const location = useLocation();
+  const { setActiveWorkspace, loading: workspaceLoading } = useWorkspace();
+  const [entry, setEntry] = React.useState<{ userId: string; path: string } | null>(null);
+  const running = React.useRef<string | null>(null);
+  const currentUser = React.useRef(user?.id);
+  currentUser.current = user?.id;
+  React.useEffect(() => {
+    if (entry?.path === '/properties' && location.pathname === '/properties') setEntry({ ...entry, path: '/' });
+  }, [location.pathname, entry]);
+  React.useEffect(() => {
+    if (!user || workspaceLoading || entry?.userId === user.id || running.current === user.id) return;
+    const uid = user.id;
+    running.current = uid;
+    void Promise.resolve(supabase.rpc('complete_admin_broker_first_login')).then(async ({ data, error }) => {
+      if (currentUser.current !== uid) return;
+      if (!error && data === '/properties') {
+        await setActiveWorkspace(user.id);
+        writeAppMode('broker', user.id);
+      }
+      if (currentUser.current === uid) setEntry({ userId: uid, path: !error && data === '/properties' ? '/properties' : '/' });
+    }).catch(() => { if (currentUser.current === uid) setEntry({ userId: uid, path: '/' }); }).finally(() => { if (running.current === uid) running.current = null; });
+  }, [user?.id, workspaceLoading, setActiveWorkspace, entry?.userId]);
+  if (user && (workspaceLoading || entry?.userId !== user.id)) return <PageLoader />;
+  if (user && entry?.path === '/properties' && ['/', '/index', '/auth'].includes(location.pathname)) return <Navigate to="/properties" replace />;
+  return <>{children}</>;
+}
+
 function EarningsFeedback() { useEarningsFeedback(); return null; }
 
 const App = () => (
@@ -453,7 +483,7 @@ const App = () => (
             <ReferralCapture />
             <WorkspaceSelectorModal />
             <PostSignupWelcome />
-            <WorkspaceScope>
+            <AdminBrokerFirstEntry><WorkspaceScope>
             <div className="app-route-pages">
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
@@ -562,7 +592,7 @@ const App = () => (
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
             </div>
-            </WorkspaceScope>
+            </WorkspaceScope></AdminBrokerFirstEntry>
             </Suspense>
             <AppFooter />
             <FaqHost />

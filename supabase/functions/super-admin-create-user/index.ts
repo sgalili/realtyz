@@ -1,7 +1,6 @@
 // super-admin-create-user
 // ─────────────────────────
-// Creates a new auth user, sets up their own workspace with 1000 NIS balance,
-// unlimited plan, and (optionally) sends WhatsApp credentials via the Meta WhatsApp Business API.
+// Super Admin-only silent broker provisioning. Never dispatches credentials or invitations.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 
@@ -16,7 +15,8 @@ const Body = z.object({
   password: z.string().min(8).max(128),
   full_name: z.string().min(1).max(200).optional(),
   phone_e164: z.string().min(8).max(20).optional(),       // for WhatsApp invite (e.g. 9725XXXXXXXX)
-  send_whatsapp: z.boolean().default(false),
+  broker_license_number: z.string().regex(/^[1-9][0-9]{3,9}$/),
+  approve_broker: z.literal(true),
   initial_balance_agorot: z.number().int().nonnegative().default(100000),
 });
 
@@ -69,8 +69,10 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const { email, password, full_name, phone_e164, send_whatsapp, initial_balance_agorot } = parsed.data;
+    const { email, password, full_name, phone_e164, broker_license_number, initial_balance_agorot } = parsed.data;
     const normalizedPhone = normalizeIsraeliPhone(phone_e164);
+
+    if (!normalizedPhone) return new Response(JSON.stringify({ error: "נדרש מספר נייד תקין לכניסה באמצעות SMS" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     // Create the auth user (auto-confirmed so they can log in immediately), or
     // repair/update an existing user created by the super admin.
@@ -84,23 +86,6 @@ Deno.serve(async (req) => {
     });
     if (created.user) {
       createdUser = created.user;
-    } else if (createErr && /already|registered|exists/i.test(createErr.message)) {
-      const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      const existing = users?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-      if (!existing) throw createErr;
-      const { data: updated, error: updateErr } = await admin.auth.admin.updateUserById(existing.id, {
-        password,
-        ...(normalizedPhone ? { phone: `+${normalizedPhone}`, phone_confirm: true } : {}),
-        email_confirm: true,
-        user_metadata: {
-          ...(existing.user_metadata ?? {}),
-          full_name: full_name ?? (existing.user_metadata as { full_name?: string } | null)?.full_name ?? "",
-          created_by_super_admin: true,
-          ...(normalizedPhone ? { phone_number: normalizedPhone } : {}),
-        },
-      });
-      if (updateErr || !updated.user) throw updateErr ?? createErr;
-      createdUser = updated.user;
     } else {
       return new Response(JSON.stringify({ error: createErr?.message ?? "createUser failed" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -120,15 +105,14 @@ Deno.serve(async (req) => {
         wallet_balance_agorot: initial_balance_agorot,
         is_unlimited: true,
         created_by_super_admin: true,
+        phone: normalizedPhone,
         workspace_owner_id: newUid,
       }, { onConflict: "id" });
-    if (profErr) {
-      console.error("profile upsert", profErr);
-    }
-
-    // Give them the managing_broker role so they own their workspace
-    await admin.from("user_roles")
-      .upsert({ user_id: newUid, role: "managing_broker" }, { onConflict: "user_id,role" });
+    if (profErr) { await admin.auth.admin.deleteUser(newUid); throw profErr; }
+    const { error: onboardingError } = await admin.from('admin_broker_onboarding').insert({ user_id: newUid, created_by: caller.id });
+    if (onboardingError) { await admin.auth.admin.deleteUser(newUid); throw onboardingError; }
+    const { error: brokerError } = await userClient.rpc('finalize_admin_broker_setup', { _user_id: newUid, _license: broker_license_number });
+    if (brokerError) { await admin.auth.admin.deleteUser(newUid); throw brokerError; }
 
     // Audit
     await admin.from("audit_logs").insert({
@@ -137,50 +121,15 @@ Deno.serve(async (req) => {
       action: "super_admin.create_user",
       target_table: "auth.users",
       target_id: newUid,
-      details: { email, phone_e164: normalizedPhone, initial_balance_agorot, send_whatsapp: !!send_whatsapp },
+      details: { email, phone_e164: normalizedPhone, initial_balance_agorot, silent: true },
     });
-
-    // Optional: send WhatsApp credentials via the Meta WhatsApp Business API (using super admin's wa_providers)
-    let wa_status: "skipped" | "sent" | "failed" = "skipped";
-    let wa_error: string | null = null;
-    if (send_whatsapp && phone_e164) {
-      try {
-        const msg = [
-          `שלום${full_name ? ` ${full_name}` : ""},`,
-          `נפתח עבורך חשבון ב-TORAFF.`,
-          ``,
-          `כתובת התחברות: ${new URL(req.url).origin.replace(/functions.*/, "")}`,
-          `אימייל: ${email}`,
-          `סיסמה זמנית: ${password}`,
-          ``,
-          `יתרה התחלתית: ${(initial_balance_agorot / 100).toFixed(0)} ₪.`,
-          `מומלץ לשנות סיסמה לאחר ההתחברות הראשונה.`,
-        ].join("\n");
-
-        const r = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: auth,
-            apikey: ANON_KEY,
-          },
-          body: JSON.stringify({ phone_number: phone_e164, message: msg }),
-        });
-        const body = await r.json().catch(() => ({}));
-        if (r.ok && body?.success) wa_status = "sent";
-        else { wa_status = "failed"; wa_error = body?.error ?? `HTTP ${r.status}`; }
-      } catch (e) {
-        wa_status = "failed";
-        wa_error = e instanceof Error ? e.message : String(e);
-      }
-    }
 
     return new Response(JSON.stringify({
       success: true,
       user_id: newUid,
       email,
-      wa_status,
-      wa_error,
+      wa_status: "skipped",
+      silent: true,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("super-admin-create-user error", e);

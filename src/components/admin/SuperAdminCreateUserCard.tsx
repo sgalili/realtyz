@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BrokerInvitationDialog } from './BrokerInvitationDialog';
 import { UserPlus, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 function genPassword(length = 12) {
   const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%';
   let out = '';
-  for (let i = 0; i < length; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (const value of crypto.getRandomValues(new Uint32Array(length))) out += chars[value % chars.length];
   return out;
 }
 
@@ -25,11 +26,14 @@ function normalizePhone(raw: string) {
 }
 
 export function SuperAdminCreateUserCard() {
+  const qc = useQueryClient();
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState(genPassword());
-  const [sendWa, setSendWa] = useState(true);
+  const [license, setLicense] = useState('');
+  const [approved, setApproved] = useState(false);
+  const [createdBroker, setCreatedBroker] = useState<{ id: string; full_name: string } | null>(null);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -39,7 +43,8 @@ export function SuperAdminCreateUserCard() {
           password,
           full_name: fullName.trim() || undefined,
           phone_e164: phone ? normalizePhone(phone) : undefined,
-          send_whatsapp: sendWa && !!phone,
+          broker_license_number: license,
+          approve_broker: approved,
           initial_balance_agorot: 100000,
         },
       });
@@ -48,12 +53,11 @@ export function SuperAdminCreateUserCard() {
       return data;
     },
     onSuccess: (data: any) => {
-      toast.success(
-        `נוצר חשבון ל-${email}` +
-          (data?.wa_status === 'sent' ? ' · נשלח WhatsApp' :
-           data?.wa_status === 'failed' ? ` · WhatsApp נכשל: ${data?.wa_error ?? ''}` : '') +
-          ' · בתצוגה מקדימה ניתן להיכנס עם קוד מאסטר 9321',
-      );
+      setCreatedBroker({ id: data.user_id, full_name: fullName.trim() });
+      toast.success('מרחב העבודה נוצר ללא שליחת הודעות');
+      void qc.invalidateQueries({ queryKey: ['admin-profiles'] });
+      void qc.invalidateQueries({ queryKey: ['admin-all-roles'] });
+      void qc.invalidateQueries({ queryKey: ['workspaces'] });
       // Keep form values so the admin can copy / re-send creds. Only refresh the password suggestion.
     },
     onError: (e: Error) => toast.error(e.message || 'יצירת משתמש נכשלה'),
@@ -81,8 +85,7 @@ export function SuperAdminCreateUserCard() {
           <UserPlus className="h-4 w-4 text-primary" /> יצירת משתמש חדש (Workspace)
         </CardTitle>
         <CardDescription>
-          כל משתמש שייווצר כאן יקבל מרחב עבודה נפרד עם 1,000 ₪ יתרה, חבילה ללא הגבלת לידים/נכסים/דאטה.
-          לא נשלח OTP אוטומטית — בתצוגה מקדימה המשתמש החדש יכול להיכנס עם קוד מאסטר <code className="font-mono">9321</code>.
+          הקמת מתווך שקטה. לא יישלחו הודעות SMS או WhatsApp בזמן ההקמה והייבוא.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 md:grid-cols-2">
@@ -108,15 +111,11 @@ export function SuperAdminCreateUserCard() {
             </Button>
           </div>
         </div>
-        <div className="md:col-span-2 flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-          <div>
-            <p className="text-sm font-medium">שליחת פרטי התחברות ב-WhatsApp (GreenAPI)</p>
-            <p className="text-xs text-muted-foreground">דורש מספר טלפון. נשלח דרך חשבון ה-WA המחובר ל-Super Admin.</p>
-          </div>
-          <Switch checked={sendWa} onCheckedChange={setSendWa} />
-        </div>
+        <div className="grid gap-1.5"><Label htmlFor="su-license">מספר רישיון תיווך</Label><Input id="su-license" inputMode="numeric" dir="ltr" value={license} onChange={e => { setLicense(e.target.value.replace(/\D/g, '')); setApproved(false); }} /></div>
+        <div className="flex items-center gap-2"><Checkbox id="su-approve" checked={approved} onCheckedChange={v => setApproved(v === true)} /><Label htmlFor="su-approve">אני מאשר/ת במפורש את רישיון המתווך</Label></div>
+        {createdBroker && <div className="md:col-span-2 flex items-center gap-2"><span className="text-sm">הזמנה עבור {createdBroker.full_name}</span><BrokerInvitationDialog broker={createdBroker} /></div>}
         <div className="md:col-span-2 flex justify-end">
-          <Button type="button" onClick={handleSubmit} disabled={!email || !password || create.isPending}>
+          <Button type="button" onClick={handleSubmit} disabled={!email || !password || !phone || !/^[1-9][0-9]{3,9}$/.test(license) || !approved || create.isPending}>
             {create.isPending ? 'יוצר…' : 'צור משתמש + Workspace'}
           </Button>
         </div>

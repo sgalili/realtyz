@@ -896,6 +896,9 @@ Deno.serve(async (req) => {
     }
 
     // Owning workspace (credentials + logging). Transport is always Meta Cloud.
+    const { data: silent, error: silenceError } = await admin.rpc('admin_onboarding_recipient_silent', { _phone: phone });
+    if (silenceError) return json({ success: false, error: 'onboarding_delivery_guard_unavailable' }, 503);
+    if (silent === true) return json({ success: false, skipped: 'admin_onboarding_silent' });
     const routing = await resolveWorkspaceOwner(admin, userId, routingTenantId);
     if (parsed.data.template_id === 'invitation_to_realestate_brokers') {
       let templateOwner = routingTenantId;

@@ -12,10 +12,11 @@ import { LeadPopularityNote } from '@/components/public/LeadPopularityNote';
 import BrokerageTermsContent from '@/components/public/BrokerageTermsContent';
 import Terms from '@/pages/Terms';
 
-export function ImportCommissionDialog({ open, onOpenChange, count, types, rule, onRuleChange, onApply, saving }: {
+export function ImportCommissionDialog({ open, onOpenChange, count, types, rule, onRuleChange, onApply, saving, closingOnly = false }: {
   open: boolean; onOpenChange: (open: boolean) => void; count: number; types: ImportDealType[];
   rule: ImportCommissionRule; onRuleChange: (rule: ImportCommissionRule) => void;
   onApply: (accepted: boolean) => void; saving: boolean;
+  closingOnly?: boolean;
 }) {
   const [mode, setMode] = useState<ImportDealType>('sale');
   const [accepted, setAccepted] = useState(false);
@@ -30,7 +31,7 @@ export function ImportCommissionDialog({ open, onOpenChange, count, types, rule,
   return <>
     <Dialog open={open} onOpenChange={next => { if (!saving) onOpenChange(next); }}>
       <DialogContent dir="rtl" className="max-h-[90dvh] max-w-md overflow-y-auto">
-        <DialogHeader><DialogTitle>הגדרת עמלות ל־{count} נכסים שיובאו</DialogTitle><DialogDescription>העמלות יחולו על הנכסים שיובאו. ניתן לעדכן כל נכס בנפרד בהמשך.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>הגדרת עמלות ל־{count} נכסים {closingOnly ? 'נבחרים' : 'שיובאו'}</DialogTitle><DialogDescription>העמלות יחולו על הנכסים {closingOnly ? 'הנבחרים' : 'שיובאו'}. ניתן לעדכן כל נכס בנפרד בהמשך.</DialogDescription></DialogHeader>
         <Tabs value={selected} onValueChange={next => { if (next === 'sale' || next === 'rent') setMode(next); }} dir="rtl">
           <TabsList className="flex w-full">{types.map(type => <TabsTrigger className="flex-1" key={type} value={type}>{type === 'sale' ? 'מכירה' : 'השכרה'}</TabsTrigger>)}</TabsList>
         </Tabs>
@@ -42,7 +43,7 @@ export function ImportCommissionDialog({ open, onOpenChange, count, types, rule,
           <LeadPopularityNote />
           <p className="text-sm leading-relaxed text-muted-foreground">{selected === 'sale' ? 'עמלת הסגירה תחושב לפי מחיר הנכס המפורסם ותשולם לאחר סגירת העסקה.' : 'עמלת הסגירה תחושב מתוך שכר דירה של חודש אחד ותשולם לאחר חתימת הסכם השכירות.'}</p>
         </section>
-        <div className="grid grid-cols-2 gap-3">{([['form', 'פנייה בטופס (₪)'], ['whatsapp', 'פנייה בוואטסאפ (₪)'], ['phone', 'שיחת טלפון (₪)']] as const).map(([key, label]) => <div key={key} className="space-y-1"><Label htmlFor={`import-${key}`}>{label}</Label><Input id={`import-${key}`} disabled={saving} inputMode="numeric" value={rule[key]} onChange={event => num(key, event.target.value)} /></div>)}</div>
+        {!closingOnly && <div className="grid grid-cols-2 gap-3">{([['form', 'פנייה בטופס (₪)'], ['whatsapp', 'פנייה בוואטסאפ (₪)'], ['phone', 'שיחת טלפון (₪)']] as const).map(([key, label]) => <div key={key} className="space-y-1"><Label htmlFor={`import-${key}`}>{label}</Label><Input id={`import-${key}`} disabled={saving} inputMode="numeric" value={rule[key]} onChange={event => num(key, event.target.value)} /></div>)}</div>}
         <div className="flex items-start gap-2"><Checkbox id="import-commission-terms" checked={accepted} disabled={saving} onCheckedChange={next => setAccepted(next === true)} className="mt-1 shrink-0" /><div className="text-sm leading-relaxed"><Label htmlFor="import-commission-terms" className="font-normal">אני מאשר/ת שקראתי והסכמתי לתקנון ולתנאי התיווך, ומתחייב/ת לשלם את העמלות בהתאם לתנאים המוסכמים.</Label><div className="flex flex-wrap gap-3"><Button type="button" variant="link" className="h-auto p-0" onClick={() => setLegal('terms')}>תקנון</Button><Button type="button" variant="link" className="h-auto p-0" onClick={() => setLegal('brokerage')}>תנאי התיווך</Button></div></div></div>
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between"><Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>ביטול</Button><Button disabled={!valid || saving} onClick={() => { if (valid) onApply(accepted); }}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}אישור והחלה</Button></DialogFooter>
       </DialogContent>

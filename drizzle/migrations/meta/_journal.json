@@ -939,6 +939,20 @@
       "when": 1794185530030,
       "tag": "0133_tighten_insert_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1794305208150,
+      "tag": "0134_admin_broker_silent_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1794305254557,
+      "tag": "0135_finalize_admin_broker_setup",
+      "breakpoints": true
     }
   ]
 }

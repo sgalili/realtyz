@@ -18,7 +18,8 @@ const PENDING_OTP_TTL_MS = 5 * 60 * 1000;
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [signup, setSignup] = useState(location.state?.signup !== false);
+  const invitedBroker = new URLSearchParams(location.search).has('broker');
+  const [signup, setSignup] = useState(!invitedBroker && location.state?.signup !== false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
@@ -37,6 +38,7 @@ const Auth = () => {
     try {
       const saved = JSON.parse(localStorage.getItem(PENDING_OTP_KEY) ?? 'null');
       if (!saved || Date.now() - saved.sentAt > PENDING_OTP_TTL_MS) { localStorage.removeItem(PENDING_OTP_KEY); return; }
+      if (invitedBroker) return;
       setPhone(saved.phone); setSignup(!!saved.signup); setGender(saved.gender ?? ''); setCodeSent(true);
       setResendSeconds(Math.max(0, 60 - Math.floor((Date.now() - saved.sentAt) / 1000)));
     } catch { localStorage.removeItem(PENDING_OTP_KEY); }

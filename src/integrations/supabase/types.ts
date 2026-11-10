@@ -92,6 +92,35 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_broker_onboarding: {
+        Row: {
+          created_at: string
+          created_by: string
+          first_login_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          first_login_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          first_login_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_broker_onboarding_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_leads: {
         Row: {
           attempted_target: number | null
@@ -8784,6 +8813,10 @@ export type Database = {
         Args: { _referred: string; _referrer: string }
         Returns: Json
       }
+      admin_onboarding_recipient_silent: {
+        Args: { _phone: string }
+        Returns: boolean
+      }
       admin_purge_user_data: { Args: { _uid: string }; Returns: number }
       admin_remove_broker_license: { Args: { _user_id: string }; Returns: Json }
       admin_submit_broker_license: {
@@ -8937,6 +8970,7 @@ export type Database = {
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
+      complete_admin_broker_first_login: { Args: never; Returns: string }
       complete_official_license_verification: {
         Args: { _number: string; _uid: string }
         Returns: undefined
@@ -9139,6 +9173,10 @@ export type Database = {
       fb_rebalance_group_pool: { Args: { _owner: string }; Returns: number }
       fb_record_post_attempt_outcome: {
         Args: { _error: string; _job: string; _ok: boolean }
+        Returns: undefined
+      }
+      finalize_admin_broker_setup: {
+        Args: { _license: string; _user_id: string }
         Returns: undefined
       }
       finish_market_scrape_run: {

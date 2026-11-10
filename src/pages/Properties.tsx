@@ -87,6 +87,7 @@ import { useAffiliateConfigs } from '@/hooks/useAffiliate';
 import { useDeleteListings } from '@/hooks/useDeleteListings';
 import { PropertyDeleteDialog } from '@/components/properties/PropertyDeleteDialog';
 import { PropertyRowActions } from '@/components/properties/PropertyRowActions';
+import { BulkClosingCommission } from '@/components/properties/BulkClosingCommission';
 
 
 const PRICE_MIN = 0;
@@ -893,6 +894,7 @@ export default function Properties() {
             {multiSelectMode && selectedListingIds.size > 0 ? (
               <div className="flex items-center gap-2">
                 <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
+                {activeWorkspaceId && <BulkClosingCommission ids={Array.from(selectedListingIds)} workspaceId={activeWorkspaceId} />}
                 <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" title="מחיקת הנבחרים" aria-label="מחיקת הנבחרים" onClick={() => setDeleteTargetIds(Array.from(selectedListingIds))}><Trash2 className="h-4 w-4" /></Button>
               </div>
             ) : null}

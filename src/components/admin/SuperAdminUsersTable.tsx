@@ -15,6 +15,7 @@ import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-contro
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { Trash2, Pencil, Check, BadgeCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { BrokerInvitationDialog } from './BrokerInvitationDialog';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -130,6 +131,7 @@ export function SuperAdminUsersTable() {
           <TableCell className="whitespace-nowrap">{new Date(p.created_at).toLocaleDateString('he-IL')}</TableCell>
           <TableCell><Switch aria-label={`גישה עבור ${p.full_name}`} checked={!p.is_suspended} disabled={edit.isPending} onCheckedChange={v => edit.mutate({ id: p.id, suspend: !v })} /></TableCell>
           <TableCell><div className="flex gap-1">
+            {userRoles.some(role => ['agent', 'lead_agent', 'managing_broker', 'junior_agent'].includes(role)) && <BrokerInvitationDialog broker={p} />}
             <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`עריכת ${p.full_name || p.email}`} onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" aria-label={`מחיקת ${p.full_name || p.email}`} disabled={protectedId(p.id)} onClick={() => setPendingIds([p.id])}><Trash2 className="h-4 w-4" /></Button>
           </div></TableCell>

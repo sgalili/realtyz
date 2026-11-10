@@ -11,6 +11,7 @@
 // working (password element) until they are migrated.
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { profileGenderByAddress, personalizeMessage } from './personalLanguage.ts';
+import { recipientIsSilent } from './adminOnboarding.ts';
 
 export type Sms019Config = {
   username: string;
@@ -150,9 +151,11 @@ export async function sendSms019(
   phone: string,
   body: string,
   workspaceOwnerId?: string | null,
+  purpose: 'notification' | 'authentication' = 'notification',
 ): Promise<{ ok: boolean; provider?: string; message_id?: string | null; error?: string; scope?: string }> {
   const local = toLocalIL(phone);
   if (!local) return { ok: false, error: "מספר טלפון לא תקין" };
+  if (purpose !== 'authentication' && await recipientIsSilent(admin, local)) return { ok: false, error: 'admin_onboarding_silent' };
   if (body.includes('{{gender:')) {
     const gender = await profileGenderByAddress(admin, 'phone', local);
     body = personalizeMessage(body, gender);
