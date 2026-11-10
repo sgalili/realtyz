@@ -65,6 +65,7 @@ export function WorkspaceSelectorModal() {
         },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       toast.success('מרחב העבודה נוצר');
       setShowCreate(false);
       setForm({ name: '', email: '', phone: '' });

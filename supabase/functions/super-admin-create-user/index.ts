@@ -87,7 +87,20 @@ Deno.serve(async (req) => {
     if (created.user) {
       createdUser = created.user;
     } else {
-      return new Response(JSON.stringify({ error: createErr?.message ?? "createUser failed" }), {
+      const msg = createErr?.message ?? "createUser failed";
+      const dupEmail = /email.*already|already.*registered/i.test(msg) || (createErr as any)?.code === "email_exists";
+      const dupPhone = /phone.*already|phone_exists/i.test(msg) || (createErr as any)?.code === "phone_exists";
+      if (dupEmail || dupPhone) {
+        // Expected validation outcome: answer 200 with a friendly message so the UI shows a toast instead of crashing.
+        return new Response(JSON.stringify({
+          ok: false,
+          code: dupEmail ? "email_exists" : "phone_exists",
+          error: dupEmail
+            ? "כתובת האימייל הזו כבר רשומה במערכת. השתמשו בכתובת אחרת או ערכו את המשתמש הקיים בטבלת המשתמשים."
+            : "מספר הנייד הזה כבר משויך למשתמש קיים. ערכו את המשתמש הקיים בטבלת המשתמשים.",
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: msg }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
