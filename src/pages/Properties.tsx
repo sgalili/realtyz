@@ -1152,7 +1152,7 @@ export default function Properties() {
         </div>
         <Yad2ImportStatus banner />
         {activeWorkspaceId && importPromptKey && importJob.imported.length > 0 && <BulkClosingCommission key={importPromptKey} ids={importJob.imported} workspaceId={activeWorkspaceId} autoOpenKey={importPromptKey} trigger={() => null} onSaved={() => void unconfiguredQuery.refetch()} />}
-        {activeWorkspaceId && unconfiguredIds.length > 0 && <BulkClosingCommission ids={unconfiguredIds} workspaceId={activeWorkspaceId} onSaved={() => void unconfiguredQuery.refetch()} trigger={open => <div role="status" className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-warning/50 bg-warning/10 p-3 text-sm"><span className="font-medium">{unconfiguredIds.length} נכסים ללא עמלות סגירה ותמחור לידים מאושרים</span><Button size="sm" className="shrink-0" onClick={open}>הגדרת עמלות</Button></div>} />}
+        {activeWorkspaceId && unconfiguredIds.length > 0 && <BulkClosingCommission ids={unconfiguredIds} workspaceId={activeWorkspaceId} onSaved={() => void unconfiguredQuery.refetch()} trigger={open => <div role="status" className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-warning/50 bg-warning/10 p-3 text-sm"><span className="font-medium">{unconfiguredIds.length} נכסים ללא עמלות סגירה ותמחור לידים</span><Button size="sm" className="shrink-0" onClick={open}>הגדרת עמלות</Button></div>} />}
 
         {/* The source and deal toggles sit below the field and appear only while search is open. */}
         {/* Search-open row: options aligned to the field edge, tools at row end. */}
