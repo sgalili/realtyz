@@ -17,6 +17,7 @@ import { Trash2, Pencil, Check, BadgeCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrokerInvitationDialog } from './BrokerInvitationDialog';
 import { OfficialBrokerInvitationDialog } from './OfficialBrokerInvitationDialog';
+import { BrokerEmailBatchCard, BrokerEmailConsentButton, useBrokerEmailStates } from './BrokerEmailInvitations';
 import { BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOnboarding';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -47,6 +48,7 @@ export function SuperAdminUsersTable() {
       return [row.user_id, result.data as BrokerOnboardingStatus | null];
     })));
   } });
+  const emailStates = useBrokerEmailStates(isSuperAdmin);
   const profiles = useQuery({ queryKey: ['admin-profiles'], enabled: isSuperAdmin, queryFn: async () => {
     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (error) throw error;
@@ -120,6 +122,7 @@ export function SuperAdminUsersTable() {
       <SelectModeToggle active={selecting} onToggle={() => { setSelecting(!selecting); setSelected([]); }} total={rows.length} count={selected.length} onSelectAll={() => setSelected(eligible)} />
       {selecting && <Button variant="destructive" size="sm" disabled={!selected.length || deletion.isPending} onClick={() => setPendingIds([...selected])}><Trash2 className="h-4 w-4" />מחיקת {selected.length} משתמשים</Button>}
     </div>
+    {isSuperAdmin && <BrokerEmailBatchCard />}
     {profiles.isLoading ? <p role="status">טוען משתמשים…</p> : profiles.isError || roles.isError ? <p role="alert">טעינת המשתמשים נכשלה</p> : <div className="overflow-x-auto"><Table>
       <TableHeader><TableRow>{selecting && <TableHead>בחירה</TableHead>}<TableHead>שם מלא</TableHead><TableHead>אימייל</TableHead><TableHead>טלפון</TableHead><TableHead>סוג משתמש</TableHead><TableHead>הרשאות</TableHead><TableHead>הרשמה</TableHead><TableHead>פעיל</TableHead><TableHead>פעולות</TableHead></TableRow></TableHeader>
       <TableBody>{rows.map(p => {
@@ -144,6 +147,7 @@ export function SuperAdminUsersTable() {
           <TableCell><div className="flex gap-1 items-center">
             {userRoles.some(role => ['agent', 'lead_agent', 'managing_broker', 'junior_agent'].includes(role)) && <BrokerInvitationDialog broker={p} />}
             {onboarding.data?.[p.id] && userRoles.some(role => ['agent', 'lead_agent', 'managing_broker', 'junior_agent'].includes(role)) && <OfficialBrokerInvitationDialog key={p.id} broker={p} />}
+            {onboarding.data?.[p.id] && <BrokerEmailConsentButton broker={p} state={emailStates.data?.[p.id]} />}
             <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`עריכת ${p.full_name || p.email}`} onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" aria-label={`מחיקת ${p.full_name || p.email}`} disabled={protectedId(p.id)} onClick={() => setPendingIds([p.id])}><Trash2 className="h-4 w-4" /></Button>
           </div></TableCell>

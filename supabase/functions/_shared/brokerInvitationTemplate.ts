@@ -1,20 +1,24 @@
 export const BROKER_TEMPLATE_LANGUAGE = 'he';
 export const BROKER_TEMPLATE_BODY = `שלום {brokerName},
-צוות TORAFF מזמין אותך להיכנס למרחב העבודה שלך באמצעות קוד אימות, לעבור על פרטי הנכסים, ולהגדיר עמלת סגירה ותמחור פניות לפני אישור הפרסום בלוח השותפים.
-הנכסים אינם מתפרסמים ללא אישורך. ניתן להשלים ולתקן את הפרטים מתוך הנכסים שלי.
-לכניסה מאובטחת ולקבלת קוד אימות: {authLink}
+כאן צוות TORAFF. ריכזנו עבורך את פרטי הנכסים הפעילים שלך במרחב עבודה אישי, כדי לחסוך לך את ההזנה הידנית.
+הנכסים אינם מתפרסמים ללא אישורך, ותוכל לבדוק ולתקן כל פרט בעצמך.
+אם תרצה לקבל קישור כניסה אישי, השב להודעה זו במילה "כן". אם אינך מעוניין, השב "הסר" ולא נפנה אליך שוב.
 בברכה, צוות TORAFF`;
 
+/** Converts editable text to Meta body. {brokerName} once; {authLink} optional (link-less wording is the default). */
 export function templateBody(text: string): string {
   const clean = text.trim();
   if (clean.length < 80 || clean.length > 1024) throw new Error('נוסח התבנית חייב להכיל 80 עד 1024 תווים');
-  if ((clean.match(/\{brokerName\}/g) ?? []).length !== 1 || (clean.match(/\{authLink\}/g) ?? []).length !== 1) throw new Error('יש לשמור פעם אחת את {brokerName} ואת {authLink} בנוסח');
+  const links = (clean.match(/\{authLink\}/g) ?? []).length;
+  if ((clean.match(/\{brokerName\}/g) ?? []).length !== 1 || links > 1) throw new Error('יש לשמור פעם אחת את {brokerName}; {authLink} רשות, פעם אחת לכל היותר');
   const body = clean.replace('{brokerName}', '{{1}}').replace('{authLink}', '{{2}}');
   if (/[{}]/.test(body.replace('{{1}}', '').replace('{{2}}', ''))) throw new Error('משתנים נוספים אינם נתמכים בתבנית זו');
-  if (body.indexOf('{{1}}') > body.indexOf('{{2}}')) throw new Error('שם המתווך חייב להופיע לפני קישור הכניסה');
+  if (links && body.indexOf('{{1}}') > body.indexOf('{{2}}')) throw new Error('שם המתווך חייב להופיע לפני קישור הכניסה');
   if (body.split(/\s+/).length < 25) throw new Error('יש להוסיף מלל מספק סביב משתני התבנית');
   return body;
 }
+
+export const templateHasLink = (body: string) => body.includes('{{2}}');
 
 export async function invitationTemplateName(body: string): Promise<string> {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body));

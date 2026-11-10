@@ -436,3 +436,6 @@
 - [x] 34 focused tests passed; signed-in Card 8 showed ₪7,000, ₪40/50/80 and ₪700 closing immediately as complete without consent. Guest trophy opened one pricing window with inline course/exam links. Mobile screenshots and build OK; no listing published.
 
 - [ ] Facebook cloud connect: service key saved; actual remote browser launch remains dependent on GoLogin account Cloud Browser access.
+- [x] Consent-only broker invitation emails in batches of 25, with unsubscribe
+- [x] Link-free official WhatsApp invitation wording (needs Meta approval)
+- [ ] Group import of Bright Data brokers with their listings as drafts

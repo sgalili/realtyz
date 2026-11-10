@@ -125,6 +125,13 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          email_consent_at: string | null
+          email_consent_by: string | null
+          email_consent_note: string | null
+          email_invited_at: string | null
+          email_message_id: string | null
+          email_unsubscribe_token: string
+          email_unsubscribed_at: string | null
           first_login_at: string | null
           invitation_message_id: string | null
           invited_at: string | null
@@ -133,6 +140,13 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          email_consent_at?: string | null
+          email_consent_by?: string | null
+          email_consent_note?: string | null
+          email_invited_at?: string | null
+          email_message_id?: string | null
+          email_unsubscribe_token?: string
+          email_unsubscribed_at?: string | null
           first_login_at?: string | null
           invitation_message_id?: string | null
           invited_at?: string | null
@@ -141,6 +155,13 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          email_consent_at?: string | null
+          email_consent_by?: string | null
+          email_consent_note?: string | null
+          email_invited_at?: string | null
+          email_message_id?: string | null
+          email_unsubscribe_token?: string
+          email_unsubscribed_at?: string | null
           first_login_at?: string | null
           invitation_message_id?: string | null
           invited_at?: string | null

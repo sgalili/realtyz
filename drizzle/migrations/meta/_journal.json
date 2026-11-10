@@ -1009,6 +1009,13 @@
       "when": 1794334203819,
       "tag": "0143_broker_onboarding_actual_publication_state",
       "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1794343570609,
+      "tag": "0144_broker_email_consent",
+      "breakpoints": true
     }
   ]
 }

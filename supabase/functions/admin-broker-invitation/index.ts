@@ -1,7 +1,7 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'https://esm.sh/zod@3.25.76';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { BROKER_TEMPLATE_BODY, BROKER_TEMPLATE_LANGUAGE, templateBody, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
+import { BROKER_TEMPLATE_BODY, BROKER_TEMPLATE_LANGUAGE, templateBody, templateHasLink, invitationTemplateName, officialBrokerPhone } from '../_shared/brokerInvitationTemplate.ts';
 
 const schema = z.object({
   action: z.enum(['status', 'register', 'send']),
@@ -47,7 +47,7 @@ Deno.serve(async req => {
     let template = live.data?.find((t: { name: string; language: string }) => t.name === name && t.language === BROKER_TEMPLATE_LANGUAGE);
     if (template && template.components?.find((c: { type: string }) => c.type === 'BODY')?.text !== body) return json({ error: 'נוסח Meta אינו תואם לתצוגה. יש לרענן לפני שליחה.' }, 409);
     if (input.action === 'register' && !template) {
-      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [['ישראל ישראלי', 'https://toraff.co.il/auth?broker=00000000-0000-4000-8000-000000000001']] } }] });
+      template = await call(`${cfg.waba_id}/message_templates`, { name, language: BROKER_TEMPLATE_LANGUAGE, category: 'MARKETING', components: [{ type: 'BODY', text: body, example: { body_text: [templateHasLink(body) ? ['ישראל ישראלי', 'https://toraff.co.il/auth?broker=00000000-0000-4000-8000-000000000001'] : ['ישראל ישראלי']] } }] });
     }
     if (input.action !== 'send') return json({ name, status: template?.status ?? 'NOT_REGISTERED', text: input.text, sender: '972537983832' });
     if (!input.broker_id || !input.request_id || !input.consent) return json({ error: 'נדרשים מתווך, מזהה שליחה ואישור הסכמת הנמען' }, 400);
@@ -70,7 +70,7 @@ Deno.serve(async req => {
       const site = new URL(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il');
       if (site.protocol !== 'https:' || /lovable\./.test(site.hostname)) throw new Error('Invalid public site');
       const link = `${site.origin}/auth?broker=${encodeURIComponent(broker.id)}`;
-      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: broker.full_name?.trim() || 'מתווך' }, { type: 'text', text: link }] }] } });
+      sent = await call(`${cfg.phone_number_id}/messages`, { messaging_product: 'whatsapp', to: phone, type: 'template', template: { name, language: { code: BROKER_TEMPLATE_LANGUAGE }, components: [{ type: 'body', parameters: [{ type: 'text', text: broker.full_name?.trim() || 'מתווך' }, ...(templateHasLink(body) ? [{ type: 'text', text: link }] : [])] }] } });
     } catch (e) {
       await admin.from('broker_invitation_sends').update({ status: 'unknown' }).eq('request_id', input.request_id);
       throw e;

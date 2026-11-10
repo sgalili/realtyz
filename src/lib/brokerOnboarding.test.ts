@@ -13,12 +13,13 @@ describe('official broker invitation rules', () => {
   it('does not claim publication without inventory', () => {
     expect(brokerStage({ first_login_at: '2026-11-10', pending_properties: 0, published_properties: 0 })).toBe('pending_inventory');
   });
-  it('uses two ordered positional variables and rejects changed variable layout', () => {
+  it('defaults to link-less wording and validates variables', () => {
     const body = templateBody(BROKER_TEMPLATE_BODY);
-    expect(body.match(/\{\{\d\}\}/g)).toEqual(['{{1}}', '{{2}}']);
-    expect(() => templateBody(BROKER_TEMPLATE_BODY.replace('{authLink}', ''))).toThrow();
+    expect(body.match(/\{\{\d\}\}/g)).toEqual(['{{1}}']);
+    expect(templateBody(BROKER_TEMPLATE_BODY.replace('בברכה', 'קישור: {authLink} בברכה'))).toContain('{{2}}');
+    expect(() => templateBody(BROKER_TEMPLATE_BODY.replace('{brokerName}', ''))).toThrow();
     expect(() => templateBody(BROKER_TEMPLATE_BODY + ' {unknown}')).toThrow();
-    expect(() => templateBody(BROKER_TEMPLATE_BODY.replace('{brokerName}', '{authLink}').replace('מאובטחת ולקבלת קוד אימות: {authLink}', 'מאובטחת ולקבלת קוד אימות: {brokerName}'))).toThrow();
+    expect(() => templateBody('{authLink} ' + BROKER_TEMPLATE_BODY)).toThrow();
   });
   it('requires a different approval for every fixed-text edit', async () => {
     const body = templateBody(BROKER_TEMPLATE_BODY);

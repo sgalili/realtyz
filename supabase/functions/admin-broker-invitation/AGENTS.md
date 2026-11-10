@@ -1,3 +1,3 @@
 # Broker invitation safety
 - Super Admin invitations use the configured official platform WABA, never the recipient workspace's number; template text is content-addressed and live approval gates sending. Why: exact preview and Meta compliance.
-- Track acceptance separately from delivery; request IDs prevent retries duplicating an uncertain send and onboarding remains auth-bound. Why: no false delivery or OTP bypass.
+- Track acceptance separately from delivery; request IDs prevent retries duplicating an uncertain send and onboarding remains auth-bound. Why: no false delivery or OTP bypass.- Broker invitation emails (admin-broker-email-invitation) send only to onboarding rows with a Super Admin-recorded consent, skip unsubscribed/signed-in brokers, claim before sending, cap batches via BROKER_EMAIL_BATCH_MAX and always carry an unsubscribe link. Why: no unsolicited bulk email.
