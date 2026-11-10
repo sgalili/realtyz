@@ -4,6 +4,8 @@ import { PricingCardHeader } from './PricingCardHeader';
 import { CollapsedOffer } from './CollapsedOffer';
 import { PublisherWhatsAppIcon } from './PublisherWhatsAppIcon';
 import { LeadQuestionConfigurator } from '@/components/affiliate/LeadQuestionConfigurator';
+import { checkYad2BeforeImport, createInactiveYad2Draft } from '@/lib/yad2Preflight';
+import { listingToDraft } from '@/lib/adRecovery';
 import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
 import { pricingCardComplete, pricingCardMissing } from '@/lib/pricingCardSummary';
 import { publisherClosingDefault } from '@/lib/publisherPricing';
@@ -789,6 +791,18 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
     try {
       const token = url.pathname.match(/\/realestate\/item\/(?:[a-z0-9-]+\/)?([a-z0-9]+)(?=[\/?#]|$)/i)?.[1] ?? null;
       const target = token ? `https://www.yad2.co.il/realestate/item/${token}` : sourceUrl;
+      const choice = await checkYad2BeforeImport(target);
+      if (choice === 'skip') return;
+      if (choice === 'draft') {
+        if (!activeWorkspaceId) throw new Error('יש לבחור משרד פעיל');
+        const id = await createInactiveYad2Draft(target, activeWorkspaceId);
+        const { data: draft, error } = await supabase.from('listings').select('*').eq('workspace_owner_id', activeWorkspaceId).eq('id', id).single();
+        if (error) throw error;
+        setFields({ ...listingToDraft(draft), listingId: id, publisherType: fields.publisherType, contactName: publisherName, contactWhatsapp: publisherPhone });
+        setImportSlide(false); setReviewMode(true); setStep(0); setExpandedStep('step-2'); setMyPropsSave('saved');
+        void queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+        return;
+      }
       const saved = await readRecentYad2Listing(token, activeWorkspaceId);
       const { data: u, error } = saved ? { data: saved, error: null } : await supabase.functions.invoke('yad2-unlocker', { body: { url: target, limit: 1, pages: 1, import_item: true } });
       if (error || u?.error) {

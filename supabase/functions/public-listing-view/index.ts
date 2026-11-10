@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     const workspace_properties = (workspaceRows ?? []).map((row) => publicProperty(row));
     const ownAttribution = {
       broker_name: profile?.full_name || profile?.broker_byline || null,
-      office_name: brand?.agency_name || workspace?.workspace_name || "שם המשרד לא צוין",
+      office_name: advertiserText(brand?.agency_name, workspace?.workspace_name) || null,
       broker_license_number: licenseNumber(profile?.broker_license_number),
       agency_logo_url: brand?.landscape_logo_url || brand?.logo_url || workspace?.workspace_logo_url || null,
     };

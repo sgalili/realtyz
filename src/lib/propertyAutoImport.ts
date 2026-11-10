@@ -4,7 +4,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { UnifiedResult } from '@/lib/propertySearch';
-import { isTerminalListing } from './publicationSettings';
+import { checkYad2BeforeImport, createInactiveYad2Draft } from './yad2Preflight';
 
 async function findLocalBySourceUrl(url: string | null, workspaceId: string): Promise<string | null> {
   if (!url) return null;
@@ -14,7 +14,7 @@ async function findLocalBySourceUrl(url: string | null, workspaceId: string): Pr
     .eq('workspace_owner_id', workspaceId)
     .eq('source_url', url)
     .maybeSingle();
-  if (data && (isTerminalListing(data.status) || data.canonical_duplicate_of)) throw new Error('הנכס הוסר או נמכר ואינו זמין לייבוא מחדש');
+  if (data?.canonical_duplicate_of) return data.canonical_duplicate_of;
   return (data?.id as string | undefined) ?? null;
 }
 
@@ -26,7 +26,7 @@ async function findLocalByExternalId(externalId: string | null, workspaceId: str
     .eq('workspace_owner_id', workspaceId)
     .eq('external_id', externalId)
     .maybeSingle();
-  if (data && (isTerminalListing(data.status) || data.canonical_duplicate_of)) throw new Error('הנכס הוסר או נמכר ואינו זמין לייבוא מחדש');
+  if (data?.canonical_duplicate_of) return data.canonical_duplicate_of;
   return (data?.id as string | undefined) ?? null;
 }
 
@@ -82,6 +82,9 @@ export async function autoImportResult(result: UnifiedResult): Promise<string> {
 
   if (result.source === 'yad2') {
     if (!result.url) throw new Error('missing_source_url');
+    const choice = await checkYad2BeforeImport(result.url);
+    if (choice === 'skip') throw new Error('ייבוא המודעה בוטל');
+    if (choice === 'draft') return createInactiveYad2Draft(result.url, workspaceId);
     const { error } = await supabase.functions.invoke('yad2-unlocker', { body: { url: result.url, import_item: true } });
     if (error) throw new Error(error.message || 'yad2_import_failed');
   } else if (result.source === 'homely' || result.source === 'webtiv') {

@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { importCommissionPayload, importBatchDealTypes, canApplyImportRule, readImportRule, saveImportRule, runPool, averagePricesByDealType, type ImportCommissionRule, type ImportDealType } from '@/lib/importCommissionDefaults';
 import { agencyUrlForRequest, isYad2AgencyUrl } from '@/lib/yad2ImportLinks';
 import { ImportCommissionDialog } from './ImportCommissionDialog';
+import { checkYad2BeforeImport, createInactiveYad2Draft } from '@/lib/yad2Preflight';
 import { Yad2ImportStatus } from './Yad2ImportStatus';
 import { useYad2ImportJob, setYad2ImportJob, getYad2ImportJob, resetYad2ImportJob, nextYad2ImportRun, currentYad2ImportRun, estimateRemainingMs, claimYad2CommissionPrompt, DISCOVERY_ESTIMATE_MS, DEFAULT_ITEM_MS } from '@/lib/yad2ImportJob';
 
@@ -125,7 +126,11 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
       setYad2ImportJob(p => ({ running: p.running + 1 }));
       let id: string | null = null; let type: string | null = null;
       try {
-        const { data: res, error: e } = await supabase.functions.invoke('yad2-unlocker', { body: { url: item, limit: 1, pages: 1, import_item: true } });
+        const choice = await checkYad2BeforeImport(item);
+        if (run !== currentYad2ImportRun()) return;
+        const { data: res, error: e } = choice === 'skip' ? { data: null, error: null } : choice === 'draft'
+          ? { data: { listing_id: await createInactiveYad2Draft(item, ws) }, error: null }
+          : await supabase.functions.invoke('yad2-unlocker', { body: { url: item, limit: 1, pages: 1, import_item: true } });
         if (!e && typeof res?.listing_id === 'string') {
           const { data: row, error: readError } = await supabase.from('listings').select('id, deal_type, features').eq('id', res.listing_id).eq('workspace_owner_id', ws).maybeSingle();
           if (readError || !row) throw readError ?? new Error('הנכס לא נשמר במשרד הנבחר');

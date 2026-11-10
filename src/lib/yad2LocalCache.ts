@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { isTerminalListing } from './publicationSettings';
 
 /** Only the active workspace's exact source identity may satisfy an import. */
 export async function readRecentYad2Listing(itemId: string | null, workspaceOwnerId: string | null) {
@@ -8,7 +7,7 @@ export async function readRecentYad2Listing(itemId: string | null, workspaceOwne
     .eq('workspace_owner_id', workspaceOwnerId).eq('source', 'yad2')
     .eq('external_id', itemId.toLowerCase()).limit(1).maybeSingle();
   if (error || !data) return null;
-  if (isTerminalListing(data.status) || data.canonical_duplicate_of) throw new Error('הנכס הוסר או נמכר ואינו זמין לייבוא מחדש');
+  if (data.canonical_duplicate_of) return null;
   const meta = (data.source_metadata ?? {}) as Record<string, any>;
   const fetchedAt = meta.source_fetched_at ?? meta.scraped_at;
   const age = Date.now() - Date.parse(String(fetchedAt ?? ''));

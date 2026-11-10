@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
+import { checkYad2BeforeImport, createInactiveYad2Draft } from '@/lib/yad2Preflight';
 import { useListingPublishers } from '@/hooks/useListingPublishers';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { Yad2ImportStatus } from '@/components/properties/Yad2ImportStatus';
@@ -616,6 +617,15 @@ export default function Properties() {
       setYad2Status({ step: 1, label: 'בודק מודעה שמורה או מייבא מיד2…', tone: 'busy' });
       const slow = window.setTimeout(() => setYad2Status((s) => s && s.tone === 'busy' ? { step: 2, label: 'סורק פרטים, תמונות, תיאור ומאפיינים…', tone: 'busy' } : s), 2500);
       try {
+        const choice = await checkYad2BeforeImport(url);
+        if (choice === 'skip') { setYad2Status(null); return; }
+        if (choice === 'draft') {
+          const id = await createInactiveYad2Draft(url, activeWorkspaceId);
+          setQ(''); setYad2Status(null);
+          void queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+          navigate(`/properties/${id}`, { state: { returnTo: '/properties' } });
+          return;
+        }
         const saved = await readRecentYad2Listing(token, activeWorkspaceId);
         if (saved) {
           defaultPoolRef.current.clear();

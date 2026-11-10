@@ -1,6 +1,6 @@
 # Publication safeguards
 - Publication dialogs share bounded fee editors and explicit consent; pause completes after saved readback without awaiting unrelated refreshes. Why: preserve existing authorization and avoid stalled success.
 - Account limits belong to the billing workspace owner and fail closed on unavailable reads; charging serializes rolling-day count and spend across tiers and upgrades. Why: prevent stale limits and duplicate count slots.
-- Inventory deduplication uses exact source identities, retains history and blocks terminal-source reimport through server tombstones. Why: protect references without merging unrelated search URLs.
+- Inventory deduplication retains exact-source history; tombstones restrict publication, never internal draft creation or manual edits. Imports use one queued inactive-ad draft/skip prompt. Why: editable inventory without duplicates or accidental republication.
 - Pricing-only entry expands the existing publisher sliders without changing admin read-first authorization; expanded table footers remain outside animation clipping. Why: consistent editing and boundary-contained actions.
-- Source advertiser fields reject placeholders and never fall back to the importing office. Why: preserve original broker identity without inventing branding.
+- Public source attribution preserves original evidence; internal property editing fills only missing fields from the signed-in verified broker profile. Why: useful private fallback without changing public advertiser identity.

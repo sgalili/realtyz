@@ -35,6 +35,7 @@ import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
 import { useAuth } from '@/hooks/useAuth';
 import { publicAdDescription, publicAdTitle } from '@/lib/publicAdPresentation';
+import { advertiserText } from '@/lib/advertiserIdentity';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
 import PropertyCommissionIcons from '@/components/public/PropertyCommissionIcons';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -217,8 +218,8 @@ export function normalizeListing(row: any, attribution?: any): PublicListing {
       (typeof row?.description === 'string' && row.description.trim()) ||
       '', sourceTitle),
     photos: collectPhotos(row),
-    brokerName: typeof attribution?.broker_name === 'string' ? attribution.broker_name : 'שם המתווך לא צוין',
-    officeName: typeof attribution?.office_name === 'string' ? attribution.office_name : 'שם המשרד לא צוין',
+    brokerName: advertiserText(attribution?.broker_name),
+    officeName: advertiserText(attribution?.office_name),
     brokerLicenceNumber: typeof attribution?.broker_license_number === 'string' ? attribution.broker_license_number : null,
     agencyLogoUrl: typeof attribution?.agency_logo_url === 'string' ? attribution.agency_logo_url : null,
     publisherKind: typeof attribution?.publisher_kind === 'string' ? attribution.publisher_kind : null,

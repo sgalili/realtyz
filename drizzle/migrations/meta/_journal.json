@@ -981,6 +981,20 @@
       "when": 1794330687147,
       "tag": "0139_allow_service_repair_of_canonical_inventory",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1794332425068,
+      "tag": "0140_allow_manual_inactive_inventory_updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1794332775210,
+      "tag": "0141_keep_existing_publication_flags_editable",
+      "breakpoints": true
     }
   ]
 }

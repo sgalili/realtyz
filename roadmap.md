@@ -1,5 +1,11 @@
 # Roadmap
 
+## Inactive Yad2 imports November 10
+- [x] Shared preflight and queued draft/skip prompt across pasted link, publisher, agency and search-result imports.
+- [x] Manual inactive-listing saves allowed; exact-source deduplication and publication-transition safeguards retained in migrations 0140/0141.
+- [x] Hide missing advertiser placeholders and fill internal editing gaps from the signed-in verified broker profile; public source attribution unchanged.
+- [x] Authenticated mobile verified simulated inactive status/skip; real selected-property unchanged save returned 204 and reload succeeded. Focused tests cover unpublished draft payload; fresh removed-source draft creation and scrape remain unverified.
+
 ## Shared lead question configuration November 10
 - [x] Shared expandable question/form-field builder added to publisher, reward and quick-publication lead cards.
 - [x] Preserve per-channel defaults, explicit removals and custom field types in scoped saves and reward drafts.

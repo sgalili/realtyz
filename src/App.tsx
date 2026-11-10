@@ -12,6 +12,7 @@ import { usePropertyPageAccess } from '@/hooks/usePropertyPageAccess';
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
 import { SocialDraftChargeDialog } from '@/components/campaigns/SocialDraftChargeDialog';
+import { InactiveYad2ImportDialog } from '@/components/properties/InactiveYad2ImportDialog';
 import { AppFooter } from "@/components/AppFooter";
 import { FaqHost } from "@/components/faq/FaqDialog";
 import { DemoModeProvider } from "@/hooks/useDemoMode";
@@ -597,6 +598,7 @@ const App = () => (
             <AppFooter />
             <FaqHost />
             <SocialDraftChargeDialog />
+            <InactiveYad2ImportDialog />
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>
