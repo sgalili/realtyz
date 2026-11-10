@@ -8,7 +8,7 @@ it('never sorts rewards, including saved legacy preferences, but preserves reord
   expect(result.current.sort).toBeNull();
   act(() => result.current.toggleSort('commissions'));
   expect(result.current.sort).toBeNull();
-  expect(result.current.visible).toEqual([...BOARD_COLUMNS].reverse().map(c => c.id));
+  expect(result.current.visible).toEqual([...BOARD_COLUMNS].reverse().filter(c => c.id !== 'publish').map(c => c.id));
   act(() => result.current.toggleSort('price'));
   expect(result.current.sort).toEqual({ id: 'price', descending: false });
 });
@@ -17,6 +17,19 @@ it('restores public-board default order while retaining hidden columns and sorti
   localStorage.setItem(key, JSON.stringify({ order: [...BOARD_COLUMNS].reverse().map(c => c.id), hidden: ['photo'], sort: { id: 'price', descending: true } }));
   const { result } = renderHook(() => usePublicBoardColumns('order-test', []));
   act(() => result.current.resetOrder());
-  expect(result.current.visible).toEqual(BOARD_COLUMNS.filter(c => c.id !== 'photo').map(c => c.id));
+  expect(result.current.visible).toEqual(BOARD_COLUMNS.filter(c => c.id !== 'photo' && c.id !== 'publish').map(c => c.id));
   expect(result.current.sort).toEqual({ id: 'price', descending: true });
+});
+it('excludes publication controls from public definitions even with saved publication preferences', () => {
+  localStorage.setItem('public-board-columns:v1:public-test', JSON.stringify({ order: BOARD_COLUMNS.map(c => c.id), hidden: [] }));
+  const { result } = renderHook(() => usePublicBoardColumns('public-test', []));
+  expect(result.current.definitions.some(c => c.id === 'publish')).toBe(false);
+  expect(result.current.visible).not.toContain('publish');
+  act(() => result.current.reset());
+  expect(result.current.visible).not.toContain('publish');
+});
+it('retains publication controls when explicitly configured for property management', () => {
+  const { result } = renderHook(() => usePublicBoardColumns('managed-test', [], { columns: [...BOARD_COLUMNS], value: () => null }));
+  expect(result.current.visible[0]).toBe('publish');
+  expect(result.current.definitions.some(c => c.id === 'publish')).toBe(true);
 });

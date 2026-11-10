@@ -56,7 +56,7 @@ export function usePublicBoardColumns<T = PublicCard>(identity: string, rows: T[
     setStored({ key, prefs: next });
     try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* Storage may be disabled. */ }
   };
-  const definitions = configuration?.columns ?? BOARD_COLUMNS;
+  const definitions = configuration?.columns ?? BOARD_COLUMNS.filter(column => column.id !== 'publish');
   const visible = prefs.order.filter(id => !prefs.hidden.includes(id) && definitions.some(column => column.id === id));
   const sorted = useMemo(() => {
     const sort = prefs.sort;
