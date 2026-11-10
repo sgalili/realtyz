@@ -12,6 +12,7 @@
   --a11y-focus: 205 100% 45%;
   --a11y-readable-font: Arial, "Assistant", sans-serif;
 }
+html[data-a11y-scaled] th > * { zoom: var(--a11y-scale); }
 html [data-a11y-text] { font-size: calc(var(--a11y-base-size) * var(--a11y-scale)) !important; }
 html[data-a11y-readable] body :not(svg):not(svg *) { font-family: var(--a11y-readable-font) !important; }
 html[data-a11y-links] body :is(a, a *, [role="link"]) {

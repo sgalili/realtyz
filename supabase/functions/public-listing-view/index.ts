@@ -181,9 +181,10 @@ Deno.serve(async (req) => {
       return {
         publisher_kind: publisherDisplayKind(m.publisher_kind ?? (broker ? "broker" : "private")),
         broker_name: boardPublisherName(name, publisherDisplayKind(m.publisher_kind ?? (broker ? "broker" : "private"))),
-        office_name: office ?? (broker ? "משרד תיווך" : m.publisher_kind === "private" ? "מפרסם פרטי" : null),
+        // Missing scraped agency: the importing office's own configured brand, never a generic label.
+        office_name: office ?? (broker ? (brand?.agency_name || workspace?.workspace_name || null) : m.publisher_kind === "private" ? "מפרסם פרטי" : null),
         broker_license_number: licence,
-        agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url) ?? txt(m.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id, name)),
+        agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url) ?? txt(m.avatar_url) ?? (broker ? (office ? null : ownAttribution.agency_logo_url) : privatePublisherAvatar(row.owner_id ?? row.id, name)),
       };
     };
     for (const row of [listing, ...(workspaceRows ?? [])]) (row as any).__attr = attributionFor(row as any);

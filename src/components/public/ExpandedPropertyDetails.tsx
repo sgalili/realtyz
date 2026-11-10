@@ -68,7 +68,7 @@ function perkGroup(text: string): 'edu' | 'transport' | 'other' {
   return 'other';
 }
 
-export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, gallery, hideRewards = false, rewardFacts }: { idOrSlug: string; hideRewards?: boolean; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; gallery?: ReactNode; rewardFacts?: RewardFacts }) {
+export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFavorite, onClose, actions, gallery, hideRewards = false, rewardFacts }: { idOrSlug: string; hideRewards?: boolean; isFav?: boolean; onFavorite?: () => void; onClose?: () => void; actions?: ReactNode; gallery?: ReactNode; rewardFacts?: RewardFacts }) {
   const { user } = useAuth();
   const { activeWorkspaceId, loading: workspaceLoading } = useWorkspace();
   const navigate = useNavigate();
@@ -194,11 +194,12 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   return (
     <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-base [container-type:inline-size]">
       <header className="min-w-0 space-y-3 pb-1">
-        {onClose && (
-          <div className="flex items-center justify-start">
-            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="סגירת פרטי הנכס" title="סגירה">
+        {(onClose || actions) && (
+          <div className="flex items-center justify-between">
+            {onClose ? <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="סגירת פרטי הנכס" title="סגירה">
               <X className="h-5 w-5" />
-            </Button>
+            </Button> : <span />}
+            {actions && <div className="flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>{actions}</div>}
           </div>
         )}
         <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} guestStack={!user} trailing={listing.id && (!hideRewards || !user) ? <PropertyCommissionIcons listingId={listing.id} raw={raw} facts={rewardFacts} /> : undefined} />

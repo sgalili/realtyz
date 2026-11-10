@@ -49,7 +49,7 @@ export default function BrokerAttribution({
         {(isPrivate || office || license) && <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
           {isPrivate && <span>{dealType === 'rent' ? 'משכיר' : dealType === 'sale' ? 'מוכר' : 'מפרסם פרטי'}</span>}
           {!isPrivate && office && office !== 'מפרסם פרטי' && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
-          {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}רישיון {license}</span>}
+          {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}<bdi dir="ltr">{license}</bdi></span>}
         </div>}
         {exclusive && !guestStack && (
           <span className={`flex w-fit items-center gap-1 text-xs font-semibold text-foreground ${compact ? 'mt-1' : 'mt-1.5'}`}>

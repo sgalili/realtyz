@@ -22,6 +22,7 @@ import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
+import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
 import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { ritaPropertyPremsg } from '@/lib/ritaPremsg';
@@ -451,7 +452,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
-                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} isMine={ownedIds.has(card.id)} share={<PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} />} />} idOrSlug={listingDetailIdentifier(card)} onClose={() => setExpandedId(null)} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards rewardFacts={{ reward_levels: card.reward_levels, closing_level: card.closing_level, reward_types: card.reward_types }} />}
+                              {open && <ExpandedPropertyDetails gallery={<PropertyGallerySlider photos={card.photos} alt={title} isMine={ownedIds.has(card.id)} share={<PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} />} />} idOrSlug={listingDetailIdentifier(card)} onClose={() => setExpandedId(null)} actions={ownedIds.has(card.id) ? <OwnerListingActions listingId={card.id} /> : undefined} isFav={favIds.has(card.id)} onFavorite={() => toggleFavorite(card)} hideRewards rewardFacts={{ reward_levels: card.reward_levels, closing_level: card.closing_level, reward_types: card.reward_types }} />}
                             </div>
                           </div>
                           </AnimatedExpansion>

@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 
 export const BOARD_COLUMNS = [
-  { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' },
+  { id: 'publish', label: 'פרסום' }, { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' },
   { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תגמולים' },
   { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
   { id: 'publisher', label: 'מפרסם' },
@@ -22,6 +22,8 @@ const validId = (id: unknown): id is BoardColumnId => BOARD_COLUMNS.some(c => c.
 export function upgradeBoardColumnOrder(order: BoardColumnId[]): BoardColumnId[] {
   // The retired 'deal' column is dropped from saved preferences; 'commissions' is inserted after 'price'.
   const next: BoardColumnId[] = order.filter((id): id is BoardColumnId => (id as string) !== 'deal');
+  // Owner tables gained a leading 'publish' column; boards without it simply ignore the id.
+  if (!next.includes('publish')) next.unshift('publish');
   if (next.includes('commissions')) return next;
   const priceIndex = next.indexOf('price');
   next.splice(priceIndex < 0 ? next.length : priceIndex + 1, 0, 'commissions');

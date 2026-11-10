@@ -8,9 +8,9 @@ describe('board column ordering', () => {
     expect(ids.slice(ids.indexOf('price'), ids.indexOf('price') + 2)).toEqual(['price', 'commissions']);
   });
   it('upgrades existing preferences, dropping deal and inserting commissions after price', () => {
-    expect(upgradeBoardColumnOrder(['photo', 'deal', 'address', 'price', 'rooms'] as never[])).toEqual(['photo', 'address', 'price', 'commissions', 'rooms']);
+    expect(upgradeBoardColumnOrder(['photo', 'deal', 'address', 'price', 'rooms'] as never[])).toEqual(['publish', 'photo', 'address', 'price', 'commissions', 'rooms']);
   });
   it('drops a saved deal column from customized orders', () => {
-    expect(upgradeBoardColumnOrder(['commissions', 'deal', 'price', 'photo'] as never[])).toEqual(['commissions', 'price', 'photo']);
+    expect(upgradeBoardColumnOrder(['commissions', 'deal', 'price', 'photo'] as never[])).toEqual(['publish', 'commissions', 'price', 'photo']);
   });
 });

@@ -22,7 +22,8 @@ export function AccessibilityEffects() {
       const sizes: Array<[HTMLElement, string]> = [];
       elements.forEach(element => {
         if (!(element instanceof HTMLElement) || measured.has(element)
-          || ['STYLE', 'SCRIPT', 'IMG', 'VIDEO', 'CANVAS'].includes(element.tagName)) return;
+          || ['STYLE', 'SCRIPT', 'IMG', 'VIDEO', 'CANVAS'].includes(element.tagName)
+          || element.closest('th')) return; // table headings scale via CSS zoom so re-rendered sort/drag labels never miss it
         // Snapshot px/rem/computed sizes once, then scale all existing and lazy-loaded screens.
         sizes.push([element, getComputedStyle(element).fontSize]);
       });
@@ -39,6 +40,7 @@ export function AccessibilityEffects() {
         root.toggleAttribute(`data-a11y-${key}`, next[key]);
       }
       root.style.setProperty('--a11y-scale', String(next.textScale));
+      root.toggleAttribute('data-a11y-scaled', next.textScale > 1);
       if (next.textScale > 1) measure(document.body);
       else {
         measured.forEach(element => { element.style.removeProperty('--a11y-base-size'); delete element.dataset.a11yText; });
