@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { InventoryComingSoonHost } from '@/components/InventoryCollection';
 import { QueryClient, QueryClientProvider, useQueryClient, useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation, useParams } from "react-router-dom";
 import { supabase } from '@/integrations/supabase/client';
@@ -599,6 +600,7 @@ const App = () => (
             <FaqHost />
             <SocialDraftChargeDialog />
             <InactiveYad2ImportDialog />
+            <InventoryComingSoonHost />
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>

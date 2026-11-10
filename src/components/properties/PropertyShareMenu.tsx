@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { shareProperties, mintShareUrlForResult, prepareCampaignListingIds, type ShareMode } from '@/lib/propertyShare';
 import { WaTemplatePicker, type WaTemplateSelection } from '@/components/whatsapp/WaTemplatePicker';
+import { showInventoryComingSoon, inventoryToolLocked } from '@/lib/inventoryCollection';
 
 /** Rotating status lines shown while a share is being dispatched. */
 const SEND_STATUS_MESSAGES = [
@@ -141,6 +142,7 @@ export function PropertyShareMenu({
   };
 
   const publishToSocial = async () => {
+    if (showInventoryComingSoon('facebook')) return;
     setBusy(true);
     try {
       const ids = await prepareCampaignListingIds(results);
@@ -184,7 +186,7 @@ export function PropertyShareMenu({
         {!hidePublish && (
           <>
             <DropdownMenuItem onSelect={() => void publishToSocial()} className="gap-2 text-sm">
-              <Megaphone className="h-4 w-4" /> פרסום ברשתות
+              <Megaphone className="h-4 w-4" /> פרסום ברשתות{inventoryToolLocked('facebook') && <span className="ms-auto text-xs text-muted-foreground">בקרוב</span>}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>

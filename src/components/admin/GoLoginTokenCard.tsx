@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { InventoryToolSoftLock } from '@/components/InventoryCollection';
 import { KeyRound, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,7 +53,7 @@ export function GoLoginTokenCard() {
     } catch (e) { toast.error((e as Error).message); } finally { setBusy(''); }
   };
   const check = status.last_check_status;
-  return <Card>
+  return <InventoryToolSoftLock tool="gologin"><Card>
     <CardHeader>
       <CardTitle className="flex items-center gap-2"><KeyRound className="h-4 w-4 text-primary" /> מפתח GoLogin</CardTitle>
       <CardDescription>המפתח משמש לפתיחת חלון החיבור המאובטח לפייסבוק. הערך השמור לא מוצג אף פעם.</CardDescription>
@@ -71,5 +72,5 @@ export function GoLoginTokenCard() {
       </div>
       <Button variant="outline" className="w-full sm:w-auto" onClick={() => void migrate()} disabled={!status.configured || !!busy}>{busy === 'migrate' && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}עדכון כל הפרופילים הקיימים ל-IP ישראלי ולשם TORAFF</Button>
     </CardContent>
-  </Card>;
+  </Card></InventoryToolSoftLock>;
 }

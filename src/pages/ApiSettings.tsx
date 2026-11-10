@@ -49,6 +49,7 @@ import { SpeedToLeadCard } from '@/components/settings/SpeedToLeadCard';
 import { MetaDirectConnectionCard } from '@/components/profile/MetaDirectConnectionCard';
 import { CloudPostingSessionCard } from '@/components/profile/CloudPostingSessionCard';
 import { FacebookPersonalConnectCard } from '@/components/social/FacebookPersonalConnectCard';
+import { InventoryToolSoftLock } from '@/components/InventoryCollection';
 
 
 interface ApiConfig {
@@ -931,8 +932,10 @@ const ApiSettings = () => {
 
       <SectionShell title="רשתות חברתיות" subtitle="פייסבוק ואינסטגרם וקבוצות מותאמות">
         <div id="facebook" className="scroll-mt-24 space-y-4">
+          <InventoryToolSoftLock tool="facebook">
           <FacebookPersonalConnectCard />
           <MetaDirectConnectionCard />
+          </InventoryToolSoftLock>
         </div>
 
       </SectionShell>

@@ -8,6 +8,7 @@ import { FACEBOOK_CONNECTION_OPEN } from '@/lib/facebookConnectionFlow';
 import { callMetaPageConnect } from '@/lib/facebookPageConnect';
 import { FacebookCloudConnectGate } from './FacebookCloudConnectGate';
 import { useCloudSessionConnected } from '@/hooks/useCloudSession';
+import { showInventoryComingSoon } from '@/lib/inventoryCollection';
 
 type Page = { id: string; name: string | null; picture: string | null };
 export function FacebookConnectionDialog() {
@@ -37,7 +38,7 @@ export function FacebookConnectionDialog() {
     } finally { if (run === generation.current) setLoading(false); }
   };
   useEffect(() => {
-    const show = () => { if (owner) setOpen(true); };
+    const show = () => { if (showInventoryComingSoon('facebook')) return; if (owner) setOpen(true); };
     window.addEventListener(FACEBOOK_CONNECTION_OPEN, show);
     return () => window.removeEventListener(FACEBOOK_CONNECTION_OPEN, show);
   }, [owner]);

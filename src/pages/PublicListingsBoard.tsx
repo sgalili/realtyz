@@ -49,6 +49,7 @@ import { useAffiliateLicense } from '@/hooks/useAffiliateLicense';
 import { visibleToListingAudience } from '@/lib/listingAudience';
 import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { selectedMarketingCards } from '@/lib/marketingSelection';
+import { InventoryCollectionBanner, InventoryToolSoftLock } from '@/components/InventoryCollection';
 
 export type PublicCard = {
   id: string; slug: string | null; title: string | null; city: string | null; neighborhood: string | null;
@@ -358,11 +359,12 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
               sorting next to the view toggle at the far left, exactly like
               "הנכסים שלי". No count by default. The search panel grows below it,
               so this row never moves when the panel opens. */}
+          <InventoryCollectionBanner />
           {embedded && (
             <div className="flex shrink-0 items-center justify-between gap-0" style={{ marginInlineEnd: '-5px' }}>
               {marketingOnly && <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <SelectModeToggle active={selectMode} count={chosen.length} total={filtered.length} onToggle={() => { setSelectMode(value => !value); setSelected(new Set()); }} />
-                {chosen.length > 0 && <PropertyShareMenu results={chosen} label="שיווק מיידי" hideOpenPage />}
+                {chosen.length > 0 && <InventoryToolSoftLock tool="partner-network"><PropertyShareMenu results={chosen} label="שיווק מיידי" hideOpenPage /></InventoryToolSoftLock>}
               </div>}
               {!marketingOnly && <div className="relative shrink-0">
                 <Button

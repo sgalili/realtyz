@@ -1,5 +1,10 @@
 # Roadmap
 
+## Inventory collection phase November 10
+- [x] Add dismissible shared home/public-board notice with browser-persisted dismissal.
+- [x] Keep social connections, GoLogin and network marketing visible with preparation dialogs; inventory import/edit/publication and existing server jobs unchanged.
+- [x] 42 focused tests passed; public and authenticated home notice, reload dismissal and connected-account desktop/mobile preparation dialogs verified with no page errors. No external connection, property write or publication performed.
+
 ## Official broker invitations November 10
 - [x] Add Super Admin official-send preview and editable template submission/status from the official number.
 - [x] Track accepted invitation, authenticated entry and pending inventory approval; My Properties shows the current stage.

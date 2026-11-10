@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CampaignChannelPicker, DISTRIBUTION_CHANNELS } from './CampaignChannelPicker';
+import { INVENTORY_TOOL_EVENT } from '@/lib/inventoryCollection';
 
 const mocks = vi.hoisted(() => ({ state: vi.fn() }));
 
@@ -41,7 +42,19 @@ it.each(DISTRIBUTION_CHANNELS)('selects only the requested $id channel', ({ id, 
     </QueryClientProvider>,
   );
   fireEvent.click(screen.getByRole('button', { name: `בחירת ${label}` }));
-  expect(onSelect).toHaveBeenCalledExactlyOnceWith(id);
+  if (id === 'facebook' || id === 'instagram') expect(onSelect).not.toHaveBeenCalled();
+  else expect(onSelect).toHaveBeenCalledExactlyOnceWith(id);
+});
+
+it.each(['Facebook', 'Instagram'])('announces preparation for %s without changing the selected channel', label => {
+  const listener = vi.fn();
+  window.addEventListener(INVENTORY_TOOL_EVENT, listener);
+  const onSelect = vi.fn();
+  render(<CampaignChannelPicker selected={null} onSelect={onSelect} onBack={() => {}} />);
+  fireEvent.click(screen.getByRole('button', { name: `בחירת ${label}` }));
+  expect(listener).toHaveBeenCalledOnce();
+  expect(onSelect).not.toHaveBeenCalled();
+  window.removeEventListener(INVENTORY_TOOL_EVENT, listener);
 });
 
 it('returns to channel selection without selecting a different channel', () => {

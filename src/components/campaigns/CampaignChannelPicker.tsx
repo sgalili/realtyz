@@ -5,6 +5,7 @@ import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { FacebookPageSelector } from './FacebookPageSelector';
 import { SOCIAL_DRAFT_CREDITS } from '@/lib/socialDraftGeneration';
+import { inventoryToolLocked, showInventoryComingSoon } from '@/lib/inventoryCollection';
 
 export const DISTRIBUTION_CHANNELS = [
   { id: 'facebook', label: 'Facebook' },
@@ -40,11 +41,11 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
       {!channel && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {DISTRIBUTION_CHANNELS.map((item) => {
           const configured = campaignServicePrice(item.id, prices);
-          return <Button key={item.id} type="button" variant="outline" onClick={() => onSelect(item.id)} aria-label={`בחירת ${item.label}`}
+          return <Button key={item.id} type="button" variant="outline" onClick={() => { if (!showInventoryComingSoon(item.id)) onSelect(item.id); }} aria-label={`בחירת ${item.label}`}
             className="group relative h-auto min-h-36 flex-col gap-3 whitespace-normal rounded-lg border-border bg-card p-4 text-center hover:border-primary hover:bg-accent focus-visible:ring-primary [&_svg]:size-7">
             <CampaignServiceIcon channel={item.id} className="h-7 w-7" />
             <span className="flex flex-col items-center justify-center gap-1"><span className="text-base font-semibold">{item.label}</span>
-            <span className="text-xs font-normal text-muted-foreground">{configured ? `${formatCampaignCredits(configured.credits)} ל${configured.unit}` : isLoading ? 'טוען מחיר…' : 'המחירון אינו זמין'}</span></span>
+            <span className="text-xs font-normal text-muted-foreground">{inventoryToolLocked(item.id) ? 'בקרוב עם רשת השותפים' : configured ? `${formatCampaignCredits(configured.credits)} ל${configured.unit}` : isLoading ? 'טוען מחיר…' : 'המחירון אינו זמין'}</span></span>
             <ArrowLeft className="absolute left-2 top-2 !size-4 text-muted-foreground transition-transform motion-safe:group-hover:-translate-x-1" aria-hidden />
           </Button>;
         })}

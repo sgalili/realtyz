@@ -1,5 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// Exercise the live connection implementation independently of the temporary presentation gate.
+vi.mock('@/lib/inventoryCollection', () => ({ inventoryToolLocked: () => false, showInventoryComingSoon: () => false }));
 
 const mocks = vi.hoisted(() => ({ owner: 'workspace-a', state: vi.fn(), invoke: vi.fn(), sync: vi.fn(), navigate: vi.fn() }));
 vi.mock('@/hooks/useWorkspace', () => ({ useActiveWorkspaceOwnerId: () => mocks.owner }));

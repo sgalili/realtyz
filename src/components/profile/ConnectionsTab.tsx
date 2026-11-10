@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { InventoryToolSoftLock } from '@/components/InventoryCollection';
 import { useLocation } from 'react-router-dom';
 import { ChevronDown, Mail, MessageSquare, Phone, Settings2 } from 'lucide-react';
 import { WorkspaceMailboxCard, useWorkspaceMailbox } from '@/components/profile/WorkspaceMailboxCard';
@@ -662,6 +663,7 @@ export function ConnectionsTab() {
   return (
     <div dir="rtl" className="space-y-3 text-right">
       {sections.map((s) => (
+        <InventoryToolSoftLock key={`${activeWorkspaceId}:${s.id}`} tool={s.id}>
         <ConnectionSection
           key={`${activeWorkspaceId}:${s.id}`}
           title={s.title}
@@ -679,6 +681,7 @@ export function ConnectionsTab() {
         >
           {s.node}
         </ConnectionSection>
+        </InventoryToolSoftLock>
       ))}
       {isSuperAdmin && <CloudAutomationHealthCard key={activeWorkspaceId} />}
       {isSuperAdmin && <GlobalAiBrainCard />}

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FacebookConnectionDialog } from './FacebookConnectionDialog';
 import { openFacebookConnection } from '@/lib/facebookConnectionFlow';
+vi.mock('@/lib/inventoryCollection', () => ({ showInventoryComingSoon: () => false }));
 
 const mocks = vi.hoisted(() => ({ owner: 'workspace-a', call: vi.fn(), connected: true }));
 vi.mock('@/hooks/useCloudSession', () => ({ useCloudSessionConnected: () => mocks.connected }));

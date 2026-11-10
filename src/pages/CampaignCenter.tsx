@@ -15,6 +15,8 @@ import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { postNetwork, postNetworkCounts, togglePostNetwork } from '@/lib/postNetworkFilters';
 import { FacebookCloudConnectGate } from '@/components/social/FacebookCloudConnectGate';
+import { InventoryToolSoftLock } from '@/components/InventoryCollection';
+import { showInventoryComingSoon } from '@/lib/inventoryCollection';
 import { InstagramConnectGate } from '@/components/social/InstagramConnectGate';
 import { collapseCampaignCards, stableCardCompare, groupPostDestination, FIRST_COMMENT_WARNING, isCommentOnlyFailure } from '@/lib/campaignCardHandling';
 import { isProjectTarget, projectCampaignTargets } from '../../supabase/functions/_shared/projectCampaignTargets';
@@ -8275,6 +8277,7 @@ const CampaignCenter = () => {
 
 
   const handleConnectChannel = async (c: ChannelCard) => {
+    if (showInventoryComingSoon(c.id)) return;
     // Direct (non-social) outbound channels — verify creds, then flip
     // the per-broker flag stored on profiles.direct_channels.
     if (c.id === 'ivr' || c.id === 'ai-call') {
@@ -8416,6 +8419,7 @@ const CampaignCenter = () => {
   };
 
   const selectWizardChannel = (channel: DistributionChannel) => {
+    if (showInventoryComingSoon(channel)) return;
     setWizardChannel(channel);
     setFbReady(false);
     const next = new URLSearchParams(searchParams);
@@ -8717,6 +8721,7 @@ const CampaignCenter = () => {
           {wizardChannel && wizardChannel !== 'facebook' && wizardChannel !== 'instagram' && <div className="motion-safe:animate-in motion-safe:fade-in duration-200">{wizardChannel === 'ivr' ? <IvrBroadcastPanel /> : <SmsBlastSimulator dedicatedChannel={wizardChannel} />}</div>}
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
+          <InventoryToolSoftLock tool={wizardChannel ?? ''}>
           {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
           <Dialog open={fbCloudConnectOpen} onOpenChange={setFbCloudConnectOpen}>
             <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
@@ -9076,6 +9081,7 @@ const CampaignCenter = () => {
             );
           })()}
 
+          </InventoryToolSoftLock>
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           

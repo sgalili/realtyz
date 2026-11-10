@@ -10,6 +10,7 @@ import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { GroupDiscoveryDialog } from './GroupDiscoveryDialog';
 import { BrandIcon } from '@/components/BrandIcon';
 import { usePersonalLanguage } from '@/i18n/personalLanguage';
+import { inventoryToolLocked, showInventoryComingSoon } from '@/lib/inventoryCollection';
 
 const RECONNECT_HINT = 'החיבור לפרופיל הענן של פייסבוק נותק או דורש כניסה מחדש. לחצו "חיבור באמצעות פייסבוק", היכנסו לחשבון בחלון הענן שנפתח וחזרו לכאן.';
 /** Friendly Hebrew guidance instead of raw API errors for cloud-session failures. */
@@ -28,7 +29,14 @@ export function cloudSessionErrorMessage(code?: string, message?: string): strin
  * publishing screen. A "connect later" link lets the user skip straight to
  * publishing. No browser extension is involved.
  */
-export function FacebookCloudConnectGate({ alwaysVisible = false, connectionOnly = false, showConnectButton = true, onSynced, onDiscover, onStatusChange }: { alwaysVisible?: boolean; connectionOnly?: boolean; showConnectButton?: boolean; onSynced?: () => void; onDiscover?: () => void; onStatusChange?: (ready: boolean) => void }) {
+type FacebookCloudConnectProps = { alwaysVisible?: boolean; connectionOnly?: boolean; showConnectButton?: boolean; onSynced?: () => void; onDiscover?: () => void; onStatusChange?: (ready: boolean) => void };
+export function FacebookCloudConnectGate(props: FacebookCloudConnectProps) {
+  if (inventoryToolLocked('facebook')) return <section dir="rtl" aria-label="חיבור לפייסבוק" className="space-y-2">
+    <Button type="button" className="h-12 w-full gap-2 bg-social-facebook text-base text-social-foreground hover:bg-social-facebook/90" onClick={() => showInventoryComingSoon('facebook')}><Facebook className="h-5 w-5" />חיבור באמצעות פייסבוק<span className="ms-auto text-sm">בקרוב</span></Button>
+  </section>;
+  return <ActiveFacebookCloudConnectGate {...props} />;
+}
+function ActiveFacebookCloudConnectGate({ alwaysVisible = false, connectionOnly = false, showConnectButton = true, onSynced, onDiscover, onStatusChange }: FacebookCloudConnectProps) {
   const { text: personal } = usePersonalLanguage();
   const owner = useActiveWorkspaceOwnerId();
   const [open, setOpen] = useState(false);
