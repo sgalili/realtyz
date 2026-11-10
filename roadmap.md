@@ -1,5 +1,11 @@
 # Roadmap
 
+## Property presentation November 10
+- [x] Restyle shared publication globes and remove visible publication heading while retaining reorder controls.
+- [x] Place multi-select immediately before search without an adjacent selection checkbox.
+- [x] Space edit actions and display original advertiser office/logo and broker/license using the existing authorized projection.
+- [x] Signed-in desktop/mobile verified editing actions, loaded office logo, number-only license, adjacent selection/search, no toolbar checkbox and green/gray table globes; nine existing publishing/presentation tests passed and build OK. No property values or publication flags changed.
+
 ## Admin-led broker onboarding November 10
 - [x] Admin broker setup requires explicit license approval, records service-owned silence, and never sends credentials; SMS/WhatsApp dispatch guards suppress recipient delivery before first authenticated entry (requested SMS OTP excepted).
 - [x] Broker-specific public OTP invitation preview/copy available after creation and beside brokers in the users table; no login tokens/passwords in invitations.

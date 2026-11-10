@@ -909,9 +909,6 @@ export default function Properties() {
 
             <SortDropdown value={sortBy} onChange={setSortBy} />
 
-            <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
-
-            {multiSelectMode && (() => { const ids = pagedResults.map(r => r.localId).filter(Boolean) as string[]; const all = ids.length > 0 && ids.every(id => selectedListingIds.has(id)); return <Checkbox className="mx-1" checked={all} aria-label={all ? 'ביטול בחירת הכל' : 'בחירת הכל'} title={all ? 'ביטול בחירת הכל' : 'בחירת הכל'} onCheckedChange={() => setSelectedListingIds(all ? new Set() : new Set(ids))} />; })()}
             {multiSelectMode && selectedListingIds.size > 0 ? (
               <div className="flex items-center gap-2">
                 <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
@@ -939,6 +936,9 @@ export default function Properties() {
 
         {/* Row 1 — [magnify][search field, collapsed by default] ⇢ [sort][select][count][view] */}
         <div data-testid="property-filter-row" className="flex flex-nowrap items-center gap-1">
+            <div className="order-first shrink-0">
+              <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
+            </div>
             <Button
               type="button"
               variant="ghost"

@@ -97,7 +97,7 @@ export function BoardColumnHeader({ id, controls }: { id: BoardColumnId; control
   return <th ref={setNodeRef} data-column={id} aria-sort={sorted ? controls.sort?.descending ? 'descending' : 'ascending' : 'none'} style={{ transform: CSS.Transform.toString(transform), transition }} className={`group/column px-2 pb-0 pt-2 text-right font-semibold ${isDragging ? 'relative z-10 bg-muted opacity-80' : ''} ${id === 'price' ? 'max-sm:sticky max-sm:left-0 max-sm:z-[4] max-sm:bg-card' : ''}`}>
     <div className="flex items-center gap-0.5">
       {id === 'commissions' ? <span className="text-xs font-semibold">{label}</span> : <Button variant="ghost" size="sm" onClick={() => controls.toggleSort(id)} className="h-auto min-h-7 gap-1 !whitespace-normal px-0 py-0.5 text-xs font-semibold hover:bg-transparent" aria-label={`מיון לפי ${label}`}>
-        <span className="whitespace-normal text-start leading-tight">{label}</span>{sorted && (controls.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
+        <span className={id === 'publish' ? 'sr-only' : 'whitespace-normal text-start leading-tight'}>{label}</span>{sorted && (controls.sort?.descending ? <ArrowDown className="h-3 w-3 shrink-0" /> : <ArrowUp className="h-3 w-3 shrink-0" />)}
       </Button>}
       {id === 'commissions' && <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" aria-label="מה אומרים הצבעים?"><HelpCircle className="h-3.5 w-3.5" /></Button></PopoverTrigger><PopoverContent align="start" className="w-64 space-y-2 text-right text-sm font-normal leading-relaxed">
         <p className="font-bold">מה אומרים הצבעים?</p>

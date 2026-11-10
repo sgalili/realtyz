@@ -187,6 +187,10 @@ a, a *, [role="link"], button[class*="underline"], button[class*="underline"] *,
 
     /* SUCCESS / WARNING */
     --success: 134 61% 41%;
+    --publication-neutral-light: 210 6% 66%;
+    --publication-neutral-dark: 210 7% 43%;
+    --publication-glow: 0 0 8px hsl(var(--success) / 0.45);
+    --publication-draft-gradient: linear-gradient(145deg, hsl(var(--publication-neutral-light)), hsl(var(--publication-neutral-dark)));
     --lead-form: 0 0% 0%;
     --lead-whatsapp: 142 70% 40%;
     --lead-phone: 217 91% 55%;
@@ -2177,4 +2181,19 @@ svg.lucide-megaphone {
   border-width: 0 !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+.publication-globe-live,
+.publication-globe-live:hover {
+  background: hsl(var(--success));
+  color: hsl(var(--success-foreground));
+  box-shadow: var(--publication-glow);
+}
+.publication-globe-draft,
+.publication-globe-draft:hover {
+  background: var(--publication-draft-gradient);
+  color: hsl(var(--success-foreground));
+}
+.publication-globe-slash {
+  box-shadow: 0 0 0 1px hsl(var(--publication-neutral-dark));
 }

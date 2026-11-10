@@ -14,18 +14,18 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-/** Public-board status as a bare globe: green when live, gray with a diagonal slash when not. The label is hover-only. */
+/** Shared square publication control; status remains accessible and tooltip-only. */
 export function PublishStatusGlobe({ live, busy = false, actionable = false, onClick }: { live: boolean; busy?: boolean; actionable?: boolean; onClick?: (event: ReactMouseEvent) => void }) {
   const label = live ? 'מפורסם בלוח הציבורי' : actionable ? 'לא מפורסם בלוח הציבורי — לחיצה תפתח את חלון הפרסום' : 'לא מפורסם בלוח הציבורי';
   const icon = (
-    <span className={cn('relative inline-flex h-5 w-5 shrink-0 items-center justify-center', live ? 'text-success' : 'text-muted-foreground opacity-60')}>
+    <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
       {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Globe className="h-4 w-4" aria-hidden="true" />}
-      {!live && !busy && <span aria-hidden="true" className="pointer-events-none absolute h-[1.5px] w-[19px] -rotate-45 rounded-full bg-current" />}
+      {!live && !busy && <span aria-hidden="true" className="publication-globe-slash pointer-events-none absolute h-[2px] w-[23px] -rotate-45 rounded-full bg-current" />}
     </span>
   );
   const body = onClick
-    ? <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label={label} onClick={onClick}>{icon}</Button>
-    : <span role="img" aria-label={label} className="inline-flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>;
+    ? <Button type="button" variant="ghost" size="icon" className={cn('publication-globe h-8 w-8 shrink-0 rounded-sm', live ? 'publication-globe-live' : 'publication-globe-draft')} aria-label={label} onClick={onClick}>{icon}</Button>
+    : <span role="img" aria-label={label} className={cn('publication-globe inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm', live ? 'publication-globe-live' : 'publication-globe-draft')}>{icon}</span>;
   return (
     <Tooltip delayDuration={150}>
       <TooltipTrigger asChild>{body}</TooltipTrigger>

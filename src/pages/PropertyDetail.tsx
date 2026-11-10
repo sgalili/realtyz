@@ -33,6 +33,7 @@ import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
 import WorkspacePropertiesMap from '@/components/properties/WorkspacePropertiesMap';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
+import PropertyAdvertiserHeader from '@/components/properties/PropertyAdvertiserHeader';
 import { addressMapQuery, fullPropertyAddress } from '@/lib/fullAddress';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { PropertyYad2SectionsCard, type Yad2Sections } from '@/components/properties/PropertyYad2SectionsCard';
@@ -1373,7 +1374,7 @@ export default function PropertyDetail() {
   };
 
   return (
-    <div className="px-3 pb-3 pt-[10px] sm:px-6 sm:pb-6 space-y-6" dir="rtl">
+    <div className={`px-3 pb-3 ${editMode ? 'pt-6' : 'pt-[10px]'} sm:px-6 sm:pb-6 space-y-6`} dir="rtl">
       {/* Background sync is NEVER blocking: the whole page stays interactive and
           a subtle corner pill reports honest progress (no fake 100%). */}
       {hydrating && <BackgroundSyncPill />}
@@ -1385,7 +1386,7 @@ export default function PropertyDetail() {
           property page. Owner link sits at the start (right in RTL) and the
           action bar is pinned to the top-left corner, 10px below the blue hero
           while the property content scrolls underneath. */}
-      <div className="property-action-bar sticky top-[-10px] z-30 flex min-h-10 items-center justify-between gap-2 pointer-events-none">
+      <div className={`property-action-bar sticky ${editMode ? 'top-3' : 'top-[-10px]'} z-30 flex min-h-10 items-center justify-between gap-2 pointer-events-none`}>
         {owner ? (
           <Link to={`/crm/profile/${owner.id}`} className="pointer-events-auto shrink-0 text-[16px] font-semibold text-primary hover:underline" title="פתיחת כרטיס הלקוח">
             {owner.full_name}
@@ -1455,6 +1456,8 @@ export default function PropertyDetail() {
         )}
         </div>
       </div>
+
+      <PropertyAdvertiserHeader key={property.id} listingId={property.id} />
 
       {/* Headline · neighborhood · price */}
       <header className="space-y-2">
