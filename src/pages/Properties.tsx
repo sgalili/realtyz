@@ -1,4 +1,3 @@
-import { Building2 } from 'lucide-react';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { Table } from '@/components/ui/table';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
