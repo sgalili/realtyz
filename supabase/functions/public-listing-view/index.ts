@@ -5,6 +5,7 @@ import { maskContactText, toPublicCard } from "../_shared/publicMask.ts";
 import { verifiedSourceLicense, licenseNumber, publicYad2AdUrl } from "../_shared/yad2Publisher.ts";
 import { publicDeveloperDetails } from '../_shared/publicDeveloperDetails.ts';
 import { publicPricing, boardPublisherName, publisherDisplayKind, privatePublisherAvatar } from '../_shared/publicListingVisibility.ts';
+import { advertiserText, affiliatedOffice } from '../_shared/advertiserIdentity.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -165,26 +166,27 @@ Deno.serve(async (req) => {
       ? await admin.from("crm_profiles").select("id, full_name").in("id", ownerIds)
       : { data: [] as any[] };
     const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o.full_name]));
+    const { data: affiliatedBrand } = await admin.from('white_label_settings').select('agency_name,logo_url,landscape_logo_url').eq('agency_name', 'אנגלו סכסון הרצליה').order('created_at', { ascending: true }).limit(1).maybeSingle();
     const attributionFor = (row: Record<string, any>) => {
       if (!row.source || row.source === "manual") {
         const kind = publisherDisplayKind(row.features?.publisher_type ?? row.source_metadata?.publisher_kind, (ownerRoles ?? []).map(item => item.role));
         return { ...ownAttribution, publisher_kind: kind, broker_name: boardPublisherName(ownAttribution.broker_name ?? row.features?.contact_name, kind) };
       }
       const m = (row.source_metadata ?? {}) as Record<string, any>;
-      const txt = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+      const txt = (v: unknown) => advertiserText(v) || null;
       const name = txt(m.broker_name) ?? txt(m.contact_name) ?? txt(m.owner_name) ?? txt(ownerMap.get(row.owner_id));
       const office = txt(m.agency_name) ?? txt(m.office_name) ?? txt(m.merchant_name);
       const licence = verifiedSourceLicense(m);
+      const affiliation = affiliatedOffice(name, affiliatedBrand);
       // "בלעדיות" on Yad2 means a broker/agency posted the ad, never a private owner.
       const exclusive = [row.additional_details, row.attributes].some((d: any) => d?.isAssetExclusive === true);
       const broker = exclusive || !!licence || !!office || ["broker", "agency"].includes(m.publisher_kind);
       return {
         publisher_kind: publisherDisplayKind(m.publisher_kind ?? (broker ? "broker" : "private")),
         broker_name: boardPublisherName(name, publisherDisplayKind(m.publisher_kind ?? (broker ? "broker" : "private"))),
-        // Missing scraped agency: the importing office's own configured brand, never a generic label.
-        office_name: office ?? (broker ? (brand?.agency_name || workspace?.workspace_name || null) : m.publisher_kind === "private" ? "מפרסם פרטי" : null),
+        office_name: office ?? affiliation?.office_name ?? null,
         broker_license_number: licence,
-        agency_logo_url: txt(m.office_logo_url) ?? txt(m.agency_logo_url) ?? txt(m.avatar_url) ?? (broker ? (office ? null : ownAttribution.agency_logo_url) : privatePublisherAvatar(row.owner_id ?? row.id, name)),
+        agency_logo_url: affiliation?.agency_logo_url ?? txt(m.office_logo_url) ?? txt(m.agency_logo_url) ?? txt(m.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id, name)),
       };
     };
     for (const row of [listing, ...(workspaceRows ?? [])]) (row as any).__attr = attributionFor(row as any);

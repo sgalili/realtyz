@@ -9,6 +9,8 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
   const [enlarged, setEnlarged] = useState<string | null>(null);
+  const gesture = useRef<{ x: number; y: number; top: number; owner: HTMLElement | null; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
 
   useEffect(() => {
     const el = trackRef.current;
@@ -26,7 +28,7 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
     if (!el || !photos.length) return;
     const next = (i + photos.length) % photos.length;
     const slide = el.children[next] as HTMLElement | undefined;
-    slide?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    if (slide) el.scrollTo({ left: -next * el.clientWidth, behavior: 'smooth' });
     setIndex(next);
   };
 
@@ -44,10 +46,35 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
   return (
     <div className="min-w-0 space-y-2" onClick={(e) => e.stopPropagation()}>
       <div className="group relative overflow-hidden rounded-lg bg-muted">
-        <div ref={trackRef} dir="rtl" className="flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto scroll-smooth sm:aspect-[16/7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div ref={trackRef} data-property-gallery dir="rtl" className="flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth touch-pan-y sm:aspect-[16/7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          onPointerDown={event => {
+            let owner = event.currentTarget.parentElement;
+            while (owner && !(owner.scrollHeight > owner.clientHeight && /auto|scroll/.test(getComputedStyle(owner).overflowY))) owner = owner.parentElement;
+            gesture.current = { x: event.clientX, y: event.clientY, top: owner?.scrollTop ?? 0, owner, moved: false };
+            suppressClick.current = false;
+          }}
+          onPointerMove={event => {
+            const start = gesture.current;
+            if (!start || event.pointerType !== 'mouse' || event.buttons !== 1) return;
+            const dy = event.clientY - start.y;
+            if (Math.abs(dy) > 6 && Math.abs(dy) > Math.abs(event.clientX - start.x)) {
+              start.moved = true; suppressClick.current = true;
+              if (start.owner) start.owner.scrollTop = start.top - dy;
+              else window.scrollBy(0, -event.movementY);
+            }
+          }}
+          onPointerUp={event => {
+            const start = gesture.current; gesture.current = null;
+            if (!start) return;
+            const dx = event.clientX - start.x, dy = event.clientY - start.y;
+            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { suppressClick.current = true; goTo(index + (dx > 0 ? 1 : -1)); }
+            else if (Math.abs(dy) > 6) suppressClick.current = true;
+          }}
+          onPointerCancel={() => { gesture.current = null; suppressClick.current = true; }}
+          onClickCapture={event => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}>
           {photos.map((src, i) => (
             <div key={`${src}-${i}`} className="h-full w-full shrink-0 snap-start">
-              <Button type="button" variant="ghost" aria-label={`הגדלת תמונה ${i + 1}`} className="h-full w-full p-0" onClick={() => setEnlarged(src)}><img src={src} alt={`${alt} ${i + 1}`} loading={i === 0 ? 'eager' : 'lazy'} className="h-full w-full object-cover" /></Button>
+              <Button type="button" variant="ghost" aria-label={`הגדלת תמונה ${i + 1}`} className="h-full w-full touch-pan-y p-0" onClick={() => setEnlarged(src)}><img src={src} alt={`${alt} ${i + 1}`} draggable={false} loading={i === 0 ? 'eager' : 'lazy'} className="h-full w-full select-none object-cover" /></Button>
             </div>
           ))}
         </div>

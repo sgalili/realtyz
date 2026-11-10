@@ -34,7 +34,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
   onSetSelected?: (ids: Set<string>) => void;
   favoriteIds: Set<string>;
   onFavorite: (id: string) => void;
-  onPublished: (ids: string[]) => void;
+  onPublished: (ids: string[], live?: boolean) => void;
 }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
@@ -110,7 +110,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                           : <><PropertyGallerySlider photos={card.photos} alt={title} />{card.description && <p className="whitespace-pre-line text-sm text-foreground">{card.description}</p>}</>)}
                       </div>
                     </AnimatedExpansion>
-                    {open && localId && <PropertyContactActions listingId={localId} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} showShare={false} formAsButton compact className="mx-3 mb-1 lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
+                    {open && localId && <PropertyContactActions listingId={localId} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} showShare={false} formAsButton compact className="sticky bottom-0 z-20 mx-3 border-t border-border bg-card py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
                   </td>
                 </tr>,
               ];

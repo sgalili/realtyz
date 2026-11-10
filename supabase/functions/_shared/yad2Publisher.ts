@@ -1,3 +1,4 @@
+import { advertiserText } from './advertiserIdentity.ts';
 /** Only explicit advertiser fields from the selected ad, never related ads/site branding. */
 export function publisherImageUrl(value: unknown): string | null {
   if (value && typeof value === 'object') {
@@ -47,11 +48,11 @@ export function verifiedSourceLicense(meta: Record<string, any>): string | null 
 }
 
 export function extractYad2Publisher(ad: any, sourceUrl: string): Record<string, unknown> {
-  const txt = (...values: unknown[]) => values.find(v => typeof v === 'string' && v.trim()) as string | undefined;
+  const txt = (...values: unknown[]) => advertiserText(...values);
   const agency = ad?.agency ?? ad?.office ?? ad?.broker?.agency ?? ad?.customer?.agency ?? ad?.agencyDetails ?? {};
   const broker = ad?.broker ?? ad?.contact ?? ad?.customer ?? {};
-  const office = txt(ad?.agency_name, ad?.office_name, agency.name, agency.title, ad?.merchant_name);
-  const name = txt(ad?.broker_name, ad?.contact_name, broker.name, broker.fullName);
+  const office = txt(ad?.agency_name, ad?.office_name, agency.name, agency.title, ad?.merchant_name, ad?.contact_info?.agency_name, ad?.merchant?.name);
+  const name = txt(ad?.broker_name, ad?.contact_name, broker.name, broker.fullName, ad?.contact_info?.name, ad?.agencyDetails?.brokerName);
   const number = licenseNumber(ad?.broker_license_number ?? ad?.broker_license ?? broker.licenseNumber ?? broker.license_number ?? broker.brokerLicenseNumber);
   const logo = [ad?.office_logo_url, ad?.office_logo, ad?.merchant_logo, ad?.agency_logo_url, ad?.agencyLogo, agency.logo, agency.logoUrl, agency.image, broker.logo, broker.logoUrl, ad?.contact_info?.logo, ad?.merchant?.logo_url, ad?.metaData?.agencyLogo].map(publisherImageUrl).find(Boolean)
     // Fallback: Yad2 office logos live under the agency mini-site image path inside the ad's own payload.
@@ -77,7 +78,7 @@ export function extractYad2PublisherHtml($: any, sourceUrl: string): Record<stri
   const result: Record<string, unknown> = {};
   if (!section.length) return result;
   const text = section.text().replace(/\s+/g, ' ');
-  const clean = (value: unknown) => typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+  const clean = (value: unknown) => advertiserText(value);
   const office = clean(section.find('[data-testid="agency-name"], [data-testid="office-name"], [class*="agencyName"], [class*="AgencyName"]').first().text());
   const name = clean(section.find('[data-testid="broker-name"], [data-testid="contact-name"], [class*="brokerName"], [class*="BrokerName"], [class*="contactName"]').first().text());
   if (office) result.office_name = office;

@@ -18,7 +18,8 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
         let target = event.target instanceof HTMLElement ? event.target : null;
         while (target && target !== element) {
           const css = getComputedStyle(target);
-          if ((/(auto|scroll)/.test(css.overflowY) && target.scrollHeight > target.clientHeight) || (/(auto|scroll)/.test(css.overflowX) && target.scrollWidth > target.clientWidth)) return;
+          const horizontal = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY);
+          if ((horizontal && /(auto|scroll)/.test(css.overflowX) && target.scrollWidth > target.clientWidth) || (!horizontal && /(auto|scroll)/.test(css.overflowY) && target.scrollHeight > target.clientHeight)) return;
           target = target.parentElement;
         }
         const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1;

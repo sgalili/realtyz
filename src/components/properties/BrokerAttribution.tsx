@@ -1,6 +1,7 @@
 import { Award, Building2, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { advertiserText } from '@/lib/advertiserIdentity';
 
 type BrokerAttributionProps = {
   brokerName?: string | null;
@@ -30,9 +31,9 @@ export default function BrokerAttribution({
   table = false,
   guestStack = false,
 }: BrokerAttributionProps) {
-  const broker = brokerName?.trim() && !brokerName.includes('לא צוין') ? brokerName.trim() : '';
-  const office = officeName?.trim() && !officeName.includes('לא צוין') ? officeName.trim() : '';
-  const isPrivate = publisherKind === 'private' || (!publisherKind && office === 'מפרסם פרטי');
+  const broker = advertiserText(brokerName);
+  const office = advertiserText(officeName);
+  const isPrivate = publisherKind === 'private' || (!publisherKind && officeName === 'מפרסם פרטי');
   const license = !isPrivate && /^[1-9]\d{0,7}$/.test(licenceNumber?.trim() ?? '') ? licenceNumber?.trim() : '';
 
   return (
@@ -45,10 +46,9 @@ export default function BrokerAttribution({
         )}
       </div>}
       <div className="min-w-0 flex-1 text-right">
-        <p title={broker || 'מפרסם המודעה'} className={`${compact ? 'text-xs' : 'text-sm'} whitespace-normal break-words font-bold text-foreground`}>{broker || 'מפרסם המודעה'}</p>
+        {(broker || office) && <p title={broker || office} className={`${compact ? 'text-xs' : 'text-sm'} whitespace-normal break-words font-bold text-foreground`}>{broker || office}</p>}
         {(isPrivate || office || license) && <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          {isPrivate && <span>{dealType === 'rent' ? 'משכיר' : dealType === 'sale' ? 'מוכר' : 'מפרסם פרטי'}</span>}
-          {!isPrivate && office && office !== 'מפרסם פרטי' && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
+          {!isPrivate && office && broker && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
           {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}<bdi dir="ltr">{license}</bdi></span>}
         </div>}
         {exclusive && !guestStack && (

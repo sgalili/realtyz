@@ -8,15 +8,16 @@ describe('Public publisher strip', () => {
     expect(container.querySelector('[data-publisher-attribution]')).toContainElement(screen.getByText('₪80'));
     expect(screen.getByText('מפרסם')).toBeInTheDocument();
   });
-  it.each([['sale', 'מוכר'], ['rent', 'משכיר']])('uses a silhouette and correct subtitle for %s', (dealType, subtitle) => {
+  it.each(['sale', 'rent'])('uses a silhouette without generic seller labels for %s', (dealType) => {
     const { container } = render(<BrokerAttribution publisherKind="private" dealType={dealType} brokerName="מפרסם" logoUrl="https://example.com/logo.png" licenceNumber="12345" />);
-    expect(screen.getByText(subtitle)).toBeInTheDocument();
+    expect(screen.queryByText('מוכר')).not.toBeInTheDocument();
+    expect(screen.queryByText('משכיר')).not.toBeInTheDocument();
     expect(container.querySelector('img')).toBeNull();
     expect(screen.queryByText(/רישיון/)).not.toBeInTheDocument();
   });
   it('recognizes existing public private attribution without inferring from missing branding', () => {
     const { rerender } = render(<BrokerAttribution officeName="מפרסם פרטי" dealType="rent" />);
-    expect(screen.getByText('משכיר')).toBeInTheDocument();
+    expect(screen.queryByText('משכיר')).not.toBeInTheDocument();
     rerender(<BrokerAttribution brokerName="מפרסם" />);
     expect(screen.queryByText('משכיר')).not.toBeInTheDocument();
   });

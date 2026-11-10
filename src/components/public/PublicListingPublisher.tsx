@@ -363,8 +363,8 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
 
   const [questionsOpen, setQuestionsOpen] = useState<'questionsWhatsapp' | 'questionsPhone' | null>(null);
   const [formFieldsOpen, setFormFieldsOpen] = useState(false);
-  const [openLeads, setOpenLeads] = useState<Record<string, boolean>>({});
-  const [closingOpen, setClosingOpen] = useState(false);
+  const [openLeads, setOpenLeads] = useState<Record<string, boolean>>(() => pricingOnly ? { Form: true, Whatsapp: true, Phone: true } : {});
+  const [closingOpen, setClosingOpen] = useState(pricingOnly);
   // Lead cards always render under the price (rent prices have ≤4 digits).
   const showRewards = true;
   useEffect(() => {

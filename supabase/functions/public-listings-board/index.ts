@@ -11,6 +11,7 @@ import { isFeedEligible, audienceCanSeeListing, meetsBoardRules, boardPublisherN
 import { verifiedSourceLicense } from '../_shared/yad2Publisher.ts';
 import { publicPricing } from '../_shared/publicListingVisibility.ts';
 import { boardFilterFacts } from '../_shared/boardFilterFacts.ts';
+import { advertiserText, affiliatedOffice } from '../_shared/advertiserIdentity.ts';
 
 // Coarse 0-3 lead price level matching the publisher sliders; reveals no amount.
 const LEAD_RANGES = { form: [40, 150], whatsapp: [50, 200], phone: [80, 250] } as const;
@@ -101,20 +102,22 @@ Deno.serve(async (req) => {
       sourceOwners.length ? admin.from('crm_profiles').select('id,full_name').in('id', sourceOwners) : Promise.resolve({ data: [] }),
       ownerIds.length ? admin.from('user_roles').select('user_id,role').in('user_id', ownerIds) : Promise.resolve({ data: [] }),
     ]);
+    const { data: affiliatedBrand } = await admin.from('white_label_settings').select('agency_name,logo_url,landscape_logo_url').eq('agency_name', 'אנגלו סכסון הרצליה').order('created_at', { ascending: true }).limit(1).maybeSingle();
     const attribution = (row: any) => {
       const profile = profiles.data?.find(item => item.id === (row.workspace_owner_id ?? row.user_id));
       const brand = brands.data?.find(item => item.user_id === (row.workspace_owner_id ?? row.user_id));
       const metadata = row.source_metadata ?? {};
-      const text = (value: unknown) => typeof value === 'string' && value.trim() ? value.trim() : null;
+      const text = (value: unknown) => advertiserText(value) || null;
       if (row.source && row.source !== 'manual') {
         const office = text(metadata.agency_name) ?? text(metadata.office_name) ?? text(metadata.merchant_name);
         const license = verifiedSourceLicense(metadata);
         const broker = !!office || !!license || ['broker', 'agency'].includes(metadata.publisher_kind);
         const publisherName = text(metadata.broker_name) ?? text(metadata.contact_name) ?? text(metadata.owner_name) ?? text(owners.data?.find(item => item.id === row.owner_id)?.full_name);
+        const affiliation = affiliatedOffice(publisherName, affiliatedBrand);
         return {
           broker_name: publisherName,
-          office_name: office,
-          agency_logo_url: text(metadata.office_logo_url) ?? text(metadata.agency_logo_url) ?? text(metadata.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id, publisherName)),
+          office_name: office ?? affiliation?.office_name ?? null,
+          agency_logo_url: affiliation?.agency_logo_url ?? text(metadata.office_logo_url) ?? text(metadata.agency_logo_url) ?? text(metadata.avatar_url) ?? (broker ? null : privatePublisherAvatar(row.owner_id ?? row.id, publisherName)),
           broker_license_number: license,
           publisher_kind: publisherDisplayKind(metadata.publisher_kind ?? (broker ? 'broker' : 'private')),
         };

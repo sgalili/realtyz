@@ -1,0 +1,1 @@
+export { advertiserText } from '../../supabase/functions/_shared/advertiserIdentity';

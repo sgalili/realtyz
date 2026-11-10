@@ -194,14 +194,13 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   return (
     <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-base [container-type:inline-size]">
       <header className="min-w-0 space-y-3 pb-1">
-        {(onClose || actions) && (
-          <div className="flex items-center justify-between">
-            {onClose ? <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="סגירת פרטי הנכס" title="סגירה">
-              <X className="h-5 w-5" />
-            </Button> : <span />}
-            {actions && <div className="flex shrink-0 items-center" onClick={(e) => e.stopPropagation()}>{actions}</div>}
+        <div data-expanded-title-row className="flex min-w-0 items-start gap-2">
+          <h2 className="min-w-0 flex-1 break-words text-base font-bold">{listing.title}</h2>
+          <div className="flex shrink-0 items-center" onClick={event => event.stopPropagation()}>
+            {onClose && <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="סגירת פרטי הנכס" title="סגירה"><X className="h-5 w-5" /></Button>}
+            {actions}
           </div>
-        )}
+        </div>
         <BrokerAttribution compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} guestStack={!user} trailing={listing.id && (!hideRewards || !user) ? <PropertyCommissionIcons listingId={listing.id} raw={raw} facts={rewardFacts} /> : undefined} />
         {galleryEl}
         <div className="flex min-w-0 items-start justify-between gap-3">

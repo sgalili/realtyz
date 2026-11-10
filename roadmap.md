@@ -1,5 +1,12 @@
 # Roadmap
 
+## Property editing and expanded-card polish November 10
+- [x] Authorized table pricing opens the existing editor with all four sliders and caps expanded; Super Admin read-first unlock preserved.
+- [x] Shared advertiser evidence rejects generic names; original office branding replaces importing-workspace fallbacks, including established Anglo Saxon affiliation.
+- [x] Vertical wheel, touch and mouse gallery gestures scroll the surrounding results; expanded menu sits at the top-left title edge.
+- [x] Visible publication column title and boundary-contained sticky contact bar verified through the end of the expanded card.
+- [x] 26 focused assertions passed across two runs; authenticated mobile/desktop verified four default sliders, loaded Tal Zano office logo/name/source license, gallery wheel/touch/mouse scrolling and footer boundary. Build OK; no real property values changed. Fresh Yad2 import and real pricing save not performed.
+
 ## Publication controls and permanent inventory protection November 10
 - [x] Accurate public/broker-only confirmation, pause action, opposite footer actions and lead help; server feed restricts zero-lead offers to authorized brokers.
 - [x] Closing-first sliders, three lead icons, interaction-only encouragement and per-tier daily caps.
