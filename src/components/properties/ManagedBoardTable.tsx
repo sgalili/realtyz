@@ -40,7 +40,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
   const rows = useMemo<Row[]>(() => results.map(result => ({ result, card: toCard(result) })), [results, toCard]);
   const columns = usePublicBoardColumns<Row>(`managed:${user?.id || 'anon'}:${activeWorkspaceId || 'none'}`, rows, {
     columns: [
-      { id: 'published', label: 'פרסום בלוח ציבורי' }, { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תגמולים' },
+      { id: 'photo', label: 'תמונה' }, { id: 'address', label: 'כותרת' }, { id: 'price', label: 'מחיר' }, { id: 'commissions', label: 'תגמולים' },
       { id: 'rooms', label: 'חדרים' }, { id: 'sqm', label: 'מ״ר' }, { id: 'floor', label: 'קומה' },
     ],
     value: ({ card }, id) => id === 'price' ? card.price ?? null : id === 'rooms' ? card.rooms ?? null : id === 'sqm' ? card.sqm ?? null : id === 'floor' ? card.floor ?? null : id === 'address' ? publicAdTitle(card) : null,
@@ -66,6 +66,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
           <thead className="bg-muted/40 text-[14px] text-muted-foreground">
             <tr>
               {selectionMode && <th className="w-8 p-2" aria-label="בחירה" />}
+              <th className="whitespace-nowrap p-2 text-start font-medium">פרסום בלוח ציבורי</th>
               {visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
               <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
             </tr>
@@ -79,14 +80,15 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
               return [
                 <tr key={result.key} data-row-id={result.key} tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }} className="cursor-pointer border-t text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   {selectionMode && <td className="p-2" onClick={e => e.stopPropagation()}>{localId ? <Checkbox checked={selectedIds.has(localId)} onCheckedChange={() => onToggleSelected(localId)} aria-label="בחירת נכס" /> : null}</td>}
-                  {visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
-                    {id === 'published' ? (() => {
+                  <td className="p-2">{(() => {
                       const raw = (result.raw ?? {}) as Record<string, unknown>;
                       const live = raw.is_published === true && raw.affiliate_enabled !== false && (raw.status == null || raw.status === 'live');
                       return <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold', live ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground')}>
                         {live ? <Globe className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}{live ? 'מפורסם' : 'לא מפורסם'}
                       </span>;
-                    })() : id === 'photo' ? (
+                    })()}</td>
+                  {visible.map(id => <td key={id} data-column={id} className={cn('p-2', id === 'address' && 'text-foreground', id === 'price' && 'whitespace-nowrap max-sm:sticky max-sm:left-0 max-sm:z-[3] max-sm:bg-card', id === 'price' && (card.deal_type === 'rent' ? 'text-sale' : 'text-success'), id === 'floor' && 'whitespace-nowrap', (id === 'rooms' || id === 'sqm' || id === 'floor') && 'text-[16px]')}>
+                    {id === 'photo' ? (
                       <div className="relative w-12">
                         {card.photos?.[0] ? <img src={card.photos[0]} alt="" className="h-12 w-12 rounded object-cover" loading="lazy" /> : <div className="h-12 w-12 rounded bg-muted" />}
                         {(card.photos?.length ?? 0) > 1 && <span aria-label={`${card.photos!.length} תמונות`} className="absolute right-0.5 top-0.5 rounded bg-foreground/70 px-1 text-[9px] font-semibold leading-tight text-background">{card.photos!.length}</span>}
@@ -105,7 +107,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                   </div></td>
                 </tr>,
                 <tr key={`${result.key}-x`} className="bg-muted/10">
-                  <td colSpan={visible.length + 1 + (selectionMode ? 1 : 0)} className="p-0">
+                  <td colSpan={visible.length + 2 + (selectionMode ? 1 : 0)} className="p-0">
                     <AnimatedExpansion open={open}>
                       <div className="sticky right-0 min-w-0 space-y-3 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                         {open && (localId
