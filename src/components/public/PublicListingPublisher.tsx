@@ -27,6 +27,7 @@ import { floorNumber, updateFloorSelection, validFloorPair } from '@/lib/propert
 import { commitPricingEdit, pricingEditWorkspace } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
 import { leadPriceLevel, closingLevelClass, closingRewardLevel } from '@/lib/leadPriceRanges';
+import { allLeadPricesZero } from '@/lib/leadPricesZero';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 // "פרסום חינם" — multi-step listing wizard (Yad2-style flow) for the public board.
 // Every step is saved to an IndexedDB draft, so an unauthenticated visitor can fill
@@ -525,11 +526,24 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       (payload.features as Record<string, unknown>).commission_terms_accepted_at = new Date().toISOString();
       if (draftFields.brokerLicenseReview) (payload.features as Record<string, unknown>).awaiting_license_approval = true;
       let request;
-      if (draftFields.listingId && activeWorkspaceId) {
-        const { data: existing, error: readError } = await supabase.from('listings').select('features, contact_options, source_metadata, additional_details').eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId).single();
+      // An imported ad may already sit in My Properties (saved during import): update that row instead of inserting a duplicate.
+      let targetListingId = draftFields.listingId || null;
+      if (!targetListingId && source && activeWorkspaceId) {
+        const externalId = (source as Record<string, any>).external_id;
+        if (externalId) {
+          const { data: match } = await supabase.from('listings').select('id').eq('external_id', String(externalId)).eq('workspace_owner_id', activeWorkspaceId).order('updated_at', { ascending: false }).limit(1);
+          targetListingId = (match?.[0]?.id as string | undefined) ?? null;
+        }
+        if (!targetListingId && source.source_url) {
+          const { data: match } = await supabase.from('listings').select('id').eq('source_url', String(source.source_url)).eq('workspace_owner_id', activeWorkspaceId).order('updated_at', { ascending: false }).limit(1);
+          targetListingId = (match?.[0]?.id as string | undefined) ?? null;
+        }
+      }
+      if (targetListingId && activeWorkspaceId) {
+        const { data: existing, error: readError } = await supabase.from('listings').select('features, contact_options, source_metadata, additional_details').eq('id', targetListingId).eq('workspace_owner_id', activeWorkspaceId).single();
         if (readError) throw readError;
         const { slug, user_id, owner_id, workspace_owner_id, affiliate_enabled, ...updates } = payload;
-        request = supabase.from('listings').update({ ...updates, contact_options: { ...(existing.contact_options as object || {}), ...pricing.contact_options }, features: { ...(existing.features as object || {}), ...payload.features }, source_metadata: { ...(existing.source_metadata as object || {}), publication_error: null }, additional_details: existing.additional_details } as never).eq('id', draftFields.listingId).eq('workspace_owner_id', activeWorkspaceId);
+        request = supabase.from('listings').update({ ...updates, contact_options: { ...(existing.contact_options as object || {}), ...pricing.contact_options }, features: { ...(existing.features as object || {}), ...payload.features }, source_metadata: { ...(existing.source_metadata as object || {}), publication_error: null }, additional_details: existing.additional_details } as never).eq('id', targetListingId).eq('workspace_owner_id', activeWorkspaceId);
       } else request = supabase.from('listings').insert(payload as never);
       const { data, error } = await request.select('id').single();
       if (error) throw error;
@@ -1270,6 +1284,15 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             {(fields.sqm || fields.builtSqm) && <div><dt className="text-xs text-muted-foreground">שטח</dt><dd className="mt-1 font-semibold">{fields.sqm || fields.builtSqm} מ״ר</dd></div>}
           </dl>
         </div>
+        <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-[16px] font-medium leading-relaxed text-foreground">לאחר האישור הנכס יפורסם <strong>מיד</strong> בלוח הנכסים הציבורי ובעמוד "הנכסים שלי" שלך.</p>
+        {allLeadPricesZero(fields) && (
+          <div role="alert" className="space-y-2 rounded-md border border-warning/50 bg-warning/10 p-3 text-[16px] leading-relaxed text-foreground">
+            <p className="font-bold">שימו לב: כל סוגי הפניות מתומחרים ב-₪0</p>
+            <p>המודעה תופץ ותשותף <strong>רק בקרב מתווכים שותפים מורשים</strong>, ולא בקרב כל השותפים באתר.</p>
+            <p>התמחור אינו חובה, אך <strong>מומלץ מאוד לתמחר לפחות סוג פנייה אחד</strong>.</p>
+            <p>ניתן להגדיר מגבלת פניות יומית (24 שעות) לכל סוג פנייה, כדי לשלוט בהוצאות ולמנוע חיובים לא צפויים.</p>
+          </div>
+        )}
         <div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>חזרה לעריכה</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button></div>
       </DialogContent></Dialog>
     </Dialog>
