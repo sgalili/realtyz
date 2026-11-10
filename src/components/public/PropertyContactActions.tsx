@@ -1,7 +1,7 @@
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Copy, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
+import { ClipboardList, Copy, Handshake, Loader2, Mail, MessageCircle, Phone, Share2, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -78,6 +78,16 @@ export default function PropertyContactActions({
   const { user } = useAuth();
   const navigate = useNavigate();
   const [joinOpen, setJoinOpen] = useState(false);
+  // Zero-priced leads: no public contact; authorized brokers get a B2B closing-split channel.
+  const closingOnly = !shareOnly && !showDigital && !showWhatsapp && !showPhone;
+  const [brokerAllowed, setBrokerAllowed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setBrokerAllowed(false);
+    if (!closingOnly || !user?.id) return;
+    Promise.resolve(supabase.rpc('partner_can_view_closing', { _user_id: user.id })).then(({ data }) => { if (alive) setBrokerAllowed(data === true); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, [closingOnly, user?.id]);
   const [challenge, setChallenge] = useState<InquiryChallenge | null>(null);
   const ref = propertyInquiryRef();
   // Fire-and-forget: counts which lead type visitors pick; never blocks the inquiry.
@@ -175,6 +185,7 @@ export default function PropertyContactActions({
           {showDigital && <Button variant="inquiryForm" className="property-inquiry-action" onClick={() => { trackClick('form'); setMode('digital'); setInquiryStarted(true); }}><ClipboardList /><span>השארת פרטים</span></Button>}
           {showWhatsapp && <Button variant="inquiryWhatsapp" className="property-inquiry-action" onClick={() => { trackClick('whatsapp'); openRita(); }}><WhatsAppIcon /><span>ווטסאפ</span></Button>}
           {showPhone && <Button variant="inquiryPhone" className="property-inquiry-action" onClick={() => { trackClick('phone'); setMode('phone'); setInquiryStarted(true); }}><Phone /><span>שיחת טלפון</span></Button>}
+          {closingOnly && brokerAllowed && <Button variant="outline" className="property-inquiry-action border-primary text-primary" onClick={() => window.open(officialWaLink(`שלום, אני מתווך/ת מורשה ומעוניין/ת בשיתוף פעולה על חלוקת עמלת הסגירה עבור ${title}. מזהה נכס: ${listingId}`), '_blank', 'noopener,noreferrer')}><Handshake /><span>שיתופי פעולה בין מתווכים</span></Button>}
         </div>}
         {showShare && !user && (
           <Button variant="outline" size={compact ? 'icon' : 'default'} className={cn(shareButtonClassName || (compact ? 'h-10 w-10 shrink-0' : 'min-w-[8rem] flex-1'), !shareOnly && 'order-5 sm:order-none')} aria-label="שיתוף נכס" title="שיתוף נכס" onClick={() => setJoinOpen(true)}>

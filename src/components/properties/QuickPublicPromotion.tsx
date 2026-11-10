@@ -113,6 +113,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
     <Dialog open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}>
       <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg" onClick={event => event.stopPropagation()}>
         <DialogHeader><DialogTitle className="text-right">פרסום בלוח הציבורי</DialogTitle><DialogDescription className="text-right">{eligible.length} נכסים מוכנים לפרסום במשרד {activeWorkspace?.workspace_name}</DialogDescription></DialogHeader>
+        <div role="alert" className="rounded-md border border-destructive bg-destructive/10 p-3 text-right text-sm font-semibold text-destructive">למרות שזה לא חובה, מומלץ מאוד להגדיר מחיר לפחות לאחד משלושת סוגי הלידים. השארת כל מחירי הלידים על 0 תפרסם את הנכס אך ורק בקרב רשת המתווכים המורשים לחלוקת עמלת סגירה, ללא כפתורי יצירת קשר פתוחים.</div>
         <div className="max-h-64 overflow-y-auto divide-y divide-border">
           {rows.map(row => <div key={row.id} className="flex items-center gap-2 py-2 text-sm"><BadgeCheck className={`h-4 w-4 shrink-0 ${eligible.some(item => item.id === row.id) ? 'text-success' : 'text-muted-foreground'}`} /><span className="min-w-0 flex-1 break-words">{row.property_title || row.address}</span><span className="shrink-0 text-xs text-muted-foreground">{eligible.some(item => item.id === row.id) ? 'מוכן' : row.is_published && row.affiliate_enabled && row.status === 'live' ? 'כבר פורסם' : 'לא ניתן לפרסם'}</span></div>)}
         </div>
