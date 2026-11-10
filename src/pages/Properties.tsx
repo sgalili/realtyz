@@ -39,6 +39,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { useListingPublishers } from '@/hooks/useListingPublishers';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
+import { Yad2ImportStatus } from '@/components/properties/Yad2ImportStatus';
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 import { useInventorySuggestions } from '@/hooks/useInventorySuggestions';
 import { usePropertySearchHistory } from '@/hooks/usePropertySearchHistory';
@@ -1128,6 +1129,7 @@ export default function Properties() {
           {!searchOpen && renderToolsRow("property-tools-row")}
         </div>
         </div>
+        <Yad2ImportStatus banner />
 
         {/* The source and deal toggles sit below the field and appear only while search is open. */}
         {/* Search-open row: options aligned to the field edge, tools at row end. */}

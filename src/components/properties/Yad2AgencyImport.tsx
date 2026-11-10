@@ -3,17 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Loader2, Download, CheckCircle2, Settings2 } from 'lucide-react';
+import { Loader2, Download, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
 import { importCommissionPayload, importBatchDealTypes, canApplyImportRule, readImportRule, saveImportRule, runPool, type ImportCommissionRule, type ImportDealType } from '@/lib/importCommissionDefaults';
 import { agencyUrlForRequest, isYad2AgencyUrl } from '@/lib/yad2ImportLinks';
 import { ImportCommissionDialog } from './ImportCommissionDialog';
+import { Yad2ImportStatus } from './Yad2ImportStatus';
+import { useYad2ImportJob, setYad2ImportJob, getYad2ImportJob, resetYad2ImportJob, nextYad2ImportRun, currentYad2ImportRun, estimateRemainingMs, DISCOVERY_ESTIMATE_MS, DEFAULT_ITEM_MS } from '@/lib/yad2ImportJob';
 
 
 const BROKER_ROLES = ['managing_broker', 'agent', 'lead_agent', 'junior_agent', 'super_admin'];
@@ -50,19 +51,25 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
   const navigate = useNavigate();
   const [url, setUrl] = useState(() => { const p = readPendingYad2Import(); return p?.kind === 'agency' ? p.url : ''; });
   const autoStarted = useRef(false);
-  const [phase, setPhase] = useState<'idle' | 'discovering' | 'importing' | 'done'>('idle');
-  const [progress, setProgress] = useState<ImportProgress>({ total: 0, done: 0, failed: 0, running: 0 });
-  const [imported, setImported] = useState<string[]>([]);
+  const job = useYad2ImportJob();
+  const phase = job.workspaceId && job.workspaceId !== activeWorkspaceId ? 'idle' : job.phase;
+  const imported = job.imported;
   const [ruleOpen, setRuleOpen] = useState(false);
-  const [dealTypes, setDealTypes] = useState<ImportDealType[]>([]);
+  const [dealTypes, setDealTypes] = useState<ImportDealType[]>(() => importBatchDealTypes(job.types));
   const [saving, setSaving] = useState(false);
   const [rule, setRule] = useState<ImportCommissionRule>(() => (user && activeWorkspaceId ? readImportRule(user.id, activeWorkspaceId) : readImportRule('', '')));
   const scope = useRef(0);
 
   useEffect(() => {
-    scope.current++; setPhase('idle'); setImported([]); setRuleOpen(false); setDealTypes([]); setSaving(false); setProgress({ total: 0, done: 0, failed: 0, running: 0 });
+    scope.current++; setRuleOpen(false); setSaving(false);
     if (user && activeWorkspaceId) setRule(readImportRule(user.id, activeWorkspaceId));
   }, [user?.id, activeWorkspaceId]);
+
+  const prevPhase = useRef(job.phase);
+  useEffect(() => {
+    if (prevPhase.current !== 'done' && job.phase === 'done' && job.workspaceId === activeWorkspaceId) { setDealTypes(importBatchDealTypes(job.types)); setRuleOpen(job.imported.length > 0); }
+    prevPhase.current = job.phase;
+  }, [job.phase]);
 
   const { data: roles = [] } = useQuery({
     queryKey: ['verified-roles-import', user?.id], enabled: !!user?.id,
@@ -80,26 +87,26 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
   if (user && !activeWorkspaceId) return null;
   const unverifiedBroker = publisherType === 'broker' && !roles.some(r => BROKER_ROLES.includes(r));
 
-  const refresh = () => { void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] }); void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] }); };
+  const refresh = () => { void queryClient.invalidateQueries(); void queryClient.invalidateQueries({ queryKey: ['my-ad-recovery'] }); void queryClient.invalidateQueries({ queryKey: ['my-ads-stats'] }); };
 
   const start = async (value: string = url) => {
     if (!user || !activeWorkspaceId) { savePendingYad2Import({ kind: 'agency', url: value.trim(), publisherType }); navigate('/auth', { state: { returnTo: window.location.pathname } }); return; }
     clearPendingYad2Import();
-    const run = ++scope.current, ws = activeWorkspaceId;
-    const completed: string[] = [];
-    const types: string[] = [];
-    setPhase('discovering'); setImported([]); setDealTypes([]);
+    const run = nextYad2ImportRun(), ws = activeWorkspaceId;
+    const startedAt = Date.now();
+    setYad2ImportJob({ phase: 'discovering', workspaceId: ws, total: 0, done: 0, failed: 0, running: 0, imported: [], types: [], startedAt, etaAt: startedAt + DISCOVERY_ESTIMATE_MS });
     const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(value) } });
-    if (run !== scope.current) return;
-    if (error || !data?.ok) { toast.error(await errorText(error) || 'לא נמצאו מודעות'); setPhase('idle'); return; }
+    if (run !== currentYad2ImportRun()) return;
+    if (error || !data?.ok) { toast.error(await errorText(error) || 'לא נמצאו מודעות'); resetYad2ImportJob(); return; }
     const items: string[] = data.items ?? [];
-    if (!items.length) { toast.error('לא נמצאו מודעות בעמוד המשרד'); setPhase('idle'); return; }
-    setProgress({ total: items.length, done: 0, failed: 0, running: 0 });
-    setPhase('importing');
+    if (!items.length) { toast.error('לא נמצאו מודעות בעמוד המשרד'); resetYad2ImportJob(); return; }
+    const importStart = Date.now();
+    let finished = 0;
+    setYad2ImportJob({ phase: 'importing', total: items.length, etaAt: importStart + estimateRemainingMs(items.length, PARALLEL, DEFAULT_ITEM_MS) });
     await runPool(items, PARALLEL, async (item) => {
-      if (run !== scope.current) return;
-      setProgress(p => ({ ...p, running: p.running + 1 }));
-      let id: string | null = null;
+      if (run !== currentYad2ImportRun()) return;
+      setYad2ImportJob(p => ({ running: p.running + 1 }));
+      let id: string | null = null; let type: string | null = null;
       try {
         const { data: res, error: e } = await supabase.functions.invoke('yad2-unlocker', { body: { url: item, limit: 1, pages: 1, import_item: true } });
         if (!e && typeof res?.listing_id === 'string') {
@@ -107,15 +114,23 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
           if (readError || !row) throw readError ?? new Error('הנכס לא נשמר במשרד הנבחר');
           id = row.id;
           const feature = Array.isArray(row.features) ? row.features[0] : row.features;
-          types.push((feature as { listing_type?: string } | null)?.listing_type ?? row.deal_type ?? 'sale');
+          type = (feature as { listing_type?: string } | null)?.listing_type ?? row.deal_type ?? 'sale';
         }
       } catch { id = null; }
-      if (run !== scope.current) return;
-      setProgress(p => ({ ...p, running: p.running - 1, done: p.done + (id ? 1 : 0), failed: p.failed + (id ? 0 : 1) }));
-      if (id) { const savedId = id; completed.push(savedId); setImported(list => [...list, savedId]); refresh(); }
+      if (run !== currentYad2ImportRun()) return;
+      finished++;
+      const avg = ((Date.now() - importStart) * PARALLEL) / finished;
+      const savedId = id;
+      setYad2ImportJob(p => {
+        const pending = p.total - p.done - p.failed - 1;
+        return { running: p.running - 1, done: p.done + (savedId ? 1 : 0), failed: p.failed + (savedId ? 0 : 1), imported: savedId ? [...p.imported, savedId] : p.imported, types: type ? [...p.types, type] : p.types, etaAt: Date.now() + estimateRemainingMs(pending, PARALLEL, avg) };
+      });
+      if (savedId) refresh();
     });
-    if (run !== scope.current) return;
-    setPhase('done'); setDealTypes(importBatchDealTypes(types)); setRuleOpen(completed.length > 0);
+    if (run !== currentYad2ImportRun()) return;
+    setYad2ImportJob({ phase: 'done', etaAt: null });
+    const final = getYad2ImportJob();
+    toast.success(`היבוא מיד 2 הסתיים: ${final.done} נכסים נכנסו למערכת`);
   };
 
   const applyGlobal = async (accepted: boolean) => {
@@ -137,7 +152,6 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
   };
 
   const busy = phase === 'discovering' || phase === 'importing';
-  const pending = progress.total - progress.done - progress.failed;
 
   return <CollapsibleCard title="יבוא כל המודעות שלי מיד 2" open={open || busy || phase === 'done'} onToggle={() => onToggle?.()}>
     <p className="text-[15.5px] leading-6 text-muted-foreground">יש לכם עמוד משרד ביד שתיים? הדביקו את הקישור הראשי שלו וכל המודעות שפרסמתם יובאו בלחיצה אחת.</p>
@@ -147,14 +161,9 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{phase === 'discovering' ? 'מאתר מודעות…' : 'יבוא כל הנכסים'}
     </Button>}
 
-    {phase !== 'idle' && phase !== 'discovering' && <div className="space-y-2" aria-live="polite">
-      <Progress value={progress.total ? ((progress.done + progress.failed) / progress.total) * 100 : 0} />
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        <span className="flex items-center gap-1"><CheckCircle2 className="h-4 w-4 text-primary" />נכנסו למערכת: <b>{progress.done}</b></span>
-        <span>בתהליך: <b>{pending}</b></span>
-        {progress.failed > 0 && <span className="text-destructive">לא יובאו: <b>{progress.failed}</b></span>}
-        <span className="text-muted-foreground">מתוך {progress.total}</span>
-      </div>
+    {phase !== 'idle' && <div className="space-y-2">
+      <Yad2ImportStatus />
+      {busy && <p className="text-xs text-muted-foreground">אפשר לסגור את החלון, היבוא ימשיך ברקע ויוצג בעמוד ״הנכסים שלי״.</p>}
       {phase === 'done' && <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setRuleOpen(true)}><Settings2 className="h-4 w-4" />הגדרת עמלות לנכסים שיובאו</Button>}
       <p className="text-xs text-muted-foreground">הנכסים נשמרים כטיוטות בלשונית הטיוטות. אפשר לערוך עמלה ומחיר לכל נכס בנפרד ולפרסם.</p>
       {unverifiedBroker && <p className="text-xs font-medium text-foreground">הנכסים יישארו ממתינים לפרסום עד לאימות רישיון התיווך בשלב פרטי ההתקשרות.</p>}
