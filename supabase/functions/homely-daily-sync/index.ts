@@ -300,7 +300,8 @@ Deno.serve(async (req) => {
       const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
       const { data: { user } } = await userClient.auth.getUser();
       if (!user) return json({ error: "Unauthorized" }, 401);
-      targetUserId = (body as any)?.user_id || user.id;
+      // Signed-in callers may only sync their own Homely account.
+      targetUserId = user.id;
     }
 
     let query = admin.from("homely_broker_credentials").select("user_id, homely_agency, homely_username");

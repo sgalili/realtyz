@@ -1,7 +1,7 @@
 // Generate 3 distinct Hebrew reply drafts for a FB comment, in the voice of the
 // workspace owner that owns the Facebook Page. The broker name is resolved from
 // that owner's profile — never hardcoded. NO titles, no role emojis.
-import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
+import { canAccessWorkspace, requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { fetchSystemRulesBlock } from '../_shared/system-rules.ts';
 
@@ -44,6 +44,16 @@ Deno.serve(async (req) => {
       .eq('id', comment_id)
       .maybeSingle();
     if (error || !comment) throw new Error('comment not found');
+    // Signed-in callers may only draft for comments on their workspace's posts.
+    if (__caller.kind === 'user') {
+      const { data: c2 } = await admin.from('fb_comments').select('post_id').eq('id', comment_id).maybeSingle();
+      const { data: post } = c2?.post_id
+        ? await admin.from('fb_engagement_posts').select('workspace_owner_id').eq('id', c2.post_id).maybeSingle()
+        : { data: null };
+      if (!post || !(await canAccessWorkspace(__caller.userId, (post as any).workspace_owner_id))) {
+        return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
 
     // Resolve the Page's workspace owner, then their display name. The reply
     // voice always belongs to that owner — never to a hardcoded broker.

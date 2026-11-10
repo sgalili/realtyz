@@ -93,6 +93,9 @@ Deno.serve(async (req) => {
     query = body.demo_request_id
       ? query.eq("id", body.demo_request_id)
       : query.eq("phone", String(body.phone)).order("created_at", { ascending: false });
+    // Public caller: only a booking submitted in the last 15 minutes can be
+    // notified, so old/private bookings can't be replayed or probed.
+    query = query.gte("created_at", new Date(Date.now() - 15 * 60_000).toISOString());
     const { data: rows, error } = await query.limit(1);
     const row = (rows ?? [])[0];
     if (error || !row) return json({ ok: false, error: "demo request not found" }, 404);
@@ -195,7 +198,6 @@ Deno.serve(async (req) => {
       lead_notified: !!leadPhone,
       managers_notified: managerPhones.size,
       calendar,
-      results,
     });
   } catch (e) {
     console.error("[demo-booking-notify] fatal", e);

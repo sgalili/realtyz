@@ -699,6 +699,17 @@ Deno.serve(async (req) => {
     if (mode === "test") {
       const channel = String(body.channel ?? "sms");
       const recipient = String(body.recipient ?? "");
+      // Test sends may only target the caller's own saved phone or email.
+      {
+        const { data: me } = await admin.from("profiles").select("phone, email").eq("id", userData.user.id).maybeSingle();
+        const tail = (v: unknown) => String(v ?? "").replace(/\D/g, "").slice(-9);
+        const emails = [userData.user.email, me?.email].filter(Boolean).map((e) => String(e).toLowerCase());
+        const phones = [me?.phone, userData.user.phone].map(tail).filter((t) => t.length === 9);
+        const mine = recipient.includes("@") ? emails.includes(recipient.trim().toLowerCase()) : phones.includes(tail(recipient));
+        if (!mine) {
+          return new Response(JSON.stringify({ ok: false, error: "שליחת בדיקה אפשרית רק לטלפון או לאימייל השמורים בפרופיל שלך" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
       const message = String(body.message ?? "TORAFF test send");
       const subject = String(body.subject ?? "TORAFF - בדיקת שיגור");
       // Personalize using sender's own profile if voter data not provided

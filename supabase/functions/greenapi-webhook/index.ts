@@ -18,7 +18,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { mapStateToStatus } from "../_shared/greenApi.ts";
+import { getStateInstance } from "../_shared/greenApi.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -33,15 +33,20 @@ const json = (body: Record<string, unknown>, status = 200) =>
 /** Auxiliary only: session status for avatar enrichment. No chat side effects. */
 async function handleStateChange(admin: any, payload: any) {
   const instanceId = String(payload?.instanceData?.idInstance ?? "");
-  const state = String(payload?.stateInstance ?? "");
   if (!instanceId) return { ok: true, ignored: "no_instance" };
-  const status = mapStateToStatus(state, true);
+  // The webhook body is unauthenticated: never trust its state. Re-read the live
+  // state from Green API using the stored instance token instead.
+  const { data: ws } = await admin.from("workspace_whatsapp_settings")
+    .select("green_api_token").eq("green_api_instance_id", instanceId).limit(1).maybeSingle();
+  if (!ws?.green_api_token) return { ok: true, ignored: "unknown_instance" };
+  const live = await getStateInstance({ instance_id: instanceId, token: String(ws.green_api_token) }).catch(() => null);
+  if (!live) return { ok: true, ignored: "state_unavailable" };
   await admin
     .from("workspace_whatsapp_settings")
-    .update({ qr_status: status, last_checked_at: new Date().toISOString() })
+    .update({ qr_status: live.status, last_checked_at: new Date().toISOString() })
     .eq("green_api_instance_id", instanceId)
     .then(() => {}, () => {});
-  return { ok: true, instance_id: instanceId, qr_status: status };
+  return { ok: true };
 }
 
 Deno.serve(async (req) => {

@@ -203,7 +203,9 @@ Deno.serve(async (req) => {
     for (const l of leads) {
       const to = normE164(l.phone);
       if (!to) { failed++; continue; }
-      if (l.id) {
+      // Every call must target a lead of this workspace (no free-typed numbers).
+      if (!l.id) { failed++; continue; }
+      {
         const { data: lead } = await userClient.from('leads').select('id, phone_number').eq('id', l.id).eq('workspace_owner_id', workspaceId).maybeSingle();
         if (!lead || normE164(lead.phone_number) !== to) { failed++; continue; }
       }

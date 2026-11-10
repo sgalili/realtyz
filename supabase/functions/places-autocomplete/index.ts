@@ -2,6 +2,7 @@
 // Public listing visitors can search before authentication. A valid project bearer
 // token is still required, and all Google calls go through the connector gateway.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { requireCaller } from '../_shared/authz.ts';
 
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/google_maps';
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY') ?? '';
@@ -29,8 +30,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    // Public endpoint (pre-signup visitors). Stale/expired sessions on some devices
-    // previously caused 401s, so no user token is required here.
+    // Paid Google calls: require a signed-in session.
+    const caller = await requireCaller(req, ['service', 'user']);
+    if (caller instanceof Response) return caller;
     if (!LOVABLE_API_KEY || !GOOGLE_MAPS_API_KEY) return json({ error: 'maps_not_configured' }, 503);
 
     const body = await req.json().catch(() => ({}));

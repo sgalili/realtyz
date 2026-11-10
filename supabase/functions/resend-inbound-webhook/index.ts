@@ -100,7 +100,8 @@ Deno.serve(async (req) => {
   const hasSvix = !!req.headers.get("svix-signature");
   if (hasSvix && SIGNING_SECRET) {
     if (!(await verifySvix(rawBody, req.headers))) return json({ error: "bad_signature" }, 401);
-  } else if (WEBHOOK_SECRET || SIGNING_SECRET) {
+  } else {
+    // Fail closed: unsigned mail is rejected unless the shared secret matches.
     const provided = req.headers.get("x-webhook-secret") ?? "";
     if (!WEBHOOK_SECRET || provided !== WEBHOOK_SECRET) return json({ error: "unauthorized" }, 401);
   }

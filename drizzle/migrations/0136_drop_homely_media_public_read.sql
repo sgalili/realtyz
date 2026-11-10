@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "homely-media read (authenticated)" ON storage.objects;

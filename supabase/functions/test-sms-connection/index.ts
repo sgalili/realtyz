@@ -6,7 +6,7 @@
 //
 // mode: "balance" (default) reads the account balance; "send" additionally
 // dispatches a real test SMS to the workspace's approved sender number.
-import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
+import { adminClient, requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { resolveSms019Config, sendSms019, sms019Balance, toLocalIL } from "../_shared/sms019.ts";
@@ -84,7 +84,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const target = String((body as any).recipient ?? "").trim() || cfg.sender;
+    let target = String((body as any).recipient ?? "").trim() || cfg.sender;
+    // Test sends go only to the sender line or the caller's own saved phone.
+    if (target !== cfg.sender) {
+      let own = "";
+      if (__caller.kind === "user") {
+        const { data: prof } = await adminClient().from("profiles").select("phone").eq("id", __caller.userId).maybeSingle();
+        own = String(prof?.phone ?? "");
+      }
+      if (!own || toLocalIL(own) !== toLocalIL(target)) target = cfg.sender;
+    }
     if (!toLocalIL(target)) {
       return json({
         success: false,

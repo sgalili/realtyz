@@ -10,7 +10,7 @@
 //   - send_whatsapp  -> send-whatsapp edge fn (GreenAPI / WBA)
 //   - send_sms_019   -> 019 SMS XML gateway
 //   - schedule_call  -> Twilio voice (via vapi-tool-handler)
-import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
+import { canAccessWorkspace, requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -258,6 +258,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "מספר לא תואם E.164" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Recipient must be a lead of the caller's workspace (matching phone) or the caller's own phone.
+    if (__caller.kind === "user") {
+      const tail = (v: unknown) => String(v ?? "").replace(/\D/g, "").slice(-9);
+      let allowed = false;
+      if (lead_id) {
+        const { data: l } = await supabase.from("leads").select("phone_number, workspace_owner_id").eq("id", lead_id).maybeSingle();
+        allowed = !!l && tail(l.phone_number) === tail(customerNumber) && await canAccessWorkspace(__caller.userId, l.workspace_owner_id as string);
+      } else {
+        const { data: me } = await supabase.from("profiles").select("phone").eq("id", __caller.userId).maybeSingle();
+        allowed = !!me?.phone && tail(me.phone) === tail(customerNumber);
+      }
+      if (!allowed) return new Response(JSON.stringify({ error: "אפשר להתקשר רק לליד במרחב העבודה או למספר שלך" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Pull lead context

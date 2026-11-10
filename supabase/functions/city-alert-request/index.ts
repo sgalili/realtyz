@@ -58,6 +58,18 @@ Deno.serve(async (req) => {
       throw error;
     }
 
+    // Only send to a number proven to belong to the requester: a signed-in user
+    // whose saved profile phone matches. Otherwise the request is stored only.
+    let ownsPhone = false;
+    if (userId) {
+      const { data: prof } = await admin.from('profiles').select('phone').eq('id', userId).maybeSingle();
+      ownsPhone = !!prof?.phone && normalizePhone(String(prof.phone)) === phone;
+    }
+    if (!ownsPhone) {
+      await admin.from('city_alert_requests').update({ status: 'pending_verification' }).eq('id', row.id);
+      return json({ ok: true, sent: false });
+    }
+
     const { data: template } = await admin.from('wa_message_templates').select('name,language,variable_count,has_header_variable')
       .eq('owner_user_id', RITA_WORKSPACE_OWNER_ID).eq('name', TEMPLATE_NAME).eq('status', 'APPROVED').maybeSingle();
     if (!template || template.has_header_variable || template.variable_count !== 2) {

@@ -64,6 +64,22 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Signed-in callers may only fetch media attached to a message they can see
+    // (row-level security on messages scopes this to their workspace).
+    if (__caller.kind === "user") {
+      const userDb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: `Bearer ${__caller.token}` } },
+        auth: { persistSession: false },
+      });
+      const types = ["image", "audio", "video", "document", "sticker", "voice"];
+      const { data: owned } = await userDb.from("messages").select("id")
+        .or(types.map((t) => `metadata->raw->${t}->>id.eq.${mediaId}`).join(","))
+        .limit(1);
+      if (!owned?.length) {
+        return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     const central = centralToken();
     const token = central?.token ?? (await workspaceToken(admin));
     const version = central?.version ?? "v26.0";

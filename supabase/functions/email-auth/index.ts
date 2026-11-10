@@ -50,7 +50,10 @@ Deno.serve(async (req) => {
       await admin.from("email_login_otps").update({ consumed_at: new Date().toISOString() })
         .eq("email", email).is("consumed_at", null);
 
-      const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0");
+      // Uniform 6-digit code (rejection sampling avoids modulo bias).
+      let rnd = 0;
+      do { rnd = crypto.getRandomValues(new Uint32Array(1))[0]; } while (rnd >= 4_294_000_000);
+      const code = String(rnd % 1_000_000).padStart(6, "0");
       const codeHash = await hashCode(email, code);
       const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000).toISOString();
 
@@ -96,7 +99,7 @@ Deno.serve(async (req) => {
 
     if (action === "verify") {
       const code = String(body.code ?? "").replace(/\D/g, "");
-      if (!/^\d{4}$/.test(code)) return json({ error: "קוד אימות לא תקין" }, 400);
+      if (!/^\d{6}$/.test(code)) return json({ error: "קוד אימות לא תקין" }, 400);
 
       const { data: otpRow, error: otpError } = await admin
         .from("email_login_otps")

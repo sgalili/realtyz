@@ -124,12 +124,14 @@ Deno.serve(async (req) => {
     if (body.voter_ids?.length) {
       const { data, error } = await admin.from("leads")
         .select("id, full_name, phone_number")
+        .eq("workspace_owner_id", userId)
         .in("id", body.voter_ids);
       if (error) throw error;
       voters = data ?? [];
     } else {
       const { data, error } = await admin.from("leads")
         .select("id, full_name, phone_number")
+        .eq("workspace_owner_id", userId)
         .eq("is_demo", false)
         .limit(remaining);
       if (error) throw error;

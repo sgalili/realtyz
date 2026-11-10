@@ -26,9 +26,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
-  if (TG_SECRET) {
+  {
+    // Fail closed: without a configured secret no update is accepted.
     const got = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
-    if (got !== TG_SECRET) return json({ ok: false, error: "unauthorized" }, 401);
+    if (!TG_SECRET || got !== TG_SECRET) return json({ ok: false, error: "unauthorized" }, 401);
   }
 
   let update: any = {};
