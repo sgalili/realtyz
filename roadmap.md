@@ -1,5 +1,11 @@
 # Roadmap
 
+## Automated admin workspace and broker import November 10
+- [x] Simplify silent user creation with type selection and server-checked registry/manual fallback.
+- [x] Replace pasted batches with target/min/max discovery, detail enrichment and durable per-broker/per-listing checkpoints.
+- [x] Background progress and atomic pause/resume deployed; authenticated desktop/mobile verified parameter dialog, modal-independent real scan, pause/resume and paused readback after reload. Real registry 31927721 returned matching canonical name/city; no messages sent.
+- [ ] Full discovered-broker provisioning/import cycle remains unverified; the real one-broker test is intentionally paused after three scan pages with zero accounts/listings created. Complete provider identity extraction and safe successful provisioning readback still need verification.
+
 ## Open marketing table scrolling November 10
 - [x] Bound the marketing page to the existing shell and shared native two-axis table scroller, keeping title/controls/footer stationary.
 - [x] Seven scrolling tests passed; authenticated 1280×1800 and 411×801 table wheel scrolling moved both axes while shell/document stayed at zero; native mobile touch swipes passed both axes with real rows.

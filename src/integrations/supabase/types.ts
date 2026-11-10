@@ -1287,6 +1287,72 @@ export type Database = {
           },
         ]
       }
+      broker_import_jobs: {
+        Row: {
+          brokers_done: number
+          checkpoint: Json
+          created_at: string
+          created_by: string
+          error: string | null
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          listings_done: number
+          max_listings: number
+          min_listings: number
+          skipped: number
+          stage: string
+          status: string
+          step_average_ms: number | null
+          step_started_at: string
+          target_brokers: number
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          brokers_done?: number
+          checkpoint?: Json
+          created_at?: string
+          created_by: string
+          error?: string | null
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listings_done?: number
+          max_listings: number
+          min_listings: number
+          skipped?: number
+          stage?: string
+          status?: string
+          step_average_ms?: number | null
+          step_started_at?: string
+          target_brokers: number
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          brokers_done?: number
+          checkpoint?: Json
+          created_at?: string
+          created_by?: string
+          error?: string | null
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listings_done?: number
+          max_listings?: number
+          min_listings?: number
+          skipped?: number
+          stage?: string
+          status?: string
+          step_average_ms?: number | null
+          step_started_at?: string
+          target_brokers?: number
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       broker_invitation_sends: {
         Row: {
           broker_id: string
@@ -9065,6 +9131,36 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_broker_import_step: {
+        Args: { _id: string }
+        Returns: {
+          brokers_done: number
+          checkpoint: Json
+          created_at: string
+          created_by: string
+          error: string | null
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          listings_done: number
+          max_listings: number
+          min_listings: number
+          skipped: number
+          stage: string
+          status: string
+          step_average_ms: number | null
+          step_started_at: string
+          target_brokers: number
+          updated_at: string
+          workspace_owner_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "broker_import_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_fb_group_post_slot: {
         Args: { _group: string; _limit: number; _owner: string }
         Returns: boolean
@@ -9156,6 +9252,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      control_broker_import_job: {
+        Args: { _action: string; _id: string }
+        Returns: undefined
       }
       crm_import_merge: { Args: never; Returns: string }
       crm_safe_int: { Args: { _t: string }; Returns: number }
@@ -9293,6 +9393,15 @@ export type Database = {
       }
       finalize_admin_broker_setup: {
         Args: { _license: string; _user_id: string }
+        Returns: undefined
+      }
+      finalize_queued_broker_setup: {
+        Args: {
+          _actor: string
+          _job: string
+          _license: string
+          _user_id: string
+        }
         Returns: undefined
       }
       finish_market_scrape_run: {

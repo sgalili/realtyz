@@ -2294,6 +2294,13 @@ Deno.serve(async (req) => {
     const scrapeToken = typeof body?.scrape_token === "string" ? body.scrape_token : null;
     const sinceIso = typeof body?.since === "string" && body.since ? body.since : null;
     let poolMode = false;
+    let adminDiscovery = false;
+    if (token === SERVICE_KEY && typeof body?.admin_import_job_id === 'string') {
+      const { data: job } = await admin.from('broker_import_jobs').select('created_by,status,lease_until').eq('id', body.admin_import_job_id).maybeSingle();
+      const { data: role } = job ? await admin.from('user_roles').select('user_id').eq('user_id', job.created_by).eq('role', 'super_admin').maybeSingle() : { data: null };
+      adminDiscovery = !!role && job?.status === 'running' && Date.parse(job.lease_until ?? '') > Date.now() && previewOnly;
+      if (!adminDiscovery) return json({ error: 'admin_discovery_not_authorized' }, 403);
+    }
     if (scrapeToken) {
       const { data: run } = await admin
         .from("market_scrape_runs")
@@ -2303,7 +2310,7 @@ Deno.serve(async (req) => {
       poolMode = Boolean(run?.id) && run?.status === "running";
       if (!poolMode) console.warn("[yad2-unlocker] scrape_token rejected — serving from pool");
     }
-    if (!poolMode && !isItemUrl) {
+    if (!poolMode && !isItemUrl && !adminDiscovery) {
       const pooled = await readMarketPool(admin, body, limit, inputUrl);
       await recordCacheHit('yad2_search', 'pool', inputUrl);
       console.log(`[yad2-unlocker] pool mode → ${pooled.length} row(s), no external call`);
