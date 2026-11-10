@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { ClipboardList, Loader2, Phone, Trophy, Zap } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/properties/WhatsAppIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,18 +33,19 @@ export function ImportCommissionDialog({ open, onOpenChange, count, types, rule,
     <Dialog open={open} onOpenChange={next => { if (!saving) onOpenChange(next); }}>
       <DialogContent dir="rtl" className="max-h-[90dvh] max-w-md overflow-y-auto">
         <DialogHeader><DialogTitle>הגדרת עמלות ל־{count} נכסים {closingOnly ? 'נבחרים' : 'שיובאו'}</DialogTitle><DialogDescription>העמלות יחולו על הנכסים {closingOnly ? 'הנבחרים' : 'שיובאו'}. ניתן לעדכן כל נכס בנפרד בהמשך.</DialogDescription></DialogHeader>
-        <Tabs value={selected} onValueChange={next => { if (next === 'sale' || next === 'rent') setMode(next); }} dir="rtl">
+        <div role="note" className="flex items-start gap-2 rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm font-semibold text-primary"><Zap className="mt-0.5 h-4 w-4 shrink-0" />השינויים בחלון זה יחולו מיד על כל {count} הנכסים {closingOnly ? 'הנבחרים' : 'שיובאו'}.</div>
+        {types.length > 1 && <Tabs value={selected} onValueChange={next => { if (next === 'sale' || next === 'rent') setMode(next); }} dir="rtl">
           <TabsList className="flex w-full">{types.map(type => <TabsTrigger className="flex-1" key={type} value={type}>{type === 'sale' ? 'מכירה' : 'השכרה'}</TabsTrigger>)}</TabsList>
-        </Tabs>
-        <section className="closing-fee space-y-3" data-level={level}>
-          <Label>אומדן סגירה ({selected === 'sale' ? 'ממחיר הנכס' : 'משכר הדירה החודשי'})</Label>
+        </Tabs>}
+        <section className="closing-fee space-y-3 rounded-lg border p-3" data-level={level}>
+          <Label className="flex items-center gap-1.5"><Trophy className="h-4 w-4 text-lead-closing" />אומדן סגירה ({selected === 'sale' ? 'ממחיר הנכס' : 'משכר הדירה החודשי'})</Label>
           <p className="text-center text-3xl font-bold closing-tone" dir="ltr">{value}%</p>
           <Slider dir="ltr" className="closing-slider h-6" aria-label={selected === 'sale' ? 'עמלת סגירה במכירה' : 'עמלת סגירה בהשכרה'} min={range.min} max={range.max} step={range.step} value={[value]} disabled={saving} onValueChange={values => { const next = values[0]; if (next !== undefined) onRuleChange({ ...rule, [selected === 'sale' ? 'salePercent' : 'rentMonthlyPercent']: next }); }} />
           <div dir="ltr" className="flex justify-between text-xs text-muted-foreground"><span>{range.min}%</span><span>{range.max}%</span></div>
           <LeadPopularityNote />
           <p className="text-sm leading-relaxed text-muted-foreground">{selected === 'sale' ? 'עמלת הסגירה תחושב לפי מחיר הנכס המפורסם ותשולם לאחר סגירת העסקה.' : 'עמלת הסגירה תחושב מתוך שכר דירה של חודש אחד ותשולם לאחר חתימת הסכם השכירות.'}</p>
         </section>
-        {!closingOnly && <div className="grid grid-cols-2 gap-3">{([['form', 'פנייה בטופס (₪)'], ['whatsapp', 'פנייה בוואטסאפ (₪)'], ['phone', 'שיחת טלפון (₪)']] as const).map(([key, label]) => <div key={key} className="space-y-1"><Label htmlFor={`import-${key}`}>{label}</Label><Input id={`import-${key}`} disabled={saving} inputMode="numeric" value={rule[key]} onChange={event => num(key, event.target.value)} /></div>)}</div>}
+        <div className="space-y-2">{([['form', 'ליד מטופס', ClipboardList, 'text-lead-form'], ['whatsapp', 'ליד מסונן בוואטסאפ', WhatsAppIcon, 'text-lead-whatsapp'], ['phone', 'ליד מסונן בשיחת טלפון', Phone, 'text-lead-phone']] as const).map(([key, label, Icon, tone]) => <div key={key} className="flex items-center gap-3 rounded-lg border p-3"><Icon className={`h-5 w-5 shrink-0 ${tone}`} /><Label htmlFor={`import-${key}`} className="flex-1">{label}</Label><div className="relative w-28"><span className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₪</span><Input id={`import-${key}`} dir="ltr" className="pe-6 text-center font-semibold" disabled={saving} inputMode="numeric" value={rule[key]} onChange={event => num(key, event.target.value)} /></div></div>)}</div>
         <div className="flex items-start gap-2"><Checkbox id="import-commission-terms" checked={accepted} disabled={saving} onCheckedChange={next => setAccepted(next === true)} className="mt-1 shrink-0" /><div className="text-sm leading-relaxed"><Label htmlFor="import-commission-terms" className="font-normal">אני מאשר/ת שקראתי והסכמתי לתקנון ולתנאי התיווך, ומתחייב/ת לשלם את העמלות בהתאם לתנאים המוסכמים.</Label><div className="flex flex-wrap gap-3"><Button type="button" variant="link" className="h-auto p-0" onClick={() => setLegal('terms')}>תקנון</Button><Button type="button" variant="link" className="h-auto p-0" onClick={() => setLegal('brokerage')}>תנאי התיווך</Button></div></div></div>
         <DialogFooter className="flex-row justify-between gap-2 sm:justify-between"><Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>ביטול</Button><Button disabled={!valid || saving} onClick={() => { if (valid) onApply(accepted); }}>{saving && <Loader2 className="h-4 w-4 animate-spin" />}אישור והחלה</Button></DialogFooter>
       </DialogContent>

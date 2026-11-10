@@ -40,6 +40,7 @@ import { readRecentYad2Listing } from '@/lib/yad2LocalCache';
 import { useListingPublishers } from '@/hooks/useListingPublishers';
 import { SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { Yad2ImportStatus } from '@/components/properties/Yad2ImportStatus';
+import { useYad2ImportJob, claimYad2CommissionPrompt } from '@/lib/yad2ImportJob';
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 import { useInventorySuggestions } from '@/hooks/useInventorySuggestions';
 import { usePropertySearchHistory } from '@/hooks/usePropertySearchHistory';
@@ -703,6 +704,24 @@ export default function Properties() {
     }
   };
 
+  const importJob = useYad2ImportJob();
+  const [importPromptKey, setImportPromptKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (importJob.phase === 'done' && claimYad2CommissionPrompt(activeWorkspaceId ?? null)) setImportPromptKey(`${importJob.startedAt}`);
+  }, [importJob.phase, importJob.commissionPrompted, activeWorkspaceId]);
+  // Workspace listings whose closing fee, lead prices or commission-terms approval are still missing.
+  const unconfiguredQuery = useQuery({
+    queryKey: ['unconfigured-commissions', activeWorkspaceId],
+    enabled: !!activeWorkspaceId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('listings').select('id').eq('workspace_owner_id', activeWorkspaceId as string)
+        .or('affiliate_tier4_amount.is.null,affiliate_tier1_amount.is.null,affiliate_tier2_amount.is.null,affiliate_tier3_amount.is.null,features->>commission_terms_accepted_at.is.null').limit(1000);
+      if (error) throw error;
+      return (data ?? []).map(r => r.id as string);
+    },
+  });
+  const unconfiguredIds = unconfiguredQuery.data ?? [];
+
   const toggleSelectedListing = useCallback((id: string) => {
     setSelectedListingIds((current) => {
       const next = new Set(current);
@@ -892,6 +911,7 @@ export default function Properties() {
 
             <SelectModeToggle total={sortedResults.filter(row => row.localId).length} active={multiSelectMode} onToggle={() => { setMultiSelectMode(current => !current); setSelectedListingIds(new Set()); }} />
 
+            {multiSelectMode && (() => { const ids = pagedResults.map(r => r.localId).filter(Boolean) as string[]; const all = ids.length > 0 && ids.every(id => selectedListingIds.has(id)); return <Checkbox className="mx-1" checked={all} aria-label={all ? 'ביטול בחירת הכל' : 'בחירת הכל'} title={all ? 'ביטול בחירת הכל' : 'בחירת הכל'} onCheckedChange={() => setSelectedListingIds(all ? new Set() : new Set(ids))} />; })()}
             {multiSelectMode && selectedListingIds.size > 0 ? (
               <div className="flex items-center gap-2">
                 <QuickPublicPromotion ids={Array.from(selectedListingIds)} onPublished={markPublished} />
@@ -1130,6 +1150,8 @@ export default function Properties() {
         </div>
         </div>
         <Yad2ImportStatus banner />
+        {activeWorkspaceId && importPromptKey && importJob.imported.length > 0 && <BulkClosingCommission key={importPromptKey} ids={importJob.imported} workspaceId={activeWorkspaceId} autoOpenKey={importPromptKey} trigger={() => null} onSaved={() => void unconfiguredQuery.refetch()} />}
+        {activeWorkspaceId && unconfiguredIds.length > 0 && <BulkClosingCommission ids={unconfiguredIds} workspaceId={activeWorkspaceId} onSaved={() => void unconfiguredQuery.refetch()} trigger={open => <div role="status" className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-warning/50 bg-warning/10 p-3 text-sm"><span className="font-medium">{unconfiguredIds.length} נכסים ללא עמלות סגירה ותמחור לידים מאושרים</span><Button size="sm" className="shrink-0" onClick={open}>הגדרת עמלות</Button></div>} />}
 
         {/* The source and deal toggles sit below the field and appear only while search is open. */}
         {/* Search-open row: options aligned to the field edge, tools at row end. */}
@@ -1183,6 +1205,7 @@ export default function Properties() {
                 selectionMode={multiSelectMode}
                 selectedIds={selectedListingIds}
                 onToggleSelected={toggleSelectedListing}
+                onSetSelected={setSelectedListingIds}
                 favoriteIds={favoriteIds}
                 onFavorite={(id) => void toggleFavorite(id)}
                 quickPromotion={(row) => row.localId ? <QuickPublicPromotion ids={[row.localId]} compact onPublished={markPublished} /> : null}

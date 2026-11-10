@@ -14,6 +14,8 @@ export type Yad2ImportJob = {
   startedAt: number;
   /** Estimated completion timestamp (ms). */
   etaAt: number | null;
+  /** Set once the post-import commission window has been shown. */
+  commissionPrompted?: boolean;
 };
 
 export const DISCOVERY_ESTIMATE_MS = 30_000;
@@ -30,6 +32,12 @@ export function setYad2ImportJob(patch: Partial<Yad2ImportJob> | ((s: Yad2Import
   listeners.forEach(l => l());
 }
 export const resetYad2ImportJob = () => { runId++; state = empty(); listeners.forEach(l => l()); };
+/** Claims the one-time post-import commission prompt; true only for the first caller. */
+export function claimYad2CommissionPrompt(workspaceId: string | null) {
+  if (state.phase !== 'done' || state.commissionPrompted || !state.imported.length || state.workspaceId !== workspaceId) return false;
+  state = { ...state, commissionPrompted: true }; listeners.forEach(l => l());
+  return true;
+}
 export const nextYad2ImportRun = () => ++runId;
 export const currentYad2ImportRun = () => runId;
 

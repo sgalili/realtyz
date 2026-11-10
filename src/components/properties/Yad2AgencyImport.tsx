@@ -14,7 +14,7 @@ import { importCommissionPayload, importBatchDealTypes, canApplyImportRule, read
 import { agencyUrlForRequest, isYad2AgencyUrl } from '@/lib/yad2ImportLinks';
 import { ImportCommissionDialog } from './ImportCommissionDialog';
 import { Yad2ImportStatus } from './Yad2ImportStatus';
-import { useYad2ImportJob, setYad2ImportJob, getYad2ImportJob, resetYad2ImportJob, nextYad2ImportRun, currentYad2ImportRun, estimateRemainingMs, DISCOVERY_ESTIMATE_MS, DEFAULT_ITEM_MS } from '@/lib/yad2ImportJob';
+import { useYad2ImportJob, setYad2ImportJob, getYad2ImportJob, resetYad2ImportJob, nextYad2ImportRun, currentYad2ImportRun, estimateRemainingMs, claimYad2CommissionPrompt, DISCOVERY_ESTIMATE_MS, DEFAULT_ITEM_MS } from '@/lib/yad2ImportJob';
 
 
 const BROKER_ROLES = ['managing_broker', 'agent', 'lead_agent', 'junior_agent', 'super_admin'];
@@ -67,7 +67,7 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
 
   const prevPhase = useRef(job.phase);
   useEffect(() => {
-    if (prevPhase.current !== 'done' && job.phase === 'done' && job.workspaceId === activeWorkspaceId) { setDealTypes(importBatchDealTypes(job.types)); setRuleOpen(job.imported.length > 0); }
+    if (prevPhase.current !== 'done' && job.phase === 'done' && claimYad2CommissionPrompt(activeWorkspaceId)) { setDealTypes(importBatchDealTypes(job.types)); setRuleOpen(true); }
     prevPhase.current = job.phase;
   }, [job.phase]);
 
@@ -94,7 +94,7 @@ export default function Yad2AgencyImport({ publisherType = 'broker', open = true
     clearPendingYad2Import();
     const run = nextYad2ImportRun(), ws = activeWorkspaceId;
     const startedAt = Date.now();
-    setYad2ImportJob({ phase: 'discovering', workspaceId: ws, total: 0, done: 0, failed: 0, running: 0, imported: [], types: [], startedAt, etaAt: startedAt + DISCOVERY_ESTIMATE_MS });
+    setYad2ImportJob({ phase: 'discovering', workspaceId: ws, total: 0, done: 0, failed: 0, running: 0, imported: [], types: [], commissionPrompted: false, startedAt, etaAt: startedAt + DISCOVERY_ESTIMATE_MS });
     const { data, error } = await supabase.functions.invoke('yad2-agency-import', { body: { url: agencyUrlForRequest(value) } });
     if (run !== currentYad2ImportRun()) return;
     if (error || !data?.ok) { toast.error(await errorText(error) || 'לא נמצאו מודעות'); resetYad2ImportJob(); return; }

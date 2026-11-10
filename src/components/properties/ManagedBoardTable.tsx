@@ -25,12 +25,13 @@ type Row = { card: PublicCard; result: UnifiedResult };
 const shekel = (n?: number | null) => (n ? `₪${Number(n).toLocaleString('he-IL')}` : '');
 
 /** /properties table: same columns, headers, rows and expansion as the homepage board, plus management tools. */
-export default function ManagedBoardTable({ results, toCard, selectionMode, selectedIds, onToggleSelected, favoriteIds, onFavorite, quickPromotion }: {
+export default function ManagedBoardTable({ results, toCard, selectionMode, selectedIds, onToggleSelected, onSetSelected, favoriteIds, onFavorite, quickPromotion }: {
   results: UnifiedResult[];
   toCard: (r: UnifiedResult) => PublicCard;
   selectionMode: boolean;
   selectedIds: Set<string>;
   onToggleSelected: (id: string) => void;
+  onSetSelected?: (ids: Set<string>) => void;
   favoriteIds: Set<string>;
   onFavorite: (id: string) => void;
   quickPromotion: (r: UnifiedResult) => ReactNode;
@@ -65,7 +66,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
         <table data-column-managed="true" className="w-max min-w-full text-sm">
           <thead className="bg-muted/40 text-[14px] text-muted-foreground">
             <tr>
-              {selectionMode && <th className="w-8 p-2" aria-label="בחירה" />}
+              {selectionMode && (() => { const ids = results.map(r => r.localId).filter(Boolean) as string[]; const all = ids.length > 0 && ids.every(id => selectedIds.has(id)); return <th className="w-8 p-2"><Checkbox checked={all} aria-label={all ? 'ביטול בחירת הכל' : 'בחירת הכל'} onCheckedChange={() => onSetSelected ? onSetSelected(all ? new Set() : new Set(ids)) : ids.forEach(id => { if (all || !selectedIds.has(id)) onToggleSelected(id); })} /></th>; })()}
               {visible.map(id => <BoardColumnHeader key={id} id={id} controls={columns} />)}
               <th className="w-10 p-0 pt-2 text-end"><div className="flex justify-end"><BoardColumnMenu controls={columns} /></div></th>
               <th className="sticky left-0 z-[4] whitespace-nowrap bg-muted p-2 text-start font-medium">פרסום בלוח ציבורי</th>

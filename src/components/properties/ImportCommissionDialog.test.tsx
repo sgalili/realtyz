@@ -36,4 +36,13 @@ describe('batch import agreement and modes', () => {
     fireEvent.keyDown(screen.getByRole('slider'), { key: 'End' });
     expect(screen.getByRole('slider').getAttribute('aria-valuenow')).toBe('100');
   });
+});describe('sale/rent tabs visibility', () => {
+  it('hides tabs for a sale-only batch', () => {
+    render(<Harness types={['sale']} apply={vi.fn()} />);
+    expect(screen.queryByRole('tab')).toBeNull();
+  });
+  it('shows both tabs for a mixed batch', () => {
+    render(<Harness types={['sale', 'rent']} apply={vi.fn()} />);
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
+  });
 });
