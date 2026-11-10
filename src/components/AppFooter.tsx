@@ -18,11 +18,11 @@ export function AppFooter() {
           </Link>
         )}
         <div className="auth-footer-links">
+          <AccessibilityMenu trigger={<Button type="button" variant="ghost" className="auth-footer-accessibility" aria-label="פתיחת תפריט נגישות"><Accessibility aria-hidden="true" /><span>נגישות</span></Button>} />
+          <span className="auth-footer-separator" aria-hidden="true" />
           <Link to="/terms">תנאים</Link>
           <Link to="/privacy-policy">פרטיות</Link>
           <Link to="/commission-mechanism">עמלות</Link>
-          <span className="auth-footer-separator" aria-hidden="true" />
-          <AccessibilityMenu trigger={<Button type="button" variant="ghost" className="auth-footer-accessibility" aria-label="פתיחת תפריט נגישות"><Accessibility aria-hidden="true" /><span>נגישות</span></Button>} />
         </div>
       </div>
     </footer>
