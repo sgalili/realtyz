@@ -166,8 +166,9 @@ Deno.serve(async req => {
             if(!c.enrichUrls.length)advanceSearchPoint(c);
             await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true,skipped:true});
           }
-          const rows=await cached(admin,'item_detail',`agency:v2:${url}`,c,async()=>{
-            const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,preview_only:true,limit:60,pages:1,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
+          const profile=c.source==='urls';
+          const rows=await cached(admin,'item_detail',profile?`agency-profile:v1:${job.max_listings}:${url}`:`agency:v2:${url}`,c,async()=>{
+            const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,preview_only:true,...(profile?{agency_profile:true,max_listings:job.max_listings}:{}),limit:60,pages:1,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
             if(!d)throw new DelayStepFinished();
             return Array.isArray(d.results) ? compactDirectoryRows(d.results) : [];
           });

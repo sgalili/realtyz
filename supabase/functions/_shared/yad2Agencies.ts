@@ -113,3 +113,68 @@ export function parseAgencies($: any, sourceUrl: string) {
   const results: Record<string,any>[] = rows.map(row=>({...row,directory_next_url:nextUrl}));
   return {results,next_url:nextUrl};
 }
+/** True for a single office/broker profile page (not the national directory). */
+export function isAgencyProfileUrl(value: unknown): boolean {
+  const url = agencyUrl(value);
+  return Boolean(url && /^\/realestate\/agency\/\d+/.test(new URL(url).pathname));
+}
+
+const NON_RESIDENTIAL_RE = /(מסחרי|משרד(?:ים)?(?!\s*(?:ה)?תיווך)|חנות|חנויות|מגרש|קרקע|תעשי|מחסן|חניה למכירה|commercial|office|shop|land|industr|warehouse)/i;
+const RENT_RE = /(להשכרה|השכרה|לחודש|\/rent|forrent)/i;
+const SALE_RE = /(למכירה|מכירה|\/forsale)/i;
+
+/**
+ * Reads one broker/office profile page: page-level identity plus the profile's own
+ * residential sale/rent listing links (related/recommended blocks excluded).
+ * Final residential/live checks still happen per listing before any draft is saved.
+ */
+export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) {
+  const text = (v: unknown) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
+  const challenge = /Radware Page|ShieldSquare|captcha|אנו מניחים שגולשים/.test($('title').text() + $('body').text().slice(0, 600));
+  if (challenge) throw new Error('יד2 החזיר עמוד חסימה במקום עמוד המתווך');
+  let name = '', office = '', license = '', phone: string | null = null, email = '';
+  const visit = (node: any, depth = 0) => {
+    if (!node || typeof node !== 'object' || depth > 12) return;
+    if (Array.isArray(node)) { node.forEach(v => visit(v, depth + 1)); return; }
+    const lic = text(String(node.broker_license_number ?? node.licenseNumber ?? node.license_number ?? node.brokerLicense ?? ''));
+    const nm = text(node.broker_name ?? node.brokerName ?? node.fullName ?? node.full_name ?? node.agentName);
+    if (!license && /^[1-9]\d{3,9}$/.test(lic)) { license = lic; if (nm) name = nm; }
+    if (!name && nm) name = nm;
+    if (!office) office = text(node.agencyName ?? node.office_name ?? node.officeName ?? node.agency?.name);
+    if (!phone) phone = batchPhone(node.mobile ?? node.brokerPhone ?? node.phone ?? '') ?? null;
+    if (!email && typeof node.email === 'string' && /@/.test(node.email)) email = text(node.email);
+    for (const [k, v] of Object.entries(node)) {
+      if (/^(related|recommendations|similar|ads|feed)$/i.test(k)) continue;
+      if (v && typeof v === 'object') visit(v, depth + 1);
+    }
+  };
+  $('script#__NEXT_DATA__, script[type="application/json"]').each((_: number, el: any) => { try { visit(JSON.parse($(el).text())); } catch { /* not JSON */ } });
+  const header = $('[data-testid*="agency"], [data-testid*="broker"], [class*="agencyDetails"], [class*="AgencyDetails"], [class*="brokerDetails"], [class*="BrokerDetails"], [class*="agencyHeader"], [class*="AgencyHeader"], header, h1').filter((_: number, el: any) => !$(el).closest('[class*="related"], [class*="recommend"]').length);
+  if (!name) name = text(header.find('[data-testid="broker-name"], [class*="brokerName"], [class*="BrokerName"], [class*="contactName"], [class*="agentName"]').first().text());
+  if (!office) office = text($('[data-testid="agency-name"], [class*="agencyName"], [class*="AgencyName"]').first().text() || $('h1').first().text());
+  if (!license) license = $('body').text().match(/(?:(?:מספר|מס['׳]?)\s*)?רישיון\s*(?:תיווך|מתווך)?\s*[:#]?\s*([1-9]\d{3,9})(?!\d)/)?.[1] ?? '';
+  if (!phone) phone = batchPhone($('a[href^="tel:"]').first().attr('href') ?? '') ?? null;
+  if (!email) email = text($('a[href^="mailto:"]').first().attr('href')?.replace(/^mailto:/, '').split('?')[0]);
+  const deal = /forrent|\/rent/i.test(sourceUrl) ? 'rent' : /forsale/i.test(sourceUrl) ? 'sale' : null;
+  const links: string[] = [];
+  $('a[href*="/realestate/item/"]').each((_: number, el: any) => {
+    const a = $(el);
+    if (a.closest('[class*="related"], [class*="recommend"], [class*="similar"]').length) return;
+    const card = a.closest('[data-testid*="item"], [class*="feed-item"], [class*="feedItem"], [class*="item-layout"], li, article');
+    const blob = text(card.length ? card.text() : a.text());
+    if (NON_RESIDENTIAL_RE.test(blob)) return;
+    if (deal === 'sale' && RENT_RE.test(blob) && !SALE_RE.test(blob)) return;
+    if (deal === 'rent' && SALE_RE.test(blob) && !RENT_RE.test(blob)) return;
+    try { links.push(new URL(a.attr('href'), sourceUrl).href); } catch { /* skip */ }
+  });
+  // Keep a few spare candidates: some may fail the per-listing live/residential check.
+  const listingUrls = batchListingUrls(links).slice(0, Math.max(1, maxListings) * 2);
+  const validLicense = /^[1-9]\d{3,9}$/.test(license) && Boolean(name);
+  if (!name && !office) throw new Error('לא זוהו פרטי מתווך בעמוד; ההתקדמות נשמרה לבדיקה');
+  return { results: [{
+    source_url: agencyUrl(sourceUrl), active_listing_count: listingUrls.length, owner_name: name || null,
+    owner_phone: phone, owner_email: email || null, listing_urls: validLicense ? listingUrls : [],
+    publisher: { publisher_kind: 'broker', broker_name: name || null, office_name: office || null, ...(validLicense ? { broker_license_number: license } : {}) },
+    directory_next_url: null,
+  }], next_url: null };
+}

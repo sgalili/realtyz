@@ -18,7 +18,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
 import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2Publisher.ts";
-import { agencyUrl, parseAgencies } from '../_shared/yad2Agencies.ts';
+import { agencyUrl, isAgencyProfileUrl, parseAgencies, parseAgencyProfile } from '../_shared/yad2Agencies.ts';
 import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
 import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
 import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure, logUnlockerRequest, logUnlockerResponse, redactDiagnostic } from '../_shared/brightDataDiagnostics.ts';
@@ -2200,7 +2200,8 @@ Deno.serve(async (req) => {
       const {data:role} = job ? await admin.from('user_roles').select('user_id').eq('user_id',job.created_by).eq('role','super_admin').maybeSingle() : {data:null};
       if (!role || job?.status !== 'running' || job.lease_token !== body.admin_import_lease_token || Date.parse(job.lease_until ?? '') <= Date.now()) return json({error:'admin_discovery_not_authorized'},403);
       const html = await unlock(inputUrl, {maxAttempts:1});
-      const parsed = parseAgencies(cheerio.load(html),inputUrl);
+      const $page = cheerio.load(html);
+      const parsed = body?.agency_profile===true && isAgencyProfileUrl(inputUrl) ? parseAgencyProfile($page,inputUrl,Math.min(10,Math.max(1,Number(body?.max_listings)||10))) : parseAgencies($page,inputUrl);
       return json({success:true,...parsed,served_from:'agencies_html',records_saved:0});
     }
     if (rawUrl && !/\/realestate\/(?:item|forsale|rent|forrent)/i.test(parsedUrl.pathname)) {
