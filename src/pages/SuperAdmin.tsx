@@ -1,19 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { GoLoginTokenCard } from '@/components/admin/GoLoginTokenCard';
-import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserRole, type AppRole } from '@/hooks/useUserRole';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, AlertOctagon } from 'lucide-react';
+import { ShieldAlert, Users, Activity, ServerCog, Wallet, Bot, ExternalLink, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, ScanSearch, History, UserPlus, Trash2, FlaskConical } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
 import { BrokerUpgradeRequestsCard } from '@/components/admin/BrokerUpgradeRequestsCard';
@@ -24,98 +21,15 @@ import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
 import { DeletedAccountsArchive } from '@/components/admin/DeletedAccountsArchive';
 import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
 import { ScrapingUsageReport } from '@/components/admin/ScrapingUsageReport';
-
-import { DEMO_CANDIDATES } from '@/lib/demoData';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
-
-interface ProfileRow {
-  id: string;
-  email: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  last_sign_in_at: string | null;
-  created_at: string;
-  is_suspended: boolean;
-}
-
-interface RoleRow {
-  user_id: string;
-  role: AppRole;
-}
-
-interface LeadRow {
-  id: string;
-  email: string | null;
-  phone_number: string | null;
-  created_at: string;
-  archetype: string | null;
-  value_trap_type: string | null;
-  engagement_score: number;
-}
-
-interface DemoSessionRow {
-  session_id: string;
-  current_route: string;
-  archetype: string | null;
-  last_seen_at: string;
-}
-
-const ROLE_OPTIONS: AppRole[] = ['user', 'moderator', 'admin', 'super_admin'];
-const PREMIUM_COLORS = ['hsl(var(--primary))', 'hsl(var(--primary-glow))', 'hsl(var(--muted-foreground))'];
-
-const FEATURE_HEATMAP = [
-  { page: 'Sentiment', visits: 186, share: 46, intent: 'בדיקת מומנטום ציבורי' },
-  { page: 'CRM', visits: 143, share: 35, intent: 'איתור קהלים חמים' },
-  { page: 'Calendar', visits: 78, share: 19, intent: 'תכנון מסרי ניצחון' },
-];
-
-const ARCHETYPE_DATA = [
-  { name: 'יו״ר מפלגה ארצית', value: 44 },
-  { name: 'חבר כנסת בפריימריז', value: 31 },
-  { name: 'נכס לראשות עיר', value: 25 },
-];
-
-const DEMO_STORAGE_KEYS = ['realtyz-demo-mode', 'realtyz-demo-listing', 'realtyz-demo-session-id', 'realtyz_demo_notifications', 'realtyz_viewed_notifs', 'realtyz_demo_notif_muted', 'realtyz_dismissed_budgets', 'realtyz-authenticated-session'];
-
-const clearDemoBrowserState = () => {
-  DEMO_STORAGE_KEYS.forEach((key) => {
-    window.localStorage.removeItem(key);
-    window.sessionStorage.removeItem(key);
-  });
-};
 
 const SuperAdmin = () => {
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const [search, setSearch] = useState('');
   const [health, setHealth] = useState<Record<'whatsapp' | 'ai', 'idle' | 'checking' | 'online' | 'degraded'>>({ whatsapp: 'idle', ai: 'idle' });
 
-  const { data: profiles, isLoading: profilesLoading } = useQuery({
-    queryKey: ['admin-profiles'],
-    enabled: isSuperAdmin,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as ProfileRow[];
-    },
-  });
-
-  const { data: roles } = useQuery({
-    queryKey: ['admin-all-roles'],
-    enabled: isSuperAdmin,
-    queryFn: async () => {
-      const { data, error } = await supabase.from('user_roles').select('user_id, role');
-      if (error) throw error;
-      return (data ?? []) as RoleRow[];
-    },
-  });
-
   // Platform-wide totals come from a super-admin RPC: direct table reads are
-  // now strictly scoped to the active workspace, so they would under-count.
+  // strictly scoped to the active workspace, so they would under-count.
   const { data: stats } = useQuery({
     queryKey: ['admin-system-stats'],
     enabled: isSuperAdmin,
@@ -123,40 +37,7 @@ const SuperAdmin = () => {
     queryFn: async () => {
       const { data } = await (supabase as any).rpc('get_platform_stats');
       const row = (data ?? {}) as Record<string, number>;
-      return {
-        voters: row.voters ?? 0,
-        messages: row.messages ?? 0,
-        campaigns: row.campaigns ?? 0,
-        connections: row.connections ?? 0,
-      };
-    },
-  });
-
-  const { data: demoSessions } = useQuery({
-    queryKey: ['admin-demo-sessions'],
-    enabled: isSuperAdmin,
-    refetchInterval: 10_000,
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('demo_sessions')
-        .select('session_id, current_route, archetype, last_seen_at')
-        .order('last_seen_at', { ascending: false })
-        .limit(500);
-      return (data ?? []) as DemoSessionRow[];
-    },
-  });
-
-  const { data: capturedLeads } = useQuery({
-    queryKey: ['admin-captured-leads'],
-    enabled: isSuperAdmin,
-    refetchInterval: 20_000,
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('demo_captured_leads')
-        .select('id, email, phone_number, created_at, archetype, value_trap_type, engagement_score')
-        .order('created_at', { ascending: false })
-        .limit(30);
-      return (data ?? []) as LeadRow[];
+      return { voters: row.voters ?? 0, messages: row.messages ?? 0, campaigns: row.campaigns ?? 0, connections: row.connections ?? 0 };
     },
   });
 
@@ -228,53 +109,6 @@ const SuperAdmin = () => {
     onError: (e: any) => toast.error(e?.message ?? 'עדכון נכשל'),
   });
 
-  const toggleRole = useMutation({
-    mutationFn: async ({ userId, role, enable }: { userId: string; role: AppRole; enable: boolean }) => {
-      const query = enable ? supabase.from('user_roles').insert({ user_id: userId, role }) : supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role);
-      const { error } = await query;
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-all-roles'] });
-      toast.success('הרשאה עודכנה');
-    },
-    onError: (e: Error) => toast.error(e.message || 'שגיאה בעדכון הרשאה'),
-  });
-
-  const toggleSuspend = useMutation({
-    mutationFn: async ({ id, suspend }: { id: string; suspend: boolean }) => {
-      const { error } = await supabase.from('profiles').update({ is_suspended: suspend }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-profiles'] });
-      toast.success('סטטוס המשתמש עודכן');
-    },
-    onError: () => toast.error('עדכון סטטוס נכשל'),
-  });
-
-  const resetSimulation = useMutation({
-    mutationFn: async () => {
-      const [leadsResult, sessionsResult] = await Promise.all([
-        (supabase as any).from('demo_captured_leads').delete().not('id', 'is', null),
-        (supabase as any).from('demo_sessions').delete().not('id', 'is', null),
-      ]);
-      if (leadsResult.error) throw leadsResult.error;
-      if (sessionsResult.error) throw sessionsResult.error;
-
-      clearDemoBrowserState();
-      window.localStorage.setItem('realtyz-demo-mode', 'true');
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-demo-sessions'] });
-      qc.invalidateQueries({ queryKey: ['admin-captured-leads'] });
-      qc.invalidateQueries({ queryKey: ['admin-system-stats'] });
-      toast.success('הסימולציה אותחלה בהצלחה');
-      navigate('/dashboard?demo=true');
-    },
-    onError: (e: Error) => toast.error(e.message || 'איפוס הסימולציה נכשל'),
-  });
-
   const checkHealth = async (service: 'whatsapp' | 'ai', enabled: boolean) => {
     if (!enabled) {
       setHealth((current) => ({ ...current, [service]: 'idle' }));
@@ -295,25 +129,6 @@ const SuperAdmin = () => {
     }
   };
 
-  const rolesByUser = useMemo(() => {
-    const map = new Map<string, AppRole[]>();
-    (roles ?? []).forEach((r) => map.set(r.user_id, [...(map.get(r.user_id) ?? []), r.role]));
-    return map;
-  }, [roles]);
-
-  const filtered = (profiles ?? []).filter((p) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (p.email ?? '').toLowerCase().includes(q) || (p.full_name ?? '').toLowerCase().includes(q);
-  });
-
-  const archetypeCounts = (demoSessions ?? []).reduce<Record<string, number>>((acc, session) => {
-    const key = session.archetype || 'לא נבחר';
-    acc[key] = (acc[key] ?? 0) + 1;
-    return acc;
-  }, {});
-  const archetypeBreakdown = Object.entries(archetypeCounts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-
   if (roleLoading) return <div className="p-8"><Skeleton className="h-64 w-full" /></div>;
 
   if (!isSuperAdmin) {
@@ -326,93 +141,53 @@ const SuperAdmin = () => {
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* ─── Hero (matches dashboard: centered title only) ─── */}
       <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">
-          מרכז שליטה סופר-אדמין
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          מודיעין דמו, לידים חמים ובריאות מערכות לקראת פגישות מכירה מנצחות.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">מרכז שליטה סופר-אדמין</h1>
+        <p className="mt-1 text-sm text-muted-foreground">ניהול משתמשים, אונבורדינג, כספים ובריאות המערכת.</p>
       </div>
-
-      {/* ─── Action bar (Reset only) ─── */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            >
-              <RotateCcw className="h-4 w-4" /> איפוס סימולציה
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent dir="rtl" className="border-destructive/25">
-            <AlertDialogHeader className="text-right">
-              <AlertDialogTitle>האם אתה בטוח?</AlertDialogTitle>
-              <AlertDialogDescription>פעולה זו תנקה את כל נתוני הדמו והלידים שנאספו.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2 sm:justify-start">
-              <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => resetSimulation.mutate()}
-                disabled={resetSimulation.isPending}
-              >
-                {resetSimulation.isPending ? 'מאפס...' : 'אפס סימולציה'}
-              </AlertDialogAction>
-              <AlertDialogCancel>ביטול</AlertDialogCancel>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-
-
-
 
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="flex h-auto flex-wrap justify-start">
-          <TabsTrigger value="intelligence"><BrainCircuit className="ml-2 h-4 w-4" /> מרכז מודיעין</TabsTrigger>
-          <TabsTrigger value="leads"><MessageCircle className="ml-2 h-4 w-4" /> לידים שנלכדו</TabsTrigger>
-          <TabsTrigger value="users"><Users className="ml-2 h-4 w-4" /> משתמשים</TabsTrigger>
+        <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="users"><Users className="ml-2 h-4 w-4" /> משתמשים ואונבורדינג</TabsTrigger>
           <TabsTrigger value="finance"><Wallet className="ml-2 h-4 w-4" /> פיננסי</TabsTrigger>
-          <TabsTrigger value="activity"><Activity className="ml-2 h-4 w-4" /> פעילות</TabsTrigger>
-          <TabsTrigger value="monitoring"><Bot className="ml-2 h-4 w-4" /> ניטור</TabsTrigger>
-          <TabsTrigger value="scraping"><Activity className="ml-2 h-4 w-4" /> שימוש Bright Data</TabsTrigger>
+          <TabsTrigger value="activity"><Activity className="ml-2 h-4 w-4" /> פעילות וניטור</TabsTrigger>
+          <TabsTrigger value="scraping"><ScanSearch className="ml-2 h-4 w-4" /> שימוש Bright Data</TabsTrigger>
           <TabsTrigger value="connections">
             <PlugZap className="ml-2 h-4 w-4" /> חיבורים
-            {(connectionHealth?.length ?? 0) > 0 && (
-              <Badge variant="destructive" className="mr-2 h-4 px-1.5 text-[10px]">{connectionHealth!.length}</Badge>
-            )}
+            {(connectionHealth?.length ?? 0) > 0 && <Badge variant="destructive" className="mr-2 h-5 px-1.5 text-[10px]">{connectionHealth?.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="errors"><AlertOctagon className="ml-2 h-4 w-4" /> שגיאות</TabsTrigger>
-          <TabsTrigger value="system"><ServerCog className="ml-2 h-4 w-4" /> סטטוס</TabsTrigger>
+          <TabsTrigger value="system"><ServerCog className="ml-2 h-4 w-4" /> שגיאות ומערכת</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="intelligence" className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card><CardHeader><CardTitle>מפת חום של פיצ'רים פופולריים</CardTitle><CardDescription>העמודים שהכי משכנעים משתמשי דמו להמשיך במסע.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>עמוד</TableHead><TableHead>ביקורים</TableHead><TableHead>חום</TableHead><TableHead>כוונת משתמש</TableHead></TableRow></TableHeader><TableBody>{FEATURE_HEATMAP.map((row) => <TableRow key={row.page}><TableCell className="font-bold text-primary">{row.page}</TableCell><TableCell className="tabular-nums">{row.visits}</TableCell><TableCell><div className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${row.share}%` }} /></div></TableCell><TableCell className="text-muted-foreground">{row.intent}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
-          <Card><CardHeader><CardTitle>Listing Outreach Archetype Breakdown</CardTitle><CardDescription>איזה תרחיש מכירה נבחר הכי הרבה בדמו.</CardDescription></CardHeader><CardContent className="h-72"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={archetypeBreakdown.length ? archetypeBreakdown : ARCHETYPE_DATA} dataKey="value" nameKey="name" innerRadius={62} outerRadius={94} paddingAngle={4}>{(archetypeBreakdown.length ? archetypeBreakdown : ARCHETYPE_DATA).map((entry, index) => <Cell key={entry.name} fill={PREMIUM_COLORS[index % PREMIUM_COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></CardContent></Card>
-          <Card className="lg:col-span-2"><CardHeader><CardTitle>Demo Flow Velocity</CardTitle><CardDescription>מדד 60fps קליל המבוסס על נתוני דמו מצטברים.</CardDescription></CardHeader><CardContent className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={FEATURE_HEATMAP}><XAxis dataKey="page" /><YAxis /><Tooltip /><Bar dataKey="visits" radius={[8, 8, 0, 0]} fill="hsl(var(--primary))" /></BarChart></ResponsiveContainer></CardContent></Card>
-        </TabsContent>
-
-        <TabsContent value="leads" className="mt-4">
-          <Card><CardHeader><CardTitle>Captured Leads</CardTitle><CardDescription>לידים שנלכדו מ-Send Report value traps בדמו.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Email / Phone</TableHead><TableHead>זמן כניסה</TableHead><TableHead>ארכיטיפ</TableHead><TableHead>Engagement</TableHead></TableRow></TableHeader><TableBody>{(capturedLeads ?? []).map((lead, index) => <TableRow key={lead.id}><TableCell><div className="font-mono text-xs">{lead.email || formatPhoneDisplay(lead.phone_number)}</div><div className="text-xs text-muted-foreground">{lead.value_trap_type || 'send_report'}</div></TableCell><TableCell>{format(new Date(lead.created_at), 'dd/MM HH:mm')}</TableCell><TableCell><Badge variant="secondary">{lead.archetype || DEMO_CANDIDATES[index % DEMO_CANDIDATES.length]?.name}</Badge></TableCell><TableCell><span className="font-black tabular-nums text-primary">{lead.engagement_score}</span></TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
-        </TabsContent>
-
-        <TabsContent value="users" className="mt-4 space-y-4">
-          <BrokerUpgradeRequestsCard />
-          <SuperAdminCreateUserCard />
-          <BrokerBatchImportCard />
-          <SuperAdminDeleteUsersCard />
-          <DeletedAccountsArchive />
-          <TestTrialModeCard />
-
-          <SuperAdminUsersTable />
+        <TabsContent value="users" className="mt-4">
+          <Tabs defaultValue="accounts" className="w-full">
+            <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+              <TabsTrigger value="accounts" className="border border-border/60 data-[state=active]:border-primary/40"><Users className="ml-1.5 h-3.5 w-3.5" /> משתמשים</TabsTrigger>
+              <TabsTrigger value="onboarding" className="border border-border/60 data-[state=active]:border-primary/40"><UserPlus className="ml-1.5 h-3.5 w-3.5" /> אונבורדינג</TabsTrigger>
+              <TabsTrigger value="deletion" className="border border-border/60 data-[state=active]:border-primary/40"><Trash2 className="ml-1.5 h-3.5 w-3.5" /> מחיקה וארכיון</TabsTrigger>
+              <TabsTrigger value="testing" className="border border-border/60 data-[state=active]:border-primary/40"><FlaskConical className="ml-1.5 h-3.5 w-3.5" /> בדיקות</TabsTrigger>
+            </TabsList>
+            <TabsContent value="accounts" className="mt-4 space-y-4"><BrokerUpgradeRequestsCard /><SuperAdminUsersTable /></TabsContent>
+            <TabsContent value="onboarding" className="mt-4 grid gap-4 xl:grid-cols-2 xl:items-start"><SuperAdminCreateUserCard /><BrokerBatchImportCard /></TabsContent>
+            <TabsContent value="deletion" className="mt-4 space-y-4"><SuperAdminDeleteUsersCard /><DeletedAccountsArchive /></TabsContent>
+            <TabsContent value="testing" className="mt-4"><TestTrialModeCard /></TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="finance" className="mt-4"><FinanceTab /></TabsContent>
+
+        <TabsContent value="activity" className="mt-4 grid gap-4 xl:grid-cols-2 xl:items-start">
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><History className="h-4 w-4 text-primary" /> יומן פעולות מערכת</CardTitle><CardDescription>50 הפעולות האחרונות במערכת</CardDescription></CardHeader>
+            <CardContent className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>זמן</TableHead><TableHead>משתמש</TableHead><TableHead>פעולה</TableHead><TableHead>יעד</TableHead></TableRow></TableHeader><TableBody>{(audit ?? []).map((a: any) => <TableRow key={a.id}><TableCell className="text-xs text-muted-foreground">{format(new Date(a.created_at), 'dd/MM HH:mm')}</TableCell><TableCell className="font-mono text-xs">{a.actor_email || a.actor_id?.slice(0, 8)}</TableCell><TableCell><Badge variant="outline">{a.action}</Badge></TableCell><TableCell className="text-xs text-muted-foreground">{a.target_table ? `${a.target_table}/${(a.target_id || '').slice(0, 8)}` : '-'}</TableCell></TableRow>)}{(!audit || audit.length === 0) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">אין רשומות</TableCell></TableRow>}</TableBody></Table></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Bot className="h-4 w-4 text-primary" /> ניטור אינטראקציות</CardTitle><CardDescription>היסטוריית אינטראקציות מכל הערוצים</CardDescription></CardHeader>
+            <CardContent className="max-h-[70vh] space-y-3 overflow-y-auto">{(globalActivity ?? []).map((row: any) => <div key={row.id} className="rounded-md border border-border/60 bg-background p-3"><div className="mb-2 flex flex-wrap items-center gap-2"><Badge variant={row.actor_type === 'ai_agent' ? 'secondary' : 'default'}>{row.actor_type === 'ai_agent' ? 'סוכן AI' : 'נציג'}</Badge><Badge variant="outline">{row.platform}</Badge><span className="text-xs text-muted-foreground">{format(new Date(row.created_at), 'dd/MM HH:mm')}</span>{row.live_post_url && <Button asChild size="icon" variant="ghost" className="h-7 w-7"><a href={row.live_post_url} target="_blank" rel="noopener noreferrer" aria-label="צפייה בקמפיין החי" title="צפייה בקמפיין החי"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}</div><p className="whitespace-pre-wrap text-sm">{row.content}</p></div>)}{(!globalActivity || globalActivity.length === 0) && <p className="py-8 text-center text-sm text-muted-foreground">אין עדיין פעילות</p>}</CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="scraping" className="mt-4"><ScrapingUsageReport /></TabsContent>
-        <TabsContent value="activity" className="mt-4"><Card><CardHeader><CardTitle>יומן פעילות אחרון</CardTitle><CardDescription>50 הפעולות האחרונות במערכת</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>זמן</TableHead><TableHead>משתמש</TableHead><TableHead>פעולה</TableHead><TableHead>יעד</TableHead></TableRow></TableHeader><TableBody>{(audit ?? []).map((a: any) => <TableRow key={a.id}><TableCell className="text-xs text-muted-foreground">{format(new Date(a.created_at), 'dd/MM HH:mm')}</TableCell><TableCell className="font-mono text-xs">{a.actor_email || a.actor_id?.slice(0, 8)}</TableCell><TableCell><Badge variant="outline">{a.action}</Badge></TableCell><TableCell className="text-xs text-muted-foreground">{a.target_table ? `${a.target_table}/${(a.target_id || '').slice(0, 8)}` : '-'}</TableCell></TableRow>)}{(!audit || audit.length === 0) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">אין רשומות</TableCell></TableRow>}</TableBody></Table></CardContent></Card></TabsContent>
-        <TabsContent value="monitoring" className="mt-4"><Card><CardHeader><CardTitle>Global Monitoring</CardTitle><CardDescription>היסטוריית אינטראקציות מכל הערוצים.</CardDescription></CardHeader><CardContent className="space-y-3">{(globalActivity ?? []).map((row: any) => <div key={row.id} className="rounded-md border border-border/60 bg-background p-3"><div className="mb-2 flex flex-wrap items-center gap-2"><Badge variant={row.actor_type === 'ai_agent' ? 'secondary' : 'default'}>{row.actor_type === 'ai_agent' ? 'AI Agent' : 'Supervisor'}</Badge><Badge variant="outline">{row.platform}</Badge><span className="text-xs text-muted-foreground">{format(new Date(row.created_at), 'dd/MM HH:mm')}</span>{row.live_post_url && <Button asChild size="sm" variant="ghost" className="h-7"><a href={row.live_post_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" /> קמפיין חי</a></Button>}</div><p className="whitespace-pre-wrap text-sm">{row.content}</p></div>)}{(!globalActivity || globalActivity.length === 0) && <p className="py-8 text-center text-sm text-muted-foreground">אין עדיין פעילות גלובלית</p>}</CardContent></Card></TabsContent>
         <TabsContent value="connections" className="mt-4 space-y-4">
           <GoLoginTokenCard />
           <Card>
@@ -475,15 +250,7 @@ const SuperAdmin = () => {
                           {alert.metadata?.probe_message ?? '—'}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-[11px]"
-                            onClick={() => resolveHealthAlert.mutate(alert.id)}
-                            disabled={resolveHealthAlert.isPending}
-                          >
-                            סמן כטופלה
-                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="סימון כטופל" title="סימון כטופל" onClick={() => resolveHealthAlert.mutate(alert.id)} disabled={resolveHealthAlert.isPending}><CheckCircle2 className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -494,8 +261,12 @@ const SuperAdmin = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="errors" className="mt-4"><ErrorLogPanel /></TabsContent>
-        <TabsContent value="system" className="mt-4 space-y-4"><div className="grid gap-4 md:grid-cols-4"><StatCard label="סה״כ לידים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div><Card><CardHeader><CardTitle>System Status</CardTitle><CardDescription>בדיקת בריאות ל-WhatsApp ולמנועי AI בזמן פגישה.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="WhatsApp Gateway" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="AI Engines" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card></TabsContent>
+
+        <TabsContent value="system" className="mt-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4"><StatCard label="סה״כ לידים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div>
+          <Card><CardHeader><CardTitle className="text-base">סטטוס מערכת</CardTitle><CardDescription>בדיקת זמינות של WhatsApp ומנועי ה־AI</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="שער WhatsApp" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="מנועי AI" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card>
+          <ErrorLogPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );

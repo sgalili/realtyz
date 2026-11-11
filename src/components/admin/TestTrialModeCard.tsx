@@ -29,7 +29,7 @@ export function TestTrialModeCard() {
       localStorage.setItem(storageKey, '1');
       localStorage.removeItem(dismissedKey);
       setForced(true);
-      toast.success('Trial Wizard יוצג בכניסה הבאה לדשבורד');
+      toast.success('אשף הניסיון יוצג בכניסה הבאה');
     } else {
       localStorage.removeItem(storageKey);
       setForced(false);
@@ -40,13 +40,13 @@ export function TestTrialModeCard() {
   const launchNow = () => {
     localStorage.removeItem(dismissedKey);
     window.dispatchEvent(new CustomEvent('open-trial-wizard'));
-    toast.success('Trial Wizard נפתח');
+    toast.success('אשף הניסיון נפתח');
   };
 
   const resetWizardState = () => {
     localStorage.removeItem(dismissedKey);
     localStorage.removeItem(`trial-wizard-state-${user.id}`);
-    toast.success('מצב ה-Wizard אופס - יופיע מחדש בכניסה הבאה');
+    toast.success('מצב האשף אופס ויופיע מחדש בכניסה הבאה');
   };
 
   return (
@@ -54,22 +54,22 @@ export function TestTrialModeCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <FlaskConical className="h-4 w-4 text-amber-500" />
-          Test Trial Mode
+          מצב ניסיון לבדיקה
           <Badge variant="outline" className="border-amber-500/40 text-amber-600">
-            QA / Admin
+            בדיקות
           </Badge>
         </CardTitle>
         <CardDescription>
-          הפעלת ה-Trial Wizard עבור החשבון שלך בלבד, ללא שינוי ה-plan_status האמיתי.
-          שימושי לאודיט של זרימת ה-Onboarding ומגבלת 100 הרשומות.
+          הפעלת אשף תקופת הניסיון עבור החשבון שלך בלבד, ללא שינוי ה-plan_status האמיתי.
+          שימושי לבדיקת תהליך ההצטרפות ומגבלת 100 הרשומות.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/60 p-3">
           <div>
-            <div className="text-sm font-semibold">פתיחה אוטומטית של ה-Wizard</div>
+            <div className="text-sm font-semibold">פתיחה אוטומטית של האשף</div>
             <div className="text-xs text-muted-foreground">
-              כל כניסה לדשבורד תפתח את ה-Trial Wizard, עד שתכבה את המתג.
+              כל כניסה לדשבורד תפתח את אשף הניסיון, עד שתכבה את המתג.
             </div>
           </div>
           <Switch checked={forced} onCheckedChange={toggleForced} />
@@ -78,11 +78,11 @@ export function TestTrialModeCard() {
         <div className="flex flex-wrap gap-2">
           <Button size="sm" onClick={launchNow} className="gap-1.5">
             <PlayCircle className="h-4 w-4" />
-            פתח Wizard עכשיו
+            פתיחת האשף עכשיו
           </Button>
           <Button size="sm" variant="outline" onClick={resetWizardState} className="gap-1.5">
             <RotateCcw className="h-4 w-4" />
-            אפס סטטוס Wizard
+            איפוס מצב האשף
           </Button>
         </div>
 
