@@ -27,25 +27,30 @@ export function BrokerBatchImportCard() {
       if(kind==='start')setOpen(false);
     }catch(e){setError(e instanceof Error?e.message:'הבקשה נכשלה');}finally{setBusy(false);}
   };
-  const checkpoint=current?.checkpoint as {brokers?:{listing_urls:string[]}[];brokerIndex?:number;listingIndex?:number}|undefined;
+  const checkpoint=current?.checkpoint as {brokers?:{listing_urls:string[]}[];brokerIndex?:number;listingIndex?:number;page?:number;deal?:string;rows?:unknown[];enriched?:number;enrichUrls?:string[]}|undefined;
   const remaining=checkpoint?.brokers?.slice(checkpoint.brokerIndex??0).reduce((n,b)=>n+b.listing_urls.length,0);
   const estimate=current?.step_average_ms && remaining?Math.ceil(Number(current.step_average_ms)*remaining/60000):null;
-  return <section dir="rtl" className="space-y-3 border-b border-border py-4 text-right">
-    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">ייבוא קבוצת מתווכים · Bright Data</h3><Button variant="outline" onClick={()=>setOpen(true)}><Upload className="h-4 w-4" />ייבוא חדש</Button></div>
-    {current && <div role="status" className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm">{current.status==='running'&&<Loader2 className="h-4 w-4 animate-spin" />}{current.status==='paused'?'מושהה · ':''}{stages[current.stage]??current.stage}</span><span className="text-sm text-muted-foreground">{current.brokers_done}/{current.target_brokers} מתווכים · {current.listings_done} טיוטות{current.skipped>0?` · ${current.skipped} דולגו`:''}</span></div>
-      <Progress value={current.status==='completed'?100:current.brokers_done/current.target_brokers*100} />
-      <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-muted-foreground">{current.status==='running'?(estimate?`זמן משוער שנותר: כ־${estimate} דקות`:'זמן משוער: יופיע לאחר השלמת שלב ראשון'):current.status==='completed'&&current.brokers_done<current.target_brokers?'הסריקה הסתיימה עם פחות מתווכים מהיעד':''}{checkpoint?.brokers?.length?` · מתווך ${(checkpoint.brokerIndex??0)+1}, מודעה ${(checkpoint.listingIndex??0)+1}`:''}</span>{['running','paused','failed'].includes(current.status)&&<Button variant="outline" size="sm" disabled={busy} onClick={()=>void action(current.status==='running'?'pause':'resume')}>{current.status==='running'?<Pause className="h-4 w-4" />:<Play className="h-4 w-4" />}{current.status==='running'?'עצירה':'המשך'}</Button>}</div>
-      {current.status==='paused'&&current.lease_until&&Date.parse(current.lease_until)>Date.now()&&<p className="text-xs text-muted-foreground">הפעולה שכבר התחילה תסתיים ותישמר; לא תתחיל פעולה נוספת.</p>}
-      {current.error&&<p role="alert" className="text-sm text-destructive">{current.error}</p>}
+  // A running job with no active step and no update for 2 minutes is stalled, not progressing.
+  const stalled=current?.status==='running' && !(current.lease_until&&Date.parse(current.lease_until)>Date.now()) && Date.now()-Date.parse(current.updated_at)>120_000;
+  const scanInfo=checkpoint&&['scanning','enriching'].includes(current?.stage??'')?[`${checkpoint.deal==='rent'?'השכרה':'מכירה'} · עמוד ${checkpoint.page??1}`,checkpoint.rows?.length?`${checkpoint.rows.length} מודעות נסרקו`:null,checkpoint.enriched?`${checkpoint.enriched} מודעות נפתחו לאיתור מתווך`:null,checkpoint.enrichUrls?.length?`${checkpoint.enrichUrls.length} ממתינות`:null].filter(Boolean).join(' · '):'';
+  return <section dir="rtl" className="space-y-4 border-b border-border py-5 text-right">
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-xl font-bold">ייבוא קבוצת מתווכים · Bright Data</h3><Button className="text-base" variant="outline" onClick={()=>setOpen(true)}><Upload className="h-5 w-5" />ייבוא חדש</Button></div>
+    {current && <div role="status" className="space-y-3 rounded-xl border border-border/70 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex items-center gap-2 text-lg font-semibold">{current.status==='running'&&!stalled&&<Loader2 className="h-5 w-5 animate-spin" />}{current.status==='paused'?'מושהה · ':''}{stages[current.stage]??current.stage}</span><span className="text-base text-muted-foreground">{current.brokers_done}/{current.target_brokers} מתווכים · {current.listings_done} טיוטות{current.skipped>0?` · ${current.skipped} דולגו`:''}</span></div>
+      <Progress className="h-3" value={current.status==='completed'?100:current.brokers_done/current.target_brokers*100} />
+      {scanInfo&&<p className="text-base text-muted-foreground">{scanInfo}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-base text-muted-foreground">{current.status==='running'&&!stalled?(estimate?`זמן משוער שנותר: כ־${estimate} דקות`:current.step_average_ms?`כ־${Math.round(Number(current.step_average_ms)/1000)} שניות לכל שלב · זמן כולל יוצג לאחר איתור מתווכים`:'זמן משוער: יופיע לאחר השלמת שלב ראשון'):current.status==='completed'&&current.brokers_done<current.target_brokers?'הסריקה הסתיימה עם פחות מתווכים מהיעד':''}{checkpoint?.brokers?.length?` · מתווך ${(checkpoint.brokerIndex??0)+1}, מודעה ${(checkpoint.listingIndex??0)+1}`:''}</span>{['running','paused','failed'].includes(current.status)&&<Button variant="outline" className="text-base" disabled={busy} onClick={()=>void action(current.status==='running'&&!stalled?'pause':'resume')}>{current.status==='running'&&!stalled?<Pause className="h-5 w-5" />:<Play className="h-5 w-5" />}{current.status==='running'&&!stalled?'עצירה':'המשך'}</Button>}</div>
+      {current.status==='paused'&&current.lease_until&&Date.parse(current.lease_until)>Date.now()&&<p className="text-base text-muted-foreground">הפעולה שכבר התחילה תסתיים ותישמר; לא תתחיל פעולה נוספת.</p>}
+      {stalled&&<p role="alert" className="text-base font-medium text-destructive">שגיאת חיבור ל־Bright Data - אנא בדוק את המפתחות או נסה שוב</p>}
+      {current.error&&<p role="alert" className="text-base font-medium text-destructive">{current.error}</p>}
     </div>}
-    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
-    <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-w-lg"><DialogHeader><DialogTitle>ייבוא קבוצת מתווכים</DialogTitle></DialogHeader><div className="grid gap-4">
-      <div className="grid gap-1.5"><Label htmlFor="broker-target">מספר מתווכים רצוי</Label><Input id="broker-target" type="number" min={1} max={100} value={target} onChange={e=>setTarget(Number(e.target.value))} /></div>
-      <div className="grid gap-1.5"><Label htmlFor="broker-min">מינימום נכסים פעילים למתווך</Label><Input id="broker-min" type="number" min={1} max={10} value={min} onChange={e=>setMin(Number(e.target.value))} /></div>
-      <div className="grid gap-1.5"><Label htmlFor="broker-max">מקסימום נכסים פעילים למתווך</Label><Input id="broker-max" type="number" min={min} max={10} value={max} onChange={e=>setMax(Number(e.target.value))} /></div>
-      <p className="text-sm text-muted-foreground">לא יישלחו הודעות. רישיונות ללא התאמה יקבלו אישור ידני בשמך. הסריקה כרוכה בשימוש ב־Bright Data.</p>
-      <div className="flex justify-between gap-2"><Button variant="outline" onClick={()=>setOpen(false)}>ביטול</Button><Button disabled={busy||current?.status==='running'||!validImportParameters(target,min,max)} onClick={()=>void action('start')}><Upload className="h-4 w-4" />{busy?'מתחיל…':'התחלת ייבוא'}</Button></div>
+    {error&&<p role="alert" className="text-base text-destructive">{error}</p>}
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-w-lg"><DialogHeader><DialogTitle className="text-2xl">ייבוא קבוצת מתווכים</DialogTitle></DialogHeader><div className="grid gap-5">
+      <div className="grid gap-2"><Label className="text-base" htmlFor="broker-target">מספר מתווכים רצוי</Label><Input className="h-12 text-lg" id="broker-target" type="number" min={1} max={100} value={target} onChange={e=>setTarget(Number(e.target.value))} /></div>
+      <div className="grid gap-2"><Label className="text-base" htmlFor="broker-min">מינימום נכסים פעילים למתווך</Label><Input className="h-12 text-lg" id="broker-min" type="number" min={1} max={10} value={min} onChange={e=>setMin(Number(e.target.value))} /></div>
+      <div className="grid gap-2"><Label className="text-base" htmlFor="broker-max">מקסימום נכסים פעילים למתווך</Label><Input className="h-12 text-lg" id="broker-max" type="number" min={min} max={10} value={max} onChange={e=>setMax(Number(e.target.value))} /></div>
+      <p className="text-base leading-relaxed text-muted-foreground">לא יישלחו הודעות. רישיונות ללא התאמה יקבלו אישור ידני בשמך. הסריקה כרוכה בשימוש ב־Bright Data.</p>
+      <div className="flex justify-between gap-2"><Button className="text-base" variant="outline" onClick={()=>setOpen(false)}>ביטול</Button><Button className="text-base" disabled={busy||current?.status==='running'||!validImportParameters(target,min,max)} onClick={()=>void action('start')}><Upload className="h-5 w-5" />{busy?'מתחיל…':'התחלת ייבוא'}</Button></div>
     </div></DialogContent></Dialog>
   </section>;
 }

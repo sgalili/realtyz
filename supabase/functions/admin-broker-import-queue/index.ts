@@ -9,10 +9,18 @@ const schema = z.discriminatedUnion('action', [
   z.object({action:z.enum(['pause','resume','step']),job_id:z.string().uuid()}).strict(),
 ]);
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
+// Bright Data must answer within 45 seconds; silence becomes a visible, resumable error.
+const CALL_TIMEOUT_MS = 45_000;
+const BRIGHT_DATA_ERROR = 'שגיאת חיבור ל־Bright Data - אנא בדוק את המפתחות או נסה שוב';
+// Search pages rarely carry phone/license, so unknown publishers are opened one by one, within a per-job budget.
+const ENRICH_BUDGET = 150;
 async function call(name: string, body: unknown) {
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  const r = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${name}`,{method:'POST',headers:{Authorization:`Bearer ${key}`,apikey:key,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(120000)});
-  const data = await r.json();
+  let r: Response;
+  try { r = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${name}`,{method:'POST',headers:{Authorization:`Bearer ${key}`,apikey:key,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(CALL_TIMEOUT_MS)}); }
+  catch { throw new Error(BRIGHT_DATA_ERROR); }
+  const data = await r.json().catch(() => null);
+  if (!data) throw new Error(BRIGHT_DATA_ERROR);
   if (!r.ok || data.error || data.ok === false || data.success === false) throw new Error(String(data.detail ?? data.error ?? `HTTP ${r.status}`));
   return data;
 }
@@ -58,7 +66,8 @@ Deno.serve(async req => {
         if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
         const compact=(r:Record<string,any>)=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher});
         c.rows=[...c.rows,...d.results.map(compact)]; c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
-        c.enrichUrls=d.results.filter((r:Record<string,any>)=>r.publisher?.publisher_kind==='broker' && (!r.owner_phone || !r.publisher?.broker_license_number)).map((r:Record<string,any>)=>r.source_url);
+        c.enriched=c.enriched??0;
+        c.enrichUrls=d.results.filter((r:Record<string,any>)=>r.publisher?.publisher_kind!=='private' && (!r.owner_phone || !r.publisher?.broker_license_number)).map((r:Record<string,any>)=>r.source_url).slice(0,Math.max(0,ENRICH_BUDGET-c.enriched));
         if(c.enrichUrls.length && c.brokers.length<job.target_brokers){c.phase='enriching';await save();return json({ok:true});}
         if(c.brokers.length>=job.target_brokers) {c.phase='validating';delete c.rows;}
         else if(c.page>=20 || d.results.length===0) {
@@ -72,9 +81,8 @@ Deno.serve(async req => {
         if(url) {
           const d=await call('yad2-unlocker',{owner_id:job.created_by,url,import_item:true,preview_only:true,limit:1,pages:1});
           const row=d.results?.[0];
-          if(!row)throw new Error('לא התקבלו פרטי המפרסם; ניתן לנסות שוב מאותה מודעה');
-          c.rows=c.rows.map((r:Record<string,any>)=>r.source_url===url?{source_url:row.source_url,owner_name:row.owner_name,owner_phone:row.owner_phone,publisher:row.publisher}:r);
-          c.enrichUrls.shift();
+          if(row) c.rows=c.rows.map((r:Record<string,any>)=>r.source_url===url?{source_url:row.source_url,owner_name:row.owner_name,owner_phone:row.owner_phone,publisher:row.publisher}:r);
+          c.enrichUrls.shift(); c.enriched=(c.enriched??0)+1;
         }
         c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
         if(c.brokers.length>=job.target_brokers){c.phase='validating';delete c.rows;delete c.enrichUrls;}

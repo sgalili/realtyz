@@ -143,12 +143,12 @@ const SuperAdmin = () => {
     <div className="space-y-6" dir="rtl">
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight text-primary">מרכז שליטה סופר-אדמין</h1>
-        <p className="mt-1 text-sm text-muted-foreground">ניהול משתמשים, אונבורדינג, כספים ובריאות המערכת.</p>
+        <p className="mt-1 text-sm text-muted-foreground">ניהול משתמשים, ייבוא מתווכים, כספים ובריאות המערכת.</p>
       </div>
 
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="users"><Users className="ml-2 h-4 w-4" /> משתמשים ואונבורדינג</TabsTrigger>
+          <TabsTrigger value="users"><Users className="ml-2 h-4 w-4" /> משתמשים</TabsTrigger>
           <TabsTrigger value="finance"><Wallet className="ml-2 h-4 w-4" /> פיננסי</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="ml-2 h-4 w-4" /> פעילות וניטור</TabsTrigger>
           <TabsTrigger value="scraping"><ScanSearch className="ml-2 h-4 w-4" /> שימוש Bright Data</TabsTrigger>
@@ -163,7 +163,7 @@ const SuperAdmin = () => {
           <Tabs defaultValue="accounts" className="w-full">
             <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
               <TabsTrigger value="accounts" className="border border-border/60 data-[state=active]:border-primary/40"><Users className="ml-1.5 h-3.5 w-3.5" /> משתמשים</TabsTrigger>
-              <TabsTrigger value="onboarding" className="border border-border/60 data-[state=active]:border-primary/40"><UserPlus className="ml-1.5 h-3.5 w-3.5" /> אונבורדינג</TabsTrigger>
+              <TabsTrigger value="onboarding" className="border border-border/60 data-[state=active]:border-primary/40"><UserPlus className="ml-1.5 h-3.5 w-3.5" /> ייבוא מתווכים</TabsTrigger>
               <TabsTrigger value="deletion" className="border border-border/60 data-[state=active]:border-primary/40"><Trash2 className="ml-1.5 h-3.5 w-3.5" /> מחיקה וארכיון</TabsTrigger>
               <TabsTrigger value="testing" className="border border-border/60 data-[state=active]:border-primary/40"><FlaskConical className="ml-1.5 h-3.5 w-3.5" /> בדיקות</TabsTrigger>
             </TabsList>
