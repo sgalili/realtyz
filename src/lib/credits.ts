@@ -3,10 +3,10 @@ import { Bot, Mail, MessageCircle, MessageSquare, Phone, Sparkles, type LucideIc
 /**
  * Single source of truth for credit ⇄ ILS conversion.
  * The rate is configured by Super Admin (credit_conversion_settings) and loaded once by CreditRateSync.
- * 25 is only the fallback until the configured rate loads.
+ * 4 (1 credit = ₪0.25) is only the fallback until the configured rate loads.
  */
-export const DEFAULT_CREDITS_PER_ILS = 25;
-const RATE_KEY = 'toraff-credits-per-ils';
+export const DEFAULT_CREDITS_PER_ILS = 4;
+const RATE_KEY = 'toraff-credits-per-ils-v2';
 const readCachedRate = () => {
   try { const v = Number(globalThis.localStorage?.getItem(RATE_KEY)); return v > 0 ? v : DEFAULT_CREDITS_PER_ILS; } catch { return DEFAULT_CREDITS_PER_ILS; }
 };
