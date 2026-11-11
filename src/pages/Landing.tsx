@@ -109,7 +109,7 @@ const INCLUDED = [
 const FREE_TILES = [
   { image: imgOmnichannel, label: `${FREE_CONTACTS} לידים` },
   { image: imgPublishing, label: `${FREE_PROPERTIES} נכסים` },
-  { image: imgAi, label: '200 קרדיטים בחודש' },
+  { image: imgAi, label: '100 קרדיטים בחודש' },
 ];
 
 const FAQ: { q: string; a: string }[] = [

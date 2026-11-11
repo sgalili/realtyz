@@ -2,39 +2,43 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PartnerOnboarding } from './PartnerOnboarding';
-const mocks = vi.hoisted(() => ({ accept: vi.fn(), seen: vi.fn() }));
+const mocks = vi.hoisted(() => ({ accept: vi.fn(), label: 'מתווך' }));
 vi.mock('@/hooks/useAffiliateLicense', () => ({ useAffiliateLicense: () => ({ acceptTerms: mocks.accept, isAcceptingTerms: false }) }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'test' } }) }));
+vi.mock('@/hooks/useAccountIdentity', () => ({ useAccountIdentity: () => ({ label: mocks.label }) }));
 vi.mock('@/hooks/usePartnerConsent', () => ({ usePartnerConsent: () => ({ data: false, isLoading: false }) }));
 vi.mock('@/hooks/useUserRole', () => ({ userRolesQueryKey: (id: string) => ['roles', id] }));
-vi.mock('@/lib/tutorials', () => ({ tutorialStore: { markSeen: mocks.seen } }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear(); mocks.label = 'מתווך'; });
 function setup() {
   const done = vi.fn();
   render(<QueryClientProvider client={new QueryClient()}><PartnerOnboarding onComplete={done} /></QueryClientProvider>);
   return done;
 }
-function agree() { fireEvent.click(screen.getByRole('checkbox', { name: /קראתי ואני מסכים/ })); }
-describe('partner consent sequence', () => {
-  it('requires terms checkbox and successful server agreement before remembering dismissal', async () => {
+const join = () => screen.getByRole('button', { name: 'הצטרפות לרשת השותפים' });
+const checkAll = () => screen.getAllByRole('checkbox').forEach(c => fireEvent.click(c));
+describe('partner consent', () => {
+  it('brokers must accept terms, privacy, commissions and brokerage terms', async () => {
     mocks.accept.mockResolvedValue(undefined);
     const done = setup();
-    expect(screen.getByRole('button', { name: /^א(?:שר|ישור) והסכם$/ })).toBeDisabled();
-    agree();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'אל תציג לי שוב' }));
-    expect(done).not.toHaveBeenCalled();
-    expect(mocks.accept).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /^א(?:שר|ישור) והסכם$/ }));
+    expect(screen.getAllByRole('checkbox')).toHaveLength(4);
+    const boxes = screen.getAllByRole('checkbox');
+    boxes.slice(0, 3).forEach(c => fireEvent.click(c));
+    expect(join()).toBeDisabled();
+    fireEvent.click(boxes[3]);
+    fireEvent.click(join());
     await waitFor(() => expect(done).toHaveBeenCalledOnce());
-    expect(localStorage.getItem('realtyz-partner-intro-dismissed-test')).toBe('true');
+  });
+  it('non-brokers get three consents without brokerage terms', () => {
+    mocks.label = 'מפרסם';
+    setup();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+    expect(screen.queryByText(/תנאי התיווך/)).toBeNull();
   });
   it('does not unlock partner entry when consent persistence fails', async () => {
     mocks.accept.mockRejectedValue(new Error('failed'));
-    const done = setup(); agree();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'אל תציג לי שוב' }));
-    fireEvent.click(screen.getByRole('button', { name: /^א(?:שר|ישור) והסכם$/ }));
+    const done = setup(); checkAll();
+    fireEvent.click(join());
     await screen.findByRole('alert');
     expect(done).not.toHaveBeenCalled();
-    expect(localStorage.getItem('realtyz-partner-intro-dismissed-test')).toBeNull();
   });
 });
