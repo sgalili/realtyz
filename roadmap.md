@@ -1,5 +1,10 @@
 # Roadmap
 
+## Import resume and fresh pagination November 11
+- [x] Skip daily-restricted/busy listings without pausing; persist the next pointer and keep provider 429 protection.
+- [x] Start a fresh job with reset counters/search pages, safely retire old jobs only outside active leases, and remove the requested heading. Existing drafts and detail caches remain intact.
+- [x] 28 focused tests passed; migration applied and queue worker deployed. Authenticated desktop/mobile verified real queue reads, parameter reset and Resume/New request payloads with writes intercepted; build OK. Paid live resume/new-job scraping was not run, so provider-to-draft end-to-end remains unverified.
+
 ## Manual user creation placement November 11
 - [x] Move unchanged manual creation form out of broker import into an animated toggle under the users table heading, with the add button opposite the title.
 - [x] Authenticated desktop/mobile verified opening, closing, invalid-phone save blocking and form absence from import; preview build OK and no page errors. Existing fields/save logic unchanged; no real account created.

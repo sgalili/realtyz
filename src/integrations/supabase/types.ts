@@ -10288,6 +10288,16 @@ export type Database = {
         Returns: boolean
       }
       social_identity_key: { Args: { _raw: string }; Returns: string }
+      start_fresh_broker_import_job: {
+        Args: {
+          _actor: string
+          _checkpoint: Json
+          _max: number
+          _min: number
+          _target: number
+        }
+        Returns: string
+      }
       submit_affiliate_license: {
         Args: { _holder_name?: string; _license_number: string }
         Returns: Json

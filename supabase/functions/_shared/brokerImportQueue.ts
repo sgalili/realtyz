@@ -23,3 +23,33 @@ export function collectBrokers(rows: Record<string, any>[], min: number, max: nu
 export function nextImportPoint(brokerIndex: number, listingIndex: number, listingCount: number) {
   return listingIndex + 1 >= listingCount ? { brokerIndex: brokerIndex + 1, listingIndex: 0 } : { brokerIndex, listingIndex: listingIndex + 1 };
 }
+
+export function freshImportCheckpoint() {
+  return { page: 1, deal: 'sale', rows: [], brokers: [], brokerIndex: 0, listingIndex: 0, phase: 'scanning', freshSearch: true };
+}
+
+export function advanceSearchPoint(c: Record<string, any>, exhausted = false) {
+  if (c.page < 20 && !exhausted) { c.page++; c.phase = 'scanning'; return; }
+  if (c.deal === 'sale') { c.deal = 'rent'; c.page = 1; c.phase = 'scanning'; return; }
+  c.phase = c.brokers?.length ? 'validating' : 'completed';
+  delete c.rows; delete c.enrichUrls;
+}
+
+// Local daily claims are not provider rate limits. Consume exactly one queue item.
+export function skipRestrictedImport(c: Record<string, any>) {
+  if (c.phase === 'enriching') {
+    c.enrichUrls.shift(); c.enriched = (c.enriched ?? 0) + 1;
+    if (!c.enrichUrls.length) advanceSearchPoint(c);
+    return { brokerFinished: false };
+  }
+  if (c.phase === 'scanning') { advanceSearchPoint(c); return { brokerFinished: false }; }
+  if (c.phase !== 'importing') return null;
+  const broker = c.brokers?.[c.brokerIndex];
+  if (!broker) return null;
+  const next = nextImportPoint(c.brokerIndex, c.listingIndex, broker.listing_urls.length);
+  const brokerFinished = next.brokerIndex > c.brokerIndex && (c.brokerListingsDone ?? 0) > 0;
+  const movedBroker = next.brokerIndex > c.brokerIndex;
+  Object.assign(c, next);
+  if (movedBroker) { c.phase = 'validating'; delete c.brokerId; delete c.brokerListingsDone; }
+  return { brokerFinished };
+}

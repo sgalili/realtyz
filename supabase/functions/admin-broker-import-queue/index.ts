@@ -2,8 +2,8 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
-import { collectBrokers, nextImportPoint } from '../_shared/brokerImportQueue.ts';
-import { readWorkerResponse } from '../_shared/brightDataDiagnostics.ts';
+import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
+import { readWorkerResponse, ImportAvailabilityError } from '../_shared/brightDataDiagnostics.ts';
 import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 
 const schema = z.discriminatedUnion('action', [
@@ -18,7 +18,7 @@ const CACHE_TTL_MS = { search_page: 12 * 3600_000, item_detail: 72 * 3600_000 } 
 type CacheKind = keyof typeof CACHE_TTL_MS;
 async function cached(admin: ReturnType<typeof adminClient>, kind: CacheKind, key: string, c: Record<string, any>, fetcher: () => Promise<Record<string, any>[]>) {
   const { data } = await admin.from('broker_import_scrape_cache').select('results,fetched_at,hits').eq('cache_key', key).maybeSingle();
-  if (data && Date.now() - Date.parse(data.fetched_at) < CACHE_TTL_MS[kind] && Array.isArray(data.results)) {
+  if (!(kind === 'search_page' && c.freshSearch) && data && Date.now() - Date.parse(data.fetched_at) < CACHE_TTL_MS[kind] && Array.isArray(data.results)) {
     c.cacheHits = (c.cacheHits ?? 0) + 1;
     await admin.from('broker_import_scrape_cache').update({ hits: (data.hits ?? 0) + 1 }).eq('cache_key', key);
     return data.results as Record<string, any>[];
@@ -43,9 +43,9 @@ Deno.serve(async req => {
   try {
     if(input.action==='start') {
       if(caller.kind!=='user' || input.max_listings<input.min_listings) return json({error:'טווח נכסים לא תקין'},400);
-      const {data,error}=await admin.from('broker_import_jobs').insert({target_brokers:input.target_brokers,min_listings:input.min_listings,max_listings:input.max_listings,workspace_owner_id:caller.userId,created_by:caller.userId,checkpoint:{page:1,deal:'sale',rows:[],brokers:[],brokerIndex:0,listingIndex:0,phase:'scanning'}}).select('id').single();
+      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:input.target_brokers,_min:input.min_listings,_max:input.max_listings,_checkpoint:freshImportCheckpoint()});
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
-      return json({job_id:data.id});
+      return json({job_id:data});
     }
     const {data:existing,error:readError}=await admin.from('broker_import_jobs').select('*').eq('id',input.job_id).single();
     if(readError || !existing || !await isSuperAdmin(existing.created_by,admin)) return json({error:'job_unavailable'},404);
@@ -108,12 +108,8 @@ Deno.serve(async req => {
         c.enrichUrls=d.results.filter((r:Record<string,any>)=>r.publisher?.publisher_kind!=='private' && (!r.owner_phone || !r.publisher?.broker_license_number)).map((r:Record<string,any>)=>r.source_url).slice(0,Math.max(0,ENRICH_BUDGET-c.enriched));
         if(c.enrichUrls.length && c.brokers.length<job.target_brokers){c.phase='enriching';await save();return json({ok:true});}
         if(c.brokers.length>=job.target_brokers) {c.phase='validating';delete c.rows;}
-        else if(c.page>=20 || d.results.length===0) {
-          if(c.deal==='sale'){c.deal='rent';c.page=1;}
-          else if(c.brokers.length){c.phase='validating';delete c.rows;}
-          else throw new Error('לא נמצאו מתווכים עם שם, רישיון ומספר הנכסים המבוקש; ניתן להמשיך את החיפוש');
-        } else c.page++;
-        await save();
+        else advanceSearchPoint(c,d.results.length===0);
+        await save(c.phase==='completed'?{status:'completed'}:{});
       } else if(c.phase==='enriching') {
         const url=c.enrichUrls[0];
         if(url) {
@@ -129,10 +125,9 @@ Deno.serve(async req => {
         c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
         if(c.brokers.length>=job.target_brokers){c.phase='validating';delete c.rows;delete c.enrichUrls;}
         else if(!c.enrichUrls.length){
-          if(c.page>=20){if(c.deal==='sale'){c.deal='rent';c.page=1;c.phase='scanning';}else if(c.brokers.length){c.phase='validating';delete c.rows;}else throw new Error('לא נמצאו מספיק פרטי מתווכים מאומתים');}
-          else {c.page++;c.phase='scanning';}
+          advanceSearchPoint(c);
         }
-        await save();
+        await save(c.phase==='completed'?{status:'completed'}:{});
       } else {
         const b=c.brokers[c.brokerIndex];
         if(!b) {await save({status:'completed',stage:'completed'});return json({ok:true});}
@@ -164,21 +159,30 @@ Deno.serve(async req => {
             const {data:office}=await admin.from('white_label_settings').select('id,agency_name').eq('user_id',brokerId).maybeSingle();
             if(!office){const {error}=await admin.from('white_label_settings').insert({user_id:brokerId,agency_name:b.office_name,brokerage_name:b.office_name,brokerage_license:b.license_number});if(error)throw error;}
           }
-          c.brokerId=brokerId;c.phase='importing';await save();
+          c.brokerId=brokerId;c.brokerListingsDone=0;c.phase='importing';await save();
         } else if(c.phase==='importing') {
           const d=await pacedCall('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,limit:1,pages:1});
           if(!d)return json({ok:true,waiting:true});
           if(!d.listing_id)throw new Error('המודעה לא נשמרה; אפשר להמשיך מאותה נקודה');
           const {error}=await admin.from('listings').update({status:'pending',is_published:false,affiliate_enabled:false}).eq('id',d.listing_id).eq('workspace_owner_id',c.brokerId).eq('is_published',false).eq('affiliate_enabled',false);if(error)throw error;
           const next=nextImportPoint(c.brokerIndex,c.listingIndex,b.listing_urls.length);
+          c.brokerListingsDone=(c.brokerListingsDone??0)+1;
           const done=next.brokerIndex>c.brokerIndex;Object.assign(c,next);
-          if(done){c.phase='validating';delete c.brokerId;}
+          if(done){c.phase='validating';delete c.brokerId;delete c.brokerListingsDone;}
           await save({listings_done:job.listings_done+1,brokers_done:job.brokers_done+(done?1:0)});
         }
       }
       return json({ok:true});
     } catch(e) {
       if(e instanceof DelayStepFinished)return json({ok:true,waiting:true});
+      if(e instanceof ImportAvailabilityError) {
+        const skipped=skipRestrictedImport(c);
+        if(skipped) {
+          console.log('[broker-import-skip]',JSON.stringify({job_id:job.id,code:e.code,phase:c.phase,page:c.page,broker_index:c.brokerIndex,listing_index:c.listingIndex}));
+          await save({skipped:job.skipped+1,brokers_done:job.brokers_done+(skipped.brokerFinished?1:0),error:null,...(c.phase==='completed'?{status:'completed'}:{})});
+          return json({ok:true,skipped:true});
+        }
+      }
       if(e instanceof ProviderRateLimitError) {
         c.rateRetries=(c.rateRetries??0)+1;c.waitReason='rate_limit';
         c.waitUntil=Date.now()+rateBackoffMs(c.rateRetries,e.retryAfterMs);
