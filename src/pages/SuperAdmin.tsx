@@ -4,13 +4,14 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSearchParams } from 'react-router-dom';
+import { resolveAdminSection, type AdminSection } from '@/lib/superAdminSections';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldAlert, Users, Activity, ServerCog, Wallet, Bot, ExternalLink, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, ScanSearch, History, UserPlus, Trash2 } from 'lucide-react';
+import { ShieldAlert, Bot, ExternalLink, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, History } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { BrokerUpgradeRequestsCard } from '@/components/admin/BrokerUpgradeRequestsCard';
 import { BrokerBatchImportCard } from '@/components/admin/BrokerBatchImportCard';
@@ -25,6 +26,8 @@ import { format } from 'date-fns';
 
 const SuperAdmin = () => {
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
+  const [searchParams] = useSearchParams();
+  const section = resolveAdminSection(searchParams.get('section'));
   const [health, setHealth] = useState<Record<'whatsapp' | 'ai', 'idle' | 'checking' | 'online' | 'degraded'>>({ whatsapp: 'idle', ai: 'idle' });
 
   // Platform-wide totals come from a super-admin RPC: direct table reads are
@@ -140,40 +143,33 @@ const SuperAdmin = () => {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">מרכז שליטה סופר-אדמין</h1>
-        <p className="mt-1 text-sm text-muted-foreground">ניהול משתמשים, ייבוא מתווכים, כספים ובריאות המערכת.</p>
-      </div>
+      <p className="text-center text-sm text-muted-foreground">ניהול משתמשים, ייבוא מתווכים, כספים ובריאות המערכת.</p>
 
-      <Tabs defaultValue="users" className="w-full">
-        <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="users"><Users className="ml-2 h-4 w-4" /> משתמשים</TabsTrigger>
-          <TabsTrigger value="finance"><Wallet className="ml-2 h-4 w-4" /> פיננסי</TabsTrigger>
-          <TabsTrigger value="activity"><Activity className="ml-2 h-4 w-4" /> פעילות וניטור</TabsTrigger>
-          <TabsTrigger value="scraping"><ScanSearch className="ml-2 h-4 w-4" /> שימוש Bright Data</TabsTrigger>
-          <TabsTrigger value="connections">
-            <PlugZap className="ml-2 h-4 w-4" /> חיבורים
-            {(connectionHealth?.length ?? 0) > 0 && <Badge variant="destructive" className="mr-2 h-5 px-1.5 text-[10px]">{connectionHealth?.length}</Badge>}
-          </TabsTrigger>
-          <TabsTrigger value="system"><ServerCog className="ml-2 h-4 w-4" /> שגיאות ומערכת</TabsTrigger>
-        </TabsList>
+      {section === 'users' && (
+        <div className="space-y-4">
+          <BrokerUpgradeRequestsCard />
+          <SuperAdminUsersTable />
+        </div>
+      )}
 
-        <TabsContent value="users" className="mt-4">
-          <Tabs defaultValue="accounts" className="w-full">
-            <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
-              <TabsTrigger value="accounts" className="border border-border/60 data-[state=active]:border-primary/40"><Users className="ml-1.5 h-3.5 w-3.5" /> משתמשים</TabsTrigger>
-              <TabsTrigger value="onboarding" className="border border-border/60 data-[state=active]:border-primary/40"><UserPlus className="ml-1.5 h-3.5 w-3.5" /> ייבוא מתווכים</TabsTrigger>
-              <TabsTrigger value="deletion" className="border border-border/60 data-[state=active]:border-primary/40"><Trash2 className="ml-1.5 h-3.5 w-3.5" /> מחיקה וארכיון</TabsTrigger>
-            </TabsList>
-            <TabsContent value="accounts" className="mt-4 space-y-4"><BrokerUpgradeRequestsCard /><SuperAdminUsersTable /></TabsContent>
-            <TabsContent value="onboarding" className="mt-4 space-y-4"><BrokerBatchImportCard /><BrokerContactQueueCard /></TabsContent>
-            <TabsContent value="deletion" className="mt-4 space-y-4"><SuperAdminDeleteUsersCard /><DeletedAccountsArchive /></TabsContent>
-          </Tabs>
-        </TabsContent>
+      {section === 'import' && (
+        <div className="space-y-4">
+          <BrokerBatchImportCard />
+          <BrokerContactQueueCard />
+        </div>
+      )}
 
-        <TabsContent value="finance" className="mt-4"><FinanceTab /></TabsContent>
+      {section === 'deletion' && (
+        <div className="space-y-4">
+          <SuperAdminDeleteUsersCard />
+          <DeletedAccountsArchive />
+        </div>
+      )}
 
-        <TabsContent value="activity" className="mt-4 grid gap-4 xl:grid-cols-2 xl:items-start">
+      {section === 'finance' && <FinanceTab />}
+
+      {section === 'activity' && (
+        <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2 text-base"><History className="h-4 w-4 text-primary" /> יומן פעולות מערכת</CardTitle><CardDescription>50 הפעולות האחרונות במערכת</CardDescription></CardHeader>
             <CardContent className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>זמן</TableHead><TableHead>משתמש</TableHead><TableHead>פעולה</TableHead><TableHead>יעד</TableHead></TableRow></TableHeader><TableBody>{(audit ?? []).map((a: any) => <TableRow key={a.id}><TableCell className="text-xs text-muted-foreground">{format(new Date(a.created_at), 'dd/MM HH:mm')}</TableCell><TableCell className="font-mono text-xs">{a.actor_email || a.actor_id?.slice(0, 8)}</TableCell><TableCell><Badge variant="outline">{a.action}</Badge></TableCell><TableCell className="text-xs text-muted-foreground">{a.target_table ? `${a.target_table}/${(a.target_id || '').slice(0, 8)}` : '-'}</TableCell></TableRow>)}{(!audit || audit.length === 0) && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">אין רשומות</TableCell></TableRow>}</TableBody></Table></CardContent>
@@ -182,10 +178,13 @@ const SuperAdmin = () => {
             <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Bot className="h-4 w-4 text-primary" /> ניטור אינטראקציות</CardTitle><CardDescription>היסטוריית אינטראקציות מכל הערוצים</CardDescription></CardHeader>
             <CardContent className="max-h-[70vh] space-y-3 overflow-y-auto">{(globalActivity ?? []).map((row: any) => <div key={row.id} className="rounded-md border border-border/60 bg-background p-3"><div className="mb-2 flex flex-wrap items-center gap-2"><Badge variant={row.actor_type === 'ai_agent' ? 'secondary' : 'default'}>{row.actor_type === 'ai_agent' ? 'סוכן AI' : 'נציג'}</Badge><Badge variant="outline">{row.platform}</Badge><span className="text-xs text-muted-foreground">{format(new Date(row.created_at), 'dd/MM HH:mm')}</span>{row.live_post_url && <Button asChild size="icon" variant="ghost" className="h-7 w-7"><a href={row.live_post_url} target="_blank" rel="noopener noreferrer" aria-label="צפייה בקמפיין החי" title="צפייה בקמפיין החי"><ExternalLink className="h-3.5 w-3.5" /></a></Button>}</div><p className="whitespace-pre-wrap text-sm">{row.content}</p></div>)}{(!globalActivity || globalActivity.length === 0) && <p className="py-8 text-center text-sm text-muted-foreground">אין עדיין פעילות</p>}</CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="scraping" className="mt-4"><ScrapingUsageReport /></TabsContent>
-        <TabsContent value="connections" className="mt-4 space-y-4">
+      {section === 'scraping' && <ScrapingUsageReport />}
+
+      {section === 'connections' && (
+        <div className="space-y-4">
           <GoLoginTokenCard />
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
@@ -256,15 +255,16 @@ const SuperAdmin = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
+      )}
 
-
-        <TabsContent value="system" className="mt-4 space-y-4">
+      {section === 'system' && (
+        <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4"><StatCard label="סה״כ לידים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div>
           <Card><CardHeader><CardTitle className="text-base">סטטוס מערכת</CardTitle><CardDescription>בדיקת זמינות של WhatsApp ומנועי ה־AI</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="שער WhatsApp" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="מנועי AI" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card>
           <ErrorLogPanel />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 };

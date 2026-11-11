@@ -25,6 +25,7 @@ import {
   Bot,
   Megaphone,
 } from "lucide-react";
+import { SuperAdminSectionSelect } from "@/components/admin/SuperAdminSectionSelect";
 import { useAffiliatePreferences } from "@/hooks/useAffiliate";
 import { useAppMode } from "@/hooks/useAppMode";
 import { useAuth } from "@/hooks/useAuth";
@@ -368,10 +369,17 @@ export function PageHero() {
           )}
         </div>
 
-        {/* Absolute-centered page title — locked to screen center */}
-        <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
-          {displayTitle}
-        </h1>
+        {/* Absolute-centered page title — locked to screen center. On Super
+            Admin the section switcher takes the title's place. */}
+        {location.pathname.startsWith('/super-admin') ? (
+          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <SuperAdminSectionSelect />
+          </div>
+        ) : (
+          <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
+            {displayTitle}
+          </h1>
+        )}
 
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="relative z-30 flex items-center justify-end gap-2" style={{ marginLeft: "-5px" }}>
