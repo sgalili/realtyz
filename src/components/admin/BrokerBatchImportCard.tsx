@@ -10,12 +10,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { validImportParameters } from '../../../supabase/functions/_shared/brokerImportQueue';
+import { agencyUrl } from '../../../supabase/functions/_shared/yad2Agencies';
+
+const LINKS_KEY='toraff-broker-import-links';
+const LIMIT_KEY='toraff-broker-import-link-limit';
+const validLink=(l:string)=>/^https:\/\//i.test(l)&&Boolean(agencyUrl(l));
+// Puts each pasted link on its own line, dropping blank lines between them.
+const separateLinks=(t:string)=>t.replace(/[ \t]+(?=https?:\/\/)/gi,'\n').replace(/\n{2,}/g,'\n');
 
 const stages: Record<string,string> = {scanning:'סריקה ב־Bright Data',enriching:'איסוף פרטי מתווכים',validating:'בדיקת מודעות פעילות',creating:'אימות רישיון ויצירת מתווך',importing:'ייבוא טיוטות',completed:'הייבוא הסתיים'};
 export function BrokerBatchImportCard() {
   const [open,setOpen]=useState(false);
   const [target,setTarget]=useState(10); const [min,setMin]=useState(3);const [max,setMax]=useState(10);
-  const [links,setLinks]=useState('');const [notice,setNotice]=useState('');
+  const [links,setLinksState]=useState(()=>{try{return localStorage.getItem(LINKS_KEY)??'';}catch{return '';}});
+  const setLinks=(v:string)=>{setLinksState(v);try{v?localStorage.setItem(LINKS_KEY,v):localStorage.removeItem(LINKS_KEY);}catch{/* storage unavailable */}};
+  const [linkLimit,setLinkLimitState]=useState(()=>{const n=Number((()=>{try{return localStorage.getItem(LIMIT_KEY);}catch{return null;}})());return n>=1&&n<=10?n:10;});
+  const setLinkLimit=(n:number)=>{setLinkLimitState(n);try{localStorage.setItem(LIMIT_KEY,String(n));}catch{/* storage unavailable */}};
+  const linkLines=links.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const invalidCount=linkLines.filter(l=>!validLink(l)).length;const [notice,setNotice]=useState('');
   const [busy,setBusy]=useState(false);const [error,setError]=useState('');const qc=useQueryClient();
   const {data:jobs}=useQuery({queryKey:['admin-broker-import-jobs'],queryFn:async()=>{const {data,error}=await supabase.from('broker_import_jobs').select('*').order('created_at',{ascending:false}).limit(5);if(error)throw error;return data;},refetchInterval:query=>query.state.data?.some(j=>j.status==='running'||(j.lease_until&&Date.parse(j.lease_until)>Date.now()))?4000:false});
   const current=jobs?.[0];
@@ -25,7 +37,7 @@ export function BrokerBatchImportCard() {
     setBusy(true);setError('');setNotice('');
     try {
       const urls=links.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-      const {data,error}=await supabase.functions.invoke('admin-broker-import-queue',{body:kind==='start'?{action:kind,target_brokers:target,min_listings:min,max_listings:max}:kind==='start_urls'?{action:kind,urls}:{action:kind,job_id:current?.id}});
+      const {data,error}=await supabase.functions.invoke('admin-broker-import-queue',{body:kind==='start'?{action:kind,target_brokers:target,min_listings:min,max_listings:max}:kind==='start_urls'?{action:kind,urls,max_listings:linkLimit}:{action:kind,job_id:current?.id}});
       if(error){const d=error instanceof FunctionsHttpError?await error.context.json().catch(()=>null):null;throw new Error(d?.error??'הבקשה נכשלה');}
       if(data?.error)throw new Error(data.error);
       await qc.invalidateQueries({queryKey:['admin-broker-import-jobs']});
@@ -44,8 +56,10 @@ export function BrokerBatchImportCard() {
   return <section dir="rtl" className="space-y-4 border-b border-border py-5 text-right">
     <div className="space-y-3 rounded-xl border border-border/70 p-4">
       <h3 className="text-lg font-semibold">ייבוא ישיר מהדבקת קישורים</h3>
-      <Textarea dir="ltr" className="min-h-28 text-left text-base" placeholder="https://www.yad2.co.il/realestate/agency/..." value={links} onChange={e=>setLinks(e.target.value)} aria-label="קישורי מתווכים, קישור בכל שורה" />
-      <div className="flex justify-end"><Button className="h-11 text-base" disabled={busy||!links.trim()||Boolean(current?.lease_until&&Date.parse(current.lease_until)>now)} onClick={()=>{if(current&&['running','paused'].includes(current.status)&&!window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא מהקישורים? הטיוטות שכבר נשמרו לא יימחקו.'))return;void action('start_urls');}}><Upload className="h-5 w-5" />ייבוא מתווכים מקישורים שהודבקו</Button></div>
+      <Textarea dir="ltr" className="min-h-28 text-left text-base" placeholder="https://www.yad2.co.il/realestate/agency/..." value={links} onChange={e=>setLinks(e.target.value)} onPaste={e=>{e.preventDefault();const el=e.currentTarget;const pasted=separateLinks(e.clipboardData.getData('text').trim());const next=separateLinks(links.slice(0,el.selectionStart)+pasted+'\n'+links.slice(el.selectionEnd));setLinks(next);}} onKeyDown={e=>{if(e.key==='Enter'){const el=e.currentTarget;const before=links.slice(0,el.selectionStart);if(!before.trim()||before.endsWith('\n'))e.preventDefault();}}} aria-label="קישורי מתווכים, קישור בכל שורה" />
+      {linkLines.length>0&&<ol dir="ltr" className="max-h-56 space-y-1 overflow-y-auto text-left text-sm" aria-label="קישורים ממוספרים">{linkLines.map((l,i)=>{const ok=validLink(l);return <li key={i} className={`flex items-start gap-2 rounded-md border px-2 py-1 ${ok?'border-border/60':'border-destructive bg-destructive/10 text-destructive'}`}><span className="shrink-0 font-semibold tabular-nums">{i+1}.</span><span className="min-w-0 flex-1 break-all">{l}</span>{!ok&&<span dir="rtl" className="shrink-0 font-medium">⚠ קישור לא תקין</span>}</li>;})}</ol>}
+      {invalidCount>0&&<p role="alert" className="text-base font-medium text-destructive">{invalidCount} קישורים לא תקינים מסומנים באדום. יש להזין קישור משרד/מתווך של יד2 שמתחיל ב־https://www.yad2.co.il/realestate/agency/</p>}
+      <div className="flex flex-row items-end justify-end gap-2"><div className="w-28 shrink-0 space-y-1"><Label htmlFor="link-limit" className="text-sm">מקס׳ נכסים לקישור</Label><Input id="link-limit" type="number" inputMode="numeric" min={1} max={10} className="h-11 text-base" value={linkLimit} onChange={e=>{const n=Math.round(Number(e.target.value));if(Number.isFinite(n))setLinkLimit(Math.min(10,Math.max(1,n)));}} /></div><Button className="h-11 text-base" disabled={busy||!links.trim()||Boolean(current?.lease_until&&Date.parse(current.lease_until)>now)} onClick={()=>{if(current&&['running','paused'].includes(current.status)&&!window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא מהקישורים? הטיוטות שכבר נשמרו לא יימחקו.'))return;void action('start_urls');}}><Upload className="h-5 w-5" />ייבוא מתווכים מקישורים שהודבקו</Button></div>
       {notice&&<p className="text-base text-muted-foreground">{notice}</p>}
     </div>
     {!current&&<div className="flex items-center justify-end gap-2">{newImportButton}</div>}

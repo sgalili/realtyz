@@ -9,7 +9,7 @@ import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRem
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
-  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100)}).strict(),
+  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100),max_listings:z.number().int().min(1).max(10).optional()}).strict(),
   z.object({action:z.enum(['pause','resume','reset_cooldown','step']),job_id:z.string().uuid()}).strict(),
 ]);
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
@@ -55,7 +55,7 @@ Deno.serve(async req => {
       const urls=[...new Set(input.urls.map(u=>agencyUrl(u.trim())).filter((u):u is string=>Boolean(u)))];
       if(!urls.length) return json({error:'לא נמצאו קישורי משרד/מתווך תקינים של יד2'},400);
       const checkpoint={...freshImportCheckpoint(),source:'urls',phase:'enriching',enrichUrls:urls,enriched:0,invalidUrls:input.urls.length-urls.length};
-      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:urls.length,_min:1,_max:10,_checkpoint:checkpoint});
+      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:urls.length,_min:1,_max:input.max_listings??10,_checkpoint:checkpoint});
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
       return json({job_id:data,accepted:urls.length,rejected:input.urls.length-urls.length});
     }
