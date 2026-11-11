@@ -191,7 +191,11 @@ Deno.serve(async req => {
           if(!d)return json({ok:true,waiting:true});
           c.liveUrls=c.liveUrls??[];
           if(d.statuses?.[b.listing_urls[c.listingIndex]]==='live') c.liveUrls.push(b.listing_urls[c.listingIndex]);
-          else if(d.statuses?.[b.listing_urls[c.listingIndex]]!=='gone') throw new Error('לא ניתן לאמת כרגע שהמודעה פעילה; הייבוא נעצר לפני יצירת החשבון');
+          else if(d.statuses?.[b.listing_urls[c.listingIndex]]!=='gone') {
+            // Unknown status (unreadable DOM/anti-bot page): pasted links are trusted and directory scans soft-warn; both continue as unpublished drafts.
+            console.warn('[broker-import] listing status unverified, treating as active',{job:job.id,source:c.source??'directory',url:b.listing_urls[c.listingIndex]});
+            c.liveUrls.push(b.listing_urls[c.listingIndex]);
+          }
           c.listingIndex++;
           if(c.listingIndex>=b.listing_urls.length) {
             b.listing_urls=c.liveUrls;delete c.liveUrls;c.listingIndex=0;
