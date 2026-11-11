@@ -1079,6 +1079,20 @@
       "when": 1794374661092,
       "tag": "0153_fresh_broker_import_start",
       "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1794377782578,
+      "tag": "0154_agency_discovery_registry",
+      "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1794377896151,
+      "tag": "0155_agency_registry_service_only_grants",
+      "breakpoints": true
     }
   ]
 }

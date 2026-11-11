@@ -1,4 +1,5 @@
 import { batchPhone, batchListingUrls } from './brokerBatchImport.ts';
+import { AGENCY_CITIES } from './yad2Agencies.ts';
 
 export type DiscoveredBroker = { full_name: string; phone: string | null; email?: string; license_number: string; office_name?: string; listing_urls: string[] };
 export function validImportParameters(target: number, min: number, max: number) {
@@ -26,12 +27,17 @@ export function nextImportPoint(brokerIndex: number, listingIndex: number, listi
 }
 
 export function freshImportCheckpoint() {
-  return { page: 1, source: 'agencies', rows: [], brokers: [], brokerIndex: 0, listingIndex: 0, phase: 'scanning', freshSearch: true };
+  return { page: 1, source: 'agencies', cityIndex: 0, discoveryVersion: 2, rows: [], brokers: [], brokerIndex: 0, listingIndex: 0, phase: 'scanning', freshSearch: true };
 }
 
 export function advanceSearchPoint(c: Record<string, any>, exhausted = false) {
   if (c.source === 'agencies') {
     if (!exhausted && c.page < 100) { c.page++; c.phase = 'scanning'; return; }
+    if ((c.cityIndex ?? 0) + 1 < AGENCY_CITIES.length) {
+      c.cityIndex = (c.cityIndex ?? 0) + 1; c.page = 1; c.phase = 'scanning';
+      delete c.directoryNextUrl; delete c.directoryPages; delete c.directoryExhausted; delete c.enrichUrls;
+      return;
+    }
     c.phase = c.brokers?.length ? 'validating' : 'completed';
     delete c.rows; delete c.enrichUrls; return;
   }

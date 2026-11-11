@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse, ImportAvailabilityError } from '../_shared/brightDataDiagnostics.ts';
-import { agencyPageUrl, agencyUrl } from '../_shared/yad2Agencies.ts';
+import { agencyPageUrl, agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck } from '../_shared/yad2Agencies.ts';
 import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 
 const schema = z.discriminatedUnion('action', [
@@ -14,7 +14,7 @@ const schema = z.discriminatedUnion('action', [
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
 // Search pages rarely carry phone/license, so unknown publishers are opened one by one, within a per-job budget.
 const ENRICH_BUDGET = 150;
-const compactDirectoryRows=(rs:Record<string,any>[])=>rs.map(r=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,owner_email:r.owner_email,listing_urls:r.listing_urls,publisher:r.publisher}));
+const compactDirectoryRows=(rs:Record<string,any>[])=>rs.map(r=>({source_url:r.source_url,active_listing_count:r.active_listing_count,owner_name:r.owner_name,owner_phone:r.owner_phone,owner_email:r.owner_email,listing_urls:r.listing_urls,publisher:r.publisher}));
 // Scrape cache: search pages stay fresh 12h, ad details 72h. Freshness is never extended on read.
 const CACHE_TTL_MS = { search_page: 12 * 3600_000, item_detail: 72 * 3600_000 } as const;
 type CacheKind = keyof typeof CACHE_TTL_MS;
@@ -68,8 +68,22 @@ Deno.serve(async req => {
     const {data:claimed,error:claimError}=await admin.rpc('claim_broker_import_step',{_id:input.job_id}); if(claimError) throw claimError;
     const job=claimed?.[0]; if(!job) return json({ok:true,idle:true});
     const c=job.checkpoint as Record<string,any>; const started=Date.now();
-    if (['scanning','enriching'].includes(c.phase) && c.source !== 'agencies') {
+    const criteriaKey=`volume:${job.min_listings}:${job.max_listings}`;
+    const recentKeys=async(rows:Record<string,any>[])=>{
+      const keys=[...new Set(rows.map(agencyRegistryKey).filter((key):key is string=>Boolean(key)))];
+      if(!keys.length)return new Set<string>();
+      const {data,error}=await admin.from('broker_import_agency_registry').select('agency_key,checked_at').eq('criteria_key',criteriaKey).in('agency_key',keys).gt('checked_at',new Date(Date.now()-7*86400_000).toISOString());
+      if(error)throw error;
+      return new Set((data??[]).filter(r=>recentAgencyCheck(r.checked_at)).map(r=>r.agency_key));
+    };
+    const recordCheck=async(row:Record<string,any>,outcome:'checked'|'disqualified',reason:string)=>{
+      const key=agencyRegistryKey(row);if(!key)return;
+      const {error}=await admin.from('broker_import_agency_registry').upsert({agency_key:key,criteria_key:criteriaKey,outcome,reason,listing_count:row.active_listing_count??null,checked_at:new Date().toISOString()});
+      if(error)throw error;
+    };
+    if (['scanning','enriching'].includes(c.phase) && (c.source !== 'agencies' || c.discoveryVersion !== 2)) {
       Object.assign(c, freshImportCheckpoint()); delete c.deal; delete c.enrichUrls; delete c.enriched;
+      delete c.directoryNextUrl; delete c.directoryPages; delete c.directoryExhausted;
     }
     const save=async (patch:Record<string,unknown>={})=> {
       const duration=Date.now()-started;
@@ -100,35 +114,56 @@ Deno.serve(async req => {
       }
       if(c.phase==='scanning') {
         const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({...compactDirectoryRows([r])[0],directory_next_url:r.directory_next_url}));
-        const results=await cached(admin,'search_page',`agencies:v1:${c.page}`,c,async()=>{
-          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:agencyUrl(c.directoryNextUrl)??agencyPageUrl(c.page),page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
+        const results=await cached(admin,'search_page',`agencies:v2:${c.cityIndex??0}:${c.page}`,c,async()=>{
+          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:agencyPageUrl(c.page,c.cityIndex??0,c.directoryNextUrl),page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
           if(!d)throw new DelayStepFinished();
           if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
           return compactAll(d.results);
         });
-        const d={results};
         const fingerprint=results.map(r=>`${r.source_url}:${r.publisher?.broker_license_number??''}`).sort().join('|');
         c.directoryExhausted=!results.length || (c.directoryPages??[]).includes(fingerprint);
         if(c.directoryExhausted) {advanceSearchPoint(c,true);await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true});}
         c.directoryPages=[...(c.directoryPages??[]),fingerprint];
         c.directoryNextUrl=agencyUrl(results[0]?.directory_next_url);
-        const compact=(r:Record<string,any>)=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,owner_email:r.owner_email,listing_urls:r.listing_urls,publisher:r.publisher});
-        c.rows=[...c.rows,...d.results.map(compact)]; c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
+        const known=await recentKeys(results);
+        const eligible:Record<string,any>[]=[];
+        for(const r of results){
+          const key=agencyRegistryKey(r);
+          if(key && known.has(key)){c.registrySkips=(c.registrySkips??0)+1;continue;}
+          if(!agencyVolumeAllowed(r,job.min_listings,job.max_listings)){
+            await recordCheck(r,'disqualified','summary_volume');if(key)known.add(key);
+            c.volumeSkips=(c.volumeSkips??0)+1;continue;
+          }
+          eligible.push(r);
+        }
+        c.rows=[...c.rows,...compactDirectoryRows(eligible)]; c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
         c.enriched=c.enriched??0;
-        c.enrichUrls=d.results.filter((r:Record<string,any>)=>agencyUrl(r.source_url) && (!r.publisher?.broker_license_number || !r.publisher?.broker_name || !(r.listing_urls?.length))).map((r:Record<string,any>)=>r.source_url).slice(0,Math.max(0,ENRICH_BUDGET-c.enriched));
+        const needsDetail=(r:Record<string,any>)=>agencyRegistryKey(r) && (!r.publisher?.broker_license_number || !r.publisher?.broker_name || !(r.listing_urls?.length));
+        c.enrichUrls=[...new Set(eligible.filter(needsDetail).map(r=>r.source_url))].slice(0,Math.max(0,ENRICH_BUDGET-c.enriched));
+        for(const r of eligible.filter(r=>!needsDetail(r)))await recordCheck(r,'checked','complete_card');
         if(c.enrichUrls.length && c.brokers.length<job.target_brokers){c.phase='enriching';await save();return json({ok:true});}
         if(c.brokers.length>=job.target_brokers) {c.phase='validating';delete c.rows;}
-        else advanceSearchPoint(c,d.results.length===0);
+        else advanceSearchPoint(c,results.length===0);
         await save(c.phase==='completed'?{status:'completed'}:{});
       } else if(c.phase==='enriching') {
         const url=c.enrichUrls[0];
         if(url) {
-          const rows=await cached(admin,'item_detail',`agency:v1:${url}`,c,async()=>{
+          const card=c.rows.find((r:Record<string,any>)=>r.source_url===url)??{source_url:url};
+          const known=await recentKeys([card]);
+          const key=agencyRegistryKey(card);
+          if((key && known.has(key)) || !agencyVolumeAllowed(card,job.min_listings,job.max_listings)){
+            c.enrichUrls.shift();c.rows=c.rows.filter((r:Record<string,any>)=>r.source_url!==url);c.registrySkips=(c.registrySkips??0)+1;
+            if(!c.enrichUrls.length)advanceSearchPoint(c);
+            await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true,skipped:true});
+          }
+          const rows=await cached(admin,'item_detail',`agency:v2:${url}`,c,async()=>{
             const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,preview_only:true,limit:60,pages:1,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
             if(!d)throw new DelayStepFinished();
             return Array.isArray(d.results) ? compactDirectoryRows(d.results) : [];
           });
-          c.rows=[...c.rows.filter((r:Record<string,any>)=>r.source_url!==url),...rows];
+          const eligible=rows.filter(r=>agencyVolumeAllowed(r,job.min_listings,job.max_listings));
+          await recordCheck({...card,active_listing_count:rows.find(r=>r.active_listing_count!=null)?.active_listing_count??card.active_listing_count},eligible.length?'checked':'disqualified',eligible.length?'detail_checked':'detail_volume_or_empty');
+          c.rows=[...c.rows.filter((r:Record<string,any>)=>r.source_url!==url),...eligible];
           c.enrichUrls.shift(); c.enriched=(c.enriched??0)+1;
         }
         c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);

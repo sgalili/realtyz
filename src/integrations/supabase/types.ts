@@ -1299,6 +1299,33 @@ export type Database = {
           },
         ]
       }
+      broker_import_agency_registry: {
+        Row: {
+          agency_key: string
+          checked_at: string
+          criteria_key: string
+          listing_count: number | null
+          outcome: string
+          reason: string
+        }
+        Insert: {
+          agency_key: string
+          checked_at?: string
+          criteria_key: string
+          listing_count?: number | null
+          outcome: string
+          reason: string
+        }
+        Update: {
+          agency_key?: string
+          checked_at?: string
+          criteria_key?: string
+          listing_count?: number | null
+          outcome?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       broker_import_jobs: {
         Row: {
           brokers_done: number

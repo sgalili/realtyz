@@ -1,5 +1,10 @@
 # Roadmap
 
+## Discovery performance November 11
+- [x] Extract summary-card volume and filter against configured bounds before enrichment; unknown counts still require inspection.
+- [x] Scope directory pagination to Herzliya and Tel Aviv; retain sequential pacing and checkpoints, migrate old scanning checkpoints safely.
+- [x] Add service-only seven-day checked/disqualified registry; 48 focused tests passed, both workers deployed, preview build OK. Database readback confirms RLS and no anon/authenticated grants. No paid provider scan; live filtering and provider geography remain unverified under the existing live-import task.
+
 ## Agencies directory import November 11
 - [x] Remove subtitle; use directory pages and scoped agency detail enrichment with separate cache keys and retained pacing/contact fallback.
 - [x] 39 parser/queue/transport tests passed; both workers deployed and signed-in mobile verified subtitle removal; preview build OK.
