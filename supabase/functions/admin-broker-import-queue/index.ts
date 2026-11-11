@@ -215,7 +215,7 @@ Deno.serve(async req => {
           }
           c.brokerId=brokerId;c.brokerListingsDone=0;c.phase='importing';await save();
         } else if(c.phase==='importing') {
-          const d=await pacedCall('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,limit:1,pages:1});
+          const d=await pacedCall('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,residential_only:true,limit:1,pages:1});
           if(!d)return json({ok:true,waiting:true});
           if(!d.listing_id)throw new Error('המודעה לא נשמרה; אפשר להמשיך מאותה נקודה');
           const {error}=await admin.from('listings').update({status:'pending',is_published:false,affiliate_enabled:false}).eq('id',d.listing_id).eq('workspace_owner_id',c.brokerId).eq('is_published',false).eq('affiliate_enabled',false);if(error)throw error;

@@ -10,6 +10,7 @@
 // Credential: BRIGHT_DATA_API_KEY (existing BRIGHTDATA_API_TOKEN remains supported).
 // Web Unlocker zone is web_unlocker4; Browser API credentials remain separate.
 
+import { residentialImportRejection } from "../_shared/residentialImport.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanSqm } from "../_shared/measures.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
@@ -2230,7 +2231,10 @@ Deno.serve(async (req) => {
       if (accessError || !allowed) return json({ error: "workspace_forbidden" }, 403);
       workspaceOwnerId = owner;
     }
+    const residentialOnly = body?.residential_only === true;
     const cachedResponse = async (row: Scraped, servedFrom: string, fetchedAt: string | null) => {
+      const rejected = residentialOnly ? residentialImportRejection(row as any) : null;
+      if (rejected) return json({ error: "non_residential_listing", reason: rejected, detail: "המודעה אינה נכס מגורים למכירה או להשכרה ולכן דולגה." }, 422);
       await recordCacheHit('yad2_extraction', servedFrom, inputUrl);
       let listingId: string | null = null;
       // A cache read is not a new import: do not rewrite the workspace's edits,
@@ -2661,6 +2665,10 @@ Deno.serve(async (req) => {
       rows[0].photos = await mirrorPhotos(admin, itemId, rows[0].photos ?? []);
       const { error } = await admin.from("yad2_item_cache").update({ payload: rows[0], fetched_at: new Date().toISOString(), claim_token: null }).eq("item_id", itemId).eq("claim_token", claimedToken);
       if (error) throw new Error(`cache_save_failed: ${error.message}`);
+    }
+    if (residentialOnly && itemId && rows[0]) {
+      const rejected = residentialImportRejection(rows[0] as any);
+      if (rejected) return json({ error: "non_residential_listing", reason: rejected, detail: "המודעה אינה נכס מגורים למכירה או להשכרה ולכן דולגה." }, 422);
     }
     let saved = 0;
     let listingId: string | null = null;

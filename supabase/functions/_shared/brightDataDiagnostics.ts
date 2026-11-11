@@ -81,7 +81,7 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
       if (status === 429) throw new ProviderRateLimitError(retryAfterMs(response.headers.get('retry-after')));
       throw new Error(`Invalid worker JSON (HTTP ${status})`);
     }
-    if (data?.error === 'daily_import_limit' || data?.error === 'import_in_progress') {
+    if (data?.error === 'daily_import_limit' || data?.error === 'import_in_progress' || data?.error === 'non_residential_listing') {
       throw new ImportAvailabilityError(String(data.detail ?? data.error), data.error, typeof data.retry_at === 'string' ? data.retry_at : null);
     }
     if (status === 429 || data?.error === 'brightdata_rate_limited' || data?.bd_trace?.some((entry: { bd_status?: number }) => entry.bd_status === 429)) {
