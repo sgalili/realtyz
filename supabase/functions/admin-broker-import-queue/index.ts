@@ -111,7 +111,7 @@ Deno.serve(async req => {
         else if(c.page>=20 || d.results.length===0) {
           if(c.deal==='sale'){c.deal='rent';c.page=1;}
           else if(c.brokers.length){c.phase='validating';delete c.rows;}
-          else throw new Error('לא נמצאו מתווכים עם שם, נייד, רישיון ומספר הנכסים המבוקש; ניתן להמשיך את החיפוש');
+          else throw new Error('לא נמצאו מתווכים עם שם, רישיון ומספר הנכסים המבוקש; ניתן להמשיך את החיפוש');
         } else c.page++;
         await save();
       } else if(c.phase==='enriching') {

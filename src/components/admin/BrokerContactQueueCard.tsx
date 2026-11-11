@@ -62,7 +62,6 @@ export function BrokerContactQueueCard() {
   const pending = brokers.filter(b => b.contact_status === 'pending_contact').length;
   return <section dir="rtl" className="space-y-4 py-5 text-right">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-xl font-bold"><UserRoundSearch className="h-5 w-5 text-primary" />השלמת פרטי התקשרות</h3>{pending > 0 && <Badge variant="secondary" className="text-sm">{pending} ממתינים</Badge>}</div>
-    <p className="text-base text-muted-foreground">מתווכים שיובאו מ־Bright Data ללא נייד או אימייל. לאחר שמירת נייד תקין אפשר לשלוח להם הזמנה. שום הודעה לא נשלחת אוטומטית.</p>
     {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : q.isError ? <p role="alert" className="text-base text-destructive">{(q.error as Error).message}</p> : brokers.length === 0 ? <p className="text-base text-muted-foreground">אין מתווכים שממתינים להשלמת פרטים.</p> :
       <ul className="space-y-3">{brokers.map(b => <BrokerRow key={b.user_id} b={b} />)}</ul>}
   </section>;

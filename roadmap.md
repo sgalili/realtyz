@@ -1,5 +1,10 @@
 # Roadmap
 
+## Bright Data managed transport November 11
+- [x] Remove the three requested import/contact explanatory paragraphs.
+- [x] Prioritize managed Web Unlocker HTML, retain managed Browser fallback, and route short-link resolution through Unlocker; preserve checkpoints and license-first pending contact. Internal status checks now authenticate service calls, bypass public cache and reject challenge/error shells.
+- [x] 38 focused tests pass; three workers deployed, syntax and preview build OK. Authenticated mobile import tab/modal checked with all three texts absent; no paid scan started, so live provider success/429 prevention is unverified.
+
 ## Manual Bright Data cooldown reset November 11
 - [x] Add confirmed Super Admin-only reset, clearing cooldown/error/retries while retaining paused status, checkpoints/cache and actor/time audit.
 - [x] Keep REST requests non-sticky with provider-managed rotation and bounded peer diagnostics; no unsupported session parameter or guarantee of unique IPs.

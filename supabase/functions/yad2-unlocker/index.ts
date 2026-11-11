@@ -148,33 +148,8 @@ async function brightDataRequest(
   if(providerRateLimit)throw providerRateLimit;
   const forwardedAccept = opts.accept ??
     "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8";
-  const isGateway = /(^|\/\/)gw\.yad2\.co\.il/i.test(url);
-
-  const forwarded: Record<string, string> = {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    "Accept": forwardedAccept,
-    "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Referer": "https://www.yad2.co.il/",
-    "sec-ch-ua": '"Chromium";v="126", "Not.A/Brand";v="24"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
-  };
-  if (isGateway) {
-    // XHR-style fingerprint for the JSON gateway.
-    forwarded["Origin"] = "https://www.yad2.co.il";
-    forwarded["Sec-Fetch-Dest"] = "empty";
-    forwarded["Sec-Fetch-Mode"] = "cors";
-    forwarded["Sec-Fetch-Site"] = "same-site";
-    forwarded["mainsite_user_token"] = "";
-  } else {
-    // Top-level document fingerprint for www HTML pages. Sending
-    // Sec-Fetch-Mode: cors on a document request is a bot tell.
-    forwarded["Sec-Fetch-Dest"] = "document";
-    forwarded["Sec-Fetch-Mode"] = "navigate";
-    forwarded["Sec-Fetch-Site"] = "none";
-    forwarded["Upgrade-Insecure-Requests"] = "1";
-  }
+  // Let Web Unlocker own browser fingerprints, cookies and anti-bot handling.
+  const forwarded: Record<string, string> = { Accept: forwardedAccept };
 
   // Independent REST calls use provider-managed rotation, never a sticky session.
   const payload = rotatingUnlockerPayload(BD_ZONE, url, forwarded);
@@ -295,7 +270,7 @@ async function unlock(
     try {
       const { status, body, bdHeaders } = await brightDataRequest(url, { accept: opts.accept });
       const zoneErr = zoneModeError(bdHeaders);
-      // Explicit direct-fetch diagnostics — surface Bright Data / Yad2 status
+      // Explicit Web Unlocker diagnostics — surface Bright Data / Yad2 status
       // and a preview of the upstream body so proxy blocks, CAPTCHAs, and
       // empty gateway payloads are visible in Supabase logs.
       const entry: BdTrace = {
@@ -308,7 +283,7 @@ async function unlock(
       };
       if (bdTrace.length < 20) bdTrace.push(entry);
       console.log(
-        `[yad2-unlocker] direct-fetch ${url} → BD status=${status} bytes=${body.length} ct=${bdHeaders["content-type"] ?? "-"} hdrs=${JSON.stringify(bdHeaders)} preview=${JSON.stringify(body.slice(0, 300))}`,
+        `[yad2-unlocker] web-unlocker ${url} → BD status=${status} bytes=${body.length} ct=${bdHeaders["content-type"] ?? "-"} hdrs=${JSON.stringify(bdHeaders)} preview=${JSON.stringify(body.slice(0, 300))}`,
       );
       if (zoneErr) {
         // Permanent configuration fault — fail fast so the caller can switch
@@ -2228,18 +2203,16 @@ Deno.serve(async (req) => {
     if (parsedUrl.protocol !== "https:" || !/(^|\.)yad2\.co\.il$/i.test(parsedUrl.hostname) || parsedUrl.username || parsedUrl.password) {
       return json({ error: "invalid_yad2_url" }, 400);
     }
-    // Resolve short/share links without a paid scrape, refusing foreign redirects.
+    // Short links are fetched through the same managed transport, never raw HEAD.
     if (rawUrl && !/\/realestate\/(?:item|forsale|rent|forrent)/i.test(parsedUrl.pathname)) {
-      for (let hop = 0; hop < 5; hop++) {
-        const response = await fetch(inputUrl, { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(8000) });
-        const location = response.headers.get("location");
-        if (!location) break;
-        const next = new URL(location, inputUrl);
-        if (next.protocol !== "https:" || !/(^|\.)yad2\.co\.il$/i.test(next.hostname) || next.username || next.password) return json({ error: "invalid_yad2_redirect" }, 400);
-        inputUrl = next.toString();
-        if (/\/realestate\/item\//i.test(next.pathname)) break;
-      }
-      if (!/\/realestate\/item\//i.test(new URL(inputUrl).pathname)) return json({ error: "unresolved_yad2_link", detail: "לא ניתן לפענח את קישור השיתוף. אפשר להדביק את קישור המודעה המלא או להמשיך ידנית." }, 422);
+      const html = await unlock(inputUrl, { maxAttempts: 1 });
+      const $ = cheerio.load(html);
+      const target = $('link[rel="canonical"]').attr('href') ?? $('meta[property="og:url"]').attr('content');
+      if (!target) return json({ error: "unresolved_yad2_link", detail: "אפשר להדביק את קישור המודעה המלא או להמשיך ידנית." }, 422);
+      const next = new URL(target, inputUrl);
+      if (next.protocol !== "https:" || !/(^|\.)yad2\.co\.il$/i.test(next.hostname) || next.username || next.password) return json({ error: "invalid_yad2_redirect" }, 400);
+      if (!/\/realestate\/item\//i.test(next.pathname)) return json({ error: "unresolved_yad2_link" }, 422);
+      inputUrl = next.toString();
     }
     if (!rawUrl && !freeText && !body?.city && !body?.rooms) {
       return json({ error: "url is required" }, 400);
@@ -2370,8 +2343,24 @@ Deno.serve(async (req) => {
     async function scrapeOnce(pageUrl: string): Promise<Scraped[]> {
       let out: Scraped[] = [];
 
-      // --- Primary path: Yad2 internal JSON gateway (direct, no aggregator) ---
-      try {
+      // --- Primary: public HTML via managed Web Unlocker ---
+      if (!out.length) {
+        mode = "html";
+        console.log(`[yad2-unlocker] Web Unlocker HTML: ${pageUrl}`);
+        try {
+          const html = await unlock(pageUrl, { maxAttempts: 2 });
+          const item = isItemUrl ? parseItem(html, pageUrl) : null;
+          out = isItemUrl ? (item ? [item] : []) : parseSearch(html, pageUrl, limit);
+          diagnostics.push({ endpoint: pageUrl, kind: "html", status: out.length ? "ok" : "empty", count: out.length });
+        } catch (e: any) {
+          const err = String(e?.message ?? e).slice(0, 400);
+          console.warn(`[yad2-unlocker] HTML unlocker failed: ${err}`);
+          diagnostics.push({ endpoint: pageUrl, kind: "html", status: "error", error: err });
+        }
+      }
+
+      // --- Structured fallback: JSON gateway through managed Web Unlocker ---
+      if (!out.length) try {
         if (isItemUrl) {
           const gwItem = toGatewayItemUrl(pageUrl);
           if (gwItem) {
@@ -2408,22 +2397,6 @@ Deno.serve(async (req) => {
         }
       } catch (e: any) {
         console.warn(`[yad2-unlocker] JSON gateway threw: ${String(e?.message ?? e).slice(0, 200)}`);
-      }
-
-      // --- Fallback B: HTML scrape of the public www URL via the REST unlocker -
-      if (!out.length) {
-        mode = "html";
-        console.log(`[yad2-unlocker] falling back to HTML: ${pageUrl}`);
-        try {
-          const html = await unlock(pageUrl, { maxAttempts: 2 });
-          const item = isItemUrl ? parseItem(html, pageUrl) : null;
-          out = isItemUrl ? (item ? [item] : []) : parseSearch(html, pageUrl, limit);
-          diagnostics.push({ endpoint: pageUrl, kind: "html", status: out.length ? "ok" : "empty", count: out.length });
-        } catch (e: any) {
-          const err = String(e?.message ?? e).slice(0, 400);
-          console.warn(`[yad2-unlocker] HTML unlocker failed: ${err}`);
-          diagnostics.push({ endpoint: pageUrl, kind: "html", status: "error", error: err });
-        }
       }
 
       // --- Fallback C: Bright Data Scraping Browser (real Chromium over WS) ----
@@ -2465,7 +2438,8 @@ Deno.serve(async (req) => {
 
           // Merge (item) or fall back (search) using the harvested JSON feeds.
           while (harvest.feeds.length) {
-            const f = harvest.feeds.shift()!;
+            const f = harvest.feeds.shift();
+            if (!f) break;
             const parsed = isItemUrl
               ? ([parseItemJson(f.body, pageUrl)].filter(Boolean) as Scraped[])
               : parseSearchJson(f.body, pageUrl, limit);

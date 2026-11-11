@@ -20,8 +20,13 @@
 // boot with a 503 BOOT_ERROR before the handler ever runs.
 type PuppeteerModule = typeof import('npm:puppeteer-core@22.15.0');
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
+import { requireCaller } from '../_shared/authz.ts';
+import { classifyYad2Status } from '../_shared/yad2Status.ts';
+import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure } from '../_shared/brightDataDiagnostics.ts';
+import { createProviderPacer, ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
+const paceProvider = createProviderPacer();
 
 const BD_WS = Deno.env.get('BRIGHTDATA_WS_ENDPOINT') ?? '';
 
@@ -95,25 +100,16 @@ function extractDates(html: string): AdDates {
 }
 
 function classify(finalUrl: string, httpStatus: number, title: string, html: string): Status {
-  if (httpStatus === 404 || httpStatus === 410) return 'gone';
-  if (finalUrl && !/\/item\//i.test(finalUrl)) return 'gone';
-  const low = html.toLowerCase();
-  if (GONE_MARKERS.some((m) => low.includes(m.toLowerCase()))) return 'gone';
-  // A live Yad2 ad always renders a document title ("דירה, רחוב, עיר | ...")
-  // and gets rewritten to /item/<region>/<token>. Removed ads keep the bare
-  // /item/<token> path and render an empty title.
-  const t = (title ?? '').trim();
-  if (!t) return 'gone';
-  return 'live';
+  return classifyYad2Status(finalUrl, httpStatus, title, html);
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const caller = await requireCaller(req, ['user', 'service']);
+    if (caller instanceof Response) return caller;
     const scoped = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
-    const { data: { user } } = await scoped.auth.getUser();
-    if (!user) return json({ ok: true, statuses: {}, dates: {} });
     const body = await req.json().catch(() => ({} as any));
     const urls: string[] = Array.from(
       new Set(
@@ -143,7 +139,8 @@ Deno.serve(async (req) => {
       const started = Date.now();
       // Hard wall-clock budget: the platform kills idle requests at 150s, so
       // always answer (with partial 'unknown' results) well before that.
-      const HARD_DEADLINE_MS = 100_000;
+      const HARD_DEADLINE_MS = BRIGHT_DATA_WORKER_BUDGET_MS;
+      let rateLimit: ProviderRateLimitError | null = null;
       const remaining = () => HARD_DEADLINE_MS - (Date.now() - started);
       const withDeadline = <T,>(p: Promise<T>, ms: number): Promise<T | undefined> =>
         Promise.race([p, new Promise<undefined>((r) => setTimeout(() => r(undefined), Math.max(0, ms)))]);
@@ -156,15 +153,18 @@ Deno.serve(async (req) => {
         const probeOne = async (u: string) => {
           if (remaining() < 15_000) return;
           try {
-          const serialized = await cachedScrapingText('yad2_status', u, 86400, async () => {
+          const fetchStatus = async () => {
           if (!browser) {
-            browser = await trackScraping('yad2_status', 'browser_session', u, () => puppeteer.connect({ browserWSEndpoint: BD_WS }));
+            browser = await trackScraping('yad2_status', 'browser_session', u, () => puppeteer.connect({ browserWSEndpoint: BD_WS, protocolTimeout: Math.min(BRIGHT_DATA_TIMEOUT_MS, remaining()) }));
           }
           const page = await browser.newPage();
           try {
-            const navTimeout = Math.min(35_000, remaining() - 10_000);
-            const resp = await trackScraping('yad2_status', 'browser_navigation', u, () => page.goto(u, { waitUntil: 'domcontentloaded', timeout: navTimeout }), (r: any) => ({ status: r?.status?.() }));
+            const resp = await trackScraping('yad2_status', 'browser_navigation', u, () => paceProvider(() => page.goto(u, { waitUntil: 'domcontentloaded', timeout: Math.max(1000, Math.min(BRIGHT_DATA_TIMEOUT_MS, remaining() - 5000)) })), (r: any) => ({ status: r?.status?.() }));
             const httpStatus = resp?.status?.() ?? 0;
+            if (httpStatus === 429) {
+              rateLimit = new ProviderRateLimitError(retryAfterMs(resp.headers()['retry-after'] ?? null));
+              throw rateLimit;
+            }
             // Radware serves a JS loader shell first; wait until the real ad
             // document replaces it, otherwise every URL looks identical.
             await page
@@ -185,6 +185,10 @@ Deno.serve(async (req) => {
               throw new Error('source_blocked');
             }
             statuses[u] = classify(finalUrl, httpStatus, pageTitle, html);
+            if (statuses[u] === 'unknown') {
+              logProviderFailure({ operation: 'status_browser', url: u, status: httpStatus, payload: html, error: 'Listing status could not be verified', elapsedMs: Date.now() - started });
+              throw new Error('source_unverified');
+            }
             const d = extractDates(html);
             if (d.published_at || d.updated_at) dates[u] = d;
             return JSON.stringify({ status: statuses[u], dates: d });
@@ -194,8 +198,12 @@ Deno.serve(async (req) => {
             throw e;
           } finally {
             await page.close().catch(() => {});
+            await browser?.disconnect?.().catch(() => {});
+            browser = null;
           }
-          });
+          };
+          // Imports must verify live, never reuse the public one-day status cache.
+          const serialized = caller.kind === 'service' ? await fetchStatus() : await cachedScrapingText('yad2_status', u, 86400, fetchStatus);
           const cached = JSON.parse(serialized);
           statuses[u] = cached.status; dates[u] = cached.dates;
           } catch { statuses[u] = 'unknown'; }
@@ -203,13 +211,13 @@ Deno.serve(async (req) => {
 
         const CONCURRENCY = 1;
         for (let i = 0; i < probeList.length; i += CONCURRENCY) {
-          if (remaining() < 15_000) break;
+          if (remaining() < 15_000 || rateLimit) break;
           await Promise.all(probeList.slice(i, i + CONCURRENCY).map(probeOne));
         }
         // One retry for anything the bot wall swallowed, while budget allows.
         for (const u of probeList) {
           if (statuses[u] !== 'unknown') continue;
-          if (remaining() < 30_000) break;
+          if (remaining() < 30_000 || rateLimit || caller.kind === 'service') break;
           await probeOne(u);
         }
       })().catch((e) => {
@@ -217,6 +225,11 @@ Deno.serve(async (req) => {
       });
 
       await withDeadline(work, HARD_DEADLINE_MS);
+      const limited = rateLimit as ProviderRateLimitError | null;
+      if (limited) {
+        await browser?.disconnect?.().catch(() => {});
+        return json({ error: 'brightdata_rate_limited', retry_after_ms: limited.retryAfterMs, statuses, dates }, 429);
+      }
       if (remaining() <= 0) console.warn('[yad2-ad-status] hard deadline reached, returning partial results');
       withDeadline(browser?.close?.() ?? Promise.resolve(), 3_000).catch(() => {});
     }
@@ -224,7 +237,7 @@ Deno.serve(async (req) => {
     // Persist the real source dates so the table stops falling back to
     // our own import timestamp on the next render.
     const dateUrls = Object.keys(dates);
-    if (dateUrls.length) {
+    if (dateUrls.length && caller.kind === 'user') {
       try {
         const admin = scoped;
         for (const u of dateUrls) {
