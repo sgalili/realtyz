@@ -27,12 +27,12 @@ export function BrokerBatchImportCard() {
       if(kind==='start')setOpen(false);
     }catch(e){setError(e instanceof Error?e.message:'הבקשה נכשלה');}finally{setBusy(false);}
   };
-  const checkpoint=current?.checkpoint as {brokers?:{listing_urls:string[]}[];brokerIndex?:number;listingIndex?:number;page?:number;deal?:string;rows?:unknown[];enriched?:number;enrichUrls?:string[]}|undefined;
+  const checkpoint=current?.checkpoint as {brokers?:{listing_urls:string[]}[];brokerIndex?:number;listingIndex?:number;page?:number;deal?:string;rows?:unknown[];enriched?:number;enrichUrls?:string[];cacheHits?:number;liveFetches?:number}|undefined;
   const remaining=checkpoint?.brokers?.slice(checkpoint.brokerIndex??0).reduce((n,b)=>n+b.listing_urls.length,0);
   const estimate=current?.step_average_ms && remaining?Math.ceil(Number(current.step_average_ms)*remaining/60000):null;
   // A running job with no active step and no update for 2 minutes is stalled, not progressing.
   const stalled=current?.status==='running' && !(current.lease_until&&Date.parse(current.lease_until)>Date.now()) && Date.now()-Date.parse(current.updated_at)>120_000;
-  const scanInfo=checkpoint&&['scanning','enriching'].includes(current?.stage??'')?[`${checkpoint.deal==='rent'?'השכרה':'מכירה'} · עמוד ${checkpoint.page??1}`,checkpoint.rows?.length?`${checkpoint.rows.length} מודעות נסרקו`:null,checkpoint.enriched?`${checkpoint.enriched} מודעות נפתחו לאיתור מתווך`:null,checkpoint.enrichUrls?.length?`${checkpoint.enrichUrls.length} ממתינות`:null].filter(Boolean).join(' · '):'';
+  const scanInfo=checkpoint&&['scanning','enriching'].includes(current?.stage??'')?[`${checkpoint.deal==='rent'?'השכרה':'מכירה'} · עמוד ${checkpoint.page??1}`,checkpoint.rows?.length?`${checkpoint.rows.length} מודעות נסרקו`:null,checkpoint.enriched?`${checkpoint.enriched} מודעות נפתחו לאיתור מתווך`:null,checkpoint.enrichUrls?.length?`${checkpoint.enrichUrls.length} ממתינות`:null,checkpoint.cacheHits?`${checkpoint.cacheHits} נטענו מהמטמון ללא עלות`:null].filter(Boolean).join(' · '):'';
   return <section dir="rtl" className="space-y-4 border-b border-border py-5 text-right">
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-xl font-bold">ייבוא קבוצת מתווכים · Bright Data</h3><Button className="text-base" variant="outline" onClick={()=>setOpen(true)}><Upload className="h-5 w-5" />ייבוא חדש</Button></div>
     {current && <div role="status" className="space-y-3 rounded-xl border border-border/70 p-4">

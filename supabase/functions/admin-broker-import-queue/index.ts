@@ -14,6 +14,22 @@ const CALL_TIMEOUT_MS = 45_000;
 const BRIGHT_DATA_ERROR = 'שגיאת חיבור ל־Bright Data - אנא בדוק את המפתחות או נסה שוב';
 // Search pages rarely carry phone/license, so unknown publishers are opened one by one, within a per-job budget.
 const ENRICH_BUDGET = 150;
+// Scrape cache: search pages stay fresh 12h, ad details 72h. Freshness is never extended on read.
+const CACHE_TTL_MS = { search_page: 12 * 3600_000, item_detail: 72 * 3600_000 } as const;
+type CacheKind = keyof typeof CACHE_TTL_MS;
+async function cached(admin: ReturnType<typeof adminClient>, kind: CacheKind, key: string, c: Record<string, any>, fetcher: () => Promise<Record<string, any>[]>) {
+  const { data } = await admin.from('broker_import_scrape_cache').select('results,fetched_at,hits').eq('cache_key', key).maybeSingle();
+  if (data && Date.now() - Date.parse(data.fetched_at) < CACHE_TTL_MS[kind] && Array.isArray(data.results)) {
+    c.cacheHits = (c.cacheHits ?? 0) + 1;
+    await admin.from('broker_import_scrape_cache').update({ hits: (data.hits ?? 0) + 1 }).eq('cache_key', key);
+    return data.results as Record<string, any>[];
+  }
+  const results = await fetcher();
+  c.liveFetches = (c.liveFetches ?? 0) + 1;
+  await admin.from('broker_import_scrape_cache').delete().lt('fetched_at', new Date(Date.now() - 7 * 86400_000).toISOString());
+  if (results.length) await admin.from('broker_import_scrape_cache').upsert({ cache_key: key, kind, results, fetched_at: new Date().toISOString(), hits: 0 });
+  return results;
+}
 async function call(name: string, body: unknown) {
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   let r: Response;
@@ -62,8 +78,13 @@ Deno.serve(async req => {
     };
     try {
       if(c.phase==='scanning') {
-        const d=await call('yad2-unlocker',{owner_id:job.created_by,url:`https://www.yad2.co.il/realestate/${c.deal==='sale'?'forsale':'rent'}?page=${c.page}`,page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id});
-        if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
+        const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher}));
+        const results=await cached(admin,'search_page',`search:${c.deal}:${c.page}`,c,async()=>{
+          const d=await call('yad2-unlocker',{owner_id:job.created_by,url:`https://www.yad2.co.il/realestate/${c.deal==='sale'?'forsale':'rent'}?page=${c.page}`,page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id});
+          if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
+          return compactAll(d.results);
+        });
+        const d={results};
         const compact=(r:Record<string,any>)=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher});
         c.rows=[...c.rows,...d.results.map(compact)]; c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
         c.enriched=c.enriched??0;
@@ -79,8 +100,11 @@ Deno.serve(async req => {
       } else if(c.phase==='enriching') {
         const url=c.enrichUrls[0];
         if(url) {
-          const d=await call('yad2-unlocker',{owner_id:job.created_by,url,import_item:true,preview_only:true,limit:1,pages:1});
-          const row=d.results?.[0];
+          const rows=await cached(admin,'item_detail',`item:${url}`,c,async()=>{
+            const d=await call('yad2-unlocker',{owner_id:job.created_by,url,import_item:true,preview_only:true,limit:1,pages:1});
+            const r=d.results?.[0]; return r?[{source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher}]:[];
+          });
+          const row=rows[0];
           if(row) c.rows=c.rows.map((r:Record<string,any>)=>r.source_url===url?{source_url:row.source_url,owner_name:row.owner_name,owner_phone:row.owner_phone,publisher:row.publisher}:r);
           c.enrichUrls.shift(); c.enriched=(c.enriched??0)+1;
         }

@@ -1353,6 +1353,30 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_import_scrape_cache: {
+        Row: {
+          cache_key: string
+          fetched_at: string
+          hits: number
+          kind: string
+          results: Json
+        }
+        Insert: {
+          cache_key: string
+          fetched_at?: string
+          hits?: number
+          kind: string
+          results?: Json
+        }
+        Update: {
+          cache_key?: string
+          fetched_at?: string
+          hits?: number
+          kind?: string
+          results?: Json
+        }
+        Relationships: []
+      }
       broker_invitation_sends: {
         Row: {
           broker_id: string
