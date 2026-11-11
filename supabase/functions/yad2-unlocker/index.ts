@@ -7,8 +7,8 @@
 //   { "url": "https://www.yad2.co.il/realestate/item/xxxxx" }        // single
 //   { "url": "https://www.yad2.co.il/realestate/forsale?city=6400", "limit": 40 }  // search
 //
-// Required secret: BRIGHTDATA_API_TOKEN
-// Optional secret: BRIGHTDATA_ZONE (defaults to "yad2")
+// Credential: BRIGHT_DATA_API_KEY (existing BRIGHTDATA_API_TOKEN remains supported).
+// Zone: BRIGHTDATA_UNLOCKER_ZONE, then BRIGHTDATA_ZONE (default "reatyz_yad2").
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanSqm } from "../_shared/measures.ts";
@@ -21,14 +21,14 @@ import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMedia
 import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
 import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure } from '../_shared/brightDataDiagnostics.ts';
 import { createProviderPacer, ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
-import { rotatingUnlockerPayload, rotationDiagnostics } from '../_shared/brightDataRotation.ts';
+import { unlockerRequestOptions, rotationDiagnostics } from '../_shared/brightDataRotation.ts';
 const paceProvider = createProviderPacer();
 let providerRateLimit: ProviderRateLimitError | null = null;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-const BD_TOKEN = Deno.env.get("BRIGHTDATA_API_TOKEN") ?? "";
+const BD_TOKEN = Deno.env.get("BRIGHT_DATA_API_KEY")?.trim() || Deno.env.get("BRIGHTDATA_API_TOKEN")?.trim() || "";
 // Two DIFFERENT Bright Data products are in play and they are not interchangeable:
 //   * Web Unlocker zone  -> REST https://api.brightdata.com/request  (default: "reatyz_yad2")
 //   * Browser API zone   -> WS puppeteer endpoint                    (zone "yad2")
@@ -139,20 +139,12 @@ try {
 // body and every search silently returned zero results. Native `fetch` handles
 // TLS/HTTP2 + content-encoding correctly, so we use that instead.
 //
-// Bright Data's /request API validates `headers` as a plain OBJECT
-// (array-of-strings returns `"headers" must be of type object`, 400).
+// Keep the REST body strictly { zone, url, format: "raw" }.
+// Web Unlocker owns target headers, fingerprints and anti-bot handling.
 async function brightDataRequest(
   url: string,
-  opts: { accept?: string } = {},
 ): Promise<{ status: number; body: string; bdHeaders: Record<string, string> }> {
   if(providerRateLimit)throw providerRateLimit;
-  const forwardedAccept = opts.accept ??
-    "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8";
-  // Let Web Unlocker own browser fingerprints, cookies and anti-bot handling.
-  const forwarded: Record<string, string> = { Accept: forwardedAccept };
-
-  // Independent REST calls use provider-managed rotation, never a sticky session.
-  const payload = rotatingUnlockerPayload(BD_ZONE, url, forwarded);
 
   // api.brightdata.com negotiates HTTP/2, and Deno's h2 client reliably dies
   // with "stream error detected: unspecific protocol error" against it. Pin
@@ -163,15 +155,7 @@ async function brightDataRequest(
   try {
   const result = await trackScraping('yad2_extraction', 'rest', url, async () => {
   const res = await paceProvider(()=>fetch("https://api.brightdata.com/request", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${BD_TOKEN}`,
-      Accept: "*/*",
-      // Discourage h2 upgrade on the fallback path.
-      Connection: "close",
-    },
-    body: JSON.stringify(payload),
+    ...unlockerRequestOptions(BD_TOKEN, BD_ZONE, url),
     signal: AbortSignal.timeout(hopTimeoutMs()),
     ...(bdHttpClient ? { client: bdHttpClient } : {}),
   } as RequestInit));
@@ -262,13 +246,13 @@ async function unlock(
     throw new Error("brightdata_kyc_gateway: policy_20140 (cached) — gw.yad2 not allowed on this zone");
   }
 
-  if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
+  if (!BD_TOKEN) throw new Error("Bright Data API key is not configured (BRIGHT_DATA_API_KEY / BRIGHTDATA_API_TOKEN)");
   const maxAttempts = opts.maxAttempts ?? 4;
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (requestDeadline - Date.now() < 4_000) throw new Error(`timeout: budget exhausted before ${url}`);
     try {
-      const { status, body, bdHeaders } = await brightDataRequest(url, { accept: opts.accept });
+      const { status, body, bdHeaders } = await brightDataRequest(url);
       const zoneErr = zoneModeError(bdHeaders);
       // Explicit Web Unlocker diagnostics — surface Bright Data / Yad2 status
       // and a preview of the upstream body so proxy blocks, CAPTCHAs, and

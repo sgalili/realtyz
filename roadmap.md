@@ -1,5 +1,10 @@
 # Roadmap
 
+## Web Unlocker request schema November 11
+- [x] Use exact POST JSON body zone/url/format:raw and Bearer environment credential, supporting the existing saved key name.
+- [x] Preserve existing raw HTML parsers, license-first missing-contact fallback, cache and checkpoint logic.
+- [x] 36 focused request/parser/error/license-first tests passed; yad2-unlocker deployed and preview build OK. No paid live scan or end-to-end provisioning was performed.
+
 ## Bright Data managed transport November 11
 - [x] Remove the three requested import/contact explanatory paragraphs.
 - [x] Prioritize managed Web Unlocker HTML, retain managed Browser fallback, and route short-link resolution through Unlocker; preserve checkpoints and license-first pending contact. Internal status checks now authenticate service calls, bypass public cache and reject challenge/error shells.
