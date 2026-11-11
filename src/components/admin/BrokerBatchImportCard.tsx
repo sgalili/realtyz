@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { Upload, Pause, Play, Loader2 } from 'lucide-react';
+import { Upload, Pause, Play, Loader2, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ export function BrokerBatchImportCard() {
   const current=jobs?.[0];
   const [now,setNow]=useState(Date.now());
   useEffect(()=>{if(!current||current.status==='completed')return;const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[current?.status]);
-  const action=async (kind:'start'|'pause'|'resume')=>{
+  const action=async (kind:'start'|'pause'|'resume'|'reset_cooldown')=>{
     setBusy(true);setError('');
     try {
       const {data,error}=await supabase.functions.invoke('admin-broker-import-queue',{body:kind==='start'?{action:kind,target_brokers:target,min_listings:min,max_listings:max}:{action:kind,job_id:current?.id}});
@@ -47,7 +47,7 @@ export function BrokerBatchImportCard() {
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-base text-muted-foreground">{current.status==='running'&&!stalled?(estimate?`זמן משוער שנותר: כ־${estimate} דקות`:current.step_average_ms?`כ־${Math.round(Number(current.step_average_ms)/1000)} שניות לכל שלב · זמן כולל יוצג לאחר איתור מתווכים`:'זמן משוער: יופיע לאחר השלמת שלב ראשון'):current.status==='completed'&&current.brokers_done<current.target_brokers?'הסריקה הסתיימה עם פחות מתווכים מהיעד':''}{checkpoint?.brokers?.length?` · מתווך ${(checkpoint.brokerIndex??0)+1}, מודעה ${(checkpoint.listingIndex??0)+1}`:''}</span>{['running','paused','failed'].includes(current.status)&&<Button variant="outline" className="text-base" disabled={busy||(checkpoint?.waitReason==='rate_limit'&&waitSeconds>0&&current.status!=='running')} onClick={()=>void action(current.status==='running'&&!stalled?'pause':'resume')}>{current.status==='running'&&!stalled?<Pause className="h-5 w-5" />:<Play className="h-5 w-5" />}{current.status==='running'&&!stalled?'עצירה':'המשך'}</Button>}</div>
       {current.status==='paused'&&current.lease_until&&Date.parse(current.lease_until)>Date.now()&&<p className="text-base text-muted-foreground">הפעולה שכבר התחילה תסתיים ותישמר; לא תתחיל פעולה נוספת.</p>}
       {stalled&&<p role="alert" className="text-base font-medium text-destructive">שגיאת חיבור ל־Bright Data - אנא בדוק את המפתחות או נסה שוב</p>}
-      {current.error&&<p role="alert" className="text-base font-medium text-destructive">{current.error}</p>}
+      {current.error&&<div className="flex flex-wrap items-center gap-3"><p role="alert" className="text-base font-medium text-destructive">{current.error}</p>{checkpoint?.waitReason==='rate_limit'&&['paused','failed'].includes(current.status)&&<Button variant="outline" className="text-base" disabled={busy||Boolean(current.lease_until&&Date.parse(current.lease_until)>now)} onClick={()=>{if(window.confirm('לאפס את השהיית 429 ולנקות את השגיאה? ההתקדמות והמטמון יישמרו. האיפוס אינו מסיר מגבלה אצל Bright Data; המשך מוקדם עלול להיתקל שוב ב־429.'))void action('reset_cooldown');}}><RotateCcw className="h-5 w-5" />איפוס השהיה וניקוי שגיאה</Button>}</div>}
     </div>}
     {error&&<p role="alert" className="text-base text-destructive">{error}</p>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" className="max-w-lg"><DialogHeader><DialogTitle className="text-2xl">ייבוא קבוצת מתווכים</DialogTitle></DialogHeader><div className="grid gap-5">

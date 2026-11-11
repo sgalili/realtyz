@@ -1,5 +1,10 @@
 # Roadmap
 
+## Manual Bright Data cooldown reset November 11
+- [x] Add confirmed Super Admin-only reset, clearing cooldown/error/retries while retaining paused status, checkpoints/cache and actor/time audit.
+- [x] Keep REST requests non-sticky with provider-managed rotation and bounded peer diagnostics; no unsupported session parameter or guarantee of unique IPs.
+- [x] Both workers deployed; 16 focused tests passed and build OK. Authenticated mobile performed real reset on isolated paused test job: retries 3→0, deadline/error cleared, page 7/cache hits 5 retained, Resume enabled. Test row removed without starting a paid scan. Live peer rotation remains unverified without provider requests.
+
 ## Low-frequency Bright Data processing November 11
 - [x] Replace four-second pacing with a strict twelve-second sequential gap and delay-only steps.
 - [x] Pause immediately on 429 with minimum five-minute persisted cooldown and manual-only resume.

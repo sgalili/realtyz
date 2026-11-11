@@ -8,7 +8,7 @@ import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRem
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
-  z.object({action:z.enum(['pause','resume','step']),job_id:z.string().uuid()}).strict(),
+  z.object({action:z.enum(['pause','resume','reset_cooldown','step']),job_id:z.string().uuid()}).strict(),
 ]);
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
 // Search pages rarely carry phone/license, so unknown publishers are opened one by one, within a per-job budget.
@@ -49,10 +49,10 @@ Deno.serve(async req => {
     }
     const {data:existing,error:readError}=await admin.from('broker_import_jobs').select('*').eq('id',input.job_id).single();
     if(readError || !existing || !await isSuperAdmin(existing.created_by,admin)) return json({error:'job_unavailable'},404);
-    if(input.action==='pause') {
+    if(input.action==='pause'||input.action==='reset_cooldown') {
       if(existing.status==='completed') return json({ok:true});
       const scoped=createClient(Deno.env.get('SUPABASE_URL')??'',Deno.env.get('SUPABASE_ANON_KEY')??'',{global:{headers:{Authorization:req.headers.get('Authorization')??''}}});
-      const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:'pause'}); if(error) throw error;
+      const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:input.action}); if(error) throw error;
       return json({ok:true});
     }
     if(input.action==='resume') {

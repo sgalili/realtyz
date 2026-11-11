@@ -21,6 +21,7 @@ import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMedia
 import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
 import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure } from '../_shared/brightDataDiagnostics.ts';
 import { createProviderPacer, ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
+import { rotatingUnlockerPayload, rotationDiagnostics } from '../_shared/brightDataRotation.ts';
 const paceProvider = createProviderPacer();
 let providerRateLimit: ProviderRateLimitError | null = null;
 
@@ -175,14 +176,8 @@ async function brightDataRequest(
     forwarded["Upgrade-Insecure-Requests"] = "1";
   }
 
-  const payload = {
-    zone: BD_ZONE,
-    url,
-    format: "raw",
-    country: "il",
-    method: "GET",
-    headers: forwarded,
-  };
+  // Independent REST calls use provider-managed rotation, never a sticky session.
+  const payload = rotatingUnlockerPayload(BD_ZONE, url, forwarded);
 
   // api.brightdata.com negotiates HTTP/2, and Deno's h2 client reliably dies
   // with "stream error detected: unspecific protocol error" against it. Pin
@@ -215,6 +210,8 @@ async function brightDataRequest(
   }
   return { status: res.status, body, bdHeaders };
   }, value => ({ status: value.bdHeaders['x-brd-err-code'] ? 403 : value.status, bytes: new TextEncoder().encode(value.body).length }));
+  const rotation = rotationDiagnostics(result.bdHeaders['x-brd-debug']);
+  console.log('[yad2-unlocker] provider-managed rotation', rotation);
   if (result.status >= 400 || result.bdHeaders['x-brd-err-code'] || Number(result.bdHeaders['x-brd-status-code']) >= 400 || !result.body.trim()) {
     logProviderFailure({ operation: 'rest', url, status: result.status, upstreamStatus: result.bdHeaders['x-brd-status-code'], payload: result.body, error: zoneModeError(result.bdHeaders) ?? 'HTTP/empty upstream response', elapsedMs: Date.now() - started });
   }

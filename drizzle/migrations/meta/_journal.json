@@ -1065,6 +1065,13 @@
       "when": 1794364923976,
       "tag": "0151_broker_import_manual_rate_cooldown",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1794371846982,
+      "tag": "0152_broker_import_manual_cooldown_reset",
+      "breakpoints": true
     }
   ]
 }
