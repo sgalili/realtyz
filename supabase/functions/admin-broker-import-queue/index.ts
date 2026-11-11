@@ -3,7 +3,7 @@ import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
-import { readWorkerResponse, ImportAvailabilityError } from '../_shared/brightDataDiagnostics.ts';
+import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyPageUrl, agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck } from '../_shared/yad2Agencies.ts';
 import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 
@@ -236,6 +236,13 @@ Deno.serve(async req => {
           await save({skipped:job.skipped+1,brokers_done:job.brokers_done+(skipped.brokerFinished?1:0),error:null,...(c.phase==='completed'?{status:'completed'}:{})});
           return json({ok:true,skipped:true});
         }
+      }
+      if(e instanceof ProviderTimeoutError && ['scanning','enriching'].includes(c.phase)) {
+        // Discovery only: a slow page is skipped softly. Validation/creation still stop safely.
+        console.warn('[broker-import-timeout-skip]',JSON.stringify({job_id:job.id,phase:c.phase,page:c.page,status:e.status??null,url:c.phase==='enriching'?c.enrichUrls?.[0]:null}));
+        c.timeoutSkips=(c.timeoutSkips??0)+1;skipRestrictedImport(c);
+        await save({error:null,...(c.phase==='completed'?{status:'completed'}:{})});
+        return json({ok:true,skipped:true});
       }
       if(e instanceof ProviderRateLimitError) {
         c.rateRetries=(c.rateRetries??0)+1;c.waitReason='rate_limit';

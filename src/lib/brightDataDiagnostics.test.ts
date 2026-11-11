@@ -81,3 +81,10 @@ describe('Bright Data request diagnostics', () => {
     expect(logged.mock.calls[0][1]).not.toMatch(/private-value|secret-value|user:pass/);
   });
 });
+import { readWorkerResponse as readSlow, ProviderTimeoutError as SlowError } from '../../supabase/functions/_shared/brightDataDiagnostics';
+describe('slow provider pages', () => {
+  it('reports a 504 as a skippable timeout', async () => {
+    const t = (async () => new Response('{"error":"gateway"}', { status: 504 })) as unknown as typeof fetch;
+    await expect(readSlow('https://x.test', {}, t)).rejects.toBeInstanceOf(SlowError);
+  });
+});

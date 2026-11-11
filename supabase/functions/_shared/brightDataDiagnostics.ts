@@ -38,6 +38,11 @@ export class ImportAvailabilityError extends Error {
   }
 }
 
+/** Slow or gateway-lagged provider reads; discovery skips the page instead of halting. */
+export class ProviderTimeoutError extends Error {
+  constructor(message: string, public status?: number) { super(message); this.name = 'ProviderTimeoutError'; }
+}
+
 export function logProviderFailure(context: { operation: string; url: string; status?: number; upstreamStatus?: string; payload?: string; error?: unknown; elapsedMs: number }) {
   const message = describeError(context.error);
   const payload = redactDiagnostic(context.payload ?? '');
@@ -92,6 +97,7 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
     if (error instanceof ProviderRateLimitError) throw error;
     if (error instanceof ImportAvailabilityError) throw error;
     const timedOut = /timeout|abort|timed out/i.test(describeError(error));
+    if (timedOut || status === 502 || status === 503 || status === 504) throw new ProviderTimeoutError(providerErrorMessage(status, timedOut), status);
     throw new Error(providerErrorMessage(status, timedOut));
   }
 }
