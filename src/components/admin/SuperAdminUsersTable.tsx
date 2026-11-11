@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole, type AppRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { SuperAdminCreateUserCard } from './SuperAdminCreateUserCard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -13,7 +15,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
-import { Trash2, Pencil, Check, BadgeCheck } from 'lucide-react';
+import { Trash2, Pencil, Check, BadgeCheck, UserPlus, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrokerInvitationDialog } from './BrokerInvitationDialog';
 import { OfficialBrokerInvitationDialog } from './OfficialBrokerInvitationDialog';
@@ -35,6 +37,7 @@ export function SuperAdminUsersTable() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [pendingIds, setPendingIds] = useState<string[]>([]);
@@ -116,7 +119,20 @@ export function SuperAdminUsersTable() {
   const rolesOf = (id: string) => (roles.data ?? []).filter(r => r.user_id === id).map(r => r.role as AppRole);
   const openEdit = (p: any) => { const r = rolesOf(p.id); setDraft({ id: p.id, full_name: p.full_name ?? '', email: p.email ?? '', phone: p.phone ?? '', city: p.city ?? '', gender: p.gender ?? '', broker_license_number: p.broker_license_number ?? '', identityLocked: !!p.locked_broker_name || registryEvidence.isLoading || registryEvidence.isError || (registryEvidence.data ?? []).some(v => v.user_id === p.id && v.license_number === p.broker_license_number), manualApproved: (approvals.data ?? []).some(a => a.user_id === p.id && a.license_number === p.broker_license_number), roles: r, originalRoles: r }); };
   return <section dir="rtl" className="space-y-3">
-    <h2 className="text-lg font-bold">כל המשתמשים</h2>
+    <Collapsible open={createOpen} onOpenChange={setCreateOpen}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-bold">כל המשתמשים</h2>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="shrink-0" aria-controls="admin-create-user-pane">
+            {createOpen ? <ChevronUp className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+            הוספת משתמש חדש
+          </Button>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent id="admin-create-user-pane">
+        <div className="pt-3"><SuperAdminCreateUserCard /></div>
+      </CollapsibleContent>
+    </Collapsible>
     <div className="flex flex-wrap items-center gap-2">
       <Input className="max-w-sm" aria-label="חיפוש משתמשים" placeholder="חפש לפי אימייל, שם או טלפון..." value={search} onChange={e => setSearch(e.target.value)} />
       <SelectModeToggle active={selecting} onToggle={() => { setSelecting(!selecting); setSelected([]); }} total={rows.length} count={selected.length} onSelectAll={() => setSelected(eligible)} />

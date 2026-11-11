@@ -1,5 +1,9 @@
 # Roadmap
 
+## Manual user creation placement November 11
+- [x] Move unchanged manual creation form out of broker import into an animated toggle under the users table heading, with the add button opposite the title.
+- [x] Authenticated desktop/mobile verified opening, closing, invalid-phone save blocking and form absence from import; preview build OK and no page errors. Existing fields/save logic unchanged; no real account created.
+
 ## Web Unlocker audit November 11
 - [x] Inspect exact request, cache TTLs, pacing, license-first completion and live failure logs.
 - [x] Pin requested zone web_unlocker4, add sanitized request/response diagnostics, distinguish local daily limit from provider 429 without bypassing the limit.
