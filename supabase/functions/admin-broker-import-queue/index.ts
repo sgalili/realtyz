@@ -4,6 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse } from '../_shared/brightDataDiagnostics.ts';
+import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, MAX_AUTOMATIC_RATE_RETRIES } from '../_shared/brightDataThrottle.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
@@ -68,11 +69,32 @@ Deno.serve(async req => {
       const {error}=await admin.from('broker_import_jobs').update({checkpoint:c,stage:c.phase,lease_token:null,lease_until:null,step_average_ms:job.step_average_ms?Number(job.step_average_ms)*0.7+duration*0.3:duration,updated_at:new Date().toISOString(),...patch}).eq('id',job.id).eq('lease_token',job.lease_token);
       if(error) throw error;
     };
+    const pacedCall=async (name:string,body:unknown)=> {
+      // Cache reads never reach this function; each live chunk has its own lease.
+      const wait=Math.max(0,Number(c.nextRequestAt??0)-Date.now());
+      if(wait>0) {
+        c.waitUntil=Date.now()+wait;c.waitReason='throttle';
+        await admin.from('broker_import_jobs').update({checkpoint:c,updated_at:new Date().toISOString()}).eq('id',job.id).eq('lease_token',job.lease_token);
+        await new Promise(resolve=>setTimeout(resolve,Math.min(wait,PROVIDER_GAP_MS)));
+      }
+      const {data:state}=await admin.from('broker_import_jobs').select('status,lease_token').eq('id',job.id).single();
+      if(state?.status!=='running'||state.lease_token!==job.lease_token)throw new Error('הייבוא הושהה לפני הבקשה הבאה');
+      delete c.waitUntil;delete c.waitReason;
+      try {const data=await call(name,body);c.rateRetries=0;return data;}
+      finally {c.nextRequestAt=Date.now()+PROVIDER_GAP_MS;}
+    };
     try {
+      if(c.waitReason==='rate_limit'&&Number(c.waitUntil)>Date.now()) {
+        // Sleep in a delay-only step, not alongside a 140s provider call.
+        await new Promise(resolve=>setTimeout(resolve,Math.min(60_000,Number(c.waitUntil)-Date.now())));
+        if(Number(c.waitUntil)<=Date.now()){delete c.waitUntil;delete c.waitReason;}
+        await save();return json({ok:true,waiting:true});
+      }
+      if(c.waitReason==='rate_limit'){delete c.waitUntil;delete c.waitReason;}
       if(c.phase==='scanning') {
         const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher}));
         const results=await cached(admin,'search_page',`search:${c.deal}:${c.page}`,c,async()=>{
-          const d=await call('yad2-unlocker',{owner_id:job.created_by,url:`https://www.yad2.co.il/realestate/${c.deal==='sale'?'forsale':'rent'}?page=${c.page}`,page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id});
+          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:`https://www.yad2.co.il/realestate/${c.deal==='sale'?'forsale':'rent'}?page=${c.page}`,page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id});
           if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
           return compactAll(d.results);
         });
@@ -93,7 +115,7 @@ Deno.serve(async req => {
         const url=c.enrichUrls[0];
         if(url) {
           const rows=await cached(admin,'item_detail',`item:${url}`,c,async()=>{
-            const d=await call('yad2-unlocker',{owner_id:job.created_by,url,import_item:true,preview_only:true,limit:1,pages:1});
+            const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,import_item:true,preview_only:true,limit:1,pages:1});
             const r=d.results?.[0]; return r?[{source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher}]:[];
           });
           const row=rows[0];
@@ -111,7 +133,7 @@ Deno.serve(async req => {
         const b=c.brokers[c.brokerIndex];
         if(!b) {await save({status:'completed',stage:'completed'});return json({ok:true});}
         if(c.phase==='validating') {
-          const d=await call('yad2-ad-status',{urls:[b.listing_urls[c.listingIndex]]});
+          const d=await pacedCall('yad2-ad-status',{urls:[b.listing_urls[c.listingIndex]]});
           c.liveUrls=c.liveUrls??[];
           if(d.statuses?.[b.listing_urls[c.listingIndex]]==='live') c.liveUrls.push(b.listing_urls[c.listingIndex]);
           else if(d.statuses?.[b.listing_urls[c.listingIndex]]!=='gone') throw new Error('לא ניתן לאמת כרגע שהמודעה פעילה; הייבוא נעצר לפני יצירת החשבון');
@@ -139,7 +161,7 @@ Deno.serve(async req => {
           }
           c.brokerId=brokerId;c.phase='importing';await save();
         } else if(c.phase==='importing') {
-          const d=await call('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,limit:1,pages:1});
+          const d=await pacedCall('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,limit:1,pages:1});
           if(!d.listing_id)throw new Error('המודעה לא נשמרה; אפשר להמשיך מאותה נקודה');
           const {error}=await admin.from('listings').update({status:'pending',is_published:false,affiliate_enabled:false}).eq('id',d.listing_id).eq('workspace_owner_id',c.brokerId).eq('is_published',false).eq('affiliate_enabled',false);if(error)throw error;
           const next=nextImportPoint(c.brokerIndex,c.listingIndex,b.listing_urls.length);
@@ -150,6 +172,12 @@ Deno.serve(async req => {
       }
       return json({ok:true});
     } catch(e) {
+      if(e instanceof ProviderRateLimitError) {
+        c.rateRetries=(c.rateRetries??0)+1;c.waitReason='rate_limit';
+        c.waitUntil=Date.now()+rateBackoffMs(c.rateRetries,e.retryAfterMs);
+        await save(c.rateRetries<=MAX_AUTOMATIC_RATE_RETRIES?{error:null}:{status:'paused',error:'Bright Data עדיין מחזיר 429 לאחר מספר ניסיונות. ההתקדמות נשמרה; ניתן להמשיך לאחר ההמתנה.'});
+        return json({ok:true,waiting:true});
+      }
       await save({status:'paused',error:e instanceof Error?e.message:'הייבוא נעצר'});return json({ok:false,paused:true});
     }
   } catch(e) {return json({error:e instanceof Error?e.message:'הבקשה נכשלה'},400);}

@@ -1,4 +1,5 @@
 // Leave parsing/response time between a provider request and its enclosing worker call.
+import { ProviderRateLimitError, retryAfterMs } from './brightDataThrottle.ts';
 export const BRIGHT_DATA_TIMEOUT_MS = 120_000;
 export const BRIGHT_DATA_WORKER_BUDGET_MS = 130_000;
 export const BROKER_WORKER_CALL_TIMEOUT_MS = 140_000;
@@ -44,7 +45,11 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
     const response = await transport(url, { ...init, signal: AbortSignal.timeout(BROKER_WORKER_CALL_TIMEOUT_MS) });
     status = response.status;
     payload = await response.text();
+    if(status===429)throw new ProviderRateLimitError(retryAfterMs(response.headers.get('retry-after')));
     const data = JSON.parse(payload);
+    if (status === 429 || data?.error === 'brightdata_rate_limited' || data?.bd_trace?.some((entry: { bd_status?: number }) => entry.bd_status === 429)) {
+      throw new ProviderRateLimitError(Math.max(retryAfterMs(response.headers.get('retry-after')), Number(data?.retry_after_ms) || 0));
+    }
     if (!response.ok || data?.error || data?.ok === false || data?.success === false) {
       throw new Error(String(data?.detail ?? data?.error ?? `HTTP ${status}`));
     }
@@ -52,6 +57,7 @@ export async function readWorkerResponse(url: string, init: RequestInit, transpo
     return data;
   } catch (error) {
     logProviderFailure({ operation: 'broker_worker', url, status, payload, error, elapsedMs: Date.now() - started });
+    if (error instanceof ProviderRateLimitError) throw error;
     const timedOut = /timeout|abort|timed out/i.test(describeError(error));
     throw new Error(providerErrorMessage(status, timedOut));
   }

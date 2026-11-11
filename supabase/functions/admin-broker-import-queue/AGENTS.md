@@ -1,4 +1,5 @@
 # Broker import queue
+- Live chunks are sequential with a four-second post-request gap; 429 cooldowns persist in checkpoints and sleep in delay-only leased steps, honoring Retry-After and bounded retries. Why: protect provider capacity without resetting cache or exceeding lease duration.
 - Provider requests allow 120s inside a 130s scrape budget and 140s worker-call timeout; structured failure logs redact credentials and bound payloads, and retry uses persisted checkpoints/cache. Why: avoid premature aborts while returning before the platform deadline.
 - Discovery uses the existing Yad2 Bright Data parser with a leased Super Admin job, compact source records and individual detail enrichment; public/search reads retain their existing cache gates. Why: reuse exact-source attribution without broad scraping privileges.
 - Database-triggered steps persist per-broker/per-listing checkpoints, atomically lease and control jobs, and stop between external actions; pause never cancels an already submitted save. Why: modal-independent progress and safe resume.

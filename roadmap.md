@@ -1,5 +1,10 @@
 # Roadmap
 
+## Bright Data pacing November 11
+- [x] Serialize provider fetches with a 4-second gap, keep one page/detail per leased import chunk, and preserve cache bypass.
+- [x] Persist exponential 429 cooldown and bounded automatic retries with countdown; manual pause/resume retains checkpoints.
+- [x] 18 focused tests passed and workers deployed; authenticated mobile import card verified with real read-only data and mocked 429 countdown (39→37 seconds). Build OK; paid provider retry/provisioning not exercised.
+
 ## Bright Data timeout and diagnostics November 11
 - [x] Extend provider REST/browser requests to 120 seconds with enclosing response grace and credential-redacted status/payload logging.
 - [x] Retain existing checkpoint/cache-based resume and explain the longer wait in import progress.

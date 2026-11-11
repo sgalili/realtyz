@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Upload, Pause, Play, Loader2 } from 'lucide-react';
@@ -17,6 +17,8 @@ export function BrokerBatchImportCard() {
   const [busy,setBusy]=useState(false);const [error,setError]=useState('');const qc=useQueryClient();
   const {data:jobs}=useQuery({queryKey:['admin-broker-import-jobs'],queryFn:async()=>{const {data,error}=await supabase.from('broker_import_jobs').select('*').order('created_at',{ascending:false}).limit(5);if(error)throw error;return data;},refetchInterval:query=>query.state.data?.some(j=>j.status==='running'||(j.lease_until&&Date.parse(j.lease_until)>Date.now()))?4000:false});
   const current=jobs?.[0];
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{if(current?.status!=='running')return;const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[current?.status]);
   const action=async (kind:'start'|'pause'|'resume')=>{
     setBusy(true);setError('');
     try {
@@ -27,7 +29,8 @@ export function BrokerBatchImportCard() {
       if(kind==='start')setOpen(false);
     }catch(e){setError(e instanceof Error?e.message:'הבקשה נכשלה');}finally{setBusy(false);}
   };
-  const checkpoint=current?.checkpoint as {brokers?:{listing_urls:string[]}[];brokerIndex?:number;listingIndex?:number;page?:number;deal?:string;rows?:unknown[];enriched?:number;enrichUrls?:string[];cacheHits?:number;liveFetches?:number}|undefined;
+  const checkpoint=current?.checkpoint as {waitUntil?:number;waitReason?:string;rateRetries?:number;brokers?:{listing_urls:string[]}[];brokerIndex?:number;listingIndex?:number;page?:number;deal?:string;rows?:unknown[];enriched?:number;enrichUrls?:string[];cacheHits?:number;liveFetches?:number}|undefined;
+  const waitSeconds=Math.max(0,Math.ceil(((checkpoint?.waitUntil??0)-now)/1000));
   const remaining=checkpoint?.brokers?.slice(checkpoint.brokerIndex??0).reduce((n,b)=>n+b.listing_urls.length,0);
   const estimate=current?.step_average_ms && remaining?Math.ceil(Number(current.step_average_ms)*remaining/60000):null;
   // A running job with no active step and no update for 2 minutes is stalled, not progressing.
@@ -39,6 +42,7 @@ export function BrokerBatchImportCard() {
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex items-center gap-2 text-lg font-semibold">{current.status==='running'&&!stalled&&<Loader2 className="h-5 w-5 animate-spin" />}{current.status==='paused'?'מושהה · ':''}{stages[current.stage]??current.stage}</span><span className="text-base text-muted-foreground">{current.brokers_done}/{current.target_brokers} מתווכים · {current.listings_done} טיוטות{current.skipped>0?` · ${current.skipped} דולגו`:''}</span></div>
       <Progress className="h-3" value={current.status==='completed'?100:current.brokers_done/current.target_brokers*100} />
       {scanInfo&&<p className="text-base text-muted-foreground">{scanInfo}</p>}
+      {current.status==='running'&&waitSeconds>0&&<p aria-live="polite" className="text-base font-medium text-muted-foreground">{checkpoint?.waitReason==='rate_limit'?'מגבלת בקשות (429) · ניסיון חוזר אוטומטי':'ממתין להשהיית מניעת עומס…'} · בעוד {waitSeconds} שניות{checkpoint?.waitReason==='rate_limit'?` · ניסיון ${checkpoint.rateRetries??1}`:''}</p>}
       {current.status==='running'&&!stalled&&<p className="text-base text-muted-foreground">המתנה ל־Bright Data: עד 120 שניות לבקשה. המשך לאחר עצירה שומר על ההתקדמות והמטמון.</p>}
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-base text-muted-foreground">{current.status==='running'&&!stalled?(estimate?`זמן משוער שנותר: כ־${estimate} דקות`:current.step_average_ms?`כ־${Math.round(Number(current.step_average_ms)/1000)} שניות לכל שלב · זמן כולל יוצג לאחר איתור מתווכים`:'זמן משוער: יופיע לאחר השלמת שלב ראשון'):current.status==='completed'&&current.brokers_done<current.target_brokers?'הסריקה הסתיימה עם פחות מתווכים מהיעד':''}{checkpoint?.brokers?.length?` · מתווך ${(checkpoint.brokerIndex??0)+1}, מודעה ${(checkpoint.listingIndex??0)+1}`:''}</span>{['running','paused','failed'].includes(current.status)&&<Button variant="outline" className="text-base" disabled={busy} onClick={()=>void action(current.status==='running'&&!stalled?'pause':'resume')}>{current.status==='running'&&!stalled?<Pause className="h-5 w-5" />:<Play className="h-5 w-5" />}{current.status==='running'&&!stalled?'עצירה':'המשך'}</Button>}</div>
       {current.status==='paused'&&current.lease_until&&Date.parse(current.lease_until)>Date.now()&&<p className="text-base text-muted-foreground">הפעולה שכבר התחילה תסתיים ותישמר; לא תתחיל פעולה נוספת.</p>}

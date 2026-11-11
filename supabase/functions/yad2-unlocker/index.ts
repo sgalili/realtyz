@@ -20,6 +20,9 @@ import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2P
 import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
 import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
 import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure } from '../_shared/brightDataDiagnostics.ts';
+import { createProviderPacer, ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
+const paceProvider = createProviderPacer();
+let providerRateLimit: ProviderRateLimitError | null = null;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -141,6 +144,7 @@ async function brightDataRequest(
   url: string,
   opts: { accept?: string } = {},
 ): Promise<{ status: number; body: string; bdHeaders: Record<string, string> }> {
+  if(providerRateLimit)throw providerRateLimit;
   const forwardedAccept = opts.accept ??
     "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8";
   const isGateway = /(^|\/\/)gw\.yad2\.co\.il/i.test(url);
@@ -188,7 +192,7 @@ async function brightDataRequest(
   let responseStatus: number | undefined;
   try {
   const result = await trackScraping('yad2_extraction', 'rest', url, async () => {
-  const res = await fetch("https://api.brightdata.com/request", {
+  const res = await paceProvider(()=>fetch("https://api.brightdata.com/request", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -200,12 +204,12 @@ async function brightDataRequest(
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(hopTimeoutMs()),
     ...(bdHttpClient ? { client: bdHttpClient } : {}),
-  } as RequestInit);
+  } as RequestInit));
   responseStatus = res.status;
   const body = await res.text();
   const bdHeaders: Record<string, string> = {};
   for (const [k, v] of res.headers.entries()) {
-    if (/^(content-type|content-length|content-encoding|x-brd|x-luminati|x-response|x-unblock)/i.test(k)) {
+    if (/^(retry-after|content-type|content-length|content-encoding|x-brd|x-luminati|x-response|x-unblock)/i.test(k)) {
       bdHeaders[k] = v;
     }
   }
@@ -213,6 +217,10 @@ async function brightDataRequest(
   }, value => ({ status: value.bdHeaders['x-brd-err-code'] ? 403 : value.status, bytes: new TextEncoder().encode(value.body).length }));
   if (result.status >= 400 || result.bdHeaders['x-brd-err-code'] || Number(result.bdHeaders['x-brd-status-code']) >= 400 || !result.body.trim()) {
     logProviderFailure({ operation: 'rest', url, status: result.status, upstreamStatus: result.bdHeaders['x-brd-status-code'], payload: result.body, error: zoneModeError(result.bdHeaders) ?? 'HTTP/empty upstream response', elapsedMs: Date.now() - started });
+  }
+  if(result.status===429||result.bdHeaders['x-brd-status-code']==='429') {
+    providerRateLimit=new ProviderRateLimitError(retryAfterMs(result.bdHeaders['retry-after']??null));
+    throw providerRateLimit;
   }
   return result;
   } catch (error) {
@@ -335,7 +343,7 @@ async function unlock(
         }
         return body;
       }
-      if ((status >= 500 || status === 429 || status === 403) && attempt < maxAttempts) {
+      if ((status >= 500 || status === 403) && attempt < maxAttempts) {
         console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt} for ${url}, retrying`);
         await new Promise((r) => setTimeout(r, 500 * attempt));
         continue;
@@ -1622,6 +1630,7 @@ async function scrapingBrowserHarvest(
   needFeeds: (html: string) => boolean = () => true,
 ): Promise<BrowserHarvest> {
   if (!BD_WS) throw new Error("BRIGHTDATA_WS_ENDPOINT is not configured");
+  if(providerRateLimit)throw providerRateLimit;
   let browser: any = null;
   try {
     console.log("[yad2-unlocker] scraping-browser: connecting…");
@@ -1633,7 +1642,8 @@ async function scrapingBrowserHarvest(
     // il-geolocated exit node instead.
 
     console.log(`[yad2-unlocker] scraping-browser: goto ${pageUrl}`);
-    const navigation = await trackScraping('yad2_extraction', 'browser_navigation', pageUrl, () => page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: hopTimeoutMs() }), (response: any) => ({ status: response?.status?.() }));
+    const navigation = await trackScraping('yad2_extraction', 'browser_navigation', pageUrl, () => paceProvider(()=>page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: hopTimeoutMs() })), (response: any) => ({ status: response?.status?.() }));
+    if(navigation?.status()===429){providerRateLimit=new ProviderRateLimitError(retryAfterMs(navigation.headers()['retry-after']??null));throw providerRateLimit;}
     if (navigation?.status() >= 400) logProviderFailure({ operation: 'browser_navigation', url: pageUrl, status: navigation.status(), payload: await navigation.text().catch(() => ''), elapsedMs: 0 });
     if (/captcha|bot manager|access denied/i.test(await page.title())) throw new Error("Yad2 requires browser verification; manual entry remains available");
     await page
@@ -1668,13 +1678,15 @@ async function scrapingBrowserHarvest(
     }
     for (const f of feedTargets) {
       try {
-        const fetched = await trackScraping('yad2_extraction', 'browser_fetch', f, () => page.evaluate(async (u: string) => {
+        if(providerRateLimit)throw providerRateLimit;
+        const fetched = await trackScraping('yad2_extraction', 'browser_fetch', f, () => paceProvider(()=>page.evaluate(async (u: string) => {
           const r = await fetch(u, {
             credentials: "include",
             headers: { Accept: "application/json, text/plain, */*" },
           });
           return { status: r.status, body: await r.text() };
-        }, f), (value: any) => ({ status: value.status, bytes: new TextEncoder().encode(value.body).length }));
+        }, f)), (value: any) => ({ status: value.status, bytes: new TextEncoder().encode(value.body).length }));
+        if(fetched.status===429){providerRateLimit=new ProviderRateLimitError();throw providerRateLimit;}
         const body: string = fetched.body;
         console.log(
           `[yad2-unlocker] scraping-browser: in-page fetch ${f} bytes=${body?.length ?? 0} preview=${JSON.stringify((body ?? "").slice(0, 200))}`,
@@ -2137,6 +2149,7 @@ Deno.serve(async (req) => {
 
 
     bdTrace = [];
+    providerRateLimit = null;
     // Hard wall-clock budget. The platform kills the request at 150s with an
     // IDLE_TIMEOUT 504, so we stop scraping well before that and return
     // whatever we already have.
@@ -2531,6 +2544,9 @@ Deno.serve(async (req) => {
     // Nothing worked at all — surface the real cause. These are soft failures
     // (HTTP 200 with results: []) so the Properties page can keep rendering the
     // other sources instead of throwing a FunctionsHttpError.
+    const currentRateLimit=()=>providerRateLimit;
+    const earlyRateLimit=currentRateLimit();
+    if(earlyRateLimit) return json({error:'brightdata_rate_limited',retry_after_ms:earlyRateLimit.retryAfterMs,results:[],bd_trace:bdTrace},429);
     if (!rows.length) {
       const hardErrors = diagnostics.filter((d) => d.status === "error");
       const allErrText = hardErrors.map((d) => d.error ?? "").join(" | ");
@@ -2658,14 +2674,17 @@ Deno.serve(async (req) => {
           console.warn(`[yad2-unlocker] gallery enrich failed ${gwItem}: ${String((e as Error)?.message ?? e)}`);
         }
       };
-      // Run in small parallel batches, and bail out once the budget is thin so
+      // Enrich one listing at a time, and bail out once the budget is thin so
       // the save step still gets to run before the platform's 150s cut-off.
-      for (let i = 0; i < thin.length; i += 2) {
+      for (let i = 0; i < thin.length; i++) {
         if (timeLeft() < 25_000) { timedOut = true; break; }
-        await Promise.all(thin.slice(i, i + 2).map(enrichOne));
+        await enrichOne(thin[i]);
+        if(currentRateLimit())break;
       }
     }
 
+    const enrichmentRateLimit=currentRateLimit();
+    if(enrichmentRateLimit) return json({error:'brightdata_rate_limited',retry_after_ms:enrichmentRateLimit.retryAfterMs,results:[],bd_trace:bdTrace},429);
     if (itemId && claimedToken) {
       rows = rows.filter((r) => String(r.external_id ?? "").toLowerCase() === itemId);
       if (!rows.length) throw new Error("לא ניתן לחלץ את המודעה המדויקת מהקישור. אפשר להמשיך ידנית.");
