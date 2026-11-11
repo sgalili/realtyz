@@ -1,4 +1,5 @@
 import { agorotToCredits } from '@/lib/credits';
+import { SOCIAL_DRAFT_CREDITS } from '@/lib/socialDraftGeneration';
 
 export type CampaignPrice = { action_key: string; label_he: string; unit_he: string; price_agorot: number };
 export const CAMPAIGN_ACTIONS: Record<string, string> = {
@@ -9,6 +10,8 @@ export const CAMPAIGN_ACTIONS: Record<string, string> = {
 export function campaignServicePrice(channel: string, prices: CampaignPrice[]) {
   const key = CAMPAIGN_ACTIONS[channel];
   if (!key) return { credits: 0, unit: 'קמפיין' };
+  // Social posts are charged per draft batch everywhere; outer cards and inner views share this value.
+  if (key === 'social_post') return { credits: SOCIAL_DRAFT_CREDITS, unit: 'פוסט' };
   const row = prices.find((price) => price.action_key === key);
   if (!row || !Number.isFinite(Number(row.price_agorot))) return null;
   return { credits: agorotToCredits(Number(row.price_agorot)), unit: row.unit_he };

@@ -2424,6 +2424,27 @@ export type Database = {
           },
         ]
       }
+      credit_conversion_settings: {
+        Row: {
+          credits_per_ils: number
+          id: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          credits_per_ils?: number
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          credits_per_ils?: number
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       credit_transactions: {
         Row: {
           amount_ils: number
@@ -9320,6 +9341,7 @@ export type Database = {
         Args: { _action: string; _id: string }
         Returns: undefined
       }
+      credits_to_ils: { Args: { _credits: number }; Returns: number }
       crm_import_merge: { Args: never; Returns: string }
       crm_safe_int: { Args: { _t: string }; Returns: number }
       crm_safe_numeric: { Args: { _t: string }; Returns: number }
@@ -9742,6 +9764,7 @@ export type Database = {
         Args: { days_window?: number; user_uuid: string }
         Returns: Json
       }
+      get_credits_per_ils: { Args: never; Returns: number }
       get_dispute_evidence: { Args: { _id: string }; Returns: Json }
       get_effective_meta_page:
         | {
@@ -10277,6 +10300,7 @@ export type Database = {
         Args: { _amount: number; _enabled: boolean; _id: string }
         Returns: undefined
       }
+      set_credits_per_ils: { Args: { _rate: number }; Returns: number }
       set_developer_company_commissions: {
         Args: { _apply_existing?: boolean; _company: string; _config: Json }
         Returns: Json

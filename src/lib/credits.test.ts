@@ -25,3 +25,18 @@ describe('credits-first displays', () => {
     expect(isSyntheticEmail(null)).toBe(false);
   });
 });
+import { agorotToCredits as a2c, creditsToIls as c2i, ilsToCredits as i2c, setCreditsPerIls as setRate } from './credits';
+import { campaignServicePrice } from './campaignServicePricing';
+describe('central credit conversion rate', () => {
+  it('follows the configured rate both ways', () => {
+    setRate(50);
+    expect(i2c(2)).toBe(100);
+    expect(c2i(100)).toBe(2);
+    expect(a2c(4)).toBe(2);
+    setRate(25);
+    expect(c2i(100)).toBe(4);
+  });
+  it('prices social posts the same on every campaign card', () => {
+    expect(campaignServicePrice('facebook', [{ action_key: 'social_post', label_he: '', unit_he: 'פוסט', price_agorot: 40 }])?.credits).toBe(2);
+  });
+});

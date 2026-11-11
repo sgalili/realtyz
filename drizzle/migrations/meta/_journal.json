@@ -1100,6 +1100,20 @@
       "when": 1794400336546,
       "tag": "0156_broker_import_honor_checkpoint",
       "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1794408868972,
+      "tag": "0157_credit_conversion_rate",
+      "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1794408917447,
+      "tag": "0158_credit_rate_social_and_usage",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { InventoryComingSoonHost } from '@/components/InventoryCollection';
+import { CreditRateSync } from "@/hooks/useCreditRate";
 import { QueryClient, QueryClientProvider, useQueryClient, useQuery } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation, useParams } from "react-router-dom";
 import { supabase } from '@/integrations/supabase/client';
@@ -467,6 +468,7 @@ function EarningsFeedback() { useEarningsFeedback(); return null; }
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <CreditRateSync>
     <DirectionProvider dir="rtl">
       <TooltipProvider>
         <BrowserRouter>
@@ -611,6 +613,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </DirectionProvider>
+    </CreditRateSync>
   </QueryClientProvider>
 );
 

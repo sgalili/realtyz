@@ -1,11 +1,35 @@
 import { Bot, Mail, MessageCircle, MessageSquare, Phone, Sparkles, type LucideIcon } from 'lucide-react';
 
-/** Global exchange rate: 1 ILS = 25 credits (1 credit = 4 agorot). */
-export const CREDITS_PER_ILS = 25;
-export const AGOROT_PER_CREDIT = 100 / CREDITS_PER_ILS;
+/**
+ * Single source of truth for credit ⇄ ILS conversion.
+ * The rate is configured by Super Admin (credit_conversion_settings) and loaded once by CreditRateSync.
+ * 25 is only the fallback until the configured rate loads.
+ */
+export const DEFAULT_CREDITS_PER_ILS = 25;
+const RATE_KEY = 'toraff-credits-per-ils';
+const readCachedRate = () => {
+  try { const v = Number(globalThis.localStorage?.getItem(RATE_KEY)); return v > 0 ? v : DEFAULT_CREDITS_PER_ILS; } catch { return DEFAULT_CREDITS_PER_ILS; }
+};
+let creditsPerIls = readCachedRate();
+const listeners = new Set<() => void>();
+export const getCreditsPerIls = () => creditsPerIls;
+export function setCreditsPerIls(rate: number) {
+  if (!Number.isFinite(rate) || rate <= 0 || rate === creditsPerIls) return;
+  creditsPerIls = rate;
+  try { globalThis.localStorage?.setItem(RATE_KEY, String(rate)); } catch { /* ignore */ }
+  listeners.forEach((l) => l());
+}
+export const subscribeCreditRate = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
+/** @deprecated use getCreditsPerIls(); kept for the fallback value only. */
+export const CREDITS_PER_ILS = DEFAULT_CREDITS_PER_ILS;
+export const agorotPerCredit = () => 100 / creditsPerIls;
 
-export const agorotToCredits = (agorot: number) => agorot / AGOROT_PER_CREDIT;
-export const ilsToCredits = (ils: number) => ils * CREDITS_PER_ILS;
+export const agorotToCredits = (agorot: number) => (agorot * creditsPerIls) / 100;
+export const creditsToAgorot = (credits: number) => (credits * 100) / creditsPerIls;
+export const ilsToCredits = (ils: number) => ils * creditsPerIls;
+export const creditsToIls = (credits: number) => credits / creditsPerIls;
+export const fmtIlsFromCredits = (credits: number) =>
+  `₪${creditsToIls(credits).toLocaleString('he-IL', { maximumFractionDigits: 2 })}`;
 export const fmtCredits = (c: number) =>
   `${c.toLocaleString('he-IL', { maximumFractionDigits: Math.abs(c) < 1 ? 2 : 1 })} קרדיטים`;
 /** תצוגה מקוצרת לשורות המחירון: "קר'" במקום "קרדיטים". */

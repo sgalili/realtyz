@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ACTION_META, CREDITS_PER_ILS, agorotToCredits, fmtCredits } from '@/lib/credits';
+import { ACTION_META, agorotPerCredit, agorotToCredits, fmtCredits, setCreditsPerIls } from '@/lib/credits';
+import { CREDIT_RATE_QUERY_KEY, useCreditRate } from '@/hooks/useCreditRate';
 
 type Row = { action_key: string; label_he: string; unit_he: string; price_agorot: number };
 
@@ -21,6 +22,17 @@ export function ActionPricingCard() {
   });
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const rate = useCreditRate();
+  const [rateDraft, setRateDraft] = useState(String(rate));
+  useEffect(() => setRateDraft(String(rate)), [rate]);
+  const rateValid = Number(rateDraft) > 0 && Number(rateDraft) <= 10000;
+  const saveRate = async () => {
+    const { data: saved, error } = await (supabase.rpc as any)('set_credits_per_ils', { _rate: Number(rateDraft) });
+    if (error) { toast.error('לא ניתן לשמור את שער ההמרה'); return; }
+    toast.success('שער ההמרה נשמר');
+    void qc.invalidateQueries({ queryKey: CREDIT_RATE_QUERY_KEY });
+    setCreditsPerIls(Number(saved));
+  };
   useEffect(() => setDraft(Object.fromEntries(data.map((r) => [r.action_key, String(r.price_agorot)]))), [data]);
 
   const save = async () => {
@@ -43,7 +55,13 @@ export function ActionPricingCard() {
     <Card dir="rtl">
       <CardHeader>
         <CardTitle>מחירון פעולות</CardTitle>
-        <CardDescription>₪1 = {CREDITS_PER_ILS} קרדיטים · קרדיט אחד = 4 אגורות</CardDescription>
+        <CardDescription>₪1 = {rate.toLocaleString('he-IL')} קרדיטים · קרדיט אחד = {agorotPerCredit().toLocaleString('he-IL', { maximumFractionDigits: 4 })} אגורות</CardDescription>
+        <div className="flex items-end gap-2 pt-2">
+          <label className="flex-1 space-y-1 text-sm font-medium" htmlFor="credits-per-ils">שער המרה: קרדיטים לכל ₪1
+            <Input id="credits-per-ils" dir="ltr" type="number" min={0.01} max={10000} step="0.01" value={rateDraft} onChange={(e) => setRateDraft(e.target.value)} />
+          </label>
+          <Button variant="outline" onClick={() => void saveRate()} disabled={!rateValid || Number(rateDraft) === rate}>שמירת שער</Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {data.map((r) => {

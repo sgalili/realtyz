@@ -4,7 +4,6 @@ import { CampaignServiceIcon } from './CampaignServiceIcon';
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
 import { campaignServicePrice, formatCampaignCredits } from '@/lib/campaignServicePricing';
 import { FacebookPageSelector } from './FacebookPageSelector';
-import { SOCIAL_DRAFT_CREDITS } from '@/lib/socialDraftGeneration';
 import { inventoryToolLocked, showInventoryComingSoon } from '@/lib/inventoryCollection';
 
 export const DISTRIBUTION_CHANNELS = [
@@ -33,7 +32,7 @@ export function CampaignChannelPicker({ selected, onSelect, onBack }: {
           <h2 className="flex min-w-0 flex-1 items-center gap-2 text-xl font-bold text-foreground">
             {channel && <CampaignServiceIcon channel={channel.id} className="h-6 w-6 shrink-0" />}
             <span className="min-w-0">{channel ? `קמפיין · ${channel.label}` : 'בחירת ערוץ להפצה'}</span>
-            {channel && <span className="ms-auto shrink-0 text-center text-sm font-normal text-muted-foreground">{['facebook', 'instagram'].includes(channel.id) ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(SOCIAL_DRAFT_CREDITS)}</span><span className="block">לפוסט</span></> : price ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(price.credits)}</span><span className="block">ל{price.unit}</span></> : 'המחירון אינו זמין'}</span>}
+            {channel && <span className="ms-auto shrink-0 text-center text-sm font-normal text-muted-foreground">{price ? <><span className="block text-base font-bold text-foreground">{formatCampaignCredits(price.credits)}</span><span className="block">ל{price.unit}</span></> : 'המחירון אינו זמין'}</span>}
           </h2>
         </div>
         {channel?.id === 'facebook' && <FacebookPageSelector hideConnectButton />}
