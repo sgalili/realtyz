@@ -1,5 +1,10 @@
 # Roadmap
 
+## Agencies directory import November 11
+- [x] Remove subtitle; use directory pages and scoped agency detail enrichment with separate cache keys and retained pacing/contact fallback.
+- [x] 39 parser/queue/transport tests passed; both workers deployed and signed-in mobile verified subtitle removal; preview build OK.
+- [ ] Live directory-to-broker/draft import remains unverified: no paid provider scan was run, and ordinary public fetch returns a challenge. Office-only cards never create invented personal identities; creation still requires explicit person/license and enough attributed listing links.
+
 ## Import resume and fresh pagination November 11
 - [x] Skip daily-restricted/busy listings without pausing; persist the next pointer and keep provider 429 protection.
 - [x] Start a fresh job with reset counters/search pages, safely retire old jobs only outside active leases, and remove the requested heading. Existing drafts and detail caches remain intact.

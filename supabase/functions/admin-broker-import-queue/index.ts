@@ -4,6 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse, ImportAvailabilityError } from '../_shared/brightDataDiagnostics.ts';
+import { agencyPageUrl, agencyUrl } from '../_shared/yad2Agencies.ts';
 import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 
 const schema = z.discriminatedUnion('action', [
@@ -13,6 +14,7 @@ const schema = z.discriminatedUnion('action', [
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
 // Search pages rarely carry phone/license, so unknown publishers are opened one by one, within a per-job budget.
 const ENRICH_BUDGET = 150;
+const compactDirectoryRows=(rs:Record<string,any>[])=>rs.map(r=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,owner_email:r.owner_email,listing_urls:r.listing_urls,publisher:r.publisher}));
 // Scrape cache: search pages stay fresh 12h, ad details 72h. Freshness is never extended on read.
 const CACHE_TTL_MS = { search_page: 12 * 3600_000, item_detail: 72 * 3600_000 } as const;
 type CacheKind = keyof typeof CACHE_TTL_MS;
@@ -66,6 +68,9 @@ Deno.serve(async req => {
     const {data:claimed,error:claimError}=await admin.rpc('claim_broker_import_step',{_id:input.job_id}); if(claimError) throw claimError;
     const job=claimed?.[0]; if(!job) return json({ok:true,idle:true});
     const c=job.checkpoint as Record<string,any>; const started=Date.now();
+    if (['scanning','enriching'].includes(c.phase) && c.source !== 'agencies') {
+      Object.assign(c, freshImportCheckpoint()); delete c.deal; delete c.enrichUrls; delete c.enriched;
+    }
     const save=async (patch:Record<string,unknown>={})=> {
       const duration=Date.now()-started;
       const {error}=await admin.from('broker_import_jobs').update({checkpoint:c,stage:c.phase,lease_token:null,lease_until:null,step_average_ms:job.step_average_ms?Number(job.step_average_ms)*0.7+duration*0.3:duration,updated_at:new Date().toISOString(),...patch}).eq('id',job.id).eq('lease_token',job.lease_token);
@@ -94,18 +99,23 @@ Deno.serve(async req => {
         return json({ok:true,paused:true});
       }
       if(c.phase==='scanning') {
-        const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher}));
-        const results=await cached(admin,'search_page',`search:${c.deal}:${c.page}`,c,async()=>{
-          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:`https://www.yad2.co.il/realestate/${c.deal==='sale'?'forsale':'rent'}?page=${c.page}`,page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id});
+        const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({...compactDirectoryRows([r])[0],directory_next_url:r.directory_next_url}));
+        const results=await cached(admin,'search_page',`agencies:v1:${c.page}`,c,async()=>{
+          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:agencyUrl(c.directoryNextUrl)??agencyPageUrl(c.page),page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
           if(!d)throw new DelayStepFinished();
           if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
           return compactAll(d.results);
         });
         const d={results};
-        const compact=(r:Record<string,any>)=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher});
+        const fingerprint=results.map(r=>`${r.source_url}:${r.publisher?.broker_license_number??''}`).sort().join('|');
+        c.directoryExhausted=!results.length || (c.directoryPages??[]).includes(fingerprint);
+        if(c.directoryExhausted) {advanceSearchPoint(c,true);await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true});}
+        c.directoryPages=[...(c.directoryPages??[]),fingerprint];
+        c.directoryNextUrl=agencyUrl(results[0]?.directory_next_url);
+        const compact=(r:Record<string,any>)=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,owner_email:r.owner_email,listing_urls:r.listing_urls,publisher:r.publisher});
         c.rows=[...c.rows,...d.results.map(compact)]; c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
         c.enriched=c.enriched??0;
-        c.enrichUrls=d.results.filter((r:Record<string,any>)=>r.publisher?.publisher_kind!=='private' && (!r.owner_phone || !r.publisher?.broker_license_number)).map((r:Record<string,any>)=>r.source_url).slice(0,Math.max(0,ENRICH_BUDGET-c.enriched));
+        c.enrichUrls=d.results.filter((r:Record<string,any>)=>agencyUrl(r.source_url) && (!r.publisher?.broker_license_number || !r.publisher?.broker_name || !(r.listing_urls?.length))).map((r:Record<string,any>)=>r.source_url).slice(0,Math.max(0,ENRICH_BUDGET-c.enriched));
         if(c.enrichUrls.length && c.brokers.length<job.target_brokers){c.phase='enriching';await save();return json({ok:true});}
         if(c.brokers.length>=job.target_brokers) {c.phase='validating';delete c.rows;}
         else advanceSearchPoint(c,d.results.length===0);
@@ -113,13 +123,12 @@ Deno.serve(async req => {
       } else if(c.phase==='enriching') {
         const url=c.enrichUrls[0];
         if(url) {
-          const rows=await cached(admin,'item_detail',`item:${url}`,c,async()=>{
-            const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,import_item:true,preview_only:true,limit:1,pages:1});
+          const rows=await cached(admin,'item_detail',`agency:v1:${url}`,c,async()=>{
+            const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,preview_only:true,limit:60,pages:1,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
             if(!d)throw new DelayStepFinished();
-            const r=d.results?.[0]; return r?[{source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher}]:[];
+            return Array.isArray(d.results) ? compactDirectoryRows(d.results) : [];
           });
-          const row=rows[0];
-          if(row) c.rows=c.rows.map((r:Record<string,any>)=>r.source_url===url?{source_url:row.source_url,owner_name:row.owner_name,owner_phone:row.owner_phone,publisher:row.publisher}:r);
+          c.rows=[...c.rows.filter((r:Record<string,any>)=>r.source_url!==url),...rows];
           c.enrichUrls.shift(); c.enriched=(c.enriched??0)+1;
         }
         c.brokers=collectBrokers(c.rows,job.min_listings,job.max_listings).slice(0,job.target_brokers);
@@ -152,7 +161,7 @@ Deno.serve(async req => {
             if(profiles.length!==1 || !onboarding || onboarding.first_login_at){c.brokerIndex++;c.phase='validating';await save({skipped:job.skipped+1});return json({ok:true});}
             brokerId=profiles[0].id;
           } else {
-            const d=await call('super-admin-create-user',{full_name:b.full_name,phone_e164:b.phone,broker_license_number:b.license_number,approve_broker:true,import_job_id:job.id});
+            const d=await call('super-admin-create-user',{full_name:b.full_name,phone_e164:b.phone,...(b.email?{email:b.email}:{}),broker_license_number:b.license_number,approve_broker:true,import_job_id:job.id});
             if(!d.user_id)throw new Error('יצירת המתווך נכשלה');brokerId=d.user_id;
           }
           if(b.office_name) {

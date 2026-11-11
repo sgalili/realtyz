@@ -17,6 +17,7 @@ import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import puppeteer from "npm:puppeteer-core@22.15.0";
 import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
 import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2Publisher.ts";
+import { agencyUrl, parseAgencies } from '../_shared/yad2Agencies.ts';
 import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
 import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
 import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure, logUnlockerRequest, logUnlockerResponse, redactDiagnostic } from '../_shared/brightDataDiagnostics.ts';
@@ -2190,6 +2191,17 @@ Deno.serve(async (req) => {
       return json({ error: "invalid_yad2_url" }, 400);
     }
     // Short links are fetched through the same managed transport, never raw HEAD.
+    if (agencyUrl(inputUrl)) {
+      // Directory reads are only for the current leased Super Admin import.
+      const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+      if (token !== SERVICE_KEY || !previewOnly || typeof body?.admin_import_job_id !== 'string' || typeof body?.admin_import_lease_token !== 'string') return json({error:'admin_discovery_not_authorized'},403);
+      const {data:job} = await admin.from('broker_import_jobs').select('created_by,status,lease_until,lease_token').eq('id',body.admin_import_job_id).maybeSingle();
+      const {data:role} = job ? await admin.from('user_roles').select('user_id').eq('user_id',job.created_by).eq('role','super_admin').maybeSingle() : {data:null};
+      if (!role || job?.status !== 'running' || job.lease_token !== body.admin_import_lease_token || Date.parse(job.lease_until ?? '') <= Date.now()) return json({error:'admin_discovery_not_authorized'},403);
+      const html = await unlock(inputUrl, {maxAttempts:1});
+      const parsed = parseAgencies(cheerio.load(html),inputUrl);
+      return json({success:true,...parsed,served_from:'agencies_html',records_saved:0});
+    }
     if (rawUrl && !/\/realestate\/(?:item|forsale|rent|forrent)/i.test(parsedUrl.pathname)) {
       const html = await unlock(inputUrl, { maxAttempts: 1 });
       const $ = cheerio.load(html);

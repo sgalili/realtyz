@@ -143,8 +143,6 @@ const SuperAdmin = () => {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <p className="text-center text-sm text-muted-foreground">ניהול משתמשים, ייבוא מתווכים, כספים ובריאות המערכת.</p>
-
       {section === 'users' && (
         <div className="space-y-4">
           <BrokerUpgradeRequestsCard />

@@ -29,13 +29,13 @@ export function BrokerBatchImportCard() {
       if(kind==='start')setOpen(false);
     }catch(e){setError(e instanceof Error?e.message:'הבקשה נכשלה');}finally{setBusy(false);}
   };
-  const checkpoint=current?.checkpoint as {waitUntil?:number;waitReason?:string;rateRetries?:number;brokers?:{listing_urls:string[]}[];brokerIndex?:number;listingIndex?:number;page?:number;deal?:string;rows?:unknown[];enriched?:number;enrichUrls?:string[];cacheHits?:number;liveFetches?:number}|undefined;
+  const checkpoint=current?.checkpoint as {waitUntil?:number;waitReason?:string;rateRetries?:number;brokers?:{listing_urls:string[]}[];brokerIndex?:number;listingIndex?:number;page?:number;deal?:string;source?:string;rows?:unknown[];enriched?:number;enrichUrls?:string[];cacheHits?:number;liveFetches?:number}|undefined;
   const waitSeconds=Math.max(0,Math.ceil(((checkpoint?.waitUntil??0)-now)/1000));
   const remaining=checkpoint?.brokers?.slice(checkpoint.brokerIndex??0).reduce((n,b)=>n+b.listing_urls.length,0);
   const estimate=current?.step_average_ms && remaining?Math.ceil(Number(current.step_average_ms)*remaining/60000):null;
   // A running job with no active step and no update for 2 minutes is stalled, not progressing.
   const stalled=current?.status==='running' && !(current.lease_until&&Date.parse(current.lease_until)>Date.now()) && Date.now()-Date.parse(current.updated_at)>120_000;
-  const scanInfo=checkpoint&&['scanning','enriching'].includes(current?.stage??'')?[`${checkpoint.deal==='rent'?'השכרה':'מכירה'} · עמוד ${checkpoint.page??1}`,checkpoint.rows?.length?`${checkpoint.rows.length} מודעות נסרקו`:null,checkpoint.enriched?`${checkpoint.enriched} מודעות נפתחו לאיתור מתווך`:null,checkpoint.enrichUrls?.length?`${checkpoint.enrichUrls.length} ממתינות`:null,checkpoint.cacheHits?`${checkpoint.cacheHits} נטענו מהמטמון ללא עלות`:null].filter(Boolean).join(' · '):'';
+  const scanInfo=checkpoint&&['scanning','enriching'].includes(current?.stage??'')?[`${checkpoint.source==='agencies'?'משרדי תיווך':checkpoint.deal==='rent'?'השכרה':'מכירה'} · עמוד ${checkpoint.page??1}`,checkpoint.rows?.length?`${checkpoint.rows.length} כרטיסים נסרקו`:null,checkpoint.enriched?`${checkpoint.enriched} משרדים נפתחו לאיתור מתווך`:null,checkpoint.enrichUrls?.length?`${checkpoint.enrichUrls.length} ממתינות`:null,checkpoint.cacheHits?`${checkpoint.cacheHits} נטענו מהמטמון ללא עלות`:null].filter(Boolean).join(' · '):'';
   const newImportButton=<Button className="h-11 shrink-0 px-3 text-base" variant="outline" disabled={busy} onClick={()=>{setError('');setTarget(10);setMin(3);setMax(10);setOpen(true);}}><Upload className="h-5 w-5" />ייבוא חדש</Button>;
   return <section dir="rtl" className="space-y-4 border-b border-border py-5 text-right">
     {!current&&<div className="flex items-center justify-end gap-2">{newImportButton}</div>}
