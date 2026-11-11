@@ -123,6 +123,9 @@ export type Database = {
       }
       admin_broker_onboarding: {
         Row: {
+          contact_completed_at: string | null
+          contact_completed_by: string | null
+          contact_status: string
           created_at: string
           created_by: string
           email_consent_at: string | null
@@ -133,11 +136,15 @@ export type Database = {
           email_unsubscribe_token: string
           email_unsubscribed_at: string | null
           first_login_at: string | null
+          import_source: string | null
           invitation_message_id: string | null
           invited_at: string | null
           user_id: string
         }
         Insert: {
+          contact_completed_at?: string | null
+          contact_completed_by?: string | null
+          contact_status?: string
           created_at?: string
           created_by: string
           email_consent_at?: string | null
@@ -148,11 +155,15 @@ export type Database = {
           email_unsubscribe_token?: string
           email_unsubscribed_at?: string | null
           first_login_at?: string | null
+          import_source?: string | null
           invitation_message_id?: string | null
           invited_at?: string | null
           user_id: string
         }
         Update: {
+          contact_completed_at?: string | null
+          contact_completed_by?: string | null
+          contact_status?: string
           created_at?: string
           created_by?: string
           email_consent_at?: string | null
@@ -163,6 +174,7 @@ export type Database = {
           email_unsubscribe_token?: string
           email_unsubscribed_at?: string | null
           first_login_at?: string | null
+          import_source?: string | null
           invitation_message_id?: string | null
           invited_at?: string | null
           user_id?: string

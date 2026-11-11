@@ -7,7 +7,7 @@ import { brokerFirstName, brokerInvitationEmailHtml, propertyExample, BROKER_EMA
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('summary') }),
   z.object({ action: z.literal('consent'), broker_id: z.string().uuid(), note: z.string().trim().min(3).max(300), revoke: z.boolean().optional() }),
-  z.object({ action: z.literal('send_batch'), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX) }),
+  z.object({ action: z.literal('send_batch'), broker_id: z.string().uuid().optional(), limit: z.number().int().min(1).max(BROKER_EMAIL_BATCH_MAX).default(BROKER_EMAIL_BATCH_MAX) }),
 ]);
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const page = (msg: string) => new Response(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><body style="font-family:Arial;text-align:center;padding:60px">${msg}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
@@ -49,7 +49,9 @@ Deno.serve(async req => {
   const site = new URL(Deno.env.get('PUBLIC_SITE_URL') || 'https://toraff.co.il');
   const fnBase = `${Deno.env.get('SUPABASE_URL')}/functions/v1/admin-broker-email-invitation`;
   const results: { broker_id: string; status: string; error?: string }[] = [];
-  for (const r of eligible.slice(0, input.limit)) {
+  const targets = input.broker_id ? eligible.filter(r => r.user_id === input.broker_id) : eligible;
+  if (input.broker_id && !targets.length) return json({ error: 'המתווך אינו זמין לשליחה: נדרשת הסכמה מתועדת וכתובת אימייל תקינה' }, 400);
+  for (const r of targets.slice(0, input.limit)) {
     // Claim first so a retry or parallel click never sends twice.
     const now = new Date().toISOString();
     const { data: claimed } = await admin.from('admin_broker_onboarding').update({ email_invited_at: now }).eq('user_id', r.user_id).is('email_invited_at', null).select('user_id').maybeSingle();

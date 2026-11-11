@@ -1051,6 +1051,13 @@
       "when": 1794361341231,
       "tag": "0149_broker_import_scrape_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1794361910416,
+      "tag": "0150_broker_contact_status",
+      "breakpoints": true
     }
   ]
 }

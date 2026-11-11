@@ -16,6 +16,7 @@ import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
 import { BrokerUpgradeRequestsCard } from '@/components/admin/BrokerUpgradeRequestsCard';
 import { SuperAdminCreateUserCard } from '@/components/admin/SuperAdminCreateUserCard';
 import { BrokerBatchImportCard } from '@/components/admin/BrokerBatchImportCard';
+import { BrokerContactQueueCard } from '@/components/admin/BrokerContactQueueCard';
 import { SuperAdminDeleteUsersCard } from '@/components/admin/SuperAdminDeleteUsersCard';
 import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
 import { DeletedAccountsArchive } from '@/components/admin/DeletedAccountsArchive';
@@ -168,7 +169,7 @@ const SuperAdmin = () => {
               <TabsTrigger value="testing" className="border border-border/60 data-[state=active]:border-primary/40"><FlaskConical className="ml-1.5 h-3.5 w-3.5" /> בדיקות</TabsTrigger>
             </TabsList>
             <TabsContent value="accounts" className="mt-4 space-y-4"><BrokerUpgradeRequestsCard /><SuperAdminUsersTable /></TabsContent>
-            <TabsContent value="onboarding" className="mt-4 grid gap-4 xl:grid-cols-2 xl:items-start"><SuperAdminCreateUserCard /><BrokerBatchImportCard /></TabsContent>
+            <TabsContent value="onboarding" className="mt-4 grid gap-4 xl:grid-cols-2 xl:items-start"><SuperAdminCreateUserCard /><BrokerBatchImportCard /><div className="xl:col-span-2"><BrokerContactQueueCard /></div></TabsContent>
             <TabsContent value="deletion" className="mt-4 space-y-4"><SuperAdminDeleteUsersCard /><DeletedAccountsArchive /></TabsContent>
             <TabsContent value="testing" className="mt-4"><TestTrialModeCard /></TabsContent>
           </Tabs>

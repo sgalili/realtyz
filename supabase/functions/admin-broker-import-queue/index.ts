@@ -131,7 +131,7 @@ Deno.serve(async req => {
           }
           await save();
         } else if(c.phase==='creating') {
-          const {data:profiles,error}=await admin.from('profiles').select('id').eq('phone',b.phone).limit(2);if(error)throw error;
+          const {data:profiles,error}=b.phone?await admin.from('profiles').select('id').eq('phone',b.phone).limit(2):{data:[],error:null};if(error)throw error;
           let brokerId:string;
           if(profiles?.length) {
             const {data:onboarding}=await admin.from('admin_broker_onboarding').select('user_id,first_login_at').eq('user_id',profiles[0].id).maybeSingle();

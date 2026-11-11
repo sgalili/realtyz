@@ -64,9 +64,11 @@ Deno.serve(async (req) => {
     if (user_type === 'broker' && (!broker_license_number || (!registry?.valid && !approve_broker))) return new Response(JSON.stringify({error:'נדרש אימות רישיון או אישור מפורש של מנהל'}),{status:400,headers:corsHeaders});
     const normalizedPhone = normalizeIsraeliPhone(phone_e164);
 
-    if (!normalizedPhone) return new Response(JSON.stringify({ error: "נדרש מספר נייד תקין לכניסה באמצעות SMS" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Queued Bright Data imports may lack a mobile: the account is created pending contact details.
+    const pendingContact = !normalizedPhone && !!import_job_id && user_type === 'broker';
+    if (!normalizedPhone && !pendingContact) return new Response(JSON.stringify({ error: "נדרש מספר נייד תקין לכניסה באמצעות SMS" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const email = parsed.data.email ?? `${normalizedPhone}@${BATCH_NO_EMAIL_DOMAIN}`;
+    const email = parsed.data.email ?? `${normalizedPhone ?? `license-${broker_license_number}-${crypto.randomUUID().slice(0, 8)}`}@${BATCH_NO_EMAIL_DOMAIN}`;
     const password = parsed.data.password ?? crypto.randomUUID() + crypto.randomUUID();
     // Create the auth user (auto-confirmed so they can log in immediately), or
     // repair/update an existing user created by the super admin.
@@ -117,7 +119,7 @@ Deno.serve(async (req) => {
       }, { onConflict: "id" });
     if (profErr) { await admin.auth.admin.deleteUser(newUid); throw profErr; }
     if (user_type === 'broker') {
-      const { error: onboardingError } = await admin.from('admin_broker_onboarding').insert({ user_id: newUid, created_by: actorId });
+      const { error: onboardingError } = await admin.from('admin_broker_onboarding').insert({ user_id: newUid, created_by: actorId, import_source: import_job_id ? 'bright_data' : null, contact_status: pendingContact ? 'pending_contact' : 'complete' });
       if (onboardingError) { await admin.auth.admin.deleteUser(newUid); throw onboardingError; }
       const setup = import_job_id
         ? await admin.rpc('finalize_queued_broker_setup', {_user_id:newUid,_license:broker_license_number,_actor:actorId,_job:import_job_id})
