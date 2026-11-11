@@ -102,7 +102,9 @@ Deno.serve(async req => {
     };
     const pacedCall=async (name:string,body:unknown)=> {
       // Cache reads never reach this function; each live chunk has its own lease.
-      const wait=Math.max(0,Number(c.nextRequestAt??0)-Date.now());
+      // Pasted-link imports run in instant mode: no safety gap between requests (429 handling still applies).
+      const instant=c.source==='urls';
+      const wait=instant?0:Math.max(0,Number(c.nextRequestAt??0)-Date.now());
       if(wait>0) {
         c.waitUntil=Date.now()+wait;c.waitReason='throttle';
         await admin.from('broker_import_jobs').update({checkpoint:c,updated_at:new Date().toISOString()}).eq('id',job.id).eq('lease_token',job.lease_token);
@@ -114,7 +116,7 @@ Deno.serve(async req => {
       if(state?.status!=='running'||state.lease_token!==job.lease_token)throw new Error('הייבוא הושהה לפני הבקשה הבאה');
       delete c.waitUntil;delete c.waitReason;
       try {return await call(name,body);}
-      finally {c.nextRequestAt=Date.now()+PROVIDER_GAP_MS;}
+      finally {if(instant){delete c.nextRequestAt;}else c.nextRequestAt=Date.now()+PROVIDER_GAP_MS;}
     };
     try {
       if(c.waitReason==='rate_limit') {
@@ -186,7 +188,12 @@ Deno.serve(async req => {
       } else {
         const b=c.brokers[c.brokerIndex];
         if(!b) {await save({status:'completed',stage:'completed'});return json({ok:true});}
-        if(c.phase==='validating') {
+        if(c.phase==='validating' && c.source==='urls') {
+          // Instant mode: pasted links are trusted; skip per-ad pre-validation (the save step still rejects non-residential/unavailable ads).
+          c.listingIndex=0;delete c.liveUrls;
+          if(!b.listing_urls.length){c.brokerIndex++;await save({skipped:job.skipped+1});return json({ok:true});}
+          c.phase='creating';await save();
+        } else if(c.phase==='validating') {
           const d=await pacedCall('yad2-ad-status',{urls:[b.listing_urls[c.listingIndex]]});
           if(!d)return json({ok:true,waiting:true});
           c.liveUrls=c.liveUrls??[];
