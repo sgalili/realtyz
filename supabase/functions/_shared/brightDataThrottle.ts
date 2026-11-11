@@ -1,5 +1,5 @@
-export const PROVIDER_GAP_MS = 4_000;
-export const MAX_AUTOMATIC_RATE_RETRIES = 5;
+export const PROVIDER_GAP_MS = 12_000;
+export const MIN_RATE_COOLDOWN_MS = 300_000;
 
 export class ProviderRateLimitError extends Error {
   constructor(public retryAfterMs = 0) { super('Bright Data HTTP 429'); this.name = 'ProviderRateLimitError'; }
@@ -12,7 +12,11 @@ export function retryAfterMs(value: string | null, now = Date.now()): number {
 }
 
 export function rateBackoffMs(attempt: number, providerDelay = 0): number {
-  return Math.max(Math.min(60_000, 10_000 * 2 ** Math.max(0, attempt - 1)), providerDelay);
+  return Math.max(Math.min(3_600_000, MIN_RATE_COOLDOWN_MS * 2 ** Math.max(0, attempt - 1)), providerDelay);
+}
+
+export function rateCooldownRemaining(checkpoint: {waitReason?: unknown; waitUntil?: unknown}, now = Date.now()): number {
+  return checkpoint.waitReason === 'rate_limit' ? Math.max(0, Number(checkpoint.waitUntil ?? 0) - now) : 0;
 }
 
 // One in-flight request per isolate, with a gap after completion, including failures.

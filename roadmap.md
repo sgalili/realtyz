@@ -1,5 +1,10 @@
 # Roadmap
 
+## Low-frequency Bright Data processing November 11
+- [x] Replace four-second pacing with a strict twelve-second sequential gap and delay-only steps.
+- [x] Pause immediately on 429 with minimum five-minute persisted cooldown and manual-only resume.
+- [x] Migration 0151 enforces cooldown in authorized control RPC; 19 tests passed and workers deployed. Authenticated mobile verified mocked paused countdown (299→297 seconds), blocked Resume and retained cache totals; build OK. Real provider 429/resume not exercised.
+
 ## Bright Data pacing November 11
 - [x] Serialize provider fetches with a 4-second gap, keep one page/detail per leased import chunk, and preserve cache bypass.
 - [x] Persist exponential 429 cooldown and bounded automatic retries with countdown; manual pause/resume retains checkpoints.

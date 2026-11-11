@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse } from '../_shared/brightDataDiagnostics.ts';
-import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, MAX_AUTOMATIC_RATE_RETRIES } from '../_shared/brightDataThrottle.ts';
+import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
@@ -57,6 +57,8 @@ Deno.serve(async req => {
     }
     if(input.action==='resume') {
       if(existing.status==='completed') return json({error:'הייבוא הסתיים'},400);
+      const cooldown=rateCooldownRemaining(existing.checkpoint as Record<string,unknown>);
+      if(cooldown>0)return json({error:`השהיית בטיחות לאחר 429. ניתן להמשיך בעוד ${Math.ceil(cooldown/1000)} שניות.`},429);
       const scoped=createClient(Deno.env.get('SUPABASE_URL')??'',Deno.env.get('SUPABASE_ANON_KEY')??'',{global:{headers:{Authorization:req.headers.get('Authorization')??''}}});
       const {error}=await scoped.rpc('control_broker_import_job',{_id:input.job_id,_action:'resume'}); if(error) throw error;
       return json({ok:true});
@@ -75,26 +77,27 @@ Deno.serve(async req => {
       if(wait>0) {
         c.waitUntil=Date.now()+wait;c.waitReason='throttle';
         await admin.from('broker_import_jobs').update({checkpoint:c,updated_at:new Date().toISOString()}).eq('id',job.id).eq('lease_token',job.lease_token);
+        // Delay-only step preserves the 120s fetch budget and makes stop immediate.
         await new Promise(resolve=>setTimeout(resolve,Math.min(wait,PROVIDER_GAP_MS)));
+        await save();return null;
       }
       const {data:state}=await admin.from('broker_import_jobs').select('status,lease_token').eq('id',job.id).single();
       if(state?.status!=='running'||state.lease_token!==job.lease_token)throw new Error('הייבוא הושהה לפני הבקשה הבאה');
       delete c.waitUntil;delete c.waitReason;
-      try {const data=await call(name,body);c.rateRetries=0;return data;}
+      try {return await call(name,body);}
       finally {c.nextRequestAt=Date.now()+PROVIDER_GAP_MS;}
     };
     try {
-      if(c.waitReason==='rate_limit'&&Number(c.waitUntil)>Date.now()) {
-        // Sleep in a delay-only step, not alongside a 140s provider call.
-        await new Promise(resolve=>setTimeout(resolve,Math.min(60_000,Number(c.waitUntil)-Date.now())));
-        if(Number(c.waitUntil)<=Date.now()){delete c.waitUntil;delete c.waitReason;}
-        await save();return json({ok:true,waiting:true});
+      if(c.waitReason==='rate_limit') {
+        // Even old automatic-retry checkpoints require an explicit manual resume.
+        await save({status:'paused',error:'מגבלת בקשות (429). הייבוא מושהה; ההתקדמות והמטמון נשמרו. יש להמשיך ידנית לאחר השהיית הבטיחות.'});
+        return json({ok:true,paused:true});
       }
-      if(c.waitReason==='rate_limit'){delete c.waitUntil;delete c.waitReason;}
       if(c.phase==='scanning') {
         const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher}));
         const results=await cached(admin,'search_page',`search:${c.deal}:${c.page}`,c,async()=>{
           const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:`https://www.yad2.co.il/realestate/${c.deal==='sale'?'forsale':'rent'}?page=${c.page}`,page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id});
+          if(!d)throw new DelayStepFinished();
           if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
           return compactAll(d.results);
         });
@@ -116,6 +119,7 @@ Deno.serve(async req => {
         if(url) {
           const rows=await cached(admin,'item_detail',`item:${url}`,c,async()=>{
             const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url,import_item:true,preview_only:true,limit:1,pages:1});
+            if(!d)throw new DelayStepFinished();
             const r=d.results?.[0]; return r?[{source_url:r.source_url,owner_name:r.owner_name,owner_phone:r.owner_phone,publisher:r.publisher}]:[];
           });
           const row=rows[0];
@@ -134,6 +138,7 @@ Deno.serve(async req => {
         if(!b) {await save({status:'completed',stage:'completed'});return json({ok:true});}
         if(c.phase==='validating') {
           const d=await pacedCall('yad2-ad-status',{urls:[b.listing_urls[c.listingIndex]]});
+          if(!d)return json({ok:true,waiting:true});
           c.liveUrls=c.liveUrls??[];
           if(d.statuses?.[b.listing_urls[c.listingIndex]]==='live') c.liveUrls.push(b.listing_urls[c.listingIndex]);
           else if(d.statuses?.[b.listing_urls[c.listingIndex]]!=='gone') throw new Error('לא ניתן לאמת כרגע שהמודעה פעילה; הייבוא נעצר לפני יצירת החשבון');
@@ -162,6 +167,7 @@ Deno.serve(async req => {
           c.brokerId=brokerId;c.phase='importing';await save();
         } else if(c.phase==='importing') {
           const d=await pacedCall('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,limit:1,pages:1});
+          if(!d)return json({ok:true,waiting:true});
           if(!d.listing_id)throw new Error('המודעה לא נשמרה; אפשר להמשיך מאותה נקודה');
           const {error}=await admin.from('listings').update({status:'pending',is_published:false,affiliate_enabled:false}).eq('id',d.listing_id).eq('workspace_owner_id',c.brokerId).eq('is_published',false).eq('affiliate_enabled',false);if(error)throw error;
           const next=nextImportPoint(c.brokerIndex,c.listingIndex,b.listing_urls.length);
@@ -172,13 +178,15 @@ Deno.serve(async req => {
       }
       return json({ok:true});
     } catch(e) {
+      if(e instanceof DelayStepFinished)return json({ok:true,waiting:true});
       if(e instanceof ProviderRateLimitError) {
         c.rateRetries=(c.rateRetries??0)+1;c.waitReason='rate_limit';
         c.waitUntil=Date.now()+rateBackoffMs(c.rateRetries,e.retryAfterMs);
-        await save(c.rateRetries<=MAX_AUTOMATIC_RATE_RETRIES?{error:null}:{status:'paused',error:'Bright Data עדיין מחזיר 429 לאחר מספר ניסיונות. ההתקדמות נשמרה; ניתן להמשיך לאחר ההמתנה.'});
+        await save({status:'paused',error:'מגבלת בקשות (429). הייבוא מושהה; ההתקדמות והמטמון נשמרו. יש להמשיך ידנית לאחר השהיית הבטיחות.'});
         return json({ok:true,waiting:true});
       }
       await save({status:'paused',error:e instanceof Error?e.message:'הייבוא נעצר'});return json({ok:false,paused:true});
     }
   } catch(e) {return json({error:e instanceof Error?e.message:'הבקשה נכשלה'},400);}
 });
+class DelayStepFinished extends Error {}

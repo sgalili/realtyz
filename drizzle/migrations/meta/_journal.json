@@ -1058,6 +1058,13 @@
       "when": 1794361910416,
       "tag": "0150_broker_contact_status",
       "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1794364923976,
+      "tag": "0151_broker_import_manual_rate_cooldown",
+      "breakpoints": true
     }
   ]
 }
