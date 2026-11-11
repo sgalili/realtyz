@@ -33,7 +33,7 @@ Deno.serve(async req => {
   try {
     if (kind === 'group') {
       const { data: group, error } = await client.from('community_chat_groups').select('workspace_owner_id').eq('id', target).maybeSingle();
-      const { data: eligible } = await client.rpc('is_community_chat_member', { _user: caller.userId });
+      const { data: eligible } = await client.rpc('can_send_community_group', { _group: target, _user: caller.userId });
       if (error || !group || !eligible) return json(403, 'אין הרשאה לשיחה זו');
       workspace = group.workspace_owner_id;
       const result = await client.from('community_group_messages').select('content,created_at,sender_id').eq('group_id', target).order('created_at', { ascending: false }).limit(80);
@@ -111,7 +111,7 @@ Deno.serve(async req => {
           if (!text.trim()) throw new Error('empty_response');
           // Recheck membership before shared persistence (a member may be removed mid-call).
           if (kind === 'group') {
-            const { data: member } = await client.rpc('is_community_group_member', { _group: target, _user: caller.userId });
+            const { data: member } = await client.rpc('can_send_community_group', { _group: target, _user: caller.userId });
             if (!member) throw new Error('membership_revoked');
           }
           const { error } = await admin.from('rita_chat_interactions').update({ status: 'completed', response: text, run_id: gateway.getRunId() }).eq('id', log.id);

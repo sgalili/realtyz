@@ -1,0 +1,21 @@
+ALTER TABLE public.community_chat_groups ADD COLUMN description text NOT NULL DEFAULT '' CHECK(length(description)<=1000), ADD COLUMN kind text NOT NULL DEFAULT 'discussion' CHECK(kind IN ('discussion','broadcast'));
+ALTER TABLE public.community_group_members ADD COLUMN last_read_at timestamptz NOT NULL DEFAULT '-infinity';
+CREATE OR REPLACE FUNCTION public.can_send_community_group(_group uuid,_user uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT _user=auth.uid() AND public.is_community_chat_member(_user) AND public.is_community_group_member(_group,_user) AND EXISTS(SELECT 1 FROM public.community_chat_groups WHERE id=_group AND (kind='discussion' OR owner_id=_user)); $$;
+REVOKE ALL ON FUNCTION public.can_send_community_group(uuid,uuid) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.can_send_community_group(uuid,uuid) TO authenticated,service_role;
+ALTER POLICY group_message_send ON public.community_group_messages WITH CHECK(sender_id=auth.uid() AND public.can_send_community_group(group_id,auth.uid()));
+CREATE OR REPLACE FUNCTION public.create_community_channel(_name text,_description text,_kind text,_members uuid[]) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE _group uuid; _member uuid; _ws uuid; BEGIN
+ IF NOT public.is_community_chat_member(auth.uid()) THEN RAISE EXCEPTION 'forbidden'; END IF;
+ IF _name IS NULL OR length(btrim(_name)) NOT BETWEEN 1 AND 100 OR _description IS NULL OR length(_description)>1000 OR _kind IS NULL OR _kind NOT IN ('discussion','broadcast') OR _members IS NULL OR cardinality(_members)>49 THEN RAISE EXCEPTION 'invalid_group'; END IF;
+ _ws:=public.current_workspace_owner(); IF NOT public.ws_current_access(_ws) THEN RAISE EXCEPTION 'forbidden'; END IF;
+ FOREACH _member IN ARRAY _members LOOP IF _member IS NULL OR NOT public.is_community_chat_member(_member) THEN RAISE EXCEPTION 'invalid_member'; END IF; END LOOP;
+ INSERT INTO public.community_chat_groups(workspace_owner_id,owner_id,name,description,kind) VALUES(_ws,auth.uid(),btrim(_name),btrim(_description),_kind) RETURNING id INTO _group;
+ INSERT INTO public.community_group_members(group_id,user_id) VALUES(_group,auth.uid());
+ INSERT INTO public.community_group_members(group_id,user_id) SELECT _group,x FROM unnest(_members) x ON CONFLICT DO NOTHING; RETURN _group; END; $$;
+REVOKE ALL ON FUNCTION public.create_community_channel(text,text,text,uuid[]) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.create_community_channel(text,text,text,uuid[]) TO authenticated,service_role;
+CREATE OR REPLACE FUNCTION public.community_joined_groups() RETURNS TABLE(id uuid,name text,description text,kind text,owner_id uuid,unread_count bigint) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT g.id,g.name,g.description,g.kind,g.owner_id,(SELECT count(*) FROM public.community_group_messages msg WHERE msg.group_id=g.id AND msg.sender_id<>auth.uid() AND msg.created_at>m.last_read_at) FROM public.community_group_members m JOIN public.community_chat_groups g ON g.id=m.group_id WHERE m.user_id=auth.uid() ORDER BY g.created_at DESC; $$;
+REVOKE ALL ON FUNCTION public.community_joined_groups() FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.community_joined_groups() TO authenticated,service_role;
+CREATE OR REPLACE FUNCTION public.mark_community_group_read(_group uuid,_message uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE _at timestamptz; BEGIN
+ IF NOT public.is_community_group_member(_group,auth.uid()) THEN RAISE EXCEPTION 'forbidden'; END IF;
+ SELECT created_at INTO _at FROM public.community_group_messages WHERE id=_message AND group_id=_group; IF _at IS NULL THEN RAISE EXCEPTION 'invalid_message'; END IF;
+ UPDATE public.community_group_members SET last_read_at=greatest(last_read_at,_at) WHERE group_id=_group AND user_id=auth.uid(); PERFORM realtime.send('{}'::jsonb,'changed','inbox-events:'||auth.uid()::text,true); END; $$;
+REVOKE ALL ON FUNCTION public.mark_community_group_read(uuid,uuid) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.mark_community_group_read(uuid,uuid) TO authenticated,service_role;

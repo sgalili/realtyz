@@ -1,5 +1,11 @@
 # Roadmap
 
+## Community groups and broadcast channels November 11
+- [x] Extend existing groups with descriptions, discussion/broadcast mode, owner-managed invitations and durable unread counts; broadcast posting and Rita require the owner server-side.
+- [x] Update creation, managed/joined lists and chat; existing private broadcasts refresh authorized queries, and read cursors advance only in a visible active group.
+- [x] Eight focused tests passed; database columns/policy read back, Rita deployed and build OK. Authenticated desktop/mobile showed no overflow and correctly denied ineligible creation; modal checked with eligibility intercepted, no writes.
+- [ ] Successful group creation, member invitation, unread clearing and two-user live chat require an eligible agent/broker/developer session; the injected account is ineligible. No real members messaged or roles changed.
+
 ## Rita in private and community conversations November 11
 - [x] Add member-managed groups, member-only messages/rosters and server-written Rita interaction logs with RLS; private data-free updates include groups and assistant logs.
 - [x] Add summon controls to lead/private/group conversations with streaming answers, summaries and lead guidance, saved history and Stop; no external sends or automatic CRM writes.

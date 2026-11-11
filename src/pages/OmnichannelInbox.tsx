@@ -1107,7 +1107,7 @@ const OmnichannelInbox = () => {
         <TabsTrigger value="community" className="min-h-10 min-w-0 whitespace-normal px-2 text-sm">מועדון הקהילה</TabsTrigger>
       </TabsList>
       <TabsContent value="community" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
-        <CommunityInbox key={`${user?.id}:${workspaceScope}`} />
+        <CommunityInbox key={`${user?.id}:${workspaceScope}`} active={inboxSection === 'community'} />
       </TabsContent>
       <TabsContent value="leads" forceMount className="m-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden data-[state=inactive]:hidden">
       {/* Queue tabs belong to the main inbox only; bookmark stays a square control. */}

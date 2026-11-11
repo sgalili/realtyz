@@ -2374,21 +2374,27 @@ export type Database = {
       community_chat_groups: {
         Row: {
           created_at: string
+          description: string
           id: string
+          kind: string
           name: string
           owner_id: string
           workspace_owner_id: string
         }
         Insert: {
           created_at?: string
+          description?: string
           id?: string
+          kind?: string
           name: string
           owner_id: string
           workspace_owner_id?: string
         }
         Update: {
           created_at?: string
+          description?: string
           id?: string
+          kind?: string
           name?: string
           owner_id?: string
           workspace_owner_id?: string
@@ -2449,16 +2455,19 @@ export type Database = {
         Row: {
           group_id: string
           joined_at: string
+          last_read_at: string
           user_id: string
         }
         Insert: {
           group_id: string
           joined_at?: string
+          last_read_at?: string
           user_id: string
         }
         Update: {
           group_id?: string
           joined_at?: string
+          last_read_at?: string
           user_id?: string
         }
         Relationships: [
@@ -9407,6 +9416,10 @@ export type Database = {
       can_close_deal: { Args: { _user_id: string }; Returns: boolean }
       can_delete_leads: { Args: { _user_id: string }; Returns: boolean }
       can_manage_data: { Args: { _user_id: string }; Returns: boolean }
+      can_send_community_group: {
+        Args: { _group: string; _user: string }
+        Returns: boolean
+      }
       can_use_closing_room: { Args: { _user_id: string }; Returns: boolean }
       can_view_closing_prices: {
         Args: { _workspace_owner_id?: string }
@@ -9542,6 +9555,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      community_joined_groups: {
+        Args: never
+        Returns: {
+          description: string
+          id: string
+          kind: string
+          name: string
+          owner_id: string
+          unread_count: number
+        }[]
+      }
       complete_admin_broker_first_login: { Args: never; Returns: string }
       complete_official_license_verification: {
         Args: { _number: string; _uid: string }
@@ -9616,6 +9640,15 @@ export type Database = {
       control_broker_import_job: {
         Args: { _action: string; _id: string }
         Returns: undefined
+      }
+      create_community_channel: {
+        Args: {
+          _description: string
+          _kind: string
+          _members: string[]
+          _name: string
+        }
+        Returns: string
       }
       create_community_chat_group: {
         Args: { _members: string[]; _name: string }
@@ -10368,6 +10401,10 @@ export type Database = {
       }
       manage_community_group_member: {
         Args: { _add: boolean; _group: string; _member: string }
+        Returns: undefined
+      }
+      mark_community_group_read: {
+        Args: { _group: string; _message: string }
         Returns: undefined
       }
       mark_group_posts_published: {

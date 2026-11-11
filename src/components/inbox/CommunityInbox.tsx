@@ -16,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 type Peer = { id: string; full_name: string | null; avatar_url: string | null };
 
-export function CommunityInbox() {
+export function CommunityInbox({ active }: { active: boolean }) {
   const { user } = useAuth();
   const workspace = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
@@ -87,7 +87,7 @@ export function CommunityInbox() {
   ];
   return <Tabs dir="rtl" value={view} onValueChange={setView} className="flex h-full min-h-0 flex-col gap-2">
     <TabsList className="grid w-full shrink-0 grid-cols-2"><TabsTrigger value="private">שיחות פרטיות</TabsTrigger><TabsTrigger value="groups">קבוצות</TabsTrigger></TabsList>
-    <TabsContent value="groups" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden"><CommunityGroups eligible={eligibility.data === true} /></TabsContent>
+    <TabsContent value="groups" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden"><CommunityGroups key={user?.id} eligible={eligibility.data === true} active={active && view === 'groups'} /></TabsContent>
     <TabsContent value="private" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
     <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
     <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>

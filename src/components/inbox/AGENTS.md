@@ -1,3 +1,4 @@
 # Inbox architecture
 - Keep lead chats and account-participant community chats separate; preserve mounted tab state and use private data-free per-user Realtime notifications with authorized refetches. Why: instant updates without publishing private rows or borrowing workspace identities.
 - Group rosters authorize group data and Rita context; assistant logs are server-written, shared only with conversation participants, and never include private workspace CRM/tools in community replies. Why: prevent impersonation and cross-workspace disclosure.
+- Broadcast posts (including Rita) require the group owner; unread cursors advance only to displayed messages in a visible active group via an auth-bound RPC. Why: prevent subscriber publishing and premature unread clearing.

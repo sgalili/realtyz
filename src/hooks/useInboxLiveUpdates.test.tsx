@@ -19,6 +19,7 @@ describe('private inbox live updates', () => {
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['chat-messages'] });
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['community-messages'] });
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['community-group-messages'] });
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['community-groups'] });
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['community-roster'] });
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['rita-conversations'] });
     unmount();
