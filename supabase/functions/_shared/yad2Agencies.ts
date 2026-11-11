@@ -1,13 +1,14 @@
 import { batchListingUrls, batchPhone } from './brokerBatchImport.ts';
 
 export const AGENCIES_URL = 'https://www.yad2.co.il/realestate/agencies';
-export const AGENCY_CITIES = [{ city: '6400', area: '18' }, { city: '5000', area: '2' }] as const;
+/** Discovery reads the national directory only; geography is never added or inherited. */
+export const AGENCY_GEO_PARAMS = ['city', 'area', 'topArea', 'neighborhood', 'region', 'street'] as const;
 export const AGENCY_REGISTRY_TTL_MS = 7 * 86400_000;
 export function agencyListingCount(value: unknown): number | null {
   if (typeof value === 'number') return Number.isInteger(value) && value >= 0 ? value : null;
   if (typeof value !== 'string') return null;
   const raw = value.trim().replace(/,/g, '');
-  const match = raw.match(/^(\d+)$/) ?? raw.match(/(\d+)\s*(?:נכסים|נכס(?:ים)? פעיל|מודעות|properties|listings)/i);
+  const match = raw.match(/^(\d+)$/) ?? raw.match(/(\d+)\s*(?:נכסים|נכס(?:ים)? פעיל|מודעות|נכסים למכירה|נכסים להשכרה|properties|listings)/i);
   return match ? Number(match[1]) : null;
 }
 export function agencyVolumeAllowed(row: Record<string, any>, min: number, max: number) {
@@ -33,12 +34,10 @@ export function agencyUrl(value: unknown, base = AGENCIES_URL): string | null {
     u.hash = ''; return u.href;
   } catch { return null; }
 }
-export function agencyPageUrl(page: number, cityIndex = 0, next?: unknown) {
+export function agencyPageUrl(page: number, next?: unknown) {
   const u = new URL(agencyUrl(next) ?? AGENCIES_URL);
-  const city = AGENCY_CITIES[cityIndex] ?? AGENCY_CITIES[0];
-  u.searchParams.set('city', city.city);
-  u.searchParams.set('area', city.area);
-  if (page > 1) u.searchParams.set('page', String(page));
+  for (const key of AGENCY_GEO_PARAMS) u.searchParams.delete(key);
+  if (page > 1) u.searchParams.set('page', String(page)); else u.searchParams.delete('page');
   return u.href;
 }
 
@@ -86,7 +85,7 @@ export function parseAgencies($: any, sourceUrl: string) {
   $('script#__NEXT_DATA__, script[type="application/json"]').each((_: number, el: any) => {
     try { structured(JSON.parse($(el).text())); } catch { /* not a JSON payload */ }
   });
-  const selector = '[data-testid*="agency-card"], [data-testid*="broker-card"], [data-testid*="agent-card"], [class*="agencyCard"], [class*="AgencyCard"], [class*="brokerCard"], [class*="BrokerCard"], [class*="agentCard"], [class*="AgentCard"]';
+  const selector = '[data-testid*="agency-card"], [data-testid*="agency-item"], [class*="agency-card"], [class*="agency-item"], [class*="agency_item"], [class*="agencyItem"], [class*="AgencyItem"], [class*="agency-box"], li:has(> a[href*="/realestate/agency/"]), [data-testid*="broker-card"], [data-testid*="agent-card"], [class*="agencyCard"], [class*="AgencyCard"], [class*="brokerCard"], [class*="BrokerCard"], [class*="agentCard"], [class*="AgentCard"]';
   let cards = $(selector);
   // Discover office links even when Yad2 changes the card wrapper classes.
   $('a[href*="/realestate/agency/"]').each((_: number, el: any) => {
@@ -97,11 +96,11 @@ export function parseAgencies($: any, sourceUrl: string) {
     const card = $(el);
     if (card.closest('[class*="related"], [class*="recommend"]').length) return;
     const name = text(card.find('[data-testid="broker-name"], [class*="brokerName"], [class*="BrokerName"], [class*="contactName"]').first().text());
-    const office = text(card.find('[data-testid="agency-name"], [class*="agencyName"], [class*="AgencyName"], h2, h3').first().text());
+    const office = text(card.find('[data-testid="agency-name"], [class*="agencyName"], [class*="AgencyName"], [class*="agency-name"], [class*="agency_name"], [class*="title"], h2, h3, h4').first().text());
     const license = card.text().match(/(?:(?:מספר|מס['׳]?)\s*)?רישיון\s*(?:תיווך|מתווך)?\s*[:#]?\s*([1-9]\d{3,9})(?!\d)/)?.[1];
     const url = agencyUrl(card.find('a[href*="/realestate/agencies/"],a[href*="/realestate/agency/"]').first().attr('href'), sourceUrl) ?? sourceUrl;
     if (!office && !name) return;
-    const count = agencyListingCount(card.attr('data-listing-count') ?? card.find('[data-testid*="property-count"], [data-testid*="listing-count"], [class*="propertyCount"], [class*="listingCount"]').first().text()) ?? agencyListingCount(card.text());
+    const count = agencyListingCount(card.attr('data-listing-count') ?? card.find('[data-testid*="property-count"], [data-testid*="listing-count"], [class*="propertyCount"], [class*="listingCount"], [class*="property-count"], [class*="assets"], [class*="count"]').first().text()) ?? agencyListingCount(card.text());
     add({source_url:url, active_listing_count:count, owner_name:name || null, owner_phone:batchPhone(card.find('a[href^="tel:"]').first().attr('href') ?? ''),
       owner_email:text(card.find('a[href^="mailto:"]').first().attr('href')?.replace(/^mailto:/, '').split('?')[0]) || null,
       listing_urls: name && license ? ownListings(card.find('a[href*="/realestate/item/"]').map((_: number, a: any) => $(a).attr('href')).get()) : [],

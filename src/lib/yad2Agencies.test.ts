@@ -5,10 +5,9 @@ import { collectBrokers, freshImportCheckpoint, advanceSearchPoint } from '../..
 
 describe('agency directory discovery', () => {
   it('starts at the official agencies directory and advances directory pages only', () => {
-    expect(agencyPageUrl(1)).toBe('https://www.yad2.co.il/realestate/agencies?city=6400&area=18');
+    expect(agencyPageUrl(1)).toBe('https://www.yad2.co.il/realestate/agencies');
     expect(new URL(agencyPageUrl(2)).searchParams.get('page')).toBe('2');
     const c = freshImportCheckpoint(); advanceSearchPoint(c); expect(c.page).toBe(2);
-    advanceSearchPoint(c,true); expect(c.cityIndex).toBe(1);
     advanceSearchPoint(c,true); expect(c.phase).toBe('completed');
   });
   it('retains explicit license identity and draft links when mobile is hidden', () => {
@@ -58,15 +57,20 @@ describe('early agency filtering and seven-day registry', () => {
     expect(eligible.every(r=>r.active_listing_count===3)).toBe(true);
     expect(collectBrokers(eligible,3,10)[0]).toMatchObject({license_number:'12345',phone:null});
   });
-  it('keeps pagination city-scoped even when next links drop or change geography', () => {
-    const u=new URL(agencyPageUrl(2,1,'/realestate/agencies?page=2&city=2400'));
-    expect(u.searchParams.get('city')).toBe('5000');
-    expect(u.searchParams.get('area')).toBe('2');
+  it('strips every geographic filter, even from next links', () => {
+    const u=new URL(agencyPageUrl(2,'/realestate/agencies?page=2&city=2400&area=2&topArea=1'));
+    expect([...u.searchParams.keys()]).toEqual(['page']);
     expect(u.searchParams.get('page')).toBe('2');
-    const c:Record<string,any>={...freshImportCheckpoint(),directoryNextUrl:'old',directoryPages:['old'],cacheHits:4};
+    const c:Record<string,any>={...freshImportCheckpoint(),cacheHits:4};
     advanceSearchPoint(c,true);
-    expect(c).toMatchObject({cityIndex:1,page:1,phase:'scanning',cacheHits:4});
-    expect(c.directoryNextUrl).toBeUndefined();
+    expect(c).toMatchObject({phase:'completed',cacheHits:4});
+  });
+  it('reads kebab-case agency cards with their active property count', () => {
+    const $=load('<main><div class="agency-item_box__x"><a href="/realestate/agency/777"><h3 class="agency-item_title__a">משרד ב</h3></a><span class="agency-item_assets__c">7 נכסים</span></div></main>');
+    const {results}=parseAgencies($,'https://www.yad2.co.il/realestate/agencies');
+    expect(results.find(r=>r.source_url.endsWith('/agency/777'))?.active_listing_count).toBe(7);
+    expect(results.filter(r=>agencyVolumeAllowed(r,3,10))).not.toHaveLength(0);
+    expect(results.filter(r=>agencyVolumeAllowed(r,8,10))).toHaveLength(0);
   });
   it('skips completed checks for exactly seven days without extending their timestamp', () => {
     const checked='2026-11-01T00:00:00Z';const start=Date.parse(checked);

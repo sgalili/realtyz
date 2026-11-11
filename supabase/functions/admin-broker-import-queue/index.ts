@@ -114,8 +114,8 @@ Deno.serve(async req => {
       }
       if(c.phase==='scanning') {
         const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({...compactDirectoryRows([r])[0],directory_next_url:r.directory_next_url}));
-        const results=await cached(admin,'search_page',`agencies:v2:${c.cityIndex??0}:${c.page}`,c,async()=>{
-          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:agencyPageUrl(c.page,c.cityIndex??0,c.directoryNextUrl),page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
+        const results=await cached(admin,'search_page',`agencies:v3:national:${c.page}`,c,async()=>{
+          const d=await pacedCall('yad2-unlocker',{owner_id:job.created_by,url:agencyPageUrl(c.page,c.directoryNextUrl),page:c.page,pages:1,limit:60,preview_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
           if(!d)throw new DelayStepFinished();
           if(!Array.isArray(d.results) || d.served_from==='pool') throw new Error('הסריקה לא החזירה תוצאות מאומתות מ־Bright Data');
           return compactAll(d.results);
