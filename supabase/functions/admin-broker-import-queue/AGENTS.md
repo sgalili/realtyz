@@ -1,4 +1,5 @@
 # Broker import queue
+- Provider requests allow 120s inside a 130s scrape budget and 140s worker-call timeout; structured failure logs redact credentials and bound payloads, and retry uses persisted checkpoints/cache. Why: avoid premature aborts while returning before the platform deadline.
 - Discovery uses the existing Yad2 Bright Data parser with a leased Super Admin job, compact source records and individual detail enrichment; public/search reads retain their existing cache gates. Why: reuse exact-source attribution without broad scraping privileges.
 - Database-triggered steps persist per-broker/per-listing checkpoints, atomically lease and control jobs, and stop between external actions; pause never cancels an already submitted save. Why: modal-independent progress and safe resume.
 - Only current Super Admin-created accounts without first login may be reused; all ads are active-checked unpublished drafts and missing identity is never invented. Why: prevent account takeover and false publication.

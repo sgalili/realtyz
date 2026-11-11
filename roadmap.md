@@ -1,5 +1,10 @@
 # Roadmap
 
+## Bright Data timeout and diagnostics November 11
+- [x] Extend provider REST/browser requests to 120 seconds with enclosing response grace and credential-redacted status/payload logging.
+- [x] Retain existing checkpoint/cache-based resume and explain the longer wait in import progress.
+- [x] 12 focused transport/error/checkpoint tests passed; both workers deployed and preview build OK. No paid scan or real resume was run; live provider timeout/retry remains unverified. Local Deno check unavailable due package resolution.
+
 ## Automated admin workspace and broker import November 10
 - [x] Simplify silent user creation with type selection and server-checked registry/manual fallback.
 - [x] Replace pasted batches with target/min/max discovery, detail enrichment and durable per-broker/per-listing checkpoints.

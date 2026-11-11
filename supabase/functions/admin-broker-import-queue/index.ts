@@ -3,15 +3,13 @@ import { z } from 'npm:zod@3';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint } from '../_shared/brokerImportQueue.ts';
+import { readWorkerResponse } from '../_shared/brightDataDiagnostics.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
   z.object({action:z.enum(['pause','resume','step']),job_id:z.string().uuid()}).strict(),
 ]);
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
-// Bright Data must answer within 45 seconds; silence becomes a visible, resumable error.
-const CALL_TIMEOUT_MS = 45_000;
-const BRIGHT_DATA_ERROR = 'שגיאת חיבור ל־Bright Data - אנא בדוק את המפתחות או נסה שוב';
 // Search pages rarely carry phone/license, so unknown publishers are opened one by one, within a per-job budget.
 const ENRICH_BUDGET = 150;
 // Scrape cache: search pages stay fresh 12h, ad details 72h. Freshness is never extended on read.
@@ -32,13 +30,7 @@ async function cached(admin: ReturnType<typeof adminClient>, kind: CacheKind, ke
 }
 async function call(name: string, body: unknown) {
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  let r: Response;
-  try { r = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${name}`,{method:'POST',headers:{Authorization:`Bearer ${key}`,apikey:key,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(CALL_TIMEOUT_MS)}); }
-  catch { throw new Error(BRIGHT_DATA_ERROR); }
-  const data = await r.json().catch(() => null);
-  if (!data) throw new Error(BRIGHT_DATA_ERROR);
-  if (!r.ok || data.error || data.ok === false || data.success === false) throw new Error(String(data.detail ?? data.error ?? `HTTP ${r.status}`));
-  return data;
+  return readWorkerResponse(`${Deno.env.get('SUPABASE_URL')}/functions/v1/${name}`,{method:'POST',headers:{Authorization:`Bearer ${key}`,apikey:key,'Content-Type':'application/json'},body:JSON.stringify(body)});
 }
 Deno.serve(async req => {
   if(req.method==='OPTIONS') return new Response('ok',{headers:corsHeaders});

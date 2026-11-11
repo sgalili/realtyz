@@ -19,6 +19,7 @@ import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
 import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2Publisher.ts";
 import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
 import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
+import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure } from '../_shared/brightDataDiagnostics.ts';
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -183,6 +184,9 @@ async function brightDataRequest(
   // with "stream error detected: unspecific protocol error" against it. Pin
   // the connection to HTTP/1.1 via a custom HTTP client when the runtime
   // exposes one; fall back to plain fetch otherwise.
+  const started = Date.now();
+  let responseStatus: number | undefined;
+  try {
   const result = await trackScraping('yad2_extraction', 'rest', url, async () => {
   const res = await fetch("https://api.brightdata.com/request", {
     method: "POST",
@@ -197,6 +201,7 @@ async function brightDataRequest(
     signal: AbortSignal.timeout(hopTimeoutMs()),
     ...(bdHttpClient ? { client: bdHttpClient } : {}),
   } as RequestInit);
+  responseStatus = res.status;
   const body = await res.text();
   const bdHeaders: Record<string, string> = {};
   for (const [k, v] of res.headers.entries()) {
@@ -206,7 +211,14 @@ async function brightDataRequest(
   }
   return { status: res.status, body, bdHeaders };
   }, value => ({ status: value.bdHeaders['x-brd-err-code'] ? 403 : value.status, bytes: new TextEncoder().encode(value.body).length }));
+  if (result.status >= 400 || result.bdHeaders['x-brd-err-code'] || Number(result.bdHeaders['x-brd-status-code']) >= 400 || !result.body.trim()) {
+    logProviderFailure({ operation: 'rest', url, status: result.status, upstreamStatus: result.bdHeaders['x-brd-status-code'], payload: result.body, error: zoneModeError(result.bdHeaders) ?? 'HTTP/empty upstream response', elapsedMs: Date.now() - started });
+  }
   return result;
+  } catch (error) {
+    logProviderFailure({ operation: 'rest', url, status: responseStatus, error, elapsedMs: Date.now() - started });
+    throw error;
+  }
 }
 
 // Bright Data returns 200 with an EMPTY body and an `x-brd-err-code` header
@@ -249,9 +261,11 @@ let bdTrace: BdTrace[] = [];
 // Absolute per-invocation deadline so no single provider hop can push the
 // request past the platform's 150s idle cut-off.
 let requestDeadline = Number.POSITIVE_INFINITY;
-const hopTimeoutMs = (cap = 40_000) => Math.max(1_000, Math.min(cap, requestDeadline - Date.now()));
+const hopTimeoutMs = (cap = BRIGHT_DATA_TIMEOUT_MS) => Math.max(1_000, Math.min(cap, requestDeadline - Date.now()));
 function withDeadline<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`timeout: ${label}`)), ms))]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([p, new Promise<T>((_, rej) => { timer = setTimeout(() => rej(new Error(`timeout: ${label}`)), ms); })])
+    .finally(() => { if (timer !== undefined) clearTimeout(timer); });
 }
 
 async function unlock(
@@ -1611,7 +1625,7 @@ async function scrapingBrowserHarvest(
   let browser: any = null;
   try {
     console.log("[yad2-unlocker] scraping-browser: connecting…");
-    browser = await trackScraping('yad2_extraction', 'browser_session', pageUrl, () => puppeteer.connect({ browserWSEndpoint: BD_WS }));
+    browser = await trackScraping('yad2_extraction', 'browser_session', pageUrl, () => puppeteer.connect({ browserWSEndpoint: BD_WS, protocolTimeout: hopTimeoutMs() }));
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 2200 });
     // NOTE: Bright Data Scraping Browser forbids overriding accept-language
@@ -1619,7 +1633,8 @@ async function scrapingBrowserHarvest(
     // il-geolocated exit node instead.
 
     console.log(`[yad2-unlocker] scraping-browser: goto ${pageUrl}`);
-    await trackScraping('yad2_extraction', 'browser_navigation', pageUrl, () => page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 35_000 }), (response: any) => ({ status: response?.status?.() }));
+    const navigation = await trackScraping('yad2_extraction', 'browser_navigation', pageUrl, () => page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: hopTimeoutMs() }), (response: any) => ({ status: response?.status?.() }));
+    if (navigation?.status() >= 400) logProviderFailure({ operation: 'browser_navigation', url: pageUrl, status: navigation.status(), payload: await navigation.text().catch(() => ''), elapsedMs: 0 });
     if (/captcha|bot manager|access denied/i.test(await page.title())) throw new Error("Yad2 requires browser verification; manual entry remains available");
     await page
       .waitForSelector('a[href*="/item/"], [data-testid="feed-item"], article', { timeout: 10_000 })
@@ -1667,13 +1682,14 @@ async function scrapingBrowserHarvest(
         if (bdTrace.length < 20) {
           bdTrace.push({
             url: `[browser] ${f}`,
-            bd_status: 200,
+            bd_status: fetched.status,
             bytes: body?.length ?? 0,
             preview: (body ?? "").slice(0, 300),
             attempt: 1,
           });
         }
-        if (body && body.trim()) feeds.push({ url: f, body });
+        if (fetched.status >= 400) logProviderFailure({ operation: 'browser_fetch', url: f, status: fetched.status, payload: body, elapsedMs: 0 });
+        if (fetched.status < 400 && body && body.trim()) feeds.push({ url: f, body });
       } catch (e) {
         const msg = String((e as Error)?.message ?? e).slice(0, 300);
         console.warn(`[yad2-unlocker] scraping-browser: in-page fetch failed ${f} — ${msg}`);
@@ -1694,6 +1710,9 @@ async function scrapingBrowserHarvest(
       });
     }
     return { html: html || null, feeds };
+  } catch (error) {
+    logProviderFailure({ operation: 'browser', url: pageUrl, error, elapsedMs: 0 });
+    throw error;
   } finally {
     try { await browser?.disconnect?.(); } catch { /* noop */ }
   }
@@ -2122,7 +2141,7 @@ Deno.serve(async (req) => {
     // IDLE_TIMEOUT 504, so we stop scraping well before that and return
     // whatever we already have.
     const startedAt = Date.now();
-    const BUDGET_MS = 110_000;
+    const BUDGET_MS = BRIGHT_DATA_WORKER_BUDGET_MS;
     const timeLeft = () => BUDGET_MS - (Date.now() - startedAt);
     requestDeadline = startedAt + BUDGET_MS;
     let timedOut = false;
@@ -2420,7 +2439,7 @@ Deno.serve(async (req) => {
               console.warn(`[yad2-unlocker] scraping-browser: HTML parse threw ${String((e as Error)?.message ?? e)}`);
               return true;
             }
-          }), Math.max(5_000, timeLeft() - 15_000), "scraping browser");
+          }), hopTimeoutMs(), "scraping browser");
 
           if (harvest.html) {
             const parsed = isItemUrl
