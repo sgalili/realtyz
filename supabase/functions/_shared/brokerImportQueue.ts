@@ -30,6 +30,8 @@ export function freshImportCheckpoint() {
 }
 
 export function advanceSearchPoint(c: Record<string, any>, exhausted = false) {
+  // Pasted links are a closed list: never fall through to directory pagination.
+  if (c.source === 'urls') { c.phase = c.brokers?.length ? 'validating' : 'completed'; delete c.rows; delete c.enrichUrls; return; }
   if (c.source === 'agencies') {
     if (!exhausted && c.page < 100) { c.page++; c.phase = 'scanning'; return; }
     c.phase = c.brokers?.length ? 'validating' : 'completed';

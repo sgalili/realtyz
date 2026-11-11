@@ -9,6 +9,7 @@ import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRem
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
+  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100)}).strict(),
   z.object({action:z.enum(['pause','resume','reset_cooldown','step']),job_id:z.string().uuid()}).strict(),
 ]);
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
@@ -49,6 +50,15 @@ Deno.serve(async req => {
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
       return json({job_id:data});
     }
+    if(input.action==='start_urls') {
+      if(caller.kind!=='user') return json({error:'forbidden'},403);
+      const urls=[...new Set(input.urls.map(u=>agencyUrl(u.trim())).filter((u):u is string=>Boolean(u)))];
+      if(!urls.length) return json({error:'לא נמצאו קישורי משרד/מתווך תקינים של יד2'},400);
+      const checkpoint={...freshImportCheckpoint(),source:'urls',phase:'enriching',enrichUrls:urls,enriched:0,invalidUrls:input.urls.length-urls.length};
+      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:urls.length,_min:1,_max:10,_checkpoint:checkpoint});
+      if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
+      return json({job_id:data,accepted:urls.length,rejected:input.urls.length-urls.length});
+    }
     const {data:existing,error:readError}=await admin.from('broker_import_jobs').select('*').eq('id',input.job_id).single();
     if(readError || !existing || !await isSuperAdmin(existing.created_by,admin)) return json({error:'job_unavailable'},404);
     if(input.action==='pause'||input.action==='reset_cooldown') {
@@ -81,7 +91,7 @@ Deno.serve(async req => {
       const {error}=await admin.from('broker_import_agency_registry').upsert({agency_key:key,criteria_key:criteriaKey,outcome,reason,listing_count:row.active_listing_count??null,checked_at:new Date().toISOString()});
       if(error)throw error;
     };
-    if (['scanning','enriching'].includes(c.phase) && (c.source !== 'agencies' || c.discoveryVersion !== 2)) {
+    if (c.source !== 'urls' && ['scanning','enriching'].includes(c.phase) && (c.source !== 'agencies' || c.discoveryVersion !== 2)) {
       Object.assign(c, freshImportCheckpoint()); delete c.deal; delete c.enrichUrls; delete c.enriched;
       delete c.directoryNextUrl; delete c.directoryPages; delete c.directoryExhausted;
     }
@@ -151,7 +161,7 @@ Deno.serve(async req => {
           const card=c.rows.find((r:Record<string,any>)=>r.source_url===url)??{source_url:url};
           const known=await recentKeys([card]);
           const key=agencyRegistryKey(card);
-          if((key && known.has(key)) || !agencyVolumeAllowed(card,job.min_listings,job.max_listings)){
+          if(c.source!=='urls' && ((key && known.has(key)) || !agencyVolumeAllowed(card,job.min_listings,job.max_listings))){
             c.enrichUrls.shift();c.rows=c.rows.filter((r:Record<string,any>)=>r.source_url!==url);c.registrySkips=(c.registrySkips??0)+1;
             if(!c.enrichUrls.length)advanceSearchPoint(c);
             await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true,skipped:true});
@@ -161,7 +171,7 @@ Deno.serve(async req => {
             if(!d)throw new DelayStepFinished();
             return Array.isArray(d.results) ? compactDirectoryRows(d.results) : [];
           });
-          const eligible=rows.filter(r=>agencyVolumeAllowed(r,job.min_listings,job.max_listings));
+          const eligible=c.source==='urls'?rows:rows.filter(r=>agencyVolumeAllowed(r,job.min_listings,job.max_listings));
           await recordCheck({...card,active_listing_count:rows.find(r=>r.active_listing_count!=null)?.active_listing_count??card.active_listing_count},eligible.length?'checked':'disqualified',eligible.length?'detail_checked':'detail_volume_or_empty');
           c.rows=[...c.rows.filter((r:Record<string,any>)=>r.source_url!==url),...eligible];
           c.enrichUrls.shift(); c.enriched=(c.enriched??0)+1;

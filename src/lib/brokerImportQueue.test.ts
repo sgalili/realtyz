@@ -60,3 +60,11 @@ describe('restricted listings and fresh pagination', () => {
     expect(c.phase).toBe('completed');
   });
 });
+
+import { advanceSearchPoint as advanceUrls } from '../../supabase/functions/_shared/brokerImportQueue';
+describe('pasted-link imports', () => {
+  it('never paginate the directory after the pasted links run out', () => {
+    const c: Record<string, any> = { source: 'urls', page: 1, phase: 'enriching', brokers: [] };
+    advanceUrls(c); expect(c.phase).toBe('completed'); expect(c.page).toBe(1);
+  });
+});
