@@ -10,9 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldAlert, Users, Activity, ServerCog, Wallet, Bot, ExternalLink, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, ScanSearch, History, UserPlus, Trash2, FlaskConical } from 'lucide-react';
+import { ShieldAlert, Users, Activity, ServerCog, Wallet, Bot, ExternalLink, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, ScanSearch, History, UserPlus, Trash2 } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
-import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
 import { BrokerUpgradeRequestsCard } from '@/components/admin/BrokerUpgradeRequestsCard';
 import { BrokerBatchImportCard } from '@/components/admin/BrokerBatchImportCard';
 import { BrokerContactQueueCard } from '@/components/admin/BrokerContactQueueCard';
@@ -165,12 +164,10 @@ const SuperAdmin = () => {
               <TabsTrigger value="accounts" className="border border-border/60 data-[state=active]:border-primary/40"><Users className="ml-1.5 h-3.5 w-3.5" /> משתמשים</TabsTrigger>
               <TabsTrigger value="onboarding" className="border border-border/60 data-[state=active]:border-primary/40"><UserPlus className="ml-1.5 h-3.5 w-3.5" /> ייבוא מתווכים</TabsTrigger>
               <TabsTrigger value="deletion" className="border border-border/60 data-[state=active]:border-primary/40"><Trash2 className="ml-1.5 h-3.5 w-3.5" /> מחיקה וארכיון</TabsTrigger>
-              <TabsTrigger value="testing" className="border border-border/60 data-[state=active]:border-primary/40"><FlaskConical className="ml-1.5 h-3.5 w-3.5" /> בדיקות</TabsTrigger>
             </TabsList>
             <TabsContent value="accounts" className="mt-4 space-y-4"><BrokerUpgradeRequestsCard /><SuperAdminUsersTable /></TabsContent>
             <TabsContent value="onboarding" className="mt-4 space-y-4"><BrokerBatchImportCard /><BrokerContactQueueCard /></TabsContent>
             <TabsContent value="deletion" className="mt-4 space-y-4"><SuperAdminDeleteUsersCard /><DeletedAccountsArchive /></TabsContent>
-            <TabsContent value="testing" className="mt-4"><TestTrialModeCard /></TabsContent>
           </Tabs>
         </TabsContent>
 
