@@ -1,3 +1,5 @@
+import { setCreditsPerIls } from '@/lib/credits';
+setCreditsPerIls(25); // these tests assert per-rate math at 25 credits/₪
 import { expect, it } from 'vitest';
 import { campaignServiceEstimate, campaignServicePrice, formatCampaignCredits } from './campaignServicePricing';
 const prices = [
