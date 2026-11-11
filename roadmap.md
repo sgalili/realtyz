@@ -1,5 +1,11 @@
 # Roadmap
 
+## Rita in private and community conversations November 11
+- [x] Add member-managed groups, member-only messages/rosters and server-written Rita interaction logs with RLS; private data-free updates include groups and assistant logs.
+- [x] Add summon controls to lead/private/group conversations with streaming answers, summaries and lead guidance, saved history and Stop; no external sends or automatic CRM writes.
+- [x] Five tests passed; authenticated temporary lead Rita reply returned 200, persisted and retained context on follow-up; mobile dialog/group navigation checked without overflow/errors. Forged assistant inserts, non-owner member edits and non-member roster access rejected; test lead/logs removed; function deployed and build OK.
+- [ ] Positive group creation/member messaging and Rita-in-group flow need an eligible agent/broker/developer session; current injected account has no community role. No real users messaged or roles changed.
+
 ## Inbox conversation tabs November 11
 - [x] Add property/lead and community tabs with independent mounted conversation state and per-peer drafts.
 - [x] Private data-free per-user broadcasts refresh authorized queries; community participant RLS, server-role directory and send checks applied. Four tests passed; authenticated desktop/mobile switches and invalid self-message rejection verified, no overflow/errors; build OK.

@@ -2371,6 +2371,38 @@ export type Database = {
         }
         Relationships: []
       }
+      community_chat_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          workspace_owner_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_chat_groups_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_chat_messages: {
         Row: {
           content: string
@@ -2406,6 +2438,78 @@ export type Database = {
           },
           {
             foreignKeyName: "community_chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_group_members: {
+        Row: {
+          group_id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "community_chat_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_group_messages: {
+        Row: {
+          content: string
+          created_at: string
+          group_id: string
+          id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          group_id: string
+          id?: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_group_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "community_chat_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_group_messages_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -7417,6 +7521,110 @@ export type Database = {
         }
         Relationships: []
       }
+      rita_chat_gateway_state: {
+        Row: {
+          blocked: boolean
+          error_message: string | null
+          error_status: number | null
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          blocked?: boolean
+          error_message?: string | null
+          error_status?: number | null
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          blocked?: boolean
+          error_message?: string | null
+          error_status?: number | null
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rita_chat_interactions: {
+        Row: {
+          action: string
+          created_at: string
+          error_message: string | null
+          group_id: string | null
+          id: string
+          lead_id: string | null
+          model: string | null
+          peer_id: string | null
+          prompt: string
+          requested_by: string
+          response: string | null
+          run_id: string | null
+          status: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          error_message?: string | null
+          group_id?: string | null
+          id?: string
+          lead_id?: string | null
+          model?: string | null
+          peer_id?: string | null
+          prompt: string
+          requested_by: string
+          response?: string | null
+          run_id?: string | null
+          status?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          error_message?: string | null
+          group_id?: string | null
+          id?: string
+          lead_id?: string | null
+          model?: string | null
+          peer_id?: string | null
+          prompt?: string
+          requested_by?: string
+          response?: string | null
+          run_id?: string | null
+          status?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rita_chat_interactions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "community_chat_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rita_chat_interactions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rita_chat_interactions_peer_id_fkey"
+            columns: ["peer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rita_chat_interactions_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_items: {
         Row: {
           approval_queue_id: string | null
@@ -9326,6 +9534,14 @@ export type Database = {
           peer_id: string
         }[]
       }
+      community_group_roster: {
+        Args: { _group: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       complete_admin_broker_first_login: { Args: never; Returns: string }
       complete_official_license_verification: {
         Args: { _number: string; _uid: string }
@@ -9400,6 +9616,10 @@ export type Database = {
       control_broker_import_job: {
         Args: { _action: string; _id: string }
         Returns: undefined
+      }
+      create_community_chat_group: {
+        Args: { _members: string[]; _name: string }
+        Returns: string
       }
       credits_to_ils: { Args: { _credits: number }; Returns: number }
       crm_import_merge: { Args: never; Returns: string }
@@ -10096,6 +10316,10 @@ export type Database = {
       is_ai_paused: { Args: { _user_id: string }; Returns: boolean }
       is_broker_or_admin: { Args: { _user_id: string }; Returns: boolean }
       is_community_chat_member: { Args: { _user: string }; Returns: boolean }
+      is_community_group_member: {
+        Args: { _group: string; _user: string }
+        Returns: boolean
+      }
       is_junior_agent: { Args: { _user_id: string }; Returns: boolean }
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
@@ -10141,6 +10365,10 @@ export type Database = {
       listing_tier_cap_reached: {
         Args: { _listing_id: string; _tier: number }
         Returns: boolean
+      }
+      manage_community_group_member: {
+        Args: { _add: boolean; _group: string; _member: string }
+        Returns: undefined
       }
       mark_group_posts_published: {
         Args: { _campaign_log_id: string }

@@ -10,6 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChatMessageText } from './ChatMessageText';
 import { communityMessageContent } from '@/lib/communityChat';
 import { toast } from 'sonner';
+import { CommunityGroups } from './CommunityGroups';
+import { RitaChatButton } from './RitaChatButton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 type Peer = { id: string; full_name: string | null; avatar_url: string | null };
 
@@ -18,6 +21,7 @@ export function CommunityInbox() {
   const workspace = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [view, setView] = useState('private');
   const [peer, setPeer] = useState<Peer | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const endRef = useRef<HTMLDivElement>(null);
@@ -81,7 +85,11 @@ export function CommunityInbox() {
     ...(threads.data ?? []).map(thread => ({ id: thread.peer_id, full_name: thread.full_name, avatar_url: thread.avatar_url })),
     ...(contacts.data ?? []).filter(contact => !threads.data?.some(thread => thread.peer_id === contact.id)),
   ];
-  return <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
+  return <Tabs dir="rtl" value={view} onValueChange={setView} className="flex h-full min-h-0 flex-col gap-2">
+    <TabsList className="grid w-full shrink-0 grid-cols-2"><TabsTrigger value="private">שיחות פרטיות</TabsTrigger><TabsTrigger value="groups">קבוצות</TabsTrigger></TabsList>
+    <TabsContent value="groups" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden"><CommunityGroups eligible={eligibility.data === true} /></TabsContent>
+    <TabsContent value="private" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
+    <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
     <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>
       <div className="relative m-3 shrink-0">
         <Search className="absolute end-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -105,7 +113,8 @@ export function CommunityInbox() {
       {!peer ? <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"><MessageCircle className="h-10 w-10" /><span>מועדון הקהילה</span></div> : <>
         <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
-          <span className="truncate font-semibold">{peer.full_name}</span>
+          <span className="min-w-0 flex-1 truncate font-semibold">{peer.full_name}</span>
+          <RitaChatButton kind="peer" target={peer.id} />
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-4" role="log" aria-label="הודעות הקהילה">
           {messages.isLoading && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
@@ -120,5 +129,5 @@ export function CommunityInbox() {
         </form>
       </>}
     </section>
-  </div>;
+  </div></TabsContent></Tabs>;
 }

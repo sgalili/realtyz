@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useInboxLiveUpdates } from '@/hooks/useInboxLiveUpdates';
 import { CommunityInbox } from '@/components/inbox/CommunityInbox';
+import { RitaChatButton } from '@/components/inbox/RitaChatButton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -1381,6 +1382,7 @@ const OmnichannelInbox = () => {
                     </button>
                   </div>
                 </div>
+                {!selectedVoterId.startsWith('phone:') && <RitaChatButton kind="lead" target={selectedVoterId} />}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10">

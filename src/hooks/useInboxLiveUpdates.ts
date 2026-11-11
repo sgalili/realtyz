@@ -8,7 +8,7 @@ export function useInboxLiveUpdates(userId: string | undefined) {
   useEffect(() => {
     if (!userId) return;
     const refresh = () => {
-      for (const key of ['inbox-leads', 'last-messages', 'chat-messages', 'lead-channels', 'orphan-phone-threads', 'community-threads', 'community-messages']) {
+      for (const key of ['inbox-leads', 'last-messages', 'chat-messages', 'lead-channels', 'orphan-phone-threads', 'community-threads', 'community-messages', 'community-groups', 'community-roster', 'community-group-messages', 'rita-conversations']) {
         void queryClient.invalidateQueries({ queryKey: [key] });
       }
     };
