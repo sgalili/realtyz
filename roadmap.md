@@ -1,5 +1,10 @@
 # Roadmap
 
+## Inbox conversation tabs November 11
+- [x] Add property/lead and community tabs with independent mounted conversation state and per-peer drafts.
+- [x] Private data-free per-user broadcasts refresh authorized queries; community participant RLS, server-role directory and send checks applied. Four tests passed; authenticated desktop/mobile switches and invalid self-message rejection verified, no overflow/errors; build OK.
+- [ ] Successful two-party send/readback and live event receipt need an authorized agent/broker/developer session; current injected account has no eligible community role. No messages sent to real users.
+
 ## Discovery performance November 11
 - [x] Extract summary-card volume and filter against configured bounds before enrichment; unknown counts still require inspection.
 - [x] Scope directory pagination to Herzliya and Tel Aviv; retain sequential pacing and checkpoints, migrate old scanning checkpoints safely.

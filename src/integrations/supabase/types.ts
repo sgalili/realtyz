@@ -2371,6 +2371,48 @@ export type Database = {
         }
         Relationships: []
       }
+      community_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          recipient_id: string
+          sender_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          recipient_id: string
+          sender_id: string
+          workspace_owner_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          recipient_id?: string
+          sender_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_chat_messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_submissions: {
         Row: {
           created_at: string
@@ -9266,6 +9308,24 @@ export type Database = {
       cleanup_expired_email_login_otps: { Args: never; Returns: undefined }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
+      community_chat_contacts: {
+        Args: { _search?: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+        }[]
+      }
+      community_chat_threads: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          content: string
+          created_at: string
+          full_name: string
+          peer_id: string
+        }[]
+      }
       complete_admin_broker_first_login: { Args: never; Returns: string }
       complete_official_license_verification: {
         Args: { _number: string; _uid: string }
@@ -10035,6 +10095,7 @@ export type Database = {
       is_ai_autopilot_enabled: { Args: { _user_id: string }; Returns: boolean }
       is_ai_paused: { Args: { _user_id: string }; Returns: boolean }
       is_broker_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_community_chat_member: { Args: { _user: string }; Returns: boolean }
       is_junior_agent: { Args: { _user_id: string }; Returns: boolean }
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }

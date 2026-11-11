@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { useInboxLiveUpdates } from '@/hooks/useInboxLiveUpdates';
+import { CommunityInbox } from '@/components/inbox/CommunityInbox';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
@@ -144,6 +146,7 @@ const WhatsAppTicks = ({ status = 'delivered' }: { status?: 'sent' | 'delivered'
 
 const OmnichannelInbox = () => {
   const [searchParams] = useSearchParams();
+  const [inboxSection, setInboxSection] = useState('leads');
   // `chat` is the deep-link parameter used by the notification center; `lead`
   // stays supported for existing links.
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(
@@ -153,7 +156,7 @@ const OmnichannelInbox = () => {
   const [highlightMessageId, setHighlightMessageId] = useState<string | null>(searchParams.get('message'));
   useEffect(() => {
     const v = searchParams.get('chat') || searchParams.get('lead');
-    if (v) setSelectedVoterId(v);
+    if (v) { setSelectedVoterId(v); setInboxSection('leads'); }
     setHighlightMessageId(searchParams.get('message'));
     const requestedChannel = searchParams.get('channel');
     if (requestedChannel && channelConfig[requestedChannel]) setSendChannel(requestedChannel);
@@ -336,13 +339,7 @@ const OmnichannelInbox = () => {
   const demoTicker = useDemoTicker();
   const blockDemoAction = useDemoGuard();
 
-  useRealtimeSubscription('messages', [
-    ['inbox-leads'],
-    ['last-messages'],
-    ['chat-messages', selectedVoterId ?? ''],
-    ['lead-recent-msgs', selectedVoterId ?? ''],
-  ]);
-  useRealtimeSubscription('leads', [['inbox-leads']]);
+  useInboxLiveUpdates(user?.id);
 
   const { data: dbVoters } = useQuery({
     queryKey: ['inbox-leads', workspaceScope],
@@ -1096,14 +1093,22 @@ const OmnichannelInbox = () => {
   }, []);
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: !!selectedVoterId } }));
+    window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: inboxSection === 'leads' && !!selectedVoterId } }));
     return () => {
       window.dispatchEvent(new CustomEvent('realtyz:inbox-chat-state', { detail: { open: false } }));
     };
-  }, [selectedVoterId]);
+  }, [selectedVoterId, inboxSection]);
 
   return (
-    <div dir="rtl" className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+    <Tabs dir="rtl" value={inboxSection} onValueChange={setInboxSection} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+      <TabsList aria-label="סוג שיחות" className="grid h-auto min-h-11 w-full shrink-0 grid-cols-2 gap-1">
+        <TabsTrigger value="leads" className="min-h-10 min-w-0 whitespace-normal px-2 text-sm">צ'אטים נכסים ולידים</TabsTrigger>
+        <TabsTrigger value="community" className="min-h-10 min-w-0 whitespace-normal px-2 text-sm">מועדון הקהילה</TabsTrigger>
+      </TabsList>
+      <TabsContent value="community" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
+        <CommunityInbox key={`${user?.id}:${workspaceScope}`} />
+      </TabsContent>
+      <TabsContent value="leads" forceMount className="m-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden data-[state=inactive]:hidden">
       {/* Queue tabs belong to the main inbox only; bookmark stays a square control. */}
       {!selectedVoterId && <div className="mx-auto flex w-full max-w-2xl shrink-0 items-center gap-2" dir="rtl">
         <div className="grid h-[44px] min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
@@ -1669,7 +1674,8 @@ const OmnichannelInbox = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 };
 

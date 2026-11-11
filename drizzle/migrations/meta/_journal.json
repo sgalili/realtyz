@@ -1121,6 +1121,13 @@
       "when": 1794409835549,
       "tag": "0159_credit_rate_four_per_ils",
       "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1794426245180,
+      "tag": "0160_private_inbox_community_chats",
+      "breakpoints": true
     }
   ]
 }

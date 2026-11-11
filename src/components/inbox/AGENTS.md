@@ -1,0 +1,2 @@
+# Inbox architecture
+- Keep lead chats and account-participant community chats separate; preserve mounted tab state and use private data-free per-user Realtime notifications with authorized refetches. Why: instant updates without publishing private rows or borrowing workspace identities.
