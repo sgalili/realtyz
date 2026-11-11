@@ -63,4 +63,3 @@
 - Registry keeps raw names for certificate checks and canonical display name/city for locked profiles; returns saved identity and activation separately. Same-identity order corrections only; fetch stays failed-auto-fetch Super Admin review. Partner uses current account consent/roles, skips existing-profile provisioning. Why: no identity bypass or false activation.
 - Edge fns gate callers via _shared/authz.ts (service/cron secret/user+scope, Meta sigs). Why: apikey isn't trust.
 
-- Broker discovery enters the agencies directory via leased, service-only Web Unlocker reads; card-scoped personal identity/license and exact listing links feed existing live-checked draft creation, with separate directory cache keys and sequential checkpoints. Why: no office-name impersonation, stale search offsets or public scraping bypass.
