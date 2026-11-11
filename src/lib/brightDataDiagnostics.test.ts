@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BRIGHT_DATA_TIMEOUT_MS, BROKER_WORKER_CALL_TIMEOUT_MS, readWorkerResponse, logProviderFailure } from '../../supabase/functions/_shared/brightDataDiagnostics';
+import { BRIGHT_DATA_TIMEOUT_MS, BROKER_WORKER_CALL_TIMEOUT_MS, readWorkerResponse, logProviderFailure, logUnlockerRequest, logUnlockerResponse } from '../../supabase/functions/_shared/brightDataDiagnostics';
 
 beforeEach(() => {
   // jsdom's older AbortSignal lacks timeout; match the deployed runtime's API.
@@ -11,6 +11,25 @@ beforeEach(() => {
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 describe('Bright Data request diagnostics', () => {
+  it('logs the exact request payload without an authorization credential', () => {
+    const logged = vi.spyOn(console, 'log').mockImplementation(() => {});
+    logUnlockerRequest('web_unlocker4', 'https://www.yad2.co.il/realestate/item/abc');
+    expect(JSON.parse(logged.mock.calls[0][1])).toEqual({ endpoint: 'https://api.brightdata.com/request', method: 'POST', payload: { zone: 'web_unlocker4', url: 'https://www.yad2.co.il/realestate/item/abc', format: 'raw' } });
+  });
+  it('logs response status and bounded HTML while redacting contact details and credentials', () => {
+    const logged = vi.spyOn(console, 'log').mockImplementation(() => {});
+    logUnlockerResponse('https://www.yad2.co.il', 200, '<html>user@example.com 0521234567 Bearer private-key ' + 'x'.repeat(9000), 15);
+    const entry = JSON.parse(logged.mock.calls[0][1]);
+    expect(entry.http_status).toBe(200);
+    expect(entry.response_payload).toHaveLength(8192);
+    expect(entry.payload_truncated).toBe(true);
+    expect(entry.response_payload).not.toMatch(/user@example.com|0521234567|private-key/);
+  });
+  it('keeps the local daily import limit distinct from a provider 429 and retains its deadline', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const transport = vi.fn(async () => new Response(JSON.stringify({error: 'daily_import_limit', detail: 'Daily import blocked', retry_at: '2026-11-12T04:41:30Z'}), {status:429}));
+    await expect(readWorkerResponse('https://worker.test/import', {}, transport as typeof fetch)).rejects.toMatchObject({name: 'ImportAvailabilityError', code: 'daily_import_limit', retryAt: '2026-11-12T04:41:30Z', message: 'Daily import blocked'});
+  });
   it('allows 120 seconds for provider requests', () => {
     expect(BRIGHT_DATA_TIMEOUT_MS).toBe(120_000);
   });

@@ -1,5 +1,6 @@
 // Web Unlocker manages rotation itself. Sticky proxy session/ip parameters are
 // not part of its documented REST schema and must not be added here.
+export const WEB_UNLOCKER_ZONE = 'web_unlocker4';
 export function rotatingUnlockerPayload(zone: string, url: string) {
   return { zone, url, format: 'raw' };
 }

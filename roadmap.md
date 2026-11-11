@@ -1,5 +1,11 @@
 # Roadmap
 
+## Web Unlocker audit November 11
+- [x] Inspect exact request, cache TTLs, pacing, license-first completion and live failure logs.
+- [x] Pin requested zone web_unlocker4, add sanitized request/response diagnostics, distinguish local daily limit from provider 429 without bypassing the limit.
+- [x] 40 focused tests passed; live cache holds 1 fresh search page (4 hits) and 8 fresh details. No Bright Data-created broker rows exist, so full account/draft completion remains unverified without a successful paid import.
+- [x] Both workers deployed; preview build OK. Completion endpoint rejects unauthenticated requests (401). No live provider request or authorized end-to-end account/draft creation was exercised.
+
 ## Web Unlocker request schema November 11
 - [x] Use exact POST JSON body zone/url/format:raw and Bearer environment credential, supporting the existing saved key name.
 - [x] Preserve existing raw HTML parsers, license-first missing-contact fallback, cache and checkpoint logic.

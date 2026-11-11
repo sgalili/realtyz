@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { rotatingUnlockerPayload, rotationDiagnostics, unlockerRequestOptions } from '../../supabase/functions/_shared/brightDataRotation';
+import { WEB_UNLOCKER_ZONE, rotatingUnlockerPayload, rotationDiagnostics, unlockerRequestOptions } from '../../supabase/functions/_shared/brightDataRotation';
 
 describe('provider-managed rotation', () => {
+  it('uses the requested production Web Unlocker zone', () => {
+    expect(WEB_UNLOCKER_ZONE).toBe('web_unlocker4');
+  });
   it('never pins pagination or listing requests to a sticky session or IP', () => {
     for (const url of ['https://www.yad2.co.il/realestate/forsale?page=2', 'https://www.yad2.co.il/realestate/item/abc']) {
       const payload = rotatingUnlockerPayload('zone', url);

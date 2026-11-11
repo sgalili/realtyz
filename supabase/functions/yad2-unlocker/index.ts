@@ -1,6 +1,6 @@
 // yad2-unlocker
 // Scrapes Yad2 real-estate pages via the Bright Data Web Unlocker REST API
-// (https://api.brightdata.com/request) with zone "yad2". Bypasses bot/CAPTCHA
+// (https://api.brightdata.com/request) with zone "web_unlocker4". Bypasses bot/CAPTCHA
 // automatically. Handles both single item URLs and search-results URLs.
 //
 // Request body:
@@ -8,7 +8,7 @@
 //   { "url": "https://www.yad2.co.il/realestate/forsale?city=6400", "limit": 40 }  // search
 //
 // Credential: BRIGHT_DATA_API_KEY (existing BRIGHTDATA_API_TOKEN remains supported).
-// Zone: BRIGHTDATA_UNLOCKER_ZONE, then BRIGHTDATA_ZONE (default "reatyz_yad2").
+// Web Unlocker zone is web_unlocker4; Browser API credentials remain separate.
 
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { cleanSqm } from "../_shared/measures.ts";
@@ -19,9 +19,9 @@ import { isBoilerplateDescription } from "../_shared/descriptionFilter.ts";
 import { extractYad2Publisher, extractYad2PublisherHtml } from "../_shared/yad2Publisher.ts";
 import { classifyListingMedia, matchesAdvertiser } from "../_shared/listingMediaVision.ts";
 import { trackScraping, recordCacheHit } from '../_shared/scrapingAudit.ts';
-import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure } from '../_shared/brightDataDiagnostics.ts';
+import { BRIGHT_DATA_TIMEOUT_MS, BRIGHT_DATA_WORKER_BUDGET_MS, logProviderFailure, logUnlockerRequest, logUnlockerResponse, redactDiagnostic } from '../_shared/brightDataDiagnostics.ts';
 import { createProviderPacer, ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
-import { unlockerRequestOptions, rotationDiagnostics } from '../_shared/brightDataRotation.ts';
+import { WEB_UNLOCKER_ZONE, unlockerRequestOptions, rotationDiagnostics } from '../_shared/brightDataRotation.ts';
 const paceProvider = createProviderPacer();
 let providerRateLimit: ProviderRateLimitError | null = null;
 
@@ -30,14 +30,12 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const BD_TOKEN = Deno.env.get("BRIGHT_DATA_API_KEY")?.trim() || Deno.env.get("BRIGHTDATA_API_TOKEN")?.trim() || "";
 // Two DIFFERENT Bright Data products are in play and they are not interchangeable:
-//   * Web Unlocker zone  -> REST https://api.brightdata.com/request  (default: "reatyz_yad2")
+//   * Web Unlocker zone  -> REST https://api.brightdata.com/request  ("web_unlocker4")
 //   * Browser API zone   -> WS puppeteer endpoint                    (zone "yad2")
 // Pointing the REST call at the Browser API zone returns 200 with an empty
 // body + x-brd-err-code: client_10090, which is what made every Yad2 search
 // silently return zero rows.
-const BD_ZONE = Deno.env.get("BRIGHTDATA_UNLOCKER_ZONE") ??
-  Deno.env.get("BRIGHTDATA_ZONE") ??
-  "reatyz_yad2";
+const BD_ZONE = WEB_UNLOCKER_ZONE;
 const BD_WS = Deno.env.get("BRIGHTDATA_WS_ENDPOINT") ?? "";
 
 
@@ -154,13 +152,17 @@ async function brightDataRequest(
   let responseStatus: number | undefined;
   try {
   const result = await trackScraping('yad2_extraction', 'rest', url, async () => {
-  const res = await paceProvider(()=>fetch("https://api.brightdata.com/request", {
+  const res = await paceProvider(()=> {
+    logUnlockerRequest(BD_ZONE, url);
+    return fetch("https://api.brightdata.com/request", {
     ...unlockerRequestOptions(BD_TOKEN, BD_ZONE, url),
     signal: AbortSignal.timeout(hopTimeoutMs()),
     ...(bdHttpClient ? { client: bdHttpClient } : {}),
-  } as RequestInit));
+  } as RequestInit);
+  });
   responseStatus = res.status;
   const body = await res.text();
+  logUnlockerResponse(url, res.status, body, Date.now() - started);
   const bdHeaders: Record<string, string> = {};
   for (const [k, v] of res.headers.entries()) {
     if (/^(retry-after|content-type|content-length|content-encoding|x-brd|x-luminati|x-response|x-unblock)/i.test(k)) {
@@ -262,12 +264,12 @@ async function unlock(
         bd_status: status,
         bytes: body.length,
         content_type: bdHeaders["content-type"],
-        preview: body.slice(0, 300),
+        preview: redactDiagnostic(body).slice(0, 300),
         attempt,
       };
       if (bdTrace.length < 20) bdTrace.push(entry);
       console.log(
-        `[yad2-unlocker] web-unlocker ${url} → BD status=${status} bytes=${body.length} ct=${bdHeaders["content-type"] ?? "-"} hdrs=${JSON.stringify(bdHeaders)} preview=${JSON.stringify(body.slice(0, 300))}`,
+        `[yad2-unlocker] web-unlocker ${redactDiagnostic(url)} → BD status=${status} bytes=${body.length} ct=${bdHeaders["content-type"] ?? "-"} hdrs=${redactDiagnostic(JSON.stringify(bdHeaders))}`,
       );
       if (zoneErr) {
         // Permanent configuration fault — fail fast so the caller can switch
