@@ -1,5 +1,9 @@
 # Roadmap
 
+## Independent expanded table scrolling November 14
+- [x] Restore native horizontal scrolling for table summaries; shared FixedTablePanel keeps expanded property/project bodies and contact actions at viewport width and counter-scrolls them independently.
+- [x] Four focused scrolling tests pass; real signed-in homepage property checked at 411×801 and 1280×1800: summary scroll -180/-150, expanded body X unchanged and width matches viewport. Preview build OK; developer table shares the fixed panel but populated project flow is unavailable.
+
 ## Unified profile and popup property cards November 14
 - [x] Profile list/grid and office assets reuse homepage StandardPropertyCard; remove profile mini-cards and duplicated quick-share row, retain authorized menus/favorites.
 - [x] Standard cards, public detail pages and popup/expanded details share PropertyGallerySlider. Expanded details default to authorized photos/share/favorite; partner popup removes duplicate copy/pricing block and retains shared pricing trigger/contact row.

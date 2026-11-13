@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { Button } from '@/components/ui/button';
-import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
+import { FixedTablePanel, HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import DeveloperYad2Import from '@/components/developers/DeveloperYad2Import';
 import DeveloperProjectWizard from '@/components/developers/DeveloperProjectWizard';
@@ -183,7 +183,7 @@ export default function DeveloperDashboard() {
               : id === 'commissions' ? <DeveloperCommissionBadges project={p} /> : id === 'rooms' ? hierarchy.apartments.length || '' : PROJECT_STATUS[p.status] ?? p.status}
             </td>)}
             <td className="p-2"><div className="flex items-center">{actions(p)}<Button variant="ghost" size="icon-sm" aria-label={`בניינים ויחידות ${p.name}`} aria-expanded={open} onClick={event => { event.stopPropagation(); setExpandedId(open ? null : p.id); }}><ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} /></Button></div></td>
-          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><AnimatedExpansion open={open}><div className="sticky right-0 max-w-[calc(100vw-2rem)] space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></div></AnimatedExpansion></td></tr>]; })}
+          </tr>, <tr key={`${p.id}-details`}><td colSpan={columns.visible.length + 1} className="p-0"><FixedTablePanel><AnimatedExpansion open={open}><div className="min-w-0 space-y-4 p-4"><PropertyGallerySlider photos={projectImages(p)} alt={p.name} /><ProjectHierarchyDetails project={p} onPublish={unit => publishProject(p, unitCommissionKey(unit))} /></div></AnimatedExpansion></FixedTablePanel></td></tr>]; })}
         </tbody></table></HorizontalTableScroll></BoardColumnDragArea>}
       </>}
       <Dialog open={mode !== null} onOpenChange={open => { if (!open) close(); }}>

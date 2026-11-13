@@ -12,7 +12,7 @@ import { WELCOME_REOPEN_EVENT, shouldShowWelcome } from '@/lib/welcomePreference
 import { readPostSignupWelcome } from '@/lib/signupRole';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
+import { FixedTablePanel, HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -451,6 +451,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                       </tr>,
                       <tr key={`${card.id}-x`} className="bg-muted/10">
                         <td colSpan={visibleColumns.length + 1} className="p-0">
+                          <FixedTablePanel>
                           <AnimatedExpansion open={open}>
                           <div id={`details-${card.id}`} className="sticky right-0 min-w-0 space-y-4 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                             <div className="min-w-0 space-y-3">
@@ -459,6 +460,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                           </div>
                           </AnimatedExpansion>
                           {open && <PropertyContactActions listingId={card.id} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} formAsButton compact showShare={false} className="sticky bottom-0 z-20 mx-3 mb-1 bg-card pb-2 pt-1 lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
+                          </FixedTablePanel>
                         </td>
                       </tr>,
                     ];

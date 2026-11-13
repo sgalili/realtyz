@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeCheck } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
+import { FixedTablePanel, HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -103,6 +103,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                 </tr>,
                 <tr key={`${result.key}-x`} className="bg-muted/10">
                   <td colSpan={visible.length + 1 + (selectionMode ? 1 : 0)} className="p-0">
+                    <FixedTablePanel>
                     <AnimatedExpansion open={open}>
                       <div className="sticky right-0 min-w-0 space-y-3 p-3 lg:p-5" style={wrapWidth ? { width: wrapWidth } : undefined}>
                         {open && (localId
@@ -111,6 +112,7 @@ export default function ManagedBoardTable({ results, toCard, selectionMode, sele
                       </div>
                     </AnimatedExpansion>
                     {open && localId && <PropertyContactActions listingId={localId} title={title} dealType={card.deal_type} premsg={ritaPropertyPremsg(card)} options={card.contact_options} showShare={false} formAsButton compact className="sticky bottom-0 z-20 mx-3 border-t border-border bg-card py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:mx-5" style={wrapWidth ? { width: `calc(${wrapWidth}px - 24px)` } : undefined} />}
+                    </FixedTablePanel>
                   </td>
                 </tr>,
               ];
