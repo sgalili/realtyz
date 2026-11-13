@@ -174,7 +174,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
         <Input aria-label="חיפוש בקהילה" placeholder="חיפוש בקהילה..." className="pe-9" value={search} onChange={event => setSearch(event.target.value)} />
       </div><Button variant="outline" size="icon" className="h-10 w-10 shrink-0" aria-label="שיחה חדשה ממדריך המשתמשים" disabled={eligibility.data !== true} onClick={() => setDirectoryOpen(true)}><UserPlus className="h-4 w-4" /></Button></div>
       <Dialog open={directoryOpen} onOpenChange={setDirectoryOpen}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>שיחה חדשה</DialogTitle></DialogHeader><CommunityDirectory enabled={directoryOpen && eligibility.data === true} listClassName="max-h-[55dvh]" onSelect={u => { setPeer({ id: u.id, full_name: u.full_name, avatar_url: u.avatar_url }); setDirectoryOpen(false); }} /></DialogContent></Dialog>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div data-route-scroll className="min-h-0 flex-1 overflow-y-auto">
         {(contacts.isLoading || threads.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}
         {(contacts.isError || threads.isError || eligibility.isError) && <div role="alert" className="p-4 text-destructive">טעינת השיחות נכשלה<Button variant="ghost" onClick={() => { void contacts.refetch(); void threads.refetch(); void eligibility.refetch(); }}>נסה שוב</Button></div>}
         {eligibility.data === false && <p className="p-4 text-sm text-muted-foreground">מועדון הקהילה פתוח לסוכנים, למתווכים וליזמים.</p>}

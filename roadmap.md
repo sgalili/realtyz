@@ -1,5 +1,10 @@
 # Roadmap
 
+## Public profile layout November 13
+- [ ] Standard blue header with full-name title, Close/Back, centered avatar with full-screen preview, name/role/license and cities.
+- [ ] Separate office identity box, remove duplicated activity section and outer profile/list frames, show authorized active-asset count.
+- [ ] Preserve previous-page scroll owners and verify desktop/mobile profile and return navigation.
+
 ## Expanded list scrolling and WhatsApp share November 13
 - [x] Lock the shared listing scroll owner horizontally while any property row is expanded; retain vertical and gallery scrolling, restore horizontal movement after all close.
 - [x] Replace property WhatsApp template controls with automatic compatible approved-template selection, populated read-only preview and Send; reuse preview links/parameters for official delivery. Recipient name/phone remain necessary for direct delivery. Existing named property-alert template includes the landing link in its address variable without changing approved fixed text.
