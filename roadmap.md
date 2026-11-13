@@ -1,5 +1,11 @@
 # Roadmap
 
+## Grow payments November 13
+- [ ] Add Super Admin Grow environment, business verification details and sending-mode settings with secure credential handling and connection testing.
+- [ ] Implement server-created links and provider-verified, idempotent transaction notifications/acknowledgment.
+- [ ] Connect approved payments to the agreed billing entitlement; blocked pending clarification of the requested ₪6,500 subscription versus existing credits-only policy and its duration/benefits.
+- [ ] Verify sandbox checkout and notification readback once Grow credentials are available; never treat a success redirect as proof of payment.
+
 ## Public profile layout November 13
 - [x] Standard blue header with full-name title, Close/Back, centered avatar with full-screen preview, name/role/license and saved service cities.
 - [x] Separate office identity box, remove duplicated activity section and outer profile/list frames, show authorized active-asset count. Existing public profile data provides one city, not a separate office operating-city list; display the available city without inventing others.
