@@ -170,6 +170,13 @@ const OmnichannelInbox = () => {
   // Empty set = no channel filter (show everything). Multiple channels can be
   // toggled on at once.
   const [channelFilter, setChannelFilter] = useState<Set<string>>(new Set());
+  const [leadChannelCounts, setLeadChannelCounts] = useState<Map<string, Map<string, number>>>(new Map());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   // Tracks the last AI-generated draft (e.g. from Undo & Regenerate) so manual
@@ -376,13 +383,17 @@ const OmnichannelInbox = () => {
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('lead_id, channel, platform');
       const map = new Map<string, Set<string>>();
+      const counts = new Map<string, Map<string, number>>();
       (data ?? []).forEach((m: any) => {
         if (!m?.lead_id) return;
         const key = String(m.channel || m.platform || '').toLowerCase();
         if (!key) return;
         if (!map.has(m.lead_id)) map.set(m.lead_id, new Set());
         map.get(m.lead_id)!.add(key);
+        if (!counts.has(m.lead_id)) counts.set(m.lead_id, new Map());
+        const c = counts.get(m.lead_id)!; c.set(key, (c.get(key) ?? 0) + 1);
       });
+      setLeadChannelCounts(counts);
       return map;
     },
   });
@@ -998,6 +1009,13 @@ const OmnichannelInbox = () => {
     const base = (voters ?? []).filter((v) => {
       if (!matchesLeadSearch(v, search)) return false;
       const m: any = lastMessages?.get(v.id);
+      if (categoryFilter.size > 0 && !categoryFilter.has(String((v as any).lead_category ?? ''))) return false;
+      if (dateFrom || dateTo) {
+        const at = m?.created_at ? new Date(m.created_at).getTime() : 0;
+        if (!at) return false;
+        if (dateFrom && at < new Date(`${dateFrom}T00:00:00`).getTime()) return false;
+        if (dateTo && at > new Date(`${dateTo}T23:59:59`).getTime()) return false;
+      }
       if (channelFilter.size > 0) {
         const known = leadChannels?.get(v.id);
         const lastCh = String(m?.channel || m?.platform || '').toLowerCase();
@@ -1007,6 +1025,7 @@ const OmnichannelInbox = () => {
       const doneAt = (v as any).inbox_done_at ? new Date((v as any).inbox_done_at).getTime() : 0;
       const handled = doneAt > 0 && (!m?.created_at || new Date(m.created_at).getTime() <= doneAt);
       if ((activeTab === 'waiting' || activeTab === 'handling') && handled) return false;
+      if (unreadOnly && (handled || m?.direction !== 'inbound')) return false;
       if (activeTab === 'waiting') return m?.direction === 'inbound';
       if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
       if (bookmarkedOnly) return (v as any).is_bookmarked === true;
@@ -1157,7 +1176,15 @@ const OmnichannelInbox = () => {
       <div className="grid min-h-0 flex-1 w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:grid-cols-[20rem_minmax(0,1fr)]">
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
-          <div className="p-3 border-b space-y-2">
+          <div className="p-3 border-b">
+            <div className="flex items-center gap-1.5">
+              <SelectModeToggle
+                total={filteredVoters?.length ?? 0}
+                onSelectAll={() => setSelectedChats(new Set((filteredVoters ?? []).map((v: any) => v.id)))}
+                active={chatSelectMode}
+                count={selectedChats.size}
+                onToggle={() => { setChatSelectMode((v) => !v); setSelectedChats(new Set()); }}
+              />
             {(() => {
                 // Only channels that actually have saved messages (for the open
                 // conversation when one is selected) are shown; unused icons stay hidden.
@@ -1178,9 +1205,14 @@ const OmnichannelInbox = () => {
                   { key: 'facebook', label: 'Facebook' }, { key: 'linkedin', label: 'LinkedIn' },
                   { key: 'x', label: 'X' }, { key: 'tiktok', label: 'TikTok' },
                 ] as const).filter((channel) => channelsInList.has(channel.key));
-                if (!items.length) return null;
-                return <div className="flex items-center justify-center gap-1.5 overflow-x-auto" aria-label="סינון לפי ערוץ">{items.map((channel) => {
+                if (items.length < 2) return null;
+                const countFor = (key: string) => {
+                  if (selectedVoterId) return leadChannelCounts.get(selectedVoterId)?.get(key) ?? 0;
+                  let n = 0; leadChannelCounts.forEach((c) => { n += c.get(key) ?? 0; }); return n;
+                };
+                return <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 overflow-x-auto" aria-label="סינון לפי ערוץ">{items.map((channel) => {
                   const active = channelFilter.has(channel.key);
+                  const n = countFor(channel.key);
                   return (
                     <button
                       key={channel.key}
@@ -1198,32 +1230,56 @@ const OmnichannelInbox = () => {
                       aria-label={channel.label}
                       title={channel.label}
                       aria-pressed={active}
-                      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 transition-all ${active ? 'scale-110 opacity-100 ring-2 ring-primary rounded-full' : 'opacity-80 hover:opacity-100'}`}
+                      className={`inline-flex h-7 min-w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 transition-all ${active ? 'scale-110 opacity-100 ring-2 ring-primary rounded-full' : 'opacity-80 hover:opacity-100'}`}
                     >
                       <ChannelIcon channel={channel.key} size="md" />
+                      {n >= 2 && <span className="ms-0.5 text-xs font-semibold text-muted-foreground">{n}</span>}
                     </button>
                   );
                 })}</div>;
-              })()}
-            <div className="flex items-center gap-1.5">
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="חיפוש שיחות..."
-                  className="pr-9 h-9 bg-muted/50 border-0"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              <SelectModeToggle
-                total={filteredVoters?.length ?? 0}
-                onSelectAll={() => setSelectedChats(new Set((filteredVoters ?? []).map((v: any) => v.id)))}
-                active={chatSelectMode}
-                count={selectedChats.size}
-                onToggle={() => { setChatSelectMode((v) => !v); setSelectedChats(new Set()); }}
-              />
+              })() ?? <div className="flex-1" />}
+              <Button type="button" variant="ghost" size="icon" aria-label="חיפוש וסינון שיחות" title="חיפוש וסינון" onClick={() => setSearchOpen(true)}
+                className={`relative h-9 w-9 shrink-0 rounded-lg ${(search.trim() || dateFrom || dateTo || categoryFilter.size || unreadOnly || channelFilter.size) ? 'text-primary' : 'text-muted-foreground'}`}>
+                <Search className="h-5 w-5" />
+                {(search.trim() || dateFrom || dateTo || categoryFilter.size || unreadOnly || channelFilter.size) ? <span className="absolute end-1 top-1 h-2 w-2 rounded-full bg-primary" /> : null}
+              </Button>
             </div>
           </div>
+          <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+            <DialogContent dir="rtl" aria-describedby={undefined} className="max-h-[85dvh] overflow-y-auto">
+              <DialogHeader><DialogTitle>חיפוש שיחות</DialogTitle></DialogHeader>
+              <div className="flex gap-2">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input autoFocus aria-label="חיפוש שיחות" placeholder="שם, טלפון או כינוי..." className="pr-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                </div>
+                <Button type="button" variant={filtersOpen ? 'default' : 'outline'} onClick={() => setFiltersOpen((v) => !v)}>פילטר</Button>
+              </div>
+              {filtersOpen && <div className="space-y-4 rounded-lg border border-border p-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-1 text-sm">מתאריך<Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} /></label>
+                  <label className="space-y-1 text-sm">עד תאריך<Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} /></label>
+                </div>
+                <div className="space-y-1.5"><span className="text-sm font-semibold">סוג משתמש</span>
+                  <div className="flex flex-wrap gap-1.5">{([['broker', 'רק מתווכים'], ['developer', 'רק יזמים'], ['affiliate', 'רק שותפים'], ['buyer', 'קונים'], ['seller', 'מוכרים'], ['renter', 'שוכרים'], ['landlord', 'משכירים']] as const).map(([key, label]) => (
+                    <Button key={key} type="button" size="sm" className="h-8 rounded-full" variant={categoryFilter.has(key) ? 'default' : 'outline'}
+                      onClick={() => setCategoryFilter((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; })}>{label}</Button>
+                  ))}</div>
+                </div>
+                <div className="space-y-1.5"><span className="text-sm font-semibold">ערוצים</span>
+                  <div className="flex flex-wrap gap-1.5">{Array.from(new Set(Array.from(leadChannels instanceof Map ? leadChannels.values() : []).flatMap((set: Set<string>) => Array.from(set)))).map((key) => (
+                    <Button key={key} type="button" size="sm" className="h-8 gap-1 rounded-full" variant={channelFilter.has(key) ? 'default' : 'outline'}
+                      onClick={() => setChannelFilter((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; })}><ChannelIcon channel={key} size="sm" />{key}</Button>
+                  ))}</div>
+                </div>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />רק שיחות שלא נענו</label>
+              </div>}
+              <div className="flex justify-between gap-3">
+                <Button type="button" variant="outline" onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); setCategoryFilter(new Set()); setUnreadOnly(false); setChannelFilter(new Set()); }}>ניקוי</Button>
+                <Button type="button" onClick={() => setSearchOpen(false)}>הצגת {filteredVoters?.length ?? 0} שיחות</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {chatSelectMode && (
             <SelectAllRow
