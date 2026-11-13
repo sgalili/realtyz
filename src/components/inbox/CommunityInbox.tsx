@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
+import { ArrowRight, UserPlus, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -11,6 +11,8 @@ import { ChatMessageText } from './ChatMessageText';
 import { communityMessageContent } from '@/lib/communityChat';
 import { toast } from 'sonner';
 import { CommunityGroups } from './CommunityGroups';
+import { CommunityDirectory } from './CommunityDirectory';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RitaChatButton } from './RitaChatButton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
@@ -23,6 +25,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
   const [search, setSearch] = useState('');
   const [view, setView] = useState('private');
   const [peer, setPeer] = useState<Peer | null>(null);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const endRef = useRef<HTMLDivElement>(null);
   const contacts = useQuery({
@@ -91,10 +94,11 @@ export function CommunityInbox({ active }: { active: boolean }) {
     <TabsContent value="private" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
     <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
     <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>
-      <div className="relative m-3 shrink-0">
+      <div className="m-3 flex shrink-0 gap-2"><div className="relative flex-1">
         <Search className="absolute end-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input aria-label="חיפוש בקהילה" placeholder="חיפוש בקהילה..." className="pe-9" value={search} onChange={event => setSearch(event.target.value)} />
-      </div>
+      </div><Button variant="outline" size="icon" className="h-10 w-10 shrink-0" aria-label="שיחה חדשה ממדריך המשתמשים" disabled={eligibility.data !== true} onClick={() => setDirectoryOpen(true)}><UserPlus className="h-4 w-4" /></Button></div>
+      <Dialog open={directoryOpen} onOpenChange={setDirectoryOpen}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>שיחה חדשה</DialogTitle></DialogHeader><CommunityDirectory enabled={directoryOpen && eligibility.data === true} listClassName="max-h-[55dvh]" onSelect={u => { setPeer({ id: u.id, full_name: u.full_name, avatar_url: u.avatar_url }); setDirectoryOpen(false); }} /></DialogContent></Dialog>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {(contacts.isLoading || threads.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}
         {(contacts.isError || threads.isError || eligibility.isError) && <div role="alert" className="p-4 text-destructive">טעינת השיחות נכשלה<Button variant="ghost" onClick={() => { void contacts.refetch(); void threads.refetch(); void eligibility.refetch(); }}>נסה שוב</Button></div>}

@@ -9547,6 +9547,15 @@ export type Database = {
           peer_id: string
         }[]
       }
+      community_directory: {
+        Args: { _category?: string; _search?: string }
+        Returns: {
+          avatar_url: string
+          category: string
+          full_name: string
+          id: string
+        }[]
+      }
       community_group_roster: {
         Args: { _group: string }
         Returns: {
