@@ -146,8 +146,8 @@ const WhatsAppTicks = ({ status = 'delivered' }: { status?: 'sent' | 'delivered'
 };
 
 const OmnichannelInbox = () => {
-  const [searchParams] = useSearchParams();
-  const [inboxSection, setInboxSection] = useState('leads');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [inboxSection, setInboxSection] = useState(searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads');
   // `chat` is the deep-link parameter used by the notification center; `lead`
   // stays supported for existing links.
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(
@@ -158,7 +158,7 @@ const OmnichannelInbox = () => {
   useEffect(() => {
     const v = searchParams.get('chat') || searchParams.get('lead');
     if (v) { setSelectedVoterId(v); setInboxSection('leads'); }
-    if (searchParams.get('community')) setInboxSection('community');
+    if (searchParams.get('community') || searchParams.get('section') === 'community') setInboxSection('community');
     setHighlightMessageId(searchParams.get('message'));
     const requestedChannel = searchParams.get('channel');
     if (requestedChannel && channelConfig[requestedChannel]) setSendChannel(requestedChannel);
@@ -1121,7 +1121,7 @@ const OmnichannelInbox = () => {
   }, [selectedVoterId, inboxSection]);
 
   return (
-    <Tabs dir="rtl" value={inboxSection} onValueChange={setInboxSection} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+    <Tabs dir="rtl" value={inboxSection} onValueChange={value => { setInboxSection(value); setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); return next; }, { replace: true }); }} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <TabsList aria-label="סוג שיחות" className="grid h-auto min-h-11 w-full shrink-0 grid-cols-2 gap-1">
         <TabsTrigger value="leads" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">צ'אטים נכסים ולידים</TabsTrigger>
         <TabsTrigger value="community" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">מועדון הקהילה</TabsTrigger>

@@ -24,9 +24,13 @@ export function RouteScrollRestoration() {
   const positions = useRef(new Map<string, OwnerPosition[]>());
   useLayoutEffect(() => {
     const key = location.key;
+    let latestOwners = readScrollOwners();
+    const capture = () => { latestOwners = readScrollOwners(); };
+    document.addEventListener('scroll', capture, true);
     const save = () => {
       sessionStorage.setItem(scrollKey(key), String(readTop()));
-      positions.current.set(key, readScrollOwners());
+      positions.current.set(key, latestOwners);
+      document.removeEventListener('scroll', capture, true);
     };
     const scrollSurface = () => document.querySelector<HTMLElement>('.realtyz-main-surface');
     const readTop = () => scrollSurface()?.scrollTop ?? window.scrollY;

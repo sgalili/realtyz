@@ -1,9 +1,9 @@
 # Roadmap
 
 ## Public profile layout November 13
-- [ ] Standard blue header with full-name title, Close/Back, centered avatar with full-screen preview, name/role/license and cities.
-- [ ] Separate office identity box, remove duplicated activity section and outer profile/list frames, show authorized active-asset count.
-- [ ] Preserve previous-page scroll owners and verify desktop/mobile profile and return navigation.
+- [x] Standard blue header with full-name title, Close/Back, centered avatar with full-screen preview, name/role/license and saved service cities.
+- [x] Separate office identity box, remove duplicated activity section and outer profile/list frames, show authorized active-asset count. Existing public profile data provides one city, not a separate office operating-city list; display the available city without inventing others.
+- [x] Four focused tests passed; real Doli profile verified at 1280×1800 and 411×801 with four authorized assets, no horizontal overflow and full-viewport avatar preview. Back returned to community inbox and exact nonzero list scroll (80→80); no user/listing data changed.
 
 ## Expanded list scrolling and WhatsApp share November 13
 - [x] Lock the shared listing scroll owner horizontally while any property row is expanded; retain vertical and gallery scrolling, restore horizontal movement after all close.
