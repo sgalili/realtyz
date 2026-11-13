@@ -23,6 +23,10 @@ import { pauseInventory } from '@/lib/publishInventory';
 import { LeadQuestionConfigurator } from '@/components/affiliate/LeadQuestionConfigurator';
 import { cleanFormFields, resolveLeadQuestions, type LeadFormField } from '@/lib/leadTiers';
 import { PauseDistributionDialog } from './PauseDistributionDialog';
+import { ZeroLeadPriceWarning, ZERO_LEAD_PRICE_WARNING } from './ZeroLeadPriceWarning';
+import { applyBulkPublicationPricing, type BulkPricePatch } from '@/lib/bulkPublicationPricing';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 /** Shared square publication control; status remains accessible and tooltip-only. */
 export function PublishStatusGlobe({ live, busy = false, actionable = false, onClick }: { live: boolean; busy?: boolean; actionable?: boolean; onClick?: (event: ReactMouseEvent) => void }) {
@@ -70,6 +74,11 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [pauseOpen, setPauseOpen] = useState(false);
+  const [zeroConfirm, setZeroConfirm] = useState(false);
+  const [individualId, setIndividualId] = useState<string | null>(null);
+  const [overrides, setOverrides] = useState<Set<string>>(new Set());
+  const [sharedPrices, setSharedPrices] = useState<BulkPricePatch>({});
+  const [sharedClosing, setSharedClosing] = useState<Partial<Record<'sale' | 'rent', string>>>({});
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<PromotionRow[]>([]);
   const [accepted, setAccepted] = useState(false);
@@ -79,15 +88,22 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
   // Membership roles may remain "user" after the owner's broker approval.
   // Use server-backed owner/account roles; RLS remains the write boundary.
   const allowed = !rolesLoading && roles.some(role => ['managing_broker', 'lead_agent', 'agent', 'admin', 'super_admin', 'affiliate'].includes(role));
-  useEffect(() => { setOpen(false); setPauseOpen(false); setRows([]); setAccepted(false); setBusy(false); }, [activeWorkspaceId]);
+  useEffect(() => { setOpen(false); setPauseOpen(false); setZeroConfirm(false); setRows([]); setAccepted(false); setBusy(false); setIndividualId(null); setOverrides(new Set()); setSharedPrices({}); setSharedClosing({}); }, [activeWorkspaceId]);
   if (!allowed || !activeWorkspaceId || !ids.length) return <>{fallback ?? null}</>;
   const eligible = rows.filter(row => !row.canonical_duplicate_of && !isTerminalListing(row.status) && (isReadyForBoard(row) || (row.status === 'live' && (row.is_published || row.affiliate_enabled))));
   const published = eligible.filter(row => row.is_published || row.affiliate_enabled);
   const zeroRows = eligible.filter(row => { const d = drafts[row.id] ?? feeDraft(row); return brokerOnlyPricing([d.t1, d.t2, d.t3]); });
+  const bulk = ids.length > 1;
+  const editorRows = bulk ? eligible.filter(row => row.id === individualId) : eligible;
+  const updateShared = (patch: BulkPricePatch, deal?: string) => {
+    if (deal === 'sale' || deal === 'rent') setSharedClosing(previous => ({ ...previous, [deal]: patch.t4 }));
+    else setSharedPrices(previous => ({ ...previous, ...patch }));
+    setDrafts(previous => applyBulkPublicationPricing(previous, eligible.filter(row => !deal || (row.deal_type === 'rent' ? 'rent' : 'sale') === deal).map(row => row.id), overrides, patch));
+  };
   const updateDraft = (id: string, patch: Partial<FeeDraft>) => setDrafts(previous => ({ ...previous, [id]: { ...previous[id], ...patch } as FeeDraft }));
   const prepare = async () => {
     const workspaceId = activeWorkspaceId;
-    setBusy(true); setAccepted(false); setExpanded(true); setPauseOpen(false); setEditingLimit(null);
+    setBusy(true); setAccepted(false); setExpanded(true); setPauseOpen(false); setZeroConfirm(false); setIndividualId(null); setOverrides(new Set()); setSharedPrices({}); setSharedClosing({}); setEditingLimit(null);
     try {
       const { data, error } = await supabase.from('listings').select('id,property_title,address,house_number,city,asking_price,status,is_published,affiliate_enabled,deal_type,affiliate_tier1_amount,affiliate_tier2_amount,affiliate_tier3_amount,affiliate_tier4_amount,affiliate_tier4_type,contact_options,features,canonical_duplicate_of').eq('workspace_owner_id', activeWorkspaceId).in('id', [...new Set(ids)]);
       if (error) throw error;
@@ -100,8 +116,9 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
     }
     finally { if (scopeRef.current === workspaceId) setBusy(false); }
   };
-  const publish = async () => {
+  const publish = async (zeroAcknowledged = false) => {
     if (!accepted || !eligible.length || busy) return;
+    if (zeroRows.length && !zeroAcknowledged) { setZeroConfirm(true); return; }
     const workspaceId = activeWorkspaceId;
     setBusy(true);
     try {
@@ -127,7 +144,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
       void qc.invalidateQueries({ queryKey: ['affiliate-marketplace'] });
       toast.success(zeroRows.length === saved.length ? `${saved.length} נכסים פורסמו למתווכים שותפים מורשים בלבד` : `${saved.length} נכסים פורסמו בהתאם לקהל שהוגדר`);
       if (saved.length !== eligible.length) toast.warning('חלק מהנכסים לא פורסמו. יש לבדוק הרשאות.');
-      setOpen(false);
+      setZeroConfirm(false); setOpen(false);
     } catch (error) {
       console.error('[QuickPublicPromotion] publish failed', { workspaceId, listingIds: eligible.map(row => row.id), error });
       if (scopeRef.current === workspaceId) toast.error(publicationErrorMessage(error));
@@ -163,15 +180,30 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
     {compact && statusLive !== undefined ? (
       <PublishStatusGlobe live={statusLive} busy={busy} actionable={!statusLive} onClick={(event) => { event.stopPropagation(); void prepare(); }} />
     ) : (
-      <Button variant="outline" size={compact ? 'icon' : 'sm'} className={compact ? 'h-8 w-8 text-primary' : 'gap-1.5'} disabled={busy} title="פרסום בלוח הציבורי" aria-label="פרסום בלוח הציבורי" onClick={(event) => { event.stopPropagation(); void prepare(); }}>
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}{!compact && 'פרסום בלוח הציבורי'}
+      <Button variant="outline" size={compact ? 'icon' : 'sm'} className={compact ? 'h-8 w-8 text-primary' : 'gap-1.5 whitespace-normal'} disabled={busy} title={bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי'} aria-label={bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי'} onClick={(event) => { event.stopPropagation(); void prepare(); }}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4 shrink-0" />}{!compact && (bulk ? 'פרסום נכסים נבחרים' : 'פרסום בלוח הציבורי')}
       </Button>
     )}
     <Dialog open={open} onOpenChange={(value) => { if (!busy) setOpen(value); }}>
       <DialogContent dir="rtl" className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl" onClick={event => event.stopPropagation()}>
         <PublicationLeadHelp />
-        <DialogHeader className="px-6"><DialogTitle className="text-right">תמחור ותגמולים לפני פרסום</DialogTitle><DialogDescription className="text-right">{eligible.length} נכסים במשרד {activeWorkspace?.workspace_name}</DialogDescription></DialogHeader>
-        {zeroRows.length > 0 && <div role="alert" className="rounded-md border border-warning/50 bg-warning/10 p-3 text-right text-sm leading-relaxed"><strong>כל מחירי הפניות הם ₪0{eligible.length > 1 ? ` ב־${zeroRows.length} נכסים` : ''}.</strong> הנכסים האלה יופצו רק בקרב מתווכים שותפים מורשים ולא בלוח הציבורי לכל השותפים. התמחור אינו חובה, אך מומלץ מאוד לתמחר לפחות סוג פנייה אחד. ניתן להגביל את מספר הפניות וההוצאה ב־24 שעות.</div>}
+        <DialogHeader className="px-6"><DialogTitle className="text-right">{bulk ? 'תמחור משותף לנכסים נבחרים' : 'תמחור ותגמולים לפני פרסום'}</DialogTitle><DialogDescription className="text-right">{eligible.length} נכסים במשרד {activeWorkspace?.workspace_name}</DialogDescription></DialogHeader>
+        {zeroRows.length > 0 && <ZeroLeadPriceWarning />}
+        {bulk && eligible.length > 0 && <div className="space-y-4">
+          <div className="flex items-center justify-between gap-2"><Button variant={individualId ? 'outline' : 'default'} disabled={busy} onClick={() => setIndividualId(null)}>תמחור משותף</Button>
+            <Select value={individualId ?? ''} onValueChange={id => { setIndividualId(id); setOverrides(previous => new Set([...previous, id])); }} disabled={busy}><SelectTrigger className="min-w-0 flex-1" aria-label="התאמת תמחור לנכס"><SelectValue placeholder="התאמה לנכס מסוים" /></SelectTrigger><SelectContent>{eligible.map(row => <SelectItem key={row.id} value={row.id}>{row.property_title || row.address}{overrides.has(row.id) ? ' · תמחור אישי' : ''}</SelectItem>)}</SelectContent></Select>
+          </div>
+          {!individualId && <fieldset disabled={busy} className="space-y-4">
+            {(['sale', 'rent'] as const).filter(deal => eligible.some(row => (row.deal_type === 'rent' ? 'rent' : 'sale') === deal)).map(deal => {
+              const group = eligible.filter(row => (row.deal_type === 'rent' ? 'rent' : 'sale') === deal && !overrides.has(row.id));
+              const percentages = group.map(row => { const d = drafts[row.id] ?? feeDraft(row); return d.unit === 'percent' ? Number(d.t4) : Number(row.asking_price) > 0 ? Number(d.t4) / Number(row.asking_price) * 100 : 0; });
+              const common = percentages.length && percentages.every(value => Math.abs(value - percentages[0]) < 0.000001) ? String(Number(percentages[0].toFixed(4))) : '';
+              return <label key={deal} className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">{deal === 'rent' ? 'עמלת סגירה להשכרה (% מהשכירות)' : 'עמלת סגירה למכירה (%)'}<Input className="w-28 text-center" aria-label={deal === 'rent' ? 'עמלת סגירה משותפת להשכרה' : 'עמלת סגירה משותפת למכירה'} inputMode="decimal" type="number" min={deal === 'rent' ? 10 : 0.2} max={deal === 'rent' ? 100 : 2} step={deal === 'rent' ? 1 : 0.1} placeholder="מחירים שונים" value={sharedClosing[deal] ?? common} onChange={event => updateShared({ t4: event.target.value, unit: 'percent' }, deal)} /></label>;
+            })}
+            {([{ key: 't1', tier: 'form', label: 'פנייה דרך טופס' }, { key: 't2', tier: 'whatsapp', label: 'פנייה מסוננת בוואטסאפ' }, { key: 't3', tier: 'phone', label: 'פנייה מסוננת טלפונית' }] as const).map(({ key, tier, label }) => <div key={key} className="space-y-1"><h3 className="text-sm font-semibold">{label}</h3><LeadPriceSlider tier={tier} label={label} value={sharedPrices[key] ?? (eligible.every(row => drafts[row.id]?.[key] === drafts[eligible[0]?.id]?.[key]) ? drafts[eligible[0]?.id]?.[key] ?? '' : '')} onChange={value => updateShared({ [key]: value })} /><Input type="number" className="h-9 w-28 text-center" aria-label={`מחיר משותף: ${label}`} placeholder="ללא שינוי" min={0} value={sharedPrices[key] ?? ''} onChange={event => updateShared({ [key]: event.target.value })} /></div>)}
+          </fieldset>}
+          {individualId && <Button variant="link" disabled={busy} onClick={() => { const row = eligible.find(row => row.id === individualId); if (!row) return; const closing = sharedClosing[row.deal_type === 'rent' ? 'rent' : 'sale']; setOverrides(previous => { const next = new Set(previous); next.delete(individualId); return next; }); setDrafts(previous => ({ ...previous, [individualId]: { ...feeDraft(row), ...sharedPrices, ...(closing === undefined ? {} : { t4: closing, unit: 'percent' as const }) } })); setIndividualId(null); }}>הסרת ההתאמה האישית</Button>}
+        </div>}
         <div className="max-h-64 overflow-y-auto divide-y divide-border">
           {rows.map(row => <div key={row.id} className="flex items-center gap-2 py-2 text-sm"><BadgeCheck className={`h-4 w-4 shrink-0 ${eligible.some(item => item.id === row.id) ? 'text-success' : 'text-muted-foreground'}`} /><span className="min-w-0 flex-1 break-words">{row.property_title || row.address}</span><span className="max-w-[45%] text-xs text-muted-foreground">{isTerminalListing(row.status) || row.canonical_duplicate_of ? 'הוסר או אינו פעיל' : row.is_published || row.affiliate_enabled ? brokerOnlyPricing([row.affiliate_tier1_amount, row.affiliate_tier2_amount, row.affiliate_tier3_amount]) ? 'מפורסם למתווכים מורשים בלבד; לא בלוח הציבורי' : 'מפורסם בלוח הציבורי' : 'טרם פורסם'}</span></div>)}
         </div>
@@ -184,7 +216,7 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
             </div>); })}
           {expanded && <div>
             <div className="space-y-3 py-2">
-              {eligible.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
+              {editorRows.map(row => { const d = drafts[row.id] ?? feeDraft(row); return (
                 <div key={row.id} className="space-y-1">
                   {eligible.length > 1 && <div className="text-xs font-medium">{row.property_title || row.address}</div>}
                   <fieldset disabled={busy} className="space-y-3">
@@ -206,5 +238,6 @@ export function QuickPublicPromotion({ ids, onPublished, compact = false, status
       </DialogContent>
     </Dialog>
     <PauseDistributionDialog open={pauseOpen} busy={busy} onOpenChange={setPauseOpen} onConfirm={() => void pause()} />
+    <AlertDialog open={zeroConfirm} onOpenChange={value => { if (!busy) setZeroConfirm(value); }}><AlertDialogContent dir="rtl" className="w-[calc(100%-2rem)] max-h-[90dvh] overflow-y-auto rounded-lg"><AlertDialogHeader><AlertDialogTitle>פרסום ברשת המתווכים בלבד</AlertDialogTitle><AlertDialogDescription className="text-start text-base leading-relaxed">{ZERO_LEAD_PRICE_WARNING}<span className="mt-2 block">{zeroRows.length === 1 ? 'נכס אחד יפורסם במתכונת זו.' : `${zeroRows.length} נכסים יפורסמו במתכונת זו.`}</span></AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><Button variant="outline" className="h-auto min-h-11 whitespace-normal" disabled={busy} onClick={() => setZeroConfirm(false)}>חזרה לתמחור</Button><Button className="h-auto min-h-11 whitespace-normal" disabled={busy} onClick={() => void publish(true)}>אישור פרסום למתווכים בלבד</Button></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </>;
 }

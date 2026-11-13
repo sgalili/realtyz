@@ -29,6 +29,7 @@ import { commitPricingEdit, pricingEditWorkspace } from '@/lib/pricingSave';
 import { leadPriceLabel } from '@/lib/leadPriceLabel';
 import { leadPriceLevel, closingLevelClass, closingRewardLevel } from '@/lib/leadPriceRanges';
 import { allLeadPricesZero } from '@/lib/leadPricesZero';
+import { ZeroLeadPriceWarning } from '@/components/properties/ZeroLeadPriceWarning';
 import { AccountLeadBudget } from '@/components/properties/AccountLeadBudget';
 import { PublicationLeadHelp } from '@/components/properties/PublicationLeadHelp';
 import { isTerminalListing } from '@/lib/publicationSettings';
@@ -1276,14 +1277,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           </dl>
         </div>
         <p className="rounded-md border border-primary/30 bg-primary/5 p-3 text-[16px] font-medium leading-relaxed text-foreground">{fields.brokerLicenseReview ? 'הנכס יישמר וימתין לאישור הרישיון לפני פרסום.' : allLeadPricesZero(fields) ? 'לאחר האישור הנכס יפורסם מיד למתווכים שותפים מורשים בלבד. הוא לא יוצג בלוח הציבורי לכל השותפים ויישאר בנכסים שלי.' : 'לאחר האישור הנכס יפורסם מיד בלוח הנכסים הציבורי ובעמוד הנכסים שלי שלך.'}</p>
-        {allLeadPricesZero(fields) && (
-          <div role="alert" className="space-y-2 rounded-md border border-warning/50 bg-warning/10 p-3 text-[16px] leading-relaxed text-foreground">
-            <p className="font-bold">שימו לב: כל סוגי הפניות מתומחרים ב-₪0</p>
-            <p>המודעה תופץ ותשותף <strong>רק בקרב מתווכים שותפים מורשים</strong>, ולא בקרב כל השותפים באתר.</p>
-            <p>התמחור אינו חובה, אך <strong>מומלץ מאוד לתמחר לפחות סוג פנייה אחד</strong>.</p>
-            <p>ניתן להגדיר מגבלת פניות יומית (24 שעות) לכל סוג פנייה, כדי לשלוט בהוצאות ולמנוע חיובים לא צפויים.</p>
-          </div>
-        )}
+        {allLeadPricesZero(fields) && <ZeroLeadPriceWarning />}
         {renderStep(8)}
         {user && <AccountLeadBudget key={activeWorkspaceId} ownerId={activeWorkspaceId} />}
         <div className="flex justify-between gap-2"><Button variant="outline" disabled={publishing} onClick={() => setConfirming(false)}>ביטול</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'שמירת תמחור ופרסום'}</Button></div>

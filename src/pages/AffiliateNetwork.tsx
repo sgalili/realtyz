@@ -594,8 +594,9 @@ loading ? (
             </div>
 
             {multiSelectMode && selectedListingIds.size > 0 ? (
-              <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
                 <span className="text-sm font-semibold">נבחרו {selectedListingIds.size} נכסים</span>
+                <QuickPublicPromotion ids={[...selectedListingIds]} onPublished={() => { setSelectedListingIds(new Set()); void queryClient.invalidateQueries({ queryKey: ['broker-affiliate-listings'] }); }} />
                 <Button
                   size="sm"
                   variant="destructive"

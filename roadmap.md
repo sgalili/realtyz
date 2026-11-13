@@ -1,5 +1,10 @@
 # Roadmap
 
+## Multi-selection pricing November 13
+- [x] Selected-assets publication opens shared lead prices and separate sale/rent closing settings, with individual overrides and retained untouched fields.
+- [x] Single/bulk publication share zero-price detection and concise warning; inventory publication requires broker-only confirmation before saving.
+- [x] Focused tests passed; authenticated desktop/mobile selection, shared pricing, individual entry and canceled zero warning verified. No live distribution changed; actual saves/publication exercised in tests.
+
 ## Publication pricing and pause confirmations November 13
 - [x] Open saved pricing before inventory publication, save every confirmed setup before publishing, and show pricing again in the publisher's final confirmation. Creation/import remain private until explicit publication.
 - [x] Route legacy partner activation through the same setup and require a cancelable impact warning before pausing distribution.
