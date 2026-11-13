@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CommunityDirectory } from './CommunityDirectory';
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'dir-user' } }) }));
@@ -19,20 +20,18 @@ const rpc = vi.hoisted(() => vi.fn(async (fn: string) => {
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{children}</QueryClientProvider>
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={children} /><Route path="/community/profile/:userId" element={<p>profile page peer-1</p>} /></Routes></MemoryRouter></QueryClientProvider>
 );
 
 afterEach(cleanup);
 
-it('opens the public profile from the contact name without starting a chat', async () => {
+it('opens the dedicated public profile page from the contact name without starting a chat', async () => {
   const onSelect = vi.fn();
   render(<CommunityDirectory enabled onSelect={onSelect} />, { wrapper });
   const name = await screen.findByRole('button', { name: 'פתיחת הפרופיל הציבורי של דנה כהן' });
   fireEvent.click(name);
   expect(onSelect).not.toHaveBeenCalled();
-  await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
-  expect(await screen.findByText('משרד הדס')).toBeInTheDocument();
-  expect(screen.getByText('רישיון תיווך 123456789')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText('profile page peer-1')).toBeInTheDocument());
 });
 
 it('starts the chat only from the explicit chat action', async () => {

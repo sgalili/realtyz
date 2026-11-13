@@ -9650,6 +9650,21 @@ export type Database = {
           property_title: string
         }[]
       }
+      community_profile_page: {
+        Args: { _user: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          category: string
+          city: string
+          full_name: string
+          id: string
+          license_number: string
+          logo_url: string
+          office_name: string
+          service_areas: string[]
+        }[]
+      }
       complete_admin_broker_first_login: { Args: never; Returns: string }
       complete_official_license_verification: {
         Args: { _number: string; _uid: string }

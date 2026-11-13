@@ -158,6 +158,7 @@ const OmnichannelInbox = () => {
   useEffect(() => {
     const v = searchParams.get('chat') || searchParams.get('lead');
     if (v) { setSelectedVoterId(v); setInboxSection('leads'); }
+    if (searchParams.get('community')) setInboxSection('community');
     setHighlightMessageId(searchParams.get('message'));
     const requestedChannel = searchParams.get('channel');
     if (requestedChannel && channelConfig[requestedChannel]) setSendChannel(requestedChannel);

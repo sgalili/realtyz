@@ -1163,6 +1163,13 @@
       "when": 1794586628120,
       "tag": "0165_community_profiles_and_deal_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1794588604787,
+      "tag": "0166_community_profile_page",
+      "breakpoints": true
     }
   ]
 }

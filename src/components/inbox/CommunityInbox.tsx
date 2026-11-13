@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 type Card = { id: string; full_name: string | null; category: string; office_name: string | null; license_number: string | null };
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -101,6 +102,9 @@ export function CommunityInbox({ active }: { active: boolean }) {
   });
   const [blockOpen, setBlockOpen] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const deepPeer = searchParams.get('community');
+  useEffect(() => { if (deepPeer) { setView('private'); setPeer({ id: deepPeer, full_name: null, avatar_url: null }); } }, [deepPeer]); // eslint-disable-line react-hooks/exhaustive-deps
   const blocked = !!peer && !!blocks.data?.has(peer.id);
   const toggleBlock = useMutation({
     mutationFn: async () => {
@@ -177,10 +181,10 @@ export function CommunityInbox({ active }: { active: boolean }) {
         {eligibility.data && !contacts.isLoading && !threads.isLoading && !peers.length && <p className="p-4 text-sm text-muted-foreground">לא נמצאו חברי קהילה</p>}
         {peers.map(contact => {
           const last = threads.data?.find(thread => thread.peer_id === contact.id);
-          return <Button key={contact.id} variant="ghost" className={`h-auto min-h-16 w-full justify-start gap-3 rounded-none border-b border-border px-3 py-3 text-start ${peer?.id === contact.id ? 'bg-muted' : ''}`} onClick={() => setPeer(contact)}>
-            <Avatar className="h-10 w-10 shrink-0"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar>
-            <Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} />
-          </Button>;
+          return <div key={contact.id} className={`flex min-h-16 w-full items-center gap-3 border-b border-border px-3 py-3 ${peer?.id === contact.id ? 'bg-muted' : ''}`}>
+            <button type="button" className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`פתיחת הפרופיל הציבורי של ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setProfileId(contact.id)}><Avatar className="h-10 w-10"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar></button>
+            <button type="button" className="flex min-w-0 flex-1 text-start hover:opacity-80" onClick={() => setPeer(contact)}><Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} /></button>
+          </div>;
         })}
       </div>
     </aside>
