@@ -1103,8 +1103,8 @@ const OmnichannelInbox = () => {
   return (
     <Tabs dir="rtl" value={inboxSection} onValueChange={setInboxSection} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <TabsList aria-label="סוג שיחות" className="grid h-auto min-h-11 w-full shrink-0 grid-cols-2 gap-1">
-        <TabsTrigger value="leads" className="min-h-10 min-w-0 whitespace-normal px-2 text-sm">צ'אטים נכסים ולידים</TabsTrigger>
-        <TabsTrigger value="community" className="min-h-10 min-w-0 whitespace-normal px-2 text-sm">מועדון הקהילה</TabsTrigger>
+        <TabsTrigger value="leads" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">צ'אטים נכסים ולידים</TabsTrigger>
+        <TabsTrigger value="community" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">מועדון הקהילה</TabsTrigger>
       </TabsList>
       <TabsContent value="community" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
         <CommunityInbox key={`${user?.id}:${workspaceScope}`} active={inboxSection === 'community'} />
@@ -1158,23 +1158,29 @@ const OmnichannelInbox = () => {
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
           <div className="p-3 border-b space-y-2">
-            <div className="flex items-center justify-center gap-1.5 overflow-x-auto" aria-label="סינון לפי ערוץ">
-              {(() => {
+            {(() => {
+                // Only channels that actually have saved messages (for the open
+                // conversation when one is selected) are shown; unused icons stay hidden.
                 const channelsInList = new Set<string>();
-                (leadChannels instanceof Map ? Array.from(leadChannels.values()) : []).forEach((set: Set<string>) => set.forEach((channel) => channelsInList.add(channel)));
-                (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((message: any) => {
-                  const key = String(message?.channel || message?.platform || '').toLowerCase();
-                  if (key) channelsInList.add(key);
-                });
-                return ([
+                const map = leadChannels instanceof Map ? leadChannels : null;
+                if (selectedVoterId && map) map.get(selectedVoterId)?.forEach((channel: string) => channelsInList.add(channel));
+                else {
+                  (map ? Array.from(map.values()) : []).forEach((set: Set<string>) => set.forEach((channel) => channelsInList.add(channel)));
+                  (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((message: any) => {
+                    const key = String(message?.channel || message?.platform || '').toLowerCase();
+                    if (key) channelsInList.add(key);
+                  });
+                }
+                const items = ([
                   { key: 'whatsapp', label: 'WhatsApp' }, { key: 'sms', label: 'SMS' },
                   { key: 'telegram', label: 'Telegram' }, { key: 'messenger', label: 'Messenger' },
                   { key: 'instagram', label: 'Instagram' }, { key: 'email', label: 'Email' },
                   { key: 'facebook', label: 'Facebook' }, { key: 'linkedin', label: 'LinkedIn' },
                   { key: 'x', label: 'X' }, { key: 'tiktok', label: 'TikTok' },
-                ] as const).map((channel) => {
+                ] as const).filter((channel) => channelsInList.has(channel.key));
+                if (!items.length) return null;
+                return <div className="flex items-center justify-center gap-1.5 overflow-x-auto" aria-label="סינון לפי ערוץ">{items.map((channel) => {
                   const active = channelFilter.has(channel.key);
-                  const hasChats = channelsInList.has(channel.key);
                   return (
                     <button
                       key={channel.key}
@@ -1192,14 +1198,13 @@ const OmnichannelInbox = () => {
                       aria-label={channel.label}
                       title={channel.label}
                       aria-pressed={active}
-                      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 transition-all ${active ? 'scale-110 opacity-100' : hasChats ? 'opacity-70 hover:opacity-100' : 'grayscale opacity-35 hover:opacity-70'}`}
+                      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 transition-all ${active ? 'scale-110 opacity-100 ring-2 ring-primary rounded-full' : 'opacity-80 hover:opacity-100'}`}
                     >
                       <ChannelIcon channel={channel.key} size="md" />
                     </button>
                   );
-                });
+                })}</div>;
               })()}
-            </div>
             <div className="flex items-center gap-1.5">
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

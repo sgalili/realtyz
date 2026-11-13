@@ -2526,6 +2526,24 @@ export type Database = {
           },
         ]
       }
+      community_user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       contact_submissions: {
         Row: {
           created_at: string
@@ -9544,6 +9562,7 @@ export type Database = {
           content: string
           created_at: string
           full_name: string
+          last_sender_id: string
           peer_id: string
         }[]
       }
@@ -9564,6 +9583,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      community_is_blocked: {
+        Args: { _recipient: string; _sender: string }
+        Returns: boolean
+      }
       community_joined_groups: {
         Args: never
         Returns: {
@@ -9573,6 +9596,16 @@ export type Database = {
           name: string
           owner_id: string
           unread_count: number
+        }[]
+      }
+      community_profile_cards: {
+        Args: { _ids: string[] }
+        Returns: {
+          category: string
+          full_name: string
+          id: string
+          license_number: string
+          office_name: string
         }[]
       }
       complete_admin_broker_first_login: { Args: never; Returns: string }

@@ -14,8 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { RitaChatButton } from './RitaChatButton';
 import { ChatMessageText } from './ChatMessageText';
 import { toast } from 'sonner';
+import { playSoftDing, showGroupedChatNotification } from '@/lib/communityNotify';
 
-export function CommunityGroups({ eligible, active }: { eligible: boolean; active: boolean }) {
+export function CommunityGroups({ eligible, active, blockedIds }: { eligible: boolean; active: boolean; blockedIds?: Set<string> }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [selected, setSelected] = useState<CommunityGroup | null>(null);
@@ -71,6 +72,22 @@ export function CommunityGroups({ eligible, active }: { eligible: boolean; activ
     document.addEventListener('visibilitychange', markRead);
     return () => document.removeEventListener('visibilitychange', markRead);
   }, [active, allowed, selected?.id, lastMessage?.id, user?.id, qc]);
+  const unreadSeen = useRef<Map<string, number> | null>(null);
+  useEffect(() => {
+    if (!groups.data) return;
+    const first = unreadSeen.current === null;
+    let ding = false;
+    const next = new Map<string, number>();
+    for (const group of groups.data) {
+      next.set(group.id, group.unread_count);
+      const before = unreadSeen.current?.get(group.id) ?? 0;
+      if (first || group.unread_count <= before || (active && selected?.id === group.id)) continue;
+      ding = true;
+      showGroupedChatNotification(`group-${group.id}`, group.name, group.unread_count, null, () => setSelected(group));
+    }
+    unreadSeen.current = next;
+    if (ding) playSoftDing();
+  }, [groups.data]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (active) endRef.current?.scrollIntoView({ block: 'nearest' }); }, [active, selected?.id, lastMessage?.id]);
   return <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
     <aside className={`${selected ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>
@@ -80,7 +97,7 @@ export function CommunityGroups({ eligible, active }: { eligible: boolean; activ
     <section className={`${selected ? 'flex' : 'hidden lg:flex'} min-h-0 min-w-0 flex-col`}>
       {!selected ? <div className="flex flex-1 items-center justify-center text-muted-foreground">קבוצות הקהילה</div> : <>
         <header className="flex min-h-16 shrink-0 items-center gap-2 border-b border-border px-3"><Button size="icon" variant="ghost" aria-label="חזרה לקבוצות" className="lg:hidden" onClick={() => setSelected(null)}><ArrowRight className="h-5 w-5" /></Button><span className="min-w-0 flex-1"><span className="block truncate font-semibold">{selected.name}</span><span className="block truncate text-xs text-muted-foreground">{selected.description}</span></span><Button size="icon" variant="ghost" aria-label="חברי הקבוצה" onClick={() => { setSearch(''); setRosterOpen(true); }}><Users className="h-5 w-5" /></Button>{canPost && <RitaChatButton kind="group" target={selected.id} />}</header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3" role="log" aria-label="הודעות הקבוצה">{!allowed && !roster.isLoading && <p role="alert" className="text-muted-foreground">אינך חבר בקבוצה זו</p>}{allowed && messages.data?.map(message => <div key={message.id} className="mb-3 border-b border-border pb-3"><span className="text-xs font-semibold text-muted-foreground">{roster.data?.find(member => member.user_id === message.sender_id)?.full_name ?? 'חבר קבוצה'}</span><ChatMessageText content={message.content} /><time className="block text-end text-xs text-muted-foreground">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div>)}{messages.isError && <p role="alert" className="text-destructive">טעינת ההודעות נכשלה</p>}<div ref={endRef} /></div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3" role="log" aria-label="הודעות הקבוצה">{!allowed && !roster.isLoading && <p role="alert" className="text-muted-foreground">אינך חבר בקבוצה זו</p>}{allowed && messages.data?.filter(message => !blockedIds?.has(message.sender_id)).map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}>{!mine && <span className="block text-xs font-semibold text-muted-foreground">{roster.data?.find(member => member.user_id === message.sender_id)?.full_name ?? 'חבר קבוצה'}</span>}<ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}{messages.isError && <p role="alert" className="text-destructive">טעינת ההודעות נכשלה</p>}<div ref={endRef} /></div>
         {allowed && selected.kind === 'broadcast' && selected.owner_id !== user?.id ? <p className="border-t border-border p-3 text-center text-sm text-muted-foreground">ערוץ שידור · רק מנהל הערוץ יכול לפרסם</p> : <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={event => { event.preventDefault(); void send(); }}><Input aria-label="הודעה לקבוצה" placeholder="הקלד הודעה..." maxLength={4000} value={drafts[selected.id] ?? ''} onChange={event => setDrafts(previous => ({ ...previous, [selected.id]: event.target.value }))} disabled={!canPost} className="min-w-0 flex-1" /><Button type="submit" size="icon" className="h-11 w-11 shrink-0" aria-label="שלח לקבוצה" disabled={!canPost || busy || !(drafts[selected.id] ?? '').trim()}><Send className="h-4 w-4" /></Button></form>}
       </>}
     </section>

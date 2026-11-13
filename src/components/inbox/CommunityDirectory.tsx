@@ -13,7 +13,7 @@ export const DIRECTORY_CATEGORIES = [
   { value: 'all', label: 'הכול' }, { value: 'broker', label: 'מתווכים' },
   { value: 'developer', label: 'יזמים' }, { value: 'partner', label: 'שותפים' },
 ] as const;
-export const ROLE_BADGE: Record<string, string> = { broker: 'מתווך', developer: 'יזם', partner: 'שותף' };
+export const ROLE_BADGE: Record<string, string> = { broker: 'מתווך', developer: 'יזם', partner: 'שותף', buyer: 'קונה', seller: 'מוכר', dealer: 'סוחר', landlord: 'משכיר' };
 
 export function useCommunityDirectory(enabled: boolean, search: string, category: string) {
   const { user } = useAuth();

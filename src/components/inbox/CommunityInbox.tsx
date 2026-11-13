@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+
+type Card = { id: string; full_name: string | null; category: string; office_name: string | null; license_number: string | null };
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, UserPlus, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
+import { ArrowRight, Ban, UserPlus, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -11,7 +13,9 @@ import { ChatMessageText } from './ChatMessageText';
 import { communityMessageContent } from '@/lib/communityChat';
 import { toast } from 'sonner';
 import { CommunityGroups } from './CommunityGroups';
-import { CommunityDirectory } from './CommunityDirectory';
+import { CommunityDirectory, ROLE_BADGE } from './CommunityDirectory';
+import { Badge } from '@/components/ui/badge';
+import { playSoftDing, showGroupedChatNotification } from '@/lib/communityNotify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RitaChatButton } from './RitaChatButton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -84,13 +88,76 @@ export function CommunityInbox({ active }: { active: boolean }) {
     const text = communityMessageContent(draft);
     if (peer && text && !send.isPending) send.mutate({ target: peer.id, text });
   };
+  const blocks = useQuery({
+    queryKey: ['community-blocks', user?.id], enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('community_user_blocks').select('blocked_id');
+      if (error) throw error;
+      return new Set(data.map(row => row.blocked_id));
+    },
+  });
+  const [blockOpen, setBlockOpen] = useState(false);
+  const blocked = !!peer && !!blocks.data?.has(peer.id);
+  const toggleBlock = useMutation({
+    mutationFn: async () => {
+      if (!user || !peer) return;
+      const { error } = blocked
+        ? await supabase.from('community_user_blocks').delete().eq('blocker_id', user.id).eq('blocked_id', peer.id)
+        : await supabase.from('community_user_blocks').insert({ blocker_id: user.id, blocked_id: peer.id });
+      if (error) throw error;
+    },
+    onSuccess: () => { setBlockOpen(false); toast.success(blocked ? 'החסימה הוסרה' : 'המשתמש נחסם ולא יוכל לשלוח לך הודעות'); void queryClient.invalidateQueries({ queryKey: ['community-blocks', user?.id] }); },
+    onError: () => toast.error('עדכון החסימה נכשל'),
+  });
+  // Grouped in-app notifications: one card per chat with the running count.
+  const seen = useRef<Map<string, string> | null>(null);
+  const pending = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!threads.data || !user) return;
+    const first = seen.current === null;
+    const next = new Map<string, string>();
+    let ding = false;
+    for (const thread of threads.data) {
+      next.set(thread.peer_id, thread.created_at);
+      if (first) continue;
+      const before = seen.current!.get(thread.peer_id);
+      if (before === thread.created_at || thread.last_sender_id === user.id || blocks.data?.has(thread.peer_id)) continue;
+      const viewing = active && view === 'private' && peer?.id === thread.peer_id && document.visibilityState === 'visible';
+      if (viewing) { delete pending.current[thread.peer_id]; continue; }
+      pending.current[thread.peer_id] = (pending.current[thread.peer_id] ?? 0) + 1;
+      ding = true;
+      const target = { id: thread.peer_id, full_name: thread.full_name, avatar_url: thread.avatar_url };
+      showGroupedChatNotification(thread.peer_id, thread.full_name ?? 'חבר קהילה', pending.current[thread.peer_id], thread.content, () => { setView('private'); setPeer(target); });
+    }
+    seen.current = next;
+    if (ding) playSoftDing();
+  }, [threads.data, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (peer) delete pending.current[peer.id]; }, [peer?.id]);
   const peers: Peer[] = search ? contacts.data ?? [] : [
     ...(threads.data ?? []).map(thread => ({ id: thread.peer_id, full_name: thread.full_name, avatar_url: thread.avatar_url })),
     ...(contacts.data ?? []).filter(contact => !threads.data?.some(thread => thread.peer_id === contact.id)),
-  ];
+  ].filter(p => !blocks.data?.has(p.id));
+  const cardIds = [...new Set([...peers.map(p => p.id), ...(peer ? [peer.id] : [])])].slice(0, 200);
+  const cards = useQuery({
+    queryKey: ['community-cards', user?.id, cardIds.join(',')], enabled: !!user && cardIds.length > 0, staleTime: 60000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('community_profile_cards', { _ids: cardIds });
+      if (error) throw error;
+      return new Map((data as Card[]).map(card => [card.id, card]));
+    },
+  });
+  const Identity = ({ id, name, fallback }: { id: string; name: string | null; fallback?: string }) => {
+    const card = cards.data?.get(id);
+    const sub = [card?.office_name, card?.license_number ? `רישיון ${card.license_number}` : null].filter(Boolean).join(' · ');
+    return <span className="min-w-0 flex-1">
+      <span className="flex min-w-0 items-center gap-1.5"><span className="truncate font-semibold">{card?.full_name ?? name}</span>{card && <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px]">{ROLE_BADGE[card.category] ?? 'משתמש'}</Badge>}</span>
+      {sub && <span className="block truncate text-xs text-muted-foreground">{sub}</span>}
+      {fallback !== undefined && <span className="block truncate text-xs text-muted-foreground">{fallback}</span>}
+    </span>;
+  };
   return <Tabs dir="rtl" value={view} onValueChange={setView} className="flex h-full min-h-0 flex-col gap-2">
-    <TabsList className="grid w-full shrink-0 grid-cols-2"><TabsTrigger value="private">שיחות פרטיות</TabsTrigger><TabsTrigger value="groups">קבוצות</TabsTrigger></TabsList>
-    <TabsContent value="groups" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden"><CommunityGroups key={user?.id} eligible={eligibility.data === true} active={active && view === 'groups'} /></TabsContent>
+    <TabsList className="grid w-full shrink-0 grid-cols-2"><TabsTrigger value="private" className="text-base">שיחות פרטיות</TabsTrigger><TabsTrigger value="groups" className="text-base">קבוצות</TabsTrigger></TabsList>
+    <TabsContent value="groups" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden"><CommunityGroups key={user?.id} eligible={eligibility.data === true} active={active && view === 'groups'} blockedIds={blocks.data} /></TabsContent>
     <TabsContent value="private" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
     <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
     <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>
@@ -108,7 +175,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
           const last = threads.data?.find(thread => thread.peer_id === contact.id);
           return <Button key={contact.id} variant="ghost" className={`h-auto min-h-16 w-full justify-start gap-3 rounded-none border-b border-border px-3 py-3 text-start ${peer?.id === contact.id ? 'bg-muted' : ''}`} onClick={() => setPeer(contact)}>
             <Avatar className="h-10 w-10 shrink-0"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar>
-            <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{contact.full_name}</span><span className="block truncate text-xs text-muted-foreground">{last?.content ?? 'שיחה חדשה'}</span></span>
+            <Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} />
           </Button>;
         })}
       </div>
@@ -117,14 +184,16 @@ export function CommunityInbox({ active }: { active: boolean }) {
       {!peer ? <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"><MessageCircle className="h-10 w-10" /><span>מועדון הקהילה</span></div> : <>
         <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
-          <span className="min-w-0 flex-1 truncate font-semibold">{peer.full_name}</span>
+          <Identity id={peer.id} name={peer.full_name} />
+          <Button size="icon" variant="ghost" aria-label={blocked ? 'הסרת חסימה' : 'חסימת משתמש'} title={blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'} onClick={() => setBlockOpen(true)}><Ban className={`h-5 w-5 ${blocked ? 'text-destructive' : ''}`} /></Button>
           <RitaChatButton kind="peer" target={peer.id} />
+          <Dialog open={blockOpen} onOpenChange={setBlockOpen}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>{blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'}</DialogTitle></DialogHeader><p className="text-muted-foreground">{blocked ? `${peer.full_name ?? 'המשתמש'} יוכל לשלוח לך הודעות שוב.` : `${peer.full_name ?? 'המשתמש'} לא יוכל לשלוח לך הודעות פרטיות, והודעותיו בקבוצות יוסתרו אצלך.`}</p><div className="flex justify-between gap-3"><Button variant="outline" onClick={() => setBlockOpen(false)}>ביטול</Button><Button variant={blocked ? 'default' : 'destructive'} disabled={toggleBlock.isPending} onClick={() => toggleBlock.mutate()}>{blocked ? 'הסרת חסימה' : 'חסימה'}</Button></div></DialogContent></Dialog>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-4" role="log" aria-label="הודעות הקהילה">
           {messages.isLoading && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
           {messages.isError && <div role="alert" className="text-destructive">טעינת ההודעות נכשלה<Button variant="ghost" onClick={() => void messages.refetch()}>נסה שוב</Button></div>}
           {!messages.isLoading && !messages.isError && !messages.data?.length && <p className="text-center text-muted-foreground">אין הודעות בשיחה</p>}
-          {messages.data?.map(message => <div key={message.id} className={`mb-3 flex ${message.sender_id === user?.id ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[85%] break-words rounded-lg px-3 py-2 ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}><ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>)}
+          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
           <div ref={endRef} />
         </div>
         <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={event => { event.preventDefault(); submit(); }}>
