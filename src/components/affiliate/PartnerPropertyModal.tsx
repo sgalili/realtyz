@@ -1,18 +1,13 @@
 import { tagShareText, withShareUtm } from '@/lib/shareTracking';
 import type { ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
-import { LeadPricingInfo } from '@/components/affiliate/LeadPricingDialog';
-import { normalizeListing } from '@/pages/PublicListingPage';
 import { publicUrl } from '@/lib/publicUrl';
 import type { MarketplaceListing } from '@/hooks/useAffiliate';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useWorkspace } from '@/hooks/useWorkspace';
+import PropertyContactActions from '@/components/public/PropertyContactActions';
 
 export function CopyListingLinkButton({ listingId }: { listingId: string }) {
   return (
@@ -29,37 +24,17 @@ export function CopyListingLinkButton({ listingId }: { listingId: string }) {
 
 /** Full property details for the partner board, with a sticky action bar. */
 export function PartnerPropertyModal({ listing, onClose, actions }: { listing: MarketplaceListing | null; onClose: () => void; actions?: ReactNode }) {
-  const id = listing?.listing_id ?? '';
-  const { user } = useAuth();
-  const { activeWorkspaceId, loading } = useWorkspace();
-  const { data } = useQuery({
-    queryKey: ['public-listing-expanded', id, user?.id, activeWorkspaceId],
-    enabled: !!listing && (!user || !loading),
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data: payload, error } = await supabase.functions.invoke(`public-listing-view?id=${encodeURIComponent(id)}`, { method: 'GET' });
-      if (error) return null;
-      if (!payload?.property) return null;
-      return { listing: normalizeListing(payload.property, payload.attribution), raw: payload.property as Record<string, unknown> };
-    },
-  });
   return (
     <Dialog open={!!listing} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent dir="rtl" className="flex max-h-[92dvh] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0">
         {listing && <>
-          <div className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b bg-background px-4 py-2 pe-12">
-            <div className="min-w-0">
-              <DialogTitle className="break-words text-base">{listing.property_title || 'פרטי נכס'}</DialogTitle>
+          <div className="sr-only">
+              <DialogTitle>{listing.property_title || 'פרטי נכס'}</DialogTitle>
               <DialogDescription className="sr-only">כל פרטי הנכס, המפרסם והעמלות</DialogDescription>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">{actions}<CopyListingLinkButton listingId={listing.listing_id} /></div>
           </div>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-            <ExpandedPropertyDetails idOrSlug={listing.listing_id} />
-            <section className="space-y-2 rounded-lg border p-3">
-              <h3 className="font-bold">עמלות לפי סוג ליד</h3>
-              <LeadPricingInfo listing={listing} details={(data?.raw ?? {}) as never} />
-            </section>
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 pt-10 lg:p-5 lg:pt-10">
+            <ExpandedPropertyDetails key={listing.listing_id} idOrSlug={listing.listing_id} actions={actions} />
+            <PropertyContactActions listingId={listing.listing_id} title={listing.property_title || 'פרטי נכס'} compact formAsButton showShare={false} className="sticky bottom-0 z-20 bg-card pb-2 pt-1" />
           </div>
         </>}
       </DialogContent>

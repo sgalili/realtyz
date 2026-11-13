@@ -8,7 +8,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ROLE_BADGE } from '@/components/inbox/CommunityDirectory';
 import { fetchPublicBoardFeed } from '@/lib/publicBoardFeed';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
-import { profileAssetPath } from '@/components/community/ProfileAssetActions';
 import StandardPropertyCard from '@/components/public/StandardPropertyCard';
 
 export default function CommunityOfficePage() {
@@ -38,6 +37,6 @@ export default function CommunityOfficePage() {
     {members.isError && <p role="alert" className="text-destructive">טעינת צוות המשרד נכשלה</p>}
     <ul className="divide-y divide-border">{members.data?.map(member => <li key={member.id}><Button variant="ghost" className="h-auto w-full justify-start gap-3 py-3 text-start" onClick={() => navigate(`/community/profile/${encodeURIComponent(member.id)}`)}><Avatar className="h-14 w-14"><AvatarImage src={member.avatar_url ?? undefined} /><AvatarFallback>{member.full_name?.slice(0, 1)}</AvatarFallback></Avatar><span className="min-w-0"><span className="block whitespace-normal text-lg font-semibold">{member.full_name}</span><span className="text-muted-foreground">{ROLE_BADGE[member.category] ?? 'משתמש'} {member.license_number}</span></span></Button></li>)}</ul>
     {members.data?.length === 0 && <p className="text-muted-foreground">לא נמצא צוות משרד משותף</p>}
-    <section className="space-y-3"><h2 className="text-xl font-bold">{assets.data?.length ?? ''} נכסים פעילים לשיתוף פעולה</h2>{assets.isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}{assets.isError && <p role="alert" className="text-destructive">טעינת הנכסים נכשלה</p>}<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{assets.data?.map(card => <StandardPropertyCard key={card.id} card={card} signedIn isFav={favorites.favoriteIds.has(card.id)} onFavorite={() => void favorites.toggleFavorite(card.id)} onOpen={() => navigate(profileAssetPath(card))} />)}</div></section>
+    <section className="space-y-3"><h2 className="text-xl font-bold">{assets.data?.length ?? ''} נכסים פעילים לשיתוף פעולה</h2>{assets.isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}{assets.isError && <p role="alert" className="text-destructive">טעינת הנכסים נכשלה</p>}<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{assets.data?.map(card => <StandardPropertyCard key={card.id} card={card} signedIn isFav={favorites.favoriteIds.has(card.id)} onFavorite={() => void favorites.toggleFavorite(card.id)} />)}</div></section>
   </main>;
 }

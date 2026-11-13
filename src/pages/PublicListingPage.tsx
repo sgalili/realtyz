@@ -17,7 +17,8 @@ import { fmtILS } from '@/lib/formatCurrency';
 import { attributeCards } from '@/components/public/propertyAttributes';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bed, Building2, ChevronLeft, ChevronRight, Heart, ImageIcon, Layers, Loader2, Ruler, X } from 'lucide-react';
+import { Bed, Building2, Heart, Layers, Loader2, Ruler, X } from 'lucide-react';
+import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -270,7 +271,6 @@ function PublicListingContent() {
     void supabase.rpc('track_listing_referral_view', { _id_or_slug: slug, _code: new URLSearchParams(window.location.search).get('ref') });
   }, [slug]);
   const [refCode, setRefCode] = useState<string | null>(null);
-  const [slide, setSlide] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Referral capture must never break rendering.
@@ -355,10 +355,6 @@ function PublicListingContent() {
     if (payload?.property.id) setSelectedId(payload.property.id);
   }, [payload?.property.id]);
 
-  useEffect(() => {
-    setSlide(0);
-  }, [selectedId]);
-
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary" dir="rtl">
@@ -395,7 +391,6 @@ function PublicListingContent() {
     data.city ? { label: 'עיר', value: data.city, icon: Building2 } : null,
   ].filter(Boolean) as { label: string; value: string; icon: typeof Bed }[];
 
-  const cover = data.photos[Math.min(slide, Math.max(0, data.photos.length - 1))];
 
   // Map + navigation: coordinates when we have them, otherwise the address.
   const mapProperties = (payload?.properties ?? []).flatMap((property, index) => {
@@ -429,40 +424,7 @@ function PublicListingContent() {
             dealType={data.dealType}
             trailing={data.id ? <PropertyCommissionIcons listingId={data.id} /> : undefined}
           />
-          <div data-property-image-toolbar className="flex min-h-10 flex-wrap items-center gap-1 px-3">
-            {data.photos.length > 1 && <><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="תמונה קודמת" onClick={() => setSlide((slide + data.photos.length - 1) % data.photos.length)}><ChevronRight className="h-4 w-4" /></Button><span className="text-xs tabular-nums">{slide + 1}/{data.photos.length}</span><Button size="icon" variant="ghost" className="h-8 w-8" aria-label="תמונה הבאה" onClick={() => setSlide((slide + 1) % data.photos.length)}><ChevronLeft className="h-4 w-4" /></Button></>}
-            <div className="ms-auto flex items-center gap-1"><Button variant="ghost" size="icon" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'}><Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} /></Button>{data.id && <PropertyContactActions listingId={data.id} title={data.title} compact shareOnly shareUrl={shareUrl} shareButtonClassName="h-10 w-10 border-0 bg-transparent shadow-none" />}</div>
-          </div>
-          <div className="relative mt-3 aspect-[16/10] w-full bg-muted">
-            {cover ? (
-              <img src={cover} alt={data.title} className="h-full w-full object-cover" loading="lazy" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                <ImageIcon className="h-10 w-10" />
-              </div>
-            )}
-
-          </div>
-
-          {data.photos.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto p-3">
-              {data.photos.map((url, i) => (
-                <Button
-                  key={url}
-                  type="button"
-                  variant="ghost"
-                  aria-label={`תמונה ${i + 1}`}
-                  aria-pressed={i === slide}
-                  onClick={() => setSlide(i)}
-                  className={`h-14 w-20 shrink-0 overflow-hidden rounded-md border-2 p-0 ${
-                    i === slide ? 'border-primary' : 'border-transparent opacity-70'
-                  }`}
-                >
-                  <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                </Button>
-              ))}
-            </div>
-          )}
+          <PropertyGallerySlider key={data.id ?? slug} photos={data.photos} alt={data.title} overlay={<Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => void toggleFavorite()} disabled={favoriteBusy} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} aria-pressed={favorite} title="מועדפים"><Heart className={`h-5 w-5 ${favorite ? 'fill-current' : ''}`} /></Button>} share={data.id ? <PropertyContactActions listingId={data.id} title={data.title} compact shareOnly shareUrl={shareUrl} shareButtonClassName="h-7 w-7 rounded-full border-0 bg-background/70 hover:bg-background/90" /> : undefined} />
 
           <CardContent className="space-y-4 pt-4 text-right">
             {specs.length > 0 && (
@@ -520,7 +482,7 @@ function PublicListingContent() {
             ) : null}
 
             {/* Share lives inside the contact row below, next to WhatsApp / call / form. */}
-            {data.id && <PropertyContactActions listingId={data.id} title={data.title} dealType={data.dealType} premsg={data.premsg} options={data.contactOptions} compact formAsButton singleRow shareUrl={shareUrl} />}
+            {data.id && <PropertyContactActions listingId={data.id} title={data.title} dealType={data.dealType} premsg={data.premsg} options={data.contactOptions} compact formAsButton singleRow showShare={false} shareUrl={shareUrl} />}
 
             {/* Small source link for Yad2-imported ads — fits the existing spacing without growing the page. */}
             {data.yad2AdUrl && (

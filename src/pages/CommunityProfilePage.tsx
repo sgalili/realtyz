@@ -12,8 +12,7 @@ import { Button } from '@/components/ui/button';
 import StandardPropertyCard from '@/components/public/StandardPropertyCard';
 import { useUserRole } from '@/hooks/useUserRole';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
-import { formatRentalPrice } from '@/lib/propertyPrice';
-import { ProfileAssetMenu, QuickShareButton, profileAssetPath } from '@/components/community/ProfileAssetActions';
+import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
 import { ROLE_BADGE } from '@/components/inbox/CommunityDirectory';
 
 export const communityProfilePath = (id: string) => `/community/profile/${encodeURIComponent(id)}`;
@@ -97,12 +96,7 @@ export default function CommunityProfilePage() {
       {(listingIds.isLoading || feed.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}
       {(listingIds.isError || feed.isError) && <p role="alert" className="text-destructive">טעינת הנכסים נכשלה</p>}
       {listingIds.data && feed.data && !cards.length && <p className="text-muted-foreground">אין כרגע נכסים פעילים</p>}
-      {view === 'grid' ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{cards.map(card => { const title = publicAdTitle(card); const fav = favorites.favoriteIds.has(card.id); return <StandardPropertyCard key={card.id} card={card} signedIn isFav={fav} onFavorite={() => void favorites.toggleFavorite(card.id)} menu={<ProfileAssetMenu card={card} title={title} isOwner={isOwner} isFav={fav} onFavorite={() => void favorites.toggleFavorite(card.id)} />} actions={<div className="mb-2"><QuickShareButton title={title} path={profileAssetPath(card)} label /></div>} />; })}</div>
-      : <ul className="divide-y divide-border">{cards.map(card => { const title = publicAdTitle(card); const fav = favorites.favoriteIds.has(card.id); const path = profileAssetPath(card); return <li key={card.id} role="link" tabIndex={0} onClick={() => navigate(path)} onKeyDown={(e) => { if (e.target === e.currentTarget && e.key === 'Enter') navigate(path); }} className="flex cursor-pointer items-center gap-3 py-3 hover:bg-muted/50">
-        {card.photos[0] ? <img src={card.photos[0]} alt={title} loading="lazy" className="h-16 w-20 shrink-0 rounded-md object-cover" /> : <div className="h-16 w-20 shrink-0 rounded-md bg-muted" />}
-        <div className="min-w-0 flex-1"><p className="truncate font-semibold">{title}</p><p className="text-sm text-muted-foreground">{formatRentalPrice(card.price, card.deal_type) || 'מחיר לא צוין'}{card.rooms ? ` · ${card.rooms} חד׳` : ''}{card.sqm ? ` · ${card.sqm} מ״ר` : ''}</p></div>
-        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}><QuickShareButton title={title} path={path} /><ProfileAssetMenu card={card} title={title} isOwner={isOwner} isFav={fav} onFavorite={() => void favorites.toggleFavorite(card.id)} /></div>
-      </li>; })}</ul>}
+      <div className={view === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'mx-auto grid max-w-2xl grid-cols-1 gap-4'}>{cards.map(card => { const title = publicAdTitle(card); const fav = favorites.favoriteIds.has(card.id); return <StandardPropertyCard key={card.id} card={card} signedIn isMine={user?.id === userId} isFav={fav} onFavorite={() => void favorites.toggleFavorite(card.id)} menu={<ProfileAssetMenu card={card} title={title} isOwner={isOwner} isFav={fav} onFavorite={() => void favorites.toggleFavorite(card.id)} />} />; })}</div>
     </section>}
   </main>;
 }

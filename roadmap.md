@@ -1,5 +1,10 @@
 # Roadmap
 
+## Unified profile and popup property cards November 14
+- [x] Profile list/grid and office assets reuse homepage StandardPropertyCard; remove profile mini-cards and duplicated quick-share row, retain authorized menus/favorites.
+- [x] Standard cards, public detail pages and popup/expanded details share PropertyGallerySlider. Expanded details default to authorized photos/share/favorite; partner popup removes duplicate copy/pricing block and retains shared pricing trigger/contact row.
+- [x] 35 focused tests pass; real populated profile and homepage cards checked desktop/mobile, next image 2/6, image enlargement, thumbnail selection and no overflow/runtime errors. Preview build OK. Partner popup source shares verified gallery; actual partner popup opening remains unverified because the available affiliate screen does not expose a property popup action.
+
 ## Complete open tasks November 14
 - [x] Implement Grow via Make admin settings, self-owned checkout/notification contract, atomic payment-backed subscription records and conditional wallet purchase UI; unconfigured credentials/terms remain disabled.
 - [x] Audit older open tasks and finish actionable dedicated campaign UI/sender routing and IVR recipient diagnostics; older paid/provider/publication/identity checks remain blocked as recorded below.

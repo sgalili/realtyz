@@ -5,12 +5,13 @@ import { cn } from '@/lib/utils';
 import { ImageSequenceDialog } from '@/components/properties/ImageSequenceDialog';
 
 /** Horizontal snap slider with arrows, counter and thumbnail strip (RTL safe). */
-export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay, share, isMine = false }: { photos: string[]; alt: string; onFavorite?: () => void; overlay?: ReactNode; share?: ReactNode; isMine?: boolean }) {
+export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay, share, isMine = false, compact = false }: { photos: string[]; alt: string; onFavorite?: () => void; overlay?: ReactNode; share?: ReactNode; isMine?: boolean; compact?: boolean }) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
   const [enlarged, setEnlarged] = useState<string | null>(null);
   const gesture = useRef<{ x: number; y: number; top: number; owner: HTMLElement | null; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
+  useEffect(() => { setIndex(0); setEnlarged(null); trackRef.current?.scrollTo({ left: 0 }); }, [photos]);
 
   useEffect(() => {
     const el = trackRef.current;
@@ -35,8 +36,8 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
   if (!photos.length) {
     return (
       <div className="min-w-0 space-y-2" onClick={(event) => event.stopPropagation()}>
-      <div data-property-image-toolbar className="flex min-h-10 items-center justify-end gap-1">{overlay}{onFavorite && !overlay && <Button type="button" variant="ghost" size="icon" onClick={onFavorite} aria-label="שמירה במועדפים"><Heart className="h-5 w-5 text-destructive" /></Button>}</div>
-      <div className="flex aspect-[16/7] w-full flex-col items-center justify-center gap-2 rounded-xl bg-muted text-sm text-muted-foreground">
+      <div data-property-image-toolbar className="flex min-h-10 items-center justify-end gap-1">{overlay}{share}{onFavorite && !overlay && <Button type="button" variant="ghost" size="icon" onClick={onFavorite} aria-label="שמירה במועדפים"><Heart className="h-5 w-5 text-destructive" /></Button>}</div>
+      <div className={cn('flex w-full flex-col items-center justify-center gap-2 rounded-lg bg-muted text-sm text-muted-foreground', compact ? 'h-48' : 'aspect-[16/7]')}>
         <ImageOff className="h-6 w-6" />אין תמונות
       </div>
       </div>
@@ -46,7 +47,7 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
   return (
     <div className="min-w-0 space-y-2" onClick={(e) => e.stopPropagation()}>
       <div className="group relative overflow-hidden rounded-lg bg-muted">
-        <div ref={trackRef} data-property-gallery dir="rtl" className="flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth touch-pan-y sm:aspect-[16/7] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        <div ref={trackRef} data-property-gallery dir="rtl" className={cn('flex w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth touch-pan-y [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', compact ? 'h-48' : 'aspect-[4/3] sm:aspect-[16/7]')}
           onPointerDown={event => {
             let owner = event.currentTarget.parentElement;
             while (owner && !(owner.scrollHeight > owner.clientHeight && /auto|scroll/.test(getComputedStyle(owner).overflowY))) owner = owner.parentElement;
@@ -78,16 +79,16 @@ export default function PropertyGallerySlider({ photos, alt, onFavorite, overlay
             </div>
           ))}
         </div>
-        {(overlay || onFavorite) && <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-white/70 p-0.5">{overlay}{onFavorite && !overlay && <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label="שמירה במועדפים" className="h-9 w-9 text-destructive"><Heart className="h-5 w-5" /></Button>}</div>}
+        {(overlay || onFavorite) && <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-background/70">{overlay}{onFavorite && !overlay && <Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label="שמירה במועדפים" className="h-9 w-9 text-destructive"><Heart className="h-5 w-5" /></Button>}</div>}
         {share && <div className="absolute bottom-2 left-2 z-10">{share}</div>}
-        {photos.length > 1 && <div className="absolute bottom-2 right-2 z-10 flex items-center rounded-full bg-white/70"><Button type="button" size="icon" variant="ghost" aria-label="תמונה קודמת" onClick={() => goTo(index - 1)} className="h-8 w-8 rounded-full hover:bg-transparent"><ChevronRight className="h-4 w-4" /></Button><span className="px-0.5 text-xs font-semibold tabular-nums text-foreground" dir="ltr">{index + 1}/{photos.length}</span><Button type="button" size="icon" variant="ghost" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="h-8 w-8 rounded-full hover:bg-transparent"><ChevronLeft className="h-4 w-4" /></Button></div>}
+        {photos.length > 1 && <div className="absolute bottom-2 right-2 z-10 flex items-center rounded-full bg-background/70"><Button type="button" size="icon" variant="ghost" aria-label="תמונה קודמת" onClick={() => goTo(index - 1)} className="h-8 w-8 rounded-full hover:bg-transparent"><ChevronRight className="h-4 w-4" /></Button><span className="px-0.5 text-xs font-semibold tabular-nums text-foreground" dir="ltr">{index + 1}/{photos.length}</span><Button type="button" size="icon" variant="ghost" aria-label="תמונה הבאה" onClick={() => goTo(index + 1)} className="h-8 w-8 rounded-full hover:bg-transparent"><ChevronLeft className="h-4 w-4" /></Button></div>}
         {isMine && <span title="המודעה שלי" aria-label="המודעה שלי" className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-md bg-background/80 px-1.5 py-0.5 text-xs font-semibold text-success"><BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />שלי</span>}
       </div>
       <ImageSequenceDialog photos={photos} current={enlarged} onChange={setEnlarged} alt={alt} />
-      {photos.length > 1 && (
+      {!compact && photos.length > 1 && (
         <div dir="rtl" className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
           {photos.map((src, i) => (
-            <Button variant="ghost" key={`t-${src}-${i}`} type="button" onClick={() => goTo(i)} aria-label={`תמונה ${i + 1}`}
+            <Button variant="ghost" key={`t-${src}-${i}`} type="button" onClick={() => goTo(i)} aria-label={`תמונה ${i + 1}`} aria-pressed={i === index}
               className={cn('h-14 w-20 p-0 shrink-0 overflow-hidden rounded-md border-2 transition-opacity', i === index ? 'border-primary opacity-100' : 'border-transparent opacity-60 hover:opacity-100')}>
               <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
             </Button>

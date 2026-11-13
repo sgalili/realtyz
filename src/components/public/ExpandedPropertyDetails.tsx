@@ -17,6 +17,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { isUnavailableListingError } from '@/lib/publicListingLookup';
+import PropertyGallerySlider from './PropertyGallerySlider';
+import PropertyContactActions from './PropertyContactActions';
+import { publicUrl } from '@/lib/publicUrl';
 
 type Raw = Record<string, unknown>;
 type Spec = { icon: LucideIcon; label: string; value: string };
@@ -189,7 +192,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
       <Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} />
     </Button>
   ) : null;
-  const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode }>, { overlay }) : gallery;
+  const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode }>, { overlay }) : gallery ?? <PropertyGallerySlider key={listing.id} photos={listing.photos} alt={listing.title} overlay={overlay} share={listing.id ? <PropertyContactActions listingId={listing.id} dealType={listing.dealType} title={listing.title} options={listing.contactOptions} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-background/70 hover:bg-background/90" shareUrl={publicUrl(`/p/${encodeURIComponent(listing.id)}`)} /> : undefined} />;
 
   return (
     <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-base [container-type:inline-size]">
