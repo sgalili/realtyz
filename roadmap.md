@@ -3,7 +3,7 @@
 ## Complete open tasks November 14
 - [x] Implement Grow via Make admin settings, self-owned checkout/notification contract, atomic payment-backed subscription records and conditional wallet purchase UI; unconfigured credentials/terms remain disabled.
 - [x] Audit older open tasks and finish actionable dedicated campaign UI/sender routing and IVR recipient diagnostics; older paid/provider/publication/identity checks remain blocked as recorded below.
-- [x] 44 focused tests pass; authenticated Grow settings/disabled state and email sender gate checked; mobile SMS has no attachment/preview duplication, viewport-bottom send bar above footer and no horizontal overflow. Workers deployed; build OK. No charges/messages/role changes/publication.
+- [x] 44 focused tests pass; authenticated Grow sandbox settings saved/reloaded (enabled=false, no duration), email sender gate checked; mobile SMS has no attachment/preview duplication, viewport-bottom send bar above footer and no horizontal overflow. Workers deployed; build OK. No charges/messages/role changes/publication.
 - [ ] Make scenario and separate sandbox/live webhook credentials plus notify shared secret are not supplied. Implementation contract: docs/grow-make.md. Subscription duration/benefits/renewal require owner decisions; no invented package or renewal enabled.
 - [ ] Positive paid subscription activation, genuine IVR delivery, two-party community/Rita, historical bios/developer projects, provider scan results, Meta grants/publication, signup OTP/certificates, privileged rollback tests and historical costs/resource metrics need the external data/permissions/consent listed below. No false completion recorded.
 
