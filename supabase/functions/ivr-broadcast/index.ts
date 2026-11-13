@@ -220,15 +220,29 @@ Deno.serve(async (req) => {
     if (!reach.ok) return json({ error: 'audio_url_unreachable', stage, audio_url: redactUrl(audioUrl), ...reach }, 422);
 
     stage = 'load_twilio';
-    // 2. Load Twilio creds for this broker
-    const { data: rows } = await admin
-      .from("user_api_keys")
-      .select("service_name, api_key")
-      .eq("user_id", workspaceId);
-    const twRow = (rows ?? []).find((r: any) => r.service_name === "Twilio");
-    const [twSid, twToken, twNumber] = String(twRow?.api_key ?? "").split(":");
-    if (!twSid || !twToken || !twNumber) {
-      return json({ error: "twilio_not_configured", stage, audio_url: audioUrl }, 400);
+    // 2. Load platform Twilio credentials (Super Admin → platform credentials: SID:Token[:From]).
+    const { data: twCfg, error: twErr } = await admin
+      .from("api_configs")
+      .select("api_key, is_active")
+      .eq("service_name", "Twilio")
+      .maybeSingle();
+    if (twErr) console.error('[ivr-broadcast] twilio config read failed:', twErr.message);
+    const [twSid, twToken, cfgNumber] = String(twCfg?.is_active ? twCfg?.api_key ?? "" : "").split(":").map((x) => x.trim());
+    if (!twSid || !twToken) {
+      return json({ error: "twilio_not_configured", stage, detail: twCfg ? "inactive_or_incomplete" : "missing" }, 400);
+    }
+    let twNumber = cfgNumber || Deno.env.get("TWILIO_PHONE_NUMBER") || "";
+    if (!twNumber) {
+      const nr = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twSid}/IncomingPhoneNumbers.json?PageSize=1`, {
+        headers: { Authorization: "Basic " + b64encode(`${twSid}:${twToken}`) },
+      });
+      const body = await nr.text();
+      if (!nr.ok) {
+        console.error(`[ivr-broadcast] twilio number lookup failed ${nr.status}:`, body.slice(0, 1000));
+        return json({ error: "twilio_auth_failed", stage, status: nr.status, detail: body.slice(0, 300) }, 400);
+      }
+      try { twNumber = JSON.parse(body)?.incoming_phone_numbers?.[0]?.phone_number ?? ""; } catch { /* ignore */ }
+      if (!twNumber) return json({ error: "twilio_no_phone_number", stage }, 400);
     }
 
     stage = 'dial';
