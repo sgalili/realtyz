@@ -203,7 +203,7 @@ function ActiveFacebookCloudConnectGate({ alwaysVisible = false, connectionOnly 
     {phase === 'waiting' && <p role="status" className="text-sm leading-relaxed text-muted-foreground">השלימו את הכניסה לפייסבוק בחלון שנפתח.</p>}
     {connected && <p className="flex items-center gap-1 text-sm text-success"><ShieldCheck className="h-4 w-4" />החיבור שמור ומוצפן</p>}
     {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
-    <Button type="button" variant="outline" className="h-auto min-h-11 w-full text-base font-medium" disabled={phase === 'syncing'} onClick={() => { generation.current++; stop(); setGuidanceOpen(false); setManualUrl(''); setSkipped(true); onStatusChange?.(true); }}>אתחבר יותר מאוחר</Button>
+    <Button type="button" variant="link" className="h-auto min-h-11 w-full text-base font-medium" disabled={phase === 'syncing'} onClick={() => { generation.current++; stop(); setGuidanceOpen(false); setManualUrl(''); setSkipped(true); onStatusChange?.(true); }}>אתחבר יותר מאוחר</Button>
     <Dialog open={guidanceOpen} onOpenChange={setGuidanceOpen}>
       <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
         <BrandIcon name="facebook" className="mx-auto h-9 w-9 text-social-facebook" />

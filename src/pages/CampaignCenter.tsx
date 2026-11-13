@@ -8722,7 +8722,7 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="create" className="mt-6 space-y-4">
           <InventoryToolSoftLock tool={wizardChannel ?? ''}>
-          {wizardChannel === 'facebook' && <FacebookCloudConnectGate onStatusChange={setFbReady} />}
+          {wizardChannel === 'facebook' && <FacebookCloudConnectGate connectionOnly onStatusChange={setFbReady} />}
           <Dialog open={fbCloudConnectOpen} onOpenChange={setFbCloudConnectOpen}>
             <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg text-right">
               <DialogTitle className="text-center text-xl">חיבור לפייסבוק</DialogTitle>

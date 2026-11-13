@@ -51,7 +51,7 @@
 <!-- LOVABLE:END -->
 
 - Nested rules: src/components/social/AGENTS.md, src/components/affiliate/AGENTS.md, extension/AGENTS.md, src/components/campaigns/AGENTS.md.
-- Closing splits: compute_closing_split pays 80% to authorized brokers (partner_can_view_closing) via idempotent paid_amount delta; otherwise platform retains 100%. No subscription plans; billing is credits only. Why: legal license model.
+- Closing splits: compute_closing_split pays 80% to authorized brokers via partner_can_view_closing and idempotent paid_amount delta; otherwise platform retains 100%. Wallet credits remain separate from payment-backed Grow entitlements. Why: no license bypass or mixed billing.
 - Global instructions use global_ai_documents/private global-ai-training with Super Admin checks; global_ai_config is legacy only. Brains share BrainResources title-free text entry and derived filenames; global library comes first. Why: one library without tenant leaks.
 - Public/managed inventory reuse LeadTypeFilterButton and predicates with role-aware fields; managed filters anchor below search with bounded scroll and no focus scrolling. Why: consistent, isolated filtering.
 - Public publisher projections share classification-aware names from source evidence or server user_roles for manual ads; unknown identities stay private. Board eligibility still requires positive price, configured rewards and a non-generic publisher, filtering without deletion. Why: consistent attribution without exposing private people.

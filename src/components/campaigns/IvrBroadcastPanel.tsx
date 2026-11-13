@@ -518,6 +518,7 @@ export const IvrBroadcastPanel = () => {
         ? { source: 'tts', audio_url: audioUrl, leads: targets }
         : { ...(fallbackPayload || {}), leads: targets };
       payload.include_whatsapp = includeWhatsapp;
+      payload.workspace_owner_id = workspaceId;
       toast.loading(`משגר ל-${targets.length} יעדים…`, { id: 'ivr-dispatch' });
       const { data, errorText } = await invokeIvr(payload);
       toast.dismiss('ivr-dispatch');
@@ -527,7 +528,10 @@ export const IvrBroadcastPanel = () => {
       }
       const ok = (data as any)?.ok ?? 0;
       const failed = (data as any)?.failed ?? 0;
-      toast.success(`שודרו ${ok} שיחות${failed ? ` · ${failed} נכשלו` : ''}`);
+      const summary = `שודרו ${ok} שיחות${failed ? ` · ${failed} נכשלו` : ''}`;
+      if (!ok) toast.error(summary);
+      else if (failed) toast.warning(summary);
+      else toast.success(summary);
       if (includeWhatsapp) toast.info(`וואטסאפ: ${(data as any)?.whatsapp_ok ?? 0} נשלחו · ${(data as any)?.whatsapp_failed ?? 0} לא נשלחו`);
     } catch (e: any) {
       toast.dismiss('ivr-dispatch');

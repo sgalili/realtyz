@@ -795,6 +795,9 @@ Deno.serve(async (req) => {
     const safe = SAFE_PROFILES[emailSendRate];
     // Caller can request Resend explicitly (used for >100 recipient blasts)
     const preferResend = body.prefer_resend === true && resendReady;
+    const { campaignEmailRoute } = await import('../_shared/campaignEmailSender.ts');
+    if (body.email_sender !== undefined && !['alias','gmail'].includes(body.email_sender)) return new Response(JSON.stringify({ error: 'invalid_email_sender' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const emailRoute = campaignEmailRoute(body.email_sender, resendReady, gmailSessions.length, preferResend);
 
     if (!campaignName) {
       return new Response(
@@ -938,9 +941,11 @@ Deno.serve(async (req) => {
 
           // Decide route: Resend (bulk / explicit) vs Gmail (personal account).
           // Gmail first; the workspace realtyz.co.il mailbox is the fallback when Gmail isn't connected.
-          const useResend = resendReady && (preferResend || gmailSessions.length === 0);
+          const useResend = emailRoute === 'alias';
 
-          if (useResend) {
+          if (emailRoute === 'unavailable') {
+            result = { ok: false, failure_reason: 'selected_email_sender_unavailable' };
+          } else if (useResend) {
             result = await sendEmailResend(
               resendApiKey,
               resendFromAddress,

@@ -10,6 +10,7 @@ import { encode as b64encode } from "https://deno.land/std@0.168.0/encoding/base
 import { decode as b64decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { IVR_MODEL_ID, IVR_DEFAULT_VOICES, canUseIvrVoice } from '../_shared/ivrVoices.ts';
 import { ivrScriptStyle, shouldLearnIvrScript } from '../_shared/ivrScriptStyle.ts';
+import { resolveIvrRecipient } from '../_shared/ivrRecipient.ts';
 
 const json = (b: unknown, s = 200) => {
   if (s >= 400) console.error(`[ivr-broadcast] responding ${s}:`, JSON.stringify(b).slice(0, 2000));
@@ -246,22 +247,20 @@ Deno.serve(async (req) => {
     }
 
     stage = 'resolve_leads';
-    // Typed/pasted/CSV numbers arrive without a lead id: match an existing workspace lead by
-    // phone, or create one in this workspace (RLS-checked) so every call stays tied to a lead.
-    for (const l of leads) {
-      if (l.id) continue;
-      const e164 = normE164(l.phone);
-      if (!/^\+\d{9,15}$/.test(e164)) continue;
-      const digits = e164.slice(1);
-      const variants = [digits, e164, digits.startsWith('972') ? '0' + digits.slice(3) : digits];
-      const { data: existing } = await userClient.from('leads').select('id').eq('workspace_owner_id', workspaceId).in('phone_number', variants).limit(1);
-      if (existing?.length) { l.id = existing[0].id; l.phone = e164; continue; }
-      const { data: created, error: createErr } = await userClient.from('leads')
-        .insert({ phone_number: digits, workspace_owner_id: workspaceId, assigned_to: user.id, interest_tag: 'ivr' })
-        .select('id').single();
-      if (createErr || !created) { console.error('[ivr-broadcast] lead create failed', createErr?.message); continue; }
-      l.id = created.id; l.phone = e164;
-    }
+    // Resolve phone-only recipients under workspace RLS; retain safe reasons for
+    // resolution failures and never dial an unverified selected ID/phone pair.
+    const resolvedLeads = [];
+    for (const l of leads) resolvedLeads.push(await resolveIvrRecipient(l, async (id, variants) => {
+      let query = userClient.from('leads').select('id, phone_number').eq('workspace_owner_id', workspaceId);
+      query = id ? query.eq('id', id) : query.in('phone_number', variants);
+      const { data, error } = await query.limit(1).maybeSingle();
+      if (error) console.error('[ivr-broadcast] lead lookup failed', { code: error.code });
+      return error ? { error: 'lookup' } : { id: data?.id, phone: data?.phone_number };
+    }, async digits => {
+      const { data, error } = await userClient.from('leads').insert({ phone_number: digits, workspace_owner_id: workspaceId, assigned_to: user.id, interest_tag: 'ivr', is_demo: false }).select('id').single();
+      if (error) console.error('[ivr-broadcast] lead creation failed', { code: error.code });
+      return error ? { error: 'create' } : { id: data?.id };
+    }));
 
     stage = 'dial';
     // 3. Dial each lead with inline TwiML <Play>
@@ -270,11 +269,9 @@ Deno.serve(async (req) => {
     let ok = 0, failed = 0;
     let whatsappOk = 0, whatsappFailed = 0;
     const failures: Array<{ phone: string; reason: string }> = [];
-    for (const l of leads) {
+    for (const l of resolvedLeads) {
       const to = normE164(l.phone);
-      if (!to) { failed++; failures.push({ phone: l.phone, reason: 'invalid_phone' }); continue; }
-      // Every call must target a lead of this workspace (no free-typed numbers).
-      if (!l.id) { failed++; failures.push({ phone: to, reason: 'missing_lead_id' }); continue; }
+      if (l.error || !l.id) { failed++; failures.push({ phone: to, reason: l.error ?? 'lead_resolution_failed' }); continue; }
       {
         const { data: lead } = await userClient.from('leads').select('id, phone_number').eq('id', l.id).eq('workspace_owner_id', workspaceId).maybeSingle();
         if (!lead || normE164(lead.phone_number) !== to) { failed++; failures.push({ phone: to, reason: 'lead_not_in_workspace_or_phone_mismatch' }); continue; }
@@ -309,7 +306,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (failures.length) console.error('[ivr-broadcast] failures', JSON.stringify(failures.slice(0, 20)));
+    if (failures.length) console.error('[ivr-broadcast] failure reasons', failures.slice(0, 20).map(f => f.reason));
     stage = 'finalize';
     let styleLearned = false;
     if (shouldLearnIvrScript(ok, finalScript) && audioPath) {

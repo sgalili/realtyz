@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SaveCardForm } from '@/components/billing/SaveCardForm';
 import { ZCreditSettingsCard } from '@/components/billing/ZCreditSettingsCard';
+import { GrowSubscriptionPurchase } from '@/components/billing/GrowSubscriptionPurchase';
 import { useUserRole } from '@/hooks/useUserRole';
 
 type LedgerRow = {
@@ -138,6 +139,7 @@ export default function Wallet() {
         <TabsContent value="payments" className="mt-3">{rows(payments, true)}</TabsContent>
         <TabsContent value="deposits" className="mt-3">{rows(deposits, false)}</TabsContent>
       </Tabs>
+      <GrowSubscriptionPurchase />
 
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent dir="rtl">

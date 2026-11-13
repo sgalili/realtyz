@@ -1191,6 +1191,13 @@
       "when": 1794612337104,
       "tag": "0169_public_bio_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1794612767302,
+      "tag": "0170_grow_make_payment_settings_and_orders",
+      "breakpoints": true
     }
   ]
 }

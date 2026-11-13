@@ -4354,6 +4354,128 @@ export type Database = {
         }
         Relationships: []
       }
+      grow_payment_orders: {
+        Row: {
+          amount_ils: number
+          benefits: string
+          created_at: string
+          duration_days: number
+          environment: string
+          id: string
+          paid_at: string | null
+          payment_url: string | null
+          status: string
+          title: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_ils?: number
+          benefits: string
+          created_at?: string
+          duration_days: number
+          environment: string
+          id?: string
+          paid_at?: string | null
+          payment_url?: string | null
+          status?: string
+          title: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_ils?: number
+          benefits?: string
+          created_at?: string
+          duration_days?: number
+          environment?: string
+          id?: string
+          paid_at?: string | null
+          payment_url?: string | null
+          status?: string
+          title?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      grow_payment_settings: {
+        Row: {
+          benefits: string
+          business_id: string
+          duration_days: number | null
+          enabled: boolean
+          environment: string
+          id: boolean
+          sending_mode: string
+          subscription_title: string
+          updated_at: string
+          updated_by: string | null
+          verification_phone: string
+        }
+        Insert: {
+          benefits?: string
+          business_id?: string
+          duration_days?: number | null
+          enabled?: boolean
+          environment?: string
+          id?: boolean
+          sending_mode?: string
+          subscription_title?: string
+          updated_at?: string
+          updated_by?: string | null
+          verification_phone?: string
+        }
+        Update: {
+          benefits?: string
+          business_id?: string
+          duration_days?: number | null
+          enabled?: boolean
+          environment?: string
+          id?: boolean
+          sending_mode?: string
+          subscription_title?: string
+          updated_at?: string
+          updated_by?: string | null
+          verification_phone?: string
+        }
+        Relationships: []
+      }
+      grow_subscription_entitlements: {
+        Row: {
+          benefits: string
+          expires_at: string
+          order_id: string
+          starts_at: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          benefits: string
+          expires_at: string
+          order_id: string
+          starts_at: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          benefits?: string
+          expires_at?: string
+          order_id?: string
+          starts_at?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grow_subscription_entitlements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "grow_payment_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       holiday_greetings: {
         Row: {
           created_at: string
@@ -9700,6 +9822,15 @@ export type Database = {
         }[]
       }
       complete_admin_broker_first_login: { Args: never; Returns: string }
+      complete_grow_payment: {
+        Args: {
+          _amount_ils: number
+          _environment: string
+          _order_id: string
+          _transaction_id: string
+        }
+        Returns: Json
+      }
       complete_official_license_verification: {
         Args: { _number: string; _uid: string }
         Returns: undefined

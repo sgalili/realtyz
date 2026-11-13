@@ -1,0 +1,35 @@
+# Grow through Make: connection contract
+
+The app is implemented, but does not create or configure a Make scenario. Grow account OTP is completed in Make, not in TORAFF. No live payments are enabled by default.
+
+## Connection
+
+1. Create a Make Custom Webhook with API-key authentication and a Grow connection. Use Grow Sandbox first. Business ID and registered mobile are supplied to the Grow connection; finish its OTP in Make.
+2. Store the webhook URL and its API key securely as `GROW_MAKE_SANDBOX_URL` and `GROW_MAKE_SANDBOX_API_KEY`. Live uses distinct `GROW_MAKE_LIVE_URL` and `GROW_MAKE_LIVE_API_KEY`.
+3. Configure a separate shared secret `GROW_MAKE_NOTIFY_SECRET` in TORAFF and in Make's outgoing callback header `x-grow-notify-secret`.
+4. TORAFF calls Make using `x-make-apikey`. The app restricts URLs to Make/legacy Integromat webhook hosts, disables redirects and times out after 40 seconds. Never put these URLs or keys in browser code or public settings.
+
+## Scenario routes and JSON responses
+
+Use a router on `action`; every route ends with Webhooks > Webhook response containing JSON, not Make's default `Accepted` text.
+
+- `test`: perform a harmless authenticated Grow read/connection check; do not create a charge or send SMS. Return `{ "connected": true, "environment": "sandbox" }` only after a successful check.
+- `create`: map server-owned `amount_ils`, `title`, customer `full_name`/`phone`, `sending_mode`, `success_url`, regular-charge/one-time payment mode into Grow Create Payment Link. Put `order_id` in Custom Field 1, and retain the returned payment-link identifier alongside the order. Return `{ "payment_url": "<Grow HTTPS checkout URL>" }`. TORAFF accepts Grow or Meshulam checkout domains only.
+- `verify`: use Get Payment Link Info and the persisted payment-link mapping. Return `{ "paid": true, "order_id": "<Custom Field 1>", "transaction_id": "<verified transaction>", "amount_ils": 6500, "currency": "ILS", "environment": "sandbox" }` only when a completed payment, not authorization-only J4/J5, is independently confirmed by Grow. Never mirror incoming webhook values as verification.
+- `approve`: call Grow Approve Transaction with the provider-required fields held by Make. Return `{ "approved": true }` after acknowledgment succeeds. This acknowledges the notification; it is not a payment authorization.
+
+## Notifications
+
+Grow Notify URL points to the Make Grow Notify URL Webhook. Make then POSTs to the deployed `grow-payments` endpoint with:
+
+```json
+{ "action": "notify", "order_id": "<Custom Field 1>", "transaction_id": "<Grow transaction>" }
+```
+
+Supply the separate shared-secret header above. Obtain the endpoint from the Cloud function view; no credential is included in its URL. TORAFF independently calls `verify`, atomically records payment and (live only) grants the order's snapshotted entitlement, then calls `approve`. Failed acknowledgment returns 502 so Make must retry. Duplicate callbacks are idempotent. Configure sequential notification handling/retries in Make; a successful browser redirect never grants access.
+
+## Subscription and acceptance checks
+
+The requested price is ₪6,500, separate from wallet funds. Title, duration and benefits are unset until the owner supplies them. Automatic renewal is not configured and must not be advertised. Settings are Super Admin-only; orders and entitlements are self-readable, and financial completion is service-only.
+
+Before enabling live: test completed sandbox checkout, denied/incorrect callbacks, duplicate notification acknowledgment, amount/currency/environment mismatches, and no live entitlement from sandbox. Supply agreed benefits and test their actual feature access before claiming subscription functionality complete. Current entitlements record the paid term; they do not grant broker privileges or bypass existing workspace/licensing/credit guards.

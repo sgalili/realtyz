@@ -1,5 +1,12 @@
 # Roadmap
 
+## Complete open tasks November 14
+- [x] Implement Grow via Make admin settings, self-owned checkout/notification contract, atomic payment-backed subscription records and conditional wallet purchase UI; unconfigured credentials/terms remain disabled.
+- [x] Audit older open tasks and finish actionable dedicated campaign UI/sender routing and IVR recipient diagnostics; older paid/provider/publication/identity checks remain blocked as recorded below.
+- [x] 44 focused tests pass; authenticated Grow settings/disabled state and email sender gate checked; mobile SMS has no attachment/preview duplication, viewport-bottom send bar above footer and no horizontal overflow. Workers deployed; build OK. No charges/messages/role changes/publication.
+- [ ] Make scenario and separate sandbox/live webhook credentials plus notify shared secret are not supplied. Implementation contract: docs/grow-make.md. Subscription duration/benefits/renewal require owner decisions; no invented package or renewal enabled.
+- [ ] Positive paid subscription activation, genuine IVR delivery, two-party community/Rita, historical bios/developer projects, provider scan results, Meta grants/publication, signup OTP/certificates, privileged rollback tests and historical costs/resource metrics need the external data/permissions/consent listed below. No false completion recorded.
+
 ## Public profile refinement November 14
 - [x] Remove blue hero/title/back, place top-left Close, use 15px header-to-avatar spacing and display raw license; opt out of global heading hiding.
 - [x] Save separate custom public bio; show 50+ character custom or source-attributed imported bio without a title above Send Message. Broker and developer import pipelines retain source bio without overwriting custom text or reusing private AI persona text.
@@ -9,9 +16,10 @@
 - [ ] Populated shared-office/developer-project flow and historical imported biographies require real matching office data, published developer projects and source biographies; no published developer projects or imported bios currently exist. No paid re-scrape or public publication performed.
 
 ## Grow payments November 13
-- [ ] Add Super Admin Grow settings; blocked pending direct API versus Make connection choice (business-ID/phone OTP is Make's connection flow; direct API needs provider-issued userId/pageCode).
-- [ ] Implement server-created links and provider-verified, idempotent notifications; same Grow connection choice and credentials blocker. Official approveTransaction is notification acknowledgment, not a charge authorization.
-- [ ] Connect approved payments to the agreed billing entitlement; blocked pending clarification of the requested ₪6,500 subscription versus existing credits-only policy and its duration/benefits.
+- [x] Super Admin payment section adds Grow environment, business ID, phone and sending mode, configuration saving and no-charge test contract; OTP stays in Make, private webhook keys never appear in the panel.
+- [x] Deployed server-created links and independently verified/idempotent notification contract through Make; approveTransaction acknowledges receipt. Missing Make scenario/keys prevent live execution.
+- [x] Add separate ₪6,500 subscription order/entitlement records and purchase confirmation. Sandbox cannot grant live entitlements or wallet credits; custom terms remain unset and checkout disabled until supplied.
+- [ ] Implement actual benefit entitlements and any renewal only after duration/benefits/renewal are specified; never grant broker licenses or bypass credit/workspace checks.
 - [ ] Verify sandbox checkout and notification readback once Grow credentials are available; never treat a success redirect as proof of payment.
 
 ## Public profile layout November 13
@@ -543,13 +551,13 @@
 - [x] Run focused tests and browser verification of legal pages and live draft billing, including cancel and approval.
 - [ ] Full Instagram direct login, two-way DMs and comment automation: blocked on configured Instagram product, permissions and Meta access approval for customer accounts; existing Page connection alone does not grant these capabilities.
 
-1. [ ] Channel order: Facebook first, Instagram next to it (channel selection lists)
-2. [ ] Facebook two-step flow: clean connection box (blue button, white FB logo, "חיבור באמצעות פייסבוק", "אתחבר יותר מאוחר" skip link, remove header/cloud/explanations/group search) → publishing screen with "קידום נכס מהמאגר" widget
-3. [ ] Same two-step flow for WhatsApp channel
-4. [ ] Email campaign: sender config (Toraff domain username picker / Gmail Google login), require before recipients
-5. [ ] Email page: floating bottom bar fixed only at bottom; remove email preview box; placeholders "שם הקמפיין"/"תוכן ההודעה"; remove attachments row; remove outer container around list buttons; rename to "בחירה מהמערכת"
-6. [ ] Apply same cleanups to WhatsApp + SMS setup windows
-7. [ ] Typecheck, tests, browser verify
+1. [x] Facebook first and Instagram adjacent already implemented in both channel lists.
+2. [x] Campaign Facebook entry uses connection-only flow and link-style skip; security guidance remains inside its dialog, property widget preserved.
+3. [x] Dedicated WhatsApp already has connection/skip flow; approved-template rules unchanged.
+4. [x] Email sender gates recipients during loading and until a selected available alias/Gmail; immediate dispatch explicitly honors selection without silent fallback. Alias readback resets/discards stale responses on workspace changes.
+5. [x] Dedicated email/SMS/WhatsApp remove attachment/record actions and duplicated channel preview, preserve placeholders, use “בחירה מהמערכת”, and portal the fixed send bar above legal footer with content clearance.
+6. [x] Apply shared dedicated-channel presentation cleanup; legacy multichannel functionality retained.
+7. [x] 44 focused tests and build pass; authenticated desktop/mobile Grow, email sender gate and mobile SMS bar checked without sending. Positive transport remains externally unverified.
 
 ## Icon-only reward indicators where no price shows
 - [x] Compact indicators (table תמלוגים column, cards) show only the grayed icon for zero fees and restricted closing; ללא עמלה / למתווכים בלבד stay inside the pricing window.

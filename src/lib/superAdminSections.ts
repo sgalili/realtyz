@@ -6,6 +6,7 @@ export type AdminSection =
   | 'import'
   | 'deletion'
   | 'finance'
+  | 'payments'
   | 'activity'
   | 'scraping'
   | 'connections'
@@ -24,6 +25,7 @@ export const ADMIN_SECTIONS: readonly AdminSectionOption[] = [
   { value: 'import', label: 'ייבוא מתווכים', icon: UserPlus },
   { value: 'deletion', label: 'מחיקה וארכיון', icon: Trash2 },
   { value: 'finance', label: 'פיננסי', icon: Wallet },
+  { value: 'payments', label: 'הגדרות תשלום', icon: Wallet },
   { value: 'activity', label: 'פעילות וניטור', icon: Activity },
   { value: 'scraping', label: 'שימוש Bright Data', icon: ScanSearch },
   { value: 'connections', label: 'חיבורים', icon: PlugZap },

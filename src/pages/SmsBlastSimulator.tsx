@@ -1,4 +1,5 @@
 import { useCampaignPricing } from '@/hooks/useCampaignPricing';
+import { createPortal } from 'react-dom';
 import { CampaignMessagePropertyPicker } from '@/components/campaigns/CampaignMessagePropertyPicker';
 import { campaignMessagePropertyLabel, sameCampaignMessageContext, type CampaignMessageProperty } from '@/lib/campaignMessageProperty';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -838,6 +839,10 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   };
 
   const startSend = useCallback(async () => {
+    if (dedicatedChannel === 'email' && (!connectionsLoaded || !aliasLoaded || (emailSenderChosen === 'alias' ? !emailAlias : emailSenderChosen !== 'gmail' || emailAccountInfo.count === 0))) {
+      toast.error('יש לבחור שולח מחובר לפני שיגור');
+      return;
+    }
     const parsed = BroadcastSchema.safeParse({ blastName, messageBody: sendMessageBody.slice(0, 1000), totalRecipients, selectedChannels });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? 'נא לבדוק את פרטי הקמפיין');
@@ -1034,7 +1039,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
               campaign_name: blastName,
               limit: emailSendRate === 'burst' ? 500 : (emailSendRate === 'safe' ? 200 : 100),
               email_send_rate: emailSendRate,
-              prefer_resend: autoPreferResend,
+              prefer_resend: dedicatedChannel === 'email' ? emailSenderChosen === 'alias' : autoPreferResend,
+              email_sender: dedicatedChannel === 'email' ? emailSenderChosen : undefined,
               wa_template: selectedChannels.includes('whatsapp') ? waTemplate ?? undefined : undefined,
             },
           });
@@ -1109,7 +1115,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
       toast.error('שגיאה בשיגור: ' + (err?.message ?? 'שגיאה לא ידועה'));
       setPhase('compose');
     }
-  }, [blastName, messageBody, waTemplateBody, sendMessageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired, waTemplate, connectedChannels.whatsapp, recipientSource, pastedNumbers]);
+  }, [blastName, messageBody, waTemplateBody, sendMessageBody, totalRecipients, selectedChannels, blockDemoAction, dripEnabled, dailyLimit, fireConfetti, estimatedCredits, user, isDemoMode, emailSendRate, preferResend, resendReady, trial.isTrialExpired, waTemplate, connectedChannels.whatsapp, recipientSource, pastedNumbers, dedicatedChannel, emailSenderChosen, connectionsLoaded, aliasLoaded, emailAlias, emailAccountInfo.count]);
 
 
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
@@ -1129,16 +1135,20 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   // @toraff.co.il workspace alias or a connected Gmail account.
   useEffect(() => {
     if (dedicatedChannel !== 'email') return;
+    let cancelled = false;
+    setAliasLoaded(false); setEmailAlias(null); setAliasPrefix(''); setEmailSenderChosen(null);
     (async () => {
       try {
         const { data } = await supabase.rpc('get_workspace_mailbox' as never);
+        if (cancelled) return;
         const alias = ((data as any)?.alias ?? null) as string | null;
         if (alias) { setEmailAlias(alias); setAliasPrefix(alias); }
       } finally {
-        setAliasLoaded(true);
+        if (!cancelled) setAliasLoaded(true);
       }
     })();
-  }, [dedicatedChannel]);
+    return () => { cancelled = true; };
+  }, [dedicatedChannel, workspaceId]);
 
   const saveAlias = useCallback(async () => {
     const clean = sanitizeEmailAlias(aliasPrefix);
@@ -1164,7 +1174,8 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
     }
   }, [aliasPrefix, aliasSaving]);
 
-  const senderReady = dedicatedChannel !== 'email' || !!emailAlias || emailAccountInfo.count > 0;
+  const senderReady = dedicatedChannel !== 'email' || (connectionsLoaded && aliasLoaded && (emailSenderChosen === 'alias' ? !!emailAlias : emailSenderChosen === 'gmail' && emailAccountInfo.count > 0));
+  if (dedicatedChannel === 'email' && phase === 'compose' && (!connectionsLoaded || !aliasLoaded)) return <p role="status" className="py-8 text-center text-muted-foreground">טוען פרטי שולח…</p>;
 
   // Two-step flow for the dedicated WhatsApp window: a clean connection screen
   // first, with an "I'll connect later" link to proceed straight to setup.
@@ -1182,7 +1193,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
   // Two-step flow for the dedicated email window: sender configuration must be
   // completed before recipient selection is reachable.
-  if (dedicatedChannel === 'email' && phase === 'compose' && connectionsLoaded && aliasLoaded && !emailSenderChosen) {
+  if (dedicatedChannel === 'email' && phase === 'compose' && !senderReady) {
     return (
       <div className="mx-auto w-full max-w-3xl space-y-6" dir="rtl">
         <Card>
@@ -1216,7 +1227,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
   }
 
   return (
-    <div className="space-y-6 [&_[role=combobox]]:font-bold" dir="rtl">
+    <div className={`space-y-6 [&_[role=combobox]]:font-bold ${dedicatedChannel ? 'pb-60' : ''}`} dir="rtl">
 
       {phase === 'compose' && (
         <div className={dedicatedChannel ? 'mx-auto w-full max-w-3xl' : 'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]'}>
@@ -1501,7 +1512,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                     >
                       <SelectTrigger className="mb-3 text-[17px] font-bold" dir="rtl"><SelectValue placeholder={dedicatedChannel === 'sms' ? 'למי שולחים SMS?' : dedicatedChannel === 'email' ? 'למי שולחים מייל?' : 'למי שולחים ווטסאפ?'} /></SelectTrigger>
                       <SelectContent dir="rtl" className="text-[17px] [&_[role=option]]:text-[17px] [&_[role=option][data-state=checked]]:font-bold">
-                        <SelectItem value="contacts"><span className="inline-flex items-center gap-2"><Users className="h-3.5 w-3.5" />אנשי הקשר שלי</span></SelectItem>
+                        <SelectItem value="contacts"><span className="inline-flex items-center gap-2"><Users className="h-3.5 w-3.5" />בחירה מהמערכת</span></SelectItem>
                         <SelectItem value="file"><span className="inline-flex items-center gap-2"><FileSpreadsheet className="h-3.5 w-3.5" />העלאת רשימה</span></SelectItem>
                         <SelectItem value="paste"><span className="inline-flex items-center gap-2"><FileText className="h-3.5 w-3.5" />הדבקת מספרים</span></SelectItem>
                       </SelectContent>
@@ -1597,7 +1608,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         {personalizationTags.map((tag) => <SelectItem key={tag} value={tag}>{tag}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Button
+                    {!dedicatedChannel && <><Button
                       type="button"
                       variant="outline"
                       size="sm"
@@ -1629,7 +1640,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                         <Mic className="ml-1 h-3.5 w-3.5" />
                         הקלט הודעה קולית
                       </Button>
-                    )}
+                    )}</>}
                   </div>
 
                   {/* Attachment previews */}
@@ -1696,7 +1707,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                   </div>
                 )}
 
-                {selectedChannels.length > 0 && (
+                {!dedicatedChannel && selectedChannels.length > 0 && (
                   <div className={dedicatedChannel ? 'space-y-4' : 'grid gap-4 lg:grid-cols-2'}>
                     {selectedChannels.includes('sms') && (
                       <Card className="border-social-sms/25 bg-social-sms/5">
@@ -1785,7 +1796,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
 
                 <DeliverySettings enabled={dripEnabled} onEnabledChange={setDripEnabled} dailyLimit={dailyLimit} onDailyLimitChange={setDailyLimit} windowStart={sendWindowStart} onWindowStartChange={setSendWindowStart} windowEnd={sendWindowEnd} onWindowEndChange={setSendWindowEnd} delayMin={delayMin} onDelayMinChange={setDelayMin} delayMax={delayMax} onDelayMaxChange={setDelayMax} />
 
-                <div className="flex flex-col gap-3 rounded-md border border-primary/15 bg-card p-3 shadow-lg">
+                {((bar: React.ReactNode) => dedicatedChannel ? createPortal(bar, document.body) : bar)(<div className={`flex flex-col gap-3 rounded-md border border-primary/15 bg-card p-3 shadow-lg ${dedicatedChannel ? 'fixed inset-x-2 bottom-[var(--app-footer-space)] z-30 mx-auto max-w-3xl' : ''}`} dir="rtl">
                   <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 text-sm">
                     {broadcastCost.rows.map((r) => {
                       const unitPrice = campaignServicePrice(r.channel, servicePrices);
@@ -1805,7 +1816,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                     {(() => {
                       const hasConnectedSelected = selectedChannels.some((c) => connectedChannels[c]);
                       const trialBlocked = false;
-                      const disabled = (selectedChannels.includes('whatsapp') && !waTemplate) || broadcastCost.hasPending || !blastName.trim() || !sendMessageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
+                      const disabled = !senderReady || totalRecipients === 0 || (selectedChannels.includes('whatsapp') && !waTemplate) || broadcastCost.hasPending || !blastName.trim() || !sendMessageBody.trim() || selectedChannels.length === 0 || !hasConnectedSelected || trialBlocked;
                       return (
                         <>
                           <Button size="lg" className="h-auto whitespace-normal px-[42px] py-[18px] text-center text-[17px] bg-primary text-primary-foreground hover:bg-primary-glow" onClick={() => setConfirmOpen(true)} disabled={disabled}>
@@ -1826,7 +1837,7 @@ export default function SmsBlastSimulator({ onIvrOpen, dedicatedChannel }: { onI
                       );
                     })()}
                   </div>
-                </div>
+                </div>)}
               </CardContent>
             </Card>
 
