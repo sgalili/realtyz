@@ -8,6 +8,7 @@ import PropertyReferralButton from "@/components/public/PropertyReferralButton";
 import { returnState } from "@/lib/returnNav";
 import { useEffect, useMemo, useState } from "react";
 import { RewardDialog } from "@/components/affiliate/RewardDialog";
+import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 import LeftoverLeadsDialog from "@/components/affiliate/LeftoverLeadsDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -72,7 +73,6 @@ import {
   formatReward,
   useBrokerAffiliateListings,
   useBrokerReferrals,
-  useSetAffiliateReward,
   useUpdateReferral,
   type BrokerAffiliateListing,
   type ReferralStatus,
@@ -159,7 +159,6 @@ function BrokerAffiliateNetwork({ activityOnly = false, initialTab = 'rewards' }
   const queryClient = useQueryClient();
   const updateSubmission = useUpdateSubmission();
   const updateReferral = useUpdateReferral();
-  const quickSave = useSetAffiliateReward();
 
   const [search, setSearch] = useState(() => (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("q") ?? "" : ""));
   const [trackingSearch, setTrackingSearch] = useState("");
@@ -501,26 +500,7 @@ loading ? (
                           <Label htmlFor={`affiliate-${l.id}`} className="text-xs text-muted-foreground">
                             שיתוף שותפים
                           </Label>
-                          <Switch
-                            id={`affiliate-${l.id}`}
-                            checked={l.affiliate_enabled}
-                            disabled={quickSave.isPending}
-                            onCheckedChange={(enabled) =>
-                              quickSave.mutate(
-                                {
-                                  listingId: l.id,
-                                  enabled,
-                                  rewardType: l.affiliate_reward_type ?? "fixed",
-                                  rewardAmount: Number(l.affiliate_reward_amount ?? 0),
-                                  tier1Amount: Number(l.affiliate_tier1_amount ?? 0),
-                                  tier2Amount: Number(l.affiliate_tier2_amount ?? 0),
-                                  tier3Type: l.affiliate_tier3_type ?? "fixed",
-                                  tier3Amount: Number(l.affiliate_tier3_amount ?? 0),
-                                },
-                                { onError: () => toast.error("העדכון נכשל") },
-                              )
-                            }
-                          />
+                          <QuickPublicPromotion ids={[l.id]} compact statusLive={l.affiliate_enabled} onPublished={() => { void queryClient.invalidateQueries({ queryKey: ['broker-affiliate-listings'] }); }} />
                         </div>
                         {!multiSelectMode ? (
                           <Button

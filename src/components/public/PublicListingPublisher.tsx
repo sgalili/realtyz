@@ -1262,7 +1262,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><PublicationLeadHelp /><DialogHeader className="px-6"><DialogTitle className="text-right">אישור פרסום הנכס</DialogTitle></DialogHeader>
+      <Dialog open={confirming} onOpenChange={setConfirming}><DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"><PublicationLeadHelp /><DialogHeader className="px-6"><DialogTitle className="text-right">תמחור ותגמולים לפני פרסום</DialogTitle></DialogHeader>
         <div className="space-y-3">
           {primaryPhoto && <img src={primaryPhoto} alt="תמונת הנכס הראשית" className="aspect-video w-full rounded-md object-cover" />}
           <p className="text-xs font-semibold text-muted-foreground">{fields.dealType === 'rent' ? 'להשכרה' : 'למכירה'} · {fields.propertyType}</p>
@@ -1284,8 +1284,9 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
             <p>ניתן להגדיר מגבלת פניות יומית (24 שעות) לכל סוג פנייה, כדי לשלוט בהוצאות ולמנוע חיובים לא צפויים.</p>
           </div>
         )}
+        {renderStep(8)}
         {user && <AccountLeadBudget key={activeWorkspaceId} ownerId={activeWorkspaceId} />}
-        <div className="flex justify-between gap-2"><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'אישור ופרסום'}</Button><Button variant="outline" onClick={() => setConfirming(false)}>ביטול</Button></div>
+        <div className="flex justify-between gap-2"><Button variant="outline" disabled={publishing} onClick={() => setConfirming(false)}>ביטול</Button><Button className="bg-success text-success-foreground hover:bg-success/90" disabled={publishing || !canPublish} title={canPublish ? undefined : `עדיין חסרים: ${missingPublish.join(' · ')}`} onClick={() => void submit()}>{publishing ? 'מפרסם…' : 'שמירת תמחור ופרסום'}</Button></div>
       </DialogContent></Dialog>
     </Dialog>
     </>

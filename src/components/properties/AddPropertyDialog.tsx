@@ -270,7 +270,8 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         },
         parking: features2.parking != null ? features2.parking > 0 : null,
         elevator: features2.elevator ?? null,
-        is_published: true,
+        is_published: false,
+        affiliate_enabled: false,
         features: [{ listing_type: parsed.listing_type, property_type: propType, ...features2 }],
       });
       if (error) throw error;

@@ -1,5 +1,5 @@
 # Publication safeguards
-- Publication dialogs share bounded fee editors and explicit consent; pause completes after saved readback without awaiting unrelated refreshes. Why: preserve existing authorization and avoid stalled success.
+- Inventory and legacy partner activation use QuickPublicPromotion's preloaded fee editors and save every confirmed setup before publication; the publisher's final confirmation repeats its pricing step. PauseDistributionDialog requires explicit impact confirmation before pause, retaining readback without awaiting unrelated refreshes. Why: no pricing bypass or accidental distribution stop.
 - Account limits belong to the billing workspace owner and fail closed on unavailable reads; charging serializes rolling-day count and spend across tiers and upgrades. Why: prevent stale limits and duplicate count slots.
 - Inventory deduplication retains exact-source history; tombstones restrict publication, never internal draft creation or manual edits. Imports use one queued inactive-ad draft/skip prompt. Why: editable inventory without duplicates or accidental republication.
 - Pricing-only entry expands the existing publisher sliders without changing admin read-first authorization; expanded table footers remain outside animation clipping. Why: consistent editing and boundary-contained actions.

@@ -74,7 +74,8 @@ export function PendingListingsCard() {
     mutationFn: async (l: PendingListing) => {
       const updates: any = {
         status: 'live',
-        is_published: true,
+        is_published: false,
+        affiliate_enabled: false,
       };
       if (draft && editing?.id === l.id) {
         for (const k of ['property_title','description','address','city','neighborhood'] as const) {

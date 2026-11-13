@@ -1,5 +1,10 @@
 # Roadmap
 
+## Publication pricing and pause confirmations November 13
+- [x] Open saved pricing before inventory publication, save every confirmed setup before publishing, and show pricing again in the publisher's final confirmation. Creation/import remain private until explicit publication.
+- [x] Route legacy partner activation through the same setup and require a cancelable impact warning before pausing distribution.
+- [x] 25 focused tests passed, including save-before-publish, failed saves and pause confirmation/cancel. Build OK; authenticated real-listing pricing and pause warning checked on desktop/mobile. Actual publication/pause writes verified in tests only; no live asset distribution was changed.
+
 ## Rewards popup refinement November 13
 - [x] Clarify advertiser commitments, hide closing sections without existing server-confirmed broker eligibility, remove daily targets from read-only pricing and add the shared price-level legend.
 - [x] 23 focused pricing tests passed; build OK. Authenticated real-listing popup verified on desktop/mobile, including licensed closing prices and scrollable heatmap without horizontal overflow; non-broker hiding covered by tests.

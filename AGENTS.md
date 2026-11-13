@@ -58,7 +58,7 @@
 - Rent shows "₪X / לחודש" via src/lib/propertyPrice.ts.
 - Broker upgrades require SMS, registry/certificate/name match or explicit user+license admin approval; shared entitlement/status RPCs keep manual approval distinct and revoke it before license removal. Why: equal access without borrowed approvals.
 - Workspace handoffs hide cache, discard stale requests and remount publishers; tenant UI uses owner roles. Servers validate callers. Why: no leaks.
-- Inventory promotion uses server-backed owner roles, exact workspace/IDs and returned public flags, never membership-role labels or social/wallet gates. Why: approved brokers can publish without false success or tenant leaks.
+- Inventory promotion shares pricing-save and pause-impact confirmations (properties/AGENTS.md), owner roles and scoped readback; creation/import stay private. Why: no consent bypass or tenant leaks.
 - Home advanced search consumes whitelisted property facts and server-authorized reward amounts from the same paginated board feed; full-feed net ILS bounds stay independent of display filters, and persisted board caches strip financial values. Why: exact matching without membership-only gaps, stale ranges or cross-account price leaks.
 - Registry keeps raw names for certificate checks and canonical display name/city for locked profiles; returns saved identity and activation separately. Same-identity order corrections only; fetch stays failed-auto-fetch Super Admin review. Partner uses current account consent/roles, skips existing-profile provisioning. Why: no identity bypass or false activation.
 - Edge fns gate callers via _shared/authz.ts (service/cron secret/user+scope, Meta sigs). Why: apikey isn't trust.

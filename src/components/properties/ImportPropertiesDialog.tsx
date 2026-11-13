@@ -287,7 +287,8 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
             project_name: projectName || null,
             status: 'live',
             source: 'import',
-            is_published: true,
+            is_published: false,
+            affiliate_enabled: false,
             features: [
               ...(propertyType ? [propertyType] : []),
               ...(aptModel ? [{ apt_model: aptModel }] : []),

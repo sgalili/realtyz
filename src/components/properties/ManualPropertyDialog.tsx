@@ -179,7 +179,8 @@ export function ManualPropertyDialog({ open, onOpenChange, onCreated }: Props) {
         elevator,
         status: 'live',
         source: 'manual',
-        is_published: true,
+        is_published: false,
+        affiliate_enabled: false,
         media_photos: photos,
         source_metadata: {
           photos,

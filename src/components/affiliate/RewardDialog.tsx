@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 
 export function RewardDialog({
   listing,
@@ -81,7 +82,6 @@ export function RewardDialog({
       const raw = localStorage.getItem(draftKey);
       const d = raw ? JSON.parse(raw) : null;
       if (d && typeof d === "object") {
-        if (typeof d.enabled === "boolean") setEnabled(d.enabled);
         if (d.rewardType) setRewardType(d.rewardType);
         if (typeof d.amount === "string") setAmount(d.amount);
         if (typeof d.tier1 === "string") setTier1(d.tier1);
@@ -166,7 +166,7 @@ export function RewardDialog({
               <div className="text-sm font-semibold text-foreground">פתוח לשיווק ע״י שותפים</div>
               <div className="text-[11px] text-muted-foreground"></div>
             </div>
-            <Switch checked={enabled} onCheckedChange={setEnabled} />
+            <QuickPublicPromotion ids={[listing.id]} compact statusLive={listing.affiliate_enabled} onPublished={() => onOpenChange(false)} />
           </div>
 
           {enabled ? (
