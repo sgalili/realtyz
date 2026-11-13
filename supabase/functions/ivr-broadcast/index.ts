@@ -245,6 +245,24 @@ Deno.serve(async (req) => {
       if (!twNumber) return json({ error: "twilio_no_phone_number", stage }, 400);
     }
 
+    stage = 'resolve_leads';
+    // Typed/pasted/CSV numbers arrive without a lead id: match an existing workspace lead by
+    // phone, or create one in this workspace (RLS-checked) so every call stays tied to a lead.
+    for (const l of leads) {
+      if (l.id) continue;
+      const e164 = normE164(l.phone);
+      if (!/^\+\d{9,15}$/.test(e164)) continue;
+      const digits = e164.slice(1);
+      const variants = [digits, e164, digits.startsWith('972') ? '0' + digits.slice(3) : digits];
+      const { data: existing } = await userClient.from('leads').select('id').eq('workspace_owner_id', workspaceId).in('phone_number', variants).limit(1);
+      if (existing?.length) { l.id = existing[0].id; l.phone = e164; continue; }
+      const { data: created, error: createErr } = await userClient.from('leads')
+        .insert({ phone_number: digits, workspace_owner_id: workspaceId, assigned_to: user.id, interest_tag: 'ivr' })
+        .select('id').single();
+      if (createErr || !created) { console.error('[ivr-broadcast] lead create failed', createErr?.message); continue; }
+      l.id = created.id; l.phone = e164;
+    }
+
     stage = 'dial';
     // 3. Dial each lead with inline TwiML <Play>
     const twiml = `<Response><Play>${audioUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</Play></Response>`;
