@@ -11,11 +11,32 @@ import { decode as b64decode } from "https://deno.land/std@0.168.0/encoding/base
 import { IVR_MODEL_ID, IVR_DEFAULT_VOICES, canUseIvrVoice } from '../_shared/ivrVoices.ts';
 import { ivrScriptStyle, shouldLearnIvrScript } from '../_shared/ivrScriptStyle.ts';
 
-const json = (b: unknown, s = 200) =>
-  new Response(JSON.stringify(b), {
+const json = (b: unknown, s = 200) => {
+  if (s >= 400) console.error(`[ivr-broadcast] responding ${s}:`, JSON.stringify(b).slice(0, 2000));
+  return new Response(JSON.stringify(b), {
     status: s,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+};
+
+// Never log signed-URL tokens; keep path visible for diagnostics.
+const redactUrl = (u: string | null) => { try { const x = new URL(String(u)); return `${x.origin}${x.pathname}${x.search ? '?token=[redacted]' : ''}`; } catch { return String(u); } };
+
+// Confirms the telephony provider will be able to fetch the audio file.
+async function checkAudioReachable(audioUrl: string): Promise<{ ok: boolean; status?: number; contentType?: string; detail?: string }> {
+  try {
+    const u = new URL(audioUrl);
+    if (u.protocol !== 'https:') return { ok: false, detail: 'audio_url_must_be_https' };
+    const r = await fetch(audioUrl, { method: 'GET', headers: { Range: 'bytes=0-1023' }, signal: AbortSignal.timeout(15000) });
+    const contentType = r.headers.get('content-type') ?? '';
+    await r.body?.cancel();
+    if (!r.ok) return { ok: false, status: r.status, contentType, detail: 'audio_url_not_fetchable' };
+    if (!/audio|octet-stream|video\/webm/i.test(contentType)) return { ok: false, status: r.status, contentType, detail: 'audio_url_wrong_content_type' };
+    return { ok: true, status: r.status, contentType };
+  } catch (e: any) {
+    return { ok: false, detail: `audio_url_fetch_error: ${String(e?.message ?? e)}` };
+  }
+}
 
 function normE164(raw: string): string {
   const t = (raw || "").trim();
@@ -86,11 +107,12 @@ async function generateTts(text: string, voiceId: string, apiKey: string): Promi
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  const __caller = await requireCaller(req, ["service", "user"]);
-  if (__caller instanceof Response) return __caller;
-  const __scope = await enforceRequestScope(req, __caller);
-  if (__scope) return __scope;
+  let stage = 'authorize';
   try {
+  const __caller = await requireCaller(req, ["service", "user"]);
+  if (__caller instanceof Response) { console.error('[ivr-broadcast] caller rejected', __caller.status); return __caller; }
+  const __scope = await enforceRequestScope(req, __caller);
+  if (__scope) { console.error('[ivr-broadcast] scope rejected', __scope.status); return __scope; }
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -99,9 +121,14 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service);
 
     const { data: { user } } = await userClient.auth.getUser();
-    if (!user) return json({ error: "unauthenticated" }, 401);
+    if (!user) return json({ error: "unauthenticated", stage }, 401);
     const { data: workspaceId, error: workspaceError } = await userClient.rpc('current_workspace_owner');
-    if (workspaceError || !workspaceId) return json({ error: 'workspace_unavailable' }, 403);
+    if (workspaceError || !workspaceId) return json({ error: 'workspace_unavailable', stage, detail: workspaceError?.message }, 403);
+
+    stage = 'parse_request';
+    let rawBody: any;
+    try { rawBody = await req.json(); } catch (e: any) { return json({ error: 'invalid_json', stage, detail: String(e?.message ?? e) }, 400); }
+    console.log('[ivr-broadcast] request', JSON.stringify({ user: user.id, workspace: workspaceId, source: rawBody?.source, generate_only: rawBody?.generate_only, preview_only: rawBody?.preview_only, include_whatsapp: rawBody?.include_whatsapp, text_len: String(rawBody?.text ?? '').length, voice_id: rawBody?.voice_id, audio_url: rawBody?.audio_url ? redactUrl(rawBody.audio_url) : null, audio_b64_len: String(rawBody?.audio_b64 ?? '').length, ext: rawBody?.ext, leads: Array.isArray(rawBody?.leads) ? rawBody.leads.length : 0 }));
 
     const parsedBody = z.object({
       source: z.enum(['recording', 'tts', 'upload']), generate_only: z.boolean().optional(), include_whatsapp: z.boolean().optional(), preview_only: z.boolean().optional(),
@@ -109,8 +136,8 @@ Deno.serve(async (req) => {
       audio_url: z.string().url().optional(), audio_b64: z.string().max(22000000).optional(),
       ext: z.enum(['mp3', 'wav', 'm4a', 'webm', 'ogg']).optional(),
       leads: z.array(z.object({ id: z.string().uuid().optional(), phone: z.string().min(9).max(30) })).max(1000).optional(),
-    }).safeParse(await req.json());
-    if (!parsedBody.success) return json({ error: parsedBody.error.flatten() }, 400);
+    }).safeParse(rawBody);
+    if (!parsedBody.success) return json({ error: 'invalid_request', stage, detail: parsedBody.error.flatten() }, 400);
     const body = parsedBody.data;
     const source = body.source as "recording" | "tts" | "upload";
     const generateOnly = body.generate_only === true;
@@ -123,10 +150,11 @@ Deno.serve(async (req) => {
     let audioUrl: string | null = body.audio_url ?? null;
     let audioPath: string | null = null;
     let finalScript = '';
+    stage = 'resolve_audio';
     if (audioUrl) {
       const parsed = new URL(audioUrl);
       const prefix = `/storage/v1/object/sign/ivr-audio/${workspaceId}/`;
-      if (parsed.origin !== new URL(url).origin || !parsed.pathname.startsWith(prefix)) return json({ error: 'audio_not_in_workspace' }, 403);
+      if (parsed.origin !== new URL(url).origin || !parsed.pathname.startsWith(prefix)) return json({ error: 'audio_not_in_workspace', stage, audio_url: redactUrl(audioUrl) }, 403);
       audioPath = decodeURIComponent(parsed.pathname.slice('/storage/v1/object/sign/ivr-audio/'.length));
       const { data: scriptFile } = await admin.storage.from('ivr-audio').download(`${audioPath}.json`);
       if (scriptFile) {
@@ -144,8 +172,10 @@ Deno.serve(async (req) => {
         const { data: voices } = await admin.from('cloned_voices').select('voice_id, workspace_owner_id').eq('workspace_owner_id', workspaceId);
         if (!canUseIvrVoice(voiceId, workspaceId, voices ?? [])) return json({ error: 'voice_not_in_workspace' }, 403);
         const elevenKey = await resolveElevenLabsKey(admin, workspaceId);
-        if (!elevenKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
-        bytes = await generateTts(text, voiceId, elevenKey);
+        if (!elevenKey) return json({ error: "missing_elevenlabs_api_key", stage }, 500);
+        stage = 'elevenlabs_tts';
+        try { bytes = await generateTts(text, voiceId, elevenKey); }
+        catch (e: any) { return json({ error: 'elevenlabs_failed', stage, detail: String(e?.message ?? e).slice(0, 1000), voice_id: voiceId }, 502); }
         if (body.preview_only) return new Response(bytes, { headers: { ...corsHeaders, 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, no-store' } });
         finalScript = text;
       } else if (body.audio_b64) {
@@ -154,6 +184,7 @@ Deno.serve(async (req) => {
       } else {
         return json({ error: "missing_audio" }, 400);
       }
+      stage = 'upload_audio';
       const path = `${workspaceId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       audioPath = path;
       const contentType = ext === "mp3" ? "audio/mpeg" : ext === "wav" ? "audio/wav" : ext === "m4a" ? "audio/mp4" : "audio/webm";
@@ -164,7 +195,7 @@ Deno.serve(async (req) => {
         try { await admin.storage.createBucket(bucket, { public: false }); } catch (_) { /* ignore */ }
         upErr = (await admin.storage.from(bucket).upload(path, bytes, { contentType, upsert: false })).error;
       }
-      if (upErr) return json({ error: "upload_failed", detail: upErr.message }, 500);
+      if (upErr) return json({ error: "upload_failed", stage, detail: upErr.message }, 500);
       if (finalScript) {
         const { error: metadataError } = await admin.storage.from(bucket).upload(`${path}.json`, new Blob([JSON.stringify({ text: finalScript, created_by: user.id, workspace_owner_id: workspaceId })], { type: 'application/json' }));
         if (metadataError) console.error('[ivr-broadcast] script metadata save failed:', metadataError.message);
@@ -172,7 +203,7 @@ Deno.serve(async (req) => {
       // Use signed URL (long expiry) — bucket is private but Twilio <Play> and <audio> need a fetchable URL
       const SEVEN_DAYS = 60 * 60 * 24 * 7;
       const { data: signed, error: signErr } = await admin.storage.from(bucket).createSignedUrl(path, SEVEN_DAYS);
-      if (signErr || !signed?.signedUrl) return json({ error: "sign_failed", detail: signErr?.message }, 500);
+      if (signErr || !signed?.signedUrl) return json({ error: "sign_failed", stage, detail: signErr?.message }, 500);
       audioUrl = signed.signedUrl;
     }
 
@@ -183,6 +214,12 @@ Deno.serve(async (req) => {
 
 
 
+    stage = 'verify_audio_url';
+    const reach = await checkAudioReachable(audioUrl!);
+    console.log('[ivr-broadcast] audio check', redactUrl(audioUrl), JSON.stringify(reach));
+    if (!reach.ok) return json({ error: 'audio_url_unreachable', stage, audio_url: redactUrl(audioUrl), ...reach }, 422);
+
+    stage = 'load_twilio';
     // 2. Load Twilio creds for this broker
     const { data: rows } = await admin
       .from("user_api_keys")
@@ -191,9 +228,10 @@ Deno.serve(async (req) => {
     const twRow = (rows ?? []).find((r: any) => r.service_name === "Twilio");
     const [twSid, twToken, twNumber] = String(twRow?.api_key ?? "").split(":");
     if (!twSid || !twToken || !twNumber) {
-      return json({ error: "twilio_not_configured", audio_url: audioUrl }, 400);
+      return json({ error: "twilio_not_configured", stage, audio_url: audioUrl }, 400);
     }
 
+    stage = 'dial';
     // 3. Dial each lead with inline TwiML <Play>
     const twiml = `<Response><Play>${audioUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</Play></Response>`;
     const auth = "Basic " + b64encode(`${twSid}:${twToken}`);
@@ -202,12 +240,12 @@ Deno.serve(async (req) => {
     const failures: Array<{ phone: string; reason: string }> = [];
     for (const l of leads) {
       const to = normE164(l.phone);
-      if (!to) { failed++; continue; }
+      if (!to) { failed++; failures.push({ phone: l.phone, reason: 'invalid_phone' }); continue; }
       // Every call must target a lead of this workspace (no free-typed numbers).
-      if (!l.id) { failed++; continue; }
+      if (!l.id) { failed++; failures.push({ phone: to, reason: 'missing_lead_id' }); continue; }
       {
         const { data: lead } = await userClient.from('leads').select('id, phone_number').eq('id', l.id).eq('workspace_owner_id', workspaceId).maybeSingle();
-        if (!lead || normE164(lead.phone_number) !== to) { failed++; continue; }
+        if (!lead || normE164(lead.phone_number) !== to) { failed++; failures.push({ phone: to, reason: 'lead_not_in_workspace_or_phone_mismatch' }); continue; }
       }
       try {
         const params = new URLSearchParams({ To: to, From: twNumber, Twiml: twiml });
@@ -218,13 +256,17 @@ Deno.serve(async (req) => {
         if (!r.ok) {
           failed++;
           const tx = await r.text();
-          failures.push({ phone: to, reason: `${r.status} ${tx.slice(0, 120)}` });
+          console.error(`[ivr-broadcast] twilio call failed ${r.status} to=${to.slice(0, 6)}***:`, tx.slice(0, 1500));
+          let twMsg = tx.slice(0, 300);
+          try { const j = JSON.parse(tx); twMsg = `${j.code ?? ''} ${j.message ?? twMsg}`.trim(); } catch { /* raw text */ }
+          failures.push({ phone: to, reason: `twilio_${r.status}: ${twMsg}` });
         } else {
           ok++;
         }
       } catch (e: any) {
         failed++;
-        failures.push({ phone: to, reason: String(e?.message ?? e) });
+        console.error('[ivr-broadcast] twilio network error', e);
+        failures.push({ phone: to, reason: `twilio_network: ${String(e?.message ?? e)}` });
       }
       if (includeWhatsapp) {
         if (!l.id) { whatsappFailed++; continue; }
@@ -235,6 +277,8 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (failures.length) console.error('[ivr-broadcast] failures', JSON.stringify(failures.slice(0, 20)));
+    stage = 'finalize';
     let styleLearned = false;
     if (shouldLearnIvrScript(ok, finalScript) && audioPath) {
       const { data: previous } = await admin.from('system_intelligence_kb').select('id').eq('workspace_owner_id', workspaceId).eq('created_by', user.id).contains('metadata', { context: 'ivr_sent_style', audio_path: audioPath }).limit(1);
@@ -249,9 +293,9 @@ Deno.serve(async (req) => {
         if (learningError) console.error('[ivr-broadcast] style learning failed:', learningError.message);
       }
     }
-    return json({ ok, failed, whatsapp_ok: whatsappOk, whatsapp_failed: whatsappFailed, total: leads.length, audio_url: audioUrl, style_learned: styleLearned, failures: failures.slice(0, 5) });
+    return json({ ok, failed, whatsapp_ok: whatsappOk, whatsapp_failed: whatsappFailed, total: leads.length, audio_url: audioUrl, ...(ok === 0 && failed > 0 ? { error: 'all_calls_failed', stage: 'dial' } : {}), style_learned: styleLearned, failures: failures.slice(0, 5) });
   } catch (e: any) {
-    console.error("[ivr-broadcast] fatal", e);
-    return json({ error: e?.message ?? "internal_error" }, 500);
+    console.error(`[ivr-broadcast] fatal at stage=${stage}`, e?.stack ?? e);
+    return json({ error: 'internal_error', stage, detail: String(e?.message ?? e) }, 500);
   }
 });

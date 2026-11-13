@@ -18,6 +18,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+
+// Reads the real JSON error body from the IVR function instead of the generic non-2xx message.
+async function invokeIvr(body: Record<string, unknown>): Promise<{ data: any; errorText: string | null }> {
+  const { data, error } = await supabase.functions.invoke('ivr-broadcast', { body });
+  if (error) {
+    let details: any = null;
+    try { details = await (error as any).context?.json?.(); } catch { /* not JSON */ }
+    console.error('ivr-broadcast failed:', details ?? error.message);
+    const d = details ?? {};
+    const failure = Array.isArray(d.failures) && d.failures[0]?.reason ? ` (${d.failures[0].reason})` : '';
+    const detail = typeof d.detail === 'string' ? ` - ${d.detail}` : '';
+    return { data: d, errorText: d.error ? `${d.error}${d.stage ? ` @${d.stage}` : ''}${detail}${failure}` : error.message };
+  }
+  if (data?.error) {
+    const failure = Array.isArray(data.failures) && data.failures[0]?.reason ? ` (${data.failures[0].reason})` : '';
+    return { data, errorText: `${data.error}${failure}` };
+  }
+  return { data, errorText: null };
+}
 import { AddVoiceDialog } from '@/components/voice/AddVoiceDialog';
 
 type IvrLead = { id: string; full_name: string | null; phone: string | null; city?: string | null };
@@ -376,12 +395,10 @@ export const IvrBroadcastPanel = () => {
     setGeneratingTts(true);
     try {
       const finalText = `${introLine} ${ttsText.trim()}`;
-      const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
-        body: { source: 'tts', text: finalText, voice_id: agentVoiceId, generate_only: true },
-      });
-      const audioUrl = (data as any)?.audio_url;
-      if (error || !audioUrl) {
-        toast.error(`הפקת האודיו נכשלה${(data as any)?.error ? `: ${(data as any).error}` : ''}`);
+      const res = await invokeIvr({ source: 'tts', text: finalText, voice_id: agentVoiceId, generate_only: true });
+      const audioUrl = res.data?.audio_url;
+      if (res.errorText || !audioUrl) {
+        toast.error(`הפקת האודיו נכשלה: ${res.errorText ?? 'לא התקבל קובץ אודיו'}`);
         return;
       }
       const durationSeconds = await readIvrAudioDuration(audioUrl);
@@ -502,10 +519,10 @@ export const IvrBroadcastPanel = () => {
         : { ...(fallbackPayload || {}), leads: targets };
       payload.include_whatsapp = includeWhatsapp;
       toast.loading(`משגר ל-${targets.length} יעדים…`, { id: 'ivr-dispatch' });
-      const { data, error } = await supabase.functions.invoke('ivr-broadcast', { body: payload });
+      const { data, errorText } = await invokeIvr(payload);
       toast.dismiss('ivr-dispatch');
-      if (error || (data as any)?.error) {
-        toast.error(`הוצאת השיחה נכשלה: ${(data as any)?.error ?? error?.message ?? ''}`);
+      if (errorText) {
+        toast.error(`הוצאת השיחה נכשלה: ${errorText}`);
         return;
       }
       const ok = (data as any)?.ok ?? 0;
