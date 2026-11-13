@@ -9,6 +9,7 @@ import { publicUrl } from '@/lib/publicUrl';
 import { ensureFullPropertyImport } from '@/lib/propertyFullSync';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { openWhatsAppContactPicker, sendViaOfficialWaba } from '@/lib/officialWa';
+import { buildTemplateComponents, renderTemplateBody } from '@/hooks/useMetaWaTemplates';
 
 
 export type ShareMode = 'whatsapp' | 'sms' | 'email' | 'copy';
@@ -24,6 +25,7 @@ export type ShareWaTemplate = {
   name: string;
   language: string;
   body_params: string[];
+  body_text?: string;
 };
 
 /**
@@ -187,12 +189,13 @@ export async function shareProperties(
   mode: ShareMode,
   recipient: ShareRecipient | null = null,
   waTemplate: ShareWaTemplate | null = null,
+  prepared?: Array<{ r: UnifiedResult; url: string }>,
 ): Promise<void> {
   if (results.length === 0) throw new Error('לא נבחרו נכסים לשיתוף');
   const phone = normalizeIlPhone(recipient?.phone);
   const email = String(recipient?.email ?? '').trim().toLowerCase();
-  const minted: Array<{ r: UnifiedResult; url: string }> = [];
-  for (const r of results) {
+  const minted: Array<{ r: UnifiedResult; url: string }> = prepared ? [...prepared] : [];
+  for (const r of prepared ? [] : results) {
     minted.push({ r, url: withShareUtm(await mintShareUrlForResult(r, phone), mode) });
   }
 
@@ -219,14 +222,15 @@ export async function shareProperties(
           message: text,
         };
         const params = waTemplate.body_params.map((v) => personalizeShareParam(v, ctx));
-        const components = params.length > 0
+        const components = waTemplate.body_text ? buildTemplateComponents(waTemplate.body_text, params) : params.length > 0
           ? [{ type: 'body', parameters: params.map((p) => ({ type: 'text', text: p.trim() || '-' })) }]
           : [];
         template = { name: waTemplate.name, language: waTemplate.language, components };
       }
       const res = await sendViaOfficialWaba({ phone_number: phone, message: text, template });
       if (!res.ok) throw new Error(res.error || 'שליחה בוואטסאפ הרשמי נכשלה');
-      await recordAffiliateDeliveries(minted, mode, text, recipient, res);
+      const sentText = waTemplate?.body_text ? renderTemplateBody(waTemplate.body_text, waTemplate.body_params) : text;
+      await recordAffiliateDeliveries(minted, mode, sentText, recipient, res);
       return;
     }
     openWhatsAppContactPicker(text);

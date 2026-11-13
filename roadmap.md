@@ -1,5 +1,10 @@
 # Roadmap
 
+## Expanded list scrolling and WhatsApp share November 13
+- [x] Lock the shared listing scroll owner horizontally while any property row is expanded; retain vertical and gallery scrolling, restore horizontal movement after all close.
+- [x] Replace property WhatsApp template controls with automatic compatible approved-template selection, populated read-only preview and Send; reuse preview links/parameters for official delivery. Recipient name/phone remain necessary for direct delivery. Existing named property-alert template includes the landing link in its address variable without changing approved fixed text.
+- [x] Authenticated real-property desktop/mobile expansion, vertical scrolling, horizontal lock/release and populated share preview checked. Delivery uses focused mocked gateway tests; no real recipient messaged. Existing approved batch template is unavailable in the current workspace, so batch WhatsApp sends fail closed rather than use an unrelated template.
+
 ## Multi-selection pricing November 13
 - [x] Selected-assets publication opens shared lead prices and separate sale/rent closing settings, with individual overrides and retained untouched fields.
 - [x] Single/bulk publication share zero-price detection and concise warning; inventory publication requires broker-only confirmation before saving.

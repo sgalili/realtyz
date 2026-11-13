@@ -2066,6 +2066,9 @@ button.publication-limit-link:focus-visible {
 .board-head-sticky.app-table-scroll {
   max-height: 100%;
 }
+.app-table-scroll:has(tr[data-row-id][aria-expanded="true"]) {
+  overflow-x: hidden !important;
+}
 /* Only listing-table views opt their containing page into a bounded flex chain. */
 .realtyz-main-surface:has(.listing-table-page) { overflow: hidden; }
 .realtyz-main-surface > .app-content-width:has(.listing-table-page) { display: flex; height: 100%; min-height: 0; flex-direction: column; }

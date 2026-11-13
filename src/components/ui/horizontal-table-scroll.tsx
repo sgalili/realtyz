@@ -12,6 +12,17 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
     useEffect(() => {
       const element = owner.current;
       if (!element) return;
+      let horizontalLocked = false;
+      const updateLock = () => {
+        const locked = !!element.querySelector('tr[data-row-id][aria-expanded="true"]');
+        if (locked && !horizontalLocked) element.scrollLeft = 0;
+        horizontalLocked = locked;
+        element.style.overflowX = locked ? 'hidden' : '';
+        element.toggleAttribute('data-horizontal-locked', locked);
+      };
+      updateLock();
+      const observer = new MutationObserver(updateLock);
+      observer.observe(element, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-expanded'] });
       const wheel = (event: WheelEvent) => {
         if (event.ctrlKey || event.defaultPrevented) return;
         // Preserve native scrolling in independently scrollable expanded content.
@@ -22,8 +33,13 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
           if ((horizontal && /(auto|scroll)/.test(css.overflowX) && target.scrollWidth > target.clientWidth) || (!horizontal && /(auto|scroll)/.test(css.overflowY) && target.scrollHeight > target.clientHeight)) return;
           target = target.parentElement;
         }
+        if (horizontalLocked && (event.shiftKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY))) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1;
-        const next = tableWheelPosition({ left: element.scrollLeft, top: element.scrollTop, maxX: element.scrollWidth - element.clientWidth, maxY: element.scrollHeight - element.clientHeight, rtl: getComputedStyle(element).direction === 'rtl' }, event.deltaX * scale, event.deltaY * scale, event.shiftKey);
+        const next = tableWheelPosition({ left: element.scrollLeft, top: element.scrollTop, maxX: horizontalLocked ? 0 : element.scrollWidth - element.clientWidth, maxY: element.scrollHeight - element.clientHeight, rtl: getComputedStyle(element).direction === 'rtl' }, event.deltaX * scale, event.deltaY * scale, event.shiftKey);
         if (next.left === element.scrollLeft && next.top === element.scrollTop) return;
         // Consume only movements the table can make, instead of handing them to a preview host.
         event.preventDefault();
@@ -44,17 +60,20 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
         const dx = Math.abs(t.clientX - gesture.x), dy = Math.abs(t.clientY - gesture.y);
         if (dx + dy < 6) return;
         gesture.axis = dx > dy ? 'x' : 'y';
-        element.style.overflowX = gesture.axis === 'y' ? 'hidden' : '';
-        element.style.overflowY = gesture.axis === 'x' ? 'hidden' : '';
+        element.style.overflowX = horizontalLocked || gesture.axis === 'y' ? 'hidden' : '';
+        element.style.overflowY = !horizontalLocked && gesture.axis === 'x' ? 'hidden' : '';
       };
       const scroll = () => {
+        if (horizontalLocked && element.scrollLeft !== 0) element.scrollLeft = 0;
         if (!gesture?.axis) return;
-        if (gesture.axis === 'y' && element.scrollLeft !== gesture.left) element.scrollLeft = gesture.left;
-        if (gesture.axis === 'x' && element.scrollTop !== gesture.top) element.scrollTop = gesture.top;
+        if (!horizontalLocked && gesture.axis === 'y' && element.scrollLeft !== gesture.left) element.scrollLeft = gesture.left;
+        if (!horizontalLocked && gesture.axis === 'x' && element.scrollTop !== gesture.top) element.scrollTop = gesture.top;
       };
+      let releaseTimer: ReturnType<typeof setTimeout> | undefined;
       const end = () => {
         // Keep the lock through momentum, then release.
-        window.setTimeout(() => { gesture = null; element.style.overflowX = ''; element.style.overflowY = ''; }, 600);
+        clearTimeout(releaseTimer);
+        releaseTimer = setTimeout(() => { gesture = null; element.style.overflowX = horizontalLocked ? 'hidden' : ''; element.style.overflowY = ''; }, 600);
       };
       element.addEventListener('wheel', wheel, { passive: false });
       element.addEventListener('touchstart', start, { passive: true });
@@ -63,6 +82,8 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
       element.addEventListener('touchcancel', end, { passive: true });
       element.addEventListener('scroll', scroll, { passive: true });
       return () => {
+        observer.disconnect();
+        clearTimeout(releaseTimer);
         element.removeEventListener('wheel', wheel);
         element.removeEventListener('touchstart', start);
         element.removeEventListener('touchmove', move);

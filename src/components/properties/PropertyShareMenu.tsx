@@ -1,6 +1,6 @@
 // Reusable share control for property results — cards, table rows, preview
 // dialog and batch selection all mint the same secure landing-page link.
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppMode } from '@/hooks/useAppMode';
@@ -17,7 +17,9 @@ import { Share2, MessageCircle, Copy, Loader2, Smartphone, Mail, ExternalLink, M
 import { toast } from 'sonner';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { shareProperties, mintShareUrlForResult, prepareCampaignListingIds, type ShareMode } from '@/lib/propertyShare';
-import { WaTemplatePicker, type WaTemplateSelection } from '@/components/whatsapp/WaTemplatePicker';
+import { useMetaWaTemplates } from '@/hooks/useMetaWaTemplates';
+import { propertyShareTemplate, type PreparedPropertyShare } from '@/lib/propertyShareTemplate';
+import { withShareUtm } from '@/lib/shareTracking';
 import { showInventoryComingSoon, inventoryToolLocked } from '@/lib/inventoryCollection';
 
 /** Rotating status lines shown while a share is being dispatched. */
@@ -93,21 +95,38 @@ export function PropertyShareMenu({
   const [recipientMode, setRecipientMode] = useState<Exclude<ShareMode, 'copy'> | null>(null);
   const [recipientName, setRecipientName] = useState('');
   const [recipientValue, setRecipientValue] = useState('');
-  const [waTemplate, setWaTemplate] = useState<WaTemplateSelection | null>(null);
+  const [prepared, setPrepared] = useState<PreparedPropertyShare[]>([]);
+  const [preparing, setPreparing] = useState(false);
+  const [prepareError, setPrepareError] = useState('');
+  const { data: templates, isLoading: templatesLoading, error: templateError } = useMetaWaTemplates(recipientMode === 'whatsapp');
+  const readyMessage = useMemo(() => propertyShareTemplate(templates ?? [], prepared, recipientName), [templates, prepared, recipientName]);
+  const resultScope = results.map(r => r.localId || r.key).join('|');
+  useEffect(() => {
+    if (recipientMode !== 'whatsapp') return;
+    let cancelled = false;
+    setPrepared([]);
+    setPrepareError('');
+    setPreparing(true);
+    Promise.all(results.map(async r => ({ r, url: withShareUtm(await mintShareUrlForResult(r), 'whatsapp') })))
+      .then(items => { if (!cancelled) setPrepared(items); })
+      .catch(() => { if (!cancelled) setPrepareError('לא ניתן להכין את קישור הנכס. יש לפתוח את השיתוף מחדש.'); })
+      .finally(() => { if (!cancelled) setPreparing(false); });
+    return () => { cancelled = true; };
+  }, [recipientMode, resultScope]);
   const count = results.length;
 
   const closeDialog = () => {
     setRecipientMode(null);
     setRecipientName('');
     setRecipientValue('');
-    setWaTemplate(null);
+    setPrepared([]);
   };
 
   const run = async (mode: ShareMode) => {
     // WhatsApp sends go out strictly through the official Meta API with a
     // pre-approved template — never the personal app or a wa.me link.
-    if (mode === 'whatsapp' && !waTemplate?.name) {
-      toast.error('יש לבחור תבנית מאושרת של Meta לפני השליחה');
+    if (mode === 'whatsapp' && !readyMessage) {
+      toast.error('הודעת השיתוף אינה מוכנה לשליחה');
       return;
     }
     setBusy(true);
@@ -116,7 +135,7 @@ export function PropertyShareMenu({
         name: recipientName,
         phone: recipientMode === 'email' ? null : recipientValue,
         email: recipientMode === 'email' ? recipientValue : null,
-      } : null, mode === 'whatsapp' ? waTemplate : null);
+      } : null, mode === 'whatsapp' ? readyMessage?.selection : null, mode === 'whatsapp' ? prepared : undefined);
       if (mode === 'copy') toast.success(count > 1 ? 'הפרטים הועתקו' : 'הקישור הועתק');
       else toast.success('השיתוף נשלח ותועד');
       closeDialog();
@@ -220,18 +239,17 @@ export function PropertyShareMenu({
             <Input id="share-recipient-value" type={recipientMode === 'email' ? 'email' : 'tel'} inputMode={recipientMode === 'email' ? 'email' : 'tel'} className="text-base" value={recipientValue} onChange={(event) => setRecipientValue(event.target.value)} />
           </div>
           {recipientMode === 'whatsapp' && (
-            <div className="space-y-1.5 border-t pt-3">
-              <p className="text-sm text-muted-foreground">
-                ההודעה נשלחת ברקע דרך הערוץ הרשמי של TORAFF עם תבנית מאושרת של Meta — לא מהאפליקציה האישית.
-              </p>
-              <WaTemplatePicker value={waTemplate} onChange={setWaTemplate} />
+            <div className="border-t border-border pt-3">
+              {preparing || templatesLoading ? <div role="status" className="flex items-center gap-2 text-base text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />מכין הודעה...</div>
+                : readyMessage ? <div aria-label="הודעת השיתוף" className="max-h-[40dvh] overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-4 text-[17px] leading-relaxed [overflow-wrap:anywhere]">{readyMessage.preview}</div>
+                : <p role="alert" className="text-base text-destructive">{prepareError || (templateError ? 'לא ניתן לטעון את הודעת השיתוף. יש לנסות שוב.' : 'תבנית שיתוף נכס מאושרת אינה זמינה כרגע.')}</p>}
             </div>
           )}
         </div>
         {busy && <SendingStatusTicker />}
         <div className="flex flex-row items-center justify-between gap-2 pt-1">
           <Button variant="outline" onClick={closeDialog}>ביטול</Button>
-          <Button disabled={busy || !recipientValue.trim()} onClick={() => recipientMode && void run(recipientMode)}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שליחה'}</Button>
+          <Button disabled={busy || !recipientValue.trim() || (recipientMode === 'whatsapp' && (preparing || !readyMessage))} onClick={() => recipientMode && void run(recipientMode)}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שליחה'}</Button>
         </div>
       </DialogContent>
     </Dialog>
