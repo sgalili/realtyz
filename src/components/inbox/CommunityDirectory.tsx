@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CommunityProfileDialog } from './CommunityProfileDialog';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +34,7 @@ export function CommunityDirectory({ enabled, exclude = [], renderAction, onSele
 }) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
+  const [profileId, setProfileId] = useState<string | null>(null);
   const directory = useCommunityDirectory(enabled, search, category);
   const rows = (directory.data ?? []).filter(u => !exclude.includes(u.id));
   return <div className="space-y-2">
@@ -45,12 +47,13 @@ export function CommunityDirectory({ enabled, exclude = [], renderAction, onSele
       {!directory.isLoading && !directory.isError && !rows.length && <p className="py-3 text-sm text-muted-foreground">לא נמצאו משתמשים</p>}
       {rows.map(u => {
         const body = <><Avatar className="h-9 w-9 shrink-0"><AvatarImage src={u.avatar_url ?? undefined} /><AvatarFallback>{u.full_name?.charAt(0)}</AvatarFallback></Avatar>
-          <span className="min-w-0 flex-1 truncate text-start">{u.full_name}</span>
+          {onSelect ? <span className="min-w-0 flex-1 truncate text-start">{u.full_name}</span> : <button type="button" className="min-w-0 flex-1 truncate text-start hover:underline" onClick={() => setProfileId(u.id)}>{u.full_name}</button>}
           <Badge variant="secondary" className="shrink-0">{ROLE_BADGE[u.category] ?? 'משתמש'}</Badge></>;
         return onSelect
           ? <Button key={u.id} type="button" variant="ghost" className="h-auto min-h-12 w-full justify-start gap-3 px-2" onClick={() => onSelect(u)}>{body}</Button>
           : <div key={u.id} className="flex min-h-12 items-center gap-3 px-1">{renderAction?.(u)}{body}</div>;
       })}
     </div>
+    <CommunityProfileDialog userId={profileId} onOpenChange={open => { if (!open) setProfileId(null); }} />
   </div>;
 }

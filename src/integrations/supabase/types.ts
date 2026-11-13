@@ -2451,6 +2451,36 @@ export type Database = {
           },
         ]
       }
+      community_deal_terms: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          my_share_percent: number | null
+          peer_id: string
+          property_reference: string | null
+          terms: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          my_share_percent?: number | null
+          peer_id: string
+          property_reference?: string | null
+          terms: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          my_share_percent?: number | null
+          peer_id?: string
+          property_reference?: string | null
+          terms?: string
+        }
+        Relationships: []
+      }
       community_group_members: {
         Row: {
           group_id: string
@@ -9606,6 +9636,18 @@ export type Database = {
           id: string
           license_number: string
           office_name: string
+        }[]
+      }
+      community_profile_listings: {
+        Args: { _user: string }
+        Returns: {
+          address: string
+          asking_price: number
+          city: string
+          deal_type: string
+          id: string
+          image_url: string
+          property_title: string
         }[]
       }
       complete_admin_broker_first_login: { Args: never; Returns: string }

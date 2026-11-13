@@ -1156,6 +1156,13 @@
       "when": 1794585745902,
       "tag": "0164_community_blocks_and_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1794586628120,
+      "tag": "0165_community_profiles_and_deal_terms",
+      "breakpoints": true
     }
   ]
 }

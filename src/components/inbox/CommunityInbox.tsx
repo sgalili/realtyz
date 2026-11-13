@@ -18,6 +18,9 @@ import { Badge } from '@/components/ui/badge';
 import { playSoftDing, showGroupedChatNotification } from '@/lib/communityNotify';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RitaChatButton } from './RitaChatButton';
+import { CommunityProfileDialog } from './CommunityProfileDialog';
+import { DealTermsDialog } from './DealTermsDialog';
+import { DEAL_SAFETY_TIP } from '@/lib/communityChat';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 type Peer = { id: string; full_name: string | null; avatar_url: string | null };
@@ -97,6 +100,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
     },
   });
   const [blockOpen, setBlockOpen] = useState(false);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const blocked = !!peer && !!blocks.data?.has(peer.id);
   const toggleBlock = useMutation({
     mutationFn: async () => {
@@ -184,7 +188,8 @@ export function CommunityInbox({ active }: { active: boolean }) {
       {!peer ? <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"><MessageCircle className="h-10 w-10" /><span>מועדון הקהילה</span></div> : <>
         <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
-          <Identity id={peer.id} name={peer.full_name} />
+          <button type="button" className="min-w-0 flex-1 text-start hover:underline" aria-label="פתיחת פרופיל ציבורי" onClick={() => setProfileId(peer.id)}><Identity id={peer.id} name={peer.full_name} /></button>
+          <DealTermsDialog peerId={peer.id} peerName={cards.data?.get(peer.id)?.full_name ?? peer.full_name} />
           <Button size="icon" variant="ghost" aria-label={blocked ? 'הסרת חסימה' : 'חסימת משתמש'} title={blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'} onClick={() => setBlockOpen(true)}><Ban className={`h-5 w-5 ${blocked ? 'text-destructive' : ''}`} /></Button>
           <RitaChatButton kind="peer" target={peer.id} />
           <Dialog open={blockOpen} onOpenChange={setBlockOpen}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>{blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'}</DialogTitle></DialogHeader><p className="text-muted-foreground">{blocked ? `${peer.full_name ?? 'המשתמש'} יוכל לשלוח לך הודעות שוב.` : `${peer.full_name ?? 'המשתמש'} לא יוכל לשלוח לך הודעות פרטיות, והודעותיו בקבוצות יוסתרו אצלך.`}</p><div className="flex justify-between gap-3"><Button variant="outline" onClick={() => setBlockOpen(false)}>ביטול</Button><Button variant={blocked ? 'default' : 'destructive'} disabled={toggleBlock.isPending} onClick={() => toggleBlock.mutate()}>{blocked ? 'הסרת חסימה' : 'חסימה'}</Button></div></DialogContent></Dialog>
@@ -192,7 +197,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
         <div className="min-h-0 flex-1 overflow-y-auto p-4" role="log" aria-label="הודעות הקהילה">
           {messages.isLoading && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
           {messages.isError && <div role="alert" className="text-destructive">טעינת ההודעות נכשלה<Button variant="ghost" onClick={() => void messages.refetch()}>נסה שוב</Button></div>}
-          {!messages.isLoading && !messages.isError && !messages.data?.length && <p className="text-center text-muted-foreground">אין הודעות בשיחה</p>}
+          <div role="note" className="mx-auto mb-4 max-w-md rounded-xl border border-border bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground"><span className="block text-xs font-semibold">TORAFF · ריטה</span>{DEAL_SAFETY_TIP}</div>
           {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
           <div ref={endRef} />
         </div>
@@ -202,5 +207,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
         </form>
       </>}
     </section>
-  </div></TabsContent></Tabs>;
+  </div></TabsContent>
+    <CommunityProfileDialog userId={profileId} onOpenChange={open => { if (!open) setProfileId(null); }} />
+  </Tabs>;
 }
