@@ -19,45 +19,32 @@ describe('partner lead pricing information', () => {
     if (role === 'guest') state.user = null;
     render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ form: true, whatsapp: true, phone: false, closing: false }} />);
     expect(screen.getAllByText('ללא עמלה')).toHaveLength(1);
-    expect(screen.getByRole('link', { name: /קורס הכנה/ })).toBeTruthy();
     expect(screen.getByText('ליד מסונן בשיחת טלפון')).toBeTruthy();
-    expect(screen.getByText('סגירת עסקה')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
     expect(screen.queryByText('₪8,000')).toBeNull();
   });
-  it('keeps the restricted closing trophy in its price color with a gray hint', () => {
-    state.user = null;
-    render(<LeadPricingInfo listing={{ ...listing, tier4_amount: 1.5, tier4_type: 'percent' }} details={{ asking_price: 3_000_000, deal_type: 'sale' }} rewardTypes={{ closing: true }} closingLevel={2} />);
-    expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('closing-level-2');
-    expect(screen.getByText('למתווכים').className).toContain('lead-no-fee');
-    cleanup();
-    // An unknown level still shows the gold closing tone rather than a gray icon.
-    render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ closing: true }} />);
-    expect(screen.getByLabelText('סגירת עסקה').getAttribute('class')).toContain('text-lead-closing');
+  it.each(['developer', 'affiliate', 'property_owner', 'super_admin'])('hides the entire closing section for an unlicensed %s', role => {
+    state.roles = [role];
+    render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ closing: true, form: true }} />);
+    expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
+    expect(screen.queryByText('₪8,000')).toBeNull();
+    expect(screen.getByText('₪80')).toBeTruthy();
   });
-  it('notes that a licensed TORAFF broker handles the closing commission', () => {
-    state.user = null;
-    render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ closing: true }} />);
-    expect(screen.getByText(/מתווך מורשה מטעם פלטפורמת TORAFF/)).toBeTruthy();
-    cleanup();
-    render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ closing: true }} />);
-    expect(screen.getByText(/מתווך מורשה מטעם פלטפורמת TORAFF/)).toBeTruthy();
-  });
-  it('opens all lead details and inline licensing from the closing icon without a second popup', () => {
+  it('opens all lead details from the closing icon without a second popup', () => {
     state.editable = null;
     render(<LeadPricingDialog listing={listing} />);
     fireEvent.click(screen.getByLabelText('סגירת עסקה'));
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
     expect(screen.getByText('שדות מטופס בעמוד נחיתה')).toBeTruthy();
-    expect(screen.getByRole('link', { name: /קורס הכנה/ }).getAttribute('href')).toContain('easytest.co.il');
-    expect(screen.getByRole('link', { name: /הרשמה למבחן/ }).getAttribute('href')).toBe('https://www.gov.il/he/service/registration_for_examination_in_real_estate_law');
+    expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
     expect(screen.queryByText('₪8,000')).toBeNull();
   });
-  it('shows configured guest types and exact daily limits without any reward prices', () => {
+  it('does not expose daily targets or closing details to guests', () => {
     state.user = null;
     state.level4Unlocked = true;
     render(<LeadPricingInfo listing={listing} details={{ contact_options: { lead_daily_limits: { whatsapp: 4 } } }} rewardTypes={{ whatsapp: true, closing: true }} />);
-    expect(screen.getByText('4')).toBeTruthy();
-    expect(screen.getByText('סגירת עסקה')).toBeTruthy();
+    expect(screen.queryByText('4')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
     expect(screen.queryByText('₪120')).toBeNull();
     expect(screen.queryByText('₪8,000')).toBeNull();
     expect(screen.getByText('שדות מטופס בעמוד נחיתה')).toBeTruthy();
@@ -92,7 +79,7 @@ describe('partner lead pricing information', () => {
     render(<LeadPricingInfo gross listing={{ ...listing, tier3_amount: 2, tier3_type: 'percent' }} details={{ asking_price: 3000000, contact_options: { lead_daily_limits: { form: 7 } } }} />);
     expect(screen.getByText('₪100')).toBeTruthy();
     expect(screen.getByText('₪60,000')).toBeTruthy();
-    expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.queryByText('7')).toBeNull();
   });
   it('opens editable settings when the workspace-scoped authored row is authorized', () => {
     state.editable = { id: 'listing' };
@@ -105,24 +92,32 @@ describe('partner lead pricing information', () => {
     state.editable = null;
     render(<LeadPricingDialog listing={listing} />);
     fireEvent.click(screen.getByRole('button', { name: 'תמחור לידים' }));
-    expect(screen.getAllByText('מקס׳ ב־24 שעות')).toHaveLength(2);
+    expect(screen.queryByText('מקס׳ ב־24 שעות')).toBeNull();
     expect(screen.queryByRole('textbox')).toBeNull();
   });
-  it('shows offered types, exact net rewards, cap and publisher questions without closing data', () => {
+  it('shows net rewards and questions but not advertiser daily targets', () => {
     render(<LeadPricingInfo listing={listing} details={{ contact_options: { lead_daily_limits: { form: 12, whatsapp: 4 }, questions: ['מה התקציב שלך?'] } }} />);
-    expect(screen.getByText('12')).toBeTruthy();
+    expect(screen.queryByText('12')).toBeNull();
+    expect(screen.queryByText('4')).toBeNull();
     expect(screen.getByText('₪80')).toBeTruthy();
     expect(screen.getByText('₪120')).toBeTruthy();
     expect(screen.queryByText('מה התקציב שלך?')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'שאלות הסינון של המפרסם' }));
     expect(screen.getByText('מה התקציב שלך?')).toBeTruthy();
-    expect(screen.getByRole('link', { name: /קורס הכנה/ })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
     expect(screen.queryByText('ליד מסונן בשיחת טלפון')).toBeNull();
   });
-  it('shows unlimited cap and custom form field requirements and choices', () => {
+  it('shows custom form requirements without a daily target', () => {
     render(<LeadPricingInfo listing={listing} details={{ contact_options: { form_fields: [{ id: 'field', label: 'מועד כניסה', type: 'single', required: true, options: ['מיידי', 'בהמשך'] }] } }} />);
-    expect(screen.getAllByText('ללא מגבלה')).toHaveLength(2);
+    expect(screen.queryByText('ללא מגבלה')).toBeNull();
     expect(screen.getByText(/מועד כניסה · בחירה יחידה · חובה · מיידי, בהמשך/)).toBeTruthy();
     expect(screen.queryByRole('textbox')).toBeNull();
+  });
+  it('keeps closing prices available to a server-authorized broker even with additional roles', () => {
+    state.roles = ['agent', 'developer', 'affiliate'];
+    state.level4Unlocked = true;
+    render(<LeadPricingInfo listing={listing} details={{}} />);
+    expect(screen.getByRole('region', { name: 'עמלות סגירה' })).toBeTruthy();
+    expect(screen.getAllByText('₪8,000').length).toBeGreaterThan(0);
   });
 });

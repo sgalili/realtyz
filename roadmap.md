@@ -1,5 +1,9 @@
 # Roadmap
 
+## Rewards popup refinement November 13
+- [x] Clarify advertiser commitments, hide closing sections without existing server-confirmed broker eligibility, remove daily targets from read-only pricing and add the shared price-level legend.
+- [x] 23 focused pricing tests passed; build OK. Authenticated real-listing popup verified on desktop/mobile, including licensed closing prices and scrollable heatmap without horizontal overflow; non-broker hiding covered by tests.
+
 ## Community groups and broadcast channels November 11
 - [x] Extend existing groups with descriptions, discussion/broadcast mode, owner-managed invitations and durable unread counts; broadcast posting and Rita require the owner server-side.
 - [x] Update creation, managed/joined lists and chat; existing private broadcasts refresh authorized queries, and read cursors advance only in a visible active group.
