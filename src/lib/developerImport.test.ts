@@ -3,6 +3,10 @@ import { developerImportUrl } from './developerImportUrl';
 import { readPage, mergeProject } from '../../supabase/functions/yad2-developer-import/extract';
 
 describe('developer import', () => {
+  it('keeps company bio separate from project and recommended company descriptions', () => {
+    const payload = { developer: { name: 'Company', about: 'Company public biography' }, projects: [{ projectName: 'A', description: 'Project description' }], related: { developer: { about: 'Unrelated bio' } } };
+    expect(readPage(`<script type="application/json">${JSON.stringify(payload)}</script>`, 'https://www.yad2.co.il/yad1/developers/company').developer.bio).toBe('Company public biography');
+  });
   it('accepts only the main developer page, never an individual listing or project', () => {
     expect(developerImportUrl('https://www.yad2.co.il/yad1/developers/acme')).toBeTruthy();
     for (const value of ['https://www.yad2.co.il/realestate/item/123', 'https://www.yad2.co.il/yad1/project/123', 'https://yad2.co.il.evil.test/yad1/developers/a', 'https://www.yad2.co.il/yad1/developers/a/project/1']) expect(developerImportUrl(value)).toBeNull();

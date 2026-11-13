@@ -1,9 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { load } from 'cheerio';
-import { agencyPageUrl, agencyUrl, parseAgencies, agencyVolumeAllowed, agencyListingCount, agencyRegistryKey, recentAgencyCheck } from '../../supabase/functions/_shared/yad2Agencies';
+import { agencyPageUrl, agencyUrl, parseAgencies, parseAgencyProfile, agencyVolumeAllowed, agencyListingCount, agencyRegistryKey, recentAgencyCheck } from '../../supabase/functions/_shared/yad2Agencies';
 import { collectBrokers, freshImportCheckpoint, advanceSearchPoint } from '../../supabase/functions/_shared/brokerImportQueue';
 
 describe('agency directory discovery', () => {
+  it('carries only the identified broker bio into the import checkpoint', () => {
+    const html = '<header><h1>משרד</h1><div data-testid="broker-name">ישראל ישראלי</div><p>רישיון תיווך: 12345</p></header><p data-testid="broker-bio">ביו של המתווך</p><div class="related"><p data-testid="broker-bio">אדם אחר</p></div><a href="/realestate/item/abc123">דירה למכירה</a>';
+    const rows = parseAgencyProfile(load(html), 'https://www.yad2.co.il/realestate/agency/123').results;
+    expect(collectBrokers(rows, 1, 10)[0]?.imported_bio).toBe('ביו של המתווך');
+  });
   it('starts at the official agencies directory and advances directory pages only', () => {
     expect(agencyPageUrl(1)).toBe('https://www.yad2.co.il/realestate/agencies');
     expect(new URL(agencyPageUrl(2)).searchParams.get('page')).toBe('2');

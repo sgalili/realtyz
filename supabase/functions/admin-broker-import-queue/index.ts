@@ -225,6 +225,9 @@ Deno.serve(async req => {
             const {data:office}=await admin.from('white_label_settings').select('id,agency_name').eq('user_id',brokerId).maybeSingle();
             if(!office){const {error}=await admin.from('white_label_settings').insert({user_id:brokerId,agency_name:b.office_name,brokerage_name:b.office_name,brokerage_license:b.license_number});if(error)throw error;}
           }
+          if(b.imported_bio) {
+            const {error}=await admin.from('profiles').update({imported_public_bio:b.imported_bio}).eq('id',brokerId).is('imported_public_bio',null);if(error)throw error;
+          }
           c.brokerId=brokerId;c.brokerListingsDone=0;c.phase='importing';await save();
         } else if(c.phase==='importing') {
           const d=await pacedCall('yad2-unlocker',{owner_id:c.brokerId,url:b.listing_urls[c.listingIndex],import_item:true,residential_only:true,limit:1,pages:1});

@@ -1,8 +1,16 @@
 # Roadmap
 
+## Public profile refinement November 14
+- [x] Remove blue hero/title/back, place top-left Close, use 15px header-to-avatar spacing and display raw license; opt out of global heading hiding.
+- [x] Save separate custom public bio; show 50+ character custom or source-attributed imported bio without a title above Send Message. Broker and developer import pipelines retain source bio without overwriting custom text or reusing private AI persona text.
+- [x] Add same-office member/property directory and link for multiple matched members; matching requires saved brokerage name plus matching city/address, never an unqualified brand-name match.
+- [x] Show developer projects through an allowlisted projection gated by existing published/live/unpaused project listings, never expose raw project data or auto-publish private developments.
+- [x] 37 tests passed; authenticated desktop/mobile verified visible name/license, no hero/overflow, original bio save and reload, build OK; import workers deployed.
+- [ ] Populated shared-office/developer-project flow and historical imported biographies require real matching office data, published developer projects and source biographies; no published developer projects or imported bios currently exist. No paid re-scrape or public publication performed.
+
 ## Grow payments November 13
-- [ ] Add Super Admin Grow environment, business verification details and sending-mode settings with secure credential handling and connection testing.
-- [ ] Implement server-created links and provider-verified, idempotent transaction notifications/acknowledgment.
+- [ ] Add Super Admin Grow settings; blocked pending direct API versus Make connection choice (business-ID/phone OTP is Make's connection flow; direct API needs provider-issued userId/pageCode).
+- [ ] Implement server-created links and provider-verified, idempotent notifications; same Grow connection choice and credentials blocker. Official approveTransaction is notification acknowledgment, not a charge authorization.
 - [ ] Connect approved payments to the agreed billing entitlement; blocked pending clarification of the requested ₪6,500 subscription versus existing credits-only policy and its duration/benefits.
 - [ ] Verify sandbox checkout and notification readback once Grow credentials are available; never treat a success redirect as proof of payment.
 

@@ -248,16 +248,6 @@ export function PageHero() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const communityUserId = location.pathname.match(/^\/community\/profile\/([^/]+)$/)?.[1];
-  const { data: communityProfile } = useQuery({
-    queryKey: ['community-profile-page', user?.id, communityUserId],
-    enabled: !!user && !!communityUserId,
-    queryFn: async () => {
-      if (!communityUserId) return null;
-      const { data, error } = await supabase.rpc('community_profile_page', { _user: communityUserId });
-      if (error) throw error;
-      return (data ?? [])[0] ?? null;
-    },
-  });
   const { isPartnerMode } = useAppMode();
   const isPublicBoard = location.pathname === "/" || location.pathname.startsWith("/public-listings");
   const isMyAdsPage = location.pathname.startsWith("/my-ads");
@@ -325,16 +315,7 @@ export function PageHero() {
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
   // The shared board has no blue title banner; the header carries its actions.
-  if (communityUserId) {
-    const back = () => window.history.state?.idx > 0 ? navigate(-1) : navigate('/');
-    return <div dir="rtl" data-page-hero className="w-full shrink-0 bg-primary text-primary-foreground">
-      <div className="app-header-content flex min-h-[65px] items-center gap-2 px-4 py-3 sm:px-6 lg:px-0">
-        <h1 className="min-w-0 flex-1 break-words text-xl font-bold leading-snug">{communityProfile?.full_name ? `הפרופיל של ${communityProfile.full_name}` : 'פרופיל משתמש'}</h1>
-        <Button variant="ghost" onClick={back} className="min-h-11 shrink-0 gap-1 px-2 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><ChevronRight className="h-4 w-4" />חזור</Button>
-        <Button variant="ghost" size="icon" aria-label="סגירה וחזרה לדף הקודם" title="סגירה" onClick={back} className="h-11 w-11 shrink-0 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"><X className="h-5 w-5" /></Button>
-      </div>
-    </div>;
-  }
+  if (communityUserId || location.pathname.startsWith('/community/office/')) return null;
   if (isPublicBoard || /^\/affiliate(-network)?(\/|$)/.test(location.pathname)) return null;
   if (
     isPostsPage &&

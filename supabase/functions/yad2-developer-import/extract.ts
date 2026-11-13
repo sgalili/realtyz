@@ -22,7 +22,7 @@ export function imagesOf(o: unknown): string[] {
 }
 export function extractDeveloper(payloads: unknown[], base: string) {
   const projects = new Map<string, any>();
-  let developer = { company_name: null as string | null, phone: null as string | null, logo_url: null as string | null };
+  let developer = { company_name: null as string | null, phone: null as string | null, logo_url: null as string | null, bio: null as string | null };
   const walk = (v: unknown, context = '', depth = 0) => {
     if (depth > 24) return;
     if (Array.isArray(v)) { v.forEach(x => walk(x, context, depth + 1)); return; }
@@ -31,6 +31,7 @@ export function extractDeveloper(payloads: unknown[], base: string) {
       company_name: pick(v, ['companyName', 'name', 'title']) ?? developer.company_name,
       phone: pick(v, ['phone', 'phoneNumber', 'contactPhone']) ?? developer.phone,
       logo_url: pick(v, ['logo.url', 'logo', 'logoUrl', 'image.url', 'image']) ?? developer.logo_url,
+      bio: pick(v, ['biography', 'about', 'description'])?.slice(0, 5000) ?? developer.bio,
     };
     const name = pick(v, ['projectName', 'project_name', 'title', 'name']);
     const isProject = name && !/developer|company/i.test(String(v.__typename ?? '')) && (v.projectName != null || v.projectId != null || /^(projects|project|projectDetails|developerProjects)$/i.test(context));

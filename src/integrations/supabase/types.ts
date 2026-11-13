@@ -3176,6 +3176,7 @@ export type Database = {
           id: string
           image_url: string | null
           images: Json
+          is_public: boolean
           name: string
           neighborhood: string | null
           price_from: number | null
@@ -3200,6 +3201,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: Json
+          is_public?: boolean
           name: string
           neighborhood?: string | null
           price_from?: number | null
@@ -3224,6 +3226,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: Json
+          is_public?: boolean
           name?: string
           neighborhood?: string | null
           price_from?: number | null
@@ -7189,6 +7192,7 @@ export type Database = {
           full_name: string | null
           gender: string | null
           id: string
+          imported_public_bio: string | null
           is_suspended: boolean
           is_unlimited: boolean
           last_sign_in_at: string | null
@@ -7199,6 +7203,7 @@ export type Database = {
           phone: string | null
           plan_status: string
           primary_user_type: string | null
+          public_bio: string | null
           referral_code: string | null
           service_areas: string[]
           signup_details: Json
@@ -7227,6 +7232,7 @@ export type Database = {
           full_name?: string | null
           gender?: string | null
           id: string
+          imported_public_bio?: string | null
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
@@ -7237,6 +7243,7 @@ export type Database = {
           phone?: string | null
           plan_status?: string
           primary_user_type?: string | null
+          public_bio?: string | null
           referral_code?: string | null
           service_areas?: string[]
           signup_details?: Json
@@ -7265,6 +7272,7 @@ export type Database = {
           full_name?: string | null
           gender?: string | null
           id?: string
+          imported_public_bio?: string | null
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
@@ -7275,6 +7283,7 @@ export type Database = {
           phone?: string | null
           plan_status?: string
           primary_user_type?: string | null
+          public_bio?: string | null
           referral_code?: string | null
           service_areas?: string[]
           signup_details?: Json
@@ -9628,6 +9637,17 @@ export type Database = {
           unread_count: number
         }[]
       }
+      community_office_members: {
+        Args: { _user: string }
+        Returns: {
+          avatar_url: string
+          category: string
+          full_name: string
+          id: string
+          license_number: string
+          office_name: string
+        }[]
+      }
       community_profile_cards: {
         Args: { _ids: string[] }
         Returns: {
@@ -9663,6 +9683,20 @@ export type Database = {
           logo_url: string
           office_name: string
           service_areas: string[]
+        }[]
+      }
+      community_public_projects: {
+        Args: { _user: string }
+        Returns: {
+          address: string
+          available_units: number
+          city: string
+          delivery_date: string
+          description: string
+          id: string
+          image_url: string
+          name: string
+          price_from: number
         }[]
       }
       complete_admin_broker_first_login: { Args: never; Returns: string }

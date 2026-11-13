@@ -133,6 +133,7 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
   const challenge = /Radware Page|ShieldSquare|captcha|אנו מניחים שגולשים/.test($('title').text() + $('body').text().slice(0, 600));
   if (challenge) throw new Error('יד2 החזיר עמוד חסימה במקום עמוד המתווך');
   let name = '', office = '', license = '', phone: string | null = null, email = '';
+  let bio = '';
   const visit = (node: any, depth = 0) => {
     if (!node || typeof node !== 'object' || depth > 12) return;
     if (Array.isArray(node)) { node.forEach(v => visit(v, depth + 1)); return; }
@@ -140,6 +141,7 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
     const nm = text(node.broker_name ?? node.brokerName ?? node.fullName ?? node.full_name ?? node.agentName);
     if (!license && /^[1-9]\d{3,9}$/.test(lic)) { license = lic; if (nm) name = nm; }
     if (!name && nm) name = nm;
+    if (!bio && nm && lic) bio = text(node.brokerBio ?? node.agentBio ?? node.biography).slice(0, 5000);
     if (!office) office = text(node.agencyName ?? node.office_name ?? node.officeName ?? node.agency?.name);
     if (!phone) phone = batchPhone(node.mobile ?? node.brokerPhone ?? node.phone ?? '') ?? null;
     if (!email && typeof node.email === 'string' && /@/.test(node.email)) email = text(node.email);
@@ -155,6 +157,7 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
   if (!license) license = $('body').text().match(/(?:(?:מספר|מס['׳]?)\s*)?רישיון\s*(?:תיווך|מתווך)?\s*[:#]?\s*([1-9]\d{3,9})(?!\d)/)?.[1] ?? '';
   if (!phone) phone = batchPhone($('a[href^="tel:"]').first().attr('href') ?? '') ?? null;
   if (!email) email = text($('a[href^="mailto:"]').first().attr('href')?.replace(/^mailto:/, '').split('?')[0]);
+  if (!bio) bio = text($('[data-testid="broker-bio"], [data-testid="agent-bio"], [class*="brokerBio"], [class*="BrokerBio"]').filter((_: number, el: any) => !$(el).closest('[class*="related"], [class*="recommend"]').length).first().text()).slice(0, 5000);
   const deal = /forrent|\/rent/i.test(sourceUrl) ? 'rent' : /forsale/i.test(sourceUrl) ? 'sale' : null;
   const links: string[] = [];
   $('a[href*="/realestate/item/"]').each((_: number, el: any) => {
@@ -174,7 +177,7 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
   return { results: [{
     source_url: agencyUrl(sourceUrl), active_listing_count: listingUrls.length, owner_name: name || null,
     owner_phone: phone, owner_email: email || null, listing_urls: validLicense ? listingUrls : [],
-    publisher: { publisher_kind: 'broker', broker_name: name || null, office_name: office || null, ...(validLicense ? { broker_license_number: license } : {}) },
+    publisher: { publisher_kind: 'broker', broker_name: name || null, office_name: office || null, ...(validLicense ? { broker_license_number: license, imported_bio: bio || null } : {}) },
     directory_next_url: null,
   }], next_url: null };
 }

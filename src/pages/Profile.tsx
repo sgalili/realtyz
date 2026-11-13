@@ -1,4 +1,5 @@
 import { DeleteAccountButton } from '@/components/profile/DeleteAccountButton';
+import { PublicBioField } from '@/components/profile/PublicBioField';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -441,6 +442,7 @@ function PersonalTab() {
     <div className="w-full min-w-0">
       <div className="space-y-3 pb-3">
         <ProfileAvatarUploader profileOwnerId={profileOwnerId} gender={gender === 'female' ? 'female' : gender === 'male' ? 'male' : null} />
+        <PublicBioField key={profileOwnerId} ownerId={profileOwnerId} />
 
         {verifiedLicenseLocked ? (
           <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm">

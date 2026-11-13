@@ -78,6 +78,7 @@ const Finance = lazy(() => import("./pages/Finance"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 const PublicListingPage = lazy(() => import("./pages/PublicListingPage"));
 const CommunityProfilePage = lazy(() => import("./pages/CommunityProfilePage"));
+const CommunityOfficePage = lazy(() => import("./pages/CommunityOfficePage"));
 const ShortLinkRedirect = lazy(() => import("./pages/ShortLinkRedirect"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const SocialConnect = lazy(() => import("./pages/SocialConnect"));
@@ -520,6 +521,7 @@ const App = () => (
               <Route path="/lead-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/lead-crm/:leadId" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/community/profile/:userId" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><CommunityProfilePage /></Suspense></ProtectedRoute>} />
+              <Route path="/community/office/:userId" element={<ProtectedRoute><Suspense fallback={<PageLoader />}><CommunityOfficePage /></Suspense></ProtectedRoute>} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/communication" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/deal-room" element={<DealsRoute><ProtectedRoute allowGuestDemo><RoleTransactions /></ProtectedRoute></DealsRoute>} />

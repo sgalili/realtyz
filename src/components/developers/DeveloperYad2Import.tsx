@@ -20,7 +20,7 @@ type ImportedProject = {
   delivery_date: string | null; status: string | null; description: string | null; images: string[];
   source_url: string | null; apartments: unknown[]; source_details: Record<string, unknown>;
 };
-type Preview = { source_url: string; developer: { company_name: string | null; phone: string | null; logo_url: string | null }; projects: ImportedProject[]; warnings?: string[] };
+type Preview = { source_url: string; developer: { company_name: string | null; phone: string | null; logo_url: string | null; bio?: string | null }; projects: ImportedProject[]; warnings?: string[] };
 
 const YAD2_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i;
 const STAGES = ['מתחבר לעמוד היזם ביד2', 'קורא את פרטי החברה', 'אוסף את רשימת הפרויקטים', 'סופר יחידות דיור ודירות', 'מכין דוח סיכום'];
@@ -117,6 +117,10 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
         devId = data.id;
       }
       if (preview.projects.length) {
+        if (preview.developer.bio) {
+          const { error: bioError } = await supabase.from('profiles').update({ imported_public_bio: preview.developer.bio }).eq('id', ws).is('imported_public_bio', null);
+          if (bioError) throw bioError;
+        }
         if (!devId) throw new Error('שמירת החברה לא הושלמה');
         const { data: savedProjects, error: readError } = await supabase.from('developer_projects').select('*').eq('workspace_owner_id', ws).eq('developer_id', devId);
         if (readError) throw readError;
