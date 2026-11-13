@@ -11,7 +11,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { type BrokerAffiliateListing, type MarketplaceListing } from '@/hooks/useAffiliate';
-import { cleanFormFields, FORM_FIELD_TYPE_LABELS, type LeadFormField } from '@/lib/leadTiers';
+import { type LeadFormField } from '@/lib/leadTiers';
+import { formatRentalPrice } from '@/lib/propertyPrice';
 import { fmtILS } from '@/lib/formatCurrency';
 import { closingFeeAmount } from '@/lib/closingFee';
 import { closingLevelClass, closingRewardLevel } from '@/lib/leadPriceRanges';
@@ -33,6 +34,8 @@ type PricingListing = Pick<MarketplaceListing, 'listing_id' | 'broker_id' | 'pro
 
 type PricingDetails = {
   daily_lead_cap?: number | null;
+  address?: string | null;
+  city?: string | null;
   asking_price?: number | null;
   deal_type?: string | null;
   contact_options?: { questions?: string[]; questions_phone?: string[]; form_fields?: LeadFormField[]; lead_daily_limits?: import('@/lib/closingFee').LeadDailyLimits };
@@ -83,7 +86,7 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
   return <div className="space-y-4 text-base leading-relaxed">
     {rows.map((row) => <Card key={row.label} className="space-y-2 rounded-2xl p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex min-w-0 items-center gap-3 text-lg font-bold leading-snug">{row.key === 'form' ? <ClipboardList className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-form'}`} /> : row.key === 'whatsapp' ? <WhatsAppIcon className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-whatsapp'}`} /> : <Phone className={`h-8 w-8 shrink-0 ${knownZero(row.key, row.amount) ? 'lead-no-fee' : 'text-lead-phone'}`} />}{row.label}</h3>{knownZero(row.key, row.amount) ? <span className="lead-no-fee ms-auto text-base font-bold">ללא עמלה</span> : user && <bdi dir="ltr" className={`ms-auto shrink-0 text-2xl font-bold ${row.key === 'form' ? 'text-lead-form' : row.key === 'whatsapp' ? 'text-lead-whatsapp' : 'text-lead-phone'}`}>{row.key === 'phone' && listing.tier3_type === 'percent' ? closingBase > 0 ? fmtILS(gross ? closingFeeAmount(row.amount, closingBase) : partnerNetReward(closingFeeAmount(row.amount, closingBase))) : 'מחיר לא זמין' : fmtILS(gross ? row.amount : partnerNetReward(row.amount))}</bdi>}</div>
-      {row.key === 'form' && <div className="space-y-1"><p>שם מלא · חובה</p><p>מספר טלפון · חובה</p>{cleanFormFields(options.form_fields).map((field) => <p key={field.id}>{field.label} · {FORM_FIELD_TYPE_LABELS[field.type]} · {field.required ? 'חובה' : 'רשות'}{field.options?.length ? ` · ${field.options.join(', ')}` : ''}</p>)}</div>}
+      {row.key === 'form' && <p className="text-muted-foreground">שדות הטופס שהגדיר המפרסם</p>}
       {row.questions.length ? <Collapsible><CollapsibleTrigger asChild><Button type="button" variant="ghost" className="group h-auto w-full justify-between gap-2 whitespace-normal px-0 py-2 text-start text-base text-muted-foreground"><span>שאלות הסינון של המפרסם</span><ChevronDown className="h-5 w-5 shrink-0 transition-transform motion-reduce:transition-none group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CollapsibleContent><ol className="list-inside list-decimal space-y-1">{row.questions.map((q, i) => <li key={`${i}:${q}`}>{q}</li>)}</ol></CollapsibleContent></Collapsible> : row.key !== 'form' ? <p className="text-muted-foreground">לא הוגדרו שאלות סינון</p> : null}
     </Card>)}
     {user && level4Unlocked && <section aria-label="עמלות סגירה">
@@ -92,6 +95,13 @@ export function LeadPricingInfo({ listing, details, gross = false, closingOnly =
     {!rows.length && !closingOnly && !rewardTypes?.closing && <p className="text-muted-foreground">לא הוגדר תמחור לידים</p>}
     <LeadPricingHeatmap />
   </div>;
+}
+
+/** Dialog subtitle: full address and price instead of a generic "property" word. */
+export function pricingSubtitle(title: string | null | undefined, details?: PricingDetails | null): string {
+  const address = [details?.address, details?.city].map(v => (v ?? '').trim()).filter(Boolean).filter((v, i, a) => i === 0 || !a[0].includes(v)).join(', ');
+  const price = formatRentalPrice(details?.asking_price, details?.deal_type);
+  return [address || (title ?? '').trim(), price].filter(Boolean).join(' · ') || 'פרטי הנכס';
 }
 
 export default function LeadPricingDialog({ listing, referralId, children, readOnly = false, compact = true, gross = false, closingOnly = false, rewardTypes, closingLevel }: { listing: PricingListing; referralId?: string | null; children?: ReactNode; readOnly?: boolean; compact?: boolean; gross?: boolean; closingOnly?: boolean; rewardTypes?: RewardTypes; closingLevel?: number | null }) {
@@ -121,7 +131,7 @@ export default function LeadPricingDialog({ listing, referralId, children, readO
     </Button>
     {query.data?.editable && open ? <RewardDialog listing={query.data.editable} open={open} onOpenChange={setOpen} /> : <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent dir="rtl" onClick={event => event.stopPropagation()} className="mx-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto overscroll-contain rounded-2xl bg-muted p-4 sm:p-6">
-        <div className="flex min-w-0 flex-col gap-4"><DialogHeader className="px-5"><DialogTitle className="text-xl font-extrabold leading-snug">{level4Unlocked ? 'מחירי לידים ועמלות — התחייבות המפרסם' : 'מחירי לידים — התחייבות המפרסם'}</DialogTitle><DialogDescription className="text-base">{listing.property_title || 'נכס'}</DialogDescription></DialogHeader>
+        <div className="flex min-w-0 flex-col gap-4"><DialogHeader className="px-5"><DialogTitle className="text-xl font-extrabold leading-snug">{level4Unlocked ? 'מחירי לידים ועמלות — התחייבות המפרסם' : 'מחירי לידים — התחייבות המפרסם'}</DialogTitle><DialogDescription className="text-base">{pricingSubtitle(listing.property_title, query.data?.details)}</DialogDescription></DialogHeader>
         {query.isLoading ? <p role="status">טוען פרטי תמחור…</p> : query.isError ? <div role="alert" className="space-y-2"><p>לא ניתן לטעון את פרטי התמחור כרגע.</p><Button variant="outline" onClick={() => void query.refetch()}>ניסיון נוסף</Button></div> : query.data ? <>
           <LeadPricingInfo listing={listing} details={query.data.details} gross={gross} closingOnly={closingOnly} rewardTypes={rewardTypes} closingLevel={closingLevel} />
           {user && referralId && <section className="border-t pt-4"><LeftoverDiscountButton referralId={referralId} inline /></section>}

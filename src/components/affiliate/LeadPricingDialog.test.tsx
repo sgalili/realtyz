@@ -107,10 +107,11 @@ describe('partner lead pricing information', () => {
     expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
     expect(screen.queryByText('ליד מסונן בשיחת טלפון')).toBeNull();
   });
-  it('shows custom form requirements without a daily target', () => {
+  it('summarizes form fields in one sentence without a daily target', () => {
     render(<LeadPricingInfo listing={listing} details={{ contact_options: { form_fields: [{ id: 'field', label: 'מועד כניסה', type: 'single', required: true, options: ['מיידי', 'בהמשך'] }] } }} />);
     expect(screen.queryByText('ללא מגבלה')).toBeNull();
-    expect(screen.getByText(/מועד כניסה · בחירה יחידה · חובה · מיידי, בהמשך/)).toBeTruthy();
+    expect(screen.getByText('שדות הטופס שהגדיר המפרסם')).toBeTruthy();
+    expect(screen.queryByText(/מועד כניסה/)).toBeNull();
     expect(screen.queryByRole('textbox')).toBeNull();
   });
   it('keeps closing prices available to a server-authorized broker even with additional roles', () => {

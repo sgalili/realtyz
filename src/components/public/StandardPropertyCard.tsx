@@ -32,7 +32,7 @@ function PhotoCarousel({ photos, alt, card, onFavorite, isMine = false, isFav = 
   );
 }
 
-export default function StandardPropertyCard({ card, signedIn = false, isMine = false, isFav = false, onFavorite, actions, summary, onOpen, showContact = true, showOwnerMenu = true, selection }: {
+export default function StandardPropertyCard({ card, signedIn = false, isMine = false, isFav = false, onFavorite, actions, summary, onOpen, showContact = true, showOwnerMenu = true, selection, menu }: {
   card: PublicCard; signedIn?: boolean; isMine?: boolean; isFav?: boolean;
   onFavorite: () => void; actions?: ReactNode; summary?: ReactNode;
   /** Management views open their own detail page instead of the public one. */
@@ -41,6 +41,8 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
   showContact?: boolean;
   showOwnerMenu?: boolean;
   selection?: ReactNode;
+  /** Replaces the owner menu with a caller-provided role-aware menu. */
+  menu?: ReactNode;
 }) {
   const navigate = useNavigate();
   const title = publicAdTitle(card);
@@ -48,7 +50,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
   const open = () => (onOpen ? onOpen() : navigate(propertyPath));
   const price = typeof card.price === 'number' && card.price > 0 ? `₪${card.price.toLocaleString('he-IL')}` : 'מחיר לא צוין';
   return <article role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={open} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <div className="p-3"><div className="flex items-start gap-1">{selection}<div className="min-w-0 flex-1">{summary ?? <PublicCardSummary card={card} price={price} />}</div>{signedIn && showOwnerMenu ? <div className="-me-2 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div></div>
+                <div className="p-3"><div className="flex items-start gap-1">{selection}<div className="min-w-0 flex-1">{summary ?? <PublicCardSummary card={card} price={price} />}</div>{menu ? <div className="-me-2 -mt-1 shrink-0" onClick={(e) => e.stopPropagation()}>{menu}</div> : signedIn && showOwnerMenu ? <div className="-me-2 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div></div>
                 <PhotoCarousel card={card} photos={card.photos} alt={title} onFavorite={() => onFavorite()} isMine={isMine} isFav={isFav} share={showContact ? <PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-white/70 hover:bg-white/90" shareUrl={publicUrl(propertyPath)} /> : undefined} />
                 <div className="flex flex-1 flex-col gap-2 p-4">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
