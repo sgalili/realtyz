@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CommunityProfileDialog } from './CommunityProfileDialog';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, MessageCircle, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
@@ -46,12 +46,16 @@ export function CommunityDirectory({ enabled, exclude = [], renderAction, onSele
       {directory.isError && <p role="alert" className="text-destructive">טעינת המדריך נכשלה</p>}
       {!directory.isLoading && !directory.isError && !rows.length && <p className="py-3 text-sm text-muted-foreground">לא נמצאו משתמשים</p>}
       {rows.map(u => {
-        const body = <><Avatar className="h-9 w-9 shrink-0"><AvatarImage src={u.avatar_url ?? undefined} /><AvatarFallback>{u.full_name?.charAt(0)}</AvatarFallback></Avatar>
-          {onSelect ? <span className="min-w-0 flex-1 truncate text-start">{u.full_name}</span> : <button type="button" className="min-w-0 flex-1 truncate text-start hover:underline" onClick={() => setProfileId(u.id)}>{u.full_name}</button>}
+        const name = u.full_name ?? 'משתמש';
+        const identity = <><Avatar className="h-9 w-9 shrink-0"><AvatarImage src={u.avatar_url ?? undefined} /><AvatarFallback>{u.full_name?.charAt(0)}</AvatarFallback></Avatar>
+          <span className="min-w-0 flex-1 truncate text-start underline-offset-2 group-hover:underline">{u.full_name}</span>
           <Badge variant="secondary" className="shrink-0">{ROLE_BADGE[u.category] ?? 'משתמש'}</Badge></>;
-        return onSelect
-          ? <Button key={u.id} type="button" variant="ghost" className="h-auto min-h-12 w-full justify-start gap-3 px-2" onClick={() => onSelect(u)}>{body}</Button>
-          : <div key={u.id} className="flex min-h-12 items-center gap-3 px-1">{renderAction?.(u)}{body}</div>;
+        const openProfile = <button key={u.id} type="button" className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-start hover:bg-muted" aria-label={`פתיחת הפרופיל הציבורי של ${name}`} title="פתיחת הפרופיל הציבורי" onClick={() => setProfileId(u.id)}>{identity}</button>;
+        if (onSelect) return <div key={u.id} className="flex min-h-12 items-center gap-2 px-1">
+          {openProfile}
+          <Button type="button" size="sm" variant="outline" className="h-9 shrink-0 gap-1.5 rounded-full px-3" aria-label={`פתיחת שיחה עם ${name}`} onClick={() => onSelect(u)}><MessageCircle className="h-4 w-4" />שיחה</Button>
+        </div>;
+        return <div key={u.id} className="flex min-h-12 items-center gap-2 px-1">{renderAction?.(u)}{openProfile}</div>;
       })}
     </div>
     <CommunityProfileDialog userId={profileId} onOpenChange={open => { if (!open) setProfileId(null); }} />
