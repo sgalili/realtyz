@@ -10370,6 +10370,10 @@ export type Database = {
         Returns: boolean
       }
       dispatch_automation_run: { Args: { _run_id: string }; Returns: undefined }
+      dispatch_broker_import_retry: {
+        Args: { _id: string; _schedule_name: string }
+        Returns: undefined
+      }
       dispatch_smart_notification: {
         Args: {
           _detail: string

@@ -3,6 +3,7 @@ import { mergeProject, readPage } from './extract.ts';
 import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 import { DEVELOPER_CACHE_SECONDS, uniqueScrapingUrls } from '../_shared/scrapingPolicy.ts';
 import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
+import { ProviderRateLimitError, retryAfterMs } from '../_shared/brightDataThrottle.ts';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 Deno.serve(async req => {
@@ -51,8 +52,9 @@ Deno.serve(async req => {
     const html = await cachedScrapingText('developer_import', url, DEVELOPER_CACHE_SECONDS, async () => {
       const result = await trackScraping('developer_import', 'rest', url, async () => {
         const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(Math.min(120000, remaining)) });
-        return { status: res.status, html: await res.text() };
+        return { status: res.status, html: await res.text(), retryAfterMs: retryAfterMs(res.headers.get('retry-after')) };
       }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.html).length }));
+      if (result.status === 429) throw new ProviderRateLimitError(result.retryAfterMs);
       if (result.status >= 400) throw new Error(`provider_${result.status}`);
       if (/captcha|access denied|verify you are human/i.test(result.html) && !/__NEXT_DATA__|projectName/.test(result.html)) throw new Error('source_blocked');
       return result.html;
@@ -95,6 +97,7 @@ Deno.serve(async req => {
     return json({ ok: true, source_url: pageUrl.href, ...result, completeness: { complete: failed.length === 0 && result.projects.length > 0 && missingHierarchy.length === 0, pages_read: visited.size - failed.filter(url => visited.has(url)).length, failed_urls: failed, fail_reasons: failReasons, projects_without_unit_details: missingHierarchy }, warnings: [...(failed.length ? ['חלק מעמודי הפרויקטים לא נקראו. הפרטים הזמינים נשמרו בתצוגה המקדימה; אפשר לנסות שוב.'] : []), ...(missingHierarchy.length ? ['בחלק מהפרויקטים לא נמצאו פרטי יחידות במקור. הפרויקטים נשמרים בלי להמציא דירות או מחירים.'] : []), ...(result.projects.length === 0 ? ['לא נמצאו פרויקטים שניתן לקרוא בעמוד היזם.'] : [])] });
   } catch (error) {
     console.error('Developer import failed', { error: error instanceof Error ? error.message : 'unknown', source_url: pageUrl.href });
+    if (error instanceof ProviderRateLimitError) return json({ error: 'brightdata_rate_limited', retry_after_ms: error.retryAfterMs, message: 'Bright Data הגביל זמנית את קצב הבקשות. ההתקדמות נשמרה לניסיון החוזר.' }, 429);
     return json({ error: 'fetch_failed', message: 'לא ניתן לקרוא את עמוד היזם ביד2 כרגע. נסו שוב או הוסיפו פרויקטים ידנית.' }, 502);
   }
 });

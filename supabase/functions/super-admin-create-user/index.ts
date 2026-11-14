@@ -7,7 +7,7 @@ import { requireCaller, isSuperAdmin } from "../_shared/authz.ts";
 import { checkAdminBrokerRegistry } from "../_shared/adminBrokerRegistry.ts";
 import { BATCH_NO_EMAIL_DOMAIN } from "../_shared/brokerBatchImport.ts";
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { allowsQueuedContactlessAccount, requiresLicenseVerification } from '../_shared/importedAccountPolicy.ts';
+import { allowsQueuedContactlessAccount, developerImportPlaceholderId, requiresLicenseVerification } from '../_shared/importedAccountPolicy.ts';
 
 const Body = z.object({
   email: z.string().email().optional(),
@@ -19,6 +19,7 @@ const Body = z.object({
   user_type: z.enum(["broker", "developer", "property_owner", "property_seeker", "affiliate"]).default("broker"),
   action: z.enum(["create", "check_registry"]).default("create"),
   import_job_id: z.string().uuid().optional(),
+  import_source_url: z.string().max(500).optional(),
   initial_balance_agorot: z.number().int().nonnegative().default(100000),
 });
 
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const { full_name, phone_e164, broker_license_number, initial_balance_agorot, user_type, approve_broker, action, import_job_id } = parsed.data;
+    const { full_name, phone_e164, broker_license_number, initial_balance_agorot, user_type, approve_broker, action, import_job_id, import_source_url } = parsed.data;
     const registry = requiresLicenseVerification(user_type) && broker_license_number ? await checkAdminBrokerRegistry(broker_license_number, full_name ?? '') : null;
     if (action === 'check_registry') return new Response(JSON.stringify(registry ?? {valid:false,reason:'invalid_license'}),{headers:{...corsHeaders,'Content-Type':'application/json'}});
     if (requiresLicenseVerification(user_type) && (!broker_license_number || (!registry?.valid && !approve_broker))) return new Response(JSON.stringify({error:'נדרש אימות רישיון או אישור מפורש של מנהל'}),{status:400,headers:corsHeaders});
@@ -69,7 +70,9 @@ Deno.serve(async (req) => {
     const pendingContact = !normalizedPhone && allowsQueuedContactlessAccount(user_type, import_job_id);
     if (!normalizedPhone && !pendingContact) return new Response(JSON.stringify({ error: "נדרש מספר נייד תקין לכניסה באמצעות SMS" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const placeholderId = normalizedPhone ?? `${user_type === 'developer' ? 'developer' : `license-${broker_license_number}`}-${crypto.randomUUID().slice(0, 8)}`;
+    const placeholderId = normalizedPhone ?? (user_type === 'developer' && import_job_id && import_source_url
+      ? await developerImportPlaceholderId(import_job_id, import_source_url)
+      : `${user_type === 'developer' ? 'developer' : `license-${broker_license_number}`}-${crypto.randomUUID().slice(0, 8)}`);
     const email = parsed.data.email ?? `${placeholderId}@${BATCH_NO_EMAIL_DOMAIN}`;
     const password = parsed.data.password ?? crypto.randomUUID() + crypto.randomUUID();
     // Create the auth user (auto-confirmed so they can log in immediately), or
@@ -89,6 +92,17 @@ Deno.serve(async (req) => {
       const dupEmail = /email.*already|already.*registered/i.test(msg) || (createErr as any)?.code === "email_exists";
       const dupPhone = /phone.*already|phone_exists/i.test(msg) || (createErr as any)?.code === "phone_exists";
       if (dupEmail || dupPhone) {
+        // A repeated developer request may continue only to the exact account audited for this job+source.
+        if (user_type === 'developer' && import_job_id && import_source_url) {
+          const { data: priorProfiles } = await admin.from('profiles').select('id').eq(dupPhone ? 'phone' : 'email', dupPhone ? normalizedPhone : email).eq('created_by_super_admin', true).limit(2);
+          if (priorProfiles?.length === 1) {
+            const [{ data: priorRole }, { data: priorAudit }] = await Promise.all([
+              admin.from('user_roles').select('role').eq('user_id', priorProfiles[0].id).eq('role', 'developer').maybeSingle(),
+              admin.from('audit_logs').select('target_id').eq('action', 'super_admin.create_user').eq('target_id', priorProfiles[0].id).eq('details->>import_job_id', import_job_id).eq('details->>import_source_url', import_source_url).maybeSingle(),
+            ]);
+            if (priorRole && priorAudit) return new Response(JSON.stringify({ success: true, user_id: priorProfiles[0].id, email, wa_status: 'skipped', silent: true, duplicate: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        }
         // Expected validation outcome: answer 200 with a friendly message so the UI shows a toast instead of crashing.
         return new Response(JSON.stringify({
           ok: false,
@@ -145,7 +159,7 @@ Deno.serve(async (req) => {
       action: "super_admin.create_user",
       target_table: "auth.users",
       target_id: newUid,
-      details: { user_type, registry_verified: registry?.valid ?? false, license_required: user_type === 'broker', email, phone_e164: normalizedPhone, initial_balance_agorot, silent: true },
+      details: { user_type, registry_verified: registry?.valid ?? false, license_required: user_type === 'broker', email, phone_e164: normalizedPhone, initial_balance_agorot, silent: true, ...(import_job_id ? { import_job_id } : {}), ...(import_source_url ? { import_source_url } : {}) },
     });
 
     return new Response(JSON.stringify({

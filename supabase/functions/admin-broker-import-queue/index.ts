@@ -5,8 +5,9 @@ import { adminClient, requireCaller, isSuperAdmin } from '../_shared/authz.ts';
 import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPoint, skipRestrictedImport } from '../_shared/brokerImportQueue.ts';
 import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyPageUrl, agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck } from '../_shared/yad2Agencies.ts';
-import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
+import { PROVIDER_GAP_MS, ProviderRateLimitError, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
 import { developerImportUrl, developerProjectImportRow, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
+import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY, developerRetryDeadline } from '../_shared/developerImportRetry.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
@@ -81,6 +82,7 @@ Deno.serve(async req => {
     const {data:claimed,error:claimError}=await admin.rpc('claim_broker_import_step',{_id:input.job_id}); if(claimError) throw claimError;
     const job=claimed?.[0]; if(!job) return json({ok:true,idle:true});
     const c=job.checkpoint as Record<string,any>; const started=Date.now();
+    const autonomousDeveloper=()=>autonomousDeveloperCheckpoint(c);
     const criteriaKey=`volume:${job.min_listings}:${job.max_listings}`;
     const recentKeys=async(rows:Record<string,any>[])=>{
       const keys=[...new Set(rows.map(agencyRegistryKey).filter((key):key is string=>Boolean(key)))];
@@ -117,15 +119,28 @@ Deno.serve(async req => {
       }
       const {data:state}=await admin.from('broker_import_jobs').select('status,lease_token').eq('id',job.id).single();
       if(state?.status!=='running'||state.lease_token!==job.lease_token)throw new Error('הייבוא הושהה לפני הבקשה הבאה');
-      delete c.waitUntil;delete c.waitReason;
-      try {return await call(name,body);}
-      finally {if(instant){delete c.nextRequestAt;}else c.nextRequestAt=Date.now()+PROVIDER_GAP_MS;}
+      delete c.waitUntil;delete c.waitReason;delete c.waitScope;
+      try {
+        const result=await call(name,body);
+        if(autonomousDeveloper()){c.rateRetries=0;c.transientRetries=0;}
+        return result;
+      } finally {if(instant){delete c.nextRequestAt;}else c.nextRequestAt=Date.now()+PROVIDER_GAP_MS;}
     };
     try {
-      if(c.waitReason==='rate_limit') {
-        // Even old automatic-retry checkpoints require an explicit manual resume.
-        await save({status:'paused',error:'מגבלת בקשות (429). הייבוא מושהה; ההתקדמות והמטמון נשמרו. יש להמשיך ידנית לאחר השהיית הבטיחות.'});
-        return json({ok:true,paused:true});
+      if(c.waitReason==='rate_limit' || c.waitReason===DEVELOPER_TRANSIENT_RETRY) {
+        if(autonomousDeveloper()) {
+          const remaining=Math.max(0,Number(c.waitUntil??0)-Date.now());
+          if(remaining>0) {
+            // The database trigger arms a one-off delayed wake-up; do not spin or require Continue.
+            await save({status:'running',error:null});
+            return json({ok:true,waiting:true,retry_in_ms:remaining});
+          }
+          delete c.waitReason;delete c.waitUntil;delete c.waitScope;
+        } else {
+          // Broker imports retain their explicit manual cooldown/resume policy.
+          await save({status:'paused',error:'מגבלת בקשות (429). הייבוא מושהה; ההתקדמות והמטמון נשמרו. יש להמשיך ידנית לאחר השהיית הבטיחות.'});
+          return json({ok:true,paused:true});
+        }
       }
       if(c.phase==='developer_scanning') {
         const url=c.developerUrls?.[c.developerIndex??0];
@@ -153,7 +168,7 @@ Deno.serve(async req => {
         const existing=matches?.[0];
         let accountId=existing?.workspace_owner_id as string|undefined;
         if(!accountId) {
-          const d=await call('super-admin-create-user',{full_name:companyName,...(work.developer.phone?{phone_e164:work.developer.phone}:{}),user_type:'developer',import_job_id:job.id,initial_balance_agorot:2500});
+          const d=await call('super-admin-create-user',{full_name:companyName,...(work.developer.phone?{phone_e164:work.developer.phone}:{}),user_type:'developer',import_job_id:job.id,import_source_url:work.url,initial_balance_agorot:2500});
           if(!d.user_id)throw new Error(d.error??'יצירת היזם נכשלה');
           accountId=d.user_id;
         }
@@ -317,8 +332,16 @@ Deno.serve(async req => {
           return json({ok:true,skipped:true});
         }
       }
+      if(e instanceof ProviderTimeoutError && autonomousDeveloper()) {
+        c.transientRetries=(c.transientRetries??0)+1;
+        c.waitScope='developer';c.waitReason=DEVELOPER_TRANSIENT_RETRY;
+        c.waitUntil=developerRetryDeadline(DEVELOPER_TRANSIENT_RETRY,c.transientRetries);
+        console.warn('[developer-import-auto-retry]',JSON.stringify({job_id:job.id,phase:c.phase,attempt:c.transientRetries,status:e.status??null,retry_at:new Date(c.waitUntil).toISOString()}));
+        await save({status:'running',error:null});
+        return json({ok:true,waiting:true,retry_at:c.waitUntil});
+      }
       if(e instanceof ProviderTimeoutError && ['scanning','enriching'].includes(c.phase)) {
-        // Discovery only: a slow page is skipped softly. Validation/creation still stop safely.
+        // Broker discovery only: a slow page is skipped softly.
         console.warn('[broker-import-timeout-skip]',JSON.stringify({job_id:job.id,phase:c.phase,page:c.page,status:e.status??null,url:c.phase==='enriching'?c.enrichUrls?.[0]:null}));
         c.timeoutSkips=(c.timeoutSkips??0)+1;skipRestrictedImport(c);
         await save({error:null,...(c.phase==='completed'?{status:'completed'}:{})});
@@ -326,11 +349,19 @@ Deno.serve(async req => {
       }
       if(e instanceof ProviderRateLimitError) {
         c.rateRetries=(c.rateRetries??0)+1;c.waitReason='rate_limit';
-        c.waitUntil=Date.now()+rateBackoffMs(c.rateRetries,e.retryAfterMs);
+        c.waitUntil=developerRetryDeadline('rate_limit',c.rateRetries,Date.now(),e.retryAfterMs);
+        if(autonomousDeveloper()) {
+          c.waitScope='developer';
+          console.warn('[developer-import-rate-retry]',JSON.stringify({job_id:job.id,phase:c.phase,attempt:c.rateRetries,retry_at:new Date(c.waitUntil).toISOString()}));
+          await save({status:'running',error:null});
+          return json({ok:true,waiting:true,retry_at:c.waitUntil});
+        }
         await save({status:'paused',error:'מגבלת בקשות (429). הייבוא מושהה; ההתקדמות והמטמון נשמרו. יש להמשיך ידנית לאחר השהיית הבטיחות.'});
         return json({ok:true,waiting:true});
       }
-      await save({status:'paused',error:e instanceof Error?e.message:'הייבוא נעצר'});return json({ok:false,paused:true});
+      const message=e instanceof Error?e.message:'הייבוא נעצר';
+      await save({status:autonomousDeveloper()?'failed':'paused',error:message});
+      return json({ok:false,...(autonomousDeveloper()?{failed:true}:{paused:true})});
     }
   } catch(e) {return json({error:e instanceof Error?e.message:'הבקשה נכשלה'},400);}
 });

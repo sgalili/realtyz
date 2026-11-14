@@ -1,5 +1,10 @@
 # Roadmap
 
+## Autonomous developer scraping November 14
+- [x] Removed developer-job Continue/cooldown-reset breakpoints and added automatic retry countdowns; broker controls remain unchanged.
+- [x] Developer page/project/unit checkpoints chain unattended; one-off delayed wake-ups retry transient failures and full 429 backoffs without tight loops. Permanent configuration/identity errors fail visibly instead of pretending completion.
+- [x] Exact-source parsing, caches and private developer-owned saves are preserved; repeated account provisioning is source/job idempotent. Thirty-three focused tests, Deno/type checks, three deployments, mobile UI and a rolled-back delayed-schedule test passed. Verification triggered source reads and a temporary account, which was deleted; no projects, units, test jobs or retry schedules were retained. Full live completion remains unverified.
+
 ## Developer paid subscription November 14
 - [x] Developer selection in free posting opens the monthly ₪9,500+VAT plan, diagonal grey ₪13,000 strikethrough, benefits and mandatory terms consent; guest return reopens it on the global homepage.
 - [x] Self-workspace Grow/Make orders snapshot ₪9,500 + ₪1,710 VAT = ₪11,210 and server-timestamped terms. Only independently verified live completion grants the developer role and 30-day workspace entitlement; sandbox/redirects grant nothing.

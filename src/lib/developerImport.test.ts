@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { developerImportUrl } from './developerImportUrl';
 import { readPage, mergeProject } from '../../supabase/functions/yad2-developer-import/extract';
 import { developerProjectImportRow, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork } from '../../supabase/functions/_shared/yad2DeveloperImport';
-import { allowsQueuedContactlessAccount, requiresLicenseVerification } from '../../supabase/functions/_shared/importedAccountPolicy';
+import { allowsQueuedContactlessAccount, developerImportPlaceholderId, requiresLicenseVerification } from '../../supabase/functions/_shared/importedAccountPolicy';
 
 describe('developer import', () => {
   it('keeps company bio separate from project and recommended company descriptions', () => {
@@ -64,6 +64,13 @@ describe('developer import', () => {
     expect(row.apartments).toHaveLength(1);
     expect(detailedUnitCount(row)).toBe(1);
     expect(developerProjectImportRow(undefined, project, 'dev-1', 'account-1').is_public).toBe(false);
+  });
+  it('uses a stable source-specific identity when account creation is retried', async () => {
+    const job = '7aa5c2c6-be79-4d2e-b36c-2ef2382558fc';
+    const first = await developerImportPlaceholderId(job, 'https://www.yad2.co.il/yad1/developers/1000318');
+    expect(first).toBe(await developerImportPlaceholderId(job, 'https://www.yad2.co.il/yad1/developers/1000318'));
+    expect(first).not.toBe(await developerImportPlaceholderId(job, 'https://www.yad2.co.il/yad1/developers/1000319'));
+    expect(first).toMatch(/^developer-7aa5c2c6-[0-9a-f]{20}$/);
   });
   it('exempts only imported developers from license and contact prerequisites', () => {
     expect(requiresLicenseVerification('developer')).toBe(false);
