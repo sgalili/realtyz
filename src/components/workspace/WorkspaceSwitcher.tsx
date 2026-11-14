@@ -91,7 +91,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
     e.stopPropagation();
     setOpenMobile(false);
     setSidebarOpen(false);
-    navigate('/profile');
+    if (avatarOwnerId) navigate(`/community/profile/${avatarOwnerId}`);
   };
 
   // The card leads with the office/company name, or with the owner's full name

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useInboxLiveUpdates } from '@/hooks/useInboxLiveUpdates';
 import { CommunityInbox } from '@/components/inbox/CommunityInbox';
+import { LeadPublicProfile } from '@/components/leads/LeadPublicProfile';
 import { RitaChatButton } from '@/components/inbox/RitaChatButton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
@@ -229,6 +230,7 @@ const OmnichannelInbox = () => {
   const activeWorkspaceOwnerId = useActiveWorkspaceOwnerId();
   const workspaceScope = activeWorkspaceOwnerId ?? user?.id ?? null;
   const navigate = useNavigate();
+  const [publicLeadId, setPublicLeadId] = useState<string | null>(null);
 
   // Agent identity for outbound chat bubbles (circular avatar next to each one).
   const { data: agentProfile } = useQuery({
@@ -603,7 +605,7 @@ const OmnichannelInbox = () => {
     const realId = !selectedVoterId.startsWith('phone:')
       ? selectedVoterId
       : selectedThread.ids[0];
-    if (realId) { navigate(`/lead-crm/${realId}`); return; }
+    if (realId) { setPublicLeadId(realId); return; }
     const phone = selectedThread.phones[0];
     if (!phone) return;
     const digits = String(phone).replace(/\D/g, '').slice(-9);
@@ -613,13 +615,13 @@ const OmnichannelInbox = () => {
       .ilike('phone_number', `%${digits}%`)
       .limit(1);
     const found = (data ?? [])[0]?.id;
-    if (found) navigate(`/lead-crm/${found}`);
+    if (found) setPublicLeadId(found);
     else toast.error('אין כרטיס ליד לשיחה הזו');
   };
 
   const openCrmContact = (leadId: string) => {
     if (!leadId || leadId.startsWith('phone:') || leadId.startsWith('demo-')) return;
-    navigate(`/lead-crm/${leadId}`);
+    setPublicLeadId(leadId);
   };
 
   const { data: dbChatMessages } = useQuery({
@@ -1122,6 +1124,7 @@ const OmnichannelInbox = () => {
 
   return (
     <Tabs dir="rtl" value={inboxSection} onValueChange={value => { setInboxSection(value); setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); return next; }, { replace: true }); }} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+      <LeadPublicProfile leadId={publicLeadId} onClose={() => setPublicLeadId(null)} />
       <TabsList aria-label="סוג שיחות" className="grid h-auto min-h-11 w-full shrink-0 grid-cols-2 gap-1">
         <TabsTrigger value="leads" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">צ'אטים נכסים ולידים</TabsTrigger>
         <TabsTrigger value="community" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">מועדון הקהילה</TabsTrigger>
@@ -1376,9 +1379,9 @@ const OmnichannelInbox = () => {
                       <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
                         <button
                           type="button"
-                          onClick={(event) => { event.stopPropagation(); setSelectedVoterId(voter.id); }}
+                          onClick={(event) => { event.stopPropagation(); openCrmContact(voter.id); }}
                           className="text-sm font-medium truncate min-w-0 text-right"
-                          title="פתיחת השיחה"
+                          title="פתיחת פרופיל"
                         >
                           {voter.full_name || formatPhoneDisplay(voter.phone_number)}
                         </button>
@@ -1456,7 +1459,7 @@ const OmnichannelInbox = () => {
                     <DropdownMenuItem onClick={() => setChatAutopilot(!chatAutopilotOn)}>{chatAutopilotOn ? 'כיבוי ריטה לשיחה זו' : 'הפעלת ריטה לשיחה זו'}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל מתעניין</DropdownMenuItem>
+                    <DropdownMenuItem onClick={openCrmCard}>הצגת פרופיל מתעניין</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => selectedVoterId && setDeleteTargetId(selectedVoterId)}
@@ -1493,12 +1496,14 @@ const OmnichannelInbox = () => {
                     const avatarNode = isAiMessage ? (
                       <RitaAvatar className="h-7 w-7 shrink-0" />
                     ) : isOutbound ? (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 rounded-full p-0" aria-label="פתיחת הפרופיל שלי" onClick={() => { if (user) navigate(`/community/profile/${user.id}`); }}>
                       <VoterAvatar
                         fullName={agentProfile?.full_name ?? 'סוכן'}
                         profilePictureUrl={agentProfile?.avatar_url ?? null}
                         className="h-7 w-7 shrink-0"
                         textClassName="text-[10px]"
                       />
+                      </Button>
                     ) : (
                       <button type="button" onClick={openCrmCard} className="shrink-0 rounded-full" aria-label="פתיחת כרטיס ליד">
                         <VoterAvatar

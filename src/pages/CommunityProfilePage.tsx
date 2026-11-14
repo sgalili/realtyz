@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Building2, Loader2, LayoutGrid, List, MessageCircle, X, ArrowUpLeft } from 'lucide-react';
+import { Building2, Loader2, LayoutGrid, List, MessageCircle, X, ArrowUpLeft, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { useListingFavorites } from '@/hooks/useListingFavorites';
 import { fetchPublicBoardFeed } from '@/lib/publicBoardFeed';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,6 +22,7 @@ export default function CommunityProfilePage() {
   const { userId = '' } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
   const favorites = useListingFavorites();
   const { isSuperAdmin } = useUserRole();
   const [view, setView] = useState<'list' | 'grid'>('list');
@@ -33,6 +35,11 @@ export default function CommunityProfilePage() {
       return (data ?? [])[0] ?? null;
     },
   });
+  const management = useQuery({ queryKey: ['profile-management', user?.id, activeWorkspaceId, userId], enabled: !!user && !!userId, queryFn: async () => {
+    const { data, error } = await supabase.rpc('profile_management_access', { _user: userId });
+    if (error) throw error;
+    return data === true;
+  } });
   const listingIds = useQuery({
     queryKey: ['community-profile-listings', userId], enabled: !!user && !!userId,
     queryFn: async () => {
@@ -71,7 +78,10 @@ export default function CommunityProfilePage() {
         <h1 className="max-w-full break-words text-xl font-bold leading-relaxed sm:text-2xl">{p.full_name} - {ROLE_BADGE[p.category] ?? 'משתמש'}{p.category === 'broker' && p.license_number ? <span className="ms-2 inline text-base font-medium"><bdi>{p.license_number}</bdi></span> : null}</h1>
         {cities && <p className="max-w-full break-words text-base text-muted-foreground">{cities}</p>}
         {p.bio && <p className="max-w-2xl whitespace-pre-line break-words text-base leading-relaxed text-muted-foreground">{p.bio}</p>}
-        <Button className="gap-2" onClick={() => navigate(`/inbox?community=${encodeURIComponent(p.id)}`)}><MessageCircle className="h-4 w-4" />שליחת הודעה</Button>
+        <div className="!mt-5 flex flex-wrap justify-center gap-2">
+          {user?.id !== p.id && <Button className="gap-2" onClick={() => navigate(`/inbox?community=${encodeURIComponent(p.id)}`)}><MessageCircle className="h-4 w-4" />שליחת הודעה</Button>}
+          {management.data === true && <Button variant="outline" onClick={async () => { if (activeWorkspaceId !== userId) await setActiveWorkspace(userId); navigate('/profile'); }}><Pencil className="h-4 w-4" />עריכה / ניהול</Button>}
+        </div>
       </div>
       {(p.office_name || p.logo_url) && <div className="mx-auto flex w-full max-w-2xl items-center gap-4 rounded-md bg-muted/40 p-4">
         {p.logo_url ? <img src={p.logo_url} alt={p.office_name ? `לוגו ${p.office_name}` : 'לוגו משרד'} className="h-20 w-20 shrink-0 bg-background object-contain p-1" /> : <Building2 className="h-12 w-12 shrink-0 text-muted-foreground" />}

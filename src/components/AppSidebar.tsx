@@ -266,7 +266,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     item.aliases?.some((a) => location.pathname === a || location.pathname.startsWith(a + '/'));
 
   // The top identity area shows the signed-in user's profile avatar and keeps
-  // the active workspace switcher next to it; clicking the avatar goes to /profile.
+  // the active workspace switcher next to it; identity clicks open a public profile.
 
 
   return (
@@ -279,16 +279,16 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
             <SidebarGroupContent
               role="button"
               tabIndex={0}
-              title="הגדרות"
+              title="פרופיל ציבורי"
               onClick={() => {
                 closeSidebar();
-                navigate('/profile');
+                navigate(`/community/profile/${user.id}`);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   closeSidebar();
-                  navigate('/profile');
+                  navigate(`/community/profile/${user.id}`);
                 }
               }}
               className="cursor-pointer px-3 py-3 transition-colors hover:bg-slate-50"

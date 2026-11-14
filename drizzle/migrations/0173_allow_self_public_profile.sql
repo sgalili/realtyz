@@ -1,0 +1,8 @@
+CREATE OR REPLACE FUNCTION public.community_profile_cards(_ids uuid[]) RETURNS TABLE(id uuid,full_name text,category text,office_name text,license_number text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+SELECT p.id,p.full_name,CASE WHEN EXISTS(SELECT 1 FROM public.user_roles r WHERE r.user_id=p.id AND r.role='developer') THEN 'developer' WHEN EXISTS(SELECT 1 FROM public.user_roles r WHERE r.user_id=p.id AND r.role IN ('agent','managing_broker','lead_agent','junior_agent','assistant')) THEN 'broker' WHEN p.primary_user_type='property_seeker' THEN 'buyer' WHEN p.primary_user_type='property_owner' THEN 'seller' WHEN p.primary_user_type='landlord' THEN 'landlord' WHEN p.primary_user_type='dealer' THEN 'dealer' ELSE 'partner' END,coalesce(nullif(w.brokerage_name,''),nullif(w.agency_name,''),(SELECT d.company_name FROM public.developers d WHERE d.owner_user_id=p.id AND d.company_name IS NOT NULL LIMIT 1),nullif(a.display_name,'')),nullif(p.broker_license_number,'')
+FROM public.profiles p LEFT JOIN public.white_label_settings w ON w.user_id=p.id LEFT JOIN public.affiliate_profiles a ON a.user_id=p.id
+WHERE auth.uid() IS NOT NULL AND p.id=ANY(_ids[1:200]) AND (p.id=auth.uid() OR (public.is_community_chat_member(auth.uid()) AND (public.is_community_chat_member(p.id) OR EXISTS(SELECT 1 FROM public.community_chat_messages m WHERE (m.sender_id=p.id AND m.recipient_id=auth.uid()) OR (m.recipient_id=p.id AND m.sender_id=auth.uid())))));
+$$;
+REVOKE ALL ON FUNCTION public.community_profile_cards(uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.community_profile_cards(uuid[]) TO authenticated,service_role;

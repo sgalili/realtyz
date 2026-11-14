@@ -10629,6 +10629,18 @@ export type Database = {
         Args: { _lead: Database["public"]["Tables"]["leads"]["Row"] }
         Returns: string[]
       }
+      lead_profile_access: {
+        Args: { _lead: string }
+        Returns: {
+          avatar_url: string
+          can_manage: boolean
+          category: string
+          city: string
+          full_name: string
+          id: string
+          phone_number: string
+        }[]
+      }
       leftover_lead_price: { Args: { _charge_id: string }; Returns: number }
       lifecycle_rank: { Args: { _s: string }; Returns: number }
       list_leftover_leads: {
@@ -10773,6 +10785,7 @@ export type Database = {
         }
         Returns: Json
       }
+      profile_management_access: { Args: { _user: string }; Returns: boolean }
       publish_developer_project: {
         Args: { _project: string; _unit_key?: string }
         Returns: Json

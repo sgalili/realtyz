@@ -1205,6 +1205,20 @@
       "when": 1794613416186,
       "tag": "0171_grow_restrict_financial_table_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1794614203346,
+      "tag": "0172_profile_contact_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1794614283267,
+      "tag": "0173_allow_self_public_profile",
+      "breakpoints": true
     }
   ]
 }

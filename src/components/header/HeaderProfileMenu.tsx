@@ -70,7 +70,7 @@ export function HeaderProfileMenu() {
   const displayName = friendlyUserDisplayName({ user_metadata: { full_name: profileName, name: friendlyUserDisplayName(user, '') } }, 'ללא שם');
   const initial = displayName.slice(0, 1);
 
-  const goProfile = () => navigate('/profile');
+  const goProfile = () => { if (avatarOwnerId) navigate(`/community/profile/${avatarOwnerId}`); };
   const go = (path: string) => {
     setOpen(false);
     navigate(path);

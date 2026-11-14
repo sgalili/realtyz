@@ -1,5 +1,9 @@
 # Roadmap
 
+## Profile clicks and contact permissions November 14
+- [x] Lead/community/sidebar avatar and name entry points open clean profiles first; server-authorized management and own-client phone, contact-free peer profiles, internal official WhatsApp routing, 20px header/action spacing.
+- [x] Five focused tests pass; real signed-in self-profile → self-settings and lead profile → authorized edit verified desktop/mobile without writes. Server readback returns no unknown-lead rows; preview OK. Full SQL multi-account test retained but sandbox SQL role cannot execute auth-only RPCs; no permissions weakened to run it.
+
 ## Independent expanded table scrolling November 14
 - [x] Restore native horizontal scrolling for table summaries; shared FixedTablePanel keeps expanded property/project bodies and contact actions at viewport width and counter-scrolls them independently.
 - [x] Four focused scrolling tests pass; real signed-in homepage property checked at 411×801 and 1280×1800: summary scroll -180/-150, expanded body X unchanged and width matches viewport. Preview build OK; developer table shares the fixed panel but populated project flow is unavailable.

@@ -1,4 +1,6 @@
 import SmartTimelineCard from '@/components/SmartTimelineCard';
+import { LeadPublicProfile } from '@/components/leads/LeadPublicProfile';
+import { useLeadProfileAccess } from '@/hooks/useLeadProfileAccess';
 import QuickMessageCard from '@/components/messaging/QuickMessageCard';
 
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -594,6 +596,8 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
     if (new URLSearchParams(routeLocation.search).get('filter') === 'untreated') setStatusFilter('untreated');
   }, [routeLocation.search]);
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? null);
+  const [managedLeadId, setManagedLeadId] = useState<string | null>(new URLSearchParams(routeLocation.search).get('manage') === '1' ? routeLeadId ?? null : null);
+  const leadAccess = useLeadProfileAccess(selectedVoterId);
 
   // Sync sheet open-state with the URL param so /lead-crm/:id opens the profile.
   useEffect(() => {
@@ -2047,7 +2051,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
                       ? 'bg-blue-500/10 text-blue-700 border-blue-300'
                       : 'bg-primary/10 text-primary border-primary/30';
                     const cleanPhone = String(lead.phone_number ?? '').replace(/\D/g, '');
-                    const waHref = cleanPhone ? `https://wa.me/${cleanPhone.startsWith('0') ? '972' + cleanPhone.slice(1) : cleanPhone}` : null;
+                    const waHref = cleanPhone ? `/inbox?lead=${encodeURIComponent(lead.id)}&channel=whatsapp` : null;
                     const homelyId = prefs.homely_id ? String(prefs.homely_id) : null;
                     return (
                       <TableRow key={lead.id} className={rowCls}>
@@ -2083,8 +2087,6 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
                           ) : waHref ? (
                             <a
                               href={waHref}
-                              target="_blank"
-                              rel="noopener noreferrer"
                               className="text-primary hover:underline inline-flex items-center gap-1"
                               title="פתח שיחת WhatsApp"
                             >
@@ -2238,7 +2240,8 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
 
 
       {/* Full Lead Profile Sheet */}
-      <Sheet open={!!selectedVoterId} onOpenChange={(open) => {
+      <LeadPublicProfile leadId={selectedVoterId && (selectedVoterId !== managedLeadId || leadAccess.data?.can_manage !== true) ? selectedVoterId : null} onManage={setManagedLeadId} onClose={() => { setSelectedVoterId(null); setManagedLeadId(null); }} />
+      <Sheet open={!!selectedVoterId && selectedVoterId === managedLeadId && leadAccess.data?.can_manage === true} onOpenChange={(open) => {
         if (!open) {
           setSelectedVoterId(null);
           if (routeLeadId) {
@@ -2357,7 +2360,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
 
             return (
               <>
-                <SheetHeader className="relative pb-11">
+                <SheetHeader className="relative pb-14">
                   <SheetTitle className="relative flex min-h-12 items-start justify-center">
                     {(() => {
                       // Merge column-level social identifiers with the enrichment
@@ -2440,14 +2443,14 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
                                 : <Mail className="h-4 w-4" strokeWidth={1.8} />,
                           }));
                         return (
-                          <div className="absolute left-1/2 top-full mt-2 flex w-max max-w-[calc(100vw-3rem)] -translate-x-1/2 items-center justify-center gap-1 overflow-x-auto whitespace-nowrap">
+                          <div className="absolute left-1/2 top-full mt-5 flex w-max max-w-[calc(100vw-3rem)] -translate-x-1/2 items-center justify-center gap-1 overflow-x-auto whitespace-nowrap">
                             {/* Phone lives in the details panel below, not in the header */}
                             {channels.map((c) => {
                               const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
                               return <button key={c.key} {...aria} type="button" onClick={c.onClick} className={base}>{c.icon}</button>;
                             })}
-                            {phoneDigits && (
+                            {leadAccess.data?.phone_number && (
                               <a
                                 href={`tel:+${phoneDigits}`}
                                 aria-label="חיוג"

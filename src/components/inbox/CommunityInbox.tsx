@@ -183,7 +183,8 @@ export function CommunityInbox({ active }: { active: boolean }) {
           const last = threads.data?.find(thread => thread.peer_id === contact.id);
           return <div key={contact.id} className={`flex min-h-16 w-full items-center gap-3 border-b border-border px-3 py-3 ${peer?.id === contact.id ? 'bg-muted' : ''}`}>
             <button type="button" className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`פתיחת הפרופיל הציבורי של ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setProfileId(contact.id)}><Avatar className="h-10 w-10"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar></button>
-            <button type="button" className="flex min-w-0 flex-1 text-start hover:opacity-80" onClick={() => setPeer(contact)}><Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} /></button>
+            <Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-normal p-0 text-start" onClick={() => setProfileId(contact.id)}><Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} /></Button>
+            <Button variant="ghost" size="icon" aria-label={`פתיחת שיחה עם ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setPeer(contact)}><MessageCircle className="h-4 w-4" /></Button>
           </div>;
         })}
       </div>
