@@ -5,6 +5,7 @@
 - [x] Authenticated populated desktop/mobile cards, All/Rita switching, inline search, selection badges/counter and favorites modal verified without page errors. Nine focused tests pass; preview build clean.
 
 ## WhatsApp attachment lookup November 14
+- [x] Missing credentials now return HTTP 200 with available=false and authorization_required after message authorization, not 503. Actual reported request and renewal bubble verified while signed in, without page errors; six tests pass and function deployed.
 - [x] Media credentials match the saved receiving phone, exclude explicitly unauthorized rows and distinguish inaccessible media from provider failures. Diagnostics omit tokens/URLs; media caching is private.
 - [x] Inline loading/unavailable/retry verified on the actual August 25 attachment in the authenticated conversation, without page errors; five tests pass, function deployed and build clean.
 - [ ] Restore playback of the reported attachment: the matching official provider is marked authorized=false and no matching central credentials are available. Requires renewed valid WhatsApp authorization; the old attachment may also be unavailable at Meta.

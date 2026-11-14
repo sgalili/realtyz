@@ -74,7 +74,7 @@ export function MediaMessage({ media }: { media: ChatMedia }) {
   // Proxied WhatsApp media requires the signed-in session, so fetch it with
   // the access token and play it from a local object URL.
   const [src, setSrc] = useState<string | null>(media.directUrl ?? null);
-  const [fetchState, setFetchState] = useState<'loading' | 'ready' | 'unavailable' | 'error'>('loading');
+  const [fetchState, setFetchState] = useState<'loading' | 'ready' | 'unavailable' | 'authorization' | 'error'>('loading');
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     setSrc(null);
@@ -91,7 +91,7 @@ export function MediaMessage({ media }: { media: ChatMedia }) {
       if (cancelled) return;
       if (res.headers.get('content-type')?.includes('application/json')) {
         const result = await res.json();
-        if (!cancelled) setFetchState(result.available === false ? 'unavailable' : 'error');
+        if (!cancelled) setFetchState(result.reason === 'authorization_required' || result.error === 'media_credentials_missing' ? 'authorization' : result.available === false ? 'unavailable' : 'error');
         return;
       }
       if (!res.ok) { setFetchState('error'); return; }
@@ -118,7 +118,7 @@ export function MediaMessage({ media }: { media: ChatMedia }) {
   if (!src) {
     return <div role="status" className="flex items-center gap-2 text-sm leading-relaxed">
       {fetchState === 'loading' && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
-      <span>{kindLabel[media.kind]} · {fetchState === 'loading' ? 'טוען…' : fetchState === 'unavailable' ? 'הקובץ אינו זמין עוד ב־WhatsApp' : 'לא ניתן לטעון את הקובץ כרגע'}</span>
+      <span>{kindLabel[media.kind]} · {fetchState === 'loading' ? 'טוען…' : fetchState === 'authorization' ? 'נדרש חידוש הרשאת WhatsApp כדי לטעון את הקובץ' : fetchState === 'unavailable' ? 'הקובץ אינו זמין עוד ב־WhatsApp' : 'לא ניתן לטעון את הקובץ כרגע'}</span>
       {fetchState === 'error' && <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="נסה לטעון שוב" title="נסה לטעון שוב" onClick={() => setRetry(v => v + 1)}><RotateCcw className="h-4 w-4" /></Button>}
     </div>;
   }

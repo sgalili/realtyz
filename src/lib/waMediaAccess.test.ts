@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { mediaCredentials, mediaLookupFailure, safeMetaMediaUrl } from '../../supabase/functions/_shared/waMediaAccess';
+import { mediaCredentials, mediaLookupFailure, missingMediaCredentials, safeMetaMediaUrl } from '../../supabase/functions/_shared/waMediaAccess';
 
 describe('WhatsApp media access', () => {
+  it('returns an unavailable attachment state requiring authorization, not playable JSON', () => {
+    expect(missingMediaCredentials()).toEqual({ available: false, error: 'media_credentials_missing', reason: 'authorization_required', stage: 'credentials' });
+  });
   it('uses the receiving phone credential, never a newer unrelated token', () => {
     expect(mediaCredentials([
       { config: { phone_number_id: 'other', access_token: 'wrong' } },

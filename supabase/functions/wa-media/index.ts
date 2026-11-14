@@ -6,7 +6,7 @@ import { requireCaller, enforceRequestScope } from "../_shared/authz.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-import { mediaCredentials, mediaLookupFailure, safeMetaMediaUrl, type MediaCredential } from "../_shared/waMediaAccess.ts";
+import { mediaCredentials, mediaLookupFailure, missingMediaCredentials, safeMetaMediaUrl, type MediaCredential } from "../_shared/waMediaAccess.ts";
 
 function centralToken(): MediaCredential | null {
   const accessToken = Deno.env.get("META_WA_ACCESS_TOKEN") || Deno.env.get("META_WHATSAPP_TOKEN") || "";
@@ -59,7 +59,10 @@ Deno.serve(async (req) => {
       .order("updated_at", { ascending: false });
     if (providerError) return json({ error: "media_configuration_unavailable" }, 503);
     const credentials = mediaCredentials(providers ?? [], phoneId, lead?.workspace_owner_id ?? "", centralToken());
-    if (!credentials.length) return json({ error: "media_credentials_missing", stage: "credentials" }, 503);
+    if (!credentials.length) {
+      console.warn("[wa-media] authorization required", { stage: "credentials", message_id: message.id });
+      return json(missingMediaCredentials());
+    }
 
     let fileUrl = "";
     let token = "";

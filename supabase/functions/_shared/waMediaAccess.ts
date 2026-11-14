@@ -10,6 +10,10 @@ export interface MediaProvider {
   config: Record<string, unknown>;
 }
 
+export function missingMediaCredentials() {
+  return { available: false, error: 'media_credentials_missing', reason: 'authorization_required', stage: 'credentials' };
+}
+
 /** Media belongs to the receiving phone, not whichever token was saved last. */
 export function mediaCredentials(rows: MediaProvider[], phoneId: string, ownerId: string, central: MediaCredential | null): MediaCredential[] {
   const candidates: MediaCredential[] = rows.filter(row => {
