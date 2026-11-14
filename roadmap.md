@@ -1,5 +1,10 @@
 # Roadmap
 
+## Pricing presentation November 14
+- [x] Removed the requested closing explanation, updated landing-form labels, and let the pricing-only editor header scroll with its content; other page headers remain unchanged.
+- [x] Added role-aware modal help to pricing cards and reversed the bottom heat-level presentation without changing price calculations or closing entitlement.
+- [x] 59 focused tests passed; authenticated desktop/mobile pricing/help checked without horizontal overflow, and mobile editor heading moved 145px with scrolling. No prices or publication state changed.
+
 ## WhatsApp explicit property UUID routing November 14
 - [x] Both official receivers resolve an explicit eligible public/live/unpaused property before phone history; sender-specific leads remain scoped to its workspace. Explicit traffic bypasses the legacy global-phone upsert and owner-companion routing, never another person's lead.
 - [x] Exact property facts take priority through fast/slow/rescue replies; generic buyer fallback is replaced with a property-specific response. Existing autopilot gates remain; Green messaging stays retired under the standing official-only rule.

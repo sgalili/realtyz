@@ -9,7 +9,7 @@ import { RestrictedClosingReward } from './BrokerClosingInfo';
 
 export type RewardTypes = { form?: boolean; whatsapp?: boolean; phone?: boolean; closing?: boolean };
 const rewardIcons = [
-  { key: 'form', label: 'שדות מטופס בעמוד נחיתה', Icon: ClipboardList, tone: 'text-lead-form' },
+  { key: 'form', label: 'השארת פרטים בעמוד נחיתה', Icon: ClipboardList, tone: 'text-lead-form' },
   { key: 'whatsapp', label: 'סינון בווטסאפ', Icon: WhatsAppIcon, tone: 'text-lead-whatsapp' },
   { key: 'phone', label: 'שיחת טלפון', Icon: Phone, tone: 'text-lead-phone' },
   { key: 'closing', label: 'סגירת עסקה', Icon: Trophy, tone: 'text-lead-closing' },

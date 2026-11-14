@@ -108,7 +108,7 @@ const STEP_TITLES = [
 ];
 
 const LEAD_TYPES = [
-  { key: 'Form', tier: 'form', label: 'פנייה דרך טופס בעמוד נחיתה' },
+  { key: 'Form', tier: 'form', label: 'השארת פרטים בעמוד נחיתה' },
   { key: 'Whatsapp', tier: 'whatsapp', label: 'פנייה מסוננת בוואטסאפ עם ריטה AI' },
   { key: 'Phone', tier: 'phone', label: 'פנייה מסוננת טלפונית עם ריטה AI' },
 ] as const;
@@ -119,13 +119,13 @@ function LeadTypeHelp({ label, children }: { label: string; children: React.Reac
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" aria-label={`הסבר על פנייה: ${label}`} className="inline-flex shrink-0 text-muted-foreground hover:text-foreground">
-          <HelpCircle className="h-3.5 w-3.5" />
-        </button>
+        <Button type="button" variant="ghost" size="icon" aria-label={`הסבר על פנייה: ${label}`} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+          <HelpCircle className="h-5 w-5" />
+        </Button>
       </DialogTrigger>
-      <DialogContent dir="rtl" className="sm:max-w-md">
+      <DialogContent dir="rtl" className="max-h-[85dvh] w-[calc(100%-1rem)] max-w-md overflow-y-auto">
         <DialogHeader><DialogTitle className="text-right text-2xl font-bold leading-snug">{label}</DialogTitle></DialogHeader>
-        <div className="space-y-4 text-lg leading-loose text-foreground">{children}</div>
+        <div className="space-y-4 text-lg leading-loose text-foreground">{children}<p>כמפרסם, המחיר ששמרת הוא התחייבות לפנייה תקפה מהסוג הזה. צפיות וקליקים אינם פניות מזכות; פתיחת שיחה בלבד אינה סינון מלא. החיוב כפוף לתנאי הפנייה ולמגבלות שהגדרת.</p></div>
       </DialogContent>
     </Dialog>
   );
@@ -1148,7 +1148,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
       </DialogContent>
     </Dialog>
     <Dialog open={open && !entryPending} onOpenChange={value => { if (entryPending) return; if (!value && !publishing) void saveDraft().then(() => onRecovered?.()).catch(() => {}); if (value && !pricingOnly && !resumeDraft) { openNewPublication(); return; } setOpen(value); }}>
-      <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
+      <DialogContent dir="rtl" onOpenAutoFocus={event => event.preventDefault()} onClick={event => event.stopPropagation()} className={cn("h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] grid grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden rounded-none border-0 p-4 sm:rounded-none sm:p-6 [&>button:last-child]:top-4 [&>button:last-child]:left-4 [&>button:last-child]:right-auto [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:top-6 sm:[&>button:last-child]:left-6", pricingOnly && "!flex !flex-col !overflow-y-auto mx-auto h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-2xl rounded-2xl bg-muted sm:rounded-2xl [&>button:last-child]:left-auto [&>button:last-child]:right-4 [&>button:last-child]:top-4 [&>button:last-child]:flex [&>button:last-child]:h-10 [&>button:last-child]:w-10 [&>button:last-child]:items-center [&>button:last-child]:justify-center sm:[&>button:last-child]:right-6 sm:[&>button:last-child]:top-6", pricingOnly && adminOnlyEdit && !adminUnlocked && "grid-rows-[auto_minmax(0,1fr)]")}>
          <DialogHeader className="relative shrink-0 px-10 pb-4 !text-center">
           {pricingOnly && adminOnlyEdit && isSuperAdmin && <Button type="button" variant="ghost" className="absolute left-0 top-0 h-10 gap-1 px-0" aria-label={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכת מחיר והגדרת תגמולים'} title={adminUnlocked ? 'חזרה למצב קריאה בלבד' : 'עריכה בהרשאת מנהל-על'} onClick={() => setAdminUnlocked(value => !value)}><Pencil className="h-5 w-5" /><span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden /></Button>}
           {!pricingOnly && (reviewMode || step > 0 || manualDeal || seeker || importOption || (importSlide && !knownPublisherRole)) && <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" aria-label="חזרה לבחירת מקור הנכס" title="חזרה לבחירת מקור הנכס" disabled={publishing || importing} onClick={() => {
@@ -1167,7 +1167,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
           {pricingOnly && <p className="text-sm text-muted-foreground">{(fields.importedListing as { property_title?: string } | undefined)?.property_title || [addressLine, fields.city].filter(Boolean).join(', ')}</p>}
         </DialogHeader>
 
-        <div ref={publisherScroll} data-publisher-scroll className="min-h-0 space-y-4 overflow-y-auto overscroll-contain pb-2">
+        <div ref={publisherScroll} data-publisher-scroll className={cn("min-h-0 space-y-4 overflow-y-auto overscroll-contain pb-2", pricingOnly && "shrink-0 overflow-visible")}>
           {publishError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"><p className="font-bold">הפרסום לא הושלם</p><p className="mt-1 break-words text-xs">{publishError}</p></div>}
           {pricingOnly ? (adminOnlyEdit && !adminUnlocked ? <div className="pt-1"><LeadPricingInfo listing={{ listing_id: String(adminRow.id ?? ''), broker_id: String(adminRow.workspace_owner_id ?? ''), property_title: (adminRow.property_title as string) ?? null, tier1_amount: adminTier1, tier2_amount: adminTier2, tier3_amount: adminTier3, tier4_amount: adminTier4, tier4_type: adminTier4Type }} details={adminRow as never} rewardTypes={adminTypes} /></div> : renderStep(8)) : reviewMode ? (
             <Accordion type="single" collapsible value={expandedStep} onValueChange={setExpandedStep} className="space-y-2">
@@ -1204,7 +1204,7 @@ function ScopedPublicListingPublisher({ autoResume = false, disabled = false, re
                     <div className="space-y-3 text-sm leading-relaxed">
                       <p>שותפים ומשווקים ברשת מפיצים את המודעה שלך. כשליד חדש פונה אליך דרכם, נרשמת פנייה ואתה משלם את העמלה שהגדרת לאותו סוג פנייה.</p>
                       <ul className="list-disc space-y-1 ps-5">
-                        <li><b>שדות מטופס בעמוד נחיתה:</b> הפונה השאיר פרטים בטופס המודעה.</li>
+                        <li><b>השארת פרטים בעמוד נחיתה:</b> הפונה השאיר פרטים בטופס המודעה.</li>
                         <li><b>שיחה עם ריטה בווטסאפ:</b> הפונה פתח שיחה בווטסאפ וקיבל מענה ממערכת ריטה.</li>
                         <li><b>שיחת טלפון:</b> הפונה התקשר ישירות למספר שבמודעה.</li>
                       </ul>

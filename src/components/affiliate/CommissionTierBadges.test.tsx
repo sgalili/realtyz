@@ -15,7 +15,7 @@ describe('commission visibility', () => {
     access.admin = role === 'super_admin';
     access.roles = [role];
     const { container } = render(<CommissionTierBadges tiers={tiers} />);
-    expect([...container.querySelectorAll('[data-commission-icons] span[title]')].map(row => row.getAttribute('title'))).toEqual(['שדות מטופס בעמוד נחיתה', 'סינון בווטסאפ', 'שיחת טלפון', 'סגירת עסקה']);
+    expect([...container.querySelectorAll('[data-commission-icons] span[title]')].map(row => row.getAttribute('title'))).toEqual(['השארת פרטים בעמוד נחיתה', 'סינון בווטסאפ', 'שיחת טלפון', 'סגירת עסקה']);
     if (role === 'guest') {
       // Signed-out visitors see the gray icon but never the zero wording.
       expect(screen.queryByText('₪0')).toBeNull();
@@ -46,7 +46,7 @@ describe('commission visibility', () => {
     expect(screen.getByLabelText('סגירת עסקה')).toBeTruthy();
     expect(screen.queryByText(/720/)).toBeNull();
     expect(screen.getByTitle(/שיחת טלפון/)).toBeTruthy();
-    expect(screen.getByTitle(/שדות מטופס בעמוד נחיתה/)).toBeTruthy();
+    expect(screen.getByTitle(/השארת פרטים בעמוד נחיתה/)).toBeTruthy();
     expect(screen.getByTitle(/סינון בווטסאפ/)).toBeTruthy();
   });
   it('shows the explicit zero label only to signed-in users', () => {
@@ -102,7 +102,7 @@ describe('commission visibility', () => {
   it('never forces a priced lead icon gray for a guest', () => {
     access.guest = true;
     const { container } = render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={rewardZeroTypes({ form: true, whatsapp: false, phone: false, closing: true })} levels={{ form: 2 }} label={null} />);
-    expect(container.querySelector('span[title="שדות מטופס בעמוד נחיתה"].lead-no-fee')).toBeNull();
+    expect(container.querySelector('span[title="השארת פרטים בעמוד נחיתה"].lead-no-fee')).toBeNull();
     expect(container.querySelector('span[title="סינון בווטסאפ"].lead-no-fee')).toBeTruthy();
   });
   it('closing prices always render as whole amounts without decimals', () => {

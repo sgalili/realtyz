@@ -7,7 +7,7 @@ import { partnerNetReward } from './affiliatePlans';
 export type LeadTypeKey = 'tier1' | 'tier2' | 'tier3' | 'tier4';
 
 export const LEAD_TYPE_LABELS: Record<LeadTypeKey, string> = {
-  tier1: 'שדות מטופס בעמוד נחיתה',
+  tier1: 'השארת פרטים בעמוד נחיתה',
   tier2: 'סינון בווטסאפ',
   tier3: 'שיחת טלפון',
   tier4: 'סגירת עסקה',

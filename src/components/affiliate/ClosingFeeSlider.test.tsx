@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClosingFeeSlider } from './ClosingFeeSlider';
+vi.mock('./PricingCardHelp', () => ({ PricingCardHelp: () => null }));
 afterEach(cleanup);
 describe('closing fee interaction', () => {
   it('publisher rent starts at half of monthly rent and edits percentage as a fixed amount', () => {

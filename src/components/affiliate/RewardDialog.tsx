@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { PricingCardHelp } from './PricingCardHelp';
 import { QuickPublicPromotion } from '@/components/properties/QuickPublicPromotion';
 
 export function RewardDialog({
@@ -122,7 +123,7 @@ export function RewardDialog({
   const tiers = [
     {
       key: "tier1", capKey: "form" as const,
-      title: "שדות מטופס בעמוד נחיתה",
+      title: "השארת פרטים בעמוד נחיתה",
       hint: "השארת שם מלא + טלפון בעמוד הנכס.",
       Icon: ClipboardList,
       value: tier1,
@@ -179,7 +180,7 @@ export function RewardDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-muted-foreground">שדות מטופס בעמוד נחיתה</div>
+                      <div className="text-muted-foreground">השארת פרטים בעמוד נחיתה</div>
                       <div className="h-2 rounded-full bg-muted">
                         <div className="h-2 w-2/3 rounded-full bg-warning" />
                       </div>
@@ -206,7 +207,7 @@ export function RewardDialog({
                 <ClosingFeeSlider dealType={listing.deal_type} price={Number(listing.asking_price) || 0} value={num(tier4)} valueType={tier4Type} onChange={(percent) => { setTier4Type("fixed"); setTier4(String(closingFeeAmount(percent, Number(listing.asking_price) || 0))); }} />
 
                 {tiers.map((tier) => (
-                  <div key={tier.key} className="space-y-1.5 rounded-md border border-border p-2.5">
+                  <div key={tier.key} className="relative space-y-1.5 rounded-md border border-border p-2.5 pt-11"><PricingCardHelp tier={tier.capKey} title={tier.title} advertiser className="absolute left-1 top-1 h-8 w-8 text-muted-foreground" />
                     <div className="flex items-center gap-2">
                       <tier.Icon className={`h-4 w-4 ${num(tier.value) > 0 ? (tier.capKey === "form" ? "text-lead-form" : tier.capKey === "whatsapp" ? "text-lead-whatsapp" : "text-lead-phone") : "text-muted-foreground"}`} />
                       <div className="text-[12px] font-semibold text-foreground">{tier.title}</div>

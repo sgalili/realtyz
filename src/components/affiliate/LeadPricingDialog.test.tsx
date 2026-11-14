@@ -35,7 +35,7 @@ describe('partner lead pricing information', () => {
     render(<LeadPricingDialog listing={listing} />);
     fireEvent.click(screen.getByLabelText('סגירת עסקה'));
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
-    expect(screen.getByText('שדות מטופס בעמוד נחיתה')).toBeTruthy();
+    expect(screen.getByText('השארת פרטים בעמוד נחיתה')).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
     expect(screen.queryByText('₪8,000')).toBeNull();
   });
@@ -47,7 +47,7 @@ describe('partner lead pricing information', () => {
     expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
     expect(screen.queryByText('₪120')).toBeNull();
     expect(screen.queryByText('₪8,000')).toBeNull();
-    expect(screen.getByText('שדות מטופס בעמוד נחיתה')).toBeTruthy();
+    expect(screen.getByText('השארת פרטים בעמוד נחיתה')).toBeTruthy();
   });
   it('does not fabricate a shekel payout when a percentage agreement has no property price', () => {
     state.level4Unlocked = true;
@@ -58,9 +58,9 @@ describe('partner lead pricing information', () => {
   it('shows only absolute net shekels for a percentage closing agreement', () => {
     state.level4Unlocked = true;
     render(<LeadPricingInfo closingOnly listing={{ ...listing, tier4_amount: 1, tier4_type: 'percent' }} details={{ asking_price: 3000000 }} />);
-    expect(screen.getAllByText('₪24,000')).toHaveLength(2);
-    expect(screen.getByText('₪30,000')).toBeTruthy();
-    expect(screen.getByText('₪6,000')).toBeTruthy();
+    expect(screen.getAllByText('₪24,000')).toHaveLength(1);
+    expect(screen.queryByText('₪30,000')).toBeNull();
+    expect(screen.queryByText('₪6,000')).toBeNull();
     expect(screen.queryByText('0.8%')).toBeNull();
   });
   it('shows closing net as whole shekels for fixed amounts, without decimals', () => {
