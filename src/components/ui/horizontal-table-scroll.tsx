@@ -14,7 +14,6 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
       if (!element) return;
       const updatePanels = () => {
         element.style.setProperty('--table-viewport-width', `${element.clientWidth}px`);
-        element.style.setProperty('--table-scroll-x', `${element.scrollLeft}px`);
       };
       updatePanels();
       const resize = new ResizeObserver(updatePanels);
@@ -50,8 +49,6 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
       const start = (event: TouchEvent) => {
         // A new header gesture must not inherit a body's previous momentum lock.
         clearTimeout(releaseTimer);
-        element.style.overflowX = '';
-        element.style.overflowY = '';
         if (event.touches.length !== 1) { gesture = null; return; }
         const t = event.touches[0];
         gesture = { x: t.clientX, y: t.clientY, left: element.scrollLeft, top: element.scrollTop, axis: null, panel: event.target instanceof HTMLElement && !!event.target.closest('[data-table-fixed-panel]') };
@@ -62,8 +59,6 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
         const dx = Math.abs(t.clientX - gesture.x), dy = Math.abs(t.clientY - gesture.y);
         if (dx + dy < 6) return;
         gesture.axis = dx > dy ? 'x' : 'y';
-        element.style.overflowX = gesture.panel || gesture.axis === 'y' ? 'hidden' : '';
-        element.style.overflowY = !gesture.panel && gesture.axis === 'x' ? 'hidden' : '';
       };
       const scroll = () => {
         if (gesture?.axis) {
@@ -75,7 +70,7 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
       const end = () => {
         // Keep the lock through momentum, then release.
         clearTimeout(releaseTimer);
-        releaseTimer = setTimeout(() => { gesture = null; element.style.overflowX = ''; element.style.overflowY = ''; }, 600);
+        releaseTimer = setTimeout(() => { gesture = null; }, 600);
       };
       element.addEventListener('wheel', wheel, { passive: false });
       element.addEventListener('touchstart', start, { passive: true });
@@ -102,7 +97,7 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
 );
 HorizontalTableScroll.displayName = 'HorizontalTableScroll';
 
-/** Counter-scrolls only the expanded body; summary rows keep native table scrolling. */
+/** Native sticky positioning anchors bodies in the same paint as table scrolling. */
 export function FixedTablePanel({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div data-table-fixed-panel className={cn('relative w-[var(--table-viewport-width)] min-w-0 max-w-none [transform:translateX(var(--table-scroll-x))]', className)} {...props} />;
+  return <div data-table-fixed-panel className={cn('sticky start-0 w-[var(--table-viewport-width)] min-w-0 max-w-none', className)} {...props} />;
 }

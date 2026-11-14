@@ -595,14 +595,15 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
   useEffect(() => {
     if (new URLSearchParams(routeLocation.search).get('filter') === 'untreated') setStatusFilter('untreated');
   }, [routeLocation.search]);
-  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? null);
+  const returnLeadId = (routeLocation.state as { profileReturnLeadId?: string } | null)?.profileReturnLeadId;
+  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? returnLeadId ?? null);
   const [publicProfileOpen, setPublicProfileOpen] = useState(false);
   const leadAccess = useLeadProfileAccess(selectedVoterId);
 
   // Sync sheet open-state with the URL param so /lead-crm/:id opens the profile.
   useEffect(() => {
     if (routeLeadId && routeLeadId !== selectedVoterId) setSelectedVoterId(routeLeadId);
-    if (!routeLeadId && selectedVoterId) setSelectedVoterId(null);
+    if (!routeLeadId && !returnLeadId && selectedVoterId) setSelectedVoterId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeLeadId]);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
@@ -2361,7 +2362,6 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
 
             return (
               <>
-                <Button variant="outline" className="mb-3" onClick={() => setPublicProfileOpen(true)}>הצגת פרופיל ציבורי</Button>
                 <SheetHeader className="relative pb-14">
                   <SheetTitle className="relative flex min-h-12 items-start justify-center">
                     {(() => {
@@ -2465,6 +2465,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
                             {/* Homely / WebTiv are read-only sources — no push action. */}
 
                             <LeadEnrichmentIconButton lead={selectedVoter} />
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="הצגת פרופיל ציבורי" title="הצגת פרופיל ציבורי" onClick={() => { navigate(`${routeLocation.pathname}${routeLocation.search}`, { replace: true, state: { ...routeLocation.state, profileReturnLeadId: selectedVoter.id } }); navigate(`/lead-profile/${encodeURIComponent(selectedVoter.id)}`); }}><User className="h-4 w-4" /></Button>
                             {/* Digital signature (tour/brokerage forms) — property workspaces only */}
                             {listingsEnabled && (
                             <DigitalSignatureButton

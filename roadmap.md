@@ -1,5 +1,10 @@
 # Roadmap
 
+## Compact profile rows and stable expanded actions November 14
+- [x] Lead profile icon moved to top action row; separate authorized lead-profile page returns to full details with history-entry selection, never treats a lead UUID as a platform account. Community unchanged.
+- [x] Profile list reuses compact homepage summary cells, with no collapsed images/publisher details; grid unchanged. Inline details retain gallery and bottom contact actions outside clipped expansion.
+- [x] Shared FixedTablePanel uses native sticky inline anchoring, without event-driven transforms or gesture scrollbar toggling. Ten focused tests pass; populated authenticated desktop/mobile profiles show zero body drift over 20 horizontal frames, stable sticky contacts at three vertical positions, functional list/grid toggles and lead profile return; latest preview build OK.
+
 ## Global publisher profile links November 14
 - [x] Shared cards/table publishers, expanded/standalone/shared details and legacy affiliate cards link through authorized original identity targets; imported ads require unique source-evidenced license mapping, never importer/name guesses. Managed search publisher links retain matching office/user IDs from authorized records. Developer company displays use saved owner_user_id.
 - [x] Existing directory/person links retained; chat office text and profile office logo/name linked with separate actions. Office pages show saved branding and authorized owner when no matched roster exists. Eleven focused tests pass; real homepage publisher/profile and populated office logo/member/close-return checked desktop/mobile without page errors. Existing profile access still requires sign-in; private/unmapped external advertisers remain unlinked, no contacts exposed.

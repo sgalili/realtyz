@@ -11,8 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import StandardPropertyCard from '@/components/public/StandardPropertyCard';
-import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
-import { AnimatedExpansion } from '@/components/ui/animated-expansion';
+import { ProfilePropertyList } from '@/components/public/ProfilePropertyList';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { useUserRole } from '@/hooks/useUserRole';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
@@ -111,23 +110,15 @@ export default function CommunityProfilePage() {
       {(listingIds.isLoading || feed.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}
       {(listingIds.isError || feed.isError) && <p role="alert" className="text-destructive">טעינת הנכסים נכשלה</p>}
       {listingIds.data && feed.data && !cards.length && <p className="text-muted-foreground">אין כרגע נכסים פעילים</p>}
-      <div className={view === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'mx-auto grid max-w-2xl grid-cols-1 gap-4'}>{cards.map(card => {
+      {view === 'list' ? <ProfilePropertyList cards={cards} expandedId={expandedId} onExpand={setExpandedId} favoriteIds={favorites.favoriteIds} onFavorite={id => void favorites.toggleFavorite(id)} isOwner={isOwner} /> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{cards.map(card => {
         const title = publicAdTitle(card);
         const fav = favorites.favoriteIds.has(card.id);
-        const expanded = view === 'list' && expandedId === card.id;
         const toggleFavorite = () => void favorites.toggleFavorite(card.id);
-        return <div key={card.id} className={view === 'list' ? 'min-w-0 [&>article]:h-auto' : 'min-w-0'}>
+        return <div key={card.id} className="min-w-0">
           <StandardPropertyCard card={card} signedIn isMine={user?.id === userId} isFav={fav} onFavorite={toggleFavorite}
-            onOpen={view === 'list' ? () => setExpandedId(current => current === card.id ? null : card.id) : undefined}
-            expanded={view === 'list' ? expanded : undefined}
             menu={<ProfileAssetMenu card={card} title={title} isOwner={isOwner} isFav={fav} onFavorite={toggleFavorite} />} />
-          <AnimatedExpansion open={expanded} id={`profile-property-${card.id}`}>
-            <div className="py-5" data-profile-property-details={card.id}>
-              <ExpandedPropertyDetails idOrSlug={card.id} isFav={fav} onFavorite={toggleFavorite} onClose={() => setExpandedId(null)} />
-            </div>
-          </AnimatedExpansion>
         </div>;
-      })}</div>
+      })}</div>}
     </section>}
   </main>;
 }

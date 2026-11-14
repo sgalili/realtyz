@@ -34,7 +34,6 @@ describe('independent expanded listing scrolling', () => {
     if (!row || !panel) throw new Error('Missing row or body');
     fireEvent.wheel(row, { deltaX: 100 });
     expect(owner.scrollLeft).toBe(100);
-    expect(owner.style.getPropertyValue('--table-scroll-x')).toBe('100px');
     fireEvent.wheel(panel, { deltaX: 120 });
     expect(owner.scrollLeft).toBe(100);
     fireEvent.wheel(panel, { deltaY: 120 });
