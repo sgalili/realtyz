@@ -9,6 +9,13 @@ describe('agency directory discovery', () => {
     const rows = parseAgencyProfile(load(html), 'https://www.yad2.co.il/realestate/agency/123').results;
     expect(collectBrokers(rows, 1, 10)[0]?.imported_bio).toBe('ביו של המתווך');
   });
+  it('keeps the agency description separate from the broker bio and carries it into import', () => {
+    const html = '<header><h1>אנגלו סאקסון הרצליה</h1><div data-testid="broker-name">ישראל ישראלי</div><p>רישיון תיווך: 12345</p></header><section data-testid="agency-description">משרד בוטיק המלווה עסקאות מגורים בהרצליה.</section><p data-testid="broker-bio">ביו אישי של המתווך</p><a href="/realestate/item/abc123">דירה למכירה</a>';
+    const rows = parseAgencyProfile(load(html), 'https://www.yad2.co.il/realestate/agency/123').results;
+    const [broker] = collectBrokers(rows, 1, 10);
+    expect(broker?.agency_description).toBe('משרד בוטיק המלווה עסקאות מגורים בהרצליה.');
+    expect(broker?.imported_bio).toBe('ביו אישי של המתווך');
+  });
   it('starts at the official agencies directory and advances directory pages only', () => {
     expect(agencyPageUrl(1)).toBe('https://www.yad2.co.il/realestate/agencies');
     expect(new URL(agencyPageUrl(2)).searchParams.get('page')).toBe('2');

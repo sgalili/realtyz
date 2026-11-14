@@ -1,5 +1,10 @@
 # Roadmap
 
+## Grow-only settings and agency profiles November 14
+- [x] Removed Z-Credit admin/customer card setup and dormant deployed endpoints, leaving Grow as the only payment configuration; historical payment records remain untouched.
+- [x] Import Yad2 agency descriptions separately from personal bios, save only into empty office fields and expose an authorized exact-office/city description fallback. Both import workers deployed; no paid scan or source text invented.
+- [x] Show every eligible same-office broker using exact office-name and city matching, with address separation when supplied. Twenty-eight focused tests passed; authenticated desktop/mobile verified Grow only, both real Anglo Saxon Herzliya cards, second-broker navigation/return and no overflow/runtime errors. Description placement checked with an intercepted read because no agency descriptions are currently stored.
+
 ## Pricing presentation November 14
 - [x] Removed the requested closing explanation, updated landing-form labels, and let the pricing-only editor header scroll with its content; other page headers remain unchanged.
 - [x] Added role-aware modal help to pricing cards and reversed the bottom heat-level presentation without changing price calculations or closing entitlement.

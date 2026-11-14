@@ -1,6 +1,6 @@
 import { batchPhone, batchListingUrls } from './brokerBatchImport.ts';
 
-export type DiscoveredBroker = { full_name: string; phone: string | null; email?: string; license_number: string; office_name?: string; imported_bio?: string; listing_urls: string[] };
+export type DiscoveredBroker = { full_name: string; phone: string | null; email?: string; license_number: string; office_name?: string; agency_description?: string; imported_bio?: string; listing_urls: string[] };
 export function validImportParameters(target: number, min: number, max: number) {
   return [target, min, max].every(Number.isInteger) && target >= 1 && target <= 100 && min >= 1 && max <= 10 && max >= min;
 }
@@ -17,6 +17,7 @@ export function collectBrokers(rows: Record<string, any>[], min: number, max: nu
     const b: DiscoveredBroker = grouped.get(key) ?? { full_name: name, phone: phone ?? null, license_number: license, office_name: p.office_name, listing_urls: [] };
     if (!b.phone && phone) b.phone = phone;
     if (!b.imported_bio && typeof p.imported_bio === 'string') b.imported_bio = p.imported_bio.trim().slice(0, 5000);
+    if (!b.agency_description && typeof p.agency_description === 'string') b.agency_description = p.agency_description.trim().slice(0, 5000);
     if (!b.email && typeof row.owner_email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.owner_email)) b.email = row.owner_email;
     b.listing_urls = batchListingUrls([...b.listing_urls, ...(row.listing_urls ?? []), row.source_url]); grouped.set(key, b);
   }

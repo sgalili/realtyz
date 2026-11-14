@@ -9608,6 +9608,7 @@ export type Database = {
       }
       white_label_settings: {
         Row: {
+          agency_description: string | null
           agency_name: string | null
           brokerage_license: string | null
           brokerage_name: string | null
@@ -9626,6 +9627,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          agency_description?: string | null
           agency_name?: string | null
           brokerage_license?: string | null
           brokerage_name?: string | null
@@ -9644,6 +9646,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          agency_description?: string | null
           agency_name?: string | null
           brokerage_license?: string | null
           brokerage_name?: string | null
@@ -10118,6 +10121,15 @@ export type Database = {
           name: string
           owner_id: string
           unread_count: number
+        }[]
+      }
+      community_office_details: {
+        Args: { _user: string }
+        Returns: {
+          city: string
+          description: string
+          logo_url: string
+          office_name: string
         }[]
       }
       community_office_members: {

@@ -60,10 +60,11 @@ export function parseAgencies($: any, sourceUrl: string) {
     const raw = typeof v === 'string' ? v : v && typeof v === 'object' ? (v as any).url ?? (v as any).href : null;
     try { return raw ? [new URL(raw, sourceUrl).href] : []; } catch { return []; }
   }));
-  const structured = (node: any, office = '', parentUrl = sourceUrl, parentCount: number | null = null) => {
+  const structured = (node: any, office = '', parentUrl = sourceUrl, parentCount: number | null = null, parentDescription = '') => {
     if (!node || typeof node !== 'object') return;
-    if (Array.isArray(node)) { node.forEach(v => structured(v, office, parentUrl, parentCount)); return; }
+    if (Array.isArray(node)) { node.forEach(v => structured(v, office, parentUrl, parentCount, parentDescription)); return; }
     const officeName = text(node.office_name ?? node.agencyName ?? node.agency?.name ?? office);
+    const agencyDescription = text(node.agencyDescription ?? node.agencyAbout ?? node.aboutAgency ?? node.agency?.description ?? node.agency?.about).slice(0, 5000) || parentDescription;
     const license = text(String(node.broker_license_number ?? node.licenseNumber ?? node.license_number ?? ''));
     // Generic agency.name is never treated as a person's name.
     const name = text(node.broker_name ?? node.brokerName ?? node.fullName ?? node.full_name);
@@ -74,12 +75,12 @@ export function parseAgencies($: any, sourceUrl: string) {
       owner_phone: batchPhone(node.mobile ?? node.phone ?? node.phoneNumber ?? ''),
       owner_email: text(node.email) || null,
       listing_urls: ownListings(node.listings ?? node.items ?? []),
-      publisher: { publisher_kind: 'broker', broker_name: name || null, office_name: officeName || text(node.name) || null,
+      publisher: { publisher_kind: 'broker', broker_name: name || null, office_name: officeName || text(node.name) || null, agency_description: agencyDescription || null,
         ...(/^[1-9]\d{3,9}$/.test(license) && name ? { broker_license_number: license } : {}) },
     });
     for (const [key, value] of Object.entries(node)) {
       if (/^(listings|items|related|recommendations|ads|feed)$/i.test(key)) continue;
-      if (value && typeof value === 'object') structured(value, officeName || text(node.name), url, count);
+      if (value && typeof value === 'object') structured(value, officeName || text(node.name), url, count, agencyDescription);
     }
   };
   $('script#__NEXT_DATA__, script[type="application/json"]').each((_: number, el: any) => {
@@ -104,7 +105,7 @@ export function parseAgencies($: any, sourceUrl: string) {
     add({source_url:url, active_listing_count:count, owner_name:name || null, owner_phone:batchPhone(card.find('a[href^="tel:"]').first().attr('href') ?? ''),
       owner_email:text(card.find('a[href^="mailto:"]').first().attr('href')?.replace(/^mailto:/, '').split('?')[0]) || null,
       listing_urls: name && license ? ownListings(card.find('a[href*="/realestate/item/"]').map((_: number, a: any) => $(a).attr('href')).get()) : [],
-      publisher:{publisher_kind:'broker',office_name:office || null,broker_name:name || null,...(name && license ? {broker_license_number:license} : {})}});
+      publisher:{publisher_kind:'broker',office_name:office || null,broker_name:name || null,agency_description:text(card.find('[data-testid="agency-description"], [data-testid="agency-about"], [class*="agencyDescription"], [class*="AgencyDescription"], [class*="agencyAbout"], [class*="AgencyAbout"]').first().text()).slice(0,5000) || null,...(name && license ? {broker_license_number:license} : {})}});
   });
   const challenge = /Radware Page|ShieldSquare|captcha|אנו מניחים שגולשים/.test($('title').text() + $('body').text().slice(0, 600));
   if (challenge) throw new Error('יד2 החזיר עמוד חסימה במקום ספריית משרדים');
@@ -133,7 +134,7 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
   const challenge = /Radware Page|ShieldSquare|captcha|אנו מניחים שגולשים/.test($('title').text() + $('body').text().slice(0, 600));
   if (challenge) throw new Error('יד2 החזיר עמוד חסימה במקום עמוד המתווך');
   let name = '', office = '', license = '', phone: string | null = null, email = '';
-  let bio = '';
+  let bio = '', agencyDescription = '';
   const visit = (node: any, depth = 0) => {
     if (!node || typeof node !== 'object' || depth > 12) return;
     if (Array.isArray(node)) { node.forEach(v => visit(v, depth + 1)); return; }
@@ -142,7 +143,9 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
     if (!license && /^[1-9]\d{3,9}$/.test(lic)) { license = lic; if (nm) name = nm; }
     if (!name && nm) name = nm;
     if (!bio && nm && lic) bio = text(node.brokerBio ?? node.agentBio ?? node.biography).slice(0, 5000);
-    if (!office) office = text(node.agencyName ?? node.office_name ?? node.officeName ?? node.agency?.name);
+    const agencyName = text(node.agencyName ?? node.office_name ?? node.officeName ?? node.agency?.name);
+    if (!office) office = agencyName;
+    if (!agencyDescription && agencyName) agencyDescription = text(node.agencyDescription ?? node.agencyAbout ?? node.aboutAgency ?? node.agency?.description ?? node.agency?.about).slice(0, 5000);
     if (!phone) phone = batchPhone(node.mobile ?? node.brokerPhone ?? node.phone ?? '') ?? null;
     if (!email && typeof node.email === 'string' && /@/.test(node.email)) email = text(node.email);
     for (const [k, v] of Object.entries(node)) {
@@ -158,6 +161,7 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
   if (!phone) phone = batchPhone($('a[href^="tel:"]').first().attr('href') ?? '') ?? null;
   if (!email) email = text($('a[href^="mailto:"]').first().attr('href')?.replace(/^mailto:/, '').split('?')[0]);
   if (!bio) bio = text($('[data-testid="broker-bio"], [data-testid="agent-bio"], [class*="brokerBio"], [class*="BrokerBio"]').filter((_: number, el: any) => !$(el).closest('[class*="related"], [class*="recommend"]').length).first().text()).slice(0, 5000);
+  if (!agencyDescription) agencyDescription = text($('[data-testid="agency-description"], [data-testid="agency-about"], [class*="agencyDescription"], [class*="AgencyDescription"], [class*="agencyAbout"], [class*="AgencyAbout"]').filter((_: number, el: any) => !$(el).closest('[class*="related"], [class*="recommend"]').length).first().text()).slice(0, 5000);
   const deal = /forrent|\/rent/i.test(sourceUrl) ? 'rent' : /forsale/i.test(sourceUrl) ? 'sale' : null;
   const links: string[] = [];
   $('a[href*="/realestate/item/"]').each((_: number, el: any) => {
@@ -177,7 +181,7 @@ export function parseAgencyProfile($: any, sourceUrl: string, maxListings = 10) 
   return { results: [{
     source_url: agencyUrl(sourceUrl), active_listing_count: listingUrls.length, owner_name: name || null,
     owner_phone: phone, owner_email: email || null, listing_urls: validLicense ? listingUrls : [],
-    publisher: { publisher_kind: 'broker', broker_name: name || null, office_name: office || null, ...(validLicense ? { broker_license_number: license, imported_bio: bio || null } : {}) },
+    publisher: { publisher_kind: 'broker', broker_name: name || null, office_name: office || null, agency_description: agencyDescription || null, ...(validLicense ? { broker_license_number: license, imported_bio: bio || null } : {}) },
     directory_next_url: null,
   }], next_url: null };
 }

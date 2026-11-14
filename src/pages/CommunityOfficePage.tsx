@@ -19,6 +19,11 @@ export default function CommunityOfficePage() {
     if (error) throw error;
     return data?.[0] ?? null;
   } });
+  const details = useQuery({ queryKey: ['community-office-details', user?.id, userId], enabled: !!user && !!userId, queryFn: async () => {
+    const { data, error } = await supabase.rpc('community_office_details', { _user: userId });
+    if (error) throw error;
+    return data?.[0] ?? null;
+  } });
   const members = useQuery({ queryKey: ['community-office-roster', user?.id, userId], enabled: !!user && !!userId, queryFn: async () => {
     const { data, error } = await supabase.rpc('community_office_members', { _user: userId });
     if (error) throw error;
@@ -42,6 +47,8 @@ export default function CommunityOfficePage() {
   return <main dir="rtl" data-no-hero-wave className="relative mx-auto max-w-6xl space-y-6 pb-6">
     <ProfilePageClose onClose={close} />
     <div className="flex items-center gap-3 ps-12">{profile.data?.logo_url && <img src={profile.data.logo_url} alt={profile.data.office_name ?? 'לוגו משרד'} className="h-16 w-16 shrink-0 object-contain" />}<h1 className="min-w-0 break-words text-2xl font-bold">{profile.data?.office_name ?? members.data?.[0]?.office_name ?? 'צוות המשרד'}</h1></div>
+    {details.isError && <p role="alert" className="text-destructive">טעינת תיאור המשרד נכשלה</p>}
+    {details.data?.description && <section className="max-w-3xl space-y-2"><h2 className="text-xl font-bold">אודות המשרד</h2><p className="whitespace-pre-line break-words text-base leading-relaxed text-muted-foreground">{details.data.description}</p></section>}
     {members.isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
     {members.isError && <p role="alert" className="text-destructive">טעינת צוות המשרד נכשלה</p>}
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">{members.data?.map(member => <li key={member.id}><Button variant="outline" className="h-full min-h-40 w-full flex-col justify-start gap-2 whitespace-normal rounded-md p-3 text-center" onClick={() => navigate(`/community/profile/${encodeURIComponent(member.id)}`, { state: { agencyId: userId } })}><Avatar className="h-16 w-16 shrink-0"><AvatarImage src={member.avatar_url ?? undefined} alt={member.full_name ?? ''} /><AvatarFallback>{member.full_name?.slice(0, 1)}</AvatarFallback></Avatar><span className="w-full break-words text-base font-semibold">{member.full_name}</span><span className="text-sm text-muted-foreground">{professionalRole(member.category, genders.data?.get(member.id) ?? null)}</span><span className="mt-auto text-base">{assets.isLoading ? '…' : assets.isError ? 'הספירה אינה זמינה' : `${assets.data?.get(member.id) ?? 0} נכסים`}</span></Button></li>)}</ul>

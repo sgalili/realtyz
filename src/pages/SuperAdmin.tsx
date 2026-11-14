@@ -14,7 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ShieldAlert, Bot, ExternalLink, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, History } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { GrowPaymentSettings } from '@/components/admin/GrowPaymentSettings';
-import { ZCreditSettingsCard } from '@/components/billing/ZCreditSettingsCard';
 import { BrokerUpgradeRequestsCard } from '@/components/admin/BrokerUpgradeRequestsCard';
 import { BrokerBatchImportCard } from '@/components/admin/BrokerBatchImportCard';
 import { BrokerContactQueueCard } from '@/components/admin/BrokerContactQueueCard';
@@ -169,7 +168,7 @@ const SuperAdmin = () => {
       )}
 
       {section === 'finance' && <FinanceTab />}
-      {section === 'payments' && <div className="space-y-6"><GrowPaymentSettings /><ZCreditSettingsCard /></div>}
+      {section === 'payments' && <GrowPaymentSettings />}
 
       {section === 'activity' && (
         <div className="grid gap-4 xl:grid-cols-2 xl:items-start">

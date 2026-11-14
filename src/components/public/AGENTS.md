@@ -1,4 +1,5 @@
 # Public listing publisher
+- Office pages use authorized agency descriptions with same-office fallback and roster matching by exact saved office name plus city, with address separation when both branches provide one. Imported agency descriptions stay separate from personal bios. Why: complete branch rosters without brand-only identity guesses.
 - ProfilePropertyList reuses compact homepage summary cells without media/publisher rows; ExpandedPropertyDetails and sticky contacts appear only when open. Grid/office cards use StandardPropertyCard. Why: consistent collapsed presentation and reachable actions.
 - Card/detail/popup media reuse PropertyGallerySlider with compact sizing only for cards; missing popup galleries default to authorized photos. Why: one media layout without pricing or identity leaks.
 - Open marketing properties reuse PublicListingsBoard with an affiliate-enabled feed predicate and selection-only marketing controls; cards/search/tables stay shared and existing actions retain server authorization. Why: exact home presentation without a second inventory or permission bypass.

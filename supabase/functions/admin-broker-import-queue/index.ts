@@ -222,8 +222,9 @@ Deno.serve(async req => {
             if(!d.user_id)throw new Error('יצירת המתווך נכשלה');brokerId=d.user_id;
           }
           if(b.office_name) {
-            const {data:office}=await admin.from('white_label_settings').select('id,agency_name').eq('user_id',brokerId).maybeSingle();
-            if(!office){const {error}=await admin.from('white_label_settings').insert({user_id:brokerId,agency_name:b.office_name,brokerage_name:b.office_name,brokerage_license:b.license_number});if(error)throw error;}
+            const {data:office}=await admin.from('white_label_settings').select('id,agency_name,agency_description').eq('user_id',brokerId).maybeSingle();
+            if(!office){const {error}=await admin.from('white_label_settings').insert({user_id:brokerId,agency_name:b.office_name,brokerage_name:b.office_name,brokerage_license:b.license_number,...(b.agency_description?{agency_description:b.agency_description}:{})});if(error)throw error;}
+            else if(!office.agency_description && b.agency_description){const {error}=await admin.from('white_label_settings').update({agency_description:b.agency_description}).eq('id',office.id).is('agency_description',null);if(error)throw error;}
           }
           if(b.imported_bio) {
             const {error}=await admin.from('profiles').update({imported_public_bio:b.imported_bio}).eq('id',brokerId).is('imported_public_bio',null);if(error)throw error;

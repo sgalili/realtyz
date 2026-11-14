@@ -6,6 +6,11 @@ describe('broker discovery and resume',()=>{
   it('accepts target brokers and 3–10 active property bounds',()=>{expect(validImportParameters(25,3,10)).toBe(true);expect(validImportParameters(25,10,3)).toBe(false);expect(validImportParameters(1,3,11)).toBe(false);});
   it('requires the minimum and clips to the requested maximum',()=>{expect(collectBrokers(rows,3,4)[0].listing_urls).toHaveLength(4);expect(collectBrokers(rows.slice(0,2),3,4)).toHaveLength(0);});
   it('does not invent a missing license or phone',()=>{expect(collectBrokers([{...rows[0],owner_phone:null}],1,10)[0].phone).toBeNull();expect(collectBrokers([{...rows[0],publisher:{publisher_kind:'broker'}}],1,10)).toHaveLength(0);});
+  it('preserves a source agency description without overwriting an existing imported value',()=>{
+    const first={...rows[0],publisher:{...rows[0].publisher,agency_description:'  תיאור המשרד הראשון  '}};
+    const duplicate={...rows[1],publisher:{...rows[1].publisher,agency_description:'תיאור אחר שלא צריך להחליף את הראשון'}};
+    expect(collectBrokers([first,duplicate],1,10)[0]?.agency_description).toBe('תיאור המשרד הראשון');
+  });
   it('resumes at the exact next listing and only advances broker on the last listing',()=>{expect(nextImportPoint(2,1,3)).toEqual({brokerIndex:2,listingIndex:2});expect(nextImportPoint(2,2,3)).toEqual({brokerIndex:3,listingIndex:0});});
 });
 describe('imports without a visible mobile', () => {
