@@ -1,3 +1,5 @@
 # Payment architecture
 - Grow uses environment-specific secret Make webhooks, independent provider readback and a service-only atomic completion RPC; checkout redirects never prove payment. Why: no forged or duplicated entitlements.
 - Grow subscription terms are snapshotted per self-owned order; sandbox never activates live entitlements or changes wallet credits. Make connection OTP stays in Make; admin fields are configuration, not credentials. Why: no invented terms or credential exposure.
+- Make declares enabled checkout methods/customer fields; card, wallet and bank fields stay on hosted Grow checkout. Why: no invented support or sensitive card collection.
+- Verified live payment changes atomically enqueue platform-sender SMS; claim before sending and review ambiguous deliveries without blind retries. Why: payment callbacks must not duplicate customer receipts.

@@ -4359,10 +4359,12 @@ export type Database = {
           amount_ils: number
           benefits: string
           created_at: string
+          customer_phone: string | null
           duration_days: number
           environment: string
           id: string
           paid_at: string | null
+          payment_method: string | null
           payment_url: string | null
           status: string
           title: string
@@ -4373,10 +4375,12 @@ export type Database = {
           amount_ils?: number
           benefits: string
           created_at?: string
+          customer_phone?: string | null
           duration_days: number
           environment: string
           id?: string
           paid_at?: string | null
+          payment_method?: string | null
           payment_url?: string | null
           status?: string
           title: string
@@ -4387,10 +4391,12 @@ export type Database = {
           amount_ils?: number
           benefits?: string
           created_at?: string
+          customer_phone?: string | null
           duration_days?: number
           environment?: string
           id?: string
           paid_at?: string | null
+          payment_method?: string | null
           payment_url?: string | null
           status?: string
           title?: string
@@ -7053,6 +7059,44 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_sms_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          last_error: string | null
+          order_id: string
+          provider_message_id: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          last_error?: string | null
+          order_id: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          last_error?: string | null
+          order_id?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_sms_outbox_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "grow_payment_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           contact_limit: number
@@ -9693,6 +9737,7 @@ export type Database = {
       }
       claim_market_scrape_slot: { Args: { _source?: string }; Returns: Json }
       claim_monthly_free_credits: { Args: never; Returns: number }
+      claim_payment_sms: { Args: { _order_id: string }; Returns: boolean }
       claim_published_post_footer: {
         Args: { _publication_key: string; _workspace: string }
         Returns: number

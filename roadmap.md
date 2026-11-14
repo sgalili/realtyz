@@ -1,5 +1,11 @@
 # Roadmap
 
+## Minimal checkout and payment SMS November 14
+- [x] Minimal method selector and gateway-declared customer fields; sensitive payment fields remain on Grow checkout. Unsupported methods disabled rather than invented.
+- [x] Verified live-payment SMS outbox, atomic claim and provider result tracking; sandbox sends no SMS. Ambiguous/interrupted delivery requires operator review, never blind retry.
+- [x] Seven focused safeguards pass; signed-in wallet checked desktop/mobile with intercepted gateway capabilities/create: Bit omits name, bank fields validate, secure link returned, no overflow. Preview build OK; migration applied and function deployed.
+- [ ] Real checkout/method availability and SMS delivery need the existing Make credentials/terms plus capability mapping. No charge or SMS sent; current Make connection remains unconfigured. Hosted Grow fields/branding are provider-controlled; legacy orders without customer mobile cannot receive a summary.
+
 ## Profile clicks and contact permissions November 14
 - [x] Lead/community/sidebar avatar and name entry points open clean profiles first; server-authorized management and own-client phone, contact-free peer profiles, internal official WhatsApp routing, 20px header/action spacing.
 - [x] Five focused tests pass; real signed-in self-profile → self-settings and lead profile → authorized edit verified desktop/mobile without writes. Server readback returns no unknown-lead rows; preview OK. Full SQL multi-account test retained but sandbox SQL role cannot execute auth-only RPCs; no permissions weakened to run it.

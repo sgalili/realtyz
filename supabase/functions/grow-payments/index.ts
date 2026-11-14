@@ -1,13 +1,21 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { z } from 'npm:zod@3';
 import { adminClient, isSuperAdmin, requireCaller, safeEqual } from '../_shared/authz.ts';
-import { GROW_SUBSCRIPTION_AMOUNT_ILS, growConfigurationReady, isMakeWebhookUrl, validGrowPaymentUrl } from '../_shared/growPayment.ts';
+import { GROW_CUSTOMER_FIELDS, GROW_PAYMENT_METHODS, GROW_SUBSCRIPTION_AMOUNT_ILS, growConfigurationReady, isMakeWebhookUrl, validGrowPaymentUrl } from '../_shared/growPayment.ts';
+import { deliverPaymentSms } from './paymentSms.ts';
+
+const capabilitySchema = z.object({ methods: z.array(z.object({ id: z.enum(GROW_PAYMENT_METHODS), fields: z.array(z.enum(GROW_CUSTOMER_FIELDS)).max(4) })).max(5) });
+async function capabilities(environment: string) {
+  const parsed = capabilitySchema.safeParse(await callMake(environment, { action: 'capabilities', environment }));
+  if (!parsed.success) throw new Error('make_capabilities_invalid');
+  return parsed.data.methods;
+}
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('status') }), z.object({ action: z.literal('test') }),
   z.object({ action: z.literal('offer') }),
-  z.object({ action: z.literal('create'), full_name: z.string().trim().min(5).max(150).refine(v => v.split(/\s+/).filter(n => n.length >= 2).length >= 2), phone: z.string().regex(/^05\d{8}$/) }),
+  z.object({ action: z.literal('create'), payment_method: z.enum(GROW_PAYMENT_METHODS), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
   z.object({ action: z.literal('notify'), order_id: z.string().uuid(), transaction_id: z.string().min(1).max(128) }),
 ]);
 
@@ -45,6 +53,7 @@ Deno.serve(async req => {
       if (!verified.success || verified.data.order_id !== order.id || verified.data.transaction_id !== body.transaction_id || verified.data.amount_ils !== Number(order.amount_ils) || verified.data.environment !== order.environment) return json({ error: 'payment_not_verified' }, 409);
       const { data: completed, error: completeError } = await admin.rpc('complete_grow_payment', { _order_id: order.id, _transaction_id: body.transaction_id, _amount_ils: verified.data.amount_ils, _environment: order.environment });
       if (completeError) return json({ error: 'payment_completion_failed' }, 409);
+      await deliverPaymentSms(admin, order.id);
       stage = 'acknowledge';
       const acknowledged = await callMake(order.environment, { action: 'approve', order_id: order.id, transaction_id: body.transaction_id });
       if (acknowledged?.approved !== true) return json({ error: 'notification_acknowledgment_failed', recorded: true }, 502);
@@ -61,7 +70,7 @@ Deno.serve(async req => {
     const prefix = environment === 'live' ? 'GROW_MAKE_LIVE' : 'GROW_MAKE_SANDBOX';
     if (body.action === 'offer') {
       const ready = settings && growConfigurationReady(settings) && Deno.env.get(`${prefix}_URL`) && Deno.env.get(`${prefix}_API_KEY`) && Deno.env.get('GROW_MAKE_NOTIFY_SECRET');
-      return json({ offer: ready ? { title: settings.subscription_title, benefits: settings.benefits, duration_days: settings.duration_days, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, environment } : null });
+      return json({ offer: ready ? { title: settings.subscription_title, benefits: settings.benefits, duration_days: settings.duration_days, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, environment, methods: await capabilities(environment) } : null });
     }
     if (body.action === 'status') return json({ configured: Boolean(Deno.env.get(`${prefix}_URL`) && Deno.env.get(`${prefix}_API_KEY`) && Deno.env.get('GROW_MAKE_NOTIFY_SECRET')), environment, terms_ready: growConfigurationReady(settings ?? {}) });
     if (body.action === 'test') {
@@ -71,12 +80,19 @@ Deno.serve(async req => {
       return json({ connected: true, environment });
     }
     if (!settings || !growConfigurationReady(settings) || !Deno.env.get('GROW_MAKE_NOTIFY_SECRET')) return json({ error: 'subscription_not_configured' }, 409);
+    const method = (await capabilities(environment)).find(m => m.id === body.payment_method);
+    if (!method) return json({ error: 'payment_method_unavailable' }, 409);
+    for (const field of method.fields) {
+      const value = body[field];
+      if (!value?.trim() || (field === 'email' && !z.string().email().safeParse(value).success) || (field === 'national_id' && !/^\d{9}$/.test(value)) || (field === 'full_name' && value.trim().split(/\s+/).length < 2)) return json({ error: 'invalid_customer_field', field }, 400);
+    }
     stage = 'create_order';
-    const { data: order, error } = await admin.from('grow_payment_orders').insert({ user_id: caller.userId, environment, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, duration_days: settings.duration_days, title: settings.subscription_title, benefits: settings.benefits }).select('id').single();
+    const { data: order, error } = await admin.from('grow_payment_orders').insert({ user_id: caller.userId, environment, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, duration_days: settings.duration_days, title: settings.subscription_title, benefits: settings.benefits, customer_phone: body.phone, payment_method: body.payment_method }).select('id').single();
     if (error || !order) return json({ error: 'order_creation_failed' }, 503);
     try {
       stage = 'create_link';
-      const result = await callMake(environment, { action: 'create', order_id: order.id, environment, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, currency: 'ILS', title: settings.subscription_title, full_name: body.full_name, phone: body.phone, sending_mode: settings.sending_mode, payment_type: 'payments', charge_type: 'regular charge', success_url: `${Deno.env.get('PUBLIC_SITE_URL') ?? 'https://toraff.co.il'}/wallet` });
+      const customer = Object.fromEntries(method.fields.map(field => [field, body[field]]));
+      const result = await callMake(environment, { action: 'create', order_id: order.id, environment, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, currency: 'ILS', title: settings.subscription_title, ...customer, phone: body.phone, payment_method: body.payment_method, sending_mode: settings.sending_mode, payment_type: 'payments', charge_type: 'regular charge', success_url: `${Deno.env.get('PUBLIC_SITE_URL') ?? 'https://toraff.co.il'}/wallet` });
       if (typeof result?.payment_url !== 'string' || !validGrowPaymentUrl(result.payment_url)) throw new Error('invalid_payment_url');
       const { error: saveError } = await admin.from('grow_payment_orders').update({ status: 'link_ready', payment_url: result.payment_url }).eq('id', order.id).eq('status', 'pending');
       if (saveError) throw new Error('payment_link_save_failed');
