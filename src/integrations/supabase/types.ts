@@ -11047,6 +11047,22 @@ export type Database = {
         }
       }
       subscribe_to_plan: { Args: { _plan_name: string }; Returns: Json }
+      super_admin_credit_balances: {
+        Args: never
+        Returns: {
+          balance_credits: number
+          balance_ils: number
+          user_id: string
+        }[]
+      }
+      super_admin_set_credit_balance: {
+        Args: {
+          _credits: number
+          _expected_balance_ils: number
+          _user_id: string
+        }
+        Returns: number
+      }
       suspend_unverified_broker_roles: { Args: never; Returns: number }
       track_affiliate_click: { Args: { _code: string }; Returns: undefined }
       track_listing_referral_view: {

@@ -1,0 +1,2 @@
+# User credit management
+- Use Super Admin-only exact-balance RPCs with per-account row locks, configured server conversion and audited ledger deltas; reject stale expected balances. Why: no role escalation, lost charges or unaudited funds.

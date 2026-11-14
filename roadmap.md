@@ -1,5 +1,9 @@
 # Roadmap
 
+## Super Admin credit balance editing November 14
+- [x] Per-user exact balance editor with server Super Admin checks, central conversion, atomic ledger delta and stale-balance conflict protection; missing wallets initialize only on confirmed save.
+- [x] Affected wallet/account queries refresh after save; active customer wallet polls every 10 seconds. Two focused tests cover zero/fractional/invalid values and scoped exact-save payload; live function definitions/guards read back. Authenticated real Users table loaded balances, blocked negative value and saved unchanged 100-credit balance through real RPC with table readback; mobile editor fits. Preview OK, no funds changed. Cross-account denied-role path source-audited, not impersonated.
+
 ## Minimal checkout and payment SMS November 14
 - [x] Minimal method selector and gateway-declared customer fields; sensitive payment fields remain on Grow checkout. Unsupported methods disabled rather than invented.
 - [x] Verified live-payment SMS outbox, atomic claim and provider result tracking; sandbox sends no SMS. Ambiguous/interrupted delivery requires operator review, never blind retry.

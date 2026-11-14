@@ -21,6 +21,7 @@ import { BrokerInvitationDialog } from './BrokerInvitationDialog';
 import { OfficialBrokerInvitationDialog } from './OfficialBrokerInvitationDialog';
 import { BrokerEmailBatchCard, BrokerEmailConsentButton, useBrokerEmailStates } from './BrokerEmailInvitations';
 import { BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOnboarding';
+import { UserCreditBalanceEditor } from './UserCreditBalanceEditor';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -52,6 +53,11 @@ export function SuperAdminUsersTable() {
     })));
   } });
   const emailStates = useBrokerEmailStates(isSuperAdmin);
+  const balances = useQuery({ queryKey: ['admin-credit-balances'], enabled: isSuperAdmin, refetchInterval: 15000, queryFn: async () => {
+    const { data, error } = await supabase.rpc('super_admin_credit_balances');
+    if (error) throw error;
+    return Object.fromEntries((data ?? []).map(row => [row.user_id, { balance_ils: Number(row.balance_ils), balance_credits: Number(row.balance_credits) }]));
+  }});
   const profiles = useQuery({ queryKey: ['admin-profiles'], enabled: isSuperAdmin, queryFn: async () => {
     const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
     if (error) throw error;
@@ -139,8 +145,9 @@ export function SuperAdminUsersTable() {
       {selecting && <Button variant="destructive" size="sm" disabled={!selected.length || deletion.isPending} onClick={() => setPendingIds([...selected])}><Trash2 className="h-4 w-4" />מחיקת {selected.length} משתמשים</Button>}
     </div>
     {isSuperAdmin && <BrokerEmailBatchCard />}
+    {balances.isError && <p role="alert" className="text-destructive">לא ניתן לטעון יתרות קרדיטים</p>}
     {profiles.isLoading ? <p role="status">טוען משתמשים…</p> : profiles.isError || roles.isError ? <p role="alert">טעינת המשתמשים נכשלה</p> : <div className="overflow-x-auto"><Table>
-      <TableHeader><TableRow>{selecting && <TableHead>בחירה</TableHead>}<TableHead>שם מלא</TableHead><TableHead>אימייל</TableHead><TableHead>טלפון</TableHead><TableHead>סוג משתמש</TableHead><TableHead>הרשאות</TableHead><TableHead>הרשמה</TableHead><TableHead>פעיל</TableHead><TableHead>פעולות</TableHead></TableRow></TableHeader>
+      <TableHeader><TableRow>{selecting && <TableHead>בחירה</TableHead>}<TableHead>שם מלא</TableHead><TableHead>אימייל</TableHead><TableHead>טלפון</TableHead><TableHead>סוג משתמש</TableHead><TableHead>הרשאות</TableHead><TableHead>יתרת קרדיטים</TableHead><TableHead>הרשמה</TableHead><TableHead>פעיל</TableHead><TableHead>פעולות</TableHead></TableRow></TableHeader>
       <TableBody>{rows.map(p => {
         const userRoles = rolesOf(p.id);
         const main = primaryRole(userRoles);
@@ -158,6 +165,7 @@ export function SuperAdminUsersTable() {
               </SelectItem>)}</SelectContent>
             </Select>
           </TableCell>
+          <TableCell><UserCreditBalanceEditor key={p.id} userId={p.id} name={p.full_name || p.email || 'משתמש'} balance={balances.isError ? undefined : balances.data?.[p.id]} /></TableCell>
           <TableCell className="whitespace-nowrap">{new Date(p.created_at).toLocaleDateString('he-IL')}</TableCell>
           <TableCell><Switch aria-label={`גישה עבור ${p.full_name}`} checked={!p.is_suspended} disabled={edit.isPending} onCheckedChange={v => edit.mutate({ id: p.id, suspend: !v })} /></TableCell>
           <TableCell><div className="flex gap-1 items-center">
@@ -168,7 +176,7 @@ export function SuperAdminUsersTable() {
             <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" aria-label={`מחיקת ${p.full_name || p.email}`} disabled={protectedId(p.id)} onClick={() => setPendingIds([p.id])}><Trash2 className="h-4 w-4" /></Button>
           </div></TableCell>
         </TableRow>;
-      })}{!rows.length && <TableRow><TableCell colSpan={selecting ? 9 : 8} className="text-center">לא נמצאו משתמשים</TableCell></TableRow>}</TableBody>
+      })}{!rows.length && <TableRow><TableCell colSpan={selecting ? 11 : 10} className="text-center">לא נמצאו משתמשים</TableCell></TableRow>}</TableBody>
     </Table></div>}
     <Dialog open={!!draft} onOpenChange={open => { if (!open && !saveDraft.isPending) setDraft(null); }}>
       <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] min-w-0 w-[calc(100%-2rem)] max-w-lg overflow-x-hidden overflow-y-auto text-right">

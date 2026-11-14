@@ -89,6 +89,7 @@ export function useCreditWallet() {
   return useQuery({
     queryKey: ['credit-wallet', workspaceOwnerId],
     enabled: !!user?.id && !!workspaceOwnerId,
+    refetchInterval: 10000,
     staleTime: 10_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
