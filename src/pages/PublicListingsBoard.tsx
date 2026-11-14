@@ -22,6 +22,7 @@ import PublicListingPublisher from '@/components/public/PublicListingPublisher';
 import BrokerageCommissionDisclosure from '@/components/public/BrokerageCommissionDisclosure';
 import PropertyContactActions from '@/components/public/PropertyContactActions';
 import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
+import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
 import { OwnerListingActions } from '@/components/properties/PropertyRowActions';
 import PropertyGallerySlider from '@/components/public/PropertyGallerySlider';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
@@ -441,10 +442,10 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
                         </td>)}
                         <td className="p-2 align-bottom"><div className="flex items-center justify-end gap-1">
                           {marketingOnly && selectMode && <SelectBox checked={selected.has(card.id)} label={`בחירת ${title}`} onChange={() => toggleSelected(card.id)} />}
-                          {user ? <PropertyShareMenu results={[cardResult(card)]} iconOnly variant="ghost" hidePublish hideOpenPage /> : <PropertyContactActions listingId={card.id} title={title} compact shareOnly shareUrl={publicUrl(propertyPath)} shareButtonClassName="h-8 w-8 border-0 bg-transparent shadow-none" />}
+                          <ProfileAssetMenu card={card} title={title} isOwner={ownedIds.has(card.id)} isFav={favIds.has(card.id)} onFavorite={() => void toggleFavorite(card)} />
                           <BoardPublishButton result={cardResult(card)} />
                           <BoardOpenPageButton result={cardResult(card)} publicPath={propertyPath} />
-                          <Button type="button" size="icon" variant="ghost" onClick={(event) => { event.stopPropagation(); void toggleFavorite(card); }} aria-label={favIds.has(card.id) ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={favIds.has(card.id)} className="h-8 w-8 text-destructive"><Heart className={cn('h-4 w-4', favIds.has(card.id) && 'fill-current')} /></Button>
+
                           <Button type="button" size="icon" variant="ghost" aria-label="גרירה לשינוי סדר" title="גרירה לשינוי סדר" className="h-8 w-8 cursor-grab touch-none text-muted-foreground active:cursor-grabbing" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => { if (!user) { blockGuests(event); return; } event.stopPropagation(); rowDrag.current = { id: card.id, pointerId: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={moveRowDrag} onPointerUp={finishRowDrag} onPointerCancel={() => { rowDrag.current = null; setDragGhost(null); }}><GripVertical className="h-4 w-4" /></Button>
                         </div>
                          </td>

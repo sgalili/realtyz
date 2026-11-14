@@ -1,9 +1,7 @@
-import { Heart } from 'lucide-react';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
-import { Button } from '@/components/ui/button';
 import { HorizontalTableScroll, FixedTablePanel } from '@/components/ui/horizontal-table-scroll';
 import { AnimatedExpansion } from '@/components/ui/animated-expansion';
-import { QuickShareButton, ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
+import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { formatRentalPrice } from '@/lib/propertyPrice';
 import { cn } from '@/lib/utils';
@@ -34,8 +32,6 @@ export function ProfilePropertyList({ cards, expandedId, onExpand, favoriteIds, 
             <td className="p-2"><PropertyCommissionIcons table listingId={card.id} raw={{ reward_types: card.reward_types, closing_level: card.closing_level, reward_levels: card.reward_levels }} /></td>
             <td className="p-2 text-center text-base">{card.rooms || ''}</td><td className="p-2 text-center text-base">{card.sqm || ''}</td><td className="whitespace-nowrap p-2 text-center text-base">{card.floor != null ? `${card.floor}${card.total_floors ? `/${card.total_floors}` : ''}` : ''}</td>
             <td className="p-2" onClick={event => event.stopPropagation()}><div className="flex items-center gap-1">
-              <QuickShareButton title={title} path={`/p/${encodeURIComponent(card.slug || card.id)}`} />
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={fav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={fav} onClick={() => onFavorite(card.id)}><Heart className={cn('h-4 w-4', fav && 'fill-current')} /></Button>
               <ProfileAssetMenu card={card} title={title} isOwner={isOwner} isFav={fav} onFavorite={() => onFavorite(card.id)} />
             </div></td>
           </tr>,

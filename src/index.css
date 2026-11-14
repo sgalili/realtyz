@@ -2156,6 +2156,11 @@ html.activity-drawer-open main[aria-label="רשימת נכסים"] {
 :is([data-site-popup], [data-site-dialog]) .sidebar-mode-toggle-btn { font-size: 14px !important; }
 
 /* Published site: keep two-axis scrolling but hide the horizontal bar. */
+:root { --action-menu-font-increase: 3px; }
+[data-action-menu] { font-size: calc(14px + var(--action-menu-font-increase)) !important; }
+[data-action-menu] :is([role^="menuitem"], [data-menu-label]) { font-size: calc(14px + var(--action-menu-font-increase)) !important; line-height: 1.5; }
+[data-action-menu][data-site-popup] > button { font-size: calc(16px + var(--dialog-font-increase) + var(--action-menu-font-increase)) !important; }
+
 .hide-x-scrollbar { scrollbar-width: none; }
 .hide-x-scrollbar::-webkit-scrollbar:horizontal { height: 0; }
 .hide-x-scrollbar::-webkit-scrollbar { height: 0; }

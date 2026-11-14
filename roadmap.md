@@ -1,5 +1,11 @@
 # Roadmap
 
+## Profile and office presentation November 14
+- [x] Shared dropdown items use +3px; chat action popovers add +3px to their existing modal scale. Profile, shared grid, expanded cards and homepage rows expose share/favorite only in menus.
+- [x] Profile controls anchor at shell top on expansion/view changes without resetting columns; page close portals outside scroll ancestors with 22px X, dialog close stays sticky with 18px X.
+- [x] Office grid shows avatars and counts from authorized listing IDs intersected with the redacted feed; individual profiles carry explicit office return and a city-row office link.
+- [x] Nine focused tests and authenticated desktop/mobile populated-profile expansion, list/grid, menu font, fixed close, office count and explicit return passed; no overflow/runtime errors. The available roster has one broker, so live multi-broker layout remains unverified.
+
 ## Card menus and avatar-only profiles November 14
 - [x] Lead/peer/group cards share target-bound header action content; directory cards reuse peer actions and saved rows have top-left menus. Clicks close menus while preserving favorite/block/delete confirmations; no destructive backend changes.
 - [x] Lead/peer/header/directory/group sender/roster public profiles open only from circular avatars. Names/card bodies open conversations or remain text; authorized lead editing stays in the menu and unmapped leads never borrow account identities.

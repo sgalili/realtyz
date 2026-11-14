@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { fmtILS } from '@/lib/formatCurrency';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Heart, X, Accessibility, Armchair, Award, BadgeCheck, Banknote, Bath, Building, Building2, Bus, CalendarDays, Car, CarFront,
+  X, Accessibility, Armchair, Award, BadgeCheck, Banknote, Bath, Building, Building2, Bus, CalendarDays, Car, CarFront,
   CheckCircle2, Compass, DoorOpen, Dog, Fence, Flame, GraduationCap, Home, Layers, Loader2, MapPin, Maximize2,
   Navigation, Package, Receipt, Ruler, School, ShieldCheck, Snowflake, Sparkles, Store, Trees, Utensils, Wallet, Wrench,
 } from 'lucide-react';
@@ -19,7 +19,7 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { isUnavailableListingError } from '@/lib/publicListingLookup';
 import PropertyGallerySlider from './PropertyGallerySlider';
 import PropertyContactActions from './PropertyContactActions';
-import { publicUrl } from '@/lib/publicUrl';
+import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
 
 type Raw = Record<string, unknown>;
 type Spec = { icon: LucideIcon; label: string; value: string };
@@ -187,12 +187,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
   const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapQuery)}`;
   const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&hl=iw&z=16&output=embed`;
 
-  const overlay = listing.id ? (
-    <Button type="button" variant="secondary" size="icon" onClick={(e) => { e.stopPropagation(); toggleFavorite(); }} aria-pressed={favorite} aria-label={favorite ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" className="h-9 w-9 border-0 bg-transparent shadow-none hover:bg-muted">
-      <Heart className={`h-5 w-5 text-destructive ${favorite ? 'fill-current' : ''}`} />
-    </Button>
-  ) : null;
-  const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode }>, { overlay }) : gallery ?? <PropertyGallerySlider key={listing.id} photos={listing.photos} alt={listing.title} overlay={overlay} share={listing.id ? <PropertyContactActions listingId={listing.id} dealType={listing.dealType} title={listing.title} options={listing.contactOptions} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-background/70 hover:bg-background/90" shareUrl={publicUrl(`/p/${encodeURIComponent(listing.id)}`)} /> : undefined} />;
+  const galleryEl = isValidElement(gallery) ? cloneElement(gallery as ReactElement<{ overlay?: ReactNode; share?: ReactNode }>, { overlay: undefined, share: undefined }) : gallery ?? <PropertyGallerySlider key={listing.id} photos={listing.photos} alt={listing.title} />;
 
   return (
     <div dir="rtl" className="min-w-0 max-w-full space-y-5 text-base [container-type:inline-size]">
@@ -201,7 +196,7 @@ export default function ExpandedPropertyDetails({ idOrSlug, isFav = false, onFav
           <h2 className="min-w-0 flex-1 break-words text-base font-bold">{listing.title}</h2>
           <div className="flex shrink-0 items-center" onClick={event => event.stopPropagation()}>
             {onClose && <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="סגירת פרטי הנכס" title="סגירה"><X className="h-5 w-5" /></Button>}
-            {actions}
+            {actions ?? (listing.id && <ProfileAssetMenu card={{ id: listing.id }} title={listing.title} isOwner={false} isFav={favorite} onFavorite={toggleFavorite} />)}
           </div>
         </div>
         <BrokerAttribution listingId={listing.id} compact brokerName={listing.brokerName} officeName={listing.officeName} licenceNumber={listing.brokerLicenceNumber} logoUrl={listing.agencyLogoUrl} publisherKind={listing.publisherKind} dealType={listing.dealType} exclusive={a.isAssetExclusive === true} guestStack={!user} trailing={listing.id && (!hideRewards || !user) ? <PropertyCommissionIcons listingId={listing.id} raw={raw} facts={rewardFacts} /> : undefined} />
