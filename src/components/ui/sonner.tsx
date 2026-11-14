@@ -1,5 +1,6 @@
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, toast } from "sonner";
+import { ToraffLoader } from '@/components/ui/toraff-loader';
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -14,6 +15,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       offset={72}
       duration={6000}
       closeButton
+      icons={{ loading: <ToraffLoader /> }}
       swipeDirections={["top", "right", "bottom", "left"]}
       toastOptions={{
         classNames: {

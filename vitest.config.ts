@@ -11,6 +11,9 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: [
+      { find: /^lucide-react$/, replacement: path.resolve(__dirname, './src/lib/loading-icons.tsx') },
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+    ],
   },
 });

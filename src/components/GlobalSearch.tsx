@@ -8,6 +8,7 @@ import { Search, User, MapPin, Radio, LayoutDashboard, Building2, MessageSquare,
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useWorkspaceFeatures } from '@/hooks/useWorkspaceFeatures';
+import { ToraffLoader } from '@/components/ui/toraff-loader';
 
 const PROPERTY_QUICK_LINK = { label: 'נכסים', path: '/properties', icon: Building2 };
 
@@ -291,7 +292,7 @@ export function GlobalSearch({ open: openProp, onOpenChange }: GlobalSearchProps
         <div className="max-h-96 overflow-y-auto p-2 scrollbar-thin">
           {loading && (
             <div className="flex items-center justify-center py-8">
-              <div className="realtyz-loader h-10 w-10" />
+              <ToraffLoader />
             </div>
           )}
           {!loading && results.length === 0 && query.trim() && (

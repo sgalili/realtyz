@@ -1,4 +1,5 @@
 import SmartTimelineCard from '@/components/SmartTimelineCard';
+import { ToraffLoader } from '@/components/ui/toraff-loader';
 import { safeRows } from '@/lib/spreadsheetSafe';
 import { LeadPublicProfile } from '@/components/leads/LeadPublicProfile';
 import { useLeadProfileAccess } from '@/hooks/useLeadProfileAccess';
@@ -2001,7 +2002,7 @@ const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { ac
                   {isLoading && (
                     <TableRow><TableCell colSpan={totalColCount} className="py-12">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="realtyz-loader h-10 w-10" />
+                        <ToraffLoader />
                         <p className="text-sm text-muted-foreground">טוען לידים...</p>
                       </div>
                     </TableCell></TableRow>

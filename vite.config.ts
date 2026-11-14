@@ -15,9 +15,10 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react(), mcpPlugin(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      { find: /^lucide-react$/, replacement: path.resolve(__dirname, './src/lib/loading-icons.tsx') },
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+    ],
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
 }));

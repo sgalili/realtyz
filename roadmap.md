@@ -1,5 +1,9 @@
 # Roadmap
 
+## Custom loading video November 14
+- [x] Replace shared icon, legacy ring and toast spinners with the uploaded video; crop excess bottom whitespace and add the requested subtitle.
+- [x] Verify 768×220 muted looping playback, reduced-motion pause and mobile/desktop loader sizing without altering requests or permissions. Hosted assets supplied locally during browser checks; three pre-existing GroupStatusChips copy/markup assertions fail outside this change.
+
 ## Background developer project imports November 14
 - [x] Replaced the direct long preview request with durable developer jobs and one queue row per developer/project page, authorized to the requesting workspace and active subscription; the legacy multi-page request is disabled.
 - [x] Each invocation processes one 40-second-maximum page with a 55-second lease, automatic transient/429 backoff, crash-recovery watchdog, safe private upserts and live resumable UI progress; manual project edits and publication state remain preserved.

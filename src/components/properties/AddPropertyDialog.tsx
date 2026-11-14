@@ -16,6 +16,7 @@ import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PROPERTY_TYPE_LABELS_HE, type PropertyType, type HomelyProperty } from '@/lib/homelyMockProperties';
 import { PropertyDetailView } from './PropertyDetailView';
+import { ToraffLoader } from '@/components/ui/toraff-loader';
 
 interface Props {
   open: boolean;
@@ -362,10 +363,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
           {/* State 2: Loading — centered spinner only */}
           {hydrating && (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-              <div className="relative h-16 w-16">
-                <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-              </div>
+              <ToraffLoader className="toraff-loader-lg" />
               <p className="text-sm font-medium text-muted-foreground">מנתח את המודעה...</p>
             </div>
           )}

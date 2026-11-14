@@ -1,0 +1,2 @@
+# Shared loading presentation
+- All loading indicators use ToraffLoader; exact lucide package aliases in Vite and tests replace loader icons and spinning refresh states, while idle icons stay original. Why: consistent loading without editing request logic.

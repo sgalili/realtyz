@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Plus, ExternalLink, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { fbGroupUrl } from '@/lib/fbGroupUrl';
+import { ToraffLoader } from '@/components/ui/toraff-loader';
 
 type CustomGroup = {
   id: string;
@@ -152,7 +153,7 @@ export function CustomGroupsManager() {
             onClick={() => void bulkDelete()}
           >
             {bulkDeleting ? (
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <ToraffLoader />
             ) : (
               <Trash2 className="h-3.5 w-3.5" />
             )}
