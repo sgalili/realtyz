@@ -1,5 +1,9 @@
 # Roadmap
 
+## Continuous developer import November 14
+- [ ] Remove frontend developer stop points and keep serialized authorized continuation running until no pages remain.
+- [ ] Refresh page-level progress after every step and verify continuation, recovery and scope cancellation without paid scraping.
+
 ## Loader refinement November 14
 - [x] Increase logo width 140→154px and subtitle 9→13px; reduce minimum to three seconds. Four timing tests pass; authenticated fast page measured 3.036 seconds.
 - [x] Reuse centered page overlay while empty public/managed property results load, without covering populated background refreshes. Delayed live public feed retained the overlay until completion; mobile/desktop dimensions and position verified without runtime errors. Hosted video supplied locally for checks.
