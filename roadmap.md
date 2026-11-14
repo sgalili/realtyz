@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Continuous developer import November 14
-- [ ] Remove frontend developer stop points and keep serialized authorized continuation running until no pages remain.
-- [ ] Refresh page-level progress after every step and verify continuation, recovery and scope cancellation without paid scraping.
+- [x] Added serialized automatic continuation to both import screens; authorized developer continuation shares server workspace/payment checks, leases and retry deadlines. Active developer jobs cannot be replaced from the frontend.
+- [x] Refresh page-level progress after every step; seven runner/retry tests pass. Signed-in Super Admin mobile/desktop simulated four automatic steps through completion without errors; no paid source reads. Real provider completion remains unverified.
 
 ## Loader refinement November 14
 - [x] Increase logo width 140→154px and subtitle 9→13px; reduce minimum to three seconds. Four timing tests pass; authenticated fast page measured 3.036 seconds.

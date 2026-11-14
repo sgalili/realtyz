@@ -187,12 +187,36 @@ async function stepImport(body: Record<string, unknown>) {
   }
 }
 
+/** Browser continuation shares the leased worker, never a service credential. */
+async function continueImport(req: Request, body: Record<string, unknown>) {
+  const caller = await requireCaller(req, ['user']);
+  if (caller instanceof Response) return caller;
+  if (caller.kind !== 'user') return json({ error: 'unauthorized' }, 401);
+  const scoped = await enforceRequestScope(req, caller);
+  if (scoped) return scoped;
+  const jobId = typeof body.job_id === 'string' && UUID.test(body.job_id) ? body.job_id : '';
+  const workspace = typeof body.workspace_owner_id === 'string' && UUID.test(body.workspace_owner_id) ? body.workspace_owner_id : '';
+  if (!jobId || !workspace) return json({ error: 'invalid_job' }, 400);
+  const admin = adminClient();
+  if (!await canAccessWorkspace(caller.userId, workspace, admin)) return json({ error: 'forbidden' }, 403);
+  const { data: job, error } = await admin.from('developer_import_jobs').select('status,lease_until,next_attempt_at').eq('id', jobId).eq('workspace_owner_id', workspace).maybeSingle();
+  if (error || !job) return json({ error: 'job_unavailable' }, 404);
+  const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+  const { data: subscription, error: subscriptionError } = await client.rpc('get_developer_subscription_status');
+  if (subscriptionError || !subscription?.active || subscription.workspace_owner_id !== workspace) return json({ error: 'developer_subscription_required' }, 402);
+  if (job.status !== 'running') return json({ ok: true, done: true });
+  const eligibleAt = Math.max(Date.parse(job.lease_until ?? '') || 0, Date.parse(job.next_attempt_at ?? '') || 0);
+  if (eligibleAt > Date.now()) return json({ ok: true, retry_in_ms: Math.min(2_000, eligibleAt - Date.now()) });
+  return stepImport({ job_id: jobId });
+}
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   let body: Record<string, unknown>;
   try { const parsed = await req.json(); if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('invalid'); body = parsed; } catch { return json({ error: 'invalid_request' }, 400); }
   if (body.action === 'start') return startImport(req, body);
+  if (body.action === 'continue') return continueImport(req, body);
   if (body.action === 'step') {
     const caller = await requireCaller(req, ['service', 'cron']);
     if (caller instanceof Response) return caller;

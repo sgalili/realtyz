@@ -13,6 +13,7 @@ import { validImportParameters } from '../../../supabase/functions/_shared/broke
 import { agencyUrl } from '../../../supabase/functions/_shared/yad2Agencies';
 import { developerImportUrl } from '@/lib/developerImportUrl';
 import { autonomousDeveloperCheckpoint, DEVELOPER_TRANSIENT_RETRY } from '../../../supabase/functions/_shared/developerImportRetry';
+import { startContinuousImportRunner } from '@/lib/continuousImportRunner';
 
 const LINKS_KEY = 'toraff-broker-import-links';
 const LIMIT_KEY = 'toraff-broker-import-link-limit';
@@ -89,6 +90,19 @@ export function BrokerBatchImportCard() {
   } | undefined;
   const waitSeconds = Math.max(0, Math.ceil(((checkpoint?.waitUntil ?? 0) - now) / 1000));
   const autonomousDeveloper = autonomousDeveloperCheckpoint(checkpoint);
+  useEffect(() => {
+    if (!current || current.status !== 'running' || !autonomousDeveloper) return;
+    const jobId = current.id;
+    return startContinuousImportRunner({
+      initialDelay: Math.max(0, (checkpoint?.waitUntil ?? 0) - Date.now()),
+      step: async () => {
+        const { data, error } = await supabase.functions.invoke('admin-broker-import-queue', { body: { action: 'step', job_id: jobId } });
+        if (error || data?.error) throw error ?? new Error(data.error);
+        return { done: data?.failed === true, retry_in_ms: data?.retry_in_ms ?? (data?.retry_at ? Math.max(0, data.retry_at - Date.now()) : undefined) };
+      },
+      refresh: () => qc.invalidateQueries({ queryKey: ['admin-broker-import-jobs'] }),
+    });
+  }, [current?.id, current?.status, autonomousDeveloper, qc]);
   const waitingForAutomaticRetry = autonomousDeveloper && waitSeconds > 0 && (checkpoint?.waitReason === 'rate_limit' || checkpoint?.waitReason === DEVELOPER_TRANSIENT_RETRY);
   const remaining = checkpoint?.brokers?.slice(checkpoint.brokerIndex ?? 0).reduce((total, broker) => total + broker.listing_urls.length, 0);
   const estimate = current?.step_average_ms && remaining ? Math.ceil(Number(current.step_average_ms) * remaining / 60000) : null;
@@ -99,7 +113,7 @@ export function BrokerBatchImportCard() {
     : checkpoint && ['scanning', 'enriching'].includes(current?.stage ?? '')
       ? [`${checkpoint.source === 'urls' ? 'קישורים שהודבקו' : checkpoint.source === 'agencies' ? 'משרדי תיווך' : checkpoint.deal === 'rent' ? 'השכרה' : 'מכירה'} · עמוד ${checkpoint.page ?? 1}`, checkpoint.rows?.length ? `${checkpoint.rows.length} כרטיסים נסרקו` : null, checkpoint.enriched ? `${checkpoint.enriched} משרדים נפתחו לאיתור מתווך` : null, checkpoint.enrichUrls?.length ? `${checkpoint.enrichUrls.length} ממתינות` : null, checkpoint.cacheHits ? `${checkpoint.cacheHits} נטענו מהמטמון ללא עלות` : null, checkpoint.timeoutSkips ? `${checkpoint.timeoutSkips} עמודים איטיים דולגו` : null].filter(Boolean).join(' · ')
       : '';
-  const newImportButton = <Button className="h-11 shrink-0 px-3 text-base" variant="outline" disabled={busy} onClick={() => { setError(''); setTarget(10); setMin(3); setMax(10); setOpen(true); }}><Upload className="h-5 w-5" />ייבוא חדש</Button>;
+  const newImportButton = <Button className="h-11 shrink-0 px-3 text-base" variant="outline" disabled={busy || (autonomousDeveloper && current?.status === 'running')} onClick={() => { setError(''); setTarget(10); setMin(3); setMax(10); setOpen(true); }}><Upload className="h-5 w-5" />ייבוא חדש</Button>;
   const linkJob = checkpoint?.source === 'urls';
   const entitiesDone = (current?.brokers_done ?? 0) + (current?.developers_done ?? 0);
   const expectedWarnings = checkpoint?.developerResults?.filter(result => result.projects < result.expected_projects) ?? [];
@@ -113,14 +127,14 @@ export function BrokerBatchImportCard() {
       <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:items-end sm:justify-end">
         <div className="space-y-1 sm:w-40 sm:shrink-0"><Label htmlFor="link-limit" className="text-sm">מקס׳ נכסים למתווך</Label><Input id="link-limit" type="number" inputMode="numeric" min={1} max={10} className="h-11 text-base" value={linkLimit} onChange={event => { const value = Math.round(Number(event.target.value)); if (Number.isFinite(value)) setLinkLimit(Math.min(10, Math.max(1, value))); }} /></div>
         <div className="space-y-1 sm:w-44 sm:shrink-0"><Label htmlFor="expected-projects" className="text-sm">פרויקטים צפויים לכל יזם</Label><Input id="expected-projects" type="number" inputMode="numeric" min={1} max={100} className="h-11 text-base" value={expectedProjects} onChange={event => { const value = Math.round(Number(event.target.value)); if (Number.isFinite(value)) setExpectedProjects(Math.min(100, Math.max(1, value))); }} /></div>
-        <Button className="col-span-2 h-11 text-base sm:col-span-1" disabled={busy || !links.trim() || Boolean(current?.lease_until && Date.parse(current.lease_until) > now)} onClick={() => { if (current && ['running', 'paused'].includes(current.status) && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא מהקישורים? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; void action('start_urls'); }}><Upload className="h-5 w-5" />ייבוא {developerLinkCount ? 'יזמים ומתווכים' : 'מתווכים'} מהקישורים</Button>
+        <Button className="col-span-2 h-11 text-base sm:col-span-1" disabled={busy || !links.trim() || (autonomousDeveloper && current?.status === 'running') || Boolean(current?.lease_until && Date.parse(current.lease_until) > now)} onClick={() => { if (current && ['running', 'paused'].includes(current.status) && !window.confirm('להפסיק את הייבוא הפעיל ולהתחיל ייבוא מהקישורים? הטיוטות והפרויקטים שכבר נשמרו לא יימחקו.')) return; void action('start_urls'); }}><Upload className="h-5 w-5" />ייבוא {developerLinkCount ? 'יזמים ומתווכים' : 'מתווכים'} מהקישורים</Button>
       </div>
       {notice && <p className="text-base text-muted-foreground">{notice}</p>}
     </div>
     {!current && <div className="flex items-center justify-end gap-2">{newImportButton}</div>}
     {current && <div role="status" className="space-y-3 rounded-xl border border-border/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><span className="flex items-center gap-2 text-lg font-semibold">{current.status === 'running' && !stalled && <Loader2 className="h-5 w-5 animate-spin" />}{current.status === 'paused' ? 'מושהה · ' : ''}{stages[current.stage] ?? current.stage}</span><span className="text-base text-muted-foreground">{linkJob ? `${entitiesDone}/${current.target_brokers} קישורים` : `${current.brokers_done}/${current.target_brokers} מתווכים`} · {current.listings_done} טיוטות{(current.developers_done ?? 0) > 0 ? ` · ${current.developers_done} יזמים · ${current.projects_done} פרויקטים · ${current.units_done} יחידות` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</span></div>
-      <Progress className="h-3" value={current.status === 'completed' ? 100 : entitiesDone / current.target_brokers * 100} />
+      <Progress className="h-3" value={current.status === 'completed' ? 100 : Math.min(99, (entitiesDone + (developerStage && checkpoint?.developerWork ? (checkpoint.developerWork.visitedUrls?.length ?? 0) / Math.max(1, (checkpoint.developerWork.visitedUrls?.length ?? 0) + (checkpoint.developerWork.pendingUrls?.length ?? 0) + 1) : 0)) / Math.max(1, current.target_brokers) * 100)} />
       {current.status === 'completed' && <p className="text-base font-medium">סיכום: יובאו {current.brokers_done} מתווכים ו־{current.listings_done} נכסים כטיוטות{current.developers_done > 0 ? `; ${current.developers_done} יזמים, ${current.projects_done} פרויקטים ו־${current.units_done} יחידות מפורטות סונכרנו ל״הפרויקטים שלי״` : ''}{current.skipped > 0 ? ` · ${current.skipped} דולגו` : ''}</p>}
       {expectedWarnings.map(result => <p key={result.developer_id} className="text-base font-medium text-warning">ב{result.company_name} נמצאו {result.projects} פרויקטים מתוך {result.expected_projects} צפויים. לא הומצאו פרויקטים חסרים.</p>)}
       {scanInfo && <p className="text-base text-muted-foreground">{scanInfo}</p>}

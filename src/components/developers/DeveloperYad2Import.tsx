@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,12 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { developerImportUrl } from '@/lib/developerImportUrl';
+import { startContinuousImportRunner } from '@/lib/continuousImportRunner';
 
 const YAD2_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*yad2\.co\.il\/[^\s<>]+/i;
 
 /** Starts a durable import; every developer/project page runs in its own background chunk. */
 export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summary: { projects: number; units: number }) => void; initialUrl?: string | null }) {
   const { activeWorkspaceId } = useWorkspace();
+  const qc = useQueryClient();
   const [url, setUrl] = useState(initialUrl ?? '');
   const [jobId, setJobId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -29,7 +31,8 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
     queryKey: ['developer-import-active', activeWorkspaceId, initialUrl],
     enabled: !!activeWorkspaceId && !jobId,
     queryFn: async () => {
-      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id').eq('workspace_owner_id', activeWorkspaceId!).eq('status', 'running').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!activeWorkspaceId) return null;
+      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id').eq('workspace_owner_id', activeWorkspaceId).eq('status', 'running').order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (queryError) throw queryError;
       return data;
     },
@@ -41,7 +44,8 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
     enabled: !!activeWorkspaceId && !!jobId,
     refetchInterval: query => query.state.data?.status === 'running' ? 2000 : false,
     queryFn: async () => {
-      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id,status,stage,error,source_url').eq('workspace_owner_id', activeWorkspaceId!).eq('id', jobId!).single();
+      if (!activeWorkspaceId || !jobId) return null;
+      const { data, error: queryError } = await supabase.from('developer_import_jobs').select('id,status,stage,error,source_url').eq('workspace_owner_id', activeWorkspaceId).eq('id', jobId).single();
       if (queryError) throw queryError;
       return data;
     },
@@ -51,16 +55,34 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
     enabled: !!activeWorkspaceId && !!jobId,
     refetchInterval: job?.status === 'running' ? 2000 : false,
     queryFn: async () => {
-      const { data, error: queryError } = await supabase.from('developer_import_pages').select('id,kind,status,attempts,error,next_attempt_at').eq('job_id', jobId!).order('created_at');
+      if (!jobId) return [];
+      const { data, error: queryError } = await supabase.from('developer_import_pages').select('id,kind,status,attempts,error,next_attempt_at').eq('job_id', jobId).order('created_at');
       if (queryError) throw queryError;
       return data;
     },
   });
 
+  useEffect(() => {
+    if (!activeWorkspaceId || !jobId || job?.status !== 'running') return;
+    const workspace = activeWorkspaceId;
+    return startContinuousImportRunner({
+      step: async () => {
+        const { data, error: invokeError } = await supabase.functions.invoke('developer-import-jobs', { body: { action: 'continue', job_id: jobId, workspace_owner_id: workspace } });
+        if (invokeError || data?.error) throw invokeError ?? new Error(data.error);
+        return data ?? {};
+      },
+      refresh: () => Promise.all([
+        qc.invalidateQueries({ queryKey: ['developer-import-job', workspace, jobId] }),
+        qc.invalidateQueries({ queryKey: ['developer-import-pages', workspace, jobId] }),
+      ]),
+    });
+  }, [activeWorkspaceId, jobId, job?.status, qc]);
+
   const projectPages = pages.filter(page => page.kind === 'project');
   const completed = projectPages.filter(page => page.status === 'completed').length;
   const failed = projectPages.filter(page => page.status === 'failed').length;
-  const progress = job?.stage === 'profile' ? 5 : projectPages.length ? Math.round((completed + failed) / projectPages.length * 100) : 10;
+  const pending = pages.filter(page => page.status === 'pending' || page.status === 'running').length;
+  const progress = job?.status === 'completed' ? 100 : job?.stage === 'profile' ? 5 : projectPages.length ? Math.min(99, Math.round((completed + failed) / projectPages.length * 100)) : 10;
   const waiting = pages.find(page => page.status === 'pending' && page.next_attempt_at && new Date(page.next_attempt_at).getTime() > Date.now());
 
   useEffect(() => {
@@ -108,6 +130,7 @@ export function DeveloperYad2Import({ onSaved, initialUrl }: { onSaved?: (summar
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span>{completed} פרויקטים נשמרו</span>
         {projectPages.length > 0 && <span>{completed + failed} מתוך {projectPages.length} עמודים</span>}
+        {job.status === 'running' && <span>{pending} עמודים נותרו</span>}
         {failed > 0 && <span className="text-destructive">{failed} נכשלו</span>}
       </div>
       {waiting && job.status === 'running' && <p className="text-sm text-muted-foreground">ניסיון חוזר אוטומטי מתוזמן. כל ההתקדמות נשמרה.</p>}
