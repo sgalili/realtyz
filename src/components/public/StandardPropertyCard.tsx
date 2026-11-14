@@ -12,11 +12,12 @@ import PropertyContactActions from './PropertyContactActions';
 import type { PublicCard } from '@/pages/PublicListingsBoard';
 import PropertyGallerySlider from './PropertyGallerySlider';
 
-export default function StandardPropertyCard({ card, signedIn = false, isMine = false, isFav = false, onFavorite, actions, summary, onOpen, showContact = true, showOwnerMenu = true, selection, menu }: {
+export default function StandardPropertyCard({ card, signedIn = false, isMine = false, isFav = false, onFavorite, actions, summary, onOpen, expanded, showContact = true, showOwnerMenu = true, selection, menu }: {
   card: PublicCard; signedIn?: boolean; isMine?: boolean; isFav?: boolean;
   onFavorite: () => void; actions?: ReactNode; summary?: ReactNode;
   /** Management views open their own detail page instead of the public one. */
   onOpen?: () => void;
+  expanded?: boolean;
   /** Contact buttons need a saved listing so inquiries reach its owner's Rita. */
   showContact?: boolean;
   showOwnerMenu?: boolean;
@@ -29,7 +30,7 @@ export default function StandardPropertyCard({ card, signedIn = false, isMine = 
   const propertyPath = `/p/${encodeURIComponent(card.slug || card.id)}`;
   const open = () => (onOpen ? onOpen() : navigate(propertyPath));
   const price = typeof card.price === 'number' && card.price > 0 ? `₪${card.price.toLocaleString('he-IL')}` : 'מחיר לא צוין';
-  return <article role="link" tabIndex={0} aria-label={`פתיחת ${title}`} onClick={open} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  return <article role={expanded === undefined ? 'link' : 'button'} tabIndex={0} aria-expanded={expanded} aria-controls={expanded === undefined ? undefined : `profile-property-${card.id}`} aria-label={`${expanded ? 'סגירת' : 'פתיחת'} ${title}`} onClick={open} onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } }} className="flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <div className="p-3"><div className="flex items-start gap-1">{selection}<div className="min-w-0 flex-1">{summary ?? <PublicCardSummary card={card} price={price} />}</div>{menu ? <div className="-me-2 -mt-1 shrink-0" onClick={(e) => e.stopPropagation()}>{menu}</div> : signedIn && showOwnerMenu ? <div className="-me-2 -mt-1 shrink-0"><OwnerListingActions listingId={card.id} /></div> : null}</div></div>
                 <PropertyGallerySlider key={card.id} compact photos={card.photos} alt={title} isMine={isMine} overlay={<Button type="button" size="icon" variant="ghost" onClick={onFavorite} aria-label={isFav ? 'הסרה מהמועדפים' : 'שמירה במועדפים'} title="מועדפים" aria-pressed={isFav} className="h-7 w-7 rounded-full text-destructive hover:bg-transparent"><Heart className={cn('h-4 w-4', isFav && 'fill-current')} /></Button>} share={showContact ? <PropertyContactActions listingId={card.id} dealType={card.deal_type} title={title} options={card.contact_options} compact shareOnly shareButtonClassName="h-7 w-7 rounded-full border-0 bg-background/70 hover:bg-background/90" shareUrl={publicUrl(propertyPath)} /> : undefined} />
                 <div className="flex flex-1 flex-col gap-2 p-4">

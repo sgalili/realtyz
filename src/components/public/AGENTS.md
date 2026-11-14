@@ -1,4 +1,5 @@
 # Public listing publisher
+- Profile list cards use one inline ExpandedPropertyDetails with the shared opposite-view switch; grid keeps normal navigation. Why: marketplace details without a popup or duplicate fetching rules.
 - Homepage, profile and office property cards reuse StandardPropertyCard; card/detail/popup media reuse PropertyGallerySlider with compact sizing only for cards. Profiles add no duplicate sharing rows, and missing popup gallery defaults to authorized listing photos. Why: one image navigation/action layout without pricing or identity leaks.
 - Open marketing properties reuse PublicListingsBoard with an affiliate-enabled feed predicate and selection-only marketing controls; cards/search/tables stay shared and existing actions retain server authorization. Why: exact home presentation without a second inventory or permission bypass.
 - Internal card-detail queries share listingDetailIdentifier and immutable IDs; missing/deleted links show unavailable states without fallback to other rows or wider access. Why: stale slugs cannot blank cards or reveal unrelated listings.

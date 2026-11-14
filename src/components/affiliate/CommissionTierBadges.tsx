@@ -31,7 +31,7 @@ export function RewardIcons({ levels, types, prices, zeroTypes, label = 'תגמ�
       const level = key === 'closing' ? closingLevel : prices?.[key] != null ? leadPriceLevel(key as 'form', Number(prices[key])) : levels?.[key as 'form'] ?? null;
       const zero = zeroTypes ? zeroTypes[key] === true : prices?.[key] === 0;
       // Signed-out visitors keep the gray icon but never see the zero wording.
-      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: closingLevelColor(level) } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? (user ? <span className="text-xs font-semibold">ללא עמלה</span> : null) : prices?.[key] != null && <bdi dir="ltr">{fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
+      return <span key={key} title={title} className={`inline-flex items-center gap-1 whitespace-nowrap ${zero ? 'lead-no-fee' : tone}`} style={!zero && level != null ? { color: closingLevelColor(level) } : undefined}><Icon aria-label={title} className="h-3.5 w-3.5 shrink-0" />{zero ? (user ? <span className="text-xs font-semibold">0₪</span> : null) : prices?.[key] != null && <bdi dir="ltr">{fmtILS(key === 'closing' ? Math.round(prices[key] ?? 0) : prices[key] ?? 0)}</bdi>}</span>;
     })}</span>
   </span>;
 }

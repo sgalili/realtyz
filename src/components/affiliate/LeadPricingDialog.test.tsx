@@ -18,7 +18,7 @@ describe('partner lead pricing information', () => {
     state.roles = [role];
     if (role === 'guest') state.user = null;
     render(<LeadPricingInfo listing={listing} details={{}} rewardTypes={{ form: true, whatsapp: true, phone: false, closing: false }} />);
-    expect(screen.getAllByText('ללא עמלה')).toHaveLength(1);
+    expect(screen.getAllByText('0₪')).toHaveLength(1);
     expect(screen.getByText('ליד מסונן בשיחת טלפון')).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'עמלות סגירה' })).toBeNull();
     expect(screen.queryByText('₪8,000')).toBeNull();

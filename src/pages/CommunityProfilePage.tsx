@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Building2, Loader2, LayoutGrid, List, MessageCircle, X, ArrowUpLeft, Pencil } from 'lucide-react';
+import { Building2, Loader2, MessageCircle, X, ArrowUpLeft, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
@@ -11,6 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import StandardPropertyCard from '@/components/public/StandardPropertyCard';
+import ExpandedPropertyDetails from '@/components/public/ExpandedPropertyDetails';
+import { AnimatedExpansion } from '@/components/ui/animated-expansion';
+import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { useUserRole } from '@/hooks/useUserRole';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
@@ -26,6 +29,8 @@ export default function CommunityProfilePage() {
   const favorites = useListingFavorites();
   const { isSuperAdmin } = useUserRole();
   const [view, setView] = useState<'list' | 'grid'>('list');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  useEffect(() => { setView('list'); setExpandedId(null); }, [user?.id, userId]);
   const [imageOpen, setImageOpen] = useState(false);
   const profile = useQuery({
     queryKey: ['community-profile-page', user?.id, userId], enabled: !!user && !!userId,
@@ -98,15 +103,28 @@ export default function CommunityProfilePage() {
     </section>}
     {p && <section className="space-y-3">
       <div className="flex items-center justify-between gap-2"><h2 className="min-w-0 text-xl font-bold">{listingIds.isLoading || feed.isLoading || listingIds.isError || feed.isError ? '' : `${cards.length} `}נכסים פעילים לשיתוף פעולה</h2>
-        <div className="flex shrink-0" role="group" aria-label="תצוגת נכסים">
-          <Button size="icon" variant={view === 'list' ? 'secondary' : 'ghost'} className="h-8 w-8" aria-label="תצוגת רשימה" title="תצוגת רשימה" aria-pressed={view === 'list'} onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
-          <Button size="icon" variant={view === 'grid' ? 'secondary' : 'ghost'} className="h-8 w-8" aria-label="תצוגת גריד" title="תצוגת גריד" aria-pressed={view === 'grid'} onClick={() => setView('grid')}><LayoutGrid className="h-4 w-4" /></Button>
-        </div>
+        <ViewModeSwitch isGrid={view === 'grid'} className="!h-11 !w-11" onToggle={() => { setView(current => current === 'list' ? 'grid' : 'list'); setExpandedId(null); }} />
       </div>
       {(listingIds.isLoading || feed.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}
       {(listingIds.isError || feed.isError) && <p role="alert" className="text-destructive">טעינת הנכסים נכשלה</p>}
       {listingIds.data && feed.data && !cards.length && <p className="text-muted-foreground">אין כרגע נכסים פעילים</p>}
-      <div className={view === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'mx-auto grid max-w-2xl grid-cols-1 gap-4'}>{cards.map(card => { const title = publicAdTitle(card); const fav = favorites.favoriteIds.has(card.id); return <StandardPropertyCard key={card.id} card={card} signedIn isMine={user?.id === userId} isFav={fav} onFavorite={() => void favorites.toggleFavorite(card.id)} menu={<ProfileAssetMenu card={card} title={title} isOwner={isOwner} isFav={fav} onFavorite={() => void favorites.toggleFavorite(card.id)} />} />; })}</div>
+      <div className={view === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'mx-auto grid max-w-2xl grid-cols-1 gap-4'}>{cards.map(card => {
+        const title = publicAdTitle(card);
+        const fav = favorites.favoriteIds.has(card.id);
+        const expanded = view === 'list' && expandedId === card.id;
+        const toggleFavorite = () => void favorites.toggleFavorite(card.id);
+        return <div key={card.id} className={view === 'list' ? 'min-w-0 [&>article]:h-auto' : 'min-w-0'}>
+          <StandardPropertyCard card={card} signedIn isMine={user?.id === userId} isFav={fav} onFavorite={toggleFavorite}
+            onOpen={view === 'list' ? () => setExpandedId(current => current === card.id ? null : card.id) : undefined}
+            expanded={view === 'list' ? expanded : undefined}
+            menu={<ProfileAssetMenu card={card} title={title} isOwner={isOwner} isFav={fav} onFavorite={toggleFavorite} />} />
+          <AnimatedExpansion open={expanded} id={`profile-property-${card.id}`}>
+            <div className="py-5" data-profile-property-details={card.id}>
+              <ExpandedPropertyDetails idOrSlug={card.id} isFav={fav} onFavorite={toggleFavorite} onClose={() => setExpandedId(null)} />
+            </div>
+          </AnimatedExpansion>
+        </div>;
+      })}</div>
     </section>}
   </main>;
 }

@@ -1,5 +1,10 @@
 # Roadmap
 
+## Profile view and zero commission labels November 14
+- [x] Replace zero commission wording with 0₪ without changing reward visibility.
+- [x] Use the shared opposite-view toggle, list default and one inline expanded property at a time.
+- [x] 41 affected tests pass; real populated profile click/inline details/close/grid-list switch checked desktop/mobile without popup, overflow or page errors.
+
 ## Grow saved cards and lead auto-billing November 14
 - [x] Explicit unchecked customer mandate; save only provider-vault references after independently verified live card payments, never raw card data or noncard methods; safe card display and self-only revocation in Wallet.
 - [x] Server-priced background authorization jobs on fee/cap save: highest lead bid ×5 or explicit daily spend cap. Persist results, verify scoped operation/amount, release hold through Make, no claim of total credit-limit visibility. Only permitted idempotent token-authorization capabilities run; raw tokens stay in provider vault.

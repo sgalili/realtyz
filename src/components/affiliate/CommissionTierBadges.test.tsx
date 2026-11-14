@@ -18,11 +18,11 @@ describe('commission visibility', () => {
     expect([...container.querySelectorAll('[data-commission-icons] span[title]')].map(row => row.getAttribute('title'))).toEqual(['שדות מטופס בעמוד נחיתה', 'סינון בווטסאפ', 'שיחת טלפון', 'סגירת עסקה']);
     if (role === 'guest') {
       // Signed-out visitors see the gray icon but never the zero wording.
-      expect(screen.queryByText('ללא עמלה')).toBeNull();
+      expect(screen.queryByText('0₪')).toBeNull();
       expect(screen.queryByText('למתווכים בלבד')).toBeNull();
     } else {
       // Signed-in users see the labels next to the grayed icons.
-      expect(screen.getByText('ללא עמלה')).toBeTruthy();
+      expect(screen.getByText('0₪')).toBeTruthy();
       expect(screen.getByText('למתווכים')).toBeTruthy();
     }
     expect(container.querySelector('span[title="שיחת טלפון"].lead-no-fee')).toBeTruthy();
@@ -32,7 +32,7 @@ describe('commission visibility', () => {
     access.admin = true;
     render(<CommissionTierBadges tiers={{ ...tiers, tier3: 20, tier4: 0 }} />);
     expect(screen.getByLabelText('סגירת עסקה')).toBeTruthy();
-    expect(screen.queryByText('ללא עמלה')).toBeNull();
+    expect(screen.queryByText('0₪')).toBeNull();
   });
   it('keeps three or four reward rows in both layouts', () => {
     access.allowed = true;
@@ -52,7 +52,7 @@ describe('commission visibility', () => {
   it('shows the explicit zero label only to signed-in users', () => {
     access.guest = true;
     const { container, unmount } = render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={{ form: false, whatsapp: false, phone: true, closing: false }} />);
-    expect(screen.queryByText('ללא עמלה')).toBeNull();
+    expect(screen.queryByText('0₪')).toBeNull();
     expect(screen.queryByText('למתווכים בלבד')).toBeNull();
     expect(container.querySelector('span[title="שיחת טלפון"].lead-no-fee')).toBeTruthy();
     // The restricted closing stays a gray trophy that still explains licensing.
@@ -61,13 +61,13 @@ describe('commission visibility', () => {
     unmount();
     access.guest = false;
     render(<RewardIcons types={{ form: true, whatsapp: true, phone: true, closing: true }} zeroTypes={{ form: false, whatsapp: false, phone: true, closing: false }} />);
-    expect(screen.getByText('ללא עמלה')).toBeTruthy();
+    expect(screen.getByText('0₪')).toBeTruthy();
   });
   it.each(['guest', 'super_admin', 'developer', 'property_owner', 'property_seeker', 'affiliate', 'agent'])('redacts closing prices even if supplied to the indicator for %s', role => {
     access.guest = role === 'guest'; access.roles = [role]; access.admin = role === 'super_admin';
     render(<RewardIcons types={{ closing: true }} prices={{ closing: 10000 }} zeroTypes={{ closing: true }} />);
     expect(screen.queryByText('₪10,000')).toBeNull();
-    expect(screen.queryByText('ללא עמלה')).toBeNull();
+    expect(screen.queryByText('0₪')).toBeNull();
     fireEvent.click(screen.getByLabelText('סגירת עסקה'));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
