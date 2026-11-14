@@ -22,7 +22,7 @@ export interface AdminSectionOption {
 // page can render has to appear here.
 export const ADMIN_SECTIONS: readonly AdminSectionOption[] = [
   { value: 'users', label: 'ניהול משתמשים', icon: Users },
-  { value: 'import', label: 'ייבוא מתווכים', icon: UserPlus },
+  { value: 'import', label: 'ייבוא מתווכים ויזמים', icon: UserPlus },
   { value: 'deletion', label: 'מחיקה וארכיון', icon: Trash2 },
   { value: 'finance', label: 'פיננסי', icon: Wallet },
   { value: 'payments', label: 'הגדרות תשלום', icon: Wallet },

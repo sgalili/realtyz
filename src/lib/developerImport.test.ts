@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { developerImportUrl } from './developerImportUrl';
 import { readPage, mergeProject } from '../../supabase/functions/yad2-developer-import/extract';
+import { developerProjectImportRow, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork } from '../../supabase/functions/_shared/yad2DeveloperImport';
+import { allowsQueuedContactlessAccount, requiresLicenseVerification } from '../../supabase/functions/_shared/importedAccountPolicy';
 
 describe('developer import', () => {
   it('keeps company bio separate from project and recommended company descriptions', () => {
@@ -9,6 +11,7 @@ describe('developer import', () => {
   });
   it('accepts only the main developer page, never an individual listing or project', () => {
     expect(developerImportUrl('https://www.yad2.co.il/yad1/developers/acme')).toBeTruthy();
+    expect(developerImportUrl('https://www.yad2.co.il/yad1/developers/1000318?city=2650&area=18')).toBe('https://www.yad2.co.il/yad1/developers/1000318');
     for (const value of ['https://www.yad2.co.il/realestate/item/123', 'https://www.yad2.co.il/yad1/project/123', 'https://yad2.co.il.evil.test/yad1/developers/a', 'https://www.yad2.co.il/yad1/developers/a/project/1']) expect(developerImportUrl(value)).toBeNull();
   });
   it('keeps projects separate, including all source unit details, images and floor zero', () => {
@@ -33,5 +36,40 @@ describe('developer import', () => {
     expect(merged.images).toEqual(['a', 'b']);
     expect(merged.apartments).toHaveLength(1);
     expect(merged.source_details).toEqual({ summary: true, details: true });
+  });
+  it('reads Yad2 wrapper and metaData project fields together', () => {
+    const payload = { props: { pageProps: { projects: [{ token: '12920', projectYzerId: 12920, projectId: 1019449, address: { city: { text: 'רמת השרון' }, display: 'אוסישקין 9, רמת השרון' }, additionalDetails: { minPrice: 2500000 }, metaData: { projectName: 'רובע הדר', info: 'תיאור הפרויקט', apartments: 82, images: ['https://media.example/project'], companyDetails: [{ name: 'מצלאוי', logo: 'https://media.example/logo', info: 'תיאור החברה' }] } }] } } };
+    const result = readPage(`<script type="application/json">${JSON.stringify(payload)}</script>`, 'https://www.yad2.co.il/yad1/developers/1000318');
+    expect(result.developer).toMatchObject({ company_name: 'מצלאוי', logo_url: 'https://media.example/logo', bio: 'תיאור החברה' });
+    expect(result.projects[0]).toMatchObject({ source_project_id: '12920', name: 'רובע הדר', city: 'רמת השרון', address: 'אוסישקין 9, רמת השרון', total_units: 82, price_from: 2500000, source_url: 'https://www.yad2.co.il/yad1/project/12920' });
+  });
+  it('resumes every own project page without treating expected projects as a cap', () => {
+    const work = newDeveloperQueueWork('https://www.yad2.co.il/yad1/developers/1000318', 1);
+    mergeDeveloperQueuePage(work, { source_url: work.url, developer: { company_name: 'יזמות בע״מ', logo_url: 'https://media.example/logo.png' }, projects: [
+      { source_project_id: 'a', name: 'A', source_url: 'https://www.yad2.co.il/yad1/project/a', images: [], apartments: [] },
+      { source_project_id: 'b', name: 'B', source_url: 'https://www.yad2.co.il/yad1/project/b', images: [], apartments: [] },
+    ], links: ['https://www.yad2.co.il/yad1/project/a', 'https://www.yad2.co.il/yad1/project/b'] });
+    expect(work.projects).toHaveLength(2);
+    expect(work.pendingUrls).toHaveLength(2);
+    mergeDeveloperQueuePage(work, { source_url: 'https://www.yad2.co.il/yad1/project/a', developer: {}, projects: [{ source_project_id: 'a', name: 'A', source_url: 'https://www.yad2.co.il/yad1/project/a', images: [], apartments: [{ source_unit_id: 'u1', rooms: 4 }] }], links: [] });
+    expect(work.projects).toHaveLength(2);
+    expect(work.projects[0].apartments).toHaveLength(1);
+    expect(work.pendingUrls).toEqual(['https://www.yad2.co.il/yad1/project/b']);
+  });
+  it('saves imported projects privately with all units and preserves manual publication and commissions', () => {
+    const old = { id: 'old', status: 'marketing', is_public: true, commission_config: { lead: 5 }, source_details: { manual: { project_overrides: { name: 'שם ידני' } } }, apartments: [] };
+    const project = { source_project_id: 'p1', name: 'מקור', images: ['https://media.example/p.jpg'], apartments: [{ source_unit_id: 'u1', rooms: 4 }], source_details: { hierarchy: {} } };
+    const row = developerProjectImportRow(old, project, 'dev-1', 'account-1');
+    expect(row).toMatchObject({ developer_id: 'dev-1', workspace_owner_id: 'account-1', name: 'שם ידני', is_public: true, commission_config: { lead: 5 } });
+    expect(row.apartments).toHaveLength(1);
+    expect(detailedUnitCount(row)).toBe(1);
+    expect(developerProjectImportRow(undefined, project, 'dev-1', 'account-1').is_public).toBe(false);
+  });
+  it('exempts only imported developers from license and contact prerequisites', () => {
+    expect(requiresLicenseVerification('developer')).toBe(false);
+    expect(requiresLicenseVerification('broker')).toBe(true);
+    expect(allowsQueuedContactlessAccount('developer', 'job-1')).toBe(true);
+    expect(allowsQueuedContactlessAccount('developer')).toBe(false);
+    expect(allowsQueuedContactlessAccount('property_owner', 'job-1')).toBe(false);
   });
 });

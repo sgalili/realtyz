@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.45.0';
 import { mergeProject, readPage } from './extract.ts';
 import { cachedScrapingText, trackScraping } from '../_shared/scrapingAudit.ts';
 import { DEVELOPER_CACHE_SECONDS, MAX_DEVELOPER_PAGES, uniqueScrapingUrls } from '../_shared/scrapingPolicy.ts';
+import { adminClient, isSuperAdmin, requireCaller } from '../_shared/authz.ts';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 Deno.serve(async req => {
@@ -10,32 +11,43 @@ Deno.serve(async req => {
   const backend = Deno.env.get('SUPABASE_URL');
   const anon = Deno.env.get('SUPABASE_ANON_KEY');
   if (!backend || !anon) return json({ message: 'שירות הייבוא אינו זמין' }, 500);
-  const client = createClient(backend, anon, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
-  const { data: { user } } = await client.auth.getUser();
-  if (!user) return json({ error: 'not_authenticated', message: 'יש להתחבר מחדש' }, 401);
-  const { data: roles, error: roleError } = await client.from('user_roles').select('role').eq('user_id', user.id);
-  if (roleError || !roles?.some(r => r.role === 'developer' || r.role === 'super_admin')) return json({ error: 'forbidden', message: 'הייבוא זמין בחשבון יזם' }, 403);
   let body: any;
   try { body = await req.json(); } catch { return json({ message: 'בקשה לא תקינה' }, 400); }
+  const pageOnly = body?.page_only === true;
+  if (pageOnly) {
+    const caller = await requireCaller(req, ['service']);
+    if (caller instanceof Response) return caller;
+    const admin = adminClient();
+    const { data: job, error } = await admin.from('broker_import_jobs').select('created_by,status,lease_token').eq('id', typeof body?.admin_import_job_id === 'string' ? body.admin_import_job_id : '').maybeSingle();
+    if (error || !job || job.status !== 'running' || !job.lease_token || job.lease_token !== body?.admin_import_lease_token || !await isSuperAdmin(job.created_by, admin)) return json({ error: 'forbidden', message: 'אין הרשאה לקריאת עמוד יזם בתור' }, 403);
+  } else {
+    const client = createClient(backend, anon, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return json({ error: 'not_authenticated', message: 'יש להתחבר מחדש' }, 401);
+    const { data: roles, error: roleError } = await client.from('user_roles').select('role').eq('user_id', user.id);
+    if (roleError || !roles?.some(r => r.role === 'developer' || r.role === 'super_admin')) return json({ error: 'forbidden', message: 'הייבוא זמין בחשבון יזם' }, 403);
+  }
   let pageUrl: URL;
   try {
     const raw = typeof body.url === 'string' ? body.url.trim() : '';
     pageUrl = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
-    if (pageUrl.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/i.test(pageUrl.hostname) || !/^\/yad1\/developers\/[^/]+\/?$/i.test(pageUrl.pathname)) throw new Error('invalid');
+    if (pageUrl.protocol !== 'https:' || !/(^|\.)yad2\.co\.il$/i.test(pageUrl.hostname) || !/^\/yad1\/developers\/[^/]+\/?$/i.test(pageUrl.pathname)) {
+      if (!pageOnly || !/^\/yad1\/(?:project|projects)\/[^/]+\/?$/i.test(pageUrl.pathname)) throw new Error('invalid');
+    }
     pageUrl.hash = '';
   } catch { return json({ error: 'invalid_url', message: 'הדביקו את הקישור לעמוד הראשי של היזם ביד2, ולא למודעה או לפרויקט בודד' }, 400); }
   const token = Deno.env.get('BRIGHTDATA_API_TOKEN');
-  const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'reatyz_yad2';
+  const zone = Deno.env.get('BRIGHTDATA_UNLOCKER_ZONE') ?? Deno.env.get('BRIGHTDATA_ZONE') ?? 'web_unlocker4';
   if (!token) return json({ error: 'not_configured', message: 'שירות הייבוא מיד2 אינו מוגדר' }, 503);
   const failed: string[] = [];
-  const deadline = Date.now() + 115000;
+  const deadline = Date.now() + 125000;
   const failReasons: Record<string, string> = {};
   const fetchPage = async (url: string) => {
     const remaining = deadline - Date.now();
     if (remaining < 1500) throw new Error('import_deadline');
     const html = await cachedScrapingText('developer_import', url, DEVELOPER_CACHE_SECONDS, async () => {
       const result = await trackScraping('developer_import', 'rest', url, async () => {
-        const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(Math.min(30000, remaining)) });
+        const res = await fetch('https://api.brightdata.com/request', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zone, url, format: 'raw' }), signal: AbortSignal.timeout(Math.min(120000, remaining)) });
         return { status: res.status, html: await res.text() };
       }, value => ({ status: value.status, bytes: new TextEncoder().encode(value.html).length }));
       if (result.status >= 400) throw new Error(`provider_${result.status}`);
@@ -46,6 +58,7 @@ Deno.serve(async req => {
   };
   try {
     const first = await fetchPage(pageUrl.href);
+    if (pageOnly) return json({ ok: true, source_url: pageUrl.href, ...first });
     const result = { developer: first.developer, projects: [...first.projects] };
     // Follow only links belonging to projects discovered on the developer's page.
     // Never discover projects globally or mix related advertiser recommendations.

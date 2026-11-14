@@ -12,7 +12,7 @@ describe('super admin hero dropdown', () => {
     expect(labels).toEqual(
       expect.arrayContaining([
         'ניהול משתמשים',
-        'ייבוא מתווכים',
+        'ייבוא מתווכים ויזמים',
         'חיבורים',
         'פיננסי',
         'פעילות וניטור',

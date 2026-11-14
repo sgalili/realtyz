@@ -1,12 +1,13 @@
 // super-admin-create-user
 // ─────────────────────────
-// Super Admin-only silent broker provisioning. Never dispatches credentials or invitations.
+// Super Admin-only silent broker/developer provisioning. Never dispatches credentials or invitations.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { requireCaller, isSuperAdmin } from "../_shared/authz.ts";
 import { checkAdminBrokerRegistry } from "../_shared/adminBrokerRegistry.ts";
 import { BATCH_NO_EMAIL_DOMAIN } from "../_shared/brokerBatchImport.ts";
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { allowsQueuedContactlessAccount, requiresLicenseVerification } from '../_shared/importedAccountPolicy.ts';
 
 const Body = z.object({
   email: z.string().email().optional(),
@@ -59,16 +60,17 @@ Deno.serve(async (req) => {
       });
     }
     const { full_name, phone_e164, broker_license_number, initial_balance_agorot, user_type, approve_broker, action, import_job_id } = parsed.data;
-    const registry = user_type === 'broker' && broker_license_number ? await checkAdminBrokerRegistry(broker_license_number, full_name ?? '') : null;
+    const registry = requiresLicenseVerification(user_type) && broker_license_number ? await checkAdminBrokerRegistry(broker_license_number, full_name ?? '') : null;
     if (action === 'check_registry') return new Response(JSON.stringify(registry ?? {valid:false,reason:'invalid_license'}),{headers:{...corsHeaders,'Content-Type':'application/json'}});
-    if (user_type === 'broker' && (!broker_license_number || (!registry?.valid && !approve_broker))) return new Response(JSON.stringify({error:'נדרש אימות רישיון או אישור מפורש של מנהל'}),{status:400,headers:corsHeaders});
+    if (requiresLicenseVerification(user_type) && (!broker_license_number || (!registry?.valid && !approve_broker))) return new Response(JSON.stringify({error:'נדרש אימות רישיון או אישור מפורש של מנהל'}),{status:400,headers:corsHeaders});
     const normalizedPhone = normalizeIsraeliPhone(phone_e164);
 
-    // Queued Bright Data imports may lack a mobile: the account is created pending contact details.
-    const pendingContact = !normalizedPhone && !!import_job_id && user_type === 'broker';
+    // Queued imports may lack a mobile. Brokers remain pending contact; developers need no license or phone.
+    const pendingContact = !normalizedPhone && allowsQueuedContactlessAccount(user_type, import_job_id);
     if (!normalizedPhone && !pendingContact) return new Response(JSON.stringify({ error: "נדרש מספר נייד תקין לכניסה באמצעות SMS" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const email = parsed.data.email ?? `${normalizedPhone ?? `license-${broker_license_number}-${crypto.randomUUID().slice(0, 8)}`}@${BATCH_NO_EMAIL_DOMAIN}`;
+    const placeholderId = normalizedPhone ?? `${user_type === 'developer' ? 'developer' : `license-${broker_license_number}`}-${crypto.randomUUID().slice(0, 8)}`;
+    const email = parsed.data.email ?? `${placeholderId}@${BATCH_NO_EMAIL_DOMAIN}`;
     const password = parsed.data.password ?? crypto.randomUUID() + crypto.randomUUID();
     // Create the auth user (auto-confirmed so they can log in immediately), or
     // repair/update an existing user created by the super admin.
@@ -143,7 +145,7 @@ Deno.serve(async (req) => {
       action: "super_admin.create_user",
       target_table: "auth.users",
       target_id: newUid,
-      details: { user_type, registry_verified: registry?.valid ?? false, email, phone_e164: normalizedPhone, initial_balance_agorot, silent: true },
+      details: { user_type, registry_verified: registry?.valid ?? false, license_required: user_type === 'broker', email, phone_e164: normalizedPhone, initial_balance_agorot, silent: true },
     });
 
     return new Response(JSON.stringify({

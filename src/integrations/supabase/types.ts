@@ -1332,6 +1332,7 @@ export type Database = {
           checkpoint: Json
           created_at: string
           created_by: string
+          developers_done: number
           error: string | null
           id: string
           lease_token: string | null
@@ -1339,12 +1340,14 @@ export type Database = {
           listings_done: number
           max_listings: number
           min_listings: number
+          projects_done: number
           skipped: number
           stage: string
           status: string
           step_average_ms: number | null
           step_started_at: string
           target_brokers: number
+          units_done: number
           updated_at: string
           workspace_owner_id: string
         }
@@ -1353,6 +1356,7 @@ export type Database = {
           checkpoint?: Json
           created_at?: string
           created_by: string
+          developers_done?: number
           error?: string | null
           id?: string
           lease_token?: string | null
@@ -1360,12 +1364,14 @@ export type Database = {
           listings_done?: number
           max_listings: number
           min_listings: number
+          projects_done?: number
           skipped?: number
           stage?: string
           status?: string
           step_average_ms?: number | null
           step_started_at?: string
           target_brokers: number
+          units_done?: number
           updated_at?: string
           workspace_owner_id: string
         }
@@ -1374,6 +1380,7 @@ export type Database = {
           checkpoint?: Json
           created_at?: string
           created_by?: string
+          developers_done?: number
           error?: string | null
           id?: string
           lease_token?: string | null
@@ -1381,12 +1388,14 @@ export type Database = {
           listings_done?: number
           max_listings?: number
           min_listings?: number
+          projects_done?: number
           skipped?: number
           stage?: string
           status?: string
           step_average_ms?: number | null
           step_started_at?: string
           target_brokers?: number
+          units_done?: number
           updated_at?: string
           workspace_owner_id?: string
         }
@@ -10030,6 +10039,7 @@ export type Database = {
           checkpoint: Json
           created_at: string
           created_by: string
+          developers_done: number
           error: string | null
           id: string
           lease_token: string | null
@@ -10037,12 +10047,14 @@ export type Database = {
           listings_done: number
           max_listings: number
           min_listings: number
+          projects_done: number
           skipped: number
           stage: string
           status: string
           step_average_ms: number | null
           step_started_at: string
           target_brokers: number
+          units_done: number
           updated_at: string
           workspace_owner_id: string
         }[]

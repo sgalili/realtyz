@@ -746,3 +746,10 @@
 - [x] Consent-only broker invitation emails in batches of 25, with unsubscribe
 - [x] Link-free official WhatsApp invitation wording (needs Meta approval)
 - [x] Group import of Bright Data brokers with their listings as drafts
+
+## Super Admin developer imports November 14
+- [x] Mixed broker/developer links are validated and labeled separately; expected projects per developer persist locally and produce completeness warnings, never an import cap. The section is now "ייבוא מתווכים ויזמים".
+- [x] Developer pages use resumable per-page checkpoints, exact canonical source URLs, own-project discovery and private project/unit saves. Real cached Yad2 HTML verified company bio/logo, three project IDs/cities/links and 82/128/110 total-unit counts; detailed unit merging is covered synthetically.
+- [x] Silent active developer provisioning requires no broker license, phone, email or invitation and assigns only the developer role. Exact existing source links are reused; phone-only account matching is forbidden. New projects remain private and preserve manual edits, commissions and existing publication state.
+- [x] Companies/projects/units save under the developer's own workspace for the existing "הפרויקטים שלי" queries, with separate developer/project/detailed-unit queue totals.
+- [x] Twenty-six focused tests and backend checks passed; three functions deployed and authenticated desktop/mobile controls passed without overflow/runtime errors. One source page was fetched during endpoint verification; the accidental queue job was paused/removed and no account/project was created. Full multi-page live import and developer login readback remain unverified.

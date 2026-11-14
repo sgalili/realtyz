@@ -6,10 +6,11 @@ import { collectBrokers, nextImportPoint, freshImportCheckpoint, advanceSearchPo
 import { readWorkerResponse, ImportAvailabilityError, ProviderTimeoutError } from '../_shared/brightDataDiagnostics.ts';
 import { agencyPageUrl, agencyUrl, agencyRegistryKey, agencyVolumeAllowed, recentAgencyCheck } from '../_shared/yad2Agencies.ts';
 import { PROVIDER_GAP_MS, ProviderRateLimitError, rateBackoffMs, rateCooldownRemaining } from '../_shared/brightDataThrottle.ts';
+import { developerImportUrl, developerProjectImportRow, detailedUnitCount, mergeDeveloperQueuePage, newDeveloperQueueWork, type DeveloperQueueWork } from '../_shared/yad2DeveloperImport.ts';
 
 const schema = z.discriminatedUnion('action', [
   z.object({action:z.literal('start'),target_brokers:z.number().int().min(1).max(100),min_listings:z.number().int().min(1).max(10),max_listings:z.number().int().min(1).max(10)}).strict(),
-  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100),max_listings:z.number().int().min(1).max(10).optional()}).strict(),
+  z.object({action:z.literal('start_urls'),urls:z.array(z.string().max(500)).min(1).max(100),max_listings:z.number().int().min(1).max(10).optional(),expected_projects:z.number().int().min(1).max(100).optional()}).strict(),
   z.object({action:z.enum(['pause','resume','reset_cooldown','step']),job_id:z.string().uuid()}).strict(),
 ]);
 const json = (data: unknown, status=200) => new Response(JSON.stringify(data),{status,headers:{...corsHeaders,'Content-Type':'application/json'}});
@@ -52,12 +53,14 @@ Deno.serve(async req => {
     }
     if(input.action==='start_urls') {
       if(caller.kind!=='user') return json({error:'forbidden'},403);
-      const urls=[...new Set(input.urls.map(u=>agencyUrl(u.trim())).filter((u):u is string=>Boolean(u)))];
-      if(!urls.length) return json({error:'לא נמצאו קישורי משרד/מתווך תקינים של יד2'},400);
-      const checkpoint={...freshImportCheckpoint(),source:'urls',phase:'enriching',enrichUrls:urls,enriched:0,invalidUrls:input.urls.length-urls.length};
-      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:urls.length,_min:1,_max:input.max_listings??10,_checkpoint:checkpoint});
+      const developerUrls=[...new Set(input.urls.map(u=>developerImportUrl(u.trim())).filter((u):u is string=>Boolean(u)))];
+      const brokerUrls=[...new Set(input.urls.filter(u=>!developerImportUrl(u.trim())).map(u=>agencyUrl(u.trim())).filter((u):u is string=>Boolean(u)))];
+      const accepted=developerUrls.length+brokerUrls.length;
+      if(!accepted) return json({error:'לא נמצאו קישורי משרד/מתווך או יזם תקינים של יד2'},400);
+      const checkpoint={...freshImportCheckpoint(),source:'urls',phase:developerUrls.length?'developer_scanning':'enriching',enrichUrls:brokerUrls,developerUrls,developerIndex:0,developerResults:[],expectedProjects:input.expected_projects??1,totalBrokerUrls:brokerUrls.length,totalDeveloperUrls:developerUrls.length,enriched:0,invalidUrls:input.urls.length-accepted};
+      const {data,error}=await admin.rpc('start_fresh_broker_import_job',{_actor:caller.userId,_target:accepted,_min:1,_max:input.max_listings??10,_checkpoint:checkpoint});
       if(error) throw new Error(error.code==='23505'?'כבר קיים ייבוא פעיל':error.message);
-      return json({job_id:data,accepted:urls.length,rejected:input.urls.length-urls.length});
+      return json({job_id:data,accepted,developers:developerUrls.length,brokers:brokerUrls.length,rejected:input.urls.length-accepted});
     }
     const {data:existing,error:readError}=await admin.from('broker_import_jobs').select('*').eq('id',input.job_id).single();
     if(readError || !existing || !await isSuperAdmin(existing.created_by,admin)) return json({error:'job_unavailable'},404);
@@ -123,6 +126,67 @@ Deno.serve(async req => {
         // Even old automatic-retry checkpoints require an explicit manual resume.
         await save({status:'paused',error:'מגבלת בקשות (429). הייבוא מושהה; ההתקדמות והמטמון נשמרו. יש להמשיך ידנית לאחר השהיית הבטיחות.'});
         return json({ok:true,paused:true});
+      }
+      if(c.phase==='developer_scanning') {
+        const url=c.developerUrls?.[c.developerIndex??0];
+        if(!url) {
+          c.phase=c.enrichUrls?.length?'enriching':c.brokers?.length?'validating':'completed';
+          await save(c.phase==='completed'?{status:'completed'}:{});return json({ok:true});
+        }
+        const work=(c.developerWork??newDeveloperQueueWork(url,Number(c.expectedProjects??1))) as DeveloperQueueWork;
+        c.developerWork=work;
+        const pageUrl=work.pendingUrls[0];
+        if(!pageUrl) {c.phase=work.accountId?'developer_saving':'developer_creating';await save();return json({ok:true});}
+        const d=await pacedCall('yad2-developer-import',{url:pageUrl,page_only:true,admin_import_job_id:job.id,admin_import_lease_token:job.lease_token});
+        if(!d)return json({ok:true,waiting:true});
+        if(!d.ok||!d.developer||!Array.isArray(d.projects)||!Array.isArray(d.links))throw new Error('עמוד היזם לא החזיר מבנה תקין');
+        mergeDeveloperQueuePage(work,{source_url:pageUrl,developer:d.developer,projects:d.projects,links:d.links});
+        c.phase=work.accountId?'developer_saving':'developer_creating';
+        await save();return json({ok:true});
+      }
+      if(c.phase==='developer_creating') {
+        const work=c.developerWork as DeveloperQueueWork;
+        const companyName=work.developer.company_name?.trim();
+        if(!companyName)throw new Error('לא נמצא שם חברה בעמוד היזם; לא נוצר חשבון ללא זהות');
+        const {data:matches,error:matchError}=await admin.from('developers').select('*').eq('source_url',work.url).limit(2);if(matchError)throw matchError;
+        if((matches?.length??0)>1)throw new Error('קיים יותר מחשבון אחד המקושר לעמוד היזם; נדרשת בדיקת מנהל');
+        const existing=matches?.[0];
+        let accountId=existing?.workspace_owner_id as string|undefined;
+        if(!accountId) {
+          const d=await call('super-admin-create-user',{full_name:companyName,...(work.developer.phone?{phone_e164:work.developer.phone}:{}),user_type:'developer',import_job_id:job.id,initial_balance_agorot:2500});
+          if(!d.user_id)throw new Error(d.error??'יצירת היזם נכשלה');
+          accountId=d.user_id;
+        }
+        let developerId=existing?.id as string|undefined;
+        const companyRow={workspace_owner_id:accountId,owner_user_id:existing?.owner_user_id??accountId,company_name:companyName,phone:work.developer.phone??existing?.phone??null,logo_url:work.developer.logo_url??existing?.logo_url??null,source_url:work.url,last_synced_at:new Date().toISOString()};
+        if(developerId){const {error}=await admin.from('developers').update(companyRow).eq('id',developerId);if(error)throw error;}
+        else {const {data,error}=await admin.from('developers').insert(companyRow).select('id').single();if(error)throw error;developerId=data.id;}
+        if(work.developer.bio){const {error}=await admin.from('profiles').update({imported_public_bio:work.developer.bio}).eq('id',accountId).is('imported_public_bio',null);if(error)throw error;}
+        work.accountId=accountId;work.developerId=developerId;c.phase='developer_saving';await save();return json({ok:true});
+      }
+      if(c.phase==='developer_saving') {
+        const work=c.developerWork as DeveloperQueueWork;
+        if(!work.accountId||!work.developerId)throw new Error('חשבון היזם לא נשמר; אפשר להמשיך מאותה נקודה');
+        const dirty=work.projects.filter(project=>work.dirtyProjectKeys.includes(String(project.source_project_id??project.source_url??project.name)));
+        if(dirty.length) {
+          const {data:existingProjects,error:readError}=await admin.from('developer_projects').select('*').eq('developer_id',work.developerId);if(readError)throw readError;
+          const rows=dirty.map(project=>{
+            const old=(existingProjects??[]).find(row=>row.source_project_id===(project.source_project_id??project.source_url??project.name)||!!project.source_url&&row.source_url===project.source_url);
+            return developerProjectImportRow(old,project,work.developerId!,work.accountId!);
+          });
+          const {error}=await admin.from('developer_projects').upsert(rows,{onConflict:'developer_id,source_project_id'});if(error)throw error;
+          work.dirtyProjectKeys=[];
+        }
+        if(work.pendingUrls.length){c.phase='developer_scanning';await save();return json({ok:true});}
+        const {data:savedProjects,error:finalReadError}=await admin.from('developer_projects').select('*').eq('developer_id',work.developerId);if(finalReadError)throw finalReadError;
+        const first=savedProjects?.[0];
+        const {error:companyError}=await admin.from('developers').update({first_project_name:first?.name??null,first_project_units:first?.total_units??null,last_synced_at:new Date().toISOString()}).eq('id',work.developerId);if(companyError)throw companyError;
+        const result={developer_id:work.developerId,account_id:work.accountId,company_name:work.developer.company_name,projects:savedProjects?.length??0,units:(savedProjects??[]).reduce((sum,project)=>sum+detailedUnitCount(project),0),expected_projects:work.expectedProjects,source_url:work.url};
+        c.developerResults=[...(c.developerResults??[]).filter((r:Record<string,any>)=>r.developer_id!==result.developer_id),result];
+        c.developerIndex=(c.developerIndex??0)+1;delete c.developerWork;
+        c.phase=c.developerUrls[c.developerIndex]?'developer_scanning':c.enrichUrls?.length?'enriching':c.brokers?.length?'validating':'completed';
+        const totals={developers_done:c.developerResults.length,projects_done:c.developerResults.reduce((sum:number,r:Record<string,any>)=>sum+Number(r.projects??0),0),units_done:c.developerResults.reduce((sum:number,r:Record<string,any>)=>sum+Number(r.units??0),0)};
+        await save({...totals,...(c.phase==='completed'?{status:'completed'}:{})});return json({ok:true});
       }
       if(c.phase==='scanning') {
         const compactAll=(rs:Record<string,any>[])=>rs.map(r=>({...compactDirectoryRows([r])[0],directory_next_url:r.directory_next_url}));
