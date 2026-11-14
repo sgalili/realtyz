@@ -8,12 +8,14 @@ const PageLoadingContext = createContext<(() => () => void) | null>(null);
 /** Persistent host outlives Suspense fallbacks, so fast requests cannot bypass the minimum. */
 export function FullPageLoadingProvider({ children }: { children: ReactNode }) {
   const [visible, setVisible] = useState(false);
+  const [fading, setFading] = useState(false);
   const count = useRef(0);
   const startedAt = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const register = useCallback(() => {
     clearTimeout(timer.current);
     count.current += 1;
+    setFading(false);
     if (startedAt.current === null) startedAt.current = performance.now();
     setVisible(true);
     return () => {
@@ -21,8 +23,13 @@ export function FullPageLoadingProvider({ children }: { children: ReactNode }) {
       if (count.current !== 0 || startedAt.current === null) return;
       timer.current = setTimeout(() => {
         if (count.current !== 0) return;
-        startedAt.current = null;
-        setVisible(false);
+        setFading(true);
+        timer.current = setTimeout(() => {
+          if (count.current !== 0) return;
+          startedAt.current = null;
+          setVisible(false);
+          setFading(false);
+        }, 1_500);
       // Include one paint allowance so commit/portal latency cannot shorten visible time.
       }, remainingPageLoadingTime(startedAt.current, performance.now()) + 50);
     };
@@ -30,7 +37,7 @@ export function FullPageLoadingProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => () => clearTimeout(timer.current), []);
   return <PageLoadingContext.Provider value={register}>
     <div className="page-loading-content" aria-busy={visible} aria-hidden={visible || undefined} {...(visible ? { inert: '' } : {})}>{children}</div>
-    {visible && createPortal(<div className="toraff-page-loading-overlay" role="status" aria-label="טעינת עמוד" aria-live="polite"><ToraffLoader fullPage /></div>, document.body)}
+    {visible && createPortal(<div className={`toraff-page-loading-overlay${fading ? ' toraff-page-loading-overlay-exiting' : ''}`} role="status" aria-label="טעינת עמוד" aria-live="polite"><ToraffLoader fullPage /></div>, document.body)}
   </PageLoadingContext.Provider>;
 }
 

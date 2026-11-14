@@ -12,6 +12,10 @@ describe('persistent page loading overlay', () => {
     act(() => vi.advanceTimersByTime(2_899));
     expect(screen.getByRole('status', { name: 'טעינת עמוד' })).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(51));
+    expect(screen.getByRole('status', { name: 'טעינת עמוד' })).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1_499));
+    expect(screen.getByRole('status', { name: 'טעינת עמוד' })).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
     expect(screen.queryByRole('status', { name: 'טעינת עמוד' })).toBeNull();
     expect(screen.getByText('loaded page')).toBeVisible();
   });
@@ -22,6 +26,16 @@ describe('persistent page loading overlay', () => {
     expect(screen.getByRole('status', { name: 'טעינת עמוד' })).toBeInTheDocument();
     view.rerender(<FullPageLoadingProvider><div>done</div></FullPageLoadingProvider>);
     act(() => vi.runOnlyPendingTimers());
+    act(() => vi.advanceTimersByTime(1_500));
     expect(screen.queryByRole('status', { name: 'טעינת עמוד' })).toBeNull();
+  });
+  it('cancels dismissal if another page starts loading during the fade', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    const view = render(<FullPageLoadingProvider><FullPageLoading /></FullPageLoadingProvider>);
+    view.rerender(<FullPageLoadingProvider><div>done</div></FullPageLoadingProvider>);
+    act(() => vi.advanceTimersByTime(3_050));
+    view.rerender(<FullPageLoadingProvider><FullPageLoading /></FullPageLoadingProvider>);
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(screen.getByRole('status', { name: 'טעינת עמוד' })).toBeInTheDocument();
   });
 });
