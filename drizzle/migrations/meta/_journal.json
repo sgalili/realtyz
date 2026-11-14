@@ -1233,6 +1233,20 @@
       "when": 1794615042639,
       "tag": "0175_super_admin_exact_credit_balance",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1794615390036,
+      "tag": "0176_grow_card_mandates_and_authorization_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1794615471734,
+      "tag": "0177_grow_authorization_trigger_scope",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { AlertTriangle, ArrowDownLeft, CreditCard, Plus, Wallet as WalletIcon } from 'lucide-react';
 import { ACTION_META, fmtCompactCredits, fmtCredits, ilsToCredits, parseActionNote } from '@/lib/credits';
 import { fmtILS } from '@/lib/formatCurrency';
@@ -35,6 +36,16 @@ const when = (d: string) => new Date(d).toLocaleString('he-IL', { day: '2-digit'
 
 export default function Wallet() {
   const ws = useActiveWorkspaceOwnerId();
+  const qc = useQueryClient();
+  const savedGrowCard = useQuery({ queryKey: ['grow-saved-card', ws], enabled: !!ws, queryFn: async () => {
+    const { data, error } = await supabase.from('grow_saved_cards').select('workspace_owner_id,last4,brand,revoked_at').eq('workspace_owner_id', ws).maybeSingle();
+    if (error) throw error;
+    return data;
+  }});
+  const revokeGrow = useMutation({ mutationFn: async () => {
+    const { error } = await supabase.rpc('revoke_grow_card_mandate');
+    if (error) throw error;
+  }, onSuccess: async () => { await qc.invalidateQueries({ queryKey: ['grow-saved-card'] }); toast.success('ההרשאה לחיובים עתידיים בוטלה'); }, onError: () => toast.error('ביטול ההרשאה נכשל') });
   const { isSuperAdmin } = useUserRole();
   const { data: wallet } = useCreditWallet();
   const [detail, setDetail] = useState<LedgerRow | null>(null);
@@ -140,6 +151,7 @@ export default function Wallet() {
         <TabsContent value="deposits" className="mt-3">{rows(deposits, false)}</TabsContent>
       </Tabs>
       <GrowSubscriptionPurchase />
+      {savedGrowCard.data && !savedGrowCard.data.revoked_at && <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"><span className="flex items-center gap-2"><CreditCard className="h-4 w-4" />{savedGrowCard.data.brand} · {savedGrowCard.data.last4}</span><Button variant="outline" disabled={revokeGrow.isPending} onClick={() => revokeGrow.mutate()}>ביטול הרשאת חיוב</Button></div>}
 
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent dir="rtl">

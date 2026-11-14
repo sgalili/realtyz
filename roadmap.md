@@ -1,5 +1,12 @@
 # Roadmap
 
+## Grow saved cards and lead auto-billing November 14
+- [x] Explicit unchecked customer mandate; save only provider-vault references after independently verified live card payments, never raw card data or noncard methods; safe card display and self-only revocation in Wallet.
+- [x] Server-priced background authorization jobs on fee/cap save: highest lead bid ×5 or explicit daily spend cap. Persist results, verify scoped operation/amount, release hold through Make, no claim of total credit-limit visibility. Only permitted idempotent token-authorization capabilities run; raw tokens stay in provider vault.
+- [x] Ten focused tests pass; signed-in card checkout mandate checked mobile with intercepted provider offer, unchecked default and no overflow. Migrations/trigger presence read back, workers deployed and preview OK. No actual tokenization/hold/charge performed; live provider verification requires Grow/Make setup.
+- [ ] Exact-cost, idempotent low-wallet settlement with no wallet movements and transparent payment history requires working Make token-charge/status/release routes and Grow delayed-payment permission; no speculative live settlement enabled.
+- [ ] Existing wallet lead billing remains unchanged until direct-settlement, disputes/refunds, partner reward release and daily budget reservations are tested with actual provider support. No wallet guard bypass or deletion of partial remaining funds. Grow/Make credentials remain unavailable.
+
 ## Super Admin credit balance editing November 14
 - [x] Per-user exact balance editor with server Super Admin checks, central conversion, atomic ledger delta and stale-balance conflict protection; missing wallets initialize only on confirmed save.
 - [x] Affected wallet/account queries refresh after save; active customer wallet polls every 10 seconds. Two focused tests cover zero/fractional/invalid values and scoped exact-save payload; live function definitions/guards read back. Authenticated real Users table loaded balances, blocked negative value and saved unchanged 100-credit balance through real RPC with table readback; mobile editor fits. Preview OK, no funds changed. Cross-account denied-role path source-audited, not impersonated.

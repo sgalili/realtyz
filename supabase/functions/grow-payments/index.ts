@@ -3,6 +3,8 @@ import { z } from 'npm:zod@3';
 import { adminClient, isSuperAdmin, requireCaller, safeEqual } from '../_shared/authz.ts';
 import { GROW_CUSTOMER_FIELDS, GROW_PAYMENT_METHODS, GROW_SUBSCRIPTION_AMOUNT_ILS, growConfigurationReady, isMakeWebhookUrl, validGrowPaymentUrl } from '../_shared/growPayment.ts';
 import { deliverPaymentSms } from './paymentSms.ts';
+import { callGrowMake } from '../_shared/growMake.ts';
+import { canSaveGrowCard } from '../_shared/growLeadBilling.ts';
 
 const capabilitySchema = z.object({ methods: z.array(z.object({ id: z.enum(GROW_PAYMENT_METHODS), fields: z.array(z.enum(GROW_CUSTOMER_FIELDS)).max(4) })).max(5) });
 async function capabilities(environment: string) {
@@ -15,21 +17,13 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('status') }), z.object({ action: z.literal('test') }),
   z.object({ action: z.literal('offer') }),
-  z.object({ action: z.literal('create'), payment_method: z.enum(GROW_PAYMENT_METHODS), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
+  z.object({ action: z.literal('create'), payment_method: z.enum(GROW_PAYMENT_METHODS), card_mandate: z.boolean().default(false), full_name: z.string().trim().max(150).default(''), phone: z.string().regex(/^05\d{8}$/), email: z.string().max(254).optional(), national_id: z.string().max(9).optional() }),
   z.object({ action: z.literal('notify'), order_id: z.string().uuid(), transaction_id: z.string().min(1).max(128) }),
 ]);
 
 // This is a Make scenario contract, not a raw Grow API payload. The scenario
 // handles Grow connection/OTP, creation, status retrieval and acknowledgment.
-async function callMake(environment: string, payload: unknown) {
-  const prefix = environment === 'live' ? 'GROW_MAKE_LIVE' : 'GROW_MAKE_SANDBOX';
-  const url = Deno.env.get(`${prefix}_URL`) ?? '';
-  const key = Deno.env.get(`${prefix}_API_KEY`) ?? '';
-  if (!url || !key || !isMakeWebhookUrl(url)) throw new Error('make_not_configured');
-  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-make-apikey': key }, body: JSON.stringify(payload), signal: AbortSignal.timeout(40000), redirect: 'error' });
-  if (!response.ok) { console.error('[grow-payments] Make response status', response.status); throw new Error(`make_http_${response.status}`); }
-  try { return await response.json(); } catch { throw new Error('make_response_must_be_json'); }
-}
+const callMake = callGrowMake;
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -53,6 +47,15 @@ Deno.serve(async req => {
       if (!verified.success || verified.data.order_id !== order.id || verified.data.transaction_id !== body.transaction_id || verified.data.amount_ils !== Number(order.amount_ils) || verified.data.environment !== order.environment) return json({ error: 'payment_not_verified' }, 409);
       const { data: completed, error: completeError } = await admin.rpc('complete_grow_payment', { _order_id: order.id, _transaction_id: body.transaction_id, _amount_ils: verified.data.amount_ils, _environment: order.environment });
       if (completeError) return json({ error: 'payment_completion_failed' }, 409);
+      if (canSaveGrowCard({ ...order, status: 'paid' })) {
+        stage = 'save_card_reference';
+        // The actual card token remains in Grow/Make's vault. Only a scoped
+        // opaque lookup reference and display metadata enter TORAFF.
+        const card = z.object({ order_id: z.string().uuid(), customer_id: z.string().uuid(), environment: z.literal('live'), vault_reference: z.string().min(1).max(200), last4: z.string().regex(/^\d{4}$/), brand: z.string().max(30) }).safeParse(await callMake(order.environment, { action: 'card_reference', order_id: order.id, customer_id: order.user_id }));
+        if (!card.success || card.data.order_id !== order.id || card.data.customer_id !== order.user_id) return json({ error: 'card_reference_not_verified', recorded: true }, 502);
+        const { error: cardError } = await admin.rpc('save_grow_card_reference', { _order_id: order.id, _reference: card.data.vault_reference, _last4: card.data.last4, _brand: card.data.brand });
+        if (cardError) return json({ error: 'card_reference_save_failed', recorded: true }, 502);
+      }
       await deliverPaymentSms(admin, order.id);
       stage = 'acknowledge';
       const acknowledged = await callMake(order.environment, { action: 'approve', order_id: order.id, transaction_id: body.transaction_id });
@@ -87,12 +90,12 @@ Deno.serve(async req => {
       if (!value?.trim() || (field === 'email' && !z.string().email().safeParse(value).success) || (field === 'national_id' && !/^\d{9}$/.test(value)) || (field === 'full_name' && value.trim().split(/\s+/).length < 2)) return json({ error: 'invalid_customer_field', field }, 400);
     }
     stage = 'create_order';
-    const { data: order, error } = await admin.from('grow_payment_orders').insert({ user_id: caller.userId, environment, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, duration_days: settings.duration_days, title: settings.subscription_title, benefits: settings.benefits, customer_phone: body.phone, payment_method: body.payment_method }).select('id').single();
+    const { data: order, error } = await admin.from('grow_payment_orders').insert({ user_id: caller.userId, environment, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, duration_days: settings.duration_days, title: settings.subscription_title, benefits: settings.benefits, customer_phone: body.phone, payment_method: body.payment_method, card_mandate: body.payment_method === 'card' && body.card_mandate, mandate_at: body.payment_method === 'card' && body.card_mandate ? new Date().toISOString() : null }).select('id').single();
     if (error || !order) return json({ error: 'order_creation_failed' }, 503);
     try {
       stage = 'create_link';
       const customer = Object.fromEntries(method.fields.map(field => [field, body[field]]));
-      const result = await callMake(environment, { action: 'create', order_id: order.id, environment, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, currency: 'ILS', title: settings.subscription_title, ...customer, phone: body.phone, payment_method: body.payment_method, sending_mode: settings.sending_mode, payment_type: 'payments', charge_type: 'regular charge', success_url: `${Deno.env.get('PUBLIC_SITE_URL') ?? 'https://toraff.co.il'}/wallet` });
+      const result = await callMake(environment, { action: 'create', order_id: order.id, environment, amount_ils: GROW_SUBSCRIPTION_AMOUNT_ILS, currency: 'ILS', title: settings.subscription_title, ...customer, phone: body.phone, payment_method: body.payment_method, save_card_token: body.payment_method === 'card' && body.card_mandate, sending_mode: settings.sending_mode, payment_type: 'payments', charge_type: 'regular charge', success_url: `${Deno.env.get('PUBLIC_SITE_URL') ?? 'https://toraff.co.il'}/wallet` });
       if (typeof result?.payment_url !== 'string' || !validGrowPaymentUrl(result.payment_url)) throw new Error('invalid_payment_url');
       const { error: saveError } = await admin.from('grow_payment_orders').update({ status: 'link_ready', payment_url: result.payment_url }).eq('id', order.id).eq('status', 'pending');
       if (saveError) throw new Error('payment_link_save_failed');

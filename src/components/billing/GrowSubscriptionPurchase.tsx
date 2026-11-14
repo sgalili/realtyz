@@ -18,6 +18,7 @@ export function GrowSubscriptionPurchase() {
   const [values, setValues] = useState({ full_name: '', phone: '', email: '', national_id: '' });
   const [method, setMethod] = useState<GrowPaymentMethod | ''>('');
   const [consent, setConsent] = useState(false);
+  const [cardMandate, setCardMandate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [link, setLink] = useState<string | null>(null);
   const offer = useQuery({ queryKey: ['grow-subscription-offer'], queryFn: async () => {
@@ -37,7 +38,7 @@ export function GrowSubscriptionPurchase() {
   async function create() {
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('grow-payments', { body: { action: 'create', payment_method: method, ...Object.fromEntries(fields.map(f => [f, values[f]])) } });
+      const { data, error } = await supabase.functions.invoke('grow-payments', { body: { action: 'create', payment_method: method, card_mandate: method === 'card' && cardMandate, ...Object.fromEntries(fields.map(f => [f, values[f]])) } });
       if (error || !data?.payment_url) throw new Error();
       setLink(data.payment_url);
     } catch { toast.error('יצירת קישור התשלום נכשלה; לא הופעל מנוי'); } finally { setBusy(false); }
@@ -45,7 +46,7 @@ export function GrowSubscriptionPurchase() {
   return <section className="space-y-3 border-t pt-4">
     {entitlements.data?.map((e, index) => <p key={index} className="text-sm"><span className="font-semibold">{e.title}</span> · פעיל עד {new Date(e.expires_at).toLocaleDateString('he-IL')}</p>)}
     {offer.data && <Button variant="outline" onClick={() => setOpen(true)}>{offer.data.title} · ₪6,500</Button>}
-    <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setLink(null); setConsent(false); } }}><DialogContent dir="rtl" className="max-w-md"><DialogHeader><DialogTitle>{offer.data?.title}</DialogTitle></DialogHeader>
+    <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setLink(null); setConsent(false); setCardMandate(false); } }}><DialogContent dir="rtl" className="max-w-md"><DialogHeader><DialogTitle>{offer.data?.title}</DialogTitle></DialogHeader>
       <p className="text-2xl font-semibold">₪{offer.data?.amount_ils.toLocaleString('he-IL')}</p>
       {offer.data?.environment === 'sandbox' && <p role="status" className="text-sm text-destructive">תשלום בדיקה</p>}
       {!link && <>
@@ -55,6 +56,7 @@ export function GrowSubscriptionPurchase() {
         {selected && fields.map(field => <div key={field} className="space-y-2"><Label htmlFor={`grow-${field}`}>{fieldLabels[field]}</Label><Input id={`grow-${field}`} dir={field === 'full_name' ? 'rtl' : 'ltr'} type={field === 'email' ? 'email' : 'text'} inputMode={field === 'phone' ? 'tel' : field === 'national_id' ? 'numeric' : undefined} maxLength={field === 'phone' ? 10 : field === 'national_id' ? 9 : 150} value={values[field]} onChange={e => setValues(v => ({ ...v, [field]: e.target.value }))} /></div>)}
         <details className="text-sm"><summary className="cursor-pointer">תנאי המנוי</summary><p className="mt-2 whitespace-pre-wrap">{offer.data?.duration_days} ימים · חיוב יחיד, ללא חידוש אוטומטי{ '\n' }{offer.data?.benefits}</p></details>
         <Label className="flex items-center gap-2"><Checkbox checked={consent} onCheckedChange={v => setConsent(v === true)} />אישור תנאי המנוי והתשלום</Label>
+        {method === 'card' && <Label className="flex items-start gap-2 text-sm"><Checkbox checked={cardMandate} onCheckedChange={v => setCardMandate(v === true)} />שמירת הכרטיס ב־Grow ואישור בדיקות מסגרת וחיוב אוטומטי בעלות הפניות כשאין יתרה מספקת, עד לתקרה היומית שהגדרתי; ללא אישור נוסף לכל חיוב.</Label>}
       </>}
       {link ? <Button asChild className="mt-3 min-h-12 w-full"><a href={link}><LockKeyhole className="h-4 w-4" />תשלום מאובטח</a></Button> : <Button className="mt-3 min-h-12 w-full" onClick={create} disabled={busy || !consent || !valid}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}תשלום מאובטח</Button>}
     </DialogContent></Dialog>

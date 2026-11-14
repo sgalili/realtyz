@@ -4354,15 +4354,71 @@ export type Database = {
         }
         Relationships: []
       }
+      grow_lead_authorizations: {
+        Row: {
+          amount_ils: number
+          created_at: string
+          error_code: string | null
+          expires_at: string | null
+          id: string
+          listing_id: string
+          provider_reference: string | null
+          status: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          amount_ils: number
+          created_at?: string
+          error_code?: string | null
+          expires_at?: string | null
+          id?: string
+          listing_id: string
+          provider_reference?: string | null
+          status?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          amount_ils?: number
+          created_at?: string
+          error_code?: string | null
+          expires_at?: string | null
+          id?: string
+          listing_id?: string
+          provider_reference?: string | null
+          status?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grow_lead_authorizations_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grow_lead_authorizations_workspace_owner_id_fkey"
+            columns: ["workspace_owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grow_payment_orders: {
         Row: {
           amount_ils: number
           benefits: string
+          card_mandate: boolean
           created_at: string
           customer_phone: string | null
           duration_days: number
           environment: string
           id: string
+          mandate_at: string | null
           paid_at: string | null
           payment_method: string | null
           payment_url: string | null
@@ -4374,11 +4430,13 @@ export type Database = {
         Insert: {
           amount_ils?: number
           benefits: string
+          card_mandate?: boolean
           created_at?: string
           customer_phone?: string | null
           duration_days: number
           environment: string
           id?: string
+          mandate_at?: string | null
           paid_at?: string | null
           payment_method?: string | null
           payment_url?: string | null
@@ -4390,11 +4448,13 @@ export type Database = {
         Update: {
           amount_ils?: number
           benefits?: string
+          card_mandate?: boolean
           created_at?: string
           customer_phone?: string | null
           duration_days?: number
           environment?: string
           id?: string
+          mandate_at?: string | null
           paid_at?: string | null
           payment_method?: string | null
           payment_url?: string | null
@@ -4446,6 +4506,54 @@ export type Database = {
           verification_phone?: string
         }
         Relationships: []
+      }
+      grow_saved_cards: {
+        Row: {
+          brand: string
+          consent_at: string
+          created_at: string
+          last4: string
+          order_id: string
+          revoked_at: string | null
+          vault_reference: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          brand: string
+          consent_at: string
+          created_at?: string
+          last4: string
+          order_id: string
+          revoked_at?: string | null
+          vault_reference: string
+          workspace_owner_id: string
+        }
+        Update: {
+          brand?: string
+          consent_at?: string
+          created_at?: string
+          last4?: string
+          order_id?: string
+          revoked_at?: string | null
+          vault_reference?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grow_saved_cards_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "grow_payment_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grow_saved_cards_workspace_owner_id_fkey"
+            columns: ["workspace_owner_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       grow_subscription_entitlements: {
         Row: {
@@ -10925,9 +11033,19 @@ export type Database = {
       }
       review_lead_dispute: { Args: { _id: string }; Returns: Json }
       revoke_broker_license: { Args: { _uid: string }; Returns: Json }
+      revoke_grow_card_mandate: { Args: never; Returns: undefined }
       run_availability_checks: { Args: { _limit?: number }; Returns: Json }
       rz_is_synthetic_email: { Args: { _e: string }; Returns: boolean }
       rz_phone_label: { Args: { _p: string }; Returns: string }
+      save_grow_card_reference: {
+        Args: {
+          _brand: string
+          _last4: string
+          _order_id: string
+          _reference: string
+        }
+        Returns: undefined
+      }
       schedule_workspace_call: {
         Args: {
           _lead: string
