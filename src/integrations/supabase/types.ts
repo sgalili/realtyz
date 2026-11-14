@@ -8022,6 +8022,7 @@ export type Database = {
         Row: {
           action: string
           created_at: string
+          delivered: boolean
           error_message: string | null
           group_id: string | null
           id: string
@@ -8039,6 +8040,7 @@ export type Database = {
         Insert: {
           action: string
           created_at?: string
+          delivered?: boolean
           error_message?: string | null
           group_id?: string | null
           id?: string
@@ -8056,6 +8058,7 @@ export type Database = {
         Update: {
           action?: string
           created_at?: string
+          delivered?: boolean
           error_message?: string | null
           group_id?: string | null
           id?: string
@@ -8094,6 +8097,63 @@ export type Database = {
           },
           {
             foreignKeyName: "rita_chat_interactions_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rita_conversation_actions: {
+        Row: {
+          created_at: string
+          id: string
+          interaction_id: string
+          kind: string
+          label: string
+          operation_key: string
+          payload: Json
+          requested_by: string
+          result: Json | null
+          status: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interaction_id: string
+          kind: string
+          label: string
+          operation_key: string
+          payload: Json
+          requested_by: string
+          result?: Json | null
+          status?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interaction_id?: string
+          kind?: string
+          label?: string
+          operation_key?: string
+          payload?: Json
+          requested_by?: string
+          result?: Json | null
+          status?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rita_conversation_actions_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "rita_chat_interactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rita_conversation_actions_requested_by_fkey"
             columns: ["requested_by"]
             isOneToOne: false
             referencedRelation: "profiles"

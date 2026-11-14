@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RitaAvatar } from '@/components/RitaAvatar';
 import { ChatMessageText } from './ChatMessageText';
+import { RitaQuickActions } from './RitaQuickActions';
 
 export type RitaConversationKind = 'peer' | 'group' | 'lead';
 export function RitaConversationPanel({ kind, target }: { kind: RitaConversationKind; target: string }) {
@@ -77,7 +78,7 @@ export function RitaConversationPanel({ kind, target }: { kind: RitaConversation
     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3" role="log" aria-label="תשובות ריטה">
       {logs.isError && <p role="alert" className="text-sm text-destructive">טעינת השיחות עם ריטה נכשלה</p>}
       {!logs.isLoading && !logs.data?.length && !busy && <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground"><Bot className="h-8 w-8" /><span>ריטה בשיחה</span></div>}
-      {logs.data?.filter(log => log.status === 'completed').map(log => <div key={log.id} className="space-y-2 border-b border-border pb-3">{log.prompt && <p className="break-words text-sm text-muted-foreground">{log.prompt}</p>}<ChatMessageText content={log.response} /></div>)}
+      {logs.data?.filter(log => log.status === 'completed').map(log => <div key={log.id} className="space-y-2 border-b border-border pb-3">{log.prompt && <p className="break-words text-sm text-muted-foreground">{log.prompt}</p>}<ChatMessageText content={log.response} /><RitaQuickActions interaction={log.id} kind={kind} target={target} /></div>)}
       {thinking && <details className="text-sm text-muted-foreground"><summary>ריטה חושבת</summary><ChatMessageText content={thinking} /></details>}
       {answer && <ChatMessageText content={answer} />}
       {busy && !answer && <p className="animate-pulse text-sm text-muted-foreground">ריטה חושבת...</p>}

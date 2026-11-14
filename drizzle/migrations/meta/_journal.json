@@ -1352,6 +1352,13 @@
       "when": 1794633340991,
       "tag": "0192_wallet_package_bonus_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1794634406120,
+      "tag": "0193_rita_scoped_execution_actions",
+      "breakpoints": true
     }
   ]
 }

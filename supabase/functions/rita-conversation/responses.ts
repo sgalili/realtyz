@@ -1,5 +1,5 @@
 import { createOpenAI } from "npm:@ai-sdk/openai@4";
-import { streamText, type ModelMessage } from "npm:ai@7";
+import { streamText, isStepCount, type ModelMessage, type ToolSet } from "npm:ai@7";
 
 import {
   createLovableAiGatewayRunIdFetch,
@@ -12,6 +12,7 @@ export function createResponsesCall(
   config: { baseURL: string; apiKey: string; model: string },
   messages: ModelMessage[],
   instructions?: string,
+  tools?: ToolSet,
 ) {
   const runIdFetch = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
   const provider = createOpenAI({
@@ -26,6 +27,7 @@ export function createResponsesCall(
     // AI SDK 6 lacks `instructions`: rename this key to `system` there.
     ...(instructions ? { instructions } : {}),
     messages,
+    ...(tools ? { tools, stopWhen: isStepCount(50) } : {}),
     abortSignal: request.signal,
     maxRetries: 0,
     providerOptions: {

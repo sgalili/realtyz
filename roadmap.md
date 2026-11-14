@@ -1,5 +1,11 @@
 # Roadmap
 
+## Rita autonomous messaging and conclusion actions November 14
+- [x] Replaced draft-only Rita conversation instructions with authorized tools: direct official WhatsApp replies, internal Rita messages, follow-up tasks, known-property sharing and bounded lead stages. Existing incoming-message autopilot remains enabled-state gated; no Green messaging fallback or provider-window bypass.
+- [x] Added server-owned actions with single-use claims, fresh target/workspace checks and persistent conclusion buttons; community delivery retains Rita identity and no private CRM tools. Explicit sends execute immediately; proposed next steps require a button click.
+- [x] Seven Deno and four frontend tests pass; function deployed and actual authenticated model request plus tool-continuation/follow-up generated and read back a saved follow-up button. Desktop/mobile verified, mobile modal clipping fixed. Button invocation intercepted; no reminder, status change or external message executed.
+- [ ] Actual recipient delivery and continuous two-party nurturing remain unverified without a consenting test conversation and valid Meta authorization. Outside the 24h window still requires compatible approved templates/consent; no unauthorized first-contact free text enabled.
+
 ## Wallet credit package slider November 14
 - [x] Synchronized 5–2500 ILS slider/input, reached-threshold bonuses and credit/value display; unchanged four-credit conversion yields 20/210/880/2300/4800/12500 credits at requested tiers.
 - [x] Applied immutable server bonus snapshots for new deposit orders; verified completion credits paid amount plus bonus once, while old orders/subscriptions remain unchanged. Deployed payment endpoint rejects out-of-range packages before creation.

@@ -1,0 +1,8 @@
+ALTER TABLE public.rita_chat_interactions ADD COLUMN delivered boolean NOT NULL DEFAULT false;
+CREATE TABLE public.rita_conversation_actions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),interaction_id uuid NOT NULL REFERENCES public.rita_chat_interactions(id) ON DELETE CASCADE,workspace_owner_id uuid NOT NULL,requested_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,kind text NOT NULL CHECK(kind IN ('send_message','send_property','schedule_followup','advance_lead')),label text NOT NULL,payload jsonb NOT NULL,operation_key text NOT NULL,status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','running','completed','failed')),result jsonb,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(interaction_id,operation_key));
+GRANT SELECT ON public.rita_conversation_actions TO authenticated;
+GRANT ALL ON public.rita_conversation_actions TO service_role;
+ALTER TABLE public.rita_conversation_actions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY rita_action_owner_read ON public.rita_conversation_actions FOR SELECT TO authenticated USING(requested_by=auth.uid() AND public.ws_current_access(workspace_owner_id) AND EXISTS(SELECT 1 FROM public.rita_chat_interactions i WHERE i.id=interaction_id));
+CREATE INDEX rita_actions_interaction ON public.rita_conversation_actions(interaction_id);
+UPDATE public.rita_chat_interactions SET delivered=true WHERE source_message_id IS NOT NULL AND status='completed';
