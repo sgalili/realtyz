@@ -1,5 +1,10 @@
 # Roadmap
 
+## WhatsApp attachment lookup November 14
+- [x] Media credentials match the saved receiving phone, exclude explicitly unauthorized rows and distinguish inaccessible media from provider failures. Diagnostics omit tokens/URLs; media caching is private.
+- [x] Inline loading/unavailable/retry verified on the actual August 25 attachment in the authenticated conversation, without page errors; five tests pass, function deployed and build clean.
+- [ ] Restore playback of the reported attachment: the matching official provider is marked authorized=false and no matching central credentials are available. Requires renewed valid WhatsApp authorization; the old attachment may also be unavailable at Meta.
+
 ## Chat list toolbar and selection badges November 14
 - [x] Moved search/selection to toolbar start and favorites to opposite edge; centered channel badges appear only in active select-all row, with bulk actions wrapping below on narrow screens.
 - [x] Authenticated desktop/mobile verified inactive/active selection, select-all counter, inline search and favorites modal; four shared-control tests pass and preview build is clean.

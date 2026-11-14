@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pause, Play, Download, FileText, Loader2 } from 'lucide-react';
+import { Pause, Play, Download, FileText, Loader2, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
 
 type MediaKind = 'audio' | 'video' | 'image' | 'document' | 'sticker';
 
@@ -73,21 +74,35 @@ export function MediaMessage({ media }: { media: ChatMedia }) {
   // Proxied WhatsApp media requires the signed-in session, so fetch it with
   // the access token and play it from a local object URL.
   const [src, setSrc] = useState<string | null>(media.directUrl ?? null);
+  const [fetchState, setFetchState] = useState<'loading' | 'ready' | 'unavailable' | 'error'>('loading');
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (!rawSrc || rawSrc === media.directUrl) { setSrc(rawSrc); return; }
+    setSrc(null);
+    setFetchState('loading');
+    if (!rawSrc || rawSrc === media.directUrl) { setSrc(rawSrc); setFetchState(rawSrc ? 'ready' : 'unavailable'); return; }
     let objectUrl: string | null = null;
     let cancelled = false;
+    const controller = new AbortController();
     (async () => {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
-      if (!token) return;
-      const res = await fetch(rawSrc, { headers: { Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } });
-      if (!res.ok || cancelled) return;
-      objectUrl = URL.createObjectURL(await res.blob());
-      if (!cancelled) setSrc(objectUrl);
-    })().catch(() => undefined);
-    return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [rawSrc, media.directUrl]);
+      if (!token) { if (!cancelled) setFetchState('error'); return; }
+      const res = await fetch(rawSrc, { signal: controller.signal, headers: { Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY } });
+      if (cancelled) return;
+      if (res.headers.get('content-type')?.includes('application/json')) {
+        const result = await res.json();
+        if (!cancelled) setFetchState(result.available === false ? 'unavailable' : 'error');
+        return;
+      }
+      if (!res.ok) { setFetchState('error'); return; }
+      const blob = await res.blob();
+      if (cancelled) return;
+      objectUrl = URL.createObjectURL(blob);
+      setSrc(objectUrl);
+      setFetchState('ready');
+    })().catch(() => { if (!cancelled) setFetchState('error'); });
+    return () => { cancelled = true; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [rawSrc, media.directUrl, retry]);
   const ref = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -101,7 +116,11 @@ export function MediaMessage({ media }: { media: ChatMedia }) {
   }, [src]);
 
   if (!src) {
-    return <p className="text-sm leading-relaxed">[{kindLabel[media.kind]}]</p>;
+    return <div role="status" className="flex items-center gap-2 text-sm leading-relaxed">
+      {fetchState === 'loading' && <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
+      <span>{kindLabel[media.kind]} · {fetchState === 'loading' ? 'טוען…' : fetchState === 'unavailable' ? 'הקובץ אינו זמין עוד ב־WhatsApp' : 'לא ניתן לטעון את הקובץ כרגע'}</span>
+      {fetchState === 'error' && <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="נסה לטעון שוב" title="נסה לטעון שוב" onClick={() => setRetry(v => v + 1)}><RotateCcw className="h-4 w-4" /></Button>}
+    </div>;
   }
 
   if (media.kind === 'image' || media.kind === 'sticker') {
