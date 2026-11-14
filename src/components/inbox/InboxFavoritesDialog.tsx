@@ -9,8 +9,13 @@ import { useInboxFavorites, type InboxFavoriteKind } from '@/hooks/useInboxFavor
 export function InboxFavoritesDialog({ open, onOpenChange, community = false }: { open: boolean; onOpenChange: (open: boolean) => void; community?: boolean }) {
   const favorites = useInboxFavorites();
   const navigate = useNavigate();
-  const rows = (favorites.data ?? []).filter(r => community ? r.target_kind.startsWith('peer') : !r.target_kind.startsWith('peer'));
+  const rows = (favorites.data ?? []).filter(r => community ? r.target_kind.startsWith('peer') || r.target_kind === 'group' : !r.target_kind.startsWith('peer') && r.target_kind !== 'group');
   const details = useQuery({ queryKey: ['inbox-favorite-details', rows[0]?.user_id, rows[0]?.workspace_owner_id, community, rows.map(r => `${r.target_kind}:${r.target_id}`).join(',' )], enabled: open && rows.length > 0, staleTime: 0, queryFn: async () => Promise.all(rows.map(async row => {
+    if (row.target_kind === 'group') {
+      const { data, error } = await supabase.from('community_chat_groups').select('name').eq('id', row.target_id).maybeSingle();
+      if (error) throw error;
+      return { ...row, label: data?.name ?? 'קבוצה שמורה', path: `/inbox?section=community&group=${row.target_id}` };
+    }
     if (row.target_kind === 'lead') {
       const { data, error } = await supabase.from('leads').select('full_name').eq('id', row.target_id).maybeSingle(); if (error) throw error;
       return { ...row, label: data?.full_name ?? 'שיחה שמורה', path: `/inbox?lead=${row.target_id}` };

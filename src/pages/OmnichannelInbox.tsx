@@ -35,7 +35,7 @@ import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Message, MessageContent } from '@/components/ai-elements/message';
+import { ChatHeaderActions } from '@/components/inbox/ChatHeaderActions';
 
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { groupByIdentity, normalizePhoneKey } from '@/lib/threadIdentity';
@@ -1442,29 +1442,16 @@ const OmnichannelInbox = () => {
                     </button>
                   </div>
                 </div>
-                {!selectedVoterId.startsWith('phone:') && <RitaChatButton kind="lead" target={selectedVoterId} />}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48 text-right">
-                    <DropdownMenuItem onClick={() => setManualTakeoverWarning(true)}>העברה לנציג</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setChatAutopilot(!chatAutopilotOn)}>{chatAutopilotOn ? 'כיבוי ריטה לשיחה זו' : 'הפעלת ריטה לשיחה זו'}</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={openCrmCard}>הצגת פרופיל מתעניין</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => selectedVoterId && setDeleteTargetId(selectedVoterId)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="ms-2 h-4 w-4" />
-                      מחיקת שיחה
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <ChatHeaderActions>
+                  <Button variant="ghost" onClick={() => void favorites.toggle(selectedVoterId.startsWith('phone:') ? 'message' : 'lead', selectedVoterId.startsWith('phone:') ? lastMessages.get(selectedVoterId)?.id ?? '' : selectedVoterId)}><Star className={`h-5 w-5 ${favorites.has(selectedVoterId.startsWith('phone:') ? 'message' : 'lead', selectedVoterId.startsWith('phone:') ? lastMessages.get(selectedVoterId)?.id ?? '' : selectedVoterId) ? 'fill-current text-primary' : ''}`} />שמירת שיחה במועדפים</Button>
+                  {!selectedVoterId.startsWith('phone:') && <RitaChatButton kind="lead" target={selectedVoterId} label />}
+                  <Button variant="ghost" onClick={openCrmCard}>הצגת פרופיל מתעניין</Button>
+                  <Button variant="ghost" onClick={() => setManualTakeoverWarning(true)}>העברה לנציג</Button>
+                  <Button variant="ghost" onClick={() => setChatAutopilot(!chatAutopilotOn)}>{chatAutopilotOn ? 'כיבוי ריטה לשיחה זו' : 'הפעלת ריטה לשיחה זו'}</Button>
+                  <Button variant="ghost" onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</Button>
+                  <Button variant="ghost" className="text-destructive" onClick={() => setDeleteTargetId(selectedVoterId)}><Trash2 className="h-4 w-4" />מחיקת שיחה</Button>
+                </ChatHeaderActions>
+
               </div>
 
               {/* Manual takeover warning */}
@@ -1510,7 +1497,7 @@ const OmnichannelInbox = () => {
                       </button>
                     );
                     const bubbleNode = (
-                      <MessageContent className={`relative min-w-0 max-w-[calc(100%-2.75rem)] gap-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isAiMessage ? 'border border-primary/20 bg-primary/10 text-foreground rounded-es-sm' : isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                      <div className={`relative flex flex-col min-w-0 max-w-[calc(100%-2.75rem)] gap-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-muted text-foreground rounded-ee-sm' : 'bg-primary text-primary-foreground rounded-es-sm'}`}>
                         {msg.id === lastAiMessageId && selectedVoterId && (
                           <UndoLastAiMessage
                             messageId={msg.id as string}
@@ -1526,7 +1513,7 @@ const OmnichannelInbox = () => {
                           />
                         )}
                         <div className="mb-1 flex items-center justify-end gap-1.5">
-                          <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={favorites.has('message', msg.id) ? 'הסרת הודעה מהמועדפים' : 'שמירת הודעה במועדפים'} title="מועדפים" onClick={() => void favorites.toggle('message', msg.id)}><Star className={`h-3 w-3 ${favorites.has('message', msg.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
+
                           <ChannelIcon channel={msg.channel} />
                         </div>
                         {(() => {
@@ -1536,13 +1523,13 @@ const OmnichannelInbox = () => {
                             <ChatMessageText content={msg.content} />
                           );
                         })()}
-                        <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+                        <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-inherit">
                           <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
                           {isOutbound && (
                             <WhatsAppTicks status={providerDeliveryStatus(msg.metadata)} />
                           )}
                         </p>
-                      </MessageContent>
+                      </div>
                     );
 
                     return (
@@ -1562,9 +1549,9 @@ const OmnichannelInbox = () => {
                             <div className="flex-1 h-px bg-border" />
                           </div>
                         )}
-                        <Message from={isOutbound ? 'assistant' : 'user'} className={`min-w-0 max-w-full overflow-hidden flex-row items-end gap-2 px-0.5 ${isOutbound ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`flex w-full min-w-0 max-w-full items-end gap-2 px-0.5 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                           {isOutbound ? <>{bubbleNode}{avatarNode}</> : <>{avatarNode}{bubbleNode}</>}
-                        </Message>
+                        </div>
                       </div>
                     );
                   })}

@@ -42,3 +42,9 @@ it('saves a new community contact without requiring an existing conversation',as
  await act(async()=>{await result.current.toggle('peer',id);});await waitFor(()=>expect(result.current.has('peer',id)).toBe(true));
  expect(db.rows).toEqual([{user_id:'account',workspace_owner_id:'workspace',target_kind:'peer',target_id:id}]);
 });
+it('saves the whole group in the current account/workspace rather than a message',async()=>{
+ const {result}=renderHook(()=>useInboxFavorites(),{wrapper});await waitFor(()=>expect(result.current.isSuccess).toBe(true));
+ await act(async()=>{await result.current.toggle('group',id);});await waitFor(()=>expect(result.current.has('group',id)).toBe(true));
+ expect(db.rows).toEqual([{user_id:'account',workspace_owner_id:'workspace',target_kind:'group',target_id:id}]);
+ expect(result.current.has('peer_message',id)).toBe(false);
+});

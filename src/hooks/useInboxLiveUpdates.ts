@@ -14,6 +14,9 @@ export function useInboxLiveUpdates(userId: string | undefined) {
     };
     const channel = supabase.channel(`inbox-events:${userId}`, { config: { private: true } })
       .on('broadcast', { event: 'changed' }, refresh)
+      .on('broadcast', { event: 'receipt_changed' }, () => {
+        void queryClient.invalidateQueries({ queryKey: ['chat-receipts', userId] });
+      })
       .subscribe(status => { if (status === 'SUBSCRIBED') refresh(); });
     return () => { void supabase.removeChannel(channel); };
   }, [userId, queryClient]);

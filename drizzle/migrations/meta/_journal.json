@@ -1310,6 +1310,13 @@
       "when": 1794627497515,
       "tag": "0186_authorized_community_profile_genders",
       "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1794627885404,
+      "tag": "0187_chat_favorites_and_live_receipt_notifications",
+      "breakpoints": true
     }
   ]
 }

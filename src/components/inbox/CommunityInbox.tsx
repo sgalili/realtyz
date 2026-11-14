@@ -1,4 +1,5 @@
 import { WhatsAppTicks } from './WhatsAppTicks';
+import { ChatHeaderActions } from './ChatHeaderActions';
 import { useChatReceipts } from '@/hooks/useChatReceipts';
 import { unreadIncoming } from '@/lib/chatReceipts';
 import { useEffect, useRef, useState } from 'react';
@@ -43,7 +44,9 @@ export function CommunityInbox({ active }: { active: boolean }) {
   const workspace = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [view, setView] = useState('private');
+  const [params] = useSearchParams();
+  const [view, setView] = useState(params.has('group') ? 'groups' : 'private');
+  useEffect(() => { if (params.has('group')) setView('groups'); }, [params]);
   const [peer, setPeer] = useState<Peer | null>(null);
   const [directoryOpen, setDirectoryOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -234,16 +237,19 @@ export function CommunityInbox({ active }: { active: boolean }) {
         <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
           <div className="min-w-0 flex-1 text-start"><PublicIdentityLink userId={peer.id} label="פתיחת פרופיל ציבורי" className="block"><span className="font-semibold">{cards.data?.get(peer.id)?.full_name ?? peer.full_name}</span>{cards.data?.get(peer.id) && <Badge variant="secondary" className="ms-2">{professionalRole(cards.data.get(peer.id)?.category ?? '', genders.data?.get(peer.id) ?? null)}</Badge>}</PublicIdentityLink><span className="block truncate text-xs text-muted-foreground"><PublicIdentityLink userId={peer.id} office>{cards.data?.get(peer.id)?.office_name}</PublicIdentityLink>{cards.data?.get(peer.id)?.license_number && <span className="ms-2">{cards.data.get(peer.id)?.license_number}</span>}</span></div>
-          <DealTermsDialog peerId={peer.id} peerName={cards.data?.get(peer.id)?.full_name ?? peer.full_name} />
-          <Button size="icon" variant="ghost" aria-label={blocked ? 'הסרת חסימה' : 'חסימת משתמש'} title={blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'} onClick={() => setBlockOpen(true)}><Ban className={`h-5 w-5 ${blocked ? 'text-destructive' : ''}`} /></Button>
-          <RitaChatButton kind="peer" target={peer.id} />
+          <ChatHeaderActions>
+            <Button variant="ghost" aria-label={favorites.has('peer', peer.id) ? 'הסרת שיחה מהמועדפים' : 'שמירת שיחה במועדפים'} onClick={() => void favorites.toggle('peer', peer.id)}><Star className={`h-5 w-5 ${favorites.has('peer', peer.id) ? 'fill-current text-primary' : ''}`} />{favorites.has('peer', peer.id) ? 'הסרה מהמועדפים' : 'שמירת שיחה במועדפים'}</Button>
+            <DealTermsDialog peerId={peer.id} peerName={cards.data?.get(peer.id)?.full_name ?? peer.full_name} label />
+            <Button variant="ghost" onClick={() => setBlockOpen(true)}><Ban className={`h-5 w-5 ${blocked ? 'text-destructive' : ''}`} />{blocked ? 'הסרת חסימה' : 'חסימת משתמש'}</Button>
+            <RitaChatButton kind="peer" target={peer.id} label />
+          </ChatHeaderActions>
           <Dialog open={blockOpen} onOpenChange={setBlockOpen}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>{blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'}</DialogTitle></DialogHeader><p className="text-muted-foreground">{blocked ? `${peer.full_name ?? 'המשתמש'} יוכל לשלוח לך הודעות שוב.` : `${peer.full_name ?? 'המשתמש'} לא יוכל לשלוח לך הודעות פרטיות, והודעותיו בקבוצות יוסתרו אצלך.`}</p><div className="flex justify-between gap-3"><Button variant="outline" onClick={() => setBlockOpen(false)}>ביטול</Button><Button variant={blocked ? 'default' : 'destructive'} disabled={toggleBlock.isPending} onClick={() => toggleBlock.mutate()}>{blocked ? 'הסרת חסימה' : 'חסימה'}</Button></div></DialogContent></Dialog>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-4" role="log" aria-label="הודעות הקהילה">
           {messages.isLoading && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
           {messages.isError && <div role="alert" className="text-destructive">טעינת ההודעות נכשלה<Button variant="ghost" onClick={() => void messages.refetch()}>נסה שוב</Button></div>}
           <div role="note" className="mx-auto mb-4 max-w-md rounded-xl border border-border bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground"><span className="block text-xs font-semibold">TORAFF · ריטה</span>{DEAL_SAFETY_TIP}</div>
-          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><Button variant="ghost" size="icon" className="h-6 w-6 text-inherit" aria-label="שמירת הודעת קהילה במועדפים" title="מועדפים" onClick={() => void favorites.toggle('peer_message', message.id)}><Star className={`h-3 w-3 ${favorites.has('peer_message', message.id) ? 'fill-current' : ''}`} /></Button><ChatMessageText content={message.content} /><span className="mt-1 flex items-center justify-end gap-1 text-xs"><time className="opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time>{mine && <WhatsAppTicks status={receipts.status(message.id)} />}</span></div></div>; })}
+          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-lg rounded-ee-sm bg-muted text-foreground' : 'rounded-lg rounded-es-sm bg-primary text-primary-foreground'}`}><ChatMessageText content={message.content} /><span className="mt-1 flex items-center justify-end gap-1 text-xs"><time className="opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time>{mine && <WhatsAppTicks status={receipts.status(message.id)} />}</span></div></div>; })}
           <div ref={endRef} />
         </div>
         <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={event => { event.preventDefault(); submit(); }}>

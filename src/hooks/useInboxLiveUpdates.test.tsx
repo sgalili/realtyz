@@ -10,7 +10,7 @@ describe('private inbox live updates', () => {
   beforeEach(() => vi.clearAllMocks());
   it('refetches both conversation types on a data-free private event and removes the subscription', () => {
     let changed = () => {};
-    const channel = { on: vi.fn((_type, _filter, callback) => { changed = callback; return channel; }), subscribe: vi.fn(() => channel) };
+    const channel = { on: vi.fn((_type, filter, callback) => { if (filter.event === 'changed') changed = callback; return channel; }), subscribe: vi.fn(() => channel) };
     mocks.channel.mockReturnValue(channel);
     const { unmount } = renderHook(() => useInboxLiveUpdates('agent-id'));
     expect(mocks.channel).toHaveBeenCalledWith('inbox-events:agent-id', { config: { private: true } });
@@ -30,5 +30,14 @@ describe('private inbox live updates', () => {
   it('does not subscribe without an authenticated account', () => {
     renderHook(() => useInboxLiveUpdates(undefined));
     expect(mocks.channel).not.toHaveBeenCalled();
+  });
+  it('receipt events immediately refetch receipts without refetching messages or reacknowledging them', () => {
+    let received = () => {};
+    const channel = { on: vi.fn((_type, filter, callback) => { if (filter.event === 'receipt_changed') received = callback; return channel; }), subscribe: vi.fn(() => channel) };
+    mocks.channel.mockReturnValue(channel);
+    renderHook(() => useInboxLiveUpdates('agent-id'));
+    received();
+    expect(mocks.invalidateQueries).toHaveBeenCalledTimes(1);
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['chat-receipts', 'agent-id'] });
   });
 });

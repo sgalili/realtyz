@@ -4,7 +4,7 @@ import { useAuth } from './useAuth';
 import { useActiveWorkspaceOwnerId } from './useWorkspace';
 import { toast } from 'sonner';
 
-export type InboxFavoriteKind = 'lead' | 'message' | 'peer' | 'peer_message';
+export type InboxFavoriteKind = 'lead' | 'message' | 'peer' | 'peer_message' | 'group';
 export function useInboxFavorites() {
   const { user } = useAuth();
   const workspace = useActiveWorkspaceOwnerId();

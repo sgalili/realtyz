@@ -1,10 +1,13 @@
 import { WhatsAppTicks } from './WhatsAppTicks';
+import { ChatHeaderActions } from './ChatHeaderActions';
+import { useInboxFavorites } from '@/hooks/useInboxFavorites';
+import { useSearchParams } from 'react-router-dom';
 import { useChatReceipts } from '@/hooks/useChatReceipts';
 import { CommunityDirectory } from './CommunityDirectory';
 import { CommunityProfileDialog } from './CommunityProfileDialog';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Plus, Send, UserMinus, Users, Radio, Crown } from 'lucide-react';
+import { ArrowRight, Plus, Send, UserMinus, Users, Radio, Crown, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -22,6 +25,8 @@ import { playSoftDing, showGroupedChatNotification } from '@/lib/communityNotify
 export function CommunityGroups({ eligible, active, blockedIds }: { eligible: boolean; active: boolean; blockedIds?: Set<string> }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const favorites = useInboxFavorites();
+  const [params] = useSearchParams();
   const [selected, setSelected] = useState<CommunityGroup | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
@@ -37,6 +42,7 @@ export function CommunityGroups({ eligible, active, blockedIds }: { eligible: bo
   const groups = useQuery({ queryKey: ['community-groups', user?.id], enabled: !!user, refetchInterval: 15000, queryFn: async () => {
     const { data, error } = await supabase.rpc('community_joined_groups'); if (error) throw error; return data;
   }});
+  useEffect(() => { const target = params.get('group'); const group = groups.data?.find(g => g.id === target); if (group) setSelected(group); }, [params, groups.data]);
   const roster = useQuery({ queryKey: ['community-roster', user?.id, selected?.id], enabled: !!selected, refetchInterval: 15000, queryFn: async () => {
     if (!selected) return []; const { data, error } = await supabase.rpc('community_group_roster', { _group: selected.id }); if (error) throw error; return data;
   }});
@@ -107,8 +113,8 @@ export function CommunityGroups({ eligible, active, blockedIds }: { eligible: bo
     </aside>
     <section className={`${selected ? 'flex' : 'hidden lg:flex'} min-h-0 min-w-0 flex-col`}>
       {!selected ? <div className="flex flex-1 items-center justify-center text-muted-foreground">קבוצות הקהילה</div> : <>
-        <header className="flex min-h-16 shrink-0 items-center gap-2 border-b border-border px-3"><Button size="icon" variant="ghost" aria-label="חזרה לקבוצות" className="lg:hidden" onClick={() => setSelected(null)}><ArrowRight className="h-5 w-5" /></Button><span className="min-w-0 flex-1"><span className="block truncate font-semibold">{selected.name}</span><span className="block truncate text-xs text-muted-foreground">{selected.description}</span></span><Button size="icon" variant="ghost" aria-label="חברי הקבוצה" onClick={() => { setSearch(''); setRosterOpen(true); }}><Users className="h-5 w-5" /></Button>{canPost && <RitaChatButton kind="group" target={selected.id} />}</header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3" role="log" aria-label="הודעות הקבוצה">{!allowed && !roster.isLoading && <p role="alert" className="text-muted-foreground">אינך חבר בקבוצה זו</p>}{allowed && messages.data?.filter(message => !blockedIds?.has(message.sender_id)).map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}>{!mine && <button type="button" className="block text-xs font-semibold text-muted-foreground hover:underline" onClick={() => setProfileId(message.sender_id)}>{roster.data?.find(member => member.user_id === message.sender_id)?.full_name ?? 'חבר קבוצה'}</button>}<ChatMessageText content={message.content} /><span className="mt-1 flex items-center justify-end gap-1 text-xs"><time className="opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time>{mine && <WhatsAppTicks status={receipts.status(message.id)} />}</span></div></div>; })}{messages.isError && <p role="alert" className="text-destructive">טעינת ההודעות נכשלה</p>}<div ref={endRef} /></div>
+        <header className="flex min-h-16 shrink-0 items-center gap-2 border-b border-border px-3"><Button size="icon" variant="ghost" aria-label="חזרה לקבוצות" className="lg:hidden" onClick={() => setSelected(null)}><ArrowRight className="h-5 w-5" /></Button><span className="min-w-0 flex-1"><span className="block truncate font-semibold">{selected.name}</span><span className="block truncate text-xs text-muted-foreground">{selected.description}</span></span><ChatHeaderActions><Button variant="ghost" aria-label={favorites.has('group', selected.id) ? 'הסרת שיחה מהמועדפים' : 'שמירת שיחה במועדפים'} onClick={() => void favorites.toggle('group', selected.id)}><Star className={`h-5 w-5 ${favorites.has('group', selected.id) ? 'fill-current text-primary' : ''}`} />שמירת שיחה במועדפים</Button><Button variant="ghost" onClick={() => { setSearch(''); setRosterOpen(true); }}><Users className="h-5 w-5" />חברי הקבוצה</Button>{canPost && <RitaChatButton kind="group" target={selected.id} label />}</ChatHeaderActions></header>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3" role="log" aria-label="הודעות הקבוצה">{!allowed && !roster.isLoading && <p role="alert" className="text-muted-foreground">אינך חבר בקבוצה זו</p>}{allowed && messages.data?.filter(message => !blockedIds?.has(message.sender_id)).map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-lg rounded-ee-sm bg-muted text-foreground' : 'rounded-lg rounded-es-sm bg-primary text-primary-foreground'}`}>{!mine && <button type="button" className="block text-xs font-semibold text-inherit hover:underline" onClick={() => setProfileId(message.sender_id)}>{roster.data?.find(member => member.user_id === message.sender_id)?.full_name ?? 'חבר קבוצה'}</button>}<ChatMessageText content={message.content} /><span className="mt-1 flex items-center justify-end gap-1 text-xs"><time className="opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time>{mine && <WhatsAppTicks status={receipts.status(message.id)} />}</span></div></div>; })}{messages.isError && <p role="alert" className="text-destructive">טעינת ההודעות נכשלה</p>}<div ref={endRef} /></div>
         {allowed && selected.kind === 'broadcast' && selected.owner_id !== user?.id ? <p className="border-t border-border p-3 text-center text-sm text-muted-foreground">ערוץ שידור · רק מנהל הערוץ יכול לפרסם</p> : <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={event => { event.preventDefault(); void send(); }}><Input aria-label="הודעה לקבוצה" placeholder="הקלד הודעה..." maxLength={4000} value={drafts[selected.id] ?? ''} onChange={event => setDrafts(previous => ({ ...previous, [selected.id]: event.target.value }))} disabled={!canPost} className="min-w-0 flex-1" /><Button type="submit" size="icon" className="h-11 w-11 shrink-0" aria-label="שלח לקבוצה" disabled={!canPost || busy || !(drafts[selected.id] ?? '').trim()}><Send className="h-4 w-4" /></Button></form>}
       </>}
     </section>

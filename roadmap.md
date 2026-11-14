@@ -1,5 +1,10 @@
 # Roadmap
 
+## Chat actions and live receipt redesign November 14
+- [x] Removed bubble stars; whole peer/lead/group favorites live in header action menus, with existing saved messages preserved. Group favorites retain membership/workspace checks and open their group tab.
+- [x] Shared vertical three-dot popover contains prior header actions, including labeled Rita/deal terms controls. Physical outgoing-left/light and incoming-right/primary contrast applies to lead/private/group/channel bubbles; removed inherited AI message layout overrides from lead bubbles.
+- [x] Added data-free private receipt doorbells only on actual delivery/read transitions; sender refetches receipt state immediately, with polling fallback and no message-refetch/acknowledgement loop. External ticks still require provider metadata. Sixteen tests pass; authenticated populated private/lead menus and star-free bubbles checked desktop/mobile without page errors; peer chat favorite saved/read back. Live two-account read transition and populated group rendering were not exercised; no messages sent.
+
 ## Gender-aware localization and clean chat cards November 14
 - [x] Removed empty-history label; inbox add icon 20→26px and control 36→46.8px, exactly 30% larger.
 - [x] Community/directory/office/profile titles use saved subject gender via authorized projection and shared role formatter. Shared UI commands/recipient slots remain active; Rita conversation gets participant-specific grammar. CRM/automated lead gender no longer guesses from names; approved template text/user messages remain unchanged. A shared hook exposes gender-aware personal roles; partner success/error notifications updated.

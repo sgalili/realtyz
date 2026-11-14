@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
-export function DealTermsDialog({ peerId, peerName }: { peerId: string; peerName: string | null }) {
+export function DealTermsDialog({ peerId, peerName, label = false }: { peerId: string; peerName: string | null; label?: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -38,7 +38,7 @@ export function DealTermsDialog({ peerId, peerName }: { peerId: string; peerName
     onError: (e: Error) => toast.error(e.message === 'אחוז לא תקין' ? 'יש להזין אחוז בין 0 ל־100' : 'שמירת התנאים נכשלה'),
   });
   return <>
-    <Button size="icon" variant="ghost" aria-label="שמור תנאי שותפות לעסקה זו" title="שמור תנאי שותפות לעסקה זו" onClick={() => setOpen(true)}><Handshake className="h-5 w-5" /></Button>
+    <Button size={label ? 'default' : 'icon'} variant="ghost" aria-label="שמור תנאי שותפות לעסקה זו" title="שמור תנאי שותפות לעסקה זו" onClick={() => setOpen(true)}><Handshake className="h-5 w-5" />{label && 'תנאי שותפות לעסקה'}</Button>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent dir="rtl" aria-describedby={undefined} className="max-h-[85dvh] overflow-y-auto">
       <DialogHeader><DialogTitle>שמור תנאי שותפות לעסקה זו</DialogTitle></DialogHeader>
       <p className="text-sm text-muted-foreground">שותפות עם {peerName ?? 'חבר הקהילה'}. התנאים נשמרים בטוראף וגלויים לשני הצדדים.</p>
