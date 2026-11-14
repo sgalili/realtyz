@@ -78,6 +78,14 @@ Deno.serve(async (req) => {
   const now = new Date();
   const nowIso = now.toISOString();
 
+  // Re-evaluate due reservations and backlog with current daily capacity.
+  // Uses the existing tick; no additional scheduler or provider requests.
+  const { error: capacityError } = await admin.rpc('monitor_distribution_queue');
+  if (capacityError) {
+    console.error('[cloud-group-poster] distribution capacity check failed', { code: capacityError.code, message: capacityError.message });
+    return json({ error: 'distribution_capacity_check_failed' }, 503);
+  }
+
   // Release expired leases so a crashed worker never strands a job.
   await admin
     .from("campaign_activity_queue")

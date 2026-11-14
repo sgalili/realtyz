@@ -1,5 +1,10 @@
 # Roadmap
 
+## Lead details and distribution backlog November 14
+- [x] Direct authorized lead details from CRM/inbox; optional public profile closes back to mounted details. Real lead checked desktop/mobile; community behavior unchanged.
+- [x] Existing Facebook group queue reserves sequential days/slots against group/page/account caps, posted counters/completed jobs and pending reservations; existing worker tick checks due backlog.
+- [x] Once-per-day channel-specific in-app advice when backlog exceeds daily capacity; ten isolated database rule tests plus seven existing access/capacity tests. Workers deployed, service-only functions read back. No actual posting or live multi-asset distribution performed; other channel types retain their existing delivery rules.
+
 ## Profile view and zero commission labels November 14
 - [x] Replace zero commission wording with 0₪ without changing reward visibility.
 - [x] Use the shared opposite-view toggle, list default and one inline expanded property at a time.

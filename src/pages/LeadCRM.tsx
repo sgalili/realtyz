@@ -596,7 +596,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
     if (new URLSearchParams(routeLocation.search).get('filter') === 'untreated') setStatusFilter('untreated');
   }, [routeLocation.search]);
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? null);
-  const [managedLeadId, setManagedLeadId] = useState<string | null>(new URLSearchParams(routeLocation.search).get('manage') === '1' ? routeLeadId ?? null : null);
+  const [publicProfileOpen, setPublicProfileOpen] = useState(false);
   const leadAccess = useLeadProfileAccess(selectedVoterId);
 
   // Sync sheet open-state with the URL param so /lead-crm/:id opens the profile.
@@ -2240,10 +2240,11 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
 
 
       {/* Full Lead Profile Sheet */}
-      <LeadPublicProfile leadId={selectedVoterId && (selectedVoterId !== managedLeadId || leadAccess.data?.can_manage !== true) ? selectedVoterId : null} onManage={setManagedLeadId} onClose={() => { setSelectedVoterId(null); setManagedLeadId(null); }} />
-      <Sheet open={!!selectedVoterId && selectedVoterId === managedLeadId && leadAccess.data?.can_manage === true} onOpenChange={(open) => {
+      <LeadPublicProfile leadId={selectedVoterId && (publicProfileOpen || (!leadAccess.isLoading && leadAccess.data?.can_manage !== true)) ? selectedVoterId : null} onManage={() => setPublicProfileOpen(false)} onClose={() => { if (leadAccess.data?.can_manage === true) setPublicProfileOpen(false); else setSelectedVoterId(null); }} />
+      <Sheet open={!!selectedVoterId && leadAccess.data?.can_manage === true} onOpenChange={(open) => {
         if (!open) {
           setSelectedVoterId(null);
+          setPublicProfileOpen(false);
           if (routeLeadId) {
             // Came in via /lead-crm/:id deep-link — return to the previous screen (inbox, dashboard, etc.)
             const returnTo = (routeLocation.state as { returnTo?: string } | null)?.returnTo;
@@ -2360,6 +2361,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
 
             return (
               <>
+                <Button variant="outline" className="mb-3" onClick={() => setPublicProfileOpen(true)}>הצגת פרופיל ציבורי</Button>
                 <SheetHeader className="relative pb-14">
                   <SheetTitle className="relative flex min-h-12 items-start justify-center">
                     {(() => {

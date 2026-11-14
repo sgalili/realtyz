@@ -10901,6 +10901,7 @@ export type Database = {
         Args: { _dup: string; _primary: string }
         Returns: undefined
       }
+      monitor_distribution_queue: { Args: never; Returns: number }
       move_to_dlq: {
         Args: {
           dlq_name: string

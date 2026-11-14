@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useInboxLiveUpdates } from '@/hooks/useInboxLiveUpdates';
 import { CommunityInbox } from '@/components/inbox/CommunityInbox';
-import { LeadPublicProfile } from '@/components/leads/LeadPublicProfile';
 import { RitaChatButton } from '@/components/inbox/RitaChatButton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
@@ -230,7 +229,6 @@ const OmnichannelInbox = () => {
   const activeWorkspaceOwnerId = useActiveWorkspaceOwnerId();
   const workspaceScope = activeWorkspaceOwnerId ?? user?.id ?? null;
   const navigate = useNavigate();
-  const [publicLeadId, setPublicLeadId] = useState<string | null>(null);
 
   // Agent identity for outbound chat bubbles (circular avatar next to each one).
   const { data: agentProfile } = useQuery({
@@ -605,7 +603,7 @@ const OmnichannelInbox = () => {
     const realId = !selectedVoterId.startsWith('phone:')
       ? selectedVoterId
       : selectedThread.ids[0];
-    if (realId) { setPublicLeadId(realId); return; }
+    if (realId) { openCrmContact(realId); return; }
     const phone = selectedThread.phones[0];
     if (!phone) return;
     const digits = String(phone).replace(/\D/g, '').slice(-9);
@@ -615,13 +613,13 @@ const OmnichannelInbox = () => {
       .ilike('phone_number', `%${digits}%`)
       .limit(1);
     const found = (data ?? [])[0]?.id;
-    if (found) setPublicLeadId(found);
+    if (found) openCrmContact(found);
     else toast.error('אין כרטיס ליד לשיחה הזו');
   };
 
   const openCrmContact = (leadId: string) => {
     if (!leadId || leadId.startsWith('phone:') || leadId.startsWith('demo-')) return;
-    setPublicLeadId(leadId);
+    navigate(`/lead-crm/${encodeURIComponent(leadId)}`, { state: { returnTo: window.location.pathname + window.location.search } });
   };
 
   const { data: dbChatMessages } = useQuery({
@@ -1124,7 +1122,6 @@ const OmnichannelInbox = () => {
 
   return (
     <Tabs dir="rtl" value={inboxSection} onValueChange={value => { setInboxSection(value); setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); return next; }, { replace: true }); }} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      <LeadPublicProfile leadId={publicLeadId} onClose={() => setPublicLeadId(null)} />
       <TabsList aria-label="סוג שיחות" className="grid h-auto min-h-11 w-full shrink-0 grid-cols-2 gap-1">
         <TabsTrigger value="leads" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">צ'אטים נכסים ולידים</TabsTrigger>
         <TabsTrigger value="community" className="min-h-10 min-w-0 whitespace-normal px-2 text-base">מועדון הקהילה</TabsTrigger>
