@@ -1183,16 +1183,59 @@ const OmnichannelInbox = () => {
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
           <div className="p-3 border-b">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5" data-chat-list-toolbar dir="rtl">
+              <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label={searchOpen ? 'סגירת חיפוש שיחות' : 'חיפוש שיחות'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש שיחות'} onClick={() => setSearchOpen(v => !v)}>{searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}</Button>
               <SelectModeToggle
                 closeAction
                 total={filteredVoters?.length ?? 0}
                 onSelectAll={() => setSelectedChats(new Set((filteredVoters ?? []).map((v: any) => v.id)))}
                 active={chatSelectMode}
-                count={selectedChats.size}
+                className="h-11 w-11"
                 onToggle={() => { setChatSelectMode((v) => !v); setSelectedChats(new Set()); }}
               />
-            {(() => {
+              <div className="flex-1" />
+              <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label="מועדפי שיחות" title="מועדפים" onClick={() => setFavoritesOpen(true)}><Star className="h-5 w-5" /></Button>
+
+            </div>
+          </div>
+          <AnimatePresence initial={false}>{searchOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="shrink-0 overflow-hidden border-b">
+            <div dir="rtl" className="max-h-[50dvh] space-y-3 overflow-y-auto p-3">
+              <ClearFilterButton active={hasSearchFilter} onClear={clearSearch} />
+              <div className="flex gap-2">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input autoFocus aria-label="חיפוש שיחות" placeholder="שם, טלפון או כינוי..." className="pr-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                </div>
+                <Button type="button" size="icon" aria-label="סינון שיחות" title="סינון שיחות" variant={filtersOpen ? 'default' : 'outline'} onClick={() => setFiltersOpen((v) => !v)}><SlidersHorizontal className="h-4 w-4" /></Button>
+              </div>
+              {filtersOpen && <div className="space-y-4 rounded-lg border border-border p-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-1 text-sm">מתאריך<Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} /></label>
+                  <label className="space-y-1 text-sm">עד תאריך<Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} /></label>
+                </div>
+                <div className="space-y-1.5"><span className="text-sm font-semibold">סוג משתמש</span>
+                  <div className="flex flex-wrap gap-1.5">{([['broker', 'רק מתווכים'], ['developer', 'רק יזמים'], ['affiliate', 'רק שותפים'], ['buyer', 'קונים'], ['seller', 'מוכרים'], ['renter', 'שוכרים'], ['landlord', 'משכירים']] as const).map(([key, label]) => (
+                    <Button key={key} type="button" size="sm" className="h-8 rounded-full" variant={categoryFilter.has(key) ? 'default' : 'outline'}
+                      onClick={() => setCategoryFilter((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; })}>{label}</Button>
+                  ))}</div>
+                </div>
+                <div className="space-y-1.5"><span className="text-sm font-semibold">ערוצים</span>
+                  <div className="flex flex-wrap gap-1.5">{Array.from(new Set(Array.from(leadChannels instanceof Map ? leadChannels.values() : []).flatMap((set: Set<string>) => Array.from(set)))).map((key) => (
+                    <Button key={key} type="button" size="sm" className="h-8 gap-1 rounded-full" variant={channelFilter.has(key) ? 'default' : 'outline'}
+                      onClick={() => setChannelFilter((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; })}><ChannelIcon channel={key} size="sm" />{key}</Button>
+                  ))}</div>
+                </div>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />רק שיחות שלא נענו</label>
+              </div>}
+              <div className="flex justify-between gap-3">
+                <Button type="button" onClick={() => setSearchOpen(false)}>הצגת {filteredVoters?.length ?? 0} שיחות</Button>
+              </div>
+            </div>
+          </motion.div>}</AnimatePresence>
+
+          {chatSelectMode && (
+            <SelectAllRow
+              center={            (() => {
                 // Only channels that actually have saved messages (for the open
                 // conversation when one is selected) are shown; unused icons stay hidden.
                 const channelsInList = new Set<string>();
@@ -1244,47 +1287,7 @@ const OmnichannelInbox = () => {
                     </button>
                   );
                 })}</div>;
-              })() ?? <div className="flex-1" />}
-
-            </div>
-          </div>
-          <AnimatePresence initial={false}>{searchOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="shrink-0 overflow-hidden border-b">
-            <div dir="rtl" className="max-h-[50dvh] space-y-3 overflow-y-auto p-3">
-              <ClearFilterButton active={hasSearchFilter} onClear={clearSearch} />
-              <div className="flex gap-2">
-                <div className="relative flex-1 min-w-0">
-                  <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input autoFocus aria-label="חיפוש שיחות" placeholder="שם, טלפון או כינוי..." className="pr-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-                </div>
-                <Button type="button" size="icon" aria-label="סינון שיחות" title="סינון שיחות" variant={filtersOpen ? 'default' : 'outline'} onClick={() => setFiltersOpen((v) => !v)}><SlidersHorizontal className="h-4 w-4" /></Button>
-              </div>
-              {filtersOpen && <div className="space-y-4 rounded-lg border border-border p-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="space-y-1 text-sm">מתאריך<Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} /></label>
-                  <label className="space-y-1 text-sm">עד תאריך<Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} /></label>
-                </div>
-                <div className="space-y-1.5"><span className="text-sm font-semibold">סוג משתמש</span>
-                  <div className="flex flex-wrap gap-1.5">{([['broker', 'רק מתווכים'], ['developer', 'רק יזמים'], ['affiliate', 'רק שותפים'], ['buyer', 'קונים'], ['seller', 'מוכרים'], ['renter', 'שוכרים'], ['landlord', 'משכירים']] as const).map(([key, label]) => (
-                    <Button key={key} type="button" size="sm" className="h-8 rounded-full" variant={categoryFilter.has(key) ? 'default' : 'outline'}
-                      onClick={() => setCategoryFilter((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; })}>{label}</Button>
-                  ))}</div>
-                </div>
-                <div className="space-y-1.5"><span className="text-sm font-semibold">ערוצים</span>
-                  <div className="flex flex-wrap gap-1.5">{Array.from(new Set(Array.from(leadChannels instanceof Map ? leadChannels.values() : []).flatMap((set: Set<string>) => Array.from(set)))).map((key) => (
-                    <Button key={key} type="button" size="sm" className="h-8 gap-1 rounded-full" variant={channelFilter.has(key) ? 'default' : 'outline'}
-                      onClick={() => setChannelFilter((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; })}><ChannelIcon channel={key} size="sm" />{key}</Button>
-                  ))}</div>
-                </div>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary" checked={unreadOnly} onChange={(e) => setUnreadOnly(e.target.checked)} />רק שיחות שלא נענו</label>
-              </div>}
-              <div className="flex justify-between gap-3">
-                <Button type="button" onClick={() => setSearchOpen(false)}>הצגת {filteredVoters?.length ?? 0} שיחות</Button>
-              </div>
-            </div>
-          </motion.div>}</AnimatePresence>
-
-          {chatSelectMode && (
-            <SelectAllRow
+              })()}
               className="sticky top-0 z-10"
               total={filteredVoters?.length ?? 0}
               selected={selectedChats.size}

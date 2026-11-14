@@ -1,5 +1,9 @@
 # Roadmap
 
+## Chat list toolbar and selection badges November 14
+- [x] Moved search/selection to toolbar start and favorites to opposite edge; centered channel badges appear only in active select-all row, with bulk actions wrapping below on narrow screens.
+- [x] Authenticated desktop/mobile verified inactive/active selection, select-all counter, inline search and favorites modal; four shared-control tests pass and preview build is clean.
+
 ## Chat actions and live receipt redesign November 14
 - [x] Removed bubble stars; whole peer/lead/group favorites live in header action menus, with existing saved messages preserved. Group favorites retain membership/workspace checks and open their group tab.
 - [x] Shared vertical three-dot popover contains prior header actions, including labeled Rita/deal terms controls. Physical outgoing-left/light and incoming-right/primary contrast applies to lead/private/group/channel bubbles; removed inherited AI message layout overrides from lead bubbles.

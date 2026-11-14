@@ -84,7 +84,8 @@ export const SelectAllRow = ({
   onToggle,
   children,
   className,
-}: { total: number; selected: number; onToggle: () => void; children?: React.ReactNode; className?: string }) => {
+  center,
+}: { total: number; selected: number; onToggle: () => void; children?: React.ReactNode; className?: string; center?: React.ReactNode }) => {
   const all = total > 0 && selected === total;
   if (total === 0) return null;
   return (
@@ -96,6 +97,7 @@ export const SelectAllRow = ({
       {selected > 0 && (
         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[12px] font-bold text-primary tabular-nums">{selected} נבחרו</span>
       )}
+      {center && <div className="min-w-0 flex-1 basis-24">{center}</div>}
       {selected > 0 && <div className="ms-auto flex flex-wrap items-center gap-1.5">{children}</div>}
     </div>
   );
