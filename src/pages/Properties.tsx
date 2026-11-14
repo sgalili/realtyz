@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import LeadTypeFilterButton from '@/components/affiliate/LeadTypeFilterButton';
 import { EMPTY_LEAD_FILTER, EMPTY_PROPERTY_FILTER, matchesPropertyFilter, matchesLeadFilter, leadTierAmounts, type PropertyFilterState } from '@/lib/leadTypeFilter';
-import { Skeleton } from '@/components/ui/skeleton';
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Megaphone, BedDouble, Ruler, MapPin, Building2, List, LayoutGrid,
@@ -1194,11 +1194,7 @@ export default function Properties() {
       <div className={viewMode === 'table' ? 'listing-results-scroll flex min-h-0 flex-1 flex-col' : 'contents'}>
       <ErrorBoundary source="Properties.Results">
         {searching && sortedResults.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-72 w-full rounded-lg" />
-            ))}
-          </div>
+          <FullPageLoading />
         ) : sortedResults.length === 0 ? (
           <div role="status" className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center">
             <Building2 className="h-12 w-12 text-muted-foreground" strokeWidth={1.25} aria-hidden="true" />

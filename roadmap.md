@@ -1,5 +1,9 @@
 # Roadmap
 
+## Loader refinement November 14
+- [x] Increase logo width 140→154px and subtitle 9→13px; reduce minimum to three seconds. Four timing tests pass; authenticated fast page measured 3.036 seconds.
+- [x] Reuse centered page overlay while empty public/managed property results load, without covering populated background refreshes. Delayed live public feed retained the overlay until completion; mobile/desktop dimensions and position verified without runtime errors. Hosted video supplied locally for checks.
+
 ## Full-page loading scope November 14
 - [x] Restrict video to full-page overlays, restore inline spinners and reduce the 280px/18px page presentation to 140px/9px.
 - [x] Persistent overlay holds fast loads for five seconds plus a paint allowance and waits for slower loads; four timing tests pass. Authenticated import page/mobile/desktop verified, no inline videos or page errors. Hosted video supplied locally for browser verification.

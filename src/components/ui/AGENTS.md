@@ -1,2 +1,2 @@
 # Shared loading presentation
-- FullPageLoading registers page-level requests with a persistent overlay host that holds each uninterrupted loading interval at least five seconds; inline indicators remain ordinary spinners. Why: Suspense unmounts must not bypass the minimum or delay local actions.
+- FullPageLoading registers page-level and empty-property-results loading with a persistent centered overlay; inline indicators and populated refreshes remain ordinary. Why: fallback handoffs preserve the configured minimum without blocking local actions.
