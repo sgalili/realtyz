@@ -33,6 +33,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ClearFilterButton } from '@/components/ui/clear-filter-button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useInboxFavorites } from '@/hooks/useInboxFavorites';
+import { ChatFavoriteButton } from './ChatFavoriteButton';
 import { InboxFavoritesDialog } from './InboxFavoritesDialog';
 import { DIRECTORY_CATEGORIES } from './CommunityDirectory';
 
@@ -203,15 +204,15 @@ export function CommunityInbox({ active }: { active: boolean }) {
     </span>;
   };
   return <Tabs dir="rtl" value={view} onValueChange={setView} className="flex h-full min-h-0 flex-col gap-2">
-    <div className="grid shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-1" data-community-tab-toolbar>
+    <div className={`${favoritesOpen ? "hidden" : "grid"} shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-1`} data-community-tab-toolbar>
       <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={searchOpen ? 'סגירת חיפוש בקהילה' : 'חיפוש בקהילה'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש בקהילה'} onClick={() => setSearchOpen(v => !v)}>{searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}</Button>
       <TabsList className="grid w-full min-w-0 grid-cols-2"><TabsTrigger value="private" className="px-1 text-base">שיחות פרטיות</TabsTrigger><TabsTrigger value="groups" className="px-1 text-base">קבוצות</TabsTrigger></TabsList>
       <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="מועדפי הקהילה" title="מועדפים" onClick={() => setFavoritesOpen(true)}><Star className="h-5 w-5" /></Button>
     </div>
       <AnimatePresence initial={false}>{searchOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="shrink-0 overflow-hidden border-b"><div className="space-y-2 p-3"><ClearFilterButton active={!!search.trim() || category !== 'all'} onClear={() => { setSearch(''); setCategory('all'); }} /><div className="flex gap-2"><Input aria-label="חיפוש בקהילה" placeholder="שם חבר קהילה..." value={search} onChange={e => setSearch(e.target.value)} /><Button variant={filtersOpen ? 'default' : 'outline'} size="icon" className="shrink-0" aria-label="סינון חברי קהילה" title="סינון חברי קהילה" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal className="h-4 w-4" /></Button></div>{filtersOpen && <div className="flex flex-wrap gap-1">{DIRECTORY_CATEGORIES.map(c => <Button key={c.value} size="sm" variant={category === c.value ? 'default' : 'outline'} onClick={() => setCategory(c.value)}>{c.label}</Button>)}</div>}</div></motion.div>}</AnimatePresence>
       <InboxFavoritesDialog open={favoritesOpen} onOpenChange={setFavoritesOpen} community />
-    <TabsContent value="groups" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden"><CommunityGroups key={user?.id} eligible={eligibility.data === true} active={active && view === 'groups'} blockedIds={blocks.data} /></TabsContent>
-    <TabsContent value="private" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
+    <TabsContent value="groups" forceMount className={`${favoritesOpen ? "hidden" : ""} m-0 min-h-0 flex-1 data-[state=inactive]:hidden`}><CommunityGroups key={user?.id} eligible={eligibility.data === true} active={active && view === 'groups'} blockedIds={blocks.data} /></TabsContent>
+    <TabsContent value="private" forceMount className={`${favoritesOpen ? "hidden" : ""} m-0 min-h-0 flex-1 data-[state=inactive]:hidden`}>
     <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
     <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>
 
@@ -227,7 +228,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
           return <div key={contact.id} role="button" tabIndex={0} aria-label={`פתיחת שיחה עם ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setPeer(contact)} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setPeer(contact); } }} className={`flex min-h-16 w-full items-center gap-3 border-b border-border px-3 py-3 ${peer?.id === contact.id ? 'bg-muted' : ''}`}>
             <button type="button" className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`פתיחת הפרופיל הציבורי של ${contact.full_name ?? 'חבר קהילה'}`} onClick={e => { e.stopPropagation(); navigate(`/community/profile/${contact.id}`, { state: { returnTo: window.location.pathname + window.location.search } }); }}><Avatar className="h-10 w-10"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar></button>
             <Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? undefined} messageId={latest?.id} outgoing={latest?.sender_id === user?.id} unread={!!latest && unreadIncoming(latest.recipient_id === user?.id, previewReceipts.isRead(latest.id))} />
-            <Button variant="ghost" size="icon" aria-label={favorites.has('peer', contact.id) ? 'הסרת שיחת קהילה מהמועדפים' : 'שמירת שיחת קהילה במועדפים'} title="מועדפים" onClick={e => { e.stopPropagation(); void favorites.toggle('peer', contact.id); }}><Star className={`h-4 w-4 ${favorites.has('peer', contact.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
+            <ChatFavoriteButton kind="peer" id={contact.id} />
           </div>;
         })}
       </div>
@@ -238,7 +239,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
           <div className="min-w-0 flex-1 text-start"><PublicIdentityLink userId={peer.id} label="פתיחת פרופיל ציבורי" className="block"><span className="font-semibold">{cards.data?.get(peer.id)?.full_name ?? peer.full_name}</span>{cards.data?.get(peer.id) && <Badge variant="secondary" className="ms-2">{professionalRole(cards.data.get(peer.id)?.category ?? '', genders.data?.get(peer.id) ?? null)}</Badge>}</PublicIdentityLink><span className="block truncate text-xs text-muted-foreground"><PublicIdentityLink userId={peer.id} office>{cards.data?.get(peer.id)?.office_name}</PublicIdentityLink>{cards.data?.get(peer.id)?.license_number && <span className="ms-2">{cards.data.get(peer.id)?.license_number}</span>}</span></div>
           <ChatHeaderActions>
-            <Button variant="ghost" aria-label={favorites.has('peer', peer.id) ? 'הסרת שיחה מהמועדפים' : 'שמירת שיחה במועדפים'} onClick={() => void favorites.toggle('peer', peer.id)}><Star className={`h-5 w-5 ${favorites.has('peer', peer.id) ? 'fill-current text-primary' : ''}`} />{favorites.has('peer', peer.id) ? 'הסרה מהמועדפים' : 'שמירת שיחה במועדפים'}</Button>
+            <ChatFavoriteButton label kind="peer" id={peer.id} />
             <DealTermsDialog peerId={peer.id} peerName={cards.data?.get(peer.id)?.full_name ?? peer.full_name} label />
             <Button variant="ghost" onClick={() => setBlockOpen(true)}><Ban className={`h-5 w-5 ${blocked ? 'text-destructive' : ''}`} />{blocked ? 'הסרת חסימה' : 'חסימת משתמש'}</Button>
             <RitaChatButton kind="peer" target={peer.id} label />

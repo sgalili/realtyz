@@ -1,5 +1,12 @@
 # Roadmap
 
+## Chat usability and contact restoration November 14
+- [x] Removed selection UI/dead batch paths; content typography increases 2px excluding timestamps, with Community-style toolbar and כל הצ'אטים label.
+- [x] Menus close on captured action clicks while preserving nested dialogs; favorite removal is confirmed and favorites replace pane content, not a modal. Expanded filters alone show result action.
+- [x] Default-on per-chat channel counts/gray toggles hide disabled messages immediately (Facebook-off left 26 WhatsApp messages). Bordered sending-channel selector, no composer microphone, WhatsApp-style Rita send; original authorized LeadCRM sheet opens from lead name/avatar with verified public-profile return.
+- [x] Eight focused tests pass; authenticated desktop/mobile layouts, details, public return, Rita menu, favorite confirmation/cancel and filtering verified without page errors. No messages sent or contact fields changed.
+- [ ] Public bio/marketed assets for lead contacts: existing lead projection has no verified platform-account mapping. Do not invent an account UUID; requires an authorized identity association before linking community assets.
+
 ## Chat screen cleanup November 14
 - [x] Removed hero search/favorites and lead-card channel/delete/favorite icons; cards use RTL and All/Rita sit between toolbar favorites and selection/search. Waiting is removed; All still includes incoming chats.
 - [x] Authenticated populated desktop/mobile cards, All/Rita switching, inline search, selection badges/counter and favorites modal verified without page errors. Nine focused tests pass; preview build clean.

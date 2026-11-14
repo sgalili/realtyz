@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Star, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { X } from 'lucide-react';
+import { ChatFavoriteButton } from './ChatFavoriteButton';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useInboxFavorites, type InboxFavoriteKind } from '@/hooks/useInboxFavorites';
@@ -34,10 +35,12 @@ export function InboxFavoritesDialog({ open, onOpenChange, community = false }: 
     const peer = data?.sender_id === row.user_id ? data.recipient_id : data?.sender_id;
     return { ...row, label: data?.content ?? 'הודעה אינה זמינה', path: peer ? `/inbox?section=community&community=${peer}` : null };
   })) });
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent dir="rtl" aria-describedby={undefined}><DialogHeader><DialogTitle>מועדפים</DialogTitle></DialogHeader>
+  if (!open) return null;
+  return <section dir="rtl" aria-label="מועדפים" className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col bg-background text-base">
+    <header className="flex shrink-0 items-center justify-between border-b border-border p-3"><h2 className="text-lg font-semibold">מועדפים</h2><Button variant="ghost" size="icon" aria-label="סגירת מועדפים" onClick={() => onOpenChange(false)}><X className="h-5 w-5" /></Button></header>
     {(favorites.isLoading || details.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
     {(favorites.isError || details.isError) && <p role="alert" className="text-destructive">טעינת המועדפים נכשלה</p>}
     {!favorites.isLoading && !rows.length && <p className="text-muted-foreground">אין מועדפים שמורים</p>}
-    <div className="max-h-[60dvh] overflow-y-auto divide-y divide-border">{details.data?.filter(row => rows.some(r => r.target_id === row.target_id && r.target_kind === row.target_kind)).map(row => <div key={`${row.target_kind}:${row.target_id}`} className="flex items-center gap-2 py-3"><Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-pre-wrap break-words text-start" disabled={!row.path} onClick={() => { if (row.path) { onOpenChange(false); navigate(row.path); } }}>{row.label}</Button><Button variant="ghost" size="icon" aria-label="הסרה מהמועדפים" title="הסרה מהמועדפים" onClick={() => void favorites.toggle(row.target_kind as InboxFavoriteKind, row.target_id)}><Star className="h-4 w-4 fill-current text-primary" /></Button></div>)}</div>
-  </DialogContent></Dialog>;
+    <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border">{details.data?.filter(row => rows.some(r => r.target_id === row.target_id && r.target_kind === row.target_kind)).map(row => <div key={`${row.target_kind}:${row.target_id}`} className="flex items-center gap-2 py-3"><Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-pre-wrap break-words text-start" disabled={!row.path} onClick={() => { if (row.path) { onOpenChange(false); navigate(row.path); } }}>{row.label}</Button><ChatFavoriteButton kind={row.target_kind as InboxFavoriteKind} id={row.target_id} /></div>)}</div>
+  </section>;
 }

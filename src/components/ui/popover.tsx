@@ -11,7 +11,7 @@ const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & { portalContainer?: HTMLElement | null }
 >(({ className, align = "center", sideOffset = 4, portalContainer, ...props }, ref) => (
-  <PopoverPrimitive.Portal container={portalContainer}>
+  <PopoverPrimitive.Portal container={portalContainer} forceMount={props.forceMount}>
     <PopoverPrimitive.Content
       ref={ref}
       align={align}

@@ -508,7 +508,7 @@ function EditableInlineText({
 }
 
 
-const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
+const LeadCRM = ({ activityOnly = false, embeddedLeadId, onEmbeddedClose }: { activityOnly?: boolean; embeddedLeadId?: string; onEmbeddedClose?: () => void } = {}) => {
   const { connected: homelyConnected } = useHomelyConnection();
   const { user } = useAuth();
   const { recruitmentMode, listingsEnabled } = useWorkspaceFeatures();
@@ -596,16 +596,17 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
     if (new URLSearchParams(routeLocation.search).get('filter') === 'untreated') setStatusFilter('untreated');
   }, [routeLocation.search]);
   const returnLeadId = (routeLocation.state as { profileReturnLeadId?: string } | null)?.profileReturnLeadId;
-  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? returnLeadId ?? null);
+  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(embeddedLeadId ?? routeLeadId ?? returnLeadId ?? null);
   const [publicProfileOpen, setPublicProfileOpen] = useState(false);
   const leadAccess = useLeadProfileAccess(selectedVoterId);
 
   // Sync sheet open-state with the URL param so /lead-crm/:id opens the profile.
   useEffect(() => {
+    if (embeddedLeadId) { setSelectedVoterId(embeddedLeadId); return; }
     if (routeLeadId && routeLeadId !== selectedVoterId) setSelectedVoterId(routeLeadId);
     if (!routeLeadId && !returnLeadId && selectedVoterId) setSelectedVoterId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeLeadId]);
+  }, [routeLeadId, embeddedLeadId]);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
@@ -1850,7 +1851,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
       )}
 
       {/* Data Table */}
-      <Card className="border-border/50 shadow-sm">
+      {!embeddedLeadId && <Card className="border-border/50 shadow-sm">
         <CardHeader className="px-[5px] pb-3 pt-3">
           <div className="flex flex-col gap-3">
             {/* Lead kind pills (multi-select, relevant to the signed-in account type) */}
@@ -2176,7 +2177,7 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Communication Status Info Dialog */}
       <Dialog open={statusInfoOpen} onOpenChange={setStatusInfoOpen}>
@@ -2241,11 +2242,12 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
 
 
       {/* Full Lead Profile Sheet */}
-      <LeadPublicProfile leadId={selectedVoterId && (publicProfileOpen || (!leadAccess.isLoading && leadAccess.data?.can_manage !== true)) ? selectedVoterId : null} onManage={() => setPublicProfileOpen(false)} onClose={() => { if (leadAccess.data?.can_manage === true) setPublicProfileOpen(false); else setSelectedVoterId(null); }} />
+      <LeadPublicProfile leadId={selectedVoterId && (publicProfileOpen || (!leadAccess.isLoading && leadAccess.data?.can_manage !== true)) ? selectedVoterId : null} onManage={() => setPublicProfileOpen(false)} onClose={() => { if (leadAccess.data?.can_manage === true) setPublicProfileOpen(false); else { setSelectedVoterId(null); onEmbeddedClose?.(); } }} />
       <Sheet open={!!selectedVoterId && leadAccess.data?.can_manage === true} onOpenChange={(open) => {
         if (!open) {
           setSelectedVoterId(null);
           setPublicProfileOpen(false);
+          if (onEmbeddedClose) { onEmbeddedClose(); return; }
           if (routeLeadId) {
             // Came in via /lead-crm/:id deep-link — return to the previous screen (inbox, dashboard, etc.)
             const returnTo = (routeLocation.state as { returnTo?: string } | null)?.returnTo;
@@ -2991,6 +2993,10 @@ const LeadCRM = ({ activityOnly = false }: { activityOnly?: boolean } = {}) => {
     </div>
   );
 };
+
+export function InboxLeadDetails({ leadId, onClose }: { leadId: string; onClose: () => void }) {
+  return <LeadCRM key={leadId} embeddedLeadId={leadId} onEmbeddedClose={onClose} />;
+}
 
 export default function LeadCRMPage({ activityOnly = false }: { activityOnly?: boolean } = {}) {
   return activityOnly ? <LeadCRM activityOnly /> : <LeadDirectionTabs><LeadCRM /></LeadDirectionTabs>;

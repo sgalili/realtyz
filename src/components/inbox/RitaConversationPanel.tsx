@@ -85,7 +85,7 @@ export function RitaConversationPanel({ kind, target }: { kind: RitaConversation
     </div>
     <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={event => { event.preventDefault(); void ask('reply'); }}>
       <Input aria-label="בקשה לריטה" placeholder="בקשה לריטה..." value={prompt} maxLength={4000} disabled={busy} onChange={event => setPrompt(event.target.value)} className="min-w-0 flex-1" />
-      {busy ? <Button type="button" size="icon" aria-label="עצירת ריטה" onClick={() => controller.current?.abort()}><Square className="h-4 w-4" /></Button> : <Button type="submit" size="icon" aria-label="שלח לריטה" disabled={!prompt.trim()}><Send className="h-4 w-4" /></Button>}
+      {busy ? <Button type="button" size="icon" aria-label="עצירת ריטה" onClick={() => controller.current?.abort()}><Square className="h-4 w-4" /></Button> : <Button type="submit" size="icon" className="h-11 w-11 shrink-0 rounded-full bg-whatsapp-header text-whatsapp-header-foreground hover:bg-whatsapp-header/90" aria-label="שלח לריטה" disabled={!prompt.trim()}><Send className="h-5 w-5" /></Button>}
     </form>
   </div>;
 }
