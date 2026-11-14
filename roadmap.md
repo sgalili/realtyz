@@ -1,5 +1,9 @@
 # Roadmap
 
+## Chat screen cleanup November 14
+- [x] Removed hero search/favorites and lead-card channel/delete/favorite icons; cards use RTL and All/Rita sit between toolbar favorites and selection/search. Waiting is removed; All still includes incoming chats.
+- [x] Authenticated populated desktop/mobile cards, All/Rita switching, inline search, selection badges/counter and favorites modal verified without page errors. Nine focused tests pass; preview build clean.
+
 ## WhatsApp attachment lookup November 14
 - [x] Media credentials match the saved receiving phone, exclude explicitly unauthorized rows and distinguish inaccessible media from provider failures. Diagnostics omit tokens/URLs; media caching is private.
 - [x] Inline loading/unavailable/retry verified on the actual August 25 attachment in the authenticated conversation, without page errors; five tests pass, function deployed and build clean.

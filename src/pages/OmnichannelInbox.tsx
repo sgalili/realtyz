@@ -158,7 +158,7 @@ const OmnichannelInbox = () => {
   const { settings: _platformSettings, update: _updatePlatformSettings } = usePlatformSettings();
   // Global autopilot lives in the page hero (affects ALL chats). It's read-only here.
   const aiAutopilot = _platformSettings.enable_ai_autopilot === true;
-  const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'handling'>('all');
   // Empty set = no channel filter (show everything). Multiple channels can be
   // toggled on at once.
   const [channelFilter, setChannelFilter] = useState<Set<string>>(new Set());
@@ -974,13 +974,6 @@ const OmnichannelInbox = () => {
     return () => clearTimeout(timer);
   }, [highlightMessageId, chatMessages]);
 
-  const waitingCount = useMemo(() => {
-    if (!voters || !lastMessages) return 0;
-    return voters.filter((v) => {
-      const m: any = lastMessages.get(v.id);
-      return m && m.direction === 'inbound';
-    }).length;
-  }, [voters, lastMessages]);
   const handlingCount = useMemo(() => {
     if (!voters || !lastMessages) return 0;
     return voters.filter((v) => {
@@ -1023,9 +1016,8 @@ const OmnichannelInbox = () => {
       }
       const doneAt = (v as any).inbox_done_at ? new Date((v as any).inbox_done_at).getTime() : 0;
       const handled = doneAt > 0 && (!m?.created_at || new Date(m.created_at).getTime() <= doneAt);
-      if ((activeTab === 'waiting' || activeTab === 'handling') && handled) return false;
+      if (activeTab === 'handling' && handled) return false;
       if (unreadOnly && (handled || m?.direction !== 'inbound')) return false;
-      if (activeTab === 'waiting') return m?.direction === 'inbound';
       if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
       if (bookmarkedOnly) return (v as any).is_bookmarked === true;
       return true;
@@ -1144,46 +1136,11 @@ const OmnichannelInbox = () => {
         <CommunityInbox key={`${user?.id}:${workspaceScope}`} active={inboxSection === 'community'} />
       </TabsContent>
       <TabsContent value="leads" forceMount className="m-0 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden data-[state=inactive]:hidden">
-      {/* Queue tabs belong to the main inbox only; bookmark stays a square control. */}
-      {!selectedVoterId && <div className="mx-auto flex w-full max-w-2xl shrink-0 items-center gap-2" dir="rtl">
-        <div className="grid h-[44px] min-w-0 flex-1 grid-cols-3 gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => { setActiveTab('all'); setSelectedVoterId(null); }}
-            style={{ fontSize: 'calc(0.875rem + 3px)' }}
-            className={`h-9 min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'all' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            כל השיחות ({totalCount})
-          </Button>
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => { setActiveTab('waiting'); setSelectedVoterId(null); }}
-            style={{ fontSize: 'calc(0.875rem + 3px)' }}
-            className={`h-9 min-w-0 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'waiting' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            ממתינות ({waitingCount})
-          </Button>
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}
-            style={{ fontSize: 'calc(0.875rem + 3px)' }}
-            className={`h-9 min-w-0 gap-1 rounded-lg px-2 py-2 font-semibold whitespace-nowrap transition ${activeTab === 'handling' ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            <RitaAvatar className="h-7 w-7 border-0 ring-0" />
-            <span>ריטה ({handlingCount})</span>
-          </Button>
-        </div>
-
-      </div>}
-
       <div className="grid min-h-0 flex-1 w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:grid-cols-[20rem_minmax(0,1fr)]">
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-h-0 min-w-0 flex-col overflow-hidden border-l bg-card`}>
-          <div className="p-3 border-b">
-            <div className="flex items-center gap-1.5" data-chat-list-toolbar dir="rtl">
+          <div className="px-1 py-2 border-b">
+            <div className="flex items-center gap-0.5" data-chat-list-toolbar dir="rtl">
               <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label={searchOpen ? 'סגירת חיפוש שיחות' : 'חיפוש שיחות'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש שיחות'} onClick={() => setSearchOpen(v => !v)}>{searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}</Button>
               <SelectModeToggle
                 closeAction
@@ -1193,7 +1150,10 @@ const OmnichannelInbox = () => {
                 className="h-11 w-11"
                 onToggle={() => { setChatSelectMode((v) => !v); setSelectedChats(new Set()); }}
               />
-              <div className="flex-1" />
+              <div role="tablist" aria-label="סוג שיחות" className="grid h-11 min-w-0 flex-1 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] items-center gap-0.5">
+                <Button role="tab" aria-selected={activeTab === 'all'} variant={activeTab === 'all' ? 'default' : 'ghost'} className="h-10 min-w-0 px-1 text-xs font-semibold" onClick={() => { setActiveTab('all'); setSelectedVoterId(null); }}>כל השיחות ({totalCount})</Button>
+                <Button role="tab" aria-selected={activeTab === 'handling'} variant={activeTab === 'handling' ? 'default' : 'ghost'} className="h-10 min-w-0 gap-1 px-1 text-xs font-semibold" onClick={() => { setActiveTab('handling'); setSelectedVoterId(null); }}><RitaAvatar className="h-5 w-5 shrink-0 border-0 ring-0" />ריטה ({handlingCount})</Button>
+              </div>
               <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0" aria-label="מועדפי שיחות" title="מועדפים" onClick={() => setFavoritesOpen(true)}><Star className="h-5 w-5" /></Button>
 
             </div>
@@ -1351,23 +1311,14 @@ const OmnichannelInbox = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -12, scale: 0.98 }}
                     transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }}
-                    dir="ltr"
+                    dir="rtl"
+                    data-chat-preview
                     onClick={() => (chatSelectMode ? toggleChat(voter.id) : setSelectedVoterId(voter.id))}
-                    className={`relative flex min-w-0 flex-row-reverse items-start gap-3 overflow-hidden px-3 py-3 ps-8 cursor-pointer border-b border-border/30 transition-colors ${isActive || selectedChats.has(voter.id) ? 'bg-accent' : 'hover:bg-muted/50'}`}
+                    className={`relative flex min-w-0 items-start gap-3 overflow-hidden px-3 py-3 cursor-pointer border-b border-border/30 transition-colors ${isActive || selectedChats.has(voter.id) ? 'bg-accent' : 'hover:bg-muted/50'}`}
                   >
                     {chatSelectMode && (
                       <SelectBox className="mt-3" checked={selectedChats.has(voter.id)} onChange={() => toggleChat(voter.id)} />
                     )}
-                    <Button variant="ghost" size="icon" className="absolute left-1 bottom-1 h-7 w-7" aria-label={favorites.has(voter.id.startsWith('phone:') ? 'message' : 'lead', voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id) ? 'הסרת שיחה מהמועדפים' : 'שמירת שיחה במועדפים'} title="מועדפים" onClick={event => { event.stopPropagation(); void favorites.toggle(voter.id.startsWith('phone:') ? 'message' : 'lead', voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id); }}><Star className={`h-3.5 w-3.5 ${favorites.has(voter.id.startsWith('phone:') ? 'message' : 'lead', voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
-                    <button
-                      type="button"
-                      onClick={(event) => { event.stopPropagation(); setDeleteTargetId(voter.id); }}
-                      aria-label="מחיקת שיחה"
-                      title="מחיקת שיחה"
-                      className="absolute left-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
                     <button
                       type="button"
                       onClick={(event) => { event.stopPropagation(); navigate(`/lead-profile/${encodeURIComponent(voter.id)}`, { state: { returnTo: window.location.pathname + window.location.search } }); }}
@@ -1378,7 +1329,7 @@ const OmnichannelInbox = () => {
                       <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
                     </button>
                     <div className="flex-1 min-w-0 text-right">
-                      <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center justify-between gap-2">
                         <span className="text-sm font-medium truncate min-w-0 text-right">
                           {voter.full_name || formatPhoneDisplay(voter.phone_number)}
                         </span>
@@ -1386,9 +1337,8 @@ const OmnichannelInbox = () => {
                           {voter.last_interaction_at ? formatDistanceToNow(new Date(voter.last_interaction_at), { addSuffix: true, locale: he }) : ''}
                         </span>
                       </div>
-                      <div className="flex flex-row-reverse items-start gap-1 mt-0.5">
+                      <div className="flex items-start gap-1 mt-0.5">
                         {lastMsg?.direction === 'outbound' && <WhatsAppTicks status={providerDeliveryStatus(lastMsg.metadata)} />}
-                        {lastMsg?.channel && <span className="shrink-0 mt-0.5"><ChannelIcon channel={lastMsg.channel} /></span>}
                         <p className={`text-xs flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2 ${unreadIncoming(lastMsg?.direction === 'inbound', previewReceipts.isRead(lastMsg?.id)) ? 'font-bold text-foreground' : 'font-normal text-muted-foreground'}`}>
                           {(voter as any)._noConversation
                             ? 'ללא שיחה פעילה — לחץ להתחלת צ׳אט'
