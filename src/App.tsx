@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { Suspense } from "react";
 import { lazyWithRetry as lazy } from "@/lib/lazyWithRetry";
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
-import { RealtyzLoader } from "@/components/RealtyzLoader";
+import { FullPageLoading as RealtyzLoader, FullPageLoadingProvider } from '@/components/ui/full-page-loading';
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { useWorkspaceFeatures } from "@/hooks/useWorkspaceFeatures";
@@ -471,6 +471,7 @@ function EarningsFeedback() { useEarningsFeedback(); return null; }
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <FullPageLoadingProvider>
     <CreditRateSync>
     <DirectionProvider dir="rtl">
       <TooltipProvider>
@@ -620,6 +621,7 @@ const App = () => (
       </TooltipProvider>
     </DirectionProvider>
     </CreditRateSync>
+    </FullPageLoadingProvider>
   </QueryClientProvider>
 );
 

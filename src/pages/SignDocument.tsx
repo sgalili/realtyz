@@ -4,6 +4,7 @@
  * shows the PDF in an iframe, captures a drawn signature, and submits.
  */
 import { useEffect, useRef, useState } from 'react';
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -184,7 +185,7 @@ export default function SignDocument() {
   if (loading) {
     return (
       <main className="min-h-screen grid place-items-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <FullPageLoading />
       </main>
     );
   }

@@ -1,4 +1,5 @@
 import { PriceInput } from "@/components/ui/price-input";
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { preserveListingFeatures } from '@/lib/adRecovery';
 import { useState, useEffect, useRef } from 'react';
 import { useHomelyConnection } from '@/hooks/useHomelyConnection';
@@ -840,11 +841,11 @@ export default function PropertyDetail() {
       : [];
     const snapPhoto = propertySnapshot?.photos?.[0] ?? null;
     return (
-      <PropertyLoadingTemplate
+      <><FullPageLoading /><PropertyLoadingTemplate
         snapshot={propertySnapshot ?? null}
         features={snapshotFeatures}
         photo={typeof snapPhoto === 'string' ? snapPhoto : null}
-      />
+      /></>
     );
   }
 

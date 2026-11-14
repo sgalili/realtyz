@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -38,7 +39,7 @@ export default function DeveloperDashboard() {
   const { activeWorkspaceId, loading } = useWorkspace();
   const navigate = useNavigate();
   const subscription = useDeveloperSubscription();
-  if (loading || (activeWorkspaceId && subscription.isLoading)) return <div role="status" className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-primary" /><span className="sr-only">בדיקת מנוי יזם</span></div>;
+  if (loading || (activeWorkspaceId && subscription.isLoading)) return <FullPageLoading />;
   if (!subscription.data?.active) return <DeveloperSubscriptionDialog open onOpenChange={open => { if (!open) navigate('/'); }} />;
   return <DeveloperDashboardContent />;
 }

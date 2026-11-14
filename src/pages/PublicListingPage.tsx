@@ -11,6 +11,7 @@
  *    degrades to a friendly card instead of a white page.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 import type { LucideIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { fmtILS } from '@/lib/formatCurrency';
@@ -358,7 +359,7 @@ function PublicListingContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary" dir="rtl">
-        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+        <FullPageLoading />
       </div>
     );
   }

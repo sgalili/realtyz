@@ -11,7 +11,7 @@ import {
   MessageCircle,
   Sparkles,
 } from "lucide-react";
-import { RealtyzLoader } from "@/components/RealtyzLoader";
+import { FullPageLoading as RealtyzLoader } from '@/components/ui/full-page-loading';
 import { officialWaLink, OFFICIAL_WABA_PHONE } from "@/lib/officialWa";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
 

@@ -6,7 +6,7 @@
 // deep links (/social-connect?connect=facebook) keep working.
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 
 export default function SocialConnect() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function SocialConnect() {
 
   return (
     <div dir="rtl" className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-muted-foreground">
-      <Loader2 className="h-4 w-4 animate-spin" />
+      <FullPageLoading />
       מעביר להגדרות החיבורים…
     </div>
   );

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { oauthRedirectUri, returnOriginFromOAuthState, storePendingOAuth } from '@/lib/oauthRedirect';
 import { isOAuthPopup, notifyOAuthOpener } from '@/lib/oauthPopupBridge';
 import { Button } from '@/components/ui/button';
-import { ToraffLoader } from '@/components/ui/toraff-loader';
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { AlertTriangle, ExternalLink } from 'lucide-react';
 import { friendlyGoogleError } from '@/lib/googleApiErrors';
 import { readEdgeError } from '@/lib/edgeError';
@@ -548,7 +548,7 @@ export default function OAuthCallback() {
     <div dir="rtl" className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
       <div className="text-center space-y-4 max-w-md w-full">
         {isLoading && !showFallback && (
-          <ToraffLoader className="mx-auto toraff-loader-lg" />
+          <FullPageLoading />
         )}
         {showFallback && (
           <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />

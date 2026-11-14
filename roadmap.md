@@ -1,5 +1,9 @@
 # Roadmap
 
+## Full-page loading scope November 14
+- [x] Restrict video to full-page overlays, restore inline spinners and reduce the 280px/18px page presentation to 140px/9px.
+- [x] Persistent overlay holds fast loads for five seconds plus a paint allowance and waits for slower loads; four timing tests pass. Authenticated import page/mobile/desktop verified, no inline videos or page errors. Hosted video supplied locally for browser verification.
+
 ## Custom loading video November 14
 - [x] Replace shared icon, legacy ring and toast spinners with the uploaded video; crop excess bottom whitespace and add the requested subtitle.
 - [x] Verify 768×220 muted looping playback, reduced-motion pause and mobile/desktop loader sizing without altering requests or permissions. Hosted assets supplied locally during browser checks; three pre-existing GroupStatusChips copy/markup assertions fail outside this change.

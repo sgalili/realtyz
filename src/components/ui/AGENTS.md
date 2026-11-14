@@ -1,2 +1,2 @@
 # Shared loading presentation
-- All loading indicators use ToraffLoader; exact lucide package aliases in Vite and tests replace loader icons and spinning refresh states, while idle icons stay original. Why: consistent loading without editing request logic.
+- FullPageLoading registers page-level requests with a persistent overlay host that holds each uninterrupted loading interval at least five seconds; inline indicators remain ordinary spinners. Why: Suspense unmounts must not bypass the minimum or delay local actions.

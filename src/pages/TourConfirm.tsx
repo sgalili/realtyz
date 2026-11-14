@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -68,7 +69,7 @@ export default function TourConfirm() {
     <div dir="rtl" className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md space-y-4 p-6 text-center">
         {loading ? (
-          <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+          <FullPageLoading />
         ) : error ? (
           <p className="text-sm text-muted-foreground">{error}</p>
         ) : tour ? (

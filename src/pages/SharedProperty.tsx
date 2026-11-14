@@ -8,6 +8,7 @@
  * Route: /share/property/:token
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { FullPageLoading } from '@/components/ui/full-page-loading';
 import { useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -140,7 +141,7 @@ export default function SharedProperty() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background" dir="rtl">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <FullPageLoading />
       </div>
     );
   }
