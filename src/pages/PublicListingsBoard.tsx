@@ -39,7 +39,6 @@ import { propertyInquiryRef } from '@/lib/propertyReferral';
 import InquiryVerificationDialog, { inquiryDeviceId, type InquiryChallenge } from '@/components/public/InquiryVerificationDialog';
 import { GuestSignupDialog } from '@/components/public/GuestSignupDialog';
 import BoardSearchOverlay, { BOARD_SEARCH_OPEN_EVENT, BOARD_SEARCH_STATE_EVENT, BOARD_VIEW_TOGGLE_EVENT, BOARD_VIEW_STATE_EVENT } from '@/components/public/BoardSearchOverlay';
-import { SortDropdown } from '@/components/ui/sort-dropdown';
 import { ViewModeSwitch } from '@/components/ui/view-mode-switch';
 import { sortListingRows, type ListingSortValue } from '@/lib/listingSortOptions';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
@@ -154,8 +153,7 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
     try { localStorage.setItem('public-board-view', next ? 'grid' : 'list'); } catch { /* ignore */ }
     return next;
   });
-  // Same sorting menu as "הנכסים שלי": the choice is kept per board visit.
-  const [sortBy, setSortBy] = useState<ListingSortValue>('newest');
+  const sortBy: ListingSortValue = 'newest';
   const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
     if (marketingOnly) return;
@@ -357,8 +355,8 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
           )}
           {/* Signed-in home: the controls bar sits right under the site title and
               above the search panel and the listings — search at the far right,
-              sorting next to the view toggle at the far left, exactly like
-              "הנכסים שלי". No count by default. The search panel grows below it,
+              view toggle at the far left. No general sort control or count.
+              The search panel grows below it,
               so this row never moves when the panel opens. */}
           <InventoryCollectionBanner />
           {embedded && (
@@ -386,7 +384,6 @@ export default function PublicListingsBoard({ embedded = false, marketingOnly = 
               </div>}
               <div className="flex shrink-0 items-center gap-0">
                 {marketingOnly && <Button type="button" size="icon" variant="ghost" className="h-8 w-9 text-muted-foreground" aria-label="חיפוש" title="חיפוש" aria-expanded={searchOpen} onClick={() => setSearchOpen(value => !value)}>{searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}</Button>}
-                {!marketingOnly && <SortDropdown value={sortBy} onChange={setSortBy} />}
                 <ViewModeSwitch isGrid={grid} onToggle={toggleGrid} />
               </div>
             </div>
