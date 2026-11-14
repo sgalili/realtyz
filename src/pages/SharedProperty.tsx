@@ -211,7 +211,7 @@ export default function SharedProperty() {
             {p.project_name ? <Badge variant="outline">{p.project_name}</Badge> : null}
           </div>
           <PublicAdHeading title={displayTitle} price={priceStr} dealType={isRent ? 'rent' : 'sale'} />
-          {p.attribution && <BrokerAttribution brokerName={p.attribution.broker_name} officeName={p.attribution.office_name} logoUrl={p.attribution.agency_logo_url} licenceNumber={p.attribution.broker_license_number} publisherKind={p.attribution.publisher_kind} dealType={p.deal_type} />}
+          {p.attribution && <BrokerAttribution listingId={p.id} brokerName={p.attribution.broker_name} officeName={p.attribution.office_name} logoUrl={p.attribution.agency_logo_url} licenceNumber={p.attribution.broker_license_number} publisherKind={p.attribution.publisher_kind} dealType={p.deal_type} />}
           {pricePerMeter && <p className="text-sm text-muted-foreground">({pricePerMeter} ₪ למ״ר)</p>}
         </section>
 

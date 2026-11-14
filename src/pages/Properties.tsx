@@ -1,3 +1,4 @@
+import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { Table } from '@/components/ui/table';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
@@ -1797,14 +1798,14 @@ export function ResultTable({
                     if (!pub) return <span className="text-muted-foreground">—</span>;
                     return (
                       <span className="inline-flex max-w-[11rem] items-center gap-1.5">
-                        {pub.logo ? (
+                        <PublicIdentityLink userId={pub.officeUserId} office>{pub.logo ? (
                           <img src={pub.logo} alt="" loading="lazy" className="h-6 w-6 shrink-0 rounded-md border border-border/60 bg-background object-contain" />
                         ) : (
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[11px] font-bold text-muted-foreground">{pub.name.slice(0, 1)}</span>
-                        )}
+                        )}</PublicIdentityLink>
                         <span className="flex min-w-0 flex-col leading-tight">
-                          <span className="truncate text-sm" title={pub.name}>{pub.name}</span>
-                          {pub.userName && pub.userName !== pub.name ? <span className="truncate text-[11px] text-muted-foreground" title={pub.userName}>{pub.userName}</span> : null}
+                          <span className="truncate text-sm" title={pub.name}><PublicIdentityLink userId={pub.officeUserId} office>{pub.name}</PublicIdentityLink></span>
+                          {pub.userName && pub.userName !== pub.name ? <span className="truncate text-[11px] text-muted-foreground" title={pub.userName}><PublicIdentityLink userId={pub.userId}>{pub.userName}</PublicIdentityLink></span> : null}
                         </span>
                       </span>
                     );

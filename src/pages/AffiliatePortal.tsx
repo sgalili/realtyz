@@ -417,7 +417,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
         )}
       </div>
 
-      <BrokerAttribution
+      <BrokerAttribution listingId={listing.listing_id}
         brokerName={listing.broker_name}
         officeName={listing.office_name}
         licenceNumber={listing.broker_license_number}
@@ -451,7 +451,7 @@ function MarketplaceCard({ listing, compact = false, referral, leadsCount, selec
       <AnimatedExpansion open={!compact || expanded}>
       <div className={`flex flex-1 flex-col gap-3 ${compact ? 'border-t p-3' : 'p-4'}`}>
         {compact ? (
-          <BrokerAttribution
+          <BrokerAttribution listingId={listing.listing_id}
             brokerName={listing.broker_name}
             officeName={listing.office_name}
             licenceNumber={listing.broker_license_number}

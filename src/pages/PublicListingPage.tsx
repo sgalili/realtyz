@@ -415,7 +415,7 @@ function PublicListingContent() {
             <PublicAdHeading title={data.title} price={formatPrice(data.price, data.dealType)} dealType={data.dealType} />
           </div>
           {/* Publisher identity always comes from the ad's owner (broker / company / private owner), never from an affiliate. */}
-          <BrokerAttribution
+          <BrokerAttribution listingId={data.id}
             brokerName={data.brokerName}
             officeName={data.officeName}
             licenceNumber={data.brokerLicenceNumber}

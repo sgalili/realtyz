@@ -15,10 +15,19 @@ export default function CommunityOfficePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const favorites = useListingFavorites();
-  const members = useQuery({ queryKey: ['community-office', user?.id, userId], enabled: !!user && !!userId, queryFn: async () => {
+  const profile = useQuery({ queryKey: ['community-office-profile', user?.id, userId], enabled: !!user && !!userId, queryFn: async () => {
+    const { data, error } = await supabase.rpc('community_profile_page', { _user: userId });
+    if (error) throw error;
+    return data?.[0] ?? null;
+  } });
+  const members = useQuery({ queryKey: ['community-office-roster', user?.id, userId], enabled: !!user && !!userId, queryFn: async () => {
     const { data, error } = await supabase.rpc('community_office_members', { _user: userId });
     if (error) throw error;
-    return data ?? [];
+    if (data?.length) return data;
+    // A known office without a matched roster still has its saved profile owner.
+    const { data: owner, error: ownerError } = await supabase.rpc('community_profile_page', { _user: userId });
+    if (ownerError) throw ownerError;
+    return owner ?? [];
   } });
   const assets = useQuery({ queryKey: ['community-office-assets', user?.id, userId], enabled: !!members.data?.length, queryFn: async () => {
     const results = await Promise.all((members.data ?? []).map(async member => {
@@ -32,7 +41,7 @@ export default function CommunityOfficePage() {
   const close = () => window.history.state?.idx > 0 ? navigate(-1) : navigate('/');
   return <main dir="rtl" data-no-hero-wave className="relative mx-auto max-w-6xl space-y-6 pb-6">
     <Button className="absolute left-0 top-0" size="icon" variant="ghost" aria-label="סגירה וחזרה לדף הקודם" onClick={close}><X className="h-5 w-5" /></Button>
-    <h1 className="pe-12 text-2xl font-bold">{members.data?.[0]?.office_name ?? 'צוות המשרד'}</h1>
+    <div className="flex items-center gap-3 ps-12">{profile.data?.logo_url && <img src={profile.data.logo_url} alt={profile.data.office_name ?? 'לוגו משרד'} className="h-16 w-16 shrink-0 object-contain" />}<h1 className="min-w-0 break-words text-2xl font-bold">{profile.data?.office_name ?? members.data?.[0]?.office_name ?? 'צוות המשרד'}</h1></div>
     {members.isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
     {members.isError && <p role="alert" className="text-destructive">טעינת צוות המשרד נכשלה</p>}
     <ul className="divide-y divide-border">{members.data?.map(member => <li key={member.id}><Button variant="ghost" className="h-auto w-full justify-start gap-3 py-3 text-start" onClick={() => navigate(`/community/profile/${encodeURIComponent(member.id)}`)}><Avatar className="h-14 w-14"><AvatarImage src={member.avatar_url ?? undefined} /><AvatarFallback>{member.full_name?.slice(0, 1)}</AvatarFallback></Avatar><span className="min-w-0"><span className="block whitespace-normal text-lg font-semibold">{member.full_name}</span><span className="text-muted-foreground">{ROLE_BADGE[member.category] ?? 'משתמש'} {member.license_number}</span></span></Button></li>)}</ul>

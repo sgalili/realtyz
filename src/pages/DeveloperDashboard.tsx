@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, ChevronDown, ExternalLink, FileDown, Layers, Loader2, Pencil, Trash2, Megaphone, Globe, Settings2 } from 'lucide-react';
@@ -157,8 +158,8 @@ export default function DeveloperDashboard() {
       : projects.length === 0 ? <section className="flex flex-col items-center gap-3 py-16 text-center"><Building2 className="h-12 w-12 text-muted-foreground/50" /><h2 className="text-xl font-semibold">עדיין אין פרויקטים</h2><p className="text-base text-muted-foreground">ייבוא הפרויקטים מיד2 נשמר אחרי לחיצה על ״אישור ושמירה״.</p><div className="flex gap-2"><Button onClick={() => setMode('import')}><FileDown className="h-4 w-4" />ייבוא מיד2</Button><Button variant="outline" onClick={() => { setEditing(undefined); setMode('manual'); }}><Pencil className="h-4 w-4" />יצירה ידנית</Button></div></section>
       : <>
         <div className="flex items-center gap-3">
-          {companies[0]?.logo_url && <img src={companies[0].logo_url} alt="לוגו החברה" className="h-10 w-10 rounded object-contain" />}
-          <span className="min-w-0 flex-1 truncate font-semibold">{companies[0]?.company_name}</span>
+          {companies[0]?.logo_url && <PublicIdentityLink userId={companies[0].owner_user_id} label={`פתיחת הפרופיל של ${companies[0].company_name}`}><img src={companies[0].logo_url} alt="לוגו החברה" className="h-10 w-10 rounded object-contain" /></PublicIdentityLink>}
+          <PublicIdentityLink userId={companies[0]?.owner_user_id} className="min-w-0 flex-1 truncate font-semibold">{companies[0]?.company_name}</PublicIdentityLink>
           <span aria-label="סך הפרויקטים" className="shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-sm font-semibold">{projects.length} פרויקטים</span>
           <Button variant="ghost" size="sm" onClick={() => setMode('import')}><FileDown className="h-4 w-4" />סנכרון מיד2</Button>
         </div>

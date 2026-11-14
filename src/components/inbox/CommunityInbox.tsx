@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { useSearchParams } from 'react-router-dom';
 
 type Card = { id: string; full_name: string | null; category: string; office_name: string | null; license_number: string | null };
@@ -193,7 +194,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
       {!peer ? <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"><MessageCircle className="h-10 w-10" /><span>מועדון הקהילה</span></div> : <>
         <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-border px-3">
           <Button size="icon" variant="ghost" aria-label="חזרה לשיחות הקהילה" className="lg:hidden" onClick={() => setPeer(null)}><ArrowRight className="h-5 w-5" /></Button>
-          <button type="button" className="min-w-0 flex-1 text-start hover:underline" aria-label="פתיחת פרופיל ציבורי" onClick={() => setProfileId(peer.id)}><Identity id={peer.id} name={peer.full_name} /></button>
+          <div className="min-w-0 flex-1 text-start"><PublicIdentityLink userId={peer.id} label="פתיחת פרופיל ציבורי" className="block"><span className="font-semibold">{cards.data?.get(peer.id)?.full_name ?? peer.full_name}</span>{cards.data?.get(peer.id) && <Badge variant="secondary" className="ms-2">{ROLE_BADGE[cards.data.get(peer.id)?.category ?? ''] ?? 'משתמש'}</Badge>}</PublicIdentityLink><span className="block truncate text-xs text-muted-foreground"><PublicIdentityLink userId={peer.id} office>{cards.data?.get(peer.id)?.office_name}</PublicIdentityLink>{cards.data?.get(peer.id)?.license_number && <span className="ms-2">{cards.data.get(peer.id)?.license_number}</span>}</span></div>
           <DealTermsDialog peerId={peer.id} peerName={cards.data?.get(peer.id)?.full_name ?? peer.full_name} />
           <Button size="icon" variant="ghost" aria-label={blocked ? 'הסרת חסימה' : 'חסימת משתמש'} title={blocked ? 'הסרת חסימה' : 'לא מעוניין לקבל יותר הודעות ממשתמש זה'} onClick={() => setBlockOpen(true)}><Ban className={`h-5 w-5 ${blocked ? 'text-destructive' : ''}`} /></Button>
           <RitaChatButton kind="peer" target={peer.id} />

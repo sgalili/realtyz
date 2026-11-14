@@ -1,5 +1,9 @@
 # Roadmap
 
+## Global publisher profile links November 14
+- [x] Shared cards/table publishers, expanded/standalone/shared details and legacy affiliate cards link through authorized original identity targets; imported ads require unique source-evidenced license mapping, never importer/name guesses. Managed search publisher links retain matching office/user IDs from authorized records. Developer company displays use saved owner_user_id.
+- [x] Existing directory/person links retained; chat office text and profile office logo/name linked with separate actions. Office pages show saved branding and authorized owner when no matched roster exists. Eleven focused tests pass; real homepage publisher/profile and populated office logo/member/close-return checked desktop/mobile without page errors. Existing profile access still requires sign-in; private/unmapped external advertisers remain unlinked, no contacts exposed.
+
 ## Global expanded property scrolling and profile mode November 14
 - [x] Remove global expanded-row horizontal lock; shared fixed bodies preserve horizontal column position on reveal, and new summary touch gestures clear prior body locks. Legacy property notes also use the fixed viewport panel.
 - [x] Ten scrolling/reveal tests pass; authenticated populated profile reload/list-grid-list/inline expansion and real homepage native header wheel scrolling checked at 1280×1800 and 411×801: columns move 180px, body X/width stay fixed, no page errors. All inline property tables share the corrected owner; card-only lists stay in page flow.

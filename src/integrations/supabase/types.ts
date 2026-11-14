@@ -10551,6 +10551,14 @@ export type Database = {
           leads: number
         }[]
       }
+      get_listing_profile_targets: {
+        Args: { _listing_ids: string[] }
+        Returns: {
+          listing_id: string
+          office_user_id: string
+          profile_user_id: string
+        }[]
+      }
       get_listing_publishers: {
         Args: { _listing_ids: string[] }
         Returns: {

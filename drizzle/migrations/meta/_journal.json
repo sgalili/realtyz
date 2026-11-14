@@ -1268,6 +1268,13 @@
       "when": 1794616696607,
       "tag": "0180_count_completed_distribution_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 181,
+      "version": "7",
+      "when": 1794617479530,
+      "tag": "0181_listing_public_profile_targets",
+      "breakpoints": true
     }
   ]
 }

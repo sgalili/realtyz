@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building2, ExternalLink, Pencil, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +28,7 @@ import { toast } from 'sonner';
 type Developer = {
   id: string;
   workspace_owner_id: string;
+  owner_user_id?: string | null;
   company_name: string;
   phone: string | null;
   source_url: string | null;
@@ -199,7 +201,7 @@ export default function Developers() {
             ) : (
               filtered.map((d) => (
                 <TableRow key={d.id}>
-                  <TableCell className="font-medium">{d.company_name}</TableCell>
+                  <TableCell className="font-medium"><PublicIdentityLink userId={d.owner_user_id}>{d.company_name}</PublicIdentityLink></TableCell>
                   <TableCell>{d.first_project_name || '—'}</TableCell>
                   <TableCell>
                     {d.first_project_units != null ? d.first_project_units.toLocaleString('he-IL') : '—'}

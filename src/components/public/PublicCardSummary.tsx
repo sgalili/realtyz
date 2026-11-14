@@ -25,7 +25,7 @@ export function PublicCardPublisher({ card }: { card: PublicCard }) {
     },
   });
   const publisher = card.attribution;
-  return <BrokerAttribution table compact brokerName={publisher?.broker_name ?? data?.listing.brokerName} officeName={publisher?.office_name ?? data?.listing.officeName} logoUrl={publisher?.agency_logo_url ?? data?.listing.agencyLogoUrl} publisherKind={publisher?.publisher_kind ?? data?.listing.publisherKind} dealType={card.deal_type} />;
+  return <BrokerAttribution listingId={card.id} table compact brokerName={publisher?.broker_name ?? data?.listing.brokerName} officeName={publisher?.office_name ?? data?.listing.officeName} logoUrl={publisher?.agency_logo_url ?? data?.listing.agencyLogoUrl} publisherKind={publisher?.publisher_kind ?? data?.listing.publisherKind} dealType={card.deal_type} />;
 }
 
 export default function PublicCardSummary({ card, price, showBroker = true, showCommissions = true, dense = false }: { card: PublicCard; price?: string; showBroker?: boolean; showCommissions?: boolean; dense?: boolean }) {
@@ -45,6 +45,6 @@ export default function PublicCardSummary({ card, price, showBroker = true, show
   const publisher = card.attribution;
   return <div className="space-y-2">
     <PublicAdHeading compact dense={dense} title={data?.listing.title || publicAdTitle(card)} price={price} dealType={card.deal_type} />
-    {showBroker && <BrokerAttribution compact brokerName={publisher?.broker_name ?? data?.listing.brokerName} officeName={publisher?.office_name ?? data?.listing.officeName} licenceNumber={publisher?.broker_license_number ?? data?.listing.brokerLicenceNumber} logoUrl={publisher?.agency_logo_url ?? data?.listing.agencyLogoUrl} publisherKind={publisher?.publisher_kind ?? data?.listing.publisherKind} dealType={card.deal_type} trailing={showCommissions ? <PropertyCommissionIcons listingId={card.id} raw={data?.raw ?? { reward_types: card.reward_types, closing_level: card.closing_level }} facts={{ reward_levels: card.reward_levels, closing_level: card.closing_level, reward_types: card.reward_types }} /> : undefined} />}
+    {showBroker && <BrokerAttribution listingId={card.id} compact brokerName={publisher?.broker_name ?? data?.listing.brokerName} officeName={publisher?.office_name ?? data?.listing.officeName} licenceNumber={publisher?.broker_license_number ?? data?.listing.brokerLicenceNumber} logoUrl={publisher?.agency_logo_url ?? data?.listing.agencyLogoUrl} publisherKind={publisher?.publisher_kind ?? data?.listing.publisherKind} dealType={card.deal_type} trailing={showCommissions ? <PropertyCommissionIcons listingId={card.id} raw={data?.raw ?? { reward_types: card.reward_types, closing_level: card.closing_level }} facts={{ reward_levels: card.reward_levels, closing_level: card.closing_level, reward_types: card.reward_types }} /> : undefined} />}
   </div>;
 }

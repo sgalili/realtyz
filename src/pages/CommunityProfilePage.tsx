@@ -18,6 +18,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { publicAdTitle } from '@/lib/publicAdPresentation';
 import { ProfileAssetMenu } from '@/components/community/ProfileAssetActions';
 import { ROLE_BADGE } from '@/components/inbox/CommunityDirectory';
+import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
 
 export const communityProfilePath = (id: string) => `/community/profile/${encodeURIComponent(id)}`;
 
@@ -91,8 +92,8 @@ export default function CommunityProfilePage() {
         </div>
       </div>
       {(p.office_name || p.logo_url) && <div className="mx-auto flex w-full max-w-2xl items-center gap-4 rounded-md bg-muted/40 p-4">
-        {p.logo_url ? <img src={p.logo_url} alt={p.office_name ? `לוגו ${p.office_name}` : 'לוגו משרד'} className="h-20 w-20 shrink-0 bg-background object-contain p-1" /> : <Building2 className="h-12 w-12 shrink-0 text-muted-foreground" />}
-        <div className="min-w-0 flex-1 space-y-1"><h3 className="break-words text-lg font-bold">{p.office_name}</h3>{p.city && <p className="text-base text-muted-foreground">{p.city}</p>}</div>
+        <PublicIdentityLink userId={userId} office={p.category !== 'developer'} className="shrink-0" label={`פתיחת ${p.office_name ?? 'המשרד'}`}>{p.logo_url ? <img src={p.logo_url} alt={p.office_name ? `לוגו ${p.office_name}` : 'לוגו משרד'} className="h-20 w-20 bg-background object-contain p-1" /> : <Building2 className="h-12 w-12 text-muted-foreground" />}</PublicIdentityLink>
+        <div className="min-w-0 flex-1 space-y-1"><h3 className="break-words text-lg font-bold"><PublicIdentityLink userId={userId} office={p.category !== 'developer'}>{p.office_name}</PublicIdentityLink></h3>{p.city && <p className="text-base text-muted-foreground">{p.city}</p>}</div>
         {(office.data?.length ?? 0) > 1 && <Button variant="ghost" size="icon" aria-label="למשרד ולצוות" title="למשרד ולצוות" onClick={() => navigate(`/community/office/${encodeURIComponent(userId)}`)}><ArrowUpLeft className="h-5 w-5" /></Button>}
       </div>}
       <Dialog open={imageOpen} onOpenChange={setImageOpen}><DialogContent data-fullscreen className="!h-[100dvh] !w-screen !max-w-none !rounded-none border-0 bg-background p-4 pt-14 shadow-none" aria-describedby={undefined}><DialogTitle className="sr-only">תמונת הפרופיל של {p.full_name}</DialogTitle>{p.avatar_url && <img src={p.avatar_url} alt={p.full_name ?? ''} className="h-full max-h-[calc(100dvh-5rem)] w-full object-contain" />}</DialogContent></Dialog>

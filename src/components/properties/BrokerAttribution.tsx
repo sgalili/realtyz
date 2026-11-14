@@ -2,8 +2,10 @@ import { Award, Building2, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { advertiserText } from '@/lib/advertiserIdentity';
+import { ListingIdentityLink } from '@/components/community/ListingIdentityLink';
 
 type BrokerAttributionProps = {
+  listingId?: string | null;
   brokerName?: string | null;
   officeName?: string | null;
   licenceNumber?: string | null;
@@ -19,6 +21,7 @@ type BrokerAttributionProps = {
 };
 
 export default function BrokerAttribution({
+  listingId,
   brokerName,
   officeName,
   licenceNumber,
@@ -38,17 +41,17 @@ export default function BrokerAttribution({
 
   return (
     <div data-publisher-attribution className={`flex min-w-0 items-center gap-2 ${table ? '' : 'border-y bg-muted/30'} ${compact ? 'px-2 py-2' : 'px-4 py-3'}`}>
-      {isPrivate ? <Avatar className={compact ? 'h-9 w-9' : 'h-12 w-12'}>{logoUrl && <AvatarImage src={logoUrl} alt={broker} className="object-cover" />}<AvatarFallback><UserRound className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" /></AvatarFallback></Avatar> : <div className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
+      {isPrivate ? <Avatar className={compact ? 'h-9 w-9' : 'h-12 w-12'}>{logoUrl && <AvatarImage src={logoUrl} alt={broker} className="object-cover" />}<AvatarFallback><UserRound className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" /></AvatarFallback></Avatar> : <ListingIdentityLink listingId={listingId} office={!!office} label={`פתיחת ${office ? 'המשרד של' : 'הפרופיל של'} ${office || broker}`} className={`${compact ? 'h-9 w-9' : 'h-12 w-12'} grid shrink-0 place-items-center overflow-hidden rounded-md border bg-background`}>
         {logoUrl ? (
           <img src={logoUrl} alt={`לוגו ${office}`} loading="lazy" className="h-full w-full object-contain p-1" />
         ) : (
           <Building2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         )}
-      </div>}
+      </ListingIdentityLink>}
       <div className="min-w-0 flex-1 text-right">
-        {(broker || office) && <p title={broker || office} className={`${compact ? 'text-xs' : 'text-sm'} whitespace-normal break-words font-bold text-foreground`}>{broker || office}</p>}
+        {(broker || office) && <p title={broker || office} className={`${compact ? 'text-xs' : 'text-sm'} whitespace-normal break-words font-bold text-foreground`}>{isPrivate ? broker || office : <ListingIdentityLink listingId={listingId} office={!broker && !!office}>{broker || office}</ListingIdentityLink>}</p>}
         {(isPrivate || office || license) && <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          {!isPrivate && office && broker && <span title={office} className="min-w-0 whitespace-normal break-words">{office}</span>}
+          {!isPrivate && office && broker && <ListingIdentityLink listingId={listingId} office className="min-w-0 whitespace-normal break-words">{office}</ListingIdentityLink>}
           {license && <span className="shrink-0 whitespace-nowrap">{office ? '· ' : ''}<bdi dir="ltr">{license}</bdi></span>}
         </div>}
         {exclusive && !guestStack && (

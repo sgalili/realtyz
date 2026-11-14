@@ -4,11 +4,14 @@ import { useWorkspace } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeListing } from '@/pages/PublicListingPage';
 import { advertiserText } from '@/lib/advertiserIdentity';
+import { PublicIdentityLink } from '@/components/community/PublicIdentityLink';
+import { useListingProfileTargets } from '@/hooks/useListingProfileTargets';
 
 /** Original advertiser from the same authorized projection used by property details. */
 export default function PropertyAdvertiserHeader({ listingId }: { listingId: string }) {
   const { user } = useAuth();
   const { activeWorkspaceId, loading } = useWorkspace();
+  const { data: targets } = useListingProfileTargets(listingId);
   const { data: fallback } = useQuery({
     queryKey: ['property-edit-brand-fallback', user?.id, activeWorkspaceId],
     enabled: !!user && !loading,
@@ -41,11 +44,11 @@ export default function PropertyAdvertiserHeader({ listingId }: { listingId: str
   };
   if (!display.officeName && !display.brokerName && !display.agencyLogoUrl && !display.brokerLicenceNumber) return null;
   return <div data-testid="property-advertiser-header" className="flex min-w-0 items-center gap-3" dir="rtl">
-    {display.agencyLogoUrl && <img src={display.agencyLogoUrl} alt={display.officeName || ''} className="h-12 w-16 shrink-0 object-contain" />}
+    {display.agencyLogoUrl && <PublicIdentityLink office userId={advertiser?.agencyLogoUrl ? targets?.office_user_id : user?.id}><img src={display.agencyLogoUrl} alt={display.officeName || ''} className="h-12 w-16 shrink-0 object-contain" /></PublicIdentityLink>}
     <div className="min-w-0 space-y-1">
-      {display.officeName && <p className="break-words text-base font-semibold text-foreground">{display.officeName}</p>}
+      {display.officeName && <p className="break-words text-base font-semibold text-foreground"><PublicIdentityLink office userId={advertiser?.officeName ? targets?.office_user_id : user?.id}>{display.officeName}</PublicIdentityLink></p>}
       {(display.brokerName || display.brokerLicenceNumber) && <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
-        {display.brokerName && <span>{display.brokerName}</span>}
+        {display.brokerName && <PublicIdentityLink userId={advertiser?.brokerName ? targets?.profile_user_id : user?.id}>{display.brokerName}</PublicIdentityLink>}
         {display.brokerLicenceNumber && <span dir="ltr">{display.brokerLicenceNumber}</span>}
       </p>}
     </div>
