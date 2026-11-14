@@ -476,7 +476,7 @@ button.publication-limit-link:focus-visible {
   .toraff-loader-media { display: block; width: 100%; aspect-ratio: 192 / 55; overflow: hidden; }
   .toraff-loader-media :is(video, img) { display: block; width: 100%; height: 100%; object-fit: contain; }
   .toraff-loader-subtitle { display: block; max-width: 100%; font-size: 15.6px; font-weight: 700; line-height: 1.25; text-align: center; color: hsl(var(--loader-ink)); padding: 0 1.5px 1.5px; }
-  .toraff-page-loading-overlay { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: center; justify-content: center; background: hsl(var(--loader-surface) / 0.85); pointer-events: auto; opacity: 1; transition: opacity 1500ms ease-in-out; }
+  .toraff-page-loading-overlay { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: center; justify-content: center; background: hsl(var(--loader-surface)); pointer-events: auto; opacity: 1; transition: opacity 1500ms ease-in-out; }
   .toraff-page-loading-overlay-exiting { opacity: 0; }
   @media (prefers-reduced-motion: reduce) {
     .toraff-page-loading-overlay { transition: none; }
