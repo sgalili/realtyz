@@ -1,7 +1,7 @@
 import { PublicListingPublisher } from '@/components/public/PublicListingPublisher';
 import { Table } from '@/components/ui/table';
 import PublicAdHeading from '@/components/public/PublicAdHeading';
-import { HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
+import { FixedTablePanel, HorizontalTableScroll } from '@/components/ui/horizontal-table-scroll';
 import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { returnState } from "@/lib/returnNav";
 import { useExclusiveExpansion } from '@/hooks/useExclusiveExpansion';
@@ -1825,8 +1825,8 @@ export function ResultTable({
               </tr>
               {rowNotes && rowNotes.length > 0 && (
                 <tr className="border-t-0 bg-muted/20">
-                  <td className="px-2 pb-2" colSpan={30}>
-                    <PropertyNotesBlock notes={rowNotes} />
+                  <td className="p-0" colSpan={11 + Number(selectionMode && results.length > 0) + Number(showCommissionColumn) + Number(showPublisherColumn) + Number(!hideDefaultActions || !!endActions || showAffiliateColumn)}>
+                    <FixedTablePanel className="px-2 pb-2"><PropertyNotesBlock notes={rowNotes} /></FixedTablePanel>
                   </td>
                 </tr>
               )}

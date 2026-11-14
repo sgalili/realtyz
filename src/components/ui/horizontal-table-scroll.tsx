@@ -46,7 +46,12 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
       };
       // Touch gestures lock to the first dominant axis; the other axis is held in place.
       let gesture: { x: number; y: number; left: number; top: number; axis: 'x' | 'y' | null; panel: boolean } | null = null;
+      let releaseTimer: ReturnType<typeof setTimeout> | undefined;
       const start = (event: TouchEvent) => {
+        // A new header gesture must not inherit a body's previous momentum lock.
+        clearTimeout(releaseTimer);
+        element.style.overflowX = '';
+        element.style.overflowY = '';
         if (event.touches.length !== 1) { gesture = null; return; }
         const t = event.touches[0];
         gesture = { x: t.clientX, y: t.clientY, left: element.scrollLeft, top: element.scrollTop, axis: null, panel: event.target instanceof HTMLElement && !!event.target.closest('[data-table-fixed-panel]') };
@@ -67,7 +72,6 @@ export const HorizontalTableScroll = forwardRef<HTMLDivElement, HTMLAttributes<H
         }
         updatePanels();
       };
-      let releaseTimer: ReturnType<typeof setTimeout> | undefined;
       const end = () => {
         // Keep the lock through momentum, then release.
         clearTimeout(releaseTimer);

@@ -1,5 +1,9 @@
 # Roadmap
 
+## Global expanded property scrolling and profile mode November 14
+- [x] Remove global expanded-row horizontal lock; shared fixed bodies preserve horizontal column position on reveal, and new summary touch gestures clear prior body locks. Legacy property notes also use the fixed viewport panel.
+- [x] Ten scrolling/reveal tests pass; authenticated populated profile reload/list-grid-list/inline expansion and real homepage native header wheel scrolling checked at 1280×1800 and 411×801: columns move 180px, body X/width stay fixed, no page errors. All inline property tables share the corrected owner; card-only lists stay in page flow.
+
 ## Lead details and distribution backlog November 14
 - [x] Direct authorized lead details from CRM/inbox; optional public profile closes back to mounted details. Real lead checked desktop/mobile; community behavior unchanged.
 - [x] Existing Facebook group queue reserves sequential days/slots against group/page/account caps, posted counters/completed jobs and pending reservations; existing worker tick checks due backlog.

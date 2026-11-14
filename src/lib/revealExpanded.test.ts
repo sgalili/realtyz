@@ -36,6 +36,19 @@ describe('expanded property table scrolling', () => {
     revealExpanded(document.getElementById('content'));
     expect(scrollTo).toHaveBeenCalledExactlyOnceWith({ top: 0, behavior: 'smooth' });
   });
+  it('preserves horizontally selected columns when revealing a fixed expanded body', () => {
+    const scrollTo = setup(340, 120);
+    const scroll = document.querySelector<HTMLElement>('[data-table-scroll]');
+    const content = document.getElementById('content');
+    if (!scroll || !content) throw new Error('Missing fixture');
+    content.parentElement?.setAttribute('data-table-fixed-panel', '');
+    scroll.style.overflowX = 'auto';
+    Object.defineProperties(scroll, { scrollWidth: { value: 1000 }, clientWidth: { value: 400 } });
+    scroll.scrollLeft = -180;
+    revealExpanded(content);
+    expect(scroll.scrollLeft).toBe(-180);
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith({ top: 302, behavior: 'smooth' });
+  });
   it('anchors a card below its own scrolling container instead of moving the document', () => {
     document.body.innerHTML = '<main style="overflow-y:auto"><article><h2>Property title</h2><div id="content">Details</div></article></main>';
     const owner = document.querySelector('main');

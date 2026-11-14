@@ -28,9 +28,11 @@ export default function CommunityProfilePage() {
   const { activeWorkspaceId, setActiveWorkspace } = useWorkspace();
   const favorites = useListingFavorites();
   const { isSuperAdmin } = useUserRole();
-  const [view, setView] = useState<'list' | 'grid'>('list');
+  const viewScope = `${user?.id ?? 'guest'}:${userId}`;
+  const [display, setDisplay] = useState<{ scope: string; view: 'list' | 'grid' }>({ scope: viewScope, view: 'list' });
+  const view = display.scope === viewScope ? display.view : 'list';
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  useEffect(() => { setView('list'); setExpandedId(null); }, [user?.id, userId]);
+  useEffect(() => { setDisplay({ scope: viewScope, view: 'list' }); setExpandedId(null); }, [viewScope]);
   const [imageOpen, setImageOpen] = useState(false);
   const profile = useQuery({
     queryKey: ['community-profile-page', user?.id, userId], enabled: !!user && !!userId,
@@ -103,7 +105,7 @@ export default function CommunityProfilePage() {
     </section>}
     {p && <section className="space-y-3">
       <div className="flex items-center justify-between gap-2"><h2 className="min-w-0 text-xl font-bold">{listingIds.isLoading || feed.isLoading || listingIds.isError || feed.isError ? '' : `${cards.length} `}נכסים פעילים לשיתוף פעולה</h2>
-        <ViewModeSwitch isGrid={view === 'grid'} className="!h-11 !w-11" onToggle={() => { setView(current => current === 'list' ? 'grid' : 'list'); setExpandedId(null); }} />
+        <ViewModeSwitch isGrid={view === 'grid'} className="!h-11 !w-11" onToggle={() => { setDisplay(current => ({ scope: viewScope, view: current.scope === viewScope && current.view === 'grid' ? 'list' : 'grid' })); setExpandedId(null); }} />
       </div>
       {(listingIds.isLoading || feed.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />}
       {(listingIds.isError || feed.isError) && <p role="alert" className="text-destructive">טעינת הנכסים נכשלה</p>}

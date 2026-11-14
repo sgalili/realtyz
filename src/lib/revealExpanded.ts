@@ -6,10 +6,10 @@ export function revealExpanded(content: Element | null) {
   if (!content || typeof window === 'undefined') return;
   const card = (content.parentElement ?? content) as HTMLElement;
   const reducedH = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  // Horizontally scrolled tables: always return to the table's starting edge
-  // (scrollLeft 0 is the start edge in both LTR and RTL in modern browsers).
+  // Fixed table bodies are already in the viewport; preserve the chosen columns.
+  const fixedPanel = card.closest('[data-table-fixed-panel]');
   let movedH = false;
-  for (let el = card.parentElement; el; el = el.parentElement) {
+  for (let el = fixedPanel ? null : card.parentElement; el; el = el.parentElement) {
     if (el.scrollWidth > el.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(el).overflowX) && el.scrollLeft !== 0) {
       movedH = true;
       el.scrollTo({ left: 0, behavior: reducedH ? 'auto' : 'smooth' });
