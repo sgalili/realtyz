@@ -20,6 +20,7 @@ import { BrokerBatchImportCard } from '@/components/admin/BrokerBatchImportCard'
 import { BrokerContactQueueCard } from '@/components/admin/BrokerContactQueueCard';
 import { SuperAdminDeleteUsersCard } from '@/components/admin/SuperAdminDeleteUsersCard';
 import { SuperAdminUsersTable } from '@/components/admin/SuperAdminUsersTable';
+import { BrokerEmailBatchCard } from '@/components/admin/BrokerEmailInvitations';
 import { DeletedAccountsArchive } from '@/components/admin/DeletedAccountsArchive';
 import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
 import { ScrapingUsageReport } from '@/components/admin/ScrapingUsageReport';
@@ -148,6 +149,7 @@ const SuperAdmin = () => {
       {section === 'users' && (
         <div className="space-y-4">
           <BrokerUpgradeRequestsCard />
+          <BrokerEmailBatchCard />
           <SuperAdminUsersTable />
         </div>
       )}

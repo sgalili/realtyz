@@ -48,7 +48,7 @@ export function OfficialBrokerInvitationDialog({ broker }: { broker: { id: strin
   const status = state.data?.status;
   const labels: Record<string, string> = { NOT_REGISTERED: 'הנוסח טרם הוגש ל-Meta', PENDING: 'ממתין לאישור Meta', APPROVED: 'תבנית מאושרת', REJECTED: 'Meta דחתה את התבנית', PAUSED: 'התבנית מושהית', DISABLED: 'התבנית אינה פעילה' };
   return <>
-    <Button variant="outline" size="sm" className="h-auto min-h-8 whitespace-normal text-right" onClick={() => { setOpen(true); setText(BROKER_TEMPLATE_BODY); setConsent(false); setFeedback(''); requestId.current = crypto.randomUUID(); }}><Send className="h-4 w-4 shrink-0" />שליחה רשמית דרך WhatsApp API</Button>
+    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="שליחת הזמנה רשמית ב־WhatsApp" title="שליחת הזמנה רשמית ב־WhatsApp" onClick={() => { setOpen(true); setText(BROKER_TEMPLATE_BODY); setConsent(false); setFeedback(''); requestId.current = crypto.randomUUID(); }}><Send className="h-4 w-4 shrink-0" /></Button>
     <Dialog open={open} onOpenChange={value => { if (!mutation.isPending) setOpen(value); }}><DialogContent dir="rtl" className="w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] overflow-y-auto text-right">
       <DialogHeader><DialogTitle>הזמנה רשמית ל־{broker.full_name || 'מתווך'}</DialogTitle><DialogDescription>שליחה ממספר WhatsApp Business הרשמי {sender.data ? `+${sender.data}` : ''}. שינוי בנוסח מחייב אישור Meta מחדש; הודעת הזמנה עשויה להיות בתשלום.</DialogDescription></DialogHeader>
       {onboarding.data && <p role="status" className="text-sm text-primary">{BROKER_STAGE_LABELS[onboarding.data.stage]}{onboarding.data.pending_properties > 0 ? ` · ${onboarding.data.pending_properties} נכסים לבדיקה` : ''}</p>}

@@ -111,8 +111,8 @@ function ManagedHeaderCell({ cell, index, label, ctx }: { cell: React.ReactEleme
   });
 }
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement> & { sortable?: boolean }>(
-  ({ className, children, sortable = true, ...props }, ref) => {
+const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement> & { sortable?: boolean; scrollMode?: 'table' | 'page' }>(
+  ({ className, children, sortable = true, scrollMode = 'table', ...props }, ref) => {
     const { user } = useAuth();
     const { activeWorkspaceId } = useWorkspace();
 
@@ -222,6 +222,11 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
       </table>
     );
 
+    const managedTable = canArrange ? (
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={visible.map(String)} strategy={horizontalListSortingStrategy}>{table}</SortableContext>
+      </DndContext>
+    ) : table;
     return (
       <div className="group/table relative min-w-0 w-full max-w-full">
         {canArrange && (
@@ -251,13 +256,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
             </DropdownMenu>
           </div>
         )}
-        <HorizontalTableScroll>
-          {canArrange ? (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={visible.map(String)} strategy={horizontalListSortingStrategy}>{table}</SortableContext>
-            </DndContext>
-          ) : table}
-        </HorizontalTableScroll>
+        {scrollMode === 'page' ? managedTable : <HorizontalTableScroll>{managedTable}</HorizontalTableScroll>}
       </div>
     );
   },

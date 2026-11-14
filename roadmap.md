@@ -1,5 +1,10 @@
 # Roadmap
 
+## User management refinements November 14
+- [x] Email invitations follow upgrade requests; empty queues hide, query failures remain visible. Toolbar and invitation/consent row actions use labeled icons.
+- [x] Expandable search includes saved-role/access/gender filters and active-only clear; shared Table page mode removes nested scroll ownership while retaining column customization and native sticky headers.
+- [x] Nine focused tests pass; authenticated 14-user desktop/mobile page verified search/clear/filter window, add-user open/close, no empty cards or runtime errors. Mobile page scrolled 521px from inside table, pinned heading and final row reachable; no accounts or messages changed.
+
 ## Wallet top-up cleanup November 14
 - [x] Removed gateway credentials/testing controls and saved-card setup from customer top-up; Z-Credit configuration is mounted only under Super Admin payments.
 - [x] Added all five method choices and minimal amount/provider-declared customer fields plus receipt mobile; single secure-payment action opens hosted Grow checkout.

@@ -10,6 +10,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { BrokerRegistryNameButton } from './BrokerRegistryNameButton';
 import { mayFetchRegistryInReview } from '@/lib/brokerProfilePolicy';
 import { registryDisplayName } from '../../../supabase/functions/_shared/brokerRegistry';
+import { hasNewAdminItems } from '@/lib/adminUserFilters';
 
 type Req = { id: string; user_id: string; license_number: string; registry_holder_name: string | null; certificate_name: string | null; certificate_path: string | null; created_at: string };
 
@@ -20,7 +21,7 @@ export function BrokerUpgradeRequestsCard() {
   const [busy, setBusy] = useState<string | null>(null);
   const [fetchedIds, setFetchedIds] = useState<string[]>([]);
   type Row = Req & { certUrl: string | null; profile?: { full_name?: string; email?: string; phone?: string } };
-  const { data = [], isLoading } = useQuery({
+  const { data = [], isLoading, isError } = useQuery({
     queryKey: ['admin-broker-upgrade-requests'],
     enabled: isSuperAdmin,
     queryFn: async () => {
@@ -49,6 +50,8 @@ export function BrokerUpgradeRequestsCard() {
     finally { setBusy(null); }
   };
   if (!isSuperAdmin) return null;
+  if (isError) return <p role="alert" className="text-destructive">לא ניתן לטעון בקשות שדרוג למתווך</p>;
+  if (isLoading || !hasNewAdminItems(data.length)) return null;
   return <Card dir="rtl">
     <CardHeader><CardTitle className="text-right">בקשות שדרוג למתווך מורשה ({data.length})</CardTitle></CardHeader>
     <CardContent className="space-y-3">

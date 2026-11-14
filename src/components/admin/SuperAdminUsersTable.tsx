@@ -15,13 +15,14 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { SelectBox, SelectModeToggle } from '@/components/ui/multi-select-controls';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
-import { Trash2, Pencil, Check, BadgeCheck, UserPlus, ChevronUp } from 'lucide-react';
+import { Trash2, Pencil, Check, BadgeCheck, UserPlus, ChevronUp, Search, X, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrokerInvitationDialog } from './BrokerInvitationDialog';
 import { OfficialBrokerInvitationDialog } from './OfficialBrokerInvitationDialog';
-import { BrokerEmailBatchCard, BrokerEmailConsentButton, useBrokerEmailStates } from './BrokerEmailInvitations';
+import { BrokerEmailConsentButton, useBrokerEmailStates } from './BrokerEmailInvitations';
 import { BROKER_STAGE_LABELS, type BrokerOnboardingStatus } from '@/lib/brokerOnboarding';
 import { UserCreditBalanceEditor } from './UserCreditBalanceEditor';
+import { emptyAdminUserFilters, matchesAdminUser, type AdminUserFilters } from '@/lib/adminUserFilters';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'סופר אדמין', admin: 'מנהל', moderator: 'מנחה', managing_broker: 'מתווך מנהל', agent: 'סוכן',
@@ -38,6 +39,9 @@ export function SuperAdminUsersTable() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<AdminUserFilters>(emptyAdminUserFilters);
   const [createOpen, setCreateOpen] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
@@ -118,20 +122,25 @@ export function SuperAdminUsersTable() {
     if (results.some(r => r.status !== 'deleted')) toast.error('חלק מהחשבונות לא נמחקו. רעננו ונסו שוב.');
   }, onError: async () => { await refresh(); toast.error('המחיקה לא הושלמה. רעננו ובדקו את הרשימה.'); } });
   if (!isSuperAdmin) return null;
-  const rows = (profiles.data ?? []).filter(p => `${p.full_name ?? ''} ${p.email ?? ''} ${p.phone ?? ''}`.toLowerCase().includes(search.toLowerCase()));
+  const rolesOf = (id: string) => (roles.data ?? []).filter(r => r.user_id === id).map(r => r.role as AppRole);
+  const rows = (profiles.data ?? []).filter(p => matchesAdminUser(p, rolesOf(p.id), search, filters));
+  const filtersActive = !!search.trim() || Object.values(filters).some(value => value !== 'all');
+  const clearFilters = () => { setSearch(''); setFilters(emptyAdminUserFilters); };
   const protectedId = (id: string) => !roles.data || id === user?.id || roles.data.some(r => r.user_id === id && r.role === 'super_admin');
   const eligible = rows.filter(p => !protectedId(p.id)).map(p => p.id);
   const toggle = (id: string) => setSelected(current => current.includes(id) ? current.filter(v => v !== id) : [...current, id]);
-  const rolesOf = (id: string) => (roles.data ?? []).filter(r => r.user_id === id).map(r => r.role as AppRole);
   const openEdit = (p: any) => { const r = rolesOf(p.id); setDraft({ id: p.id, full_name: p.full_name ?? '', email: p.email ?? '', phone: p.phone ?? '', city: p.city ?? '', gender: p.gender ?? '', broker_license_number: p.broker_license_number ?? '', identityLocked: !!p.locked_broker_name || registryEvidence.isLoading || registryEvidence.isError || (registryEvidence.data ?? []).some(v => v.user_id === p.id && v.license_number === p.broker_license_number), manualApproved: (approvals.data ?? []).some(a => a.user_id === p.id && a.license_number === p.broker_license_number), roles: r, originalRoles: r }); };
-  return <section dir="rtl" className="space-y-3">
+  return <section dir="rtl" className="admin-users-page space-y-3">
     <Collapsible open={createOpen} onOpenChange={setCreateOpen}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold">כל המשתמשים</h2>
+      <div className="flex items-center justify-between gap-2" role="toolbar" aria-label="פעולות ניהול משתמשים">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Button variant="ghost" size="icon" aria-label={searchOpen ? 'סגירת חיפוש משתמשים' : 'פתיחת חיפוש משתמשים'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש משתמשים'} aria-expanded={searchOpen} aria-controls="admin-users-search" onClick={() => setSearchOpen(value => !value)}>{searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}</Button>
+          <SelectModeToggle active={selecting} onToggle={() => { setSelecting(!selecting); setSelected([]); }} total={rows.length} count={selected.length} onSelectAll={() => setSelected(eligible)} />
+          {selecting && <Button variant="destructive" size="icon" aria-label={`מחיקת ${selected.length} משתמשים`} title="מחיקת המשתמשים שנבחרו" disabled={!selected.length || deletion.isPending} onClick={() => setPendingIds([...selected])}><Trash2 className="h-4 w-4" /></Button>}
+        </div>
         <CollapsibleTrigger asChild>
-          <Button variant="outline" className="shrink-0" aria-controls="admin-create-user-pane">
+          <Button variant="outline" size="icon" className="shrink-0" aria-label={createOpen ? 'סגירת הוספת משתמש' : 'הוסף משתמש'} title={createOpen ? 'סגירת הוספת משתמש' : 'הוסף משתמש'} aria-controls="admin-create-user-pane">
             {createOpen ? <ChevronUp className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-            הוספת משתמש חדש
           </Button>
         </CollapsibleTrigger>
       </div>
@@ -139,14 +148,17 @@ export function SuperAdminUsersTable() {
         <div className="pt-3"><SuperAdminCreateUserCard /></div>
       </CollapsibleContent>
     </Collapsible>
-    <div className="flex flex-wrap items-center gap-2">
-      <Input className="max-w-sm" aria-label="חיפוש משתמשים" placeholder="חפש לפי אימייל, שם או טלפון..." value={search} onChange={e => setSearch(e.target.value)} />
-      <SelectModeToggle active={selecting} onToggle={() => { setSelecting(!selecting); setSelected([]); }} total={rows.length} count={selected.length} onSelectAll={() => setSelected(eligible)} />
-      {selecting && <Button variant="destructive" size="sm" disabled={!selected.length || deletion.isPending} onClick={() => setPendingIds([...selected])}><Trash2 className="h-4 w-4" />מחיקת {selected.length} משתמשים</Button>}
+    <div id="admin-users-search" ref={node => { if (node) node.toggleAttribute('inert', !searchOpen); }} aria-hidden={!searchOpen} className={`grid transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none ${searchOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+      <div className="min-h-0 overflow-hidden">
+        {filtersActive && <div className="mb-2 flex justify-end"><Button variant="ghost" size="sm" onClick={clearFilters}>נקה סינון</Button></div>}
+        <div className="flex items-center rounded-md border border-input bg-background">
+          <Input className="min-w-0 flex-1 border-0 bg-transparent shadow-none" aria-label="חיפוש משתמשים" value={search} onChange={e => setSearch(e.target.value)} />
+          <Button variant="ghost" size="icon" className="shrink-0" aria-label="סינון משתמשים" title="סינון משתמשים" onClick={() => setFilterOpen(true)}><SlidersHorizontal className="h-4 w-4" /></Button>
+        </div>
+      </div>
     </div>
-    {isSuperAdmin && <BrokerEmailBatchCard />}
     {balances.isError && <p role="alert" className="text-destructive">לא ניתן לטעון יתרות קרדיטים</p>}
-    {profiles.isLoading ? <p role="status">טוען משתמשים…</p> : profiles.isError || roles.isError ? <p role="alert">טעינת המשתמשים נכשלה</p> : <div className="overflow-x-auto"><Table>
+    {profiles.isLoading ? <p role="status">טוען משתמשים…</p> : profiles.isError || roles.isError ? <p role="alert">טעינת המשתמשים נכשלה</p> : <Table scrollMode="page">
       <TableHeader><TableRow>{selecting && <TableHead>בחירה</TableHead>}<TableHead>שם מלא</TableHead><TableHead>אימייל</TableHead><TableHead>טלפון</TableHead><TableHead>סוג משתמש</TableHead><TableHead>הרשאות</TableHead><TableHead>יתרת קרדיטים</TableHead><TableHead>הרשמה</TableHead><TableHead>פעיל</TableHead><TableHead>פעולות</TableHead></TableRow></TableHeader>
       <TableBody>{rows.map(p => {
         const userRoles = rolesOf(p.id);
@@ -177,7 +189,19 @@ export function SuperAdminUsersTable() {
           </div></TableCell>
         </TableRow>;
       })}{!rows.length && <TableRow><TableCell colSpan={selecting ? 11 : 10} className="text-center">לא נמצאו משתמשים</TableCell></TableRow>}</TableBody>
-    </Table></div>}
+    </Table>}
+    <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+      <DialogContent dir="rtl" className="max-w-md text-right">
+        <DialogHeader><DialogTitle>סינון משתמשים</DialogTitle></DialogHeader>
+        {filtersActive && <div className="flex justify-end"><Button variant="ghost" size="sm" onClick={clearFilters}>נקה סינון</Button></div>}
+        {([
+          ['role', 'סוג משתמש', [['all', 'כל הסוגים'], ...Object.entries(ROLE_LABELS)]],
+          ['status', 'גישה לחשבון', [['all', 'כל החשבונות'], ['active', 'פעילים'], ['suspended', 'מושהים']]],
+          ['gender', 'מגדר', [['all', 'כל המגדרים'], ['male', 'גבר'], ['female', 'אישה']]],
+        ] as [keyof AdminUserFilters, string, string[][]][]).map(([key, label, options]) => <div key={key} className="grid gap-2"><Label>{label}</Label><Select value={filters[key]} onValueChange={value => setFilters(current => ({ ...current, [key]: value }))}><SelectTrigger aria-label={label}><SelectValue /></SelectTrigger><SelectContent dir="rtl">{options.map(([value, text]) => <SelectItem key={value} value={value}>{text}</SelectItem>)}</SelectContent></Select></div>)}
+        <DialogFooter><Button onClick={() => setFilterOpen(false)}>סגירה</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
     <Dialog open={!!draft} onOpenChange={open => { if (!open && !saveDraft.isPending) setDraft(null); }}>
       <DialogContent dir="rtl" className="max-h-[calc(100dvh-2rem)] min-w-0 w-[calc(100%-2rem)] max-w-lg overflow-x-hidden overflow-y-auto text-right">
         <DialogHeader className="text-right"><DialogTitle>עריכת משתמש</DialogTitle></DialogHeader>
