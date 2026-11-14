@@ -1,5 +1,12 @@
 # Roadmap
 
+## Rita filtering and swipe actions November 14
+- [x] Rita counter/filter use the same global+per-lead enabled predicate, not last-message author; disabled rows disappear immediately. Saved per-card toggles read back after reload.
+- [x] Shared touch/desktop swipe reveals red delete, yellow favorite and blue Rita actions in lead/private/group cards. Lead message deletion preserves CRM identity; Community removal hides only caller's card. Group autopilot is owner-only; phone-only orphans cannot enable it without a lead identity.
+- [x] Community incoming-message triggers invoke service/cron-authorized rita-conversation, with source-message deduplication, setting/membership/block/owner rechecks, shared Rita logs and no synthetic participant messages. Direct table writes and anon reads revoked.
+- [x] Seven focused tests and Deno check pass; authenticated desktop/411px touch gestures, deletion cancel, lead/peer toggle persistence and Rita count=2/rows=2 verified. Deployed endpoint rejects forged automatic requests with 403. No messages sent or histories deleted.
+- [ ] Real automatic community reply and populated group gesture verification need an authorized fresh incoming test message/group; neither was created in existing conversations. Automatic generation is implemented but not end-to-end verified.
+
 ## Chat usability and contact restoration November 14
 - [x] Removed selection UI/dead batch paths; content typography increases 2px excluding timestamps, with Community-style toolbar and כל הצ'אטים label.
 - [x] Menus close on captured action clicks while preserving nested dialogs; favorite removal is confirmed and favorites replace pane content, not a modal. Expanded filters alone show result action.

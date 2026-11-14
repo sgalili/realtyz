@@ -1,3 +1,5 @@
+import { SwipeChatCard } from '@/components/inbox/SwipeChatCard';
+import { activeChatAutopilot } from '@/lib/chatAutopilot';
 import { WhatsAppTicks } from '@/components/inbox/WhatsAppTicks';
 import { useChatReceipts } from '@/hooks/useChatReceipts';
 import { providerDeliveryStatus, unreadIncoming } from '@/lib/chatReceipts';
@@ -265,16 +267,10 @@ const OmnichannelInbox = () => {
           .filter('metadata->>sender_phone', 'eq', phone);
         if (error) throw error;
       } else {
-        // Delete child rows first, then the lead row itself so the conversation
-        // actually disappears from the inbox (the inbox is driven off the leads table).
-        await supabase.from('chat_history').delete().eq('lead_id', voterId);
-        await supabase.from('messages').delete().eq('lead_id', voterId);
-        const { error } = await supabase.rpc('gdpr_delete_lead', { _lead_id: voterId });
-        if (error) {
-          // Fallback: try a plain delete on leads if the RPC is unavailable
-          const { error: delErr } = await supabase.from('leads').delete().eq('id', voterId);
-          if (delErr) throw delErr;
-        }
+        const { error: historyError } = await supabase.from('chat_history').delete().eq('lead_id', voterId);
+        if (historyError) throw historyError;
+        const { error: messageError } = await supabase.from('messages').delete().eq('lead_id', voterId);
+        if (messageError) throw messageError;
       }
       toast.success('השיחה נמחקה לצמיתות');
       if (selectedVoterId === voterId) setSelectedVoterId(null);
@@ -646,22 +642,20 @@ const OmnichannelInbox = () => {
   // Per-contact autopilot: independent from the global hero switch.
   // Defaults ON when the column is null/undefined (matches backend behavior).
   const leadAutopilot = (selectedVoter as any)?.ai_autopilot !== false;
-  const setLeadAutopilot = async (value: boolean) => {
-    if (!selectedVoterId || selectedVoterId.startsWith('phone:') || selectedVoterId.startsWith('demo-')) {
-      toast.error('לא ניתן לעדכן שיחה זו');
-      return;
-    }
-    // Optimistic cache update
-    queryClient.setQueryData<any[]>(['inbox-leads'], (prev) =>
-      prev?.map((l) => (l.id === selectedVoterId ? { ...l, ai_autopilot: value } : l)) ?? prev
-    );
-    const { error } = await supabase.from('leads').update({ ai_autopilot: value } as any).eq('id', selectedVoterId);
-    if (error) {
-      toast.error('שמירת מצב המענה האוטומטי לשיחה נכשלה');
-      queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
-    } else {
-    }
+  const [autopilotBusy, setAutopilotBusy] = useState<string | null>(null);
+  const updateCardAutopilot = async (id: string, value: boolean) => {
+    if (autopilotBusy || id.startsWith('phone:')) return;
+    setAutopilotBusy(id);
+    try {
+      if (value && !aiAutopilot) await _updatePlatformSettings({ enable_ai_autopilot: true });
+      const { data, error } = await supabase.from('leads').update({ ai_autopilot: value }).eq('id', id).select('id,ai_autopilot').single();
+      if (error || data?.ai_autopilot !== value) throw error ?? new Error('העדכון לא נשמר');
+      queryClient.setQueriesData<any[]>({ queryKey: ['inbox-leads'] }, previous => Array.isArray(previous) ? previous.map(lead => lead.id === id ? { ...lead, ai_autopilot: value } : lead) : previous);
+      await queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+    } catch { toast.error('שמירת מצב ריטה נכשלה'); }
+    finally { setAutopilotBusy(null); }
   };
+  const setLeadAutopilot = async (value: boolean) => { if (selectedVoterId) await updateCardAutopilot(selectedVoterId, value); };
 
   // Effective autopilot for the open chat: the AI only answers when BOTH the
   // global hero switch and the per-lead flag are on. The pill switch below is
@@ -916,13 +910,7 @@ const OmnichannelInbox = () => {
     return () => clearTimeout(timer);
   }, [highlightMessageId, chatMessages]);
 
-  const handlingCount = useMemo(() => {
-    if (!voters || !lastMessages) return 0;
-    return voters.filter((v) => {
-      const m: any = lastMessages.get(v.id);
-      return m && m.direction === 'outbound' && (m.sender_type === 'ai' || m.ai_assisted);
-    }).length;
-  }, [voters, lastMessages]);
+  const handlingCount = (voters ?? []).filter(chat => activeChatAutopilot(chat, aiAutopilot)).length;
   const totalCount = voters?.length ?? 0;
 
   const matchesLeadSearch = (v: any, q: string) => {
@@ -958,9 +946,9 @@ const OmnichannelInbox = () => {
       }
       const doneAt = (v as any).inbox_done_at ? new Date((v as any).inbox_done_at).getTime() : 0;
       const handled = doneAt > 0 && (!m?.created_at || new Date(m.created_at).getTime() <= doneAt);
-      if (activeTab === 'handling' && handled) return false;
+
       if (unreadOnly && (handled || m?.direction !== 'inbound')) return false;
-      if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
+      if (activeTab === 'handling') return activeChatAutopilot(v, aiAutopilot);
       if (bookmarkedOnly) return (v as any).is_bookmarked === true;
       return true;
     });
@@ -1144,13 +1132,13 @@ const OmnichannelInbox = () => {
                 </span>
               </button>
             )}
-            <AnimatePresence initial={false}>
+            <>
               {filteredVoters?.map((voter) => {
                 const lastMsg = lastMessages?.get(voter.id);
                 const isActive = voter.id === selectedVoterId;
                 return (
+                  <SwipeChatCard key={voter.id} kind={voter.id.startsWith('phone:') ? 'message' : 'lead'} id={voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id} onDelete={() => setDeleteTargetId(voter.id)} autopilot={activeChatAutopilot(voter, aiAutopilot)} onAutopilot={voter.id.startsWith('phone:') ? undefined : () => void updateCardAutopilot(voter.id, !activeChatAutopilot(voter, aiAutopilot))} busy={autopilotBusy === voter.id}>
                   <motion.div
-                    key={voter.id}
                     layout
                     initial={{ opacity: 0, y: -24, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1192,10 +1180,10 @@ const OmnichannelInbox = () => {
                         </p>
                       </div>
                     </div>
-                  </motion.div>
+                  </motion.div></SwipeChatCard>
                 );
               })}
-            </AnimatePresence>
+            </>
             {filteredVoters?.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
                 {search.trim() ? 'לא נמצאו תוצאות ב-CRM' : (channelFilter.size === 0 ? 'אין שיחות' : 'אין הודעות בערוצים אלה')}

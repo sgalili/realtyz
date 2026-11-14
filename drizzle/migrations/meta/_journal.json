@@ -1317,6 +1317,20 @@
       "when": 1794627885404,
       "tag": "0187_chat_favorites_and_live_receipt_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1794630392554,
+      "tag": "0188_community_swipe_settings_and_rita_autopilot",
+      "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1794630971632,
+      "tag": "0189_lock_community_conversation_settings_writes",
+      "breakpoints": true
     }
   ]
 }

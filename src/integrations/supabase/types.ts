@@ -2475,6 +2475,41 @@ export type Database = {
           },
         ]
       }
+      community_conversation_settings: {
+        Row: {
+          autopilot: boolean
+          hidden_at: string | null
+          kind: string
+          target_id: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          autopilot?: boolean
+          hidden_at?: string | null
+          kind: string
+          target_id: string
+          user_id: string
+          workspace_owner_id: string
+        }
+        Update: {
+          autopilot?: boolean
+          hidden_at?: string | null
+          kind?: string
+          target_id?: string
+          user_id?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_conversation_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_deal_terms: {
         Row: {
           created_at: string
@@ -7947,6 +7982,7 @@ export type Database = {
           requested_by: string
           response: string | null
           run_id: string | null
+          source_message_id: string | null
           status: string
           workspace_owner_id: string
         }
@@ -7963,6 +7999,7 @@ export type Database = {
           requested_by: string
           response?: string | null
           run_id?: string | null
+          source_message_id?: string | null
           status?: string
           workspace_owner_id: string
         }
@@ -7979,6 +8016,7 @@ export type Database = {
           requested_by?: string
           response?: string | null
           run_id?: string | null
+          source_message_id?: string | null
           status?: string
           workspace_owner_id?: string
         }
@@ -11144,6 +11182,15 @@ export type Database = {
       set_active_workspace: { Args: { _owner: string }; Returns: undefined }
       set_card_auto_recharge: {
         Args: { _amount: number; _enabled: boolean; _id: string }
+        Returns: undefined
+      }
+      set_community_conversation_setting: {
+        Args: {
+          _action: string
+          _enabled?: boolean
+          _kind: string
+          _target: string
+        }
         Returns: undefined
       }
       set_credits_per_ils: { Args: { _rate: number }; Returns: number }
