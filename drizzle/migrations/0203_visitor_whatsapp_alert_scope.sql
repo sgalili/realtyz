@@ -1,0 +1,2 @@
+CREATE POLICY visitor_alert_super_admin_only ON public.notifications AS RESTRICTIVE FOR SELECT TO authenticated USING (event_type <> 'visitor_whatsapp' OR (user_id = auth.uid() AND public.has_role(auth.uid(), 'super_admin')));
+CREATE POLICY visitor_alert_server_insert_only ON public.notifications AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (event_type <> 'visitor_whatsapp');

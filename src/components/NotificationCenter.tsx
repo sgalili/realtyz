@@ -160,6 +160,17 @@ export default function NotificationCenter() {
   });
 
   // ---- New property tour bookings (Realtime enabled on property_tours) ----
+  const { data: visitorAlerts = [] } = useQuery({
+    queryKey: ['visitor-whatsapp-alerts', user?.id], enabled: !!user?.id, refetchInterval: 5_000,
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase.from('notifications').select('id, title, body, created_at')
+        .eq('user_id', user.id).eq('event_type', 'visitor_whatsapp').order('created_at', { ascending: false }).limit(30);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: tours = [] } = useQuery({
     queryKey: ['notif-tours', scope],
     enabled: !!scope && listingsEnabled,
@@ -328,12 +339,14 @@ export default function NotificationCenter() {
   const unviewedTours = visibleTours.filter((t: any) => !viewedIds.has(t.id));
   const unviewedLeads = visibleLeads.filter((l: any) => !viewedIds.has(`lead-${l.id}`));
   const unviewedRitaSmsReplies = visibleRitaSmsReplies.filter((n: any) => !viewedIds.has(`rita-${n.id}`));
+  const visibleVisitors = visitorAlerts.filter(n => !deletedKeys.has(`visitor-${n.id}`));
   const activeBudgetAlerts = budgetAlerts.filter(b => allows('budget') && !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
   const badgeCount =
-    unviewedAdminPending.length + unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + unviewedRitaSmsReplies.length + activeBudgetAlerts.length;
+    unviewedAdminPending.length + unviewedAlerts.length + unviewedInbound.length + unviewedTours.length + unviewedLeads.length + unviewedRitaSmsReplies.length + activeBudgetAlerts.length + visibleVisitors.filter(n => !viewedIds.has(`visitor-${n.id}`)).length;
 
   /** Every key currently rendered in the drawer. */
   const allKeys = [
+    ...visibleVisitors.map(n => `visitor-${n.id}`),
     ...visibleAlerts.map((a: any) => a.id),
     ...visibleInbound.flatMap((g) => [g.row.id, ...g.extraIds]),
     ...visibleTours.map((t: any) => t.id),
@@ -479,6 +492,14 @@ export default function NotificationCenter() {
             </div>
           ))}
 
+          {visibleVisitors.map(n => {
+            const key = `visitor-${n.id}`;
+            return <NotifRow key={key} unread={!viewedIds.has(key)} onDelete={() => deleteOne([key])}>
+              <Button variant="ghost" className="h-auto min-w-0 flex-1 flex-col items-start whitespace-normal text-right" onClick={() => markViewed(key)}>
+                <span className="text-sm font-semibold">{n.title}</span><span className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{n.body}</span>
+              </Button>
+            </NotifRow>;
+          })}
           {visibleLeads.map((l: any) => {
             const key = `lead-${l.id}`;
             const isUnread = !viewedIds.has(key);

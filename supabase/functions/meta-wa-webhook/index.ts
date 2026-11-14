@@ -20,6 +20,7 @@ import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 import { triggerAvatarFetch } from "../_shared/greenApiCreds.ts";
 import { transcribeWaVoiceNote } from "../_shared/waMediaTranscribe.ts";
 import { resolveWaContext } from "../_shared/waContextRouter.ts";
+import { handleVisitorWhatsApp, isVisitorWhatsApp } from '../_shared/visitorWaHandler.ts';
 
 
 const json = (body: Record<string, unknown>, status = 200) =>
@@ -178,6 +179,17 @@ Deno.serve(async (req) => {
             try {
               const from = String(m?.from ?? "").replace(/\D/g, "");
               if (!from) continue;
+
+              // Public contact conversations never enter tenant routing or private CRM tools.
+              const visitorText = String(m?.text?.body ?? '');
+              if (visitorText && await isVisitorWhatsApp(admin, from, visitorText)) {
+                const work = handleVisitorWhatsApp(admin, {
+                  phone: from, text: visitorText, messageId: String(m?.id ?? ''),
+                  name: contacts.find((c: any) => String(c?.wa_id ?? '').replace(/\D/g, '') === from)?.profile?.name,
+                }).catch(() => console.error('[meta-wa-webhook] public visitor processing failed'));
+                EdgeRuntime.waitUntil(work);
+                continue;
+              }
 
               // Multi-tenant context routing: the official number is shared by
               // every workspace, so the tenant is the one whose conversation

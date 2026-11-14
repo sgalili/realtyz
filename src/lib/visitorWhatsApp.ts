@@ -1,0 +1,1 @@
+export { VISITOR_WHATSAPP_INTRO } from '../../supabase/functions/_shared/visitorWhatsAppPolicy.ts';

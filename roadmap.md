@@ -1,5 +1,10 @@
 # Roadmap
 
+## Visitor WhatsApp contact November 14
+- [x] Added official WhatsApp introduction below visitor signup; mobile/desktop button and exact link verified.
+- [x] Isolated public WhatsApp welcome sessions from CRM/tools; signed callbacks, atomic claims and quiet Super Admin-only alerts deployed.
+- [x] Eight boundary/replay tests and six sidebar regressions pass; live AI welcome/follow-up and privacy refusal verified without sending. Forged callback returns 401. Actual incoming WhatsApp, administrator alert readback and recipient delivery await a real visitor message.
+
 ## Anonymous visitor navigation November 14
 - [x] Aligned visitor controls under the header; ordered burger navigation opens signup, FAQ, four-slide explanation and canonical legal links.
 - [x] Added isolated public-only Rita with one browser-saved conversation and menu-only peeking accessibility trigger. Three boundary tests and eight regression tests passed; anonymous live reply, private-data refusal, reload history, mobile/desktop explanation return and accessibility verified.

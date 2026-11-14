@@ -25,6 +25,7 @@
 // ============================================================
 
 import { requireCaller } from "../_shared/authz.ts";
+import { handleVisitorWhatsApp } from '../_shared/visitorWaHandler.ts';
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchWorkspacePersona } from "../_shared/workspacePersona.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
@@ -780,6 +781,10 @@ async function handleLeadInboxInbound(
   },
 ) {
   const skipStore = opts?.skipStore === true;
+
+  if (await handleVisitorWhatsApp(admin, { phone: senderPhone, text: inboundText, messageId, name: opts?.senderName })) {
+    return { ok: true, mode: 'public_visitor', auto_reply: 'visitor_handled' };
+  }
 
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
   const explicitProperty = await resolveWaPropertyContext(admin, inboundText);

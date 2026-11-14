@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Accessibility, Menu, LogIn, CircleHelp, Info, Scale, ChevronDown } from 'lucide-react';
+import { Accessibility, Menu, LogIn, CircleHelp, Info, Scale, ChevronDown, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { AccessibilityMenu } from '@/components/accessibility/AccessibilityMenu';
 import { VisitorRitaChat } from './VisitorRitaChat';
 import { openFaq } from '@/components/faq/FaqDialog';
+import { officialWaLink } from '@/lib/officialWa';
+import { VISITOR_WHATSAPP_INTRO } from '@/lib/visitorWhatsApp';
 
 export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
   const [open, setOpen] = useState(false);
@@ -19,6 +21,7 @@ export function VisitorMenu({ onSignup }: { onSignup: () => void }) {
       <SheetTitle className="sr-only">תפריט מבקרים</SheetTitle><SheetDescription className="sr-only">TORAFF</SheetDescription>
       <nav className="min-h-0 flex-1 overflow-y-auto px-3" aria-label="ניווט מבקרים">
         <Button className="mb-3 min-h-12 w-full gap-2 text-base" onClick={signup}><LogIn className="h-5 w-5" />הרשמה חינם או כניסה</Button>
+        <Button asChild className="mb-3 min-h-12 w-full gap-2 bg-success text-success-foreground hover:bg-success/90 text-lg"><a href={officialWaLink(VISITOR_WHATSAPP_INTRO)} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><MessageCircle className="h-5 w-5" />דברו איתנו</a></Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" onClick={() => { setOpen(false); openFaq(); }}><CircleHelp className="h-5 w-5" />שאלות ותשובות</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" onClick={() => go('/about-toraff')}><Info className="h-5 w-5" />מה זה TORAFF</Button>
         <Button variant="ghost" className="min-h-12 w-full justify-start gap-3 text-lg" aria-expanded={legal} onClick={() => setLegal(v => !v)}><Scale className="h-5 w-5" />מידע משפטי<ChevronDown className="ms-auto h-4 w-4" /></Button>

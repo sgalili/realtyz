@@ -1415,6 +1415,20 @@
       "when": 1794681360546,
       "tag": "0201_developer_import_lease_watchdog",
       "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1794686161010,
+      "tag": "0202_visitor_whatsapp_conversations",
+      "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1794686263117,
+      "tag": "0203_visitor_whatsapp_alert_scope",
+      "breakpoints": true
     }
   ]
 }

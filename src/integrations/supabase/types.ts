@@ -9472,6 +9472,65 @@ export type Database = {
           },
         ]
       }
+      visitor_whatsapp_messages: {
+        Row: {
+          content: string
+          created_at: string
+          error_code: string | null
+          message_id: string
+          phone: string
+          reply: string | null
+          state: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          error_code?: string | null
+          message_id: string
+          phone: string
+          reply?: string | null
+          state?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          error_code?: string | null
+          message_id?: string
+          phone?: string
+          reply?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitor_whatsapp_messages_phone_fkey"
+            columns: ["phone"]
+            isOneToOne: false
+            referencedRelation: "visitor_whatsapp_sessions"
+            referencedColumns: ["phone"]
+          },
+        ]
+      }
+      visitor_whatsapp_sessions: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          initial_message: string
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          initial_message: string
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          initial_message?: string
+          phone?: string
+        }
+        Relationships: []
+      }
       voice_agents: {
         Row: {
           availability: string
@@ -10243,6 +10302,16 @@ export type Database = {
       claim_scraping_response: {
         Args: { _key: string; _ttl_seconds: number }
         Returns: Json
+      }
+      claim_visitor_whatsapp_message: {
+        Args: {
+          _introduction: boolean
+          _message_id: string
+          _name: string
+          _phone: string
+          _text: string
+        }
+        Returns: string
       }
       claim_yad2_item_import: {
         Args: { _item: string; _url: string }
