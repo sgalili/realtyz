@@ -20,7 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CheckCheck, FolderInput } from 'lucide-react';
 import { SelectModeToggle, SelectBox, SelectAllRow } from '@/components/ui/multi-select-controls';
-import { Search, X, SlidersHorizontal, Send, Bot, MessageSquare, MessageCircle, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Send, Bot, MessageSquare, MessageCircle, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Star, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -1136,6 +1136,16 @@ const OmnichannelInbox = () => {
     return () => window.removeEventListener('realtyz:inbox-back', closeChat);
   }, []);
   useEffect(() => {
+    const toggle = () => { if (inboxSection === 'leads') setSearchOpen(v => !v); };
+    const saved = () => { if (inboxSection === 'leads') setFavoritesOpen(true); };
+    const report = () => inboxSection === 'leads' && window.dispatchEvent(new CustomEvent('inbox:search-state', { detail: { section: 'leads', open: searchOpen } }));
+    window.addEventListener('inbox:toggle-search', toggle);
+    window.addEventListener('inbox:open-favorites', saved);
+    window.addEventListener('inbox:request-search-state', report);
+    if (inboxSection === 'leads') report();
+    return () => { window.removeEventListener('inbox:toggle-search', toggle); window.removeEventListener('inbox:open-favorites', saved); window.removeEventListener('inbox:request-search-state', report); };
+  }, [inboxSection, searchOpen]);
+  useEffect(() => {
     const add = () => { if (inboxSection === 'leads') setAddClientOpen(true); };
     window.addEventListener('inbox:add-user', add);
     return () => window.removeEventListener('inbox:add-user', add);
@@ -1188,17 +1198,7 @@ const OmnichannelInbox = () => {
             <span>ריטה ({handlingCount})</span>
           </Button>
         </div>
-        <Button
-          variant="ghost"
-          type="button"
-          size="icon"
-          onClick={() => setFavoritesOpen(true)}
-          aria-label="מועדפים"
-          title="מועדפים"
-          className={`h-11 w-11 shrink-0 rounded-lg border border-border/60 p-0 ${bookmarkedOnly ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground' : 'bg-muted/40 text-muted-foreground hover:text-foreground'}`}
-        >
-          <Bookmark className="h-4 w-4" />
-        </Button>
+
       </div>}
 
       <div className="grid min-h-0 flex-1 w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:grid-cols-[20rem_minmax(0,1fr)]">
@@ -1267,11 +1267,7 @@ const OmnichannelInbox = () => {
                   );
                 })}</div>;
               })() ?? <div className="flex-1" />}
-              <Button type="button" variant="ghost" size="icon" aria-label={searchOpen ? 'סגירת חיפוש שיחות' : 'חיפוש וסינון שיחות'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש וסינון'} onClick={() => setSearchOpen(v => !v)}
-                className={`relative h-9 w-9 shrink-0 rounded-lg ${(search.trim() || dateFrom || dateTo || categoryFilter.size || unreadOnly || channelFilter.size) ? 'text-primary' : 'text-muted-foreground'}`}>
-                {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-                {(search.trim() || dateFrom || dateTo || categoryFilter.size || unreadOnly || channelFilter.size) ? <span className="absolute end-1 top-1 h-2 w-2 rounded-full bg-primary" /> : null}
-              </Button>
+
             </div>
           </div>
           <AnimatePresence initial={false}>{searchOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="shrink-0 overflow-hidden border-b">
@@ -1326,7 +1322,7 @@ const OmnichannelInbox = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => bulkUpdateChats({ is_bookmarked: true }, 'השיחות הועברו לשמורים')}>
-                    <Bookmark className="h-4 w-4 ms-2" /> לשמורים
+                    <Star className="h-4 w-4 ms-2" /> לשמורים
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => bulkUpdateChats({ is_bookmarked: false, inbox_done_at: null }, 'השיחות הוחזרו לכל השיחות')}>
                     <InboxIcon className="h-4 w-4 ms-2" /> לכל השיחות
@@ -1381,7 +1377,7 @@ const OmnichannelInbox = () => {
                     {chatSelectMode && (
                       <SelectBox className="mt-3" checked={selectedChats.has(voter.id)} onChange={() => toggleChat(voter.id)} />
                     )}
-                    {!voter.id.startsWith('phone:') && <Button variant="ghost" size="icon" className="absolute left-1 bottom-1 h-7 w-7" aria-label={favorites.has('lead', voter.id) ? 'הסרת שיחה מהמועדפים' : 'שמירת שיחה במועדפים'} title="מועדפים" onClick={event => { event.stopPropagation(); void favorites.toggle('lead', voter.id); }}><Bookmark className={`h-3.5 w-3.5 ${favorites.has('lead', voter.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>}
+                    <Button variant="ghost" size="icon" className="absolute left-1 bottom-1 h-7 w-7" aria-label={favorites.has(voter.id.startsWith('phone:') ? 'message' : 'lead', voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id) ? 'הסרת שיחה מהמועדפים' : 'שמירת שיחה במועדפים'} title="מועדפים" onClick={event => { event.stopPropagation(); void favorites.toggle(voter.id.startsWith('phone:') ? 'message' : 'lead', voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id); }}><Star className={`h-3.5 w-3.5 ${favorites.has(voter.id.startsWith('phone:') ? 'message' : 'lead', voter.id.startsWith('phone:') ? lastMsg?.id ?? '' : voter.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
                     <button
                       type="button"
                       onClick={(event) => { event.stopPropagation(); setDeleteTargetId(voter.id); }}
@@ -1556,7 +1552,7 @@ const OmnichannelInbox = () => {
                           />
                         )}
                         <div className="mb-1 flex items-center justify-end gap-1.5">
-                          <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={favorites.has('message', msg.id) ? 'הסרת הודעה מהמועדפים' : 'שמירת הודעה במועדפים'} title="מועדפים" onClick={() => void favorites.toggle('message', msg.id)}><Bookmark className={`h-3 w-3 ${favorites.has('message', msg.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={favorites.has('message', msg.id) ? 'הסרת הודעה מהמועדפים' : 'שמירת הודעה במועדפים'} title="מועדפים" onClick={() => void favorites.toggle('message', msg.id)}><Star className={`h-3 w-3 ${favorites.has('message', msg.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
                           <ChannelIcon channel={msg.channel} />
                         </div>
                         {(() => {

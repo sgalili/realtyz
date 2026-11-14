@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Bookmark, Loader2 } from 'lucide-react';
+import { Star, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,8 +16,10 @@ export function InboxFavoritesDialog({ open, onOpenChange, community = false }: 
       return { ...row, label: data?.full_name ?? 'שיחה שמורה', path: `/inbox?lead=${row.target_id}` };
     }
     if (row.target_kind === 'message') {
-      const { data, error } = await supabase.from('messages').select('content,lead_id').eq('id', row.target_id).maybeSingle(); if (error) throw error;
-      return { ...row, label: data?.content ?? 'הודעה אינה זמינה', path: data?.lead_id ? `/inbox?lead=${data.lead_id}&message=${row.target_id}` : null };
+      const { data, error } = await supabase.from('messages').select('content,lead_id,metadata').eq('id', row.target_id).maybeSingle(); if (error) throw error;
+      const metadata = data?.metadata;
+      const phone = metadata && typeof metadata === 'object' && !Array.isArray(metadata) && typeof metadata.sender_phone === 'string' ? metadata.sender_phone : null;
+      return { ...row, label: data?.content ?? 'הודעה אינה זמינה', path: data?.lead_id ? `/inbox?lead=${data.lead_id}&message=${row.target_id}` : phone ? `/inbox?chat=${encodeURIComponent(`phone:${phone}`)}&message=${row.target_id}` : null };
     }
     if (row.target_kind === 'peer') {
       const { data, error } = await supabase.rpc('community_profile_cards', { _ids: [row.target_id] }); if (error) throw error;
@@ -31,6 +33,6 @@ export function InboxFavoritesDialog({ open, onOpenChange, community = false }: 
     {(favorites.isLoading || details.isLoading) && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
     {(favorites.isError || details.isError) && <p role="alert" className="text-destructive">טעינת המועדפים נכשלה</p>}
     {!favorites.isLoading && !rows.length && <p className="text-muted-foreground">אין מועדפים שמורים</p>}
-    <div className="max-h-[60dvh] overflow-y-auto divide-y divide-border">{details.data?.filter(row => rows.some(r => r.target_id === row.target_id && r.target_kind === row.target_kind)).map(row => <div key={`${row.target_kind}:${row.target_id}`} className="flex items-center gap-2 py-3"><Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-pre-wrap break-words text-start" disabled={!row.path} onClick={() => { if (row.path) { onOpenChange(false); navigate(row.path); } }}>{row.label}</Button><Button variant="ghost" size="icon" aria-label="הסרה מהמועדפים" title="הסרה מהמועדפים" onClick={() => void favorites.toggle(row.target_kind as InboxFavoriteKind, row.target_id)}><Bookmark className="h-4 w-4 fill-current text-primary" /></Button></div>)}</div>
+    <div className="max-h-[60dvh] overflow-y-auto divide-y divide-border">{details.data?.filter(row => rows.some(r => r.target_id === row.target_id && r.target_kind === row.target_kind)).map(row => <div key={`${row.target_kind}:${row.target_id}`} className="flex items-center gap-2 py-3"><Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-pre-wrap break-words text-start" disabled={!row.path} onClick={() => { if (row.path) { onOpenChange(false); navigate(row.path); } }}>{row.label}</Button><Button variant="ghost" size="icon" aria-label="הסרה מהמועדפים" title="הסרה מהמועדפים" onClick={() => void favorites.toggle(row.target_kind as InboxFavoriteKind, row.target_id)}><Star className="h-4 w-4 fill-current text-primary" /></Button></div>)}</div>
   </DialogContent></Dialog>;
 }

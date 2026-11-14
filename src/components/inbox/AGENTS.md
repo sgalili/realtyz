@@ -1,5 +1,6 @@
 # Inbox architecture
 - Hero tabs use the URL; panes stay mounted and contextual add events reach only the active pane. useInboxFavorites owns account/workspace-keyed favorites, with RLS rechecking target access on read/write. Why: isolated navigation and persistent saves.
+- Hero search/favorites events reach only the active mounted pane and search state is reported back; orphan chat stars target the authorized source message, never a synthetic phone ID. Why: consistent controls without creating client identities.
 - Lead identity clicks open authorized full details; the top profile icon opens /lead-profile/:leadId with history-entry return selection. This separate lead projection uses lead_profile_access, never account UUID lookup. Community profiles stay unchanged. Why: safe identity and exact return.
 - Keep lead chats and account-participant community chats separate; preserve mounted tab state and use private data-free per-user Realtime notifications with authorized refetches. Why: instant updates without publishing private rows or borrowing workspace identities.
 - Group rosters authorize group data and Rita context; assistant logs are server-written, shared only with conversation participants, and never include private workspace CRM/tools in community replies. Why: prevent impersonation and cross-workspace disclosure.

@@ -37,3 +37,8 @@ it('does not display a saved favorite after a denied write',async()=>{
  const {result}=renderHook(()=>useInboxFavorites(),{wrapper});await waitFor(()=>expect(result.current.isSuccess).toBe(true));db.fail=true;
  await act(async()=>{await result.current.toggle('lead',id);});expect(result.current.has('lead',id)).toBe(false);expect(db.rows).toHaveLength(0);
 });
+it('saves a new community contact without requiring an existing conversation',async()=>{
+ const {result}=renderHook(()=>useInboxFavorites(),{wrapper});await waitFor(()=>expect(result.current.isSuccess).toBe(true));
+ await act(async()=>{await result.current.toggle('peer',id);});await waitFor(()=>expect(result.current.has('peer',id)).toBe(true));
+ expect(db.rows).toEqual([{user_id:'account',workspace_owner_id:'workspace',target_kind:'peer',target_id:id}]);
+});

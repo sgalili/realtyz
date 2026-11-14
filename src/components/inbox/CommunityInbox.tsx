@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 
 type Card = { id: string; full_name: string | null; category: string; office_name: string | null; license_number: string | null };
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Ban, Bookmark, X, SlidersHorizontal, UserPlus, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
+import { ArrowRight, Ban, Star, X, SlidersHorizontal, UserPlus, Loader2, MessageCircle, Search, Send, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
@@ -46,6 +46,16 @@ export function CommunityInbox({ active }: { active: boolean }) {
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const favorites = useInboxFavorites();
   useEffect(() => { const add = () => { if (active) setDirectoryOpen(true); }; window.addEventListener('inbox:add-user', add); return () => window.removeEventListener('inbox:add-user', add); }, [active]);
+  useEffect(() => {
+    const toggle = () => { if (active) setSearchOpen(v => !v); };
+    const saved = () => { if (active) setFavoritesOpen(true); };
+    const report = () => active && window.dispatchEvent(new CustomEvent('inbox:search-state', { detail: { section: 'community', open: searchOpen } }));
+    window.addEventListener('inbox:toggle-search', toggle);
+    window.addEventListener('inbox:open-favorites', saved);
+    window.addEventListener('inbox:request-search-state', report);
+    if (active) report();
+    return () => { window.removeEventListener('inbox:toggle-search', toggle); window.removeEventListener('inbox:open-favorites', saved); window.removeEventListener('inbox:request-search-state', report); };
+  }, [active, searchOpen]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const endRef = useRef<HTMLDivElement>(null);
   const contacts = useQuery({
@@ -181,7 +191,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
     <TabsContent value="private" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
     <div className="grid h-full min-h-0 grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[20rem_minmax(0,1fr)]">
     <aside className={`${peer ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-e border-border`}>
-      <div className="m-3 flex shrink-0 items-center justify-between gap-2"><Button variant="ghost" size="icon" aria-label="מועדפי הקהילה" title="מועדפים" onClick={() => setFavoritesOpen(true)}><Bookmark className="h-4 w-4" /></Button><Button variant="ghost" size="icon" aria-label={searchOpen ? 'סגירת חיפוש בקהילה' : 'חיפוש בקהילה'} title={searchOpen ? 'סגירת חיפוש' : 'חיפוש בקהילה'} onClick={() => setSearchOpen(v => !v)}>{searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}</Button></div>
+
       <AnimatePresence initial={false}>{searchOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="shrink-0 overflow-hidden border-b"><div className="space-y-2 p-3"><ClearFilterButton active={!!search.trim() || category !== 'all'} onClear={() => { setSearch(''); setCategory('all'); }} /><div className="flex gap-2"><Input aria-label="חיפוש בקהילה" placeholder="שם חבר קהילה..." value={search} onChange={e => setSearch(e.target.value)} /><Button variant={filtersOpen ? 'default' : 'outline'} size="icon" className="shrink-0" aria-label="סינון חברי קהילה" title="סינון חברי קהילה" onClick={() => setFiltersOpen(v => !v)}><SlidersHorizontal className="h-4 w-4" /></Button></div>{filtersOpen && <div className="flex flex-wrap gap-1">{DIRECTORY_CATEGORIES.map(c => <Button key={c.value} size="sm" variant={category === c.value ? 'default' : 'outline'} onClick={() => setCategory(c.value)}>{c.label}</Button>)}</div>}</div></motion.div>}</AnimatePresence>
       <InboxFavoritesDialog open={favoritesOpen} onOpenChange={setFavoritesOpen} community />
       <div data-route-scroll className="min-h-0 flex-1 overflow-y-auto">
@@ -195,7 +205,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
             <button type="button" className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`פתיחת הפרופיל הציבורי של ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setProfileId(contact.id)}><Avatar className="h-10 w-10"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback><Users className="h-4 w-4" /></AvatarFallback></Avatar></button>
             <Button variant="ghost" className="h-auto min-w-0 flex-1 justify-start whitespace-normal p-0 text-start" onClick={() => setProfileId(contact.id)}><Identity id={contact.id} name={contact.full_name} fallback={last?.content ?? 'שיחה חדשה'} /></Button>
             <Button variant="ghost" size="icon" aria-label={`פתיחת שיחה עם ${contact.full_name ?? 'חבר קהילה'}`} onClick={() => setPeer(contact)}><MessageCircle className="h-4 w-4" /></Button>
-            {(threads.data ?? []).some(t => t.peer_id === contact.id) && <Button variant="ghost" size="icon" aria-label={favorites.has('peer', contact.id) ? 'הסרת שיחת קהילה מהמועדפים' : 'שמירת שיחת קהילה במועדפים'} title="מועדפים" onClick={() => void favorites.toggle('peer', contact.id)}><Bookmark className={`h-4 w-4 ${favorites.has('peer', contact.id) ? 'fill-current text-primary' : ''}`} /></Button>}
+            <Button variant="ghost" size="icon" aria-label={favorites.has('peer', contact.id) ? 'הסרת שיחת קהילה מהמועדפים' : 'שמירת שיחת קהילה במועדפים'} title="מועדפים" onClick={() => void favorites.toggle('peer', contact.id)}><Star className={`h-4 w-4 ${favorites.has('peer', contact.id) ? 'fill-current text-primary' : 'text-muted-foreground'}`} /></Button>
           </div>;
         })}
       </div>
@@ -214,7 +224,7 @@ export function CommunityInbox({ active }: { active: boolean }) {
           {messages.isLoading && <Loader2 className="mx-auto h-5 w-5 animate-spin" />}
           {messages.isError && <div role="alert" className="text-destructive">טעינת ההודעות נכשלה<Button variant="ghost" onClick={() => void messages.refetch()}>נסה שוב</Button></div>}
           <div role="note" className="mx-auto mb-4 max-w-md rounded-xl border border-border bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground"><span className="block text-xs font-semibold">TORAFF · ריטה</span>{DEAL_SAFETY_TIP}</div>
-          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><Button variant="ghost" size="icon" className="h-6 w-6 text-inherit" aria-label="שמירת הודעת קהילה במועדפים" title="מועדפים" onClick={() => void favorites.toggle('peer_message', message.id)}><Bookmark className={`h-3 w-3 ${favorites.has('peer_message', message.id) ? 'fill-current' : ''}`} /></Button><ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
+          {messages.data?.map(message => { const mine = message.sender_id === user?.id; return <div key={message.id} className={`mb-3 flex ${mine ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[80%] break-words px-3 py-2 shadow-sm ${mine ? 'rounded-2xl rounded-ss-sm bg-primary text-primary-foreground' : 'rounded-2xl rounded-se-sm border border-border bg-muted text-foreground'}`}><Button variant="ghost" size="icon" className="h-6 w-6 text-inherit" aria-label="שמירת הודעת קהילה במועדפים" title="מועדפים" onClick={() => void favorites.toggle('peer_message', message.id)}><Star className={`h-3 w-3 ${favorites.has('peer_message', message.id) ? 'fill-current' : ''}`} /></Button><ChatMessageText content={message.content} /><time className="mt-1 block text-end text-xs opacity-70">{new Date(message.created_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</time></div></div>; })}
           <div ref={endRef} />
         </div>
         <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={event => { event.preventDefault(); submit(); }}>

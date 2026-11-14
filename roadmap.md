@@ -1,5 +1,9 @@
 # Roadmap
 
+## Universal inbox stars and header alignment November 14
+- [x] Persistent outlined/filled stars on all private chat/community rows, including new contacts and phone-only recovery threads; message/modal icons match. New community favorites remain role-gated, orphan favorites reuse authorized message access.
+- [x] Contextual search/favorites flank centered hero tabs at 1280×1800 and 411×801. Authenticated chat/member saves display in modal, community save survives reload; six focused tests pass, no page errors, preview build OK. Read-only gateway refused SQL-context authorization tests; new-contact save verified through authenticated UI instead.
+
 ## Connections and inbox refinements November 14
 - [x] Facebook business/groups rows show coming soon; removed duplicate labels above connection fields. Shared hero and targeted campaign header use 10px top/bottom spacing, centered titles and horizontal actions.
 - [x] URL-driven hero chat/community tabs preserve mounted panes; add opens existing full client form or community directory (including from groups). Animated inline search uses X, distinct chat/member filters and conditional top-left clear buttons; shared board/global search/filter windows updated.

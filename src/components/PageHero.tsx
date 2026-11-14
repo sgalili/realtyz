@@ -26,6 +26,8 @@ import {
   Megaphone,
   X,
   UserPlus,
+  Search,
+  Star,
 } from "lucide-react";
 import { SuperAdminSectionSelect } from "@/components/admin/SuperAdminSectionSelect";
 import { useAffiliatePreferences } from "@/hooks/useAffiliate";
@@ -295,6 +297,18 @@ export function PageHero() {
   void propertySuffix;
   void isPropertyDetail;
   const displayTitle = isCampaignsCreate ? "פרסום קמפיין חדש" : isCampaignsCalendar ? "פרסומים מתוזמנים" : title;
+  const [inboxSearchOpen, setInboxSearchOpen] = React.useState(false);
+  const inboxSection = searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads';
+  React.useEffect(() => {
+    const update = (event: Event) => {
+      const detail = (event as CustomEvent<{ section: string; open: boolean }>).detail;
+      if (detail?.section === inboxSection) setInboxSearchOpen(detail.open);
+    };
+    setInboxSearchOpen(false);
+    window.addEventListener('inbox:search-state', update);
+    window.dispatchEvent(new Event('inbox:request-search-state'));
+    return () => window.removeEventListener('inbox:search-state', update);
+  }, [inboxSection]);
   const [inboxChatOpen, setInboxChatOpen] = React.useState(
     location.pathname.startsWith('/inbox') && !!(searchParams.get('chat') || searchParams.get('lead')),
   );
@@ -378,11 +392,15 @@ export function PageHero() {
             <SuperAdminSectionSelect />
           </div>
         ) : location.pathname.startsWith('/inbox') ? (
-          <div role="tablist" aria-label="צ׳אטים וקהילה" className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1">
+          <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label={inboxSearchOpen ? 'סגירת חיפוש' : 'חיפוש'} title={inboxSearchOpen ? 'סגירת חיפוש' : 'חיפוש'} onClick={() => window.dispatchEvent(new Event('inbox:toggle-search'))}>{inboxSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}</Button>
+            <div role="tablist" aria-label="צ׳אטים וקהילה" className="flex items-center gap-1">
             {([['leads', 'צ׳אטים'], ['community', 'קהילה']] as const).map(([value, label]) => {
               const selected = value === (searchParams.get('section') === 'community' || searchParams.has('community') ? 'community' : 'leads');
               return <Button key={value} role="tab" aria-selected={selected} variant="ghost" className={cn('h-9 px-2 text-base font-bold text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground', selected && 'bg-primary-foreground/15')} onClick={() => setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); next.delete('lead'); next.delete('chat'); return next; }, { replace: true })}>{label}</Button>;
             })}
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground" aria-label="מועדפים" title="מועדפים" onClick={() => window.dispatchEvent(new Event('inbox:open-favorites'))}><Star className="h-5 w-5" /></Button>
           </div>
         ) : (
           <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-xl font-bold tracking-tight text-white sm:text-2xl">

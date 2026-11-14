@@ -1282,6 +1282,13 @@
       "when": 1794618716807,
       "tag": "0182_personal_inbox_favorites",
       "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1794626570475,
+      "tag": "0183_favorite_new_community_conversations",
+      "breakpoints": true
     }
   ]
 }
