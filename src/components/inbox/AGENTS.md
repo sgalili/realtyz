@@ -1,4 +1,5 @@
 # Inbox architecture
+- Chat-origin lead saves reopen the saved conversation; first official outreach requires the exact approved opt-in template and a service-only workspace/phone claim, never retrying ambiguous sends. Green avatar jobs authorize and scope reads/writes by workspace and unchanged phone. Why: prevent duplicate outreach and cross-tenant photos.
 - WhatsApp media authorization comes from a visible source message; credentials match its receiving phone, never an unrelated latest provider. Unavailable attachments remain inline and media responses are private. Why: prevent token mismatch, media leaks and blank error states.
 - Hero tabs use the URL; panes stay mounted and contextual add events reach only the active pane. useInboxFavorites owns account/workspace-keyed favorites, with RLS rechecking target access on read/write. Why: isolated navigation and persistent saves.
 - Hero search/favorites events reach only the active mounted pane and search state is reported back; orphan chat stars target the authorized source message, never a synthetic phone ID. Why: consistent controls without creating client identities.

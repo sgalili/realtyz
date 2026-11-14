@@ -1060,7 +1060,22 @@ const OmnichannelInbox = () => {
 
   return (
     <ChatTypography><Tabs dir="rtl" value={inboxSection} onValueChange={value => { setInboxSection(value); setSearchParams(current => { const next = new URLSearchParams(current); next.set('section', value); if (value === 'leads') next.delete('community'); return next; }, { replace: true }); }} className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      <NewLeadDialog open={addClientOpen} onOpenChange={setAddClientOpen} onCreated={lead => { void refreshInbox(); navigate(`/lead-crm/${encodeURIComponent(lead.id)}`, { state: { returnTo: '/inbox' } }); }} />
+      <NewLeadDialog open={addClientOpen} onOpenChange={setAddClientOpen} onCreated={lead => {
+        setSelectedVoterId(lead.id);
+        setSendChannel('whatsapp');
+        setFavoritesOpen(false);
+        clearSearch();
+        setActiveTab('all');
+        void refreshInbox();
+        void supabase.functions.invoke('lead-first-whatsapp', { body: { lead_id: lead.id } }).then(async ({ data, error }) => {
+          if (error || data?.error) {
+            toast.error('הליד נשמר, אך הודעת הפתיחה לא נשלחה', { description: data?.error === 'approved_opt_in_template_required' ? 'נדרשת תבנית פתיחה מאושרת ב־Meta.' : 'יש לבדוק את חיבור WhatsApp ואת תבנית הפתיחה.' });
+          } else if (data?.success && !data?.skipped) {
+            await refreshInbox();
+            await queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+          }
+        }).catch(() => toast.error('הליד נשמר, אך לא ניתן לאשר את שליחת הודעת הפתיחה'));
+      }} />
       {contactDetailsId && <InboxLeadDetails leadId={contactDetailsId} onClose={() => setContactDetailsId(null)} />}
       <TabsContent value="community" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
         <CommunityInbox key={`${user?.id}:${workspaceScope}`} active={inboxSection === 'community'} />

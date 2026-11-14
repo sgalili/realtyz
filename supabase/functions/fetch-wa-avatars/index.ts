@@ -18,6 +18,9 @@
 // `supported: false` and the UI silently falls back to initials avatars.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { requireCaller, canAccessWorkspace } from '../_shared/authz.ts';
+import { z } from 'npm:zod@3';
 import {
   fetchGreenAvatar,
   resolveGreenCreds,
@@ -25,12 +28,6 @@ import {
   type GreenCreds,
 } from "../_shared/greenApiCreds.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const json = (payload: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(payload), {
@@ -83,6 +80,7 @@ async function runJob(
   creds: GreenCreds,
   jobId: string,
   force: boolean,
+  ownerId: string,
 ) {
   const PAGE = 500;
   const MAX_CONTACTS = 10_000;
@@ -111,6 +109,7 @@ async function runJob(
       let query = admin
         .from("leads")
         .select("id, phone_number")
+        .eq('workspace_owner_id', ownerId)
         .not("phone_number", "is", null)
         .order("created_at", { ascending: false })
         .range(offset, offset + PAGE - 1);
@@ -134,7 +133,9 @@ async function runJob(
       const { error: upErr } = await admin
         .from("leads")
         .update({ profile_picture_url: url })
-        .eq("id", row.id);
+        .eq("id", row.id)
+        .eq('workspace_owner_id', ownerId)
+        .eq('phone_number', row.phone_number);
       if (upErr) failed++;
       else updated++;
       // Gentle pacing so Green API never rate-limits the sweep,
@@ -155,12 +156,20 @@ async function runJob(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req, ['user', 'service', 'cron']);
+  if (caller instanceof Response) return caller;
+  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   try {
-    const body = await req.json().catch(() => ({} as any));
+    const parsed = z.object({ lead_ids: z.array(z.string().uuid()).max(200).optional(), owner_id: z.string().uuid().nullable().optional(), limit: z.number().int().min(1).max(10000).optional(), force: z.boolean().optional(), all: z.boolean().optional(), action: z.literal('status').optional() }).strict().safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return json({ error: 'invalid_avatar_request' }, 400);
+    const body = parsed.data;
+    const url = Deno.env.get('SUPABASE_URL');
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !key) return json({ error: 'backend_unavailable' }, 503);
     const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      url,
+      key,
     );
 
     // Caller identity (optional — service-role calls have none).
@@ -184,12 +193,15 @@ Deno.serve(async (req) => {
       ownerId = (prof as any)?.active_workspace_owner_id ??
         (prof as any)?.workspace_owner_id ?? userId;
     }
+    if (!ownerId) return json({ error: 'workspace_required' }, 403);
+    if (caller.kind === 'user' && !await canAccessWorkspace(caller.userId, ownerId, admin)) return json({ error: 'forbidden' }, 403);
 
     // ── Job status probe ────────────────────────────────────────────────────
     if (body?.action === "status") {
       const { data } = await admin
         .from("wa_avatar_sync_jobs")
         .select("*")
+        .eq('workspace_owner_id', ownerId)
         .order("created_at", { ascending: false })
         .limit(1);
       return json({ success: true, job: (data ?? [])[0] ?? null });
@@ -216,6 +228,7 @@ Deno.serve(async (req) => {
       const { data: live } = await admin
         .from("wa_avatar_sync_jobs")
         .select("*")
+        .eq('workspace_owner_id', ownerId)
         .in("status", ["queued", "running"])
         .order("created_at", { ascending: false })
         .limit(1);
@@ -227,6 +240,7 @@ Deno.serve(async (req) => {
       let totalQuery = admin
         .from("leads")
         .select("id", { count: "exact", head: true })
+        .eq('workspace_owner_id', ownerId)
         .not("phone_number", "is", null);
       if (!force) totalQuery = totalQuery.is("profile_picture_url", null);
       const { count } = await totalQuery;
@@ -246,7 +260,7 @@ Deno.serve(async (req) => {
         return unsupported("לא ניתן להתחיל סנכרון תמונות כעת");
       }
 
-      const task = runJob(admin, creds, (job as any).id, force);
+      const task = runJob(admin, creds, (job as any).id, force, ownerId);
       // Keep the sweep alive after the HTTP response returns.
       // @ts-ignore Deno Deploy runtime API
       if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
@@ -266,9 +280,13 @@ Deno.serve(async (req) => {
     let query = admin
       .from("leads")
       .select("id, phone_number, profile_picture_url")
+      .eq('workspace_owner_id', ownerId)
       .not("phone_number", "is", null)
       .limit(limit);
-    if (leadIds?.length) query = query.in("id", leadIds);
+    if (leadIds) {
+      if (!leadIds.length) return json({ success: true, updated: 0 });
+      query = query.in("id", leadIds);
+    }
     if (!force) query = query.is("profile_picture_url", null);
 
     const { data: rows, error } = await query;
@@ -285,7 +303,9 @@ Deno.serve(async (req) => {
       const { error: upErr } = await admin
         .from("leads")
         .update({ profile_picture_url: url })
-        .eq("id", row.id);
+        .eq("id", row.id)
+        .eq('workspace_owner_id', ownerId)
+        .eq('phone_number', row.phone_number);
       if (upErr) failed++;
       else updated++;
     }

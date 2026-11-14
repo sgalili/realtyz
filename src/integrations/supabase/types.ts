@@ -5477,6 +5477,41 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_first_whatsapp_claims: {
+        Row: {
+          created_at: string
+          lead_id: string
+          message_id: string | null
+          phone_number: string
+          status: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          lead_id: string
+          message_id?: string | null
+          phone_number: string
+          status?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          lead_id?: string
+          message_id?: string | null
+          phone_number?: string
+          status?: string
+          workspace_owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_first_whatsapp_claims_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_listings: {
         Row: {
           created_at: string

@@ -1,5 +1,12 @@
 # Roadmap
 
+## Lead form and first official WhatsApp November 14
+- [x] Clean lead fields and replace kind buttons with a dropdown; unspecified gender remains neutral, never name-guessed.
+- [x] Preserve background Green API avatar hydration after phone save; secure all avatar paths by caller/workspace and unchanged phone. Existing DB phone-write trigger verified.
+- [x] Return chat-origin saves to the saved conversation; dedicated official first-contact endpoint requires approved exact opt-in template, genuine empty WhatsApp history and unique workspace/phone claim, with no ambiguous-send retry.
+- [x] Authenticated desktop/mobile form checked, real isolated lead saved and chat reopened; test row removed. Provider send/avatar intercepted to avoid external delivery. Focused tests added; preview clean.
+- [ ] Live first-message delivery needs Meta approval and synchronization of dedicated toraff_contact_opt_in Hebrew template; existing templates are unrelated. Actual recipient avatar import and message delivery remain unverified without a consenting test recipient and working provider authorization.
+
 ## Rita filtering and swipe actions November 14
 - [x] Rita counter/filter use the same global+per-lead enabled predicate, not last-message author; disabled rows disappear immediately. Saved per-card toggles read back after reload.
 - [x] Shared touch/desktop swipe reveals red delete, yellow favorite and blue Rita actions in lead/private/group cards. Lead message deletion preserves CRM identity; Community removal hides only caller's card. Group autopilot is owner-only; phone-only orphans cannot enable it without a lead identity.

@@ -17,7 +17,6 @@ import { useState } from 'react';
 import LinkedPropertiesField, { saveLeadPropertyLinks } from '@/components/leads/LinkedPropertiesField';
 
 import { supabase } from '@/integrations/supabase/client';
-import { VoiceInputButton } from '@/components/voice/VoiceInputButton';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatPhoneAsTyped } from '@/lib/formatPhone';
@@ -31,7 +30,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { guessGenderFromHebrewName } from '@/lib/hebrewGender';
 import { Textarea } from '@/components/ui/textarea';
 import { UserPlus } from 'lucide-react';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
@@ -198,13 +196,10 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     // Build pipeline-specific preferences. We deliberately omit the OTHER
     // pipeline's fields so the AI never sees, e.g., a mortgage flag on a
     // rental lead.
-    // 'auto' falls back to the Hebrew first-name heuristic so messages are
-    // still written in the right grammatical form when nothing is picked.
-    const resolvedGender =
-      gender === 'auto' ? guessGenderFromHebrewName(fullName) : gender;
+    const resolvedGender = gender === 'auto' ? null : gender;
 
     const preferences: Record<string, unknown> = {
-      lead_kind: leadKind!,
+      lead_kind: leadKind,
       listing_type: isRental ? 'rent' : 'sale', // legacy mirror for older code paths
       deal_side: isOwner ? 'owner' : 'seeker',
       source,
@@ -245,6 +240,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         lead_stage: 'new',
         status: 'new',
         assigned_to: ownerId,
+        workspace_owner_id: ownerId,
         interest_tag: KIND_MAP[leadKind].tag,
       } as any;
 
@@ -317,7 +313,10 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       if (created?.id) {
         supabase.functions
           .invoke('fetch-wa-avatars', { body: { lead_ids: [created.id] } })
-          .then(() => queryClient.invalidateQueries({ queryKey: ['leads'] }))
+          .then(() => Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['leads'] }),
+            queryClient.invalidateQueries({ queryKey: ['inbox-leads'] }),
+          ]))
           .catch(() => {});
       }
 
@@ -366,20 +365,11 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
 
         {/* Contact kind — pins the pipeline and the dynamic field set */}
         <div className="space-y-2">
-          <div className="grid grid-cols-5 gap-1.5">
-            {KIND_OPTIONS.map((k) => (
-              <Button
-                key={k.v}
-                type="button"
-                size="sm"
-                variant={leadKind === k.v ? 'default' : 'outline'}
-                className="text-xs px-1"
-                onClick={() => pickKind(k.v)}
-              >
-                {k.l}
-              </Button>
-            ))}
-          </div>
+          <Label htmlFor="nl-kind">סוג ליד *</Label>
+          <Select value={leadKind ?? ''} onValueChange={value => pickKind(value as LeadKind)}>
+            <SelectTrigger id="nl-kind"><SelectValue /></SelectTrigger>
+            <SelectContent>{KIND_OPTIONS.map(k => <SelectItem key={k.v} value={k.v}>{k.l}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
 
 
@@ -390,7 +380,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               id="nl-name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="ישראל ישראלי"
               autoFocus
             />
           </div>
@@ -413,7 +402,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               dir="ltr"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="lead@example.com"
             />
           </div>
           <div>
@@ -422,24 +410,20 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               id="nl-city"
               value={city}
               onChange={(e) => { setCity(e.target.value); setPendingOutOfArea(false); }}
-              placeholder="תל אביב"
             />
           </div>
           <div>
             <Label>מגדר</Label>
             <Select value={gender} onValueChange={(v) => setGender(v as 'male' | 'female' | 'auto')}>
               <SelectTrigger className="h-10 text-sm">
-                <SelectValue placeholder="בחר מגדר" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="auto">זיהוי אוטומטי לפי השם</SelectItem>
+                <SelectItem value="auto">לא צוין</SelectItem>
                 <SelectItem value="male">גבר</SelectItem>
                 <SelectItem value="female">אישה</SelectItem>
               </SelectContent>
             </Select>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              קובע את לשון הפנייה בעברית בהודעות ובשיחות של ריטה
-            </p>
           </div>
           {leadKind !== 'broker' && <div>
             <Label htmlFor="nl-hood">שכונה</Label>
@@ -447,7 +431,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               id="nl-hood"
               value={neighborhood}
               onChange={(e) => { setNeighborhood(e.target.value); setPendingOutOfArea(false); }}
-              placeholder="צפון הישן"
             />
           </div>}
           {leadKind !== 'broker' && <div>
@@ -459,7 +442,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
               min="1"
               value={rooms}
               onChange={(e) => setRooms(e.target.value)}
-              placeholder="3"
             />
           </div>}
 
@@ -468,7 +450,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             <Label>ערוץ הגעה</Label>
             <Select value={source} onValueChange={setSource}>
               <SelectTrigger className="h-10 text-sm">
-                <SelectValue placeholder="בחר ערוץ" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="manual">הוזן ידנית</SelectItem>
@@ -495,7 +477,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
                   min="0"
                   value={budgetMax}
                   onChange={(e) => setBudgetMax(e.target.value)}
-                  placeholder="2500000"
                 />
               </div>
               {!isOwner && (
@@ -527,7 +508,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
                   min="0"
                   value={monthlyMax}
                   onChange={(e) => setMonthlyMax(e.target.value)}
-                  placeholder="6500"
                 />
               </div>
               <div>
@@ -546,18 +526,12 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           <div className="col-span-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="nl-notes">הערות</Label>
-              <VoiceInputButton
-                size="sm"
-                title="הכתבה קולית להערות"
-                onTranscript={(t) => setNotes((prev) => (prev ? `${prev} ${t}` : t))}
-              />
             </div>
             <Textarea
               id="nl-notes"
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="פרטים שיעזרו לסגור את העסקה…"
             />
           </div>
 
